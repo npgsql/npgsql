@@ -197,7 +197,8 @@ namespace Npgsql
 				}
 			}
             
-            throw new ArgumentOutOfRangeException("fieldName", fieldName, "Field name not found");
+            return -1;
+            
 
         }
 

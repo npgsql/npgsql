@@ -26,6 +26,7 @@
 
 
 using System;
+using System.Resources;
 using System.Data;
 using System.Data.Common;
 using System.ComponentModel;
@@ -40,6 +41,10 @@ namespace Npgsql
     public sealed class NpgsqlCommandBuilder : Component
     {
 
+        // Logging related values
+        private static readonly String CLASSNAME = "NpgsqlCommandBuilder";
+        private static ResourceManager resman = new ResourceManager(typeof(NpgsqlCommandBuilder));
+        
         bool disposed = false;
 
 
@@ -153,6 +158,9 @@ namespace Npgsql
             c.Parameters[0].Value = command.CommandText;
     
             String types = (String) c.ExecuteScalar();
+            
+            if (types == null)
+                throw new InvalidOperationException (String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
     
             command.Parameters.Clear();
             Int32 i = 1;

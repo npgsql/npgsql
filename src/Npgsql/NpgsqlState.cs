@@ -33,6 +33,7 @@ using System.Collections;
 using System.Text;
 using System.Resources;
 
+
 namespace Npgsql
 {
     ///<summary> This class represents the base class for the state pattern design pattern
@@ -98,6 +99,11 @@ namespace Npgsql
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
+        
+        public virtual void CancelRequest(NpgsqlConnector context)
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
 
         public virtual void Close( NpgsqlConnector context )
         {
@@ -131,11 +137,18 @@ namespace Npgsql
         /// to handle backend requests.
         /// </summary>
         ///
-        protected virtual void ProcessBackendResponses( NpgsqlConnector context )
+        internal virtual void ProcessBackendResponses( NpgsqlConnector context )
         {
 
             try
             {
+                
+                // Process commandTimeout behavior.
+                
+                if ((context.Mediator.CommandTimeout > 0) && (!context.Socket.Poll(1000000 * context.Mediator.CommandTimeout, SelectMode.SelectRead)))
+                    context.CancelRequest();
+                
+                
                 switch (context.BackendProtocolVersion)
                 {
                 case ProtocolVersion.Version2 :
@@ -408,6 +421,9 @@ namespace Npgsql
                     Int32 PID = PGUtil.ReadInt32(stream, inputBuffer);
                     String notificationResponse = PGUtil.ReadString( stream, context.Encoding );
                     mediator.AddNotification(new NpgsqlNotificationEventArgs(PID, notificationResponse));
+                    
+                    if (context.IsNotificationThreadRunning)
+                        readyForQuery = true;
 
                     // Wait for ReadForQuery message
                     break;
@@ -696,6 +712,9 @@ namespace Npgsql
                         PGUtil.ReadString( stream, context.Encoding );
                         mediator.AddNotification(new NpgsqlNotificationEventArgs(PID, notificationResponse));
                     }
+                    
+                    if (context.IsNotificationThreadRunning)
+                        readyForQuery = true;
 
                     // Wait for ReadForQuery message
                     break;
