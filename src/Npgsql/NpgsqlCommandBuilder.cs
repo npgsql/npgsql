@@ -204,6 +204,8 @@ namespace Npgsql
 					BuildSchema();
 				}
 				string table_name = string.Empty;
+                string quotedName;
+                NpgsqlCommand cmdaux = new NpgsqlCommand();
 				foreach(DataRow schemaRow in select_schema.Rows)
 				{
 					if (!(bool)schemaRow["IsAutoIncrement"])
@@ -221,19 +223,21 @@ namespace Npgsql
 								table_name = row.Table.TableName;
 							}
 						}
-						fields += GetQuotedName((string)schemaRow["BaseColumnName"]);
-						values += ":param_" + schemaRow["ColumnName"];
+                        quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                        DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
+
+                        fields += quotedName;
+                        values += ":param_" + column.ColumnName;
 						first = false;
+
+                        NpgsqlParameter aux = new NpgsqlParameter("param_" + column.ColumnName, NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
+                        aux.Direction = ParameterDirection.Input;
+                        aux.SourceColumn = column.ColumnName;
+                        cmdaux.Parameters.Add(aux);
 					}
 				}
-                NpgsqlCommand cmdaux = new NpgsqlCommand("insert into " + GetQuotedName(table_name) + " (" + fields + ") values (" + values + ")", data_adapter.SelectCommand.Connection);
-                foreach (DataColumn column in row.Table.Columns)
-                {
-                    NpgsqlParameter aux = new NpgsqlParameter("param_" + column.ColumnName, row[column], NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
-                    aux.Direction = ParameterDirection.Input;
-                    aux.SourceColumn = column.ColumnName;
-                    cmdaux.Parameters.Add(aux);
-                }
+                cmdaux.CommandText = "insert into " + GetQuotedName(table_name) + " (" + fields + ") values (" + values + ")";
+                cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 insert_command = cmdaux;
             }
             return insert_command;
@@ -250,7 +254,9 @@ namespace Npgsql
 				{
 					BuildSchema();
 				}
-				string table_name = string.Empty;
+                string table_name = string.Empty;
+                string quotedName;
+                NpgsqlCommand cmdaux = new NpgsqlCommand();
 				foreach(DataRow schemaRow in select_schema.Rows)
 				{
 					if (!first)
@@ -266,27 +272,27 @@ namespace Npgsql
 							table_name = row.Table.TableName;
 						}
 					}
-					sets += String.Format("{0} = :s_param_{1}", GetQuotedName((string)schemaRow["BaseColumnName"]), schemaRow["ColumnName"]);
-					wheres += String.Format("(({0} is null) or ({0} = :w_param_{1}))", GetQuotedName((string)schemaRow["BaseColumnName"]), schemaRow["ColumnName"]);
+                    quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                    DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
+                    sets += String.Format("{0} = :s_param_{1}", quotedName, column.ColumnName);
+                    wheres += String.Format("(({0} is null) or ({0} = :w_param_{1}))", quotedName, column.ColumnName);
 					first = false;
+
+                    NpgsqlNativeTypeInfo typeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType);
+                    NpgsqlParameter aux_set = new NpgsqlParameter("s_param_" + column.ColumnName, typeInfo);
+                    aux_set.Direction = ParameterDirection.Input;
+                    aux_set.SourceColumn = column.ColumnName;
+                    aux_set.SourceVersion = DataRowVersion.Current;
+                    cmdaux.Parameters.Add(aux_set);
+
+                    NpgsqlParameter aux_where = new NpgsqlParameter("w_param_" + column.ColumnName, typeInfo);
+                    aux_where.Direction = ParameterDirection.Input;
+                    aux_where.SourceColumn = column.ColumnName;
+                    aux_where.SourceVersion = DataRowVersion.Original;
+                    cmdaux.Parameters.Add(aux_where);
 				}
-                NpgsqlCommand cmdaux = new NpgsqlCommand("update " + GetQuotedName(table_name) + " set " + sets + " where ( " + wheres + " )", data_adapter.SelectCommand.Connection);
-                foreach (DataColumn column in row.Table.Columns)
-                {
-                    NpgsqlParameter aux = new NpgsqlParameter("s_param_" + column.ColumnName, row[column], NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
-                    aux.Direction = ParameterDirection.Input;
-                    aux.SourceColumn = column.ColumnName;
-                    aux.SourceVersion = DataRowVersion.Current;
-                    cmdaux.Parameters.Add(aux);
-                }
-                foreach (DataColumn column in row.Table.Columns)
-                {
-                    NpgsqlParameter aux = new NpgsqlParameter("w_param_" + column.ColumnName, row[column], NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
-                    aux.Direction = ParameterDirection.Input;
-                    aux.SourceColumn = column.ColumnName;
-                    aux.SourceVersion = DataRowVersion.Original;
-                    cmdaux.Parameters.Add(aux);
-                }
+                cmdaux.CommandText = "update " + GetQuotedName(table_name) + " set " + sets + " where ( " + wheres + " )";
+                cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 update_command = cmdaux;
 
             }
@@ -303,7 +309,9 @@ namespace Npgsql
 				{
 					BuildSchema();
 				}
-				string table_name = string.Empty;
+                string table_name = string.Empty;
+                string quotedName;
+                NpgsqlCommand cmdaux = new NpgsqlCommand();
 				foreach(DataRow schemaRow in select_schema.Rows)
 				{
 					if (!first)
@@ -317,19 +325,22 @@ namespace Npgsql
 						{
 							table_name = row.Table.TableName;
 						}
-					}
-					wheres += String.Format("(({0} is null) or ({0} = :param_{1}))", GetQuotedName((string)schemaRow["BaseColumnName"]), schemaRow["ColumnName"]);
-					first = false;
-				}
-                NpgsqlCommand cmdaux = new NpgsqlCommand("delete from " + GetQuotedName(table_name) + " where ( " + wheres + " )", data_adapter.SelectCommand.Connection);
-                foreach (DataColumn column in row.Table.Columns)
-                {
-                    NpgsqlParameter aux = new NpgsqlParameter("param_" + column.ColumnName, row[column,DataRowVersion.Original], NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
+                    }
+
+                    quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                    DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
+
+					wheres += String.Format("(({0} is null) or ({0} = :param_{1}))", quotedName , column.ColumnName);
+                    first = false;
+
+                    NpgsqlParameter aux = new NpgsqlParameter("param_" + column.ColumnName, NpgsqlTypesHelper.GetNativeTypeInfo(column.DataType));
                     aux.Direction = ParameterDirection.Input;
                     aux.SourceColumn = column.ColumnName;
                     aux.SourceVersion = DataRowVersion.Original;
                     cmdaux.Parameters.Add(aux);
-                }
+				}
+                cmdaux.CommandText = "delete from " + GetQuotedName(table_name) + " where ( " + wheres + " )";
+                cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 delete_command = cmdaux;
             }
             return delete_command;
