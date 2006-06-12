@@ -203,6 +203,7 @@ namespace Npgsql
 				{
 					BuildSchema();
 				}
+                string schema_name = string.Empty;
 				string table_name = string.Empty;
                 string quotedName;
                 NpgsqlCommand cmdaux = new NpgsqlCommand();
@@ -217,6 +218,7 @@ namespace Npgsql
 						}
 						else
 						{
+                            schema_name = (string)schemaRow["BaseSchemaName"];
 							table_name = (string)schemaRow["BaseTableName"];
 							if (table_name == null || table_name.Length == 0)
 							{
@@ -236,7 +238,7 @@ namespace Npgsql
                         cmdaux.Parameters.Add(aux);
 					}
 				}
-                cmdaux.CommandText = "insert into " + GetQuotedName(table_name) + " (" + fields + ") values (" + values + ")";
+                cmdaux.CommandText = "insert into " + QualifiedTableName(schema_name, table_name) + " (" + fields + ") values (" + values + ")";
                 cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 insert_command = cmdaux;
             }
@@ -254,6 +256,7 @@ namespace Npgsql
 				{
 					BuildSchema();
 				}
+                string schema_name = string.Empty;
                 string table_name = string.Empty;
                 string quotedName;
                 NpgsqlCommand cmdaux = new NpgsqlCommand();
@@ -266,6 +269,7 @@ namespace Npgsql
 					}
 					else
 					{
+                        schema_name = (string)schemaRow["BaseSchemaName"];
 						table_name = (string)schemaRow["BaseTableName"];
 						if (table_name == null || table_name.Length == 0)
 						{
@@ -291,7 +295,7 @@ namespace Npgsql
                     aux_where.SourceVersion = DataRowVersion.Original;
                     cmdaux.Parameters.Add(aux_where);
 				}
-                cmdaux.CommandText = "update " + GetQuotedName(table_name) + " set " + sets + " where ( " + wheres + " )";
+                cmdaux.CommandText = "update " + QualifiedTableName(schema_name, table_name) + " set " + sets + " where ( " + wheres + " )";
                 cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 update_command = cmdaux;
 
@@ -309,6 +313,7 @@ namespace Npgsql
 				{
 					BuildSchema();
 				}
+                string schema_name = string.Empty;
                 string table_name = string.Empty;
                 string quotedName;
                 NpgsqlCommand cmdaux = new NpgsqlCommand();
@@ -320,6 +325,7 @@ namespace Npgsql
 					}
 					else
 					{
+                        schema_name = (string)schemaRow["BaseSchemaName"];
 						table_name = (string)schemaRow["BaseTableName"];
 						if (table_name == null || table_name.Length == 0)
 						{
@@ -339,7 +345,7 @@ namespace Npgsql
                     aux.SourceVersion = DataRowVersion.Original;
                     cmdaux.Parameters.Add(aux);
 				}
-                cmdaux.CommandText = "delete from " + GetQuotedName(table_name) + " where ( " + wheres + " )";
+                cmdaux.CommandText = "delete from " + QualifiedTableName(schema_name, table_name) + " where ( " + wheres + " )";
                 cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 delete_command = cmdaux;
             }
@@ -408,6 +414,17 @@ namespace Npgsql
             Dispose(false);
         }*/
 
+        private string QualifiedTableName(string schema, string tableName)
+        {
+            if (schema == null || schema.Length == 0)
+            {
+                return GetQuotedName(tableName);
+            }
+            else
+            {
+                return GetQuotedName(schema) + "." + GetQuotedName(tableName);
+            }
+        }
     }
 
 }
