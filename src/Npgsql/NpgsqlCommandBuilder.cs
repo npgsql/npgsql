@@ -63,7 +63,6 @@ namespace Npgsql
         public NpgsqlCommandBuilder (NpgsqlDataAdapter adapter)
         {
             DataAdapter = adapter;
-            adapter.RowUpdating += new NpgsqlRowUpdatingEventHandler(OnRowUpdating);
         }
 
         public NpgsqlDataAdapter DataAdapter {
@@ -78,6 +77,7 @@ namespace Npgsql
                     throw new InvalidOperationException ("DataAdapter is already set");
                 }
                 data_adapter = value;
+                data_adapter.RowUpdating += new NpgsqlRowUpdatingEventHandler(OnRowUpdating);
             }
         }
 
@@ -116,7 +116,6 @@ namespace Npgsql
                     rowVersion = DataRowVersion.Original;
                 parameter.Value = value.Row [dsColumnName, rowVersion];
             }
-            value.Row.AcceptChanges ();
         }
 
         public string QuotePrefix {
@@ -378,8 +377,11 @@ namespace Npgsql
                     {
                         delete_command.Dispose();
                     }
+
+                    data_adapter.RowUpdating -= new NpgsqlRowUpdatingEventHandler(OnRowUpdating);
                 }
             }
+            base.Dispose(disposing);
         }
 
 		private void BuildSchema()
