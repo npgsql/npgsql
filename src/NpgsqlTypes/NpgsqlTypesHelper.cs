@@ -186,6 +186,9 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddTypeAlias("bytea", typeof(Byte[]));
 
+                NativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Boolean, true,
+                new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBit));
+
                 NativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
                 new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBoolean));
 
@@ -239,6 +242,9 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddTypeAlias("timestamp", typeof(DateTime));
 
+                NativeTypeMapping.AddType("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, true,
+                new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToDateTime));
+
                 NativeTypeMapping.AddType("point", NpgsqlDbType.Point, DbType.Object, true,
                 new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToPoint));
 
@@ -268,6 +274,12 @@ namespace NpgsqlTypes
                 new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToCircle));
 
                 NativeTypeMapping.AddTypeAlias("circle", typeof(NpgsqlCircle));
+
+                NativeTypeMapping.AddType("inet", NpgsqlDbType.Inet, DbType.Object, true,
+                new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToIPAddress));
+
+                NativeTypeMapping.AddTypeAlias("inet", typeof(IPAddress));
+                NativeTypeMapping.AddTypeAlias("inet", typeof(NpgsqlInet));
             }
         }
 
@@ -325,6 +337,8 @@ namespace NpgsqlTypes
                     new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(Byte[]),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBinary)),
 
+                    new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Boolean, typeof(Boolean),
+                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBit)),
 
                     new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(Boolean),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean)),
@@ -351,6 +365,8 @@ namespace NpgsqlTypes
 
                     new NpgsqlBackendTypeInfo(0, "numeric", NpgsqlDbType.Numeric, DbType.Decimal, typeof(Decimal),
                         null),
+
+                    new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof(NpgsqlInet), new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet)),
 
                     new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Decimal, typeof(Decimal),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney)),
@@ -684,15 +700,11 @@ namespace NpgsqlTypes
                     // Translate enum value to its underlying type. 
                     return (String)Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof(String), CultureInfo.InvariantCulture);
                 }
-                else if (NativeData is Double) 
+                else if (NativeData is IFormattable) 
                 {
-                    return ((Double)NativeData).ToString("N", ni);
+                    return ((IFormattable)NativeData).ToString(null, ni);
                     
                 }
-                else if (NativeData is Decimal) 
-                {
-                    return ((Decimal)NativeData).ToString("N", ni);
-                } 
                 
                 return NativeData.ToString();
                 

@@ -187,6 +187,10 @@ namespace Npgsql
         /// </li>
         /// <li>
         
+        /// CommandTimeout:     Time to wait for command to finish execution before throw an exception. In seconds. Default is 20.
+        /// </li>
+        /// <li>
+        
         /// Sslmode:            Mode for ssl connection control. Can be Prefer, Require, Allow or Disable. Default is Disable. Check user manual for explanation of values.
         /// </li>
         
@@ -867,6 +871,17 @@ namespace Npgsql
                     throw new NotSupportedException();
             }
         }
+
+	public void ClearPool()
+	{
+	    NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(this);
+        }
+
+        public void ClearAllPools()
+        {
+            NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+        }
+
     }
 
 

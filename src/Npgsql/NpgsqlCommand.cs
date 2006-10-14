@@ -29,6 +29,7 @@ using System.Text;
 using System.Resources;
 using System.ComponentModel;
 using System.Collections;
+using System.IO;
 
 using NpgsqlTypes;
 
@@ -110,10 +111,11 @@ namespace Npgsql
                 this.connector = connection.Connector;
 
             parameters = new NpgsqlParameterCollection();
-            timeout = 20;
             type = CommandType.Text;
             this.Transaction = transaction;
             commandBehavior = CommandBehavior.Default;
+
+            SetCommandTimeout();
             
             
         }
@@ -134,6 +136,8 @@ namespace Npgsql
             commandBehavior = CommandBehavior.Default;
             
             parameters = new NpgsqlParameterCollection();
+
+            // Internal commands aren't affected by command timeout value provided by user.
             timeout = 20;
         }
 
@@ -168,7 +172,8 @@ namespace Npgsql
         /// <value>The time (in seconds) to wait for the command to execute.
         /// The default is 20 seconds.</value>
         [DefaultValue(20)]
-        public Int32 CommandTimeout {
+        public Int32 CommandTimeout
+        {
             get
             {
                 return timeout;
@@ -190,7 +195,8 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
         [Category("Data"), DefaultValue(CommandType.Text)]
-        public CommandType CommandType {
+        public CommandType CommandType
+        {
             get
             {
                 return type;
@@ -223,7 +229,8 @@ namespace Npgsql
         /// </summary>
         /// <value>The connection to a data source. The default value is a null reference.</value>
         [Category("Behavior"), DefaultValue(null)]
-        public NpgsqlConnection Connection {
+        public NpgsqlConnection Connection
+        {
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Connection");
@@ -247,11 +254,14 @@ namespace Npgsql
                 if (this.connection != null)
                     connector = this.connection.Connector;
 
+                SetCommandTimeout();
+                
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "Connection", value);
             }
         }
 
-        internal NpgsqlConnector Connector {
+        internal NpgsqlConnector Connector
+        {
             get
             {
                 if (this.connection != null)
@@ -276,7 +286,8 @@ namespace Npgsql
         [Category("Data"), DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         #endif
         
-        public NpgsqlParameterCollection Parameters {
+        public NpgsqlParameterCollection Parameters
+        {
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Parameters");
@@ -374,8 +385,23 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Cancel");
 
-            // [TODO] Finish method implementation.
-            throw new NotImplementedException();
+            try
+            {
+                // get copy for thread safety of null test
+                NpgsqlConnector connector = Connector;
+                if (connector != null)
+                {
+                    connector.CancelRequest();
+                }
+            }
+            catch (IOException)
+            {
+                Connection.ClearPool();
+            }   
+            catch (NpgsqlException)
+            {
+                // Cancel documentation says the Cancel doesn't throw on failure
+            }
         }
         
         /// <summary>
@@ -669,6 +695,7 @@ namespace Npgsql
 
             ExecuteCommand();
 
+
             // Now get the results.
             // Only the first column of the first row must be returned.
 
@@ -788,6 +815,10 @@ namespace Npgsql
                     
                     bind = new NpgsqlBind("", planName, new Int16[Parameters.Count], null, resultFormatCodes);
                 }    
+                catch (IOException e)
+                {
+                    ClearPoolAndThrowException(e);
+                }
                 catch
                 {
                     // See ExecuteCommand method for a discussion of this.
@@ -1018,11 +1049,17 @@ namespace Npgsql
         
         private Boolean CheckFunctionReturn(String ReturnType)
         {
+            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
+            // when the schema or procedure name do not contain a quote.
+            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
 
-            String returnRecordQuery = "select count(*) > 0 from pg_proc where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname;";
+            String returnRecordQuery;
 
             StringBuilder parameterTypes = new StringBuilder("");
 
+            
+            // Process parameters
+            
             foreach(NpgsqlParameter p in Parameters)
             {
                 if ((p.Direction == ParameterDirection.Input) ||
@@ -1032,6 +1069,33 @@ namespace Npgsql
                 }
             }
 
+            
+            // Process schema name.
+            
+            String schemaName = String.Empty;
+            String procedureName = String.Empty;
+            
+            
+            String[] fullName = CommandText.Split('.');
+            
+            if (fullName.Length == 2)
+            {
+                returnRecordQuery = "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname";
+
+                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+            }
+            else
+            {
+                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
+                //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
+                returnRecordQuery = "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname";
+                
+                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
+            }
+                
+            
+            
 
             NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
             
@@ -1041,7 +1105,13 @@ namespace Npgsql
             
             c.Parameters[0].Value = ReturnType;
             c.Parameters[1].Value = parameterTypes.ToString();
-            c.Parameters[2].Value = CommandText;
+            c.Parameters[2].Value = procedureName;
+
+            if (schemaName != null && schemaName.Length > 0)
+            {
+                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                c.Parameters[3].Value = schemaName;
+            }
             
 
             Boolean ret = (Boolean) c.ExecuteScalar();
@@ -1382,6 +1452,9 @@ namespace Npgsql
 
         private void ExecuteCommand()
         {
+            try
+            {
+                
             // Check the connection state first.
             CheckConnectionState();
 
@@ -1437,8 +1510,31 @@ namespace Npgsql
                     connector.ResumeNotificationThread();
                 }
             }
+
+            }
+
+            catch(IOException e)
+            {
+                ClearPoolAndThrowException(e);
+            }
+
         }
-        
+
+        private void SetCommandTimeout()
+        {
+            if (Connector != null)
+                timeout = Connector.CommandTimeout;
+            else
+                timeout = ConnectionStringDefaults.CommandTimeout;
+        }
+
+        private void ClearPoolAndThrowException(Exception e)
+        {
+            Connection.ClearPool();
+            throw new NpgsqlException(resman.GetString("Exception_ConnectionBroken"), e);
+
+        }
+
         
          
         

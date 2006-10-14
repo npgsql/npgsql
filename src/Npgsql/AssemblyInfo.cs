@@ -51,11 +51,15 @@ using System;
 // You can specify all values by your own or you can build default build and revision
 // numbers with the '*' character (the default):
 
-[assembly: AssemblyVersion("0.99.1")]
+[assembly: AssemblyVersion("1.0.0")]
 
 // The following attributes specify the key for the sign of your assembly. See the
 // .NET Framework documentation for more information about signing.
 // This is not required, if you don't want signing let these attributes like they're.
 //
 [assembly: AssemblyDelaySign(false)]
+#if _MS_VSBUILD_
+[assembly: AssemblyKeyFile("..\\..\\Npgsql\\Npgsql.snk")]
+#else
 [assembly: AssemblyKeyFile("Npgsql.snk")]
+#endif

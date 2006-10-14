@@ -85,13 +85,13 @@ namespace Npgsql
             switch (value.StatementType)
             {
                 case StatementType.Insert:
-                    value.Command = GetInsertCommand(value.Row);
+                    value.Command = GetInsertCommand(value.Row, false);
                     break;
                 case StatementType.Update:
-                    value.Command = GetUpdateCommand(value.Row);
+                    value.Command = GetUpdateCommand(value.Row, false);
                     break;
                 case StatementType.Delete:
-                    value.Command = GetDeleteCommand(value.Row);
+                    value.Command = GetDeleteCommand(value.Row, false);
                     break;
             }
 
@@ -150,14 +150,39 @@ namespace Npgsql
 	/// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
         public static void DeriveParameters (NpgsqlCommand command)
         {
-            String query = "select proargtypes from pg_proc where proname = :procname";
-    
+
+            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
+            // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
+            String query = null;
+            string procedureName = null;
+            string schemaName = null;
+            string[] fullName = command.CommandText.Split('.');
+            if (fullName.Length > 1 && fullName[0].Length > 0)
+            {
+                query = "select proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
+                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+            }
+            else
+            {
+                query = "select proargtypes from pg_proc where proname = :proname";
+                procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+            }
+
             NpgsqlCommand c = new NpgsqlCommand(query, command.Connection);
-            c.Parameters.Add(new NpgsqlParameter("procname", NpgsqlDbType.Text));
-            c.Parameters[0].Value = command.CommandText;
+            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+
+            
+            c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
+
+            if (fullName.Length > 1 && schemaName.Length > 0)
+            {
+                NpgsqlParameter prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                prm.Value = schemaName.Replace("\"", "").Trim();
+            }
     
             String types = (String) c.ExecuteScalar();
-            
+
             if (types == null)
                 throw new InvalidOperationException (String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
     
@@ -192,6 +217,11 @@ namespace Npgsql
 
 
         public NpgsqlCommand GetInsertCommand (DataRow row)
+        {
+            return GetInsertCommand(row, true);
+        }
+
+        private NpgsqlCommand GetInsertCommand(DataRow row, bool setParameterValues)
         {
             if (insert_command == null)
             {
@@ -241,10 +271,19 @@ namespace Npgsql
                 cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 insert_command = cmdaux;
             }
+            if (setParameterValues)
+            {
+                SetParameterValuesFromRow(insert_command, row);
+            }
             return insert_command;
         }
 
         public NpgsqlCommand GetUpdateCommand (DataRow row)
+        {
+            return GetUpdateCommand(row, true);
+        }
+
+        private NpgsqlCommand GetUpdateCommand(DataRow row, bool setParameterValues)
         {
             if (update_command == null)
             {
@@ -299,10 +338,19 @@ namespace Npgsql
                 update_command = cmdaux;
 
             }
+            if (setParameterValues)
+            {
+                SetParameterValuesFromRow(update_command, row);
+            }
             return update_command;
         }
 
         public NpgsqlCommand GetDeleteCommand (DataRow row)
+        {
+            return GetDeleteCommand(row, true);
+        }
+
+        private NpgsqlCommand GetDeleteCommand(DataRow row, bool setParameterValues)
         {
             if (delete_command == null)
             {
@@ -347,6 +395,10 @@ namespace Npgsql
                 cmdaux.CommandText = "delete from " + QualifiedTableName(schema_name, table_name) + " where ( " + wheres + " )";
                 cmdaux.Connection = data_adapter.SelectCommand.Connection;
                 delete_command = cmdaux;
+            }
+            if (setParameterValues)
+            {
+                SetParameterValuesFromRow(delete_command, row);
             }
             return delete_command;
         }
@@ -425,6 +477,14 @@ namespace Npgsql
             else
             {
                 return GetQuotedName(schema) + "." + GetQuotedName(tableName);
+            }
+        }
+
+        private static void SetParameterValuesFromRow(NpgsqlCommand command, DataRow row)
+        {
+            foreach (NpgsqlParameter parameter in command.Parameters)
+            {
+                parameter.Value = row[parameter.SourceColumn, parameter.SourceVersion];
             }
         }
     }
