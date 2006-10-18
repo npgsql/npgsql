@@ -61,17 +61,7 @@ namespace Npgsql
         /// <param name="HostName"></param>
         private static IPAddress ResolveIPHost(String HostName)
         {
-
-            try
-            {
-                // Is it a raw IP address?
-                return IPAddress.Parse(HostName);
-            }
-            catch (FormatException)
-            {
-                // Not an IP, must be a host name...
-                return Dns.Resolve(HostName).AddressList[0];
-            }
+            return Dns.GetHostAddresses(HostName)[0];
         }
 
         public override void Open(NpgsqlConnector context)
@@ -104,7 +94,7 @@ namespace Npgsql
                 {
                     socket.EndConnect(result);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     socket.Close();
                     throw;
