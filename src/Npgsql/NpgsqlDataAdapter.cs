@@ -148,7 +148,7 @@ namespace Npgsql
         }
 
 
-        public NpgsqlCommand DeleteCommand
+        public new NpgsqlCommand DeleteCommand
         {
             get
             {
@@ -175,7 +175,7 @@ namespace Npgsql
         }
 
 
-        public NpgsqlCommand SelectCommand
+        public new NpgsqlCommand SelectCommand
         {
             get
             {
@@ -203,7 +203,7 @@ namespace Npgsql
         }
 
 
-        public NpgsqlCommand UpdateCommand
+        public new NpgsqlCommand UpdateCommand
         {
             get
             {
@@ -230,7 +230,7 @@ namespace Npgsql
         }
 
 
-        public NpgsqlCommand InsertCommand
+        public new NpgsqlCommand InsertCommand
         {
             get
             {

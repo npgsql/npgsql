@@ -25,6 +25,7 @@
 
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Collections;
 using System.Text;
 
@@ -35,7 +36,7 @@ namespace Npgsql
     /// <summary>
     /// Provides a means of reading a forward-only stream of rows from a PostgreSQL backend.  This class cannot be inherited.
     /// </summary>
-    public sealed class NpgsqlDataReader : IDataReader, IEnumerable
+    public sealed class NpgsqlDataReader : DbDataReader
     {
         private NpgsqlConnection 	_connection;
         private ArrayList 			_resultsets;
@@ -103,31 +104,19 @@ namespace Npgsql
             }
         }
 
-
         /// <summary>
         /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        /// <summary>
-        /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
-        /// </summary>
-        protected void Dispose (bool disposing)
+        protected override void Dispose(bool disposing)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-            if (disposing)
-            {
-                this.Close();
-            }
+            base.Dispose(disposing);
         }
 
         /// <summary>
         /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
         /// </summary>
-        public Int32 Depth
+        public override Int32 Depth
         {
             get
             {
@@ -139,7 +128,7 @@ namespace Npgsql
         /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
-        public Boolean IsClosed
+        public override Boolean IsClosed
         {
             get
             {
@@ -151,7 +140,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
         /// </summary>
-        public Int32 RecordsAffected
+        public override Int32 RecordsAffected
         {
             get
             {
@@ -164,7 +153,7 @@ namespace Npgsql
         /// Indicates if NpgsqlDatareader has rows to be read.
         /// </summary>
 
-        public Boolean HasRows
+        public override Boolean HasRows
         {
             get
             {
@@ -176,7 +165,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the data reader object.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
             {
@@ -197,7 +186,7 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public Boolean NextResult()
+        public override Boolean NextResult()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "NextResult");
 
@@ -243,7 +232,7 @@ namespace Npgsql
         /// Advances the data reader to the next row.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public Boolean Read()
+        public override Boolean Read()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Read");
 	    
@@ -266,7 +255,7 @@ namespace Npgsql
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-        public DataTable GetSchemaTable()
+        public override DataTable GetSchemaTable()
         {
             
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetSchemaTable");
@@ -280,7 +269,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the number of columns in the current row.
         /// </summary>
-        public Int32 FieldCount
+        public override Int32 FieldCount
         {
             get
             {
@@ -300,7 +289,7 @@ namespace Npgsql
         /// <summary>
         /// Return the column name of the column at index <param name="Index"></param>.
         /// </summary>
-        public String GetName(Int32 Index)
+        public override String GetName(Int32 Index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetName");
 
@@ -327,7 +316,7 @@ namespace Npgsql
         /// <summary>
         /// Return the data type name of the column at index <param name="Index"></param>.
         /// </summary>
-        public String GetDataTypeName(Int32 Index)
+        public override String GetDataTypeName(Int32 Index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetDataTypeName");
 
@@ -348,7 +337,7 @@ namespace Npgsql
         /// <summary>
         /// Return the data type of the column at index <param name="Index"></param>.
         /// </summary>
-        public Type GetFieldType(Int32 Index)
+        public override Type GetFieldType(Int32 Index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetFieldType");
 
@@ -414,7 +403,7 @@ namespace Npgsql
         /// <summary>
         /// Return the value of the column at index <param name="Index"></param>.
         /// </summary>
-        public Object GetValue(Int32 Index)
+        public override Object GetValue(Int32 Index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
 
@@ -432,7 +421,7 @@ namespace Npgsql
         /// Copy values from each column in the current row into <param name="Values"></param>.
         /// </summary>
         /// <returns>The number of column values copied.</returns>
-        public Int32 GetValues(Object[] Values)
+        public override Int32 GetValues(Object[] Values)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValues");
 
@@ -454,7 +443,7 @@ namespace Npgsql
         /// <summary>
         /// Return the column name of the column named <param name="Name"></param>.
         /// </summary>
-        public Int32 GetOrdinal(String Name)
+        public override Int32 GetOrdinal(String Name)
         {
             CheckHaveResultSet();
             return _currentResultset.RowDescription.FieldIndex(Name);
@@ -463,7 +452,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column in its native format.
         /// </summary>
-        public Object this [ Int32 i ]
+        public override Object this [ Int32 i ]
         {
             get
             {
@@ -475,7 +464,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column in its native format.
         /// </summary>
-        public Object this [ String name ]
+        public override Object this [ String name ]
         {
             get
             {
@@ -490,7 +479,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Boolean.
         /// </summary>
-        public Boolean GetBoolean(Int32 i)
+        public override Boolean GetBoolean(Int32 i)
         {
             // Should this be done using the GetValue directly and not by converting to String
             // and parsing from there?
@@ -502,7 +491,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Byte.  Not implemented.
         /// </summary>
-        public Byte GetByte(Int32 i)
+        public override Byte GetByte(Int32 i)
         {
             throw new NotImplementedException();
         }
@@ -510,7 +499,7 @@ namespace Npgsql
         /// <summary>
         /// Gets raw data from a column.
         /// </summary>
-        public Int64 GetBytes(Int32 i, Int64 fieldOffset, Byte[] buffer, Int32 bufferoffset, Int32 length)
+        public override Int64 GetBytes(Int32 i, Int64 fieldOffset, Byte[] buffer, Int32 bufferoffset, Int32 length)
         {
 
             Byte[] result;
@@ -539,7 +528,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Char.  Not implemented.
         /// </summary>
-        public Char GetChar(Int32 i)
+        public override Char GetChar(Int32 i)
         {
             throw new NotImplementedException();
         }
@@ -547,7 +536,7 @@ namespace Npgsql
         /// <summary>
         /// Gets raw data from a column.
         /// </summary>
-        public Int64 GetChars(Int32 i, Int64 fieldoffset, Char[] buffer, Int32 bufferoffset, Int32 length)
+        public override Int64 GetChars(Int32 i, Int64 fieldoffset, Char[] buffer, Int32 bufferoffset, Int32 length)
         {
             String		str;
 
@@ -562,7 +551,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column converted to a Guid.  Not implemented.
         /// </summary>
-        public Guid GetGuid(Int32 i)
+        public override Guid GetGuid(Int32 i)
         {
             throw new NotImplementedException();
         }
@@ -570,7 +559,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Int16.
         /// </summary>
-        public Int16 GetInt16(Int32 i)
+        public override Int16 GetInt16(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetInt16");
 
@@ -580,7 +569,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Int32.
         /// </summary>
-        public Int32 GetInt32(Int32 i)
+        public override Int32 GetInt32(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetInt32");
 
@@ -590,7 +579,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Int64.
         /// </summary>
-        public Int64 GetInt64(Int32 i)
+        public override Int64 GetInt64(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetInt64");
 
@@ -600,7 +589,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Single.
         /// </summary>
-        public Single GetFloat(Int32 i)
+        public override Single GetFloat(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetFloat");
 
@@ -610,7 +599,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Double.
         /// </summary>
-        public Double GetDouble(Int32 i)
+        public override Double GetDouble(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetDouble");
 
@@ -620,7 +609,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as String.
         /// </summary>
-        public String GetString(Int32 i)
+        public override String GetString(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetString");
 
@@ -630,7 +619,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as Decimal.
         /// </summary>
-        public Decimal GetDecimal(Int32 i)
+        public override Decimal GetDecimal(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetDecimal");
 
@@ -640,7 +629,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the value of a column as DateTime.
         /// </summary>
-        public DateTime GetDateTime(Int32 i)
+        public override DateTime GetDateTime(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetDateTime");
 
@@ -648,17 +637,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Not implemented.
-        /// </summary>
-        public IDataReader GetData(Int32 i)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
         /// Report whether the value in a column is DBNull.
         /// </summary>
-        public Boolean IsDBNull(Int32 i)
+        public override Boolean IsDBNull(Int32 i)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IsDBNull");
 
@@ -1172,9 +1153,9 @@ namespace Npgsql
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator ()
+        public override IEnumerator GetEnumerator()
         {
-            return new System.Data.Common.DbEnumerator (this);
+            return new System.Data.Common.DbEnumerator(this);
         }
     }
 }

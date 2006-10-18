@@ -26,6 +26,7 @@
 using System;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Text;
 using System.Collections;
 using System.Resources;
@@ -63,7 +64,7 @@ namespace Npgsql
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
     #endif
     
-    public sealed class NpgsqlConnection : Component, IDbConnection, ICloneable
+    public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlConnection";
@@ -217,7 +218,7 @@ namespace Npgsql
         [Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
         #endif
         
-        public String ConnectionString {
+        public override String ConnectionString {
             get
             {
                 return connection_string.ToString();
@@ -276,7 +277,7 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
         #endif
         
-        public Int32 ConnectionTimeout {
+        public override Int32 ConnectionTimeout {
             get
             {
                 return connection_string.ToInt32(ConnectionStringKeys.Timeout, ConnectionStringDefaults.Timeout);
@@ -310,11 +311,19 @@ namespace Npgsql
         [NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
         #endif
         
-        public String Database {
+        public override String Database {
             get
             {
                 return connection_string.ToString(ConnectionStringKeys.Database);
             }
+        }
+
+        /// <summary>
+        /// Gets the database server name.
+        /// </summary>
+        public override string DataSource
+        {
+            get { return connection_string.ToString(ConnectionStringKeys.Host); }
         }
         
         /// <summary>
@@ -334,7 +343,7 @@ namespace Npgsql
         /// </summary>
         /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
         [Browsable(false)]
-        public ConnectionState State {
+        public override ConnectionState State {
             get
             {
                 CheckNotDisposed();
@@ -355,12 +364,18 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public ServerVersion ServerVersion {
+        public ServerVersion PostgreSqlVersion
+        {
             get
             {
                 CheckConnectionOpen();
                 return connector.ServerVersion;
             }
+        }
+
+        public override string ServerVersion
+        {
+            get { return PostgreSqlVersion.ToString(); }
         }
 
         /// <summary>
@@ -377,35 +392,20 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Begins a database transaction.
-        /// </summary>
-        /// <returns>An <see cref="System.Data.IDbTransaction">IDbTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently there's no support for nested transactions.
-        /// </remarks>
-        IDbTransaction IDbConnection.BeginTransaction()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbConnection.BeginTransaction");
-
-            return BeginTransaction();
-        }
-
-        /// <summary>
         /// Begins a database transaction with the specified isolation level.
         /// </summary>
         /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>An <see cref="System.Data.IDbTransaction">IDbTransaction</see>
+        /// <returns>An <see cref="System.Data.Common.DbTransaction">DbTransaction</see>
         /// object representing the new transaction.</returns>
         /// <remarks>
         /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
         /// There's no support for nested transactions.
         /// </remarks>
-        IDbTransaction IDbConnection.BeginTransaction(IsolationLevel level)
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbConnection.BeginTransaction", level);
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginDbTransaction", isolationLevel);
 
-            return BeginTransaction(level);
+            return BeginTransaction(isolationLevel);
         }
 
         /// <summary>
@@ -416,7 +416,7 @@ namespace Npgsql
         /// <remarks>
         /// Currently there's no support for nested transactions.
         /// </remarks>
-        public NpgsqlTransaction BeginTransaction()
+        public new NpgsqlTransaction BeginTransaction()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginTransaction");
             return this.BeginTransaction(IsolationLevel.ReadCommitted);
@@ -432,7 +432,7 @@ namespace Npgsql
         /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
         /// There's no support for nested transactions.
         /// </remarks>
-        public NpgsqlTransaction BeginTransaction(IsolationLevel level)
+        public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginTransaction", level);
 
@@ -450,7 +450,7 @@ namespace Npgsql
         /// Opens a database connection with the property settings specified by the
         /// <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
-        public void Open()
+        public override void Open()
         {
             CheckConnectionClosed();
 
@@ -478,7 +478,7 @@ namespace Npgsql
         /// database and connecting to the specified.
         /// </summary>
         /// <param name="dbName">The name of the database to use in place of the current database.</param>
-        public void ChangeDatabase(String dbName)
+        public override void ChangeDatabase(String dbName)
         {
             CheckNotDisposed();
 
@@ -503,7 +503,7 @@ namespace Npgsql
         /// Releases the connection to the database.  If the connection is pooled, it will be
         ///	made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             if (!disposed)
             {
@@ -528,14 +528,14 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Creates and returns a <see cref="System.Data.IDbCommand">IDbCommand</see>
-        /// object associated with the <see cref="System.Data.IDbConnection">IDbConnection</see>.
+        /// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
+        /// object associated with the <see cref="System.Data.Common.DbConnection">IDbConnection</see>.
         /// </summary>
-        /// <returns>A <see cref="System.Data.IDbCommand">IDbCommand</see> object.</returns>
-        IDbCommand IDbConnection.CreateCommand()
+        /// <returns>A <see cref="System.Data.Common.DbCommand">DbCommand</see> object.</returns>
+        protected override DbCommand CreateDbCommand()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbConnection.CreateCommand");
-            return (NpgsqlCommand) CreateCommand();
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateDbCommand");
+            return (NpgsqlCommand)CreateCommand();
         }
 
         /// <summary>
@@ -543,7 +543,7 @@ namespace Npgsql
         /// object associated with the <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
         /// <returns>A <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see> object.</returns>
-        public NpgsqlCommand CreateCommand()
+        public new NpgsqlCommand CreateCommand()
         {
             CheckNotDisposed();
 
@@ -820,7 +820,7 @@ namespace Npgsql
         /// <summary>
         /// Returns the supported collections
         /// <summary>
-        public DataTable GetSchema()
+        public override DataTable GetSchema()
         {
             return NpgsqlSchema.GetMetaDataCollections();
         }
@@ -830,7 +830,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
-        public DataTable GetSchema(string collectionName)
+        public override DataTable GetSchema(string collectionName)
         {
             return GetSchema(collectionName, null);
         }
@@ -844,7 +844,7 @@ namespace Npgsql
         /// in the Restrictions collection.
         /// </param>
         /// <returns>The collection specified.</returns>
-        public DataTable GetSchema(string collectionName, string[] restrictions)
+        public override DataTable GetSchema(string collectionName, string[] restrictions)
         {
             switch(collectionName)
             {

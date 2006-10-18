@@ -26,6 +26,7 @@
 
 using System;
 using System.Data;
+using System.Data.Common;
 using System.ComponentModel;
 using NpgsqlTypes;
 
@@ -43,7 +44,7 @@ namespace Npgsql
     [TypeConverter(typeof(NpgsqlParameterConverter))]
     #endif
     
-    public sealed class NpgsqlParameter : MarshalByRefObject, IDbDataParameter, IDataParameter, ICloneable
+    public sealed class NpgsqlParameter : DbParameter, ICloneable
     {
 
         // Logging related values
@@ -64,6 +65,7 @@ namespace Npgsql
         private String				    source_column = String.Empty;
         private DataRowVersion		    source_version = DataRowVersion.Current;
         private Object				    value = DBNull.Value;
+        private Boolean                 sourceColumnNullMapping;
         private System.Resources.ResourceManager resman;
         
         
@@ -301,7 +303,7 @@ namespace Npgsql
         /// <value>The maximum size, in bytes, of the data within the column.
         /// The default value is inferred from the parameter value.</value>
         [Category("Data"), DefaultValue(0)]
-        public Int32 Size
+        public override Int32 Size
         {
             get
             {
@@ -321,7 +323,7 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>String</b>.</value>
         [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(DbType.String)]
-        public DbType DbType
+        public override DbType DbType
         {
             get
             {
@@ -384,7 +386,7 @@ namespace Npgsql
         /// <value>One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see>
         /// values. The default is <b>Input</b>.</value>
         [Category("Data"), DefaultValue(ParameterDirection.Input)]
-        public ParameterDirection Direction
+        public override ParameterDirection Direction
         {
             get
             {
@@ -408,7 +410,7 @@ namespace Npgsql
         [EditorBrowsable(EditorBrowsableState.Advanced), Browsable(false), DefaultValue(false), DesignOnly(true)]
         #endif
         
-        public Boolean IsNullable
+        public override Boolean IsNullable
         {
             get
             {
@@ -429,7 +431,7 @@ namespace Npgsql
         /// <value>The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
         /// The default is an empty string.</value>
         [DefaultValue("")]
-        public String ParameterName
+        public override String ParameterName
         {
             get
             {
@@ -457,7 +459,7 @@ namespace Npgsql
         /// <value>The name of the source column that is mapped to the
         /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
         [Category("Data"), DefaultValue("")]
-        public String SourceColumn
+        public override String SourceColumn
         {
             get
             {
@@ -479,7 +481,7 @@ namespace Npgsql
         /// <value>One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.
         /// The default is <b>Current</b>.</value>
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
-        public DataRowVersion SourceVersion
+        public override DataRowVersion SourceVersion
         {
             get
             {
@@ -500,7 +502,7 @@ namespace Npgsql
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-        public Object Value
+        public override Object Value
         {
             get
             {
@@ -537,6 +539,23 @@ namespace Npgsql
             }
         }
 
+        public override void ResetDbType()
+        {
+            type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+        }
+
+        public override bool SourceColumnNullMapping
+        {
+            get
+            {
+                return sourceColumnNullMapping;
+            }
+            set
+            {
+                sourceColumnNullMapping = value;
+            }
+        }
+
         /// <summary>
         /// Creates a new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> that
         /// is a copy of the current instance.
@@ -546,7 +565,5 @@ namespace Npgsql
         {
             return new NpgsqlParameter(this.ParameterName, this.NpgsqlDbType,	this.Size, this.SourceColumn, this.Direction, this.IsNullable, this.Precision, this.Scale, this.SourceVersion, this.Value);
         }
-
-
     }
 }

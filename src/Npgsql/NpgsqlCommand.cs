@@ -25,6 +25,7 @@
 
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Text;
 using System.Resources;
 using System.ComponentModel;
@@ -48,7 +49,7 @@ namespace Npgsql
     #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
     #endif
-    public sealed class NpgsqlCommand : Component, IDbCommand, ICloneable
+    public sealed class NpgsqlCommand : DbCommand, ICloneable
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlCommand";
@@ -63,11 +64,10 @@ namespace Npgsql
         private CommandType                 type;
         private NpgsqlParameterCollection   parameters;
         private String                      planName;
+        private Boolean                     designTimeInvisible;
 
         private NpgsqlParse                 parse;
         private NpgsqlBind                  bind;
-
-        private Boolean						invalidTransactionDetected = false;
         
         private CommandBehavior             commandBehavior;
 
@@ -147,7 +147,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
         [Category("Data"), DefaultValue("")]
-        public String CommandText {
+        public override String CommandText {
             get
             {
                 return text;
@@ -172,7 +172,7 @@ namespace Npgsql
         /// <value>The time (in seconds) to wait for the command to execute.
         /// The default is 20 seconds.</value>
         [DefaultValue(20)]
-        public Int32 CommandTimeout
+        public override Int32 CommandTimeout
         {
             get
             {
@@ -195,7 +195,7 @@ namespace Npgsql
         /// </summary>
         /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
         [Category("Data"), DefaultValue(CommandType.Text)]
-        public CommandType CommandType
+        public override CommandType CommandType
         {
             get
             {
@@ -209,7 +209,7 @@ namespace Npgsql
             }
         }
 
-        IDbConnection IDbCommand.Connection 
+        protected override DbConnection  DbConnection
         {
             get
             {
@@ -219,7 +219,7 @@ namespace Npgsql
             set
             {
                 Connection = (NpgsqlConnection) value;
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "IDbCommand.Connection", value);
+                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "DbConnection", value);
             }
         }
 
@@ -229,7 +229,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The connection to a data source. The default value is a null reference.</value>
         [Category("Behavior"), DefaultValue(null)]
-        public NpgsqlConnection Connection
+        public new NpgsqlConnection Connection
         {
             get
             {
@@ -271,11 +271,9 @@ namespace Npgsql
             }
         }
 
-        IDataParameterCollection IDbCommand.Parameters {
-            get
-            {
-                return Parameters;
-            }
+        protected override DbParameterCollection DbParameterCollection
+        {
+            get { return Parameters; }
         }
 
         /// <summary>
@@ -286,7 +284,7 @@ namespace Npgsql
         [Category("Data"), DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         #endif
         
-        public NpgsqlParameterCollection Parameters
+        public new NpgsqlParameterCollection Parameters
         {
             get
             {
@@ -295,21 +293,20 @@ namespace Npgsql
             }
         }
 
-        
-        IDbTransaction IDbCommand.Transaction 
+
+        protected override DbTransaction DbTransaction
         {
             get
             {
                 return Transaction;
             }
-
             set
             {
-                Transaction = (NpgsqlTransaction) value;
+                Transaction = (NpgsqlTransaction)value;
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "IDbCommand.Transaction", value);
             }
         }
-        
+
         /// <summary>
         /// Gets or sets the <see cref="Npgsql.NpgsqlTransaction">NpgsqlTransaction</see>
         /// within which the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see> executes.
@@ -320,7 +317,7 @@ namespace Npgsql
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         #endif
         
-        public NpgsqlTransaction Transaction {
+        public new NpgsqlTransaction Transaction {
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Transaction");
@@ -350,7 +347,7 @@ namespace Npgsql
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
         #endif
         
-        public UpdateRowSource UpdatedRowSource {
+        public override UpdateRowSource UpdatedRowSource {
             get
             {
 
@@ -367,8 +364,7 @@ namespace Npgsql
         /// <summary>
         /// Returns oid of inserted row. This is only updated when using executenonQuery and when command inserts just a single row. If table is created without oids, this will always be 0.
         /// </summary>
-
-	public Int64 LastInsertedOID
+        public Int64 LastInsertedOID
         {
             get
             {
@@ -381,7 +377,7 @@ namespace Npgsql
         /// Attempts to cancel the execution of a <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <remarks>This Method isn't implemented yet.</remarks>
-        public void Cancel()
+        public override void Cancel()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Cancel");
 
@@ -425,21 +421,21 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Creates a new instance of an <see cref="System.Data.IDbDataParameter">IDbDataParameter</see> object.
+        /// Creates a new instance of an <see cref="System.Data.Common.DbParameter">DbParameter</see> object.
         /// </summary>
-        /// <returns>An <see cref="System.Data.IDbDataParameter">IDbDataParameter</see> object.</returns>
-        IDbDataParameter IDbCommand.CreateParameter()
+        /// <returns>An <see cref="System.Data.Common.DbParameter">DbParameter</see> object.</returns>
+        protected override DbParameter CreateDbParameter()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbCommand.CreateParameter");
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateDbParameter");
 
-            return (NpgsqlParameter) CreateParameter();
+            return (NpgsqlParameter)CreateParameter();
         }
 
         /// <summary>
         /// Creates a new instance of a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.
         /// </summary>
         /// <returns>A <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        public NpgsqlParameter CreateParameter()
+        public new NpgsqlParameter CreateParameter()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateParameter");
 
@@ -450,7 +446,7 @@ namespace Npgsql
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected.</returns>
-        public Int32 ExecuteNonQuery()
+        public override Int32 ExecuteNonQuery()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteNonQuery");
 
@@ -576,29 +572,16 @@ namespace Npgsql
         /// <summary>
         /// Sends the <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> to
         /// the <see cref="Npgsql.NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>.
-        /// </summary>
-        /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        IDataReader IDbCommand.ExecuteReader()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbCommand.ExecuteReader");
-
-            return (NpgsqlDataReader) ExecuteReader();
-        }
-
-        /// <summary>
-        /// Sends the <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="Npgsql.NpgsqlConnection">Connection</see> and builds a
         /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>
         /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
         /// </summary>
         /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        IDataReader IDbCommand.ExecuteReader(CommandBehavior cb)
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IDbCommand.ExecuteReader", cb);
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteDbDataReader", behavior);
 
-            return (NpgsqlDataReader) ExecuteReader(cb);
+            return (NpgsqlDataReader)ExecuteReader(behavior);
         }
 
         /// <summary>
@@ -607,7 +590,7 @@ namespace Npgsql
         /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        public NpgsqlDataReader ExecuteReader()
+        public new NpgsqlDataReader ExecuteReader()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader");
 
@@ -623,7 +606,7 @@ namespace Npgsql
         /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
-        public NpgsqlDataReader ExecuteReader(CommandBehavior cb)
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {
             // [FIXME] No command behavior handling.
 
@@ -689,7 +672,7 @@ namespace Npgsql
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
-        public Object ExecuteScalar()
+        public override Object ExecuteScalar()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteScalar");
 
@@ -724,7 +707,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a prepared version of the command on a PostgreSQL server.
         /// </summary>
-        public void Prepare()
+        public override void Prepare()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
 
@@ -1535,8 +1518,16 @@ namespace Npgsql
 
         }
 
-        
-         
-        
+        public override bool  DesignTimeVisible
+        {
+            get 
+	        { 
+		        return !designTimeInvisible;
+	        }
+            set 
+	        { 
+                  designTimeInvisible = !value;
+	        }
+        }
     }
 }

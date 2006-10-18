@@ -28,6 +28,7 @@ using System;
 using System.Text;
 using System.Resources;
 using System.Data;
+using System.Data.Common;
 
 
 namespace Npgsql
@@ -35,7 +36,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
     /// </summary>
-    public sealed class NpgsqlTransaction : MarshalByRefObject, IDbTransaction
+    public sealed class NpgsqlTransaction : DbTransaction
     {
         private static readonly String CLASSNAME = "NpgsqlTransaction";
         private static ResourceManager resman = new ResourceManager(typeof(NpgsqlTransaction));
@@ -83,7 +84,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
         /// object associated with the transaction.</value>
-        public NpgsqlConnection Connection
+        public new NpgsqlConnection Connection
         {
             get
             {
@@ -91,13 +92,9 @@ namespace Npgsql
             }
         }
 
-
-        IDbConnection IDbTransaction.Connection
+        protected override DbConnection DbConnection
         {
-            get
-            {
-                return Connection;
-            }
+            get { return Connection; }
         }
 
         /// <summary>
@@ -105,7 +102,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
         /// The default is <b>ReadCommitted</b>.</value>
-        public IsolationLevel IsolationLevel
+        public override IsolationLevel IsolationLevel
         {
             get
             {
@@ -118,33 +115,22 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Releases the unmanaged resources used by the
-        /// <see cref="Npgsql.NpgsqlTransaction">NpgsqlTransaction</see>
-        /// and optionally releases the managed resources.
-        /// </summary>
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            GC.SuppressFinalize(this);
-
-            this.Dispose(true);
-        }
-
-        private void Dispose(Boolean disposing)
-        {
-            if(disposing && this._conn != null)
+            if (disposing && this._conn != null)
             {
                 if (_conn.Connector.Transaction != null)
                     this.Rollback();
 
                 this._disposed = true;
             }
+            base.Dispose(disposing);
         }
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public void Commit()
+        public override void Commit()
         {
             CheckDisposed();
 
@@ -164,7 +150,7 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public void Rollback()
+        public override void Rollback()
         {
             CheckDisposed();
 
@@ -210,11 +196,5 @@ namespace Npgsql
                 throw new ObjectDisposedException(CLASSNAME);
 
         }
-
-        ~NpgsqlTransaction()
-        {
-            Dispose(false);
-        }
-
     }
 }

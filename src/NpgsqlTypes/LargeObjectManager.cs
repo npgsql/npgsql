@@ -82,7 +82,7 @@ namespace NpgsqlTypes
             // This is an example of Fastpath.addFunctions();
             //
             String sql;
-            if (conn.ServerVersion > new ServerVersion(7,3,0) )
+            if (conn.PostgreSqlVersion > new ServerVersion(7, 3, 0))
             {
 
                 sql = "SELECT p.proname,p.oid "+
@@ -102,7 +102,7 @@ namespace NpgsqlTypes
                    " or proname = 'loread'" +
                    " or proname = 'lowrite'";
 
-            if (conn.ServerVersion > new ServerVersion(7,3,0) )
+            if (conn.PostgreSqlVersion > new ServerVersion(7, 3, 0))
             {
                 sql += ")";
             }
