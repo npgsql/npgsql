@@ -384,7 +384,7 @@ namespace NpgsqlTypes
                     new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(DateTime),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime)),
 
-                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(DateTime),
+                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(DateTime),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime)),
 
 
