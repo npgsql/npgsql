@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    This is the build file of Npgsql
+-->
+<project name="Npgsql" default="build" basedir=".">
+
+<!--    <property name="nant.settings.currentframework" value="mono-2.0" />-->
+    <property name="src.dir" value="." />
+    <property name="build.dir" value="${src.dir}/build"/>
+    <property name="ms.build.dir" value="${build.dir}/ms"/>
+    <property name="ms.res.dir" value="${build.dir}/res/ms"/>
+    <property name="mono.build.dir" value="${build.dir}/mono"/>
+    <property name="nunit2tests.build.dir" value="${build.dir}/nunit2tests"/>
+    <property name="tls.lib" value="${src.dir}/../lib/Mono.Security.dll" />
+    <property name="assemblyname" value="Npgsql"/>
+    <property name="debug" value="true"/>
+    <property name="xmldoc" value="${ms.build.dir}/${assemblyname}.xml"/>
+    
+    <property name="testfiles.dir" value="../testsuite/noninteractive/NUnit20"/>
+    <property name="locales" value="de,es,fi"/>
+
+    <target name="clean" description="cleans the build directory">
+        <delete dir="${build.dir}" verbose="true" failonerror="true"/>
+    </target>
+
+    <target name="init">
+        <mkdir dir="${ms.build.dir}"/>
+        <mkdir dir="${ms.res.dir}"/>
+        <mkdir dir="${ms.res.dir}/Design"/>        
+        <mkdir dir="${ms.res.dir}/NpgsqlTypes"/>
+        <mkdir dir="${mono.build.dir}"/>
+        <mkdir dir="${nunit2tests.build.dir}"/>
+    </target>
+
+    <!--
+    Compiles the culture neutral resources that are linked into the main assembly
+    New culture neutral resources files must be added manually (not so for culture specific resources files)!
+    -->
+    <target name="resources" depends="init">
+        <resgen todir="${ms.res.dir}">
+            <resources>
+                <include name="${src.dir}/Npgsql/NpgsqlCommand.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlCommandBuilder.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlClosedState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnectedState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlException.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlReadyState.resx"/>
+                <include name="${src.dir}/Npgsql/PGUtil.resx"/>                                        
+                <include name="${src.dir}/Npgsql/NpgsqlConnectionString.resx"/>
+                                
+
+            </resources>
+        </resgen>
+        <resgen todir="${ms.res.dir}/Design">
+            <resources>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.resx"/>
+            </resources>
+        </resgen>
+
+        <resgen todir="${ms.res.dir}/NpgsqlTypes">
+            <resources>
+                <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.resx"/>
+            </resources>
+        </resgen>
+    </target>
+
+    <target name="build" depends="resources">
+        <csc target="library" output="${ms.build.dir}/${assemblyname}.dll" debug="${debug}" doc="${xmldoc}" define="WITHDESIGN" keyfile="${src.dir}/Npgsql/Npgsql.snk">
+            <references>
+                <include name="System.Data.dll" />
+                <include name="System.Windows.Forms.dll" />
+                <include name="System.Drawing.dll" />
+                <include name="System.Design.dll" />
+                <include name="${tls.lib}" />
+            </references>
+            <resources prefix="${assemblyname}.Design">
+                <include name="${ms.res.dir}/Design/*.resources"/>
+            </resources>
+            <resources prefix="NpgsqlTypes">
+                <include name="${ms.res.dir}/NpgsqlTypes/*.resources"/>
+            </resources>
+            <resources prefix="${assemblyname}">
+                <include name="${ms.res.dir}/*.resources"/>
+                <include name="*.bmp"/>
+            </resources>
+            <sources>
+                <include name="${src.dir}/Npgsql/*.cs"/>
+                <include name="${src.dir}/NpgsqlTypes/*.cs"/>
+                <include name="${src.dir}/Npgsql/Design/*.cs"/>
+            </sources>
+        </csc>
+        
+        <copy file="${tls.lib}" todir="${ms.build.dir}"/>
+    </target>
+
+    <!--
+    Compiles the resources for the cultures given in ${locale} and generates sattellite-assemblies
+    -->
+    <target name="locales" depends="init,build">
+        <foreach item="String" in="${locales}" delim="," property="locale">
+            <mkdir dir="${ms.build.dir}/${locale}"/>
+            <mkdir dir="${ms.res.dir}/${locale}"/>
+            <resgen todir="${ms.res.dir}/${locale}">
+                <resources>
+                    <include name="*.${locale}.resx"/>
+                </resources>
+            </resgen>
+            <mkdir dir="${ms.res.dir}/Design/${locale}"/>
+            <resgen todir="${ms.res.dir}/Design/${locale}">
+                <resources>
+                    <include name="./Design/*.${locale}.resx"/>
+                </resources>
+            </resgen>
+            <!--
+                This script-task is essential because neither the resgen-task nor the al-task can prefix the namespace to the resources-files.
+                Sooner or later this Nant-Issue will get fixed and render this part obsolete.
+            -->
+            <script language="C#">
+                <code><![CDATA[
+                            public static void ScriptMain(Project project) {
+                                    DirectoryInfo di = new DirectoryInfo(Path.Combine(Path.Combine(project.BaseDirectory, project.Properties["ms.res.dir"]), project.Properties["locale"]));
+                                    foreach(FileInfo fi in di.GetFiles("*.resources")){
+                                        string ToFile = Path.Combine(fi.DirectoryName, String.Concat(project.Properties["assemblyname"], ".", fi.Name));
+                                        if(File.Exists(ToFile))
+                                            File.Delete(ToFile);
+                                        fi.MoveTo(ToFile);
+                                    }
+                                    di = new DirectoryInfo(Path.Combine(Path.Combine(Path.Combine(project.BaseDirectory, project.Properties["ms.res.dir"]), "Design"), project.Properties["locale"]));
+                                    foreach(FileInfo fi in di.GetFiles("*.resources")){
+                                        string ToFile = Path.Combine(fi.DirectoryName, String.Concat(project.Properties["assemblyname"], ".Design.", fi.Name));
+                                        if(File.Exists(ToFile))
+                                            File.Delete(ToFile);
+                                        fi.MoveTo(ToFile);
+                                    }
+                            }
+                    ]]></code>
+            </script>
+            <!--
+                Workarounds, workarounds, workarounds ...
+                I don't know why al looks for ../Npgsql.snk but to make it find this file, the basedir has to step up one level.
+            -->
+            <property name="basedir_bkp" value="${nant.project.basedir}"/>
+            <property name="nant.project.basedir" value="${nant.project.basedir}/build"/>
+            <al culture="${locale}" output="${ms.build.dir}/${locale}/${assemblyname}.resources.dll" target="lib" template="${ms.build.dir}/${assemblyname}.dll">
+                <sources>
+                    <include name="${ms.res.dir}/${locale}/*.resources"/>
+                    <include name="${ms.res.dir}/Design/${locale}/*.resources"/>
+                </sources>
+            </al>
+            <property name="nant.project.basedir" value="${basedir_bkp}"/>
+        </foreach>
+    </target>
+
+    <target name="tests" depends="build">
+        <nant buildfile="./../testsuite/noninteractive/NUnit20/NpgsqlTests.build" inheritall="true"/>
+        <copy file="./../testsuite/noninteractive/NUnit20/NpgsqlTests.dll.config" todir="${nunit2tests.build.dir}" />
+	<copy file="${ms.build.dir}/Npgsql.dll" todir="${nunit2tests.build.dir}"/>
+	<copy file="${ms.build.dir}/Npgsql.dll.mdb" todir="${nunit2tests.build.dir}" failonerror="false"/>
+	<copy file="${ms.build.dir}/Npgsql.pdb" todir="${nunit2tests.build.dir}" failonerror="false"/>
+        <copy file="${tls.lib}" todir="${nunit2tests.build.dir}"/>
+        <nunit2>
+	    <formatter type="Plain" usefile="true" extension=".log" outputdir="${nunit2tests.build.dir}" />
+            <test assemblyname="${nunit2tests.build.dir}/NpgsqlTests.dll"/>
+        </nunit2>
+    </target>
+
+    <target name="apidocs" depends="build">
+        <ndoc>
+            <assemblies basedir="${ms.build.dir}">
+                <include name="${assemblyname}.dll"/>
+            </assemblies>
+            <!--
+            <summaries basedir="${ms.build.dir}">
+                <includes name="${assemblyname}.xml"/>
+            </summaries>
+            -->
+            <documenters>
+                <documenter name="MSDN">
+                    <property name="OutputDirectory" value="${build.dir}/doc/MSDN"/>
+                    <property name="IncludeFavorites" value="False"/>
+                    <property name="Title" value="Npgsql Api Docs"/>
+                    <property name="SplitTOCs" value="False"/>
+                    <property name="DefaulTOC" value=""/>
+                    <property name="ShowVisualBasic" value="True"/>
+                    <property name="ShowMissingSummaries" value="False"/>
+                    <property name="ShowMissingRemarks" value="False"/>
+                    <property name="ShowMissingParams" value="False"/>
+                    <property name="ShowMissingReturns" value="False"/>
+                    <property name="ShowMissingValues" value="False"/>
+                    <property name="DocumentInternals" value="False"/>
+                    <property name="DocumentProtected" value="True"/>
+                    <property name="DocumentPrivates" value="False"/>
+                    <property name="DocumentEmptyNamespaces" value="False"/>
+                    <property name="IncludeAssemblyVersion" value="True"/>
+                    <property name="CopyrightText" value="Npgsql Development Team 2002-2005"/>
+                    <property name="CopyrightHref" value=""/>
+                    <property name="HtmlHelpName" value="Npgsql"/>
+                    <property name="HtmlHelpCompilerFilename" value="hhc.exe"/>
+                </documenter>
+            </documenters>
+        </ndoc>
+    </target>
+
+</project>
