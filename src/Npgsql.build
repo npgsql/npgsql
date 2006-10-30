@@ -39,33 +39,61 @@
     <target name="resources" depends="init">
         <resgen todir="${ms.res.dir}">
             <resources>
+                <include name="NpgsqlClosedState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlCommand.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlCommand.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlCommand.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlCommand.ja.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlCommand.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlCommandBuilder.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlConnection.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlEventLog.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlParameter.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlTransaction.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlClosedState.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlConnectedState.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlException.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlState.resx"/>
-                <include name="${src.dir}/Npgsql/NpgsqlReadyState.resx"/>
-                <include name="${src.dir}/Npgsql/PGUtil.resx"/>                                        
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.ja.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlConnection.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlConnectionString.resx"/>
-                                
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.ja.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlEventLog.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlException.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.ja.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameter.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.ja.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlParameterCollection.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlReadyState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.de.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.es.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.fi.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.ja.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlTransaction.resx"/>
+                <include name="${src.dir}/Npgsql/PGUtil.resx"/>
 
             </resources>
         </resgen>
+
         <resgen todir="${ms.res.dir}/Design">
             <resources>
                 <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.resx"/>
             </resources>
         </resgen>
 
-        <resgen todir="${ms.res.dir}/NpgsqlTypes">
+        <resgen todir="${ms.res.dir}/Design">
             <resources>
-                <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.resx"/>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.de.resx"/>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.es.resx"/>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.fi.resx"/>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.ja.resx"/>
+                <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.resx"/>
             </resources>
         </resgen>
     </target>
