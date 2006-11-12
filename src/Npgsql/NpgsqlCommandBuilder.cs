@@ -38,7 +38,7 @@ namespace Npgsql
     ///<summary>
     /// This class is responsible to create database commands for automatic insert, update and delete operations.
     ///</summary>
-    public sealed class NpgsqlCommandBuilder : Component
+    public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
 
         // Logging related values
@@ -487,6 +487,33 @@ namespace Npgsql
                 parameter.Value = row[parameter.SourceColumn, parameter.SourceVersion];
             }
         }
+
+
+        protected override void ApplyParameterInfo (DbParameter parameter, DataRow row, StatementType statementType, bool whereClause)
+        {
+            throw new NotImplementedException();
+        }
+        
+        protected override String GetParameterName(Int32 parameterOrdinal)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override String GetParameterName(String parameterName)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override String GetParameterPlaceholder(Int32 parameterOrdinal)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void SetRowUpdatingHandler (DbDataAdapter adapter)
+        {
+        }
+
+        
     }
 
 }
