@@ -76,6 +76,7 @@
     <Compile Include="Npgsql\NpgsqlEventLog.cs" />
     <Compile Include="Npgsql\NpgsqlException.cs" />
     <Compile Include="Npgsql\NpgsqlExecute.cs" />
+    <Compile Include="Npgsql\NpgsqlFactory.cs" />
     <Compile Include="Npgsql\NpgsqlFlush.cs" />
     <Compile Include="Npgsql\NpgsqlMediator.cs" />
     <Compile Include="Npgsql\NpgsqlMessageTypes.cs" />
