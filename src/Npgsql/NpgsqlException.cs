@@ -29,6 +29,7 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Runtime.Serialization;
+using System.Data.Common;
 
 namespace Npgsql
 {
@@ -36,7 +37,7 @@ namespace Npgsql
     /// The exception that is thrown when the PostgreSQL backend reports errors.
     /// </summary>
     [Serializable]
-    public sealed class NpgsqlException : ApplicationException
+    public sealed class NpgsqlException : DbException
     {
         private IList errors;
 
