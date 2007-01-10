@@ -105,6 +105,8 @@
                 <include name="System.Windows.Forms.dll" />
                 <include name="System.Drawing.dll" />
                 <include name="System.Design.dll" />
+                <include name="System.Configuration.dll" />
+                <include name="System.Web.dll" />
                 <include name="${tls.lib}" />
             </references>
             <resources prefix="${assemblyname}.Design">
@@ -121,6 +123,7 @@
                 <include name="${src.dir}/Npgsql/*.cs"/>
                 <include name="${src.dir}/NpgsqlTypes/*.cs"/>
                 <include name="${src.dir}/Npgsql/Design/*.cs"/>
+                <include name="${src.dir}/Npgsql/Web/*.cs"/>
             </sources>
         </csc>
         
