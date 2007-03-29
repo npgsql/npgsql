@@ -17,20 +17,20 @@ using Npgsql;
 
 /*
 
-CREATE TABLE Role^M
-(^M
-  role_name Varchar (255) NOT NULL,^M
-  application_name Varchar (255) NOT NULL,^M
-  PRIMARY KEY (role_name, application_name)^M
-);^M
-^M
-CREATE TABLE UsersInRoles^M
-(^M
-  user_name Varchar (255) NOT NULL,^M
-  role_name Varchar (255) NOT NULL,^M
-  application_name Text NOT NULL,^M
-  PRIMARY KEY ( user_name , role_name , application_name )^M
-);^M
+CREATE TABLE Role
+(
+  role_name Varchar (255) NOT NULL,
+  application_name Varchar (255) NOT NULL,
+  PRIMARY KEY (role_name, application_name)
+);
+
+CREATE TABLE UsersInRoles
+(
+  user_name Varchar (255) NOT NULL,
+  role_name Varchar (255) NOT NULL,
+  application_name Text NOT NULL,
+  PRIMARY KEY ( user_name , role_name , application_name )
+);
 
 */
 
