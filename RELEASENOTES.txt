@@ -1,0 +1,11 @@
+
+2007-07-03
+
+    Npgsql2 Preview Release
+
+
+    This is a preview release of Npgsql2 which supports ADO.Net 2.0 API. Note that this release may be the last release under LGPL license. So, some features may not be readily available in next release when we change to BSD license. This is due to the fact that some patches may not get its permission to be relicensed whether because the developer didn't want or can't be found. If any feature currently present won't show in next release we will let you know.
+
+	Enjoy!
+
+	The Npgsql Development Team
