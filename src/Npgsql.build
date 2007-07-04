@@ -5,7 +5,7 @@
 <project name="Npgsql" default="build" basedir=".">
 
     <property name="nant.settings.currentframework" value="mono-2.0" />
-    <property name="src.dir" value="." />
+    <property name="src.dir" value="${nant.project.basedir}" />
     <property name="build.dir" value="${src.dir}/build"/>
     <property name="ms.build.dir" value="${build.dir}/ms"/>
     <property name="ms.res.dir" value="${build.dir}/res/ms"/>
