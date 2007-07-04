@@ -4,7 +4,7 @@
 -->
 <project name="Npgsql" default="build" basedir=".">
 
-<!--    <property name="nant.settings.currentframework" value="mono-2.0" />-->
+    <property name="nant.settings.currentframework" value="mono-2.0" />
     <property name="src.dir" value="." />
     <property name="build.dir" value="${src.dir}/build"/>
     <property name="ms.build.dir" value="${build.dir}/ms"/>
@@ -37,7 +37,7 @@
     New culture neutral resources files must be added manually (not so for culture specific resources files)!
     -->
     <target name="resources" depends="init">
-        <resgen todir="${ms.res.dir}">
+    <!--    <resgen todir="${ms.res.dir}">
             <resources>
                 <include name="NpgsqlClosedState.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlCommand.de.resx"/>
@@ -95,34 +95,37 @@
                 <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.ja.resx"/>
                 <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.resx"/>
             </resources>
-        </resgen>
+        </resgen>-->
     </target>
 
     <target name="build" depends="resources">
-        <csc target="library" output="${ms.build.dir}/${assemblyname}.dll" debug="${debug}" doc="${xmldoc}" define="WITHDESIGN" keyfile="${src.dir}/Npgsql/Npgsql.snk">
+        <csc target="library" output="${ms.build.dir}/${assemblyname}.dll" debug="${debug}" doc="${xmldoc}" keyfile="${src.dir}/Npgsql/Npgsql.snk">
             <references>
                 <include name="System.Data.dll" />
-                <include name="System.Windows.Forms.dll" />
-                <include name="System.Drawing.dll" />
-                <include name="System.Design.dll" />
+
+               <!-- <include name="System.Windows.Forms.dll" />-->
+               <!-- <include name="System.Drawing.dll" />-->
+               <!-- <include name="System.Design.dll" />-->
                 <include name="System.Configuration.dll" />
                 <include name="System.Web.dll" />
                 <include name="${tls.lib}" />
             </references>
+<!--
             <resources prefix="${assemblyname}.Design">
                 <include name="${ms.res.dir}/Design/*.resources"/>
             </resources>
+-->
             <resources prefix="NpgsqlTypes">
                 <include name="${ms.res.dir}/NpgsqlTypes/*.resources"/>
             </resources>
             <resources prefix="${assemblyname}">
                 <include name="${ms.res.dir}/*.resources"/>
-                <include name="*.bmp"/>
+                <!--<include name="*.bmp"/>-->
             </resources>
             <sources>
                 <include name="${src.dir}/Npgsql/*.cs"/>
                 <include name="${src.dir}/NpgsqlTypes/*.cs"/>
-                <include name="${src.dir}/Npgsql/Design/*.cs"/>
+                <!--<include name="${src.dir}/Npgsql/Design/*.cs"/>-->
                 <include name="${src.dir}/Npgsql/Web/*.cs"/>
             </sources>
         </csc>
