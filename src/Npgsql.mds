@@ -1,0 +1,17 @@
+<Combine name="Npgsql" fileversion="2.0" MakePkgConfig="False" MakeLibPC="True">
+  <Configurations active="Debug">
+    <Configuration name="Debug" ctype="CombineConfiguration">
+      <Entry build="True" name="Npgsql" configuration="Debug" />
+    </Configuration>
+    <Configuration name="Release" ctype="CombineConfiguration">
+      <Entry build="True" name="Npgsql" configuration="Release" />
+    </Configuration>
+  </Configurations>
+  <DeployTargets />
+  <StartMode startupentry="Npgsql" single="True">
+    <Execute type="None" entry="Npgsql" />
+  </StartMode>
+  <Entries>
+    <Entry filename="./Npgsql.mdp" />
+  </Entries>
+</Combine>
