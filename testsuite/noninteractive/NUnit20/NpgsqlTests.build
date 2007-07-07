@@ -1,0 +1,34 @@
+<project name="NpgsqlTests" default="build" basedir=".">
+
+    <property name="NUnit.lib.dir" value="/usr/lib/NAnt/lib/mono/2.0" />
+
+    <property name="assemblyname" value="NpgsqlTests" />
+    
+    <target name="clean" description="cleans the build directory">
+        <delete dir="${nunit2tests.build.dir}" verbose="true" failonerror="true"/>
+    </target>
+    
+    <target name="init">
+      <mkdir dir="${nunit2tests.build.dir}" />
+    </target>
+
+    <echo message="${ms.build.dir}" />
+    
+    <target name="build" depends="init">
+      <csc target="library" output="${nunit2tests.build.dir}/${assemblyname}.dll" debug="${debug}" >
+        <sources>
+          <include name="*.cs" />
+        </sources>
+        <references>
+
+	  <include name="${NUnit.lib.dir}/nunit*.dll" />
+          <include name="${ms.build.dir}/Npgsql.dll" />
+	  <include name="System.Data.dll" />
+	  <include name="System.Web.dll" />
+        </references>
+      </csc>
+    </target>    
+            
+    
+</project>
+

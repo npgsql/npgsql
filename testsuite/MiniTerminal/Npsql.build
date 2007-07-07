@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+    This is the build file of Npsql
+-->
+
+<project name="Npgsql" default="build" basedir=".">
+    <target name="build">
+        <csc target="exe" output="Npsql.exe">
+            <references>
+                <include name="System.Data.dll" />
+                <include name="Npgsql.dll" />
+            </references>
+            <sources>
+                <include name="Npsql.cs"/>
+            </sources>
+        </csc>
+    </target>
+
+</project>
