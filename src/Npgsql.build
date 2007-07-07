@@ -4,7 +4,7 @@
 -->
 <project name="Npgsql" default="build" basedir=".">
 
-    <property name="nant.settings.currentframework" value="mono-2.0" />
+    <!--<property name="nant.settings.currentframework" value="mono-2.0" />-->
     <property name="src.dir" value="${nant.project.basedir}" />
     <property name="build.dir" value="${src.dir}/build"/>
     <property name="ms.build.dir" value="${build.dir}/ms"/>
@@ -37,7 +37,7 @@
     New culture neutral resources files must be added manually (not so for culture specific resources files)!
     -->
     <target name="resources" depends="init">
-    <!--    <resgen todir="${ms.res.dir}">
+        <resgen todir="${ms.res.dir}">
             <resources>
                 <include name="NpgsqlClosedState.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlCommand.de.resx"/>
@@ -80,7 +80,7 @@
 
             </resources>
         </resgen>
-
+        <!--
         <resgen todir="${ms.res.dir}/Design">
             <resources>
                 <include name="${src.dir}/Npgsql/Design/ConnectionStringEditorForm.resx"/>
