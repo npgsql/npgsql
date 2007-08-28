@@ -201,20 +201,7 @@ namespace Npgsql
 	    	
         }
  
-        private string GetQuotedName(string str)
-        {
-            string result = str;
-            if ((QuotePrefix != string.Empty) && !str.StartsWith(QuotePrefix))
-            {
-                result = QuotePrefix + result;
-            }
-            if ((QuoteSuffix != string.Empty) && !str.EndsWith(QuoteSuffix))
-            {
-                result = result + QuoteSuffix;
-            }
-            return result;
-        }
-
+        
 
         public NpgsqlCommand GetInsertCommand (DataRow row)
         {
@@ -254,7 +241,7 @@ namespace Npgsql
 								table_name = row.Table.TableName;
 							}
 						}
-                        quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                        quotedName = (string)schemaRow["BaseColumnName"];
                         DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
 
                         fields += quotedName;
@@ -314,7 +301,7 @@ namespace Npgsql
 							table_name = row.Table.TableName;
 						}
 					}
-                    quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                    quotedName = (string)schemaRow["BaseColumnName"];
                     DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
                     sets += String.Format("{0} = :s_param_{1}", quotedName, column.ColumnName);
                     wheres += String.Format("(({0} is null) or ({0} = :w_param_{1}))", quotedName, column.ColumnName);
@@ -380,7 +367,7 @@ namespace Npgsql
 						}
                     }
 
-                    quotedName = GetQuotedName((string)schemaRow["BaseColumnName"]);
+                    quotedName = (string)schemaRow["BaseColumnName"];
                     DataColumn column = row.Table.Columns[(string)schemaRow["ColumnName"]];
 
 					wheres += String.Format("(({0} is null) or ({0} = :param_{1}))", quotedName , column.ColumnName);
@@ -472,11 +459,11 @@ namespace Npgsql
         {
             if (schema == null || schema.Length == 0)
             {
-                return GetQuotedName(tableName);
+                return tableName;
             }
             else
             {
-                return GetQuotedName(schema) + "." + GetQuotedName(tableName);
+                return schema + "." + tableName;
             }
         }
 
