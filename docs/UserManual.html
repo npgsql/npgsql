@@ -278,9 +278,9 @@ public static class NpgsqlUserManual
     try
     {
       rowsaffected = command.ExecuteNonQuery();
+     
+      Console.WriteLine("It was added {0} lines in table table1", rowsaffected);
     }
-    
-    Console.WriteLine("It was added {0} lines in table table1", rowsaffected);
     
     finally
     {
@@ -314,9 +314,9 @@ public static class NpgsqlUserManual
     try
     {
       serverversion = (String)command.ExecuteScalar();
+      Console.WriteLine("PostgreSQL server version: {0}", serverversion);
     }
     
-    Console.WriteLine("PostgreSQL server version: {0}", serverversion);
     
     finally
     {
