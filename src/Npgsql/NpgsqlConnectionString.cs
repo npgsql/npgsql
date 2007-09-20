@@ -4,6 +4,7 @@
 //
 // Author:
 //	Glen Parker (glenebob@nwlink.com)
+//	Ben Sagal (bensagal@gmail.com)
 //
 //	Copyright (C) 2002 The Npgsql Development Team
 //	npgsql-general@gborg.postgresql.org
@@ -28,6 +29,7 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Resources;
 
 namespace Npgsql
@@ -40,6 +42,11 @@ namespace Npgsql
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlConnectionString";
         private static System.Resources.ResourceManager resman;
+        
+        // Regexs to extract data from connection string
+        private readonly static Regex keyRegex=new Regex(@"(?<=\G(?:\s*[""'])?[\s;]*)(?:==|(?<=[^^;\s])\s*(?=[^;=\s])|[^;=\s])*(?=\s*=)(?!\s*==)");
+        private readonly static Regex valueRegex= new Regex(@"(?<=\G\s*=\s*""\s*)(?:(?<![""\s])\s*(?![\s""])|[^\s""])*(?=\s*""\s*(?:$|;))|(?<=\G\s*=\s*'\s*)(?:(?<!['\s])\s*(?![\s'])|[^\s'])*(?=\s*'\s*(?:$|;))|(?<=\G\s*=\s*)(?![""'])(?:(?<![=\s])\s*(?![\s;])|[^\s;])*(?=\s*(?:$|;))");
+        private readonly static Regex emptyRegex= new Regex(@"\G(?:\s*[""'])?[;\s]*$");
 
         private String                                 connection_string = null;
         private ListDictionary                         connection_string_values;
@@ -82,69 +89,55 @@ namespace Npgsql
         /// </summary>
         public static NpgsqlConnectionString ParseConnectionString(String CS)
         {
-            ListDictionary new_values = new ListDictionary(CaseInsensitiveComparer.Default);
-            String[] pairs;
-            String[] keyvalue;
+            ListDictionary newValues = new ListDictionary(CaseInsensitiveComparer.Default);
+            Match keyMatch;
+            Match valueMatch;
+            int index = 0;
+
 
             if (CS == null)
                 CS = String.Empty;
 
-            // Get the key-value pairs delimited by ;
-            pairs = CS.Split(';');
-
-            // Now, for each pair, get its key=value.
-            foreach(String sraw in pairs)
+            while (!emptyRegex.IsMatch(CS,index))
             {
-                String s = sraw.Trim();
-                String Key = "", Value = "";
-
-                // Just ignore these.
-                if (s == "")
+                keyMatch = keyRegex.Match(CS,index);
+                if (!keyMatch.Success)
                 {
-                    continue;
+                    throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), "<INVALID>");
                 }
 
-                // Split this chunk on the first CONN_ASSIGN only.
-                keyvalue = s.Split(new Char[] {'='}, 2);
-
-                // Keys always get trimmed and uppercased.
-                Key = keyvalue[0].Trim().ToUpper();
-
+                index=keyMatch.Index + keyMatch.Length;
+                
                 // Make sure the key is even there...
-                if (Key.Length == 0)
+                if (keyMatch.Length == 0)
                 {
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), "<BLANK>");
                 }
 
-                // We don't expect keys this long, and it might be about to be put
-                // in an error message, so makes sure it is a sane length.
-                if (Key.Length > 20)
+                // Check if there is a value.
+                valueMatch = valueRegex.Match(CS,index);
+                if (!valueMatch.Success)                
                 {
-                    Key = Key.Substring(0, 20);
+                    throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), keyMatch.Value);
                 }
 
-                // Check if there is a key-value pair.
-                if (keyvalue.Length != 2)
-                {
-                    throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), Key);
-                }
-
-                // Values always get trimmed.
-                Value = keyvalue[1].Trim();
-
+                index=valueMatch.Index + valueMatch.Length;
+                
+                String key=keyMatch.Value.ToUpper();
+                
                 // Substitute the real key name if this is an alias key (ODBC stuff for example)...
-                String      AliasKey = (string)ConnectionStringKeys.Aliases[Key];
+                String aliasKey = (string)ConnectionStringKeys.Aliases[key];
 
-                if (AliasKey != null)
+                if (aliasKey != null)
                 {
-                    Key = AliasKey;
+                    key = aliasKey;
                 }
 
                 // Add the pair to the dictionary..
-                new_values.Add(Key, Value);
+                newValues.Add(key, valueMatch.Value);
             }
 
-            return new NpgsqlConnectionString(new_values);
+            return new NpgsqlConnectionString(newValues);
         }
 
         /// <summary>
