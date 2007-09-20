@@ -433,7 +433,9 @@ namespace Npgsql
                 if ( (name.Equals(String.Empty)) || ((name[0] != ':') && (name[0] != '@')) )
                     name = ':' + name;
 
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", value);
+                name = name.Trim();
+                
+                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", name);
             }
         }
 
