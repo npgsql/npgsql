@@ -136,6 +136,10 @@ namespace Npgsql
             CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
             CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
             PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+            
+            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and 
+            // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
+            RSACryptoServiceProvider.UseMachineKeyStore = true;
         }
 
         /// <summary>
