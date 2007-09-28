@@ -57,8 +57,8 @@ namespace NpgsqlTypes
         Refcursor,
         Inet,
         Bit,
-        TimestampTZ
-
+        TimestampTZ,
+        Uuid
     }
 
 }

@@ -549,11 +549,13 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the value of a column converted to a Guid.  Not implemented.
+        /// Gets the value of a column converted to a Guid.
         /// </summary>
         public override Guid GetGuid(Int32 i)
         {
-            throw new NotImplementedException();
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetGuid");
+
+            return new Guid((string)GetValue(i));
         }
 
         /// <summary>

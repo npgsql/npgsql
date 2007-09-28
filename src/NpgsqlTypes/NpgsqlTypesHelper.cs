@@ -228,7 +228,7 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddTypeAlias("numeric", typeof(Decimal));
 
-                NativeTypeMapping.AddType("currency", NpgsqlDbType.Money, DbType.Currency, true,
+                NativeTypeMapping.AddType("money", NpgsqlDbType.Money, DbType.Currency, true,
                 new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToMoney));
 
                 NativeTypeMapping.AddType("date", NpgsqlDbType.Date, DbType.Date, true,
@@ -280,6 +280,9 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddTypeAlias("inet", typeof(IPAddress));
                 NativeTypeMapping.AddTypeAlias("inet", typeof(NpgsqlInet));
+
+                NativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true, null);
+                NativeTypeMapping.AddTypeAlias("uuid", typeof(Guid));
             }
         }
 
@@ -368,7 +371,7 @@ namespace NpgsqlTypes
 
                     new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof(NpgsqlInet), new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet)),
 
-                    new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Decimal, typeof(Decimal),
+                    new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof(Decimal),
                         new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney)),
 
 
@@ -405,6 +408,9 @@ namespace NpgsqlTypes
 
                     new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof(NpgsqlPolygon),
                         new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon)),
+
+                    new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid),
+                        null)
                 };
 
                 // Attempt to map each type info in the list to an OID on the backend and
