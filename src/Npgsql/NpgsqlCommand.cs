@@ -480,6 +480,7 @@ namespace Npgsql
                     (String.Compare(ret_string_tokens[0], "UPDATE", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "DELETE", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "FETCH", true) == 0) ||
+                    //(String.Compare(ret_string_tokens[0], "COPY", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "MOVE", true) == 0))
                 
                 
@@ -492,6 +493,7 @@ namespace Npgsql
                 // and in the second token for update and delete queries.
                 // In other words, it is the last token in the 0-based array.
 
+                
                 return Int32.Parse(ret_string_tokens[ret_string_tokens.Length - 1]);
             }
             else

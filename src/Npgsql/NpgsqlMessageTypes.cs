@@ -106,6 +106,9 @@ namespace Npgsql
         public const Char CancelRequest = 'F';
         public const Char CompletedResponse = 'C';
         public const Char CopyDataRows = ' ';
+        public const Char CopyData = 'd';
+        public const Char CopyDone = 'c';
+        public const Char CopyFail = 'f';
         public const Char CopyInResponse = 'G';
         public const Char CopyOutResponse = 'H';
         public const Char EmptyQueryResponse = 'I';

@@ -104,6 +104,33 @@ namespace Npgsql
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
+        
+        // COPY methods
+
+        protected virtual void StartCopy(NpgsqlConnector context, NpgsqlCopyHeader copyHeader)
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
+
+        public virtual byte[] GetCopyData( NpgsqlConnector context )
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
+
+        public virtual void SendCopyData( NpgsqlConnector context, byte[] buf, int off, int len)
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
+        
+        public virtual void SendCopyDone( NpgsqlConnector context )
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
+
+        public virtual void SendCopyFail( NpgsqlConnector context, String message )
+        {
+            throw new InvalidOperationException("Internal Error! " + this);
+        }
 
         public virtual void Close( NpgsqlConnector context )
         {
@@ -758,11 +785,42 @@ namespace Npgsql
                     NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ParameterStatus");
                     PGUtil.ReadInt32(stream, inputBuffer);
                     break;
+                    
+                case NpgsqlMessageTypes_Ver_3.CopyInResponse :
+                    // Enter COPY sub protocol and start pushing data to server
+                    NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
+                    ChangeState( context, NpgsqlCopyInState.Instance );
+                    PGUtil.ReadInt32(stream, inputBuffer); // length redundant
+                    NpgsqlCopyHeader copyHeader = new NpgsqlCopyHeader( stream, inputBuffer );
+                    context.CurrentState.StartCopy( context, copyHeader );
+                    return; // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
+                case NpgsqlMessageTypes_Ver_3.CopyOutResponse :
+                    // Enter COPY sub protocol and start pulling data from server
+                    NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyOutResponse");
+                    ChangeState( context, NpgsqlCopyOutState.Instance );
+                    PGUtil.ReadInt32(stream, inputBuffer); // length redundant
+                    copyHeader = new NpgsqlCopyHeader( stream, inputBuffer );
+                    context.CurrentState.StartCopy( context, copyHeader );
+                    return; // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
+
+                case NpgsqlMessageTypes_Ver_3.CopyData :
+                    NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyData");
+                    Int32 len = PGUtil.ReadInt32(stream, inputBuffer) - 4;
+                    byte[] buf = new byte[len];
+                    stream.Read( buf, 0, len );
+                    context.Mediator.ReceivedCopyData = buf;
+                    return; // read data from server one chunk at a time while staying in copy operation mode
+
+                case NpgsqlMessageTypes_Ver_3.CopyDone :
+                    NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyDone");
+                    PGUtil.ReadInt32(stream, inputBuffer); // CopyDone can not have content so this is always 4
+                    // This will be followed by normal CommandComplete + ReadyForQuery so no op needed
+                    break;
 
                 case -1:
-		    // Connection broken. Mono returns -1 instead of throw an exception as ms.net does.
-		    throw new IOException();
+        		    // Connection broken. Mono returns -1 instead of throw an exception as ms.net does.
+    		        throw new IOException();
 
                 default :
                     // This could mean a number of things
@@ -776,5 +834,24 @@ namespace Npgsql
                 }
             }
         }
+        
+         
+        protected struct NpgsqlCopyHeader
+        {
+            byte copyFormat;
+            Int16 numCopyFields;
+            Int16[] copyFieldFormats;
+            
+            public NpgsqlCopyHeader( Stream stream, byte[] inputBuffer )
+            {
+                copyFormat = (byte)stream.ReadByte();
+                numCopyFields = PGUtil.ReadInt16(stream, inputBuffer);
+                copyFieldFormats = new Int16[numCopyFields];
+                for( Int16 i=0; i < numCopyFields; i++ )
+                    copyFieldFormats[i] = PGUtil.ReadInt16(stream, inputBuffer);
+            }
+        }
+
+        
     }
 }

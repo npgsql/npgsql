@@ -24,6 +24,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
+using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Specialized;
@@ -45,6 +46,14 @@ namespace Npgsql
         // Some kinds of messages only get one response, and do not
         // expect a ready_for_query response.
         private bool                  _require_ready_for_query;
+        
+        // Stream for user to exchange COPY data
+        private Stream                _copyStream;
+        // Size of data chunks read from user stream and written to server in COPY IN
+        private int                   _copyBufferSize = 8192;
+        // Very temporary holder of data received during COPY OUT
+        private byte[]                 _receivedCopyData;
+
 
         //
         // Responses collected from the backend.
@@ -201,6 +210,44 @@ namespace Npgsql
                 return _commandTimeout;
             }
         
+        }
+        
+        public Stream CopyStream
+        {
+            get
+            {
+                return _copyStream;
+            }
+            set
+            {
+                _copyStream = value;
+            }
+        }
+
+        public int CopyBufferSize
+        {
+            get
+            {
+                return _copyBufferSize;
+            }
+            set
+            {
+                _copyBufferSize = value;
+            }
+        }
+        
+        public byte[] ReceivedCopyData
+        {
+            get
+            {
+               byte[] result = _receivedCopyData;
+                _receivedCopyData = null;
+                return result;
+            }
+            set
+            {
+                _receivedCopyData = value;
+            }
         }
 
         public void AddNotification(NpgsqlNotificationEventArgs data)
