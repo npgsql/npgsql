@@ -86,6 +86,8 @@ namespace Npgsql
                             {
                                 Int32 diff = Queue.Count + Queue.UseCount - Queue.MinPoolSize;
                                 Int32 toBeClosed = (diff + 1) / 2;
+                                toBeClosed = Math.Min(toBeClosed, Queue.Count);
+                                
                                 if (diff < 2)
                                     diff = 2;
                                 Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
