@@ -27,6 +27,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Globalization;
 using System.Text;
 using System.Data;
 using System.Security;
@@ -736,7 +737,7 @@ namespace Npgsql
             //NpgsqlCommand commandEncoding1 = new NpgsqlCommand("show client_encoding", _connector);
             //String clientEncoding1 = (String)commandEncoding1.ExecuteScalar();
 
-            if (ConnectionString.ToString(ConnectionStringKeys.Encoding, ConnectionStringDefaults.Encoding).ToUpper() == "UNICODE")
+            if (ConnectionString.ToString(ConnectionStringKeys.Encoding, ConnectionStringDefaults.Encoding).ToUpper(CultureInfo.InvariantCulture) == "UNICODE")
             {
                 Encoding = Encoding.UTF8;
                 NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UNICODE", this);

@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections;
+using System.Globalization;
 using System.Collections.Specialized;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -123,7 +124,7 @@ namespace Npgsql
 
                 index=valueMatch.Index + valueMatch.Length;
                 
-                String key=keyMatch.Value.ToUpper();
+                String key=keyMatch.Value.ToUpper(CultureInfo.InvariantCulture);
                 
                 // Substitute the real key name if this is an alias key (ODBC stuff for example)...
                 String aliasKey = (string)ConnectionStringKeys.Aliases[key];
