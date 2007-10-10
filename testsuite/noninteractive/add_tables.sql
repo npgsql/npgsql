@@ -86,3 +86,8 @@ create table metadatatest1(
 field_serial serial,
 field_pk    int4 primary key
 );
+
+create table copy1(
+t text
+);
+
