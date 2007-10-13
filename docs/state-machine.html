@@ -405,26 +405,38 @@ SSL startup handshake (not described here, part of the SSL specification). If th
 </tr><tr class=std>
 <td class=std align=center>M</td>
 <td class=std>CopyIn</td>
-<td class=std>Query</td>
-<td class=std>The <A href="#GlossarCopyInResponseMsg">Copy In Response Message</A> tells the backend is ready to copy data from the frontend to a table. The frontend should then send a <A href="#GlossarCopyDataRowsMsg">CopyDataRows message</A>. The backend will then respond with a CompletedResponse message with a tag of COPY.</td>
+<td class=std>Copy In</td>
+<td class=std>The <A href="#GlossarCopyInResponseMsg">Copy In Response Message</A> tells the backend is ready to copy data from the frontend to a table. The frontend should then send <A href="#GlossarCopyDataMsg">CopyData messages</A> followed by a <A href="#GlossarCopyDoneMsg">CopyDone</A> or <A href="#GlossarCopyFailMsg">CopyFail</A> message. The backend will then respond with a CompletedResponse message with a tag of COPY.</td>
 
 </tr><tr class=std>
 <td class=std align=center>M</td>
 <td class=std>CopyOut</td>
-<td class=std>Query</td>
-<td class=std>The backend is ready to copy data from a table to the frontend. This is signaled by the <A href="#GlossarCopyOutResponseMsg">Copy Out Response Message</A>. It then sends a CopyDataRows message, and then a CompletedResponse message with a tag of COPY.</td>
+<td class=std>Copy Out</td>
+<td class=std>The backend is ready to copy data from a table to the frontend. This is signaled by the <A href="#GlossarCopyOutResponseMsg">Copy Out Response Message</A>. It then sends <A href="#GlossarCopyDataMsg">CopyData messages</A> followed by a <A href="#GlossarCopyDoneMsg">CopyDone message</A>, and then a CompletedResponse message with a tag of COPY.</td>
 
 </tr><tr class=std>
 <td class=std align=center>M</td>
-<td class=std>CopyDataRows</td>
-<td class=std>Query</td>
-<td class=std>The backend sends data in a <A href="#GlossarCopyDataRowsMsg">CopyDataRows Message</A> to the frontend. This is a stream of rows where each row is terminated by a Byte1('\n'). This is then followed by the sequence Byte1('\\'), Byte1('.'), Byte1('\n').</td>
+<td class=std>CopyData</td>
+<td class=std>Copy Out</td>
+<td class=std>The backend sends data in a <A href="#GlossarCopyDataMsg">CopyData Message</A> to the frontend. Each message contains one record of data; format can be text, CSV or binary as specified in <a href="http://www.postgresql.org/docs/8.2/interactive/sql-copy.html">PostgreSQL COPY documentation</a>.</td>
 
 </tr><tr class=std>
 <td class=std align=center>F</td>
-<td class=std>CopyDataRows()</td>
-<td class=std>Query</td>
-<td class=std>The frontend sends data in a <A href="#GlossarCopyDataRowsMsg">CopyDataRows Message</A> to the backend.</td>
+<td class=std>SendCopyData()</td>
+<td class=std>Copy In</td>
+<td class=std>The frontend sends data in a <A href="#GlossarCopyDataMsg">CopyData Message</A> to the backend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyDone</td>
+<td class=std>Copy In/Out</td>
+<td class=std>Tells the other end of database connection that we are done sending CopyData packets. Should be followed by CommandComplete from server.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyFail</td>
+<td class=std>Copy In</td>
+<td class=std>Tells the other end of database connection that we are done sending CopyData packets. Should be followed by Error from server.</td>
 
 </tr><tr class=std>
 <td class=std align=center>M</td>

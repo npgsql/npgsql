@@ -1383,6 +1383,250 @@ public class c
 
 <p> This code registers to listen for a notification and raises the notification.  It will be delivered to the NotificationSupportHelper method.</p>
 
+<h3>Fast bulk data copy into a table</h3>
+
+<p>Batched inserts can be time consuming with large amounts of data. PostgreSQL provides an alternative, much faster method of importing raw data.
+Its syntax and input format options are already explained in <a href="http://www.postgresql.org/docs/8.2/interactive/sql-copy.html">PostgreSQL COPY documentation</a>.
+To copy data from client-side you need to use the <code>FROM STDIN</code> option.</p>
+
+<p>When feeding straight to COPY IN operation, <b>you have to provide data using the same encoding as the server uses.</b></p>
+
+<p>The simplest method is to provide a readable file handle to the CopyIn operation constructor.
+Upon start, the copy in operation will read whole contents of given stream and push them to the server.
+(Refer to COPY statement documentation for different input formats!)</p>
+<ol>
+  <li> See to it that you set SyncNotification=true in your database connection string. This is to catch any anomaly reports during import to prevent deadlock between client and server network buffers.</li>
+  <li> Create NpgsqCopyIn object with a stream providing the data to input into database</li>
+  <li> Call Start() to initiate copy operation. The operation is completed immediately.</li>
+  <li> If Start() throws an exception, call NpgsqlCopyIn.Cancel() to cancel an ongoing operation and clear connection back to Ready For Query state.
+  Otherwise your <b>connection may stay in copy mode, unusable for anything else</b>.</li>
+</ol>
+
+<pre class="CodeBox">
+using System;
+using System.Data;
+using Npgsql;
+
+public class CopyInExample
+{
+
+    public static void Main(String[] args)
+    {
+
+        conn = new NpgsqlConnection("Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;SyncNotification=true;");
+        conn.Open();
+
+        NpgsqlCommand command = new NpgsqlCommand("COPY myCopyTestTable FROM STDIN", conn);
+        NpgsqlCopyIn cin = new NpgsqlCopyIn( command, conn, Console.OpenStandardInput() ); // expecting input in server encoding!
+        try
+        {
+            cin.Start();
+        }
+        catch(Exception e)
+        {
+            try
+            {
+                cin.Cancel("Undo copy");
+            }
+            catch(NpgsqlException e2)
+            {
+                // we should get an error in response to our cancel request:
+                if( ! (""+e2).Contains("Undo copy") )
+                {
+                    throw new Exception("Failed to cancel copy: " + e2 + " upon failure: " + e);
+                }
+            }
+            throw e;
+        }
+    }
+}
+</pre>
+
+<p>If you wish to provide the data from inside your application, you can use a normal writable stream:</p>
+
+<ol>
+  <li> See to it that you set SyncNotification=true in your database connection string. This is to catch any anomaly reports during import to prevent deadlock between client and server network buffers.</li>
+  <li> Create NpgsqCopyIn object without specifying a stream</li>
+  <li> Call Start() to initiate copy operation</li>
+  <li> Write your data in correct format and encoding into NpgsqlCopyIn.CopyStream</li>
+  <li> <b>During the operation the connection can not be used for anything else.</b> </li>
+  <li> Call CopyStream.Close() or NpgsqlCopyIn.End() to complete writing</li>
+  <li> To cancel an ongoing operation and clear connection back to Ready For Query state call NpgsqlCopyIn.Cancel().</li>
+  <li> Upon failure call NpgsqlCopyIn.Cancel() to cancel an ongoing operation and clear connection back to Ready For Query state.
+  Otherwise your <b>connection may stay in copy mode, unusable for anything else</b>.</li>
+</ol>
+
+<pre class="CodeBox">
+using System;
+using System.Data;
+using Npgsql;
+
+public class CopyInExample
+{
+
+    public static void Main(String[] args)
+    {
+
+        conn = new NpgsqlConnection("Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;SyncNotification=true;");
+        conn.Open();
+
+        NpgsqlCommand command = new NpgsqlCommand("COPY myCopyTestTable FROM STDIN", conn);
+        NpgsqlCopyIn cin = new NpgsqlCopyIn( command, conn );
+        
+        Stream inStream = Console.OpenStandardInput();
+        Encoding inEncoding = System.Text.Encoding.ASCII;
+        Encoding serverEncoding = System.Text.Encoding.BigEndianUnicode; // example assumption
+
+        try
+        {
+            cin.Start();
+            Stream copyInStream = cin.CopyStream;
+            byte[] buf = new byte[9];
+            int i;
+            while( (i = inStream.Read(buf,0,buf.Length)) > 0 )
+            {
+                buf = System.Text.Convert( inEncoding, serverEncoding, buf, 0, i );
+                copyInStream.Write( buf, 0, i );
+            }
+            copyInStream.Close(); // or cin.End(), if you wish
+        }
+        catch(Exception e)
+        {
+            try
+            {
+                cin.Cancel("Undo copy"); // Sends CopyFail to server
+            }
+            catch(Exception e2)
+            {
+                // we should get an error in response to our cancel request:
+                if( ! (""+e2).Contains("Undo copy") )
+                {
+                    throw new Exception("Failed to cancel copy: " + e2 + " upon failure: " + e);
+                }
+            }
+            throw e;
+        }
+    }
+}
+</pre>
+
+<h3>Fast bulk data copy from a table or select</h3>
+
+<p>Even trivial selections of large data sets can become time consuming when network is the bottleneck.
+PostgreSQL provides an alternative, much faster method of exporting raw data.
+Its syntax and input format options are already explained in <a href="http://www.postgresql.org/docs/8.2/interactive/sql-copy.html">PostgreSQL COPY documentation</a>.
+To copy data to client-side you need to use the <code>TO STDOUT</code> option.</p>
+
+<p>COPY OUT provides data <b>in server-side encoding.</b></p>
+
+<p>The simplest method is to provide a writable stream to the CopyOut operation constructor.
+Upon start, the operation will then write everything coming down from server right into that sink.
+(Refer to COPY statement documentation for different output formats!)</p>
+<ol>
+  <li> Create NpgsqCopyOut object with a stream for writing the output received from database</li>
+  <li> Call Start() to initiate copy operation. All requested data is written to specified stream immediately.</li>
+  <li> An ongoing operation may be cancelled by calling CopyStream.Close() or NpgsqlCopyIn.End()</li>
+  <li> Upon failure your <b>connection becomes unusable</b> unless you cancel the copy operation.</li>
+  <li> If Start() throws an exception, cancel the ongoing operation. Otherwise your <b>connection may stay in copy mode, unusable for anything else</b>.</li>
+</ol>
+
+<pre class="CodeBox">
+using System;
+using System.Data;
+using Npgsql;
+
+public class CopyOutExample
+{
+
+    public static void Main(String[] args)
+    {
+
+        conn = new NpgsqlConnection("Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;");
+        conn.Open();
+
+        NpgsqlCommand command = new NpgsqlCommand("COPY myCopyTestTable TO STDOUT", conn);
+        NpgsqlCopyOut cout = new NpgsqlCopyOut( command, conn, Console.OpenStandardOutput() );
+        try
+        {
+            cout.Start();
+        }
+        catch(Exception e)
+        {
+            try
+            {
+                cout.End(); // return connection to Ready for Query state
+            }
+            catch(Exception e2)
+            {
+                throw new Exception("Failed to revive from copy: " + e2 + " upon failure: " + e);
+            }
+            throw e;
+        }
+    }
+}
+</pre>
+
+<p>You can read COPY OUT data normally from a stream:</p>
+<ol>
+  <li> Create NpgsqCopyOut object without specifying a stream</li>
+  <li> Call Start() to initiate copy operation</li>
+  <li> Read data in server-side encoding from NpgsqlCopyOut.CopyStream or row by row from NpgsqlCopyOut.Read</li>
+  <li> <b>During the operation the connection may not be used for anything else.</b> </li>
+  <li> All data has been received when no more comes out (CopyStream.Read(...) returns zero; NpgsqlCopyOut.Read a null pointer)</li>
+  <li> The operation completes automatically upon end</li>
+  <li> An ongoing operation may be cancelled by calling CopyStream.Close() or NpgsqlCopyIn.End()</li>
+  <li> Upon failure cancel the ongoing operation. Otherwise your <b>connection may stay in copy mode, unusable for anything else</b>.</li>
+</ol>
+
+<pre class="CodeBox">
+using System;
+using System.Data;
+using Npgsql;
+
+public class CopyOutExample
+{
+
+    public static void Main(String[] args)
+    {
+        conn = new NpgsqlConnection("Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;");
+        conn.Open();
+
+        NpgsqlCommand command = new NpgsqlCommand("COPY myCopyTestTable TO STDOUT", conn);
+        NpgsqlCopyOut cout = new NpgsqlCopyOut( command, conn );
+
+        Stream outStream = Console.OpenStandardOutput();
+        Encoding serverEncoding = System.Text.Encoding.BigEndianUnicode; // example assumption
+        Encoding outEncoding = System.Text.Encoding.ASCII;
+
+        try
+        {
+            cout.Start();
+            Stream copyOutStream = cout.CopyStream;
+            byte[] buf = cout.Read; // complete first row
+            Console.Out.Write(buf,0,buf.Length);
+            int i;
+            while( (i = copyOutStream.Read(buf,0,buf.Length)) > 0 )
+            {
+                buf = System.Text.Convert( serverEncoding, outEncoding, buf, 0, i );
+                Console.Out.Write( buf, 0, i );
+            }
+            copyOutStream.Close(); // or cout.End(), if you wish
+        }
+        catch(Exception e)
+        {
+            try
+            {
+                cout.End(); // return connection to Ready for Query state
+            }
+            catch(Exception e2)
+            {
+                throw new Exception("Failed to revive from copy: " + e2 + " upon failure: " + e);
+            }
+            throw e;
+        }
+    }
+}
+</pre>
 
 <h3> 3.1 Using Npgsql Logging support </h3>
 
