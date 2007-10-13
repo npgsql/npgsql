@@ -48,8 +48,11 @@ namespace Npgsql
         private static System.Resources.ResourceManager resman;
         
         // Regexs to extract data from connection string
+
         private readonly static Regex keyRegex=new Regex(@"(?<=\G(?:\s*[""'])?[\s;]*)(?:==|(?<=[^^;\s])\s*(?=[^;=\s])|[^;=\s])*(?=\s*=)(?!\s*==)");
+
         private readonly static Regex valueRegex= new Regex(@"(?<=\G\s*=\s*""\s*)(?:(?<![""\s])\s*(?![\s""])|[^\s""])*(?=\s*""\s*(?:$|;))|(?<=\G\s*=\s*'\s*)(?:(?<!['\s])\s*(?![\s'])|[^\s'])*(?=\s*'\s*(?:$|;))|(?<=\G\s*=\s*)(?![""'])(?:(?<![=\s])\s*(?![\s;])|[^\s;])*(?=\s*(?:$|;))");
+
         private readonly static Regex emptyRegex= new Regex(@"\G(?:\s*[""'])?[;\s]*$");
 
         private String                                 connection_string = null;
@@ -94,9 +97,13 @@ namespace Npgsql
         public static NpgsqlConnectionString ParseConnectionString(String CS)
         {
             ListDictionary newValues = new ListDictionary(CaseInsensitiveComparer.Default);
+
             Match keyMatch;
+
             Match valueMatch;
+
             int index = 0;
+
 
 
             if (CS == null)
@@ -104,8 +111,11 @@ namespace Npgsql
 
             while (!emptyRegex.IsMatch(CS,index))
             {
+
                 keyMatch = keyRegex.Match(CS,index);
+
                 if (!keyMatch.Success)
+
                 {
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), "<INVALID>");
                 }
@@ -119,7 +129,9 @@ namespace Npgsql
                 }
 
                 // Check if there is a value.
+
                 valueMatch = valueRegex.Match(CS,index);
+
                 if (!valueMatch.Success)                
                 {
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), keyMatch.Value);
@@ -394,6 +406,9 @@ namespace Npgsql
         // These are for the command
         public static readonly String CommandTimeout        = "COMMANDTIMEOUT";
 
+        // These are for the resource manager
+        public static readonly String Enlist                = "ENLIST";
+
         // A list of aliases for some of the above values.  If one of these aliases is
         // encountered when parsing a connection string, it's real key name will
         // be used instead.  These will be reflected if ToString() is used to inspect
@@ -442,6 +457,7 @@ namespace Npgsql
         public static readonly Int32 ConnectionLifeTime     = 15; // Seconds
         public static readonly Boolean SyncNotification     = false;
         public static readonly Int32 CommandTimeout         = 20; // Seconds
+        public static readonly Boolean Enlist               = false;
     }
     
     internal enum SslMode

@@ -112,6 +112,8 @@ namespace Npgsql
         // Connector being used for the active connection.
         private NpgsqlConnector                        connector = null;
 
+        private NpgsqlPromotableSinglePhaseNotification promotable = null;
+
 
         /// <summary>
         /// Initializes a new instance of the
@@ -143,6 +145,8 @@ namespace Npgsql
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and 
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
+
+            promotable = new NpgsqlPromotableSinglePhaseNotification(this);
         }
 
         /// <summary>
@@ -162,57 +166,42 @@ namespace Npgsql
         /// Database:           Database name. Defaults to user name if not specified;
         /// </li>
         /// <li>
-        
         /// User Id:            User name;
         /// </li>
         /// <li>
-        
         /// Password:           Password for clear text authentication;
         /// </li>
         /// <li>
-        
         /// SSL:                True or False. Controls whether to attempt a secure connection. Default = False;
         /// </li>
         /// <li>
-        
         /// Pooling:            True or False. Controls whether connection pooling is used. Default = True;
         /// </li>
         /// <li>
-        
         /// MinPoolSize:        Min size of connection pool;
         /// </li>
         /// <li>
-        
         /// MaxPoolSize:        Max size of connection pool;
         /// </li>
         /// <li>
-        
         /// Encoding:           Encoding to be used; Can be ASCII or UNICODE. Default is ASCII. Use UNICODE if you are having problems with accents.
         /// </li>
         /// <li>
-        
         /// Timeout:            Time to wait for connection open in seconds. Default is 15.
         /// </li>
         /// <li>
-        
         /// CommandTimeout:     Time to wait for command to finish execution before throw an exception. In seconds. Default is 20.
         /// </li>
         /// <li>
-        
         /// Sslmode:            Mode for ssl connection control. Can be Prefer, Require, Allow or Disable. Default is Disable. Check user manual for explanation of values.
         /// </li>
-        
         /// <li>
-        
         /// ConnectionLifeTime: Time to wait before closing unused connections in the pool in seconds. Default is 15.
         /// </li>
         /// <li>
-        
         /// SyncNotification:   Specifies if Npgsql should use synchronous notifications.
         /// </li>
         /// </ul>
-        
-        
         /// </summary>
         /// <value>The connection string that includes the server name,
         /// the database name, and other parameters needed to establish
@@ -477,6 +466,9 @@ namespace Npgsql
             
             if (SyncNotification)
                 connector.AddNotificationThread();
+
+            if (Enlist)
+                promotable.Enlist(System.Transactions.Transaction.Current);
             
         }
 
@@ -515,6 +507,8 @@ namespace Npgsql
             if (!disposed)
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
+
+                promotable.Prepare();
 
                 if (connector != null)
                 {
@@ -712,6 +706,13 @@ namespace Npgsql
             }
         }
 
+        internal Boolean Enlist {
+            get
+            {
+                return connection_string.ToBool(ConnectionStringKeys.Enlist, ConnectionStringDefaults.Enlist);
+            }
+        }
+
 
 
         //
@@ -879,14 +880,22 @@ namespace Npgsql
             }
         }
 
-	public void ClearPool()
-	{
-	    NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(this);
+        public void ClearPool()
+        {
+            NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(this);
         }
 
         public void ClearAllPools()
         {
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
+        }
+
+        public override void EnlistTransaction(System.Transactions.Transaction transaction)
+        {
+            if (Enlist)
+                promotable.Enlist(transaction);
+            else
+                base.EnlistTransaction(transaction);
         }
 
     }

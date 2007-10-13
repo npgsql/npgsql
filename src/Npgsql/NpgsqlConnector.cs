@@ -225,6 +225,14 @@ namespace Npgsql
                 return ConnectionString.ToInt32(ConnectionStringKeys.CommandTimeout, ConnectionStringDefaults.CommandTimeout);
             }
         }
+
+        internal Boolean Enlist
+        {
+            get
+            {
+                return ConnectionString.ToBool(ConnectionStringKeys.Enlist, ConnectionStringDefaults.Enlist);
+            }
+        }
         
 
         /// <summary>
