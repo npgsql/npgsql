@@ -61,13 +61,19 @@ public class Test_copy
         FailCopyOutToStream();
         FailCopyOutByReading();
 
+        // now test serialization into a table with multiple data types
+        new NpgsqlCommand("TRUNCATE copy2", conn).ExecuteNonQuery();
+
+        CopyInWithSerializer();
+
         // confirm that connection and server states stay valid through failures.
         new NpgsqlCommand("TRUNCATE copy1", conn).ExecuteNonQuery();
 
         conn.Close();
     }
 
-    // success tests
+    // Stream success tests
+
     static public void CopyInFromStream()
     {
         cs = new CountStream();
@@ -142,7 +148,7 @@ public class Test_copy
         Console.Out.WriteLine("Sums of characters written to and read via stream from database differ by " + (InSum-cs.CheckSum));
     }
 
-    // failure tests
+    // Stream failure tests
 
     static public void FailCopyInFromStream()
     {
@@ -285,8 +291,35 @@ public class Test_copy
         }
         throw new Exception("Copy reading did not fail as requested");
     }
+
+    // Serializer success test
   
+    static public void CopyInWithSerializer()
+    {
+        NpgsqlCopySerializer sink = new NpgsqlCopySerializer( conn );
+        String q = "COPY copy2(field_int4, field_int8, field_text, field_timestamp, field_bool) FROM STDIN";
+        cin = new NpgsqlCopyIn( q, conn );
+        cin.Start();
+        if(! cin.IsActive)
+        {
+            throw new Exception("Copy started inactive");
+        }
+        sink.AddInt32(-13);
+        sink.AddNull();
+        sink.AddString("First row");
+        sink.AddDateTime(new DateTime( 2020, 12, 22, 23, 33, 45, 765 ));
+        sink.AddBool(true);
+        sink.EndRow();
+        sink.AddNull();
+        sink.AddNull();
+        sink.AddString("Second row");
+        sink.Close();
+        Console.Out.WriteLine("Copy through serializer ok");
+    }
+
+
     // helper
+
 
     internal class CountStream : Stream
     {

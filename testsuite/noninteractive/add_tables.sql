@@ -91,3 +91,10 @@ create table copy1(
 t text
 );
 
+create table copy2(
+field_int4 int4,
+field_int8 int8,
+field_text text,
+field_timestamp timestamp,
+field_bool bool
+);
