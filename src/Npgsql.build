@@ -107,6 +107,7 @@
                <!-- <include name="System.Drawing.dll" />-->
                <!-- <include name="System.Design.dll" />-->
                 <include name="System.Configuration.dll" />
+                <include name="System.Transactions.dll" />
                 <include name="System.Web.dll" />
                 <include name="${tls.lib}" />
             </references>
@@ -232,7 +233,7 @@
                     <property name="DocumentPrivates" value="False"/>
                     <property name="DocumentEmptyNamespaces" value="False"/>
                     <property name="IncludeAssemblyVersion" value="True"/>
-                    <property name="CopyrightText" value="Npgsql Development Team 2002-2005"/>
+                    <property name="CopyrightText" value="Npgsql Development Team 2002-2007"/>
                     <property name="CopyrightHref" value=""/>
                     <property name="HtmlHelpName" value="Npgsql"/>
                     <property name="HtmlHelpCompilerFilename" value="hhc.exe"/>

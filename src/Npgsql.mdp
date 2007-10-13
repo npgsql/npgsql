@@ -13,7 +13,6 @@
       <CodeGeneration compiler="Csc" warninglevel="4" optimize="True" unsafecodeallowed="False" generateoverflowchecks="True" generatexmldocumentation="False" ctype="CSharpCompilerParameters" />
     </Configuration>
   </Configurations>
-  <DeployTargets />
   <Contents>
     <File name="./Npgsql/AssemblyInfo.cs" subtype="Code" buildaction="Compile" />
     <File name="./Npgsql/HashAlgorithm.cs" subtype="Code" buildaction="Compile" />
@@ -72,6 +71,16 @@
     <File name="./NpgsqlTypes/NpgsqlTypes.cs" subtype="Code" buildaction="Compile" />
     <File name="./NpgsqlTypes/NpgsqlTypesHelper.cs" subtype="Code" buildaction="Compile" />
     <File name="./Npgsql/NpgsqlBinaryRow.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyIn.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyInState.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyInStream.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyOut.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyOutState.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyOutStream.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlPromotableSinglePhaseNotification.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlTransactionCallbacks.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlResourceManager.cs" subtype="Code" buildaction="Compile" />
+    <File name="./Npgsql/NpgsqlCopyFormat.cs" subtype="Code" buildaction="Compile" />
   </Contents>
   <References>
     <ProjectReference type="Gac" localcopy="True" refto="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756" />
@@ -81,5 +90,7 @@
     <ProjectReference type="Gac" localcopy="True" refto="System.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <ProjectReference type="Gac" localcopy="True" refto="System.Configuration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <ProjectReference type="Gac" localcopy="True" refto="System.Xml, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Transactions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   </References>
+  <DeployTargets />
 </Project>
