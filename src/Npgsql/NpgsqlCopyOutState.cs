@@ -7,8 +7,6 @@
 //	npgsql-general@gborg.postgresql.org
 //	http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
-//  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -32,11 +30,17 @@ using System.IO;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// Represents an ongoing COPY TO STDOUT operation.
+    /// Provides methods to read data from server or end the operation.
+    /// </summary>
     internal sealed class NpgsqlCopyOutState : NpgsqlState
     {
         private static NpgsqlCopyOutState _instance = null;
 
         private readonly String CLASSNAME = "NpgsqlCopyOutState";
+
+        private NpgsqlCopyFormat _copyFormat = null;
 
         private NpgsqlCopyOutState() : base()
         { }
@@ -53,8 +57,25 @@ namespace Npgsql
             }
         }
 
-        override protected void StartCopy( NpgsqlConnector context, NpgsqlCopyHeader copyHeader )
+        /// <summary>
+        /// Copy format information returned from server.
+        /// </summary>
+        override public NpgsqlCopyFormat CopyFormat
         {
+            get
+            {
+                return _copyFormat;
+            }
+        }
+
+        /// <summary>
+        /// Called from NpgsqlState.ProcessBackendResponses upon CopyOutResponse.
+        /// If CopyStream is already set, it is used to write data received from server, after which the copy ends.
+        /// Otherwise CopyStream is set to a readable NpgsqlCopyOutStream that receives data from server.
+        /// </summary>
+        override protected void StartCopy( NpgsqlConnector context, NpgsqlCopyFormat copyFormat )
+        {
+            _copyFormat = copyFormat;
             Stream userFeed = context.Mediator.CopyStream;
             if( userFeed == null )
             {
@@ -69,6 +90,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Called from NpgsqlOutStream.Read to read copy data from server.
+        /// </summary>
         override public byte[] GetCopyData( NpgsqlConnector context )
         {
             ProcessBackendResponses_Ver_3(context); // polling in COPY would take seconds on Windows

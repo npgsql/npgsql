@@ -448,7 +448,7 @@ namespace Npgsql
         /// <summary>
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
-        /// <returns>The number of rows affected.</returns>
+        /// <returns>The number of rows affected if known; -1 otherwise.</returns>
         public override Int32 ExecuteNonQuery()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteNonQuery");
@@ -483,7 +483,7 @@ namespace Npgsql
                     (String.Compare(ret_string_tokens[0], "UPDATE", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "DELETE", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "FETCH", true) == 0) ||
-                    //(String.Compare(ret_string_tokens[0], "COPY", true) == 0) ||
+                    (String.Compare(ret_string_tokens[0], "COPY", true) == 0) ||
                     (String.Compare(ret_string_tokens[0], "MOVE", true) == 0))
                 
                 
@@ -495,9 +495,18 @@ namespace Npgsql
                 // The number of rows affected is in the third token for insert queries
                 // and in the second token for update and delete queries.
                 // In other words, it is the last token in the 0-based array.
+                // Except for COPY on some older server versions, it appears, so we allow parsing to fail.
 
-                
-                return Int32.Parse(ret_string_tokens[ret_string_tokens.Length - 1]);
+                Int32 result = -1;
+                try
+                {
+                    result = Int32.Parse(ret_string_tokens[ret_string_tokens.Length - 1]);
+                }
+                catch(Exception e)
+                {
+                    // String didn't contain the expected information. Coincidentally, the default result means exactly that.
+                }
+                return result;
             }
             else
                 return -1;

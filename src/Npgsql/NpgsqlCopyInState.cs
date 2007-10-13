@@ -7,8 +7,6 @@
 //	npgsql-general@gborg.postgresql.org
 //	http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
-//  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -32,11 +30,17 @@ using System.IO;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// Represents an ongoing COPY FROM STDIN operation.
+    /// Provides methods to push data to server and end or cancel the operation.
+    /// </summary>
     internal sealed class NpgsqlCopyInState : NpgsqlState
     {
         private static NpgsqlCopyInState _instance = null;
 
         private readonly String CLASSNAME = "NpgsqlCopyInState";
+
+        private NpgsqlCopyFormat _copyFormat = null;
 
         private NpgsqlCopyInState() : base()
         { }
@@ -53,8 +57,25 @@ namespace Npgsql
             }
         }
 
-        override protected void StartCopy( NpgsqlConnector context, NpgsqlCopyHeader copyHeader )
+        /// <summary>
+        /// Copy format information returned from server.
+        /// </summary>
+        override public NpgsqlCopyFormat CopyFormat
         {
+            get
+            {
+                return _copyFormat;
+            }
+        }
+
+        /// <summary>
+        /// Called from NpgsqlState.ProcessBackendResponses upon CopyInResponse.
+        /// If CopyStream is already set, it is used to read data to push to server, after which the copy is completed.
+        /// Otherwise CopyStream is set to a writable NpgsqlCopyInStream that calls SendCopyData each time it is written to.
+        /// </summary>
+        override protected void StartCopy( NpgsqlConnector context, NpgsqlCopyFormat copyFormat )
+        {
+            _copyFormat = copyFormat;
             Stream userFeed = context.Mediator.CopyStream;
             if( userFeed == null )
             {
@@ -74,6 +95,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Sends given packet to server as a CopyData message.
+        /// Does not check for notifications! Use another thread for that.
+        /// </summary>
         override public void SendCopyData( NpgsqlConnector context, byte[] buf, int off, int len)
         {
             Stream toServer = context.Stream;
@@ -82,6 +107,9 @@ namespace Npgsql
             toServer.Write( buf, off, len );
         }
         
+        /// <summary>
+        /// Sends CopyDone message to server. Handles responses, ie. may throw an exception.
+        /// </summary>
         override public void SendCopyDone( NpgsqlConnector context )
         {
             Stream toServer = context.Stream;
@@ -92,6 +120,12 @@ namespace Npgsql
             context.CheckErrorsAndNotifications();
         }
         
+        /// <summary>
+        /// Sends CopyFail message to server. Handles responses, ie. should always throw an exception:
+        /// in CopyIn state the server responds to CopyFail with an error response;
+        /// outside of a CopyIn state the server responds to CopyFail with an error response;
+        /// without network connection or whatever, there's going to eventually be a failure, timeout or user intervention.
+        /// </summary>
         override public void SendCopyFail( NpgsqlConnector context, String message )
         {
             Stream toServer = context.Stream;

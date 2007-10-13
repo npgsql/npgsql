@@ -7,8 +7,6 @@
 //    npgsql-general@gborg.postgresql.org
 //    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
-//  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -32,6 +30,10 @@ using System.IO;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// Stream for reading data from a table or select on a PostgreSQL version 7.4 or newer database during an active COPY TO STDOUT operation.
+    /// <b>Passes data exactly as provided by the server.</b>
+    /// </summary>
     class NpgsqlCopyOutStream : Stream
     {
         private NpgsqlConnector _context;
@@ -39,19 +41,28 @@ namespace Npgsql
         private byte[] _buf = null;
         private int _bufOffset = 0;
         
+        /// <summary>
+        /// True while this stream can be used to read copy data from server
+        /// </summary>
         private bool IsActive
         {
             get
             {
-                return _context != null && _context.CurrentState is NpgsqlCopyOutState;
+                return _context != null && _context.CurrentState is NpgsqlCopyOutState && _context.Mediator.CopyStream == this;
             }
         }
 
-        public NpgsqlCopyOutStream(NpgsqlConnector context)
+        /// <summary>
+        /// Created only by NpgsqlCopyOutState.StartCopy()
+        /// </summary>
+        internal NpgsqlCopyOutStream(NpgsqlConnector context)
         {
             _context = context;
         }
     
+        /// <summary>
+        /// True
+        /// </summary>
         override public bool CanRead
         {
             get
@@ -60,6 +71,9 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// False
+        /// </summary>
         override public bool CanWrite
         {
             get
@@ -68,6 +82,9 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// False
+        /// </summary>
         override public bool CanSeek
         {
             get
@@ -76,6 +93,9 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// Number of bytes read so far
+        /// </summary>
         override public long Length
         {
             get
@@ -84,6 +104,9 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// Number of bytes read so far; can not be set.
+        /// </summary>
         override public long Position
         {
             get
@@ -96,6 +119,10 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// Discards copy data as long as server pushes it. Returns after operation is finished.
+        /// Does nothing if this stream is not the active copy operation reader.
+        /// </summary>
         override public void Close()
         {
             if( _context != null )
@@ -112,16 +139,27 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Not writable.
+        /// </summary>
         override public void Write(byte[] buf, int off, int len)
         {
             throw new NotSupportedException("Tried to write non-writable " + this);
         }
 
+        /// <summary>
+        /// Not flushable.
+        /// </summary>
         override public void Flush()
         {
             throw new NotSupportedException("Tried to flush read-only " + this);
         }
 
+        /// <summary>
+        /// Copies data read from server to given byte buffer.
+        /// Since server returns data row by row, length will differ each time, but it is only zero once the operation ends.
+        /// Can be mixed with calls to the more efficient NpgsqlCopyOutStream.Read() : byte[] though that would not make much sense.
+        /// </summary>
         override public int Read(byte[] buf, int off, int len)
         {
             if(! IsActive)
@@ -155,22 +193,47 @@ namespace Npgsql
             return i;
         }
 
+        /// <summary>
+        /// Not seekable
+        /// </summary>
         override public long Seek(long pos, SeekOrigin so)
         {
             throw new NotSupportedException("Tried to seek non-seekable " + this);
         }
     
+        /// <summary>
+        /// Not supported
+        /// </summary>
         override public void SetLength(long len)
         {
             throw new NotSupportedException("Tried to set length of network stream " + this);
         }
 
         /// <summary>
-        /// Returns a whole row of data from server without any extra work
+        /// Returns a whole row of data from server without extra work.
+        /// If standard Stream.Read(...) has been called before, it's internal buffers remains are returned.
         /// </summary>
         public byte[] Read()
         {
-            return _context.CurrentState.GetCopyData( _context );
+            byte[] result;
+            if( _buf == null )
+            {
+                result = _context.CurrentState.GetCopyData( _context );
+            }
+            else if( _bufOffset < 1 )
+            {
+                result = _buf;
+            }
+            else
+            {
+                result = new byte[_buf.Length - _bufOffset];
+                for(int i=0; i < result.Length; i++)
+                {
+                    result[i] = _buf[_bufOffset+i];
+                }
+                _buf = null;
+            }
+            return result;
         }
     }
 }

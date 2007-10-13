@@ -7,8 +7,6 @@
 //    npgsql-general@gborg.postgresql.org
 //    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
-//  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -103,6 +101,36 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// Returns true if this operation is currently active and in binary format.
+        /// </summary>
+        public bool IsBinary
+        {
+            get
+            {
+                return IsActive && _context.CurrentState.CopyFormat.IsBinary;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if this operation is currently active and field at given location is in binary format.
+        /// </summary>
+        public bool FieldIsBinary(int fieldNumber)
+        {
+            return IsActive && _context.CurrentState.CopyFormat.FieldIsBinary(fieldNumber);
+        }
+
+        /// <summary>
+        /// Returns number of fields if this operation is currently active, otherwise -1
+        /// </summary>
+        public int FieldCount
+        {
+            get
+            {
+                return IsActive ? _context.CurrentState.CopyFormat.FieldCount : -1;
+            }
+        }
+
         /// <summary>
         /// Command specified upon creation is executed as a non-query.
         /// If CopyStream is set upon creation, all copy data from server will be written to it, and operation will be finished immediately.

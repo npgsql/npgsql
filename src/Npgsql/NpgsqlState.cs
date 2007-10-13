@@ -110,7 +110,7 @@ namespace Npgsql
         
         // COPY methods
 
-        protected virtual void StartCopy(NpgsqlConnector context, NpgsqlCopyHeader copyHeader)
+        protected virtual void StartCopy(NpgsqlConnector context, NpgsqlCopyFormat copyFormat)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
@@ -132,8 +132,18 @@ namespace Npgsql
 
         public virtual void SendCopyFail( NpgsqlConnector context, String message )
         {
+			
             throw new InvalidOperationException("Internal Error! " + this);
-        }
+         }
+
+         public virtual NpgsqlCopyFormat CopyFormat
+         {
+			get
+            {
+                throw new InvalidOperationException("Internal Error! " + this);
+			}
+         }
+
 
         public virtual void Close( NpgsqlConnector context )
         {
@@ -794,8 +804,7 @@ namespace Npgsql
                     NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
                     ChangeState( context, NpgsqlCopyInState.Instance );
                     PGUtil.ReadInt32(stream, inputBuffer); // length redundant
-                    NpgsqlCopyHeader copyHeader = new NpgsqlCopyHeader( stream, inputBuffer );
-                    context.CurrentState.StartCopy( context, copyHeader );
+                    context.CurrentState.StartCopy( context, ReadCopyHeader( stream, inputBuffer ) );
                     return; // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
                 case NpgsqlMessageTypes_Ver_3.CopyOutResponse :
@@ -803,8 +812,7 @@ namespace Npgsql
                     NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyOutResponse");
                     ChangeState( context, NpgsqlCopyOutState.Instance );
                     PGUtil.ReadInt32(stream, inputBuffer); // length redundant
-                    copyHeader = new NpgsqlCopyHeader( stream, inputBuffer );
-                    context.CurrentState.StartCopy( context, copyHeader );
+                    context.CurrentState.StartCopy( context, ReadCopyHeader( stream, inputBuffer ) );
                     return; // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
                 case NpgsqlMessageTypes_Ver_3.CopyData :
@@ -839,20 +847,14 @@ namespace Npgsql
         }
         
          
-        protected struct NpgsqlCopyHeader
+        private NpgsqlCopyFormat ReadCopyHeader( Stream stream, byte[] inputBuffer )
         {
-            byte copyFormat;
-            Int16 numCopyFields;
-            Int16[] copyFieldFormats;
-            
-            public NpgsqlCopyHeader( Stream stream, byte[] inputBuffer )
-            {
-                copyFormat = (byte)stream.ReadByte();
-                numCopyFields = PGUtil.ReadInt16(stream, inputBuffer);
-                copyFieldFormats = new Int16[numCopyFields];
-                for( Int16 i=0; i < numCopyFields; i++ )
-                    copyFieldFormats[i] = PGUtil.ReadInt16(stream, inputBuffer);
-            }
+            byte copyFormat = (byte)stream.ReadByte();
+            Int16 numCopyFields = PGUtil.ReadInt16(stream, inputBuffer);
+            Int16[] copyFieldFormats = new Int16[numCopyFields];
+            for( Int16 i=0; i < numCopyFields; i++ )
+                copyFieldFormats[i] = PGUtil.ReadInt16(stream, inputBuffer);
+            return new NpgsqlCopyFormat( copyFormat, copyFieldFormats );
         }
 
         

@@ -82,7 +82,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// The stream provided by user or generated upon Start()
+        /// The stream provided by user or generated upon Start().
+        /// User may provide a stream to constructor; it is used to pass to server all data read from it.
+        /// Otherwise, call to Start() sets this to a writable NpgsqlCopyInStream that passes all data written to it to server.
+        /// In latter case this is only available while the copy operation is active and null otherwise.
         /// </summary>
         public Stream CopyStream
         {
@@ -92,6 +95,36 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// Returns true if this operation is currently active and in binary format.
+        /// </summary>
+        public bool IsBinary
+        {
+            get
+            {
+                return IsActive && _context.CurrentState.CopyFormat.IsBinary;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if this operation is currently active and field at given location is in binary format.
+        /// </summary>
+        public bool FieldIsBinary(int fieldNumber)
+        {
+            return IsActive && _context.CurrentState.CopyFormat.FieldIsBinary(fieldNumber);
+        }
+
+        /// <summary>
+        /// Returns number of fields expected on each input row if this operation is currently active, otherwise -1
+        /// </summary>
+        public int FieldCount
+        {
+            get
+            {
+                return IsActive ? _context.CurrentState.CopyFormat.FieldCount : -1;
+            }
+        }
+
         /// <summary>
         /// The Command used to execute this copy operation.
         /// </summary>
@@ -149,31 +182,48 @@ namespace Npgsql
         {
             if( _context != null )
             {
-                if(IsActive)
+                try
                 {
-                    _context.CurrentState.SendCopyDone( _context );
+                    if(IsActive)
+                    {
+                        _context.CurrentState.SendCopyDone( _context );
+                    }
                 }
-                if( _context.Mediator.CopyStream == _copyStream )
+                finally
                 {
-                    _context.Mediator.CopyStream = null;
+                    if( _context.Mediator.CopyStream == _copyStream )
+                    {
+                        _context.Mediator.CopyStream = null;
+                    }
+                    if( _disposeCopyStream )
+                    {
+                        _copyStream = null;
+                    }
                 }
             }
         }
 
         /// <summary>
         /// Withdraws an already started copy operation. The operation will fail with given error message.
+        /// Will do nothing if current operation is not active.
         /// </summary>
         public void Cancel(string message)
         {
             if( _context != null )
             {
-                if(IsActive)
+                try
                 {
-                    _context.CurrentState.SendCopyFail( _context, message);
+                    if(IsActive)
+                    {
+                        _context.CurrentState.SendCopyFail( _context, message);
+                    }
                 }
-                if( _context.Mediator.CopyStream == _copyStream )
+                finally
                 {
-                    _context.Mediator.CopyStream = null;
+                    if( _context.Mediator.CopyStream == _copyStream )
+                    {
+                        _context.Mediator.CopyStream = null;
+                    }
                     if( _disposeCopyStream )
                     {
                         _copyStream = null;

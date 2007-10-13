@@ -7,8 +7,6 @@
 //    npgsql-general@gborg.postgresql.org
 //    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
-//  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -32,24 +30,37 @@ using System.IO;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// Stream for writing data to a table on a PostgreSQL version 7.4 or newer database during an active COPY FROM STDIN operation.
+    /// <b>Passes data exactly as is and when given</b>, so see to it that you use server encoding, correct format and reasonably sized writes!
+    /// </summary>
     class NpgsqlCopyInStream : Stream
     {
         private NpgsqlConnector _context;
         private long _bytesPassed = 0;
         
+        /// <summary>
+        /// True while this stream can be used to write copy data to server
+        /// </summary>
         private bool IsActive
         {
             get
             {
-                return _context != null && _context.CurrentState is NpgsqlCopyInState;
+                return _context != null && _context.CurrentState is NpgsqlCopyInState && _context.Mediator.CopyStream == this;
             }
         }
 
-        public NpgsqlCopyInStream(NpgsqlConnector context)
+        /// <summary>
+        /// Created only by NpgsqlCopyInState.StartCopy()
+        /// </summary>
+        internal NpgsqlCopyInStream(NpgsqlConnector context)
         {
             _context = context;
         }
     
+        /// <summary>
+        /// False
+        /// </summary>
         override public bool CanRead
         {
             get
@@ -58,6 +69,9 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// True
+        /// </summary>
         override public bool CanWrite
         {
             get
@@ -66,6 +80,9 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// False
+        /// </summary>
         override public bool CanSeek
         {
             get
@@ -74,6 +91,9 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// Number of bytes written so far
+        /// </summary>
         override public long Length
         {
             get
@@ -82,6 +102,9 @@ namespace Npgsql
             }
         }
         
+        /// <summary>
+        /// Number of bytes written so far; not settable
+        /// </summary>
         override public long Position
         {
             get
@@ -94,6 +117,10 @@ namespace Npgsql
             }
         }
     
+        /// <summary>
+        /// Successfully completes copying data to server. Returns after operation is finished.
+        /// Does nothing if this stream is not the active copy operation writer.
+        /// </summary>
         override public void Close()
         {
             if( _context != null )
@@ -112,6 +139,7 @@ namespace Npgsql
 
         /// <summary>
         /// Withdraws an already started copy operation. The operation will fail with given error message.
+        /// Does nothing if this stream is not the active copy operation writer.
         /// </summary>
         public void Cancel(string message)
         {
@@ -124,6 +152,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Writes given bytes to server.
+        /// Fails if this stream is not the active copy operation writer.
+        /// </summary>
         override public void Write(byte[] buf, int off, int len)
         {
             if(! IsActive)
@@ -132,6 +164,10 @@ namespace Npgsql
             _bytesPassed += len;
         }
 
+        /// <summary>
+        /// Flushes stream contents to server.
+        /// Fails if this stream is not the active copy operation writer.
+        /// </summary>
         override public void Flush()
         {
             if(! IsActive)
@@ -139,16 +175,25 @@ namespace Npgsql
             _context.Stream.Flush();
         }
 
+        /// <summary>
+        /// Not readable
+        /// </summary>
         override public int Read(byte[] buf, int off, int len)
         {
             throw new NotSupportedException("Tried to read non-readable " + this);
         }
     
+        /// <summary>
+        /// Not seekable
+        /// </summary>
         override public long Seek(long pos, SeekOrigin so)
         {
             throw new NotSupportedException("Tried to seek non-seekable " + this);
         }
     
+        /// <summary>
+        /// Not supported
+        /// </summary>
         override public void SetLength(long len)
         {
             throw new NotSupportedException("Tried to set length of network stream " + this);
