@@ -1,6 +1,10 @@
 <project name="NpgsqlTests" default="build" basedir=".">
 
-    <property name="NUnit.lib.dir" value="/usr/lib/NAnt/lib/mono/2.0" />
+    <property name="nunit.files" dynamic="true"
+value="${nant::get-base-directory() + '/lib/' +
+framework::get-family(framework::get-target-framework()) + '/' +
+int::to-string(version::get-major(framework::get-version(framework::get-target-framework()))) + '.' +
+int::to-string(version::get-minor(framework::get-version(framework::get-target-framework()))) + '/nunit.*'}" />
 
     <property name="assemblyname" value="NpgsqlTests" />
     
@@ -21,7 +25,7 @@
         </sources>
         <references>
 
-	  <include name="${NUnit.lib.dir}/nunit*.dll" />
+	  <include name="${nunit.files}" />
           <include name="${ms.build.dir}/Npgsql.dll" />
 	  <include name="System.Data.dll" />
 	  <include name="System.Web.dll" />
