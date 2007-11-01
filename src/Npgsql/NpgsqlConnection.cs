@@ -898,6 +898,18 @@ namespace Npgsql
                 base.EnlistTransaction(transaction);
         }
 
+        protected
+#if NET35
+            override
+#endif
+            DbProviderFactory DbProviderFactory
+        {
+            get
+            {
+                return NpgsqlFactory.Instance;
+            }
+        }
+
     }
 
 
