@@ -106,6 +106,7 @@ namespace Npgsql
                 _callbacks.CommitTransaction();
                 // TODO: remove record of prepared
                 enlistment.Done();
+                _callbacks.Dispose();
             }
 
             public void InDoubt(Enlistment enlistment)
@@ -126,6 +127,7 @@ namespace Npgsql
                 _callbacks.RollbackTransaction();
                 // TODO: remove record of prepared
                 enlistment.Done();
+                _callbacks.Dispose();
             }
 
             #endregion

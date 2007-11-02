@@ -72,7 +72,6 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
             if (_npgsqlTx != null)
             {
-                // TODO: handle the closed connection for callbacks
                 _callbacks = new NpgsqlTransactionCallbacks(_connection);
                 _callbacks.PrepareTransaction();
                 // cancel the NpgsqlTransaction since this will
