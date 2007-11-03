@@ -123,6 +123,10 @@
                 <include name="${ms.res.dir}/*.resources"/>
                 <!--<include name="*.bmp"/>-->
             </resources>
+            <!-- Include Metadata helper file as resource -->
+	    <resources prefix="${assemblyname}">
+                <include name="${src.dir}/Npgsql/NpgsqlMetaData.xml"/>
+            </resources>
             <sources>
                 <include name="${src.dir}/Npgsql/*.cs"/>
                 <include name="${src.dir}/NpgsqlTypes/*.cs"/>

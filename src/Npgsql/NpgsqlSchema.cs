@@ -28,6 +28,8 @@
 using System;
 using System.Data;
 using System.Text;
+using System.IO;
+using System.Reflection;
 
 namespace Npgsql
 {
@@ -285,5 +287,15 @@ namespace Npgsql
 
             return users;
         }
-	}
+		
+        internal static DataTable GetDataSourceInformation()
+        {
+            DataSet ds          = new DataSet();
+            using (Stream  xmlStream   = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml")) 
+            {
+                ds.ReadXml(xmlStream);
+            }
+            return ds.Tables["DataSourceInformation"].Copy();
+        } 
+    }
 }
