@@ -29,7 +29,7 @@ using System.Data;
 
 namespace Npgsql
 {
-    internal interface INpgsqlTransactionCallbacks
+    internal interface INpgsqlTransactionCallbacks : IDisposable
     {
         string GetName();
         void PrepareTransaction();
@@ -41,6 +41,7 @@ namespace Npgsql
     {
         private NpgsqlConnection _connection;
         private string _connectionString;
+        private bool _closeConnectionRequired;
         private bool _prepared;
         private string _txName = Guid.NewGuid().ToString();
 
@@ -56,17 +57,25 @@ namespace Npgsql
         void _connection_Disposed(object sender, EventArgs e)
         {
             // TODO: what happens if this is called from another thread?
+            // connections should not be shared across threads while in a transaction
             _connection.Disposed -= new EventHandler(_connection_Disposed);
             _connection = null;
         }
 
-        private ConnectionScope GetConnectionScope()
+        private NpgsqlConnection GetConnection()
         {
             if (_connection == null ||
                 (_connection.State & ConnectionState.Open) != ConnectionState.Open)
-                return new ConnectionScope(_connectionString);
+            {
+                _connection = new NpgsqlConnection(_connectionString);
+                _connection.Open();
+                _closeConnectionRequired = true;
+                return _connection;
+            }
             else
-                return new ConnectionScope(_connection);
+            {
+                return _connection;
+            }
         }
 
         #region INpgsqlTransactionCallbacks Members
@@ -79,86 +88,55 @@ namespace Npgsql
         public void CommitTransaction()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CommitTransaction");
-            using (ConnectionScope scope = GetConnectionScope())
+            NpgsqlConnection connection = GetConnection();
+            NpgsqlCommand command = null;
+            if (_prepared)
             {
-                NpgsqlCommand command = null;
-                if (_prepared)
-                {
-                    command = new NpgsqlCommand(string.Format("COMMIT PREPARED '{0}'", _txName), scope.Connection);
-                }
-                else
-                {
-                    command = new NpgsqlCommand("COMMIT", scope.Connection);
-                }
-                command.ExecuteNonQuery();
+                command = new NpgsqlCommand(string.Format("COMMIT PREPARED '{0}'", _txName), connection);
             }
+            else
+            {
+                command = new NpgsqlCommand("COMMIT", connection);
+            }
+            command.ExecuteNonQuery();
         }
 
         public void PrepareTransaction()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
-            // TODO: this isn't going to work well in non-pooled connections
-            // since prepare will usually preceed commit
-            using (ConnectionScope scope = GetConnectionScope())
-            {
-                NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), scope.Connection);
-                command.ExecuteNonQuery();
-                _prepared = true;
-            }
+            NpgsqlConnection connection = GetConnection();
+            NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), connection);
+            command.ExecuteNonQuery();
+            _prepared = true;
         }
 
         public void RollbackTransaction()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RollbackTransaction");
-            using (ConnectionScope scope = GetConnectionScope())
+            NpgsqlConnection connection = GetConnection();
+            NpgsqlCommand command = null;
+            if (_prepared)
             {
-                NpgsqlCommand command = null;
-                if (_prepared)
-                {
-                    command = new NpgsqlCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName), scope.Connection);
-                }
-                else
-                {
-                    command = new NpgsqlCommand("ROLLBACK", scope.Connection);
-                }
-                command.ExecuteNonQuery();
+                command = new NpgsqlCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName), connection);
             }
+            else
+            {
+                command = new NpgsqlCommand("ROLLBACK", connection);
+            }
+            command.ExecuteNonQuery();
         }
 
         #endregion
 
-        private class ConnectionScope : IDisposable
+        #region IDisposable Members
+
+        public void Dispose()
         {
-            private NpgsqlConnection _connection;
-            private bool _disposeConnection;
-
-            public ConnectionScope(NpgsqlConnection connection)
-            {
-                _connection = connection;
-                _disposeConnection = false;
-            }
-
-            public ConnectionScope(string connectionString)
-            {
-                _connection = new NpgsqlConnection(connectionString);
-                _connection.Open();
-                _disposeConnection = true;
-            }
-
-            public NpgsqlConnection Connection
-            {
-                get { return _connection; }
-            }
-
-            #region IDisposable Members
-
-            public void Dispose()
-            {
-                if (_disposeConnection)
-                    _connection.Dispose();
-            }
-
-            #endregion
+            if (_closeConnectionRequired)
+                _connection.Close();
+            _closeConnectionRequired = false;
         }
+
+        #endregion
     }
 }
