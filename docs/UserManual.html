@@ -1628,6 +1628,61 @@ public class CopyOutExample
 }
 </pre>
 
+<h3>System.Transactions Support</h3>
+
+<p> Thanks Josh Cooley, Npgsql has added initial support for System.Transactions. This code is still in very early stage, so if you have any problems with it, please let us know so we can fix it as soon as possible. </p>
+<p> In order to use it, you have to put the following in your connection string:</p>
+
+<pre class="CodeBox">
+	Enlist=true
+</pre>
+
+<p> False is currently the default, but we will likely make enlist=true the default once System.Transaction support stabilizes. </p>
+<p> Here is a sample code which uses System.Transaction support: </p>
+
+<pre class="CodeBox">
+
+using System;
+using System.Data;
+using Npgsql;
+using System.Transactions;
+
+public class TransactionExample
+{
+
+    public static void Main(String[] args)
+    {
+
+            string connectionString = "Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;Enlist=true";
+            using (TransactionScope tx = new TransactionScope())
+            {
+                using (NpgsqlConnection connection = new
+NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    using (NpgsqlCommand command = new
+NpgsqlCommand("insert into tablea (cola) values ('b')", connection))
+                    {
+                        command.ExecuteNonQuery();
+                    }
+                    using (NpgsqlConnection connection2 = new
+NpgsqlConnection(connectionString))
+                    {
+                        connection2.Open();
+                        using (NpgsqlCommand command = new
+NpgsqlCommand("insert into tablea (colb) values ('c')", connection2))
+                        {
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+                tx.Complete();
+            }
+    }
+}
+
+</pre>
+
 <h3> 3.1 Using Npgsql Logging support </h3>
 
 <p> Sometimes it's necessary to trace Npgsql's behaviour to track errors.  Npgsql can log messages to a specified file, to the console, or to both.
