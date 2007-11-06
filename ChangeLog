@@ -1,3 +1,27 @@
+2007-11-06 11:13  fxjr
+
+	Changed:
+		RELEASENOTES.txt (1.3), "Exp", lines: +1 -0
+		src/Npgsql/NpgsqlConnector.cs (1.7), "Exp", lines: +2 -1
+
+
+		Updated RELEASENOTES to include a last minute fix.
+
+		Fixed a possible lockup when using SyncNotification.
+	Runtime wasn't releasing the lock fairly. See
+	http://pgfoundry.org/forum/message.php?msg_id=1002650 for more
+	info. Thanks Clive Simmens (cs at ctronix dot com) for heads up,
+	tests and patch.
+
+2007-11-06 10:39  fxjr
+
+	Changed:
+		ChangeLog (1.2), "Exp", lines: +900 -389
+
+
+
+		Updated Changelog
+
 2007-11-06 10:38  fxjr
 
 	Changed:
