@@ -1,4 +1,37 @@
 
+
+2007-11-06
+
+
+New Features:
+
+	Added support to use '=' and ';' in connection string values. '=' are added by doubling it: == and ';' in the
+	value by enclosing in single or double quotation marks, (if the value in enclosed in quotation marks, a quotation mark can be put in the value by doubling). Thanks Ben Sagal (bensagal at gmail dot com) for patch.
+
+	New NpgsqlCopyIn and NpgsqlCopyOut classes support fast bulk data transfer with COPY FROM STDIN and COPY TO STDOUT commands as explained at http://www.postgresql.org/docs/8.2/interactive/sql-copy.html. Depending on how they are called, they consume or provide byte streams for passing data into and out of a database table (or SELECT), respectively.
+	Experimental NpgsqlCopySerializer class is also provided. It takes input field values as objects. It should eventually handle encoding, buffering and different feed formats on behalf of the caller. Hopefully it will evolve into a convenient and secure method of feeding data into database and get accompanied by a deserializer.
+	Note that when feeding straight to COPY FROM STDIN operation, you have to provide data using the same encoding as the server uses. Same goes for data read by COPY TO STDOUT. Also, you should be warned that data should be passed one row at a time to work around some server-side discrepancy. Thanks Kalle Hallivuori (kato at iki dot fi)
+
+	Npgsql tests are now easier to run. Up to now, there was a hardcoded path to find nunit assemblies when running the nant tests target. Now, thanks to Gert Driesen (gert dot driesen at ardatis dot com) these assemblies are found without any hardcoded path.
+
+	Added support for DataSourceInformation schema in NpgsqlConnection.GetSchema(string collectionName, string[]
+	restrictions). Thanks Rasha (strasha at gmail dot com) for patch.
+
+	Improved NpgsqlCommandBuilder so it now conforms to ADO.NET 2.0 standards. Thanks Rasha (strasha at gmail dot com) for patch.
+
+	Added initial support for System.Transactions. This code is still in very early stage, so if you have any problems with it, please let us know so we can fix it as soon as possible. More info and sample code can be found in our UserManual. (Josh Cooley)
+
+	Bug fixes:
+
+	[#1007697] Parameter name is not trimmed NpgsqlParameter constructor. Thanks Joren Six (sixjoren at msn dot com) for patch.
+
+	Fixed SSL authentication by setting an static field to true: RSACryptoServiceProvider.UseMachineKeyStore = true. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info about that. Thanks Erwin Thaler (the at adv dot magwien dot gv dot at) for heads up.
+
+	[#1003272] Queue Empty exception. Thanks Francois Payette ( francoisp at netmosphere dot net) for patch.
+	[#1000847] Connection settings are parsed wrong with Turkish locale. Thanks Gokcer Gokdal (gokcergokdal at yahoo dot com) for patch.
+
+
+
 2007-07-03
 
     Npgsql2 Preview Release
