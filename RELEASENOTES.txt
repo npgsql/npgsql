@@ -30,6 +30,7 @@ New Features:
 	[#1003272] Queue Empty exception. Thanks Francois Payette ( francoisp at netmosphere dot net) for patch.
 	[#1000847] Connection settings are parsed wrong with Turkish locale. Thanks Gokcer Gokdal (gokcergokdal at yahoo dot com) for patch.
 
+	Fixed a possible lockup when using SyncNotification. Runtime wasn't releasing the lock fairly. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more info. Thanks Clive Simmens (cs at ctronix dot com) for heads up, tests and patch.
 
 
 2007-07-03

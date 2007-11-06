@@ -902,9 +902,10 @@ namespace Npgsql
                 
                 while(true)
                 {
+                    Thread.Sleep(0);   //To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
                     this.connector._notificationAutoResetEvent.WaitOne();
                     
-                    if (this.connector.Socket.Poll(1000, SelectMode.SelectRead))
+                    if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
                     {
                         // reset any responses just before getting new ones
                         this.connector.Mediator.ResetResponses();
