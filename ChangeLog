@@ -1,3 +1,42 @@
+2007-11-06 14:21  fxjr
+
+	Changed:
+		src/Npgsql.build (1.9), "Exp", lines: +1 -0
+
+
+		Fixed build file to allows other resources to be compiled.
+
+2007-11-06 11:47  fxjr
+
+	Changed:
+		RELEASENOTES.txt (1.4), "Exp", lines: +3 -0
+
+
+		Added last minute localization patch.
+
+2007-11-06 11:46  fxjr
+
+	Added:
+		src/Npgsql/NpgsqlCommand.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlConnection.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlEventLog.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlParameter.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlParameterCollection.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlTransaction.zh-CN.resx (1.1)
+
+
+		[#1008537] New resource files - zh-CN. Added support for
+	Chinese (Simplified). Thanks Fan (Frank) Chown (reverseark at gmail
+	dot com) for patch!
+
+2007-11-06 11:14  fxjr
+
+	Changed:
+		ChangeLog (1.3), "Exp", lines: +24 -0
+
+
+		Updated
+
 2007-11-06 11:13  fxjr
 
 	Changed:
