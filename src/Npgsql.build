@@ -77,6 +77,7 @@
                 <include name="${src.dir}/Npgsql/NpgsqlTransaction.ja.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlTransaction.resx"/>
                 <include name="${src.dir}/Npgsql/PGUtil.resx"/>
+                <include name="${src.dir}/Npgsql/*.resx"/>
 
             </resources>
         </resgen>
