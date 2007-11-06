@@ -21,6 +21,9 @@ New Features:
 
 	Added initial support for System.Transactions. This code is still in very early stage, so if you have any problems with it, please let us know so we can fix it as soon as possible. More info and sample code can be found in our UserManual. (Josh Cooley)
 
+	[#1008537] New resource files - zh-CN. Added support for Chinese (Simplified). Thanks Fan (Frank) Chown (reverseark at gmail dot com) for patch!
+
+
 	Bug fixes:
 
 	[#1007697] Parameter name is not trimmed NpgsqlParameter constructor. Thanks Joren Six (sixjoren at msn dot com) for patch.
