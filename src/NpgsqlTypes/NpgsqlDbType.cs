@@ -61,7 +61,8 @@ namespace NpgsqlTypes
         Inet,
         Bit,
         TimestampTZ,
-        Uuid
+        Uuid,
+        Xml
     }
 
 }

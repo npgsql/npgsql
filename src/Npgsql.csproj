@@ -102,6 +102,7 @@
     <Compile Include="Npgsql\NpgsqlConnectorPool.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Npgsql\NpgsqlCopyFormat.cs" />
     <Compile Include="Npgsql\NpgsqlCopyIn.cs">
       <SubType>Code</SubType>
     </Compile>

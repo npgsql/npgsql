@@ -286,6 +286,8 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true, null);
                 NativeTypeMapping.AddTypeAlias("uuid", typeof(Guid));
+                
+                NativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null);
             }
         }
 
@@ -413,7 +415,11 @@ namespace NpgsqlTypes
                         new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon)),
 
                     new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid),
+                        null),
+                        
+                    new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof(String),
                         null)
+                         
                 };
 
                 // Attempt to map each type info in the list to an OID on the backend and
