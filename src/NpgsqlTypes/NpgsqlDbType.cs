@@ -63,6 +63,7 @@ namespace NpgsqlTypes
         TimestampTZ,
         Uuid,
         Xml
+        
     }
 
 }

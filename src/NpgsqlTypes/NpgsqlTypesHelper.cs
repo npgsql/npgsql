@@ -287,7 +287,7 @@ namespace NpgsqlTypes
                 NativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true, null);
                 NativeTypeMapping.AddTypeAlias("uuid", typeof(Guid));
                 
-                NativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null);
+                NativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null); 
             }
         }
 
