@@ -140,5 +140,16 @@
     <data name="Exception_ConnectionTimeout">
                 <value>Connection establishment timeout. Increase Timeout value in ConnectionString.</value>
     </data>    
+    <data name="Log_ConnectingTo">
+        <value>Attempt to connect to '{0}'.</value>
+    </data>
+    <data name="Log_FailedConnection">
+        <value>Failed to establish a connection to  '{0}'.</value>
+    </data>
+
+    <data name="Exception_FailedConnection">
+        <value>Failed to establish a connection to '{0}'.</value>
+    </data>
+
         
 </root>

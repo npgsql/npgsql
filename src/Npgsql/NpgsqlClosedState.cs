@@ -1,7 +1,8 @@
 // Npgsql.NpgsqlClosedState.cs
 //
-// Author:
-// 	Dave Joyner <d4ljoyn@yahoo.com>
+// Authors:
+// 	Dave Joyner			<d4ljoyn@yahoo.com>
+//	Daniel Nauck		<dna(at)mono-project.de>
 //
 //	Copyright (C) 2002 The Npgsql Development Team
 //	npgsql-general@gborg.postgresql.org
@@ -46,7 +47,8 @@ namespace Npgsql
         private NpgsqlClosedState() : base()
         { }
 
-        public static NpgsqlClosedState Instance {
+        public static NpgsqlClosedState Instance 
+        {
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Instance");
@@ -62,9 +64,9 @@ namespace Npgsql
         /// to resolve it as a host name, when it should just convert it to an IP address.
         /// </summary>
         /// <param name="HostName"></param>
-        private static IPAddress ResolveIPHost(String HostName)
+        private static IPAddress[] ResolveIPHost(String HostName)
         {
-            return Dns.GetHostAddresses(HostName)[0];
+            return Dns.GetHostAddresses(HostName);
         }
 
         public override void Open(NpgsqlConnector context)
@@ -79,11 +81,12 @@ namespace Npgsql
                 tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
                 Stream stream = tcpc.GetStream();*/
                 
-                Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-                
                 /*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
 
                 //socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+                
+                
+                /*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
                 
                 IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
@@ -102,6 +105,44 @@ namespace Npgsql
                     socket.Close();
                     throw;
                 }
+                */
+
+                IPAddress[] ips = ResolveIPHost(context.Host);
+                Socket socket = null;
+
+                // try every ip address of the given hostname, use the first reachable one
+                foreach (IPAddress ip in ips)
+                {
+                    NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ip);
+
+                    IPEndPoint ep = new IPEndPoint(ip, context.Port);
+                    socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+                    try
+                    {
+                        IAsyncResult result = socket.BeginConnect(ep, null, null);
+
+                        if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout * 1000, true))
+                        {
+                            socket.Close();
+                            throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+                        }
+
+                        socket.EndConnect(result);
+    
+                        // connect was successful, leave the loop
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
+                        socket.Close();
+                        throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e );
+                    }
+                }
+    
+                if (socket == null || !socket.Connected)
+                    throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host) );
 
                 Stream stream = new NetworkStream(socket, true);
 
