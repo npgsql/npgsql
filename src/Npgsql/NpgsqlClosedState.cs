@@ -137,7 +137,6 @@ namespace Npgsql
                     {
                         NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
                         socket.Close();
-                        throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e );
                     }
                 }
     
