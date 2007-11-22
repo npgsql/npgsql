@@ -117,6 +117,7 @@
     </Compile>
     <Compile Include="Npgsql\NpgsqlCopyOutState.cs" />
     <Compile Include="Npgsql\NpgsqlCopyOutStream.cs" />
+    <Compile Include="Npgsql\NpgsqlCopySerializer.cs" />
     <Compile Include="Npgsql\NpgsqlDataAdapter.cs">
       <SubType>Component</SubType>
     </Compile>
