@@ -201,6 +201,9 @@ namespace Npgsql
         /// <li>
         /// SyncNotification:   Specifies if Npgsql should use synchronous notifications.
         /// </li>
+        /// <li>
+        /// SearchPath: Changes search path to specified and public schemas.
+        /// </li>
         /// </ul>
         /// </summary>
         /// <value>The connection string that includes the server name,

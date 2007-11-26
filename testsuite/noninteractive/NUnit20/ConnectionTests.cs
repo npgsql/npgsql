@@ -80,5 +80,46 @@ namespace NpgsqlTests
                 Assert.AreEqual(e.Message, "Connection refused");
             }
         }
+		
+		[Test]
+        [ExpectedException(typeof(NpgsqlException))]
+        public void ConnectionStringWithEqualSignValue()
+        {
+            
+            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j==");
+            
+            conn.Open();
+            
+        }
+        
+        [Test]
+        [ExpectedException(typeof(NpgsqlException))]
+        public void ConnectionStringWithSemicolonSignValue()
+        {
+            
+            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password='j;'");
+            
+            conn.Open();
+            
+        }
+        
+        [Test]
+        public void SearchPathSupport()
+        {
+            
+            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Password=j;searchpath=public");
+
+            conn.Open();
+            
+            NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);
+            
+            String searchpath = (String) c.ExecuteScalar();
+            
+            Assert.AreEqual("public, public", searchpath );
+            
+
+            
+        }
+		
     }
 }

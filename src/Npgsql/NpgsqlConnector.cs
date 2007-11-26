@@ -754,6 +754,15 @@ namespace Npgsql
                 NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UNICODE", this);
                 commandEncoding.ExecuteNonQuery();
             }
+            
+            if (ConnectionString.ToString(ConnectionStringKeys.SearchPath).Length!=0)
+            {
+                NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+                p.Value = ConnectionString.ToString(ConnectionStringKeys.SearchPath);
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
+                commandSearchPath.Parameters.Add(p);
+                commandSearchPath.ExecuteNonQuery();
+            }
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private

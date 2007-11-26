@@ -395,6 +395,7 @@ namespace Npgsql
         public static readonly String SslMode               = "SSLMODE";
         public static readonly String Encoding              = "ENCODING";
         public static readonly String Timeout               = "TIMEOUT";
+        public static readonly String SearchPath            = "SEARCHPATH";
         
         // These are for the connection pool
         public static readonly String Pooling               = "POOLING";
