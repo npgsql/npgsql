@@ -71,6 +71,18 @@ namespace NpgsqlTests
             Assert.AreEqual(":Parameter3", command.Parameters[2].ParameterName);
             Assert.AreEqual("Parameter4", command.Parameters[3].ParameterName);
         }
+        
+        [Test]
+        public void ParameterNameWithSpace()
+        {
+            NpgsqlCommand command = new NpgsqlCommand();
+
+            // Add parameters.
+            command.Parameters.Add(new NpgsqlParameter(":Parameter1 ", DbType.Boolean));
+            
+            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
+            
+        }
 
         [Test]
         public void EmptyQuery()
@@ -2327,6 +2339,22 @@ namespace NpgsqlTests
             
             
         }
+        
+        [Test]
+        public void GreaterThanInQueryStringWithPrepare()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select count(*) from tablea where field_serial >:param1", _conn);
+            
+            command.Parameters.Add(":param1", 1);
+            
+
+            command.Prepare();
+            command.ExecuteScalar();
+            
+            
+            
+        }
+
     }
 }
 
