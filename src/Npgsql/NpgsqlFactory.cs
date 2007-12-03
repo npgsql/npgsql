@@ -75,6 +75,11 @@ namespace Npgsql
             return new NpgsqlParameter();
         }
 
+		public override DbConnectionStringBuilder CreateConnectionStringBuilder()
+		{
+			return new NpgsqlConnectionStringBuilder();
+		}
+
         #region IServiceProvider Members
 
         public object GetService(Type serviceType)

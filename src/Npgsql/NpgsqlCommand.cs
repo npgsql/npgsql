@@ -1530,7 +1530,7 @@ namespace Npgsql
             if (Connector != null)
                 timeout = Connector.CommandTimeout;
             else
-                timeout = ConnectionStringDefaults.CommandTimeout;
+                timeout = (int) NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout);
         }
 
         private void ClearPoolAndThrowException(Exception e)

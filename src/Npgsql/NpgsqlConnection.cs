@@ -73,7 +73,10 @@ namespace Npgsql
         private static readonly String CLASSNAME = "NpgsqlConnection";
         private static ResourceManager resman = new System.Resources.ResourceManager(typeof(NpgsqlConnection));
 
-        /// <summary>
+		// Parsed connection string cache
+		private static Cache<NpgsqlConnectionStringBuilder> cache = new Cache<NpgsqlConnectionStringBuilder>();
+
+		/// <summary>
         /// Occurs on NoticeResponses from the PostgreSQL backend.
         /// </summary>
         public event NoticeEventHandler			           Notice;
@@ -106,14 +109,13 @@ namespace Npgsql
         // Set this when disposed is called.
         private bool                                   disposed = false;
 
-        // Connection string values.
-        private NpgsqlConnectionString                 connection_string;
+		// Strong-typed ConnectionString values
+		private NpgsqlConnectionStringBuilder          settings;
 
         // Connector being used for the active connection.
         private NpgsqlConnector                        connector = null;
 
         private NpgsqlPromotableSinglePhaseNotification promotable = null;
-
 
         /// <summary>
         /// Initializes a new instance of the
@@ -131,9 +133,14 @@ namespace Npgsql
         public NpgsqlConnection(String ConnectionString)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
-            
-            connection_string = NpgsqlConnectionString.ParseConnectionString(ConnectionString);
-            LogConnectionString();
+
+			NpgsqlConnectionStringBuilder builder = cache[ConnectionString];
+			if (builder == null)
+				settings = new NpgsqlConnectionStringBuilder(ConnectionString);
+			else
+				settings = builder.Clone();
+
+			LogConnectionString();
 
             NoticeDelegate = new NoticeEventHandler(OnNotice);
             NotificationDelegate = new NotificationEventHandler(OnNotification);
@@ -220,7 +227,7 @@ namespace Npgsql
         public override String ConnectionString {
             get
             {
-                return connection_string.ToString();
+				return settings.ConnectionString;
             }
             set
             {
@@ -228,7 +235,11 @@ namespace Npgsql
                 // we cannot change it while we own a connector.
                 CheckConnectionClosed();
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "ConnectionString", value);
-                connection_string = NpgsqlConnectionString.ParseConnectionString(value);
+				NpgsqlConnectionStringBuilder builder = cache[value];
+				if (builder == null)
+					settings = new NpgsqlConnectionStringBuilder(value);
+				else
+					settings = builder.Clone();
                 LogConnectionString();
             }
         }
@@ -240,7 +251,7 @@ namespace Npgsql
         public String Host {
             get
             {
-                return connection_string.ToString(ConnectionStringKeys.Host);
+				return settings.Host;
             }
         }
 
@@ -251,7 +262,7 @@ namespace Npgsql
         public Int32 Port {
             get
             {
-                return connection_string.ToInt32(ConnectionStringKeys.Port, ConnectionStringDefaults.Port);
+				return settings.Port;
             }
         }
 
@@ -262,7 +273,7 @@ namespace Npgsql
         public Boolean SSL {
             get
             {
-                return connection_string.ToBool(ConnectionStringKeys.SSL);
+				return settings.SSL;
             }
         }
 
@@ -279,7 +290,7 @@ namespace Npgsql
         public override Int32 ConnectionTimeout {
             get
             {
-                return connection_string.ToInt32(ConnectionStringKeys.Timeout, ConnectionStringDefaults.Timeout);
+				return settings.Timeout;
             }
         }
         
@@ -297,7 +308,7 @@ namespace Npgsql
         public Int32 ConnectionLifeTime {
             get
             {
-                return connection_string.ToInt32(ConnectionStringKeys.ConnectionLifeTime, ConnectionStringDefaults.ConnectionLifeTime);
+				return settings.ConnectionLifeTime;
             }
         }
 
@@ -313,17 +324,17 @@ namespace Npgsql
         public override String Database {
             get
             {
-                return connection_string.ToString(ConnectionStringKeys.Database);
+				return settings.Database;
             }
         }
 
         /// <summary>
         /// Gets the database server name.
         /// </summary>
-        public override string DataSource
-        {
-            get { return connection_string.ToString(ConnectionStringKeys.Host); }
-        }
+		public override string DataSource
+		{
+			get { return settings.Host; }
+		}
         
         /// <summary>
         /// Gets flag indicating if we are using Synchronous notification or not.
@@ -331,10 +342,7 @@ namespace Npgsql
         /// </summary>
         public Boolean SyncNotification
         {
-            get
-            {
-                return connection_string.ToBool(ConnectionStringKeys.SyncNotification, ConnectionStringDefaults.SyncNotification);
-            }
+			get { return settings.SyncNotification; }
         }
 
         /// <summary>
@@ -456,10 +464,10 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
 
             // Check if there is any missing argument.
-            if (! connection_string.Contains(ConnectionStringKeys.Host))
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"), ConnectionStringKeys.Host);
-            if (! connection_string.Contains(ConnectionStringKeys.UserName))
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"), ConnectionStringKeys.UserName);
+            if (! settings.ContainsKey(Keywords.Host))
+                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"), NpgsqlConnectionStringBuilder.GetKeyName(Keywords.Host));
+            if (! settings.ContainsKey(Keywords.UserName))
+				throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"), NpgsqlConnectionStringBuilder.GetKeyName(Keywords.UserName));
 
             // Get a Connector.  The connector returned is guaranteed to be connected and ready to go.
             connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector (this);
@@ -496,7 +504,7 @@ namespace Npgsql
 
             Close();
 
-            connection_string[ConnectionStringKeys.Database] = dbName;
+			settings[Keywords.Database] = dbName;
 
             Open();
         }
@@ -645,76 +653,58 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Gets the NpgsqlConnectionString containing the parsed connection string values.
-        /// </summary>
-        internal NpgsqlConnectionString ConnectionStringValues {
-            get
-            {
-                return connection_string;
-            }
-        }
+
+		/// <summary>
+		/// Gets the NpgsqlConnectionStringBuilder containing the parsed connection string values.
+		/// </summary>
+		internal NpgsqlConnectionStringBuilder ConnectionStringValues
+		{
+			get { return settings; }
+		}
 
         /// <summary>
         /// User name.
         /// </summary>
-        internal String UserName {
-            get
-            {
-                return connection_string.ToString(ConnectionStringKeys.UserName);
-            }
-        }
+		internal String UserName
+		{
+			get { return settings.UserName; }
+		}
 
         /// <summary>
         /// Password.
         /// </summary>
-        internal String Password {
-            get
-            {
-                return connection_string.ToString(ConnectionStringKeys.Password);
-            }
-        }
+		internal String Password
+		{
+			get { return settings.Password; }
+		}
 
         /// <summary>
         /// Determine if connection pooling will be used for this connection.
         /// </summary>
-        internal Boolean Pooling {
-            get
-            {
-                return (
-                           connection_string.ToBool(ConnectionStringKeys.Pooling, ConnectionStringDefaults.Pooling) &&
-                           connection_string.ToInt32(ConnectionStringKeys.MaxPoolSize, ConnectionStringDefaults.MaxPoolSize) > 0
-                       );
-            }
-        }
+		internal Boolean Pooling
+		{
+			get { return (settings.Pooling && (settings.MaxPoolSize > 0)); }
+		}
 
-        internal Int32 MinPoolSize {
-            get
-            {
-                return connection_string.ToInt32(ConnectionStringKeys.MinPoolSize, 0, MaxPoolSize, ConnectionStringDefaults.MinPoolSize);
-            }
-        }
+		internal Int32 MinPoolSize
+		{
+			get { return settings.MinPoolSize; }
+		}
 
-        internal Int32 MaxPoolSize {
-            get
-            {
-                return connection_string.ToInt32(ConnectionStringKeys.MaxPoolSize, 0, 1024, ConnectionStringDefaults.MaxPoolSize);
-            }
-        }
+		internal Int32 MaxPoolSize
+		{
+			get { return settings.MaxPoolSize; }
+		}
 
-        internal Int32 Timeout {
-            get
-            {
-                return connection_string.ToInt32(ConnectionStringKeys.Timeout, 0, 1024, ConnectionStringDefaults.Timeout);
-            }
-        }
+		internal Int32 Timeout
+		{
+			get { return settings.Timeout; }
+		}
 
-        internal Boolean Enlist {
-            get
-            {
-                return connection_string.ToBool(ConnectionStringKeys.Enlist, ConnectionStringDefaults.Enlist);
-            }
-        }
+		internal Boolean Enlist
+		{
+			get { return settings.Enlist; }
+		}
 
 
 
@@ -787,10 +777,10 @@ namespace Npgsql
         /// </summary>
         private void LogConnectionString()
         {
-            foreach (DictionaryEntry DE in connection_string)
-            {
-                NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, DE.Key, DE.Value);
-            }
+			foreach (string key in settings.Keys)
+			{
+				NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, key, settings[key]);
+			}
         }
 
         private void CheckConnectionOpen()

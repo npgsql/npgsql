@@ -452,7 +452,7 @@ namespace Npgsql
             ConnectorQueue           Queue;
 
             // Find the queue.
-            Queue = (ConnectorQueue)PooledConnectors[Connector.ConnectionString.ToString()];
+            Queue = (ConnectorQueue)PooledConnectors[Connector.ConnectionString];
 
             if (Queue == null)
                 return;  // Queue may be emptied by connection problems. See ClearPool below.

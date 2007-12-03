@@ -54,9 +54,9 @@ namespace Npgsql
     internal class NpgsqlConnector
     {
         // Immutable.
-        internal NpgsqlConnectionString                ConnectionString;
+        private NpgsqlConnectionStringBuilder         settings;
 
-        /// <summary>
+		/// <summary>
         /// Occurs on NoticeResponses from the PostgreSQL backend.
         /// </summary>
         internal event NoticeEventHandler			         Notice;
@@ -136,9 +136,9 @@ namespace Npgsql
         /// Constructor.
         /// </summary>
         /// <param name="Shared">Controls whether the connector can be shared.</param>
-        public NpgsqlConnector(NpgsqlConnectionString ConnectionString, bool Pooled, bool Shared)
+        public NpgsqlConnector(NpgsqlConnectionStringBuilder ConnectionString, bool Pooled, bool Shared)
         {
-            this.ConnectionString = ConnectionString;
+            this.settings = ConnectionString;
             _connection_state = ConnectionState.Closed;
             _pooled = Pooled;
             _shared = Shared;
@@ -156,83 +156,56 @@ namespace Npgsql
 
         internal String Host
         {
-            get
-            {
-                return ConnectionString.ToString(ConnectionStringKeys.Host);
-            }
+			get { return settings.Host; }
         }
 
         internal Int32 Port
         {
-            get
-            {
-                return ConnectionString.ToInt32(ConnectionStringKeys.Port, ConnectionStringDefaults.Port);
-            }
+			get { return settings.Port; }
         }
 
-        internal String Database
-        {
-            get
-            {
-                return ConnectionString.ToString(ConnectionStringKeys.Database, UserName);
-            }
-        }
+		internal String Database
+		{
+			get
+			{
+				return settings.ContainsKey(Keywords.Database) ? settings.Database : settings.UserName;
+			}
+		}
 
         internal String UserName
         {
-            get
-            {
-                return ConnectionString.ToString(ConnectionStringKeys.UserName);
-            }
-        }
+			get { return settings.UserName; }
+		}
 
         internal String Password
         {
-            get
-            {
-                return ConnectionString.ToString(ConnectionStringKeys.Password);
-            }
-        }
+			get { return settings.Password; }
+		}
 
         internal Boolean SSL
         {
-            get
-            {
-                return ConnectionString.ToBool(ConnectionStringKeys.SSL);
-            }
-        }
+			get { return settings.SSL; }
+		}
         
         internal SslMode SslMode
         {
-            get
-            {
-                return ConnectionString.ToSslMode(ConnectionStringKeys.SslMode);
-            }
-        }
+			get { return settings.SslMode; }
+		}
         
         internal Int32 ConnectionTimeout
         {
-            get
-            {
-                return ConnectionString.ToInt32(ConnectionStringKeys.Timeout, ConnectionStringDefaults.Timeout);
-            }
-        }
+			get { return settings.Timeout; }
+		}
 
         internal Int32 CommandTimeout
         {
-            get
-            {
-                return ConnectionString.ToInt32(ConnectionStringKeys.CommandTimeout, ConnectionStringDefaults.CommandTimeout);
-            }
-        }
+			get { return settings.CommandTimeout; }
+		}
 
         internal Boolean Enlist
         {
-            get
-            {
-                return ConnectionString.ToBool(ConnectionStringKeys.Enlist, ConnectionStringDefaults.Enlist);
-            }
-        }
+			get { return settings.Enlist; }
+		}
         
 
         /// <summary>
@@ -245,6 +218,13 @@ namespace Npgsql
             }
         }
 
+		/// <summary>
+		/// Return Connection String.
+		/// </summary>
+		internal string ConnectionString
+		{
+			get { return settings.ConnectionString; }
+		}
 
         // State
         internal void Query (NpgsqlCommand queryCommand)
@@ -663,20 +643,10 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
-            ProtocolVersion      PV;
-
             // If Connection.ConnectionString specifies a protocol version, we will
             // not try to fall back to version 2 on failure.
-            if (ConnectionString.Contains(ConnectionStringKeys.Protocol))
-            {
-                PV = ConnectionString.ToProtocolVersion(ConnectionStringKeys.Protocol);
-            }
-            else
-            {
-                PV = ProtocolVersion.Unknown;
-            }
 
-            _backendProtocolVersion = (PV == ProtocolVersion.Unknown) ? ProtocolVersion.Version3 : PV;
+			_backendProtocolVersion = (settings.Protocol == ProtocolVersion.Unknown) ? ProtocolVersion.Version3 : settings.Protocol;
 
             // Reset state to initialize new connector in pool.
             Encoding = Encoding.Default;
@@ -689,7 +659,7 @@ namespace Npgsql
 
             // Check for protocol not supported.  If we have been told what protocol to use,
             // we will not try this step.
-            if (_mediator.Errors.Count > 0 && PV == ProtocolVersion.Unknown)
+			if (_mediator.Errors.Count > 0 && settings.Protocol == ProtocolVersion.Unknown)
             {
                 // If we attempted protocol version 3, it may be possible to drop back to version 2.
                 if (BackendProtocolVersion == ProtocolVersion.Version3)
@@ -747,18 +717,17 @@ namespace Npgsql
 
             //NpgsqlCommand commandEncoding1 = new NpgsqlCommand("show client_encoding", _connector);
             //String clientEncoding1 = (String)commandEncoding1.ExecuteScalar();
-
-            if (ConnectionString.ToString(ConnectionStringKeys.Encoding, ConnectionStringDefaults.Encoding).ToUpper(CultureInfo.InvariantCulture) == "UNICODE")
+			if (settings.Encoding.ToUpperInvariant() == "UNICODE")
             {
                 Encoding = Encoding.UTF8;
                 NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UNICODE", this);
                 commandEncoding.ExecuteNonQuery();
             }
             
-            if (ConnectionString.ToString(ConnectionStringKeys.SearchPath).Length!=0)
+			if (!string.IsNullOrEmpty(settings.SearchPath))
             {
                 NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-                p.Value = ConnectionString.ToString(ConnectionStringKeys.SearchPath);
+				p.Value = settings.SearchPath;
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
                 commandSearchPath.Parameters.Add(p);
                 commandSearchPath.ExecuteNonQuery();
@@ -793,7 +762,7 @@ namespace Npgsql
         internal void CancelRequest()
         {
             
-            NpgsqlConnector CancelConnector = new NpgsqlConnector(ConnectionString, false, false);
+            NpgsqlConnector CancelConnector = new NpgsqlConnector(settings, false, false);
             
             CancelConnector._backend_keydata = BackEndKeyData;
             
