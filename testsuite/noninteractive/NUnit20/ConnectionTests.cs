@@ -24,7 +24,7 @@
 using System;
 using Npgsql;
 using System.Data;
-
+using System.Resources;
 using NUnit.Framework;
 
 namespace NpgsqlTests
@@ -45,6 +45,33 @@ namespace NpgsqlTests
 
             Assert.AreEqual("template1", result);
         }
+
+		[Test]
+		public void ChangeDatabaseTestConnectionCache()
+		{
+			NpgsqlConnection conn1 = new NpgsqlConnection(_connString);
+			NpgsqlConnection conn2 = new NpgsqlConnection(_connString);
+
+			NpgsqlCommand command;
+
+			//	connection 1 change database
+			conn1.Open();
+			conn1.ChangeDatabase("template1");
+			command = new NpgsqlCommand("select current_database()", conn1);
+			string db1 = (String)command.ExecuteScalar();
+
+			Assert.AreEqual("template1", db1);
+
+			//	connection 2 's database should not changed, so should different from conn1
+			conn2.Open();
+			command = new NpgsqlCommand("select current_database()", conn2);
+			string db2 = (String)command.ExecuteScalar();
+
+			Assert.AreNotEqual(db1, db2);
+
+			conn1.Close();
+			conn2.Close();
+		}
 
         [Test]
         [ExpectedException(typeof(InvalidOperationException))]
@@ -77,7 +104,10 @@ namespace NpgsqlTests
 
             catch (NpgsqlException e)
             {
-                Assert.AreEqual(e.Message, "Connection refused");
+				Type type_NpgsqlState = typeof(NpgsqlConnection).Assembly.GetType("Npgsql.NpgsqlState");
+				ResourceManager resman = new ResourceManager(type_NpgsqlState);
+				string expected = string.Format(resman.GetString("Exception_FailedConnection"), "127.0.0.1");
+				Assert.AreEqual(expected, e.Message);
             }
         }
 		
@@ -107,8 +137,7 @@ namespace NpgsqlTests
         public void SearchPathSupport()
         {
             
-            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Password=j;searchpath=public");
-
+            NpgsqlConnection conn = new NpgsqlConnection(_connString + ";searchpath=public");
             conn.Open();
             
             NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);

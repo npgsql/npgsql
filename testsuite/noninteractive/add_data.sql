@@ -38,4 +38,4 @@ insert into tableE(field_circle) values ( '< (4, 3), 5 >'::circle );
 
 insert into tableF(field_bytea) values ('\123\456');	
 
-insert into tableG(field_timestamp_with_timezone) values ('2002-02-02 09:00:23.345');
+insert into tableG(field_timestamp_with_timezone) values ('2002-02-02 09:00:23.345Z');

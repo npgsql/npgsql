@@ -29,7 +29,7 @@ using System.Data;
 using System.Globalization;
 using System.Net;
 using NpgsqlTypes;
-
+using System.Resources;
 
 namespace NpgsqlTests
 {
@@ -649,16 +649,8 @@ namespace NpgsqlTests
         [Test]
         public void FunctionReturnVoid()
         {
-            NpgsqlCommand command = new NpgsqlCommand("test(:a)", _conn);
+			NpgsqlCommand command = new NpgsqlCommand("testreturnvoid()", _conn);
             command.CommandType = CommandType.StoredProcedure;
-            
-            NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int32);
-            
-            p.Value = 3;
-            
-            command.Parameters.Add(p);
-            
-                        
             command.ExecuteNonQuery();
         }
         
@@ -949,7 +941,7 @@ namespace NpgsqlTests
             DateTime d = (DateTime)command.ExecuteScalar();
             
             
-            Assert.AreEqual("2002-02-02 16:00:23Z", d.ToString("u"));
+            Assert.AreEqual("2002-02-02 09:00:23Z", d.ToString("u"));
         }
 
         [Test]
@@ -959,7 +951,7 @@ namespace NpgsqlTests
             
             String s = command.ExecuteScalar().ToString();
            
-            Assert.AreEqual("2002-02-02 16:00:23Z", s);
+            Assert.AreEqual("2002-02-02 09:00:23Z", s);
         }
 
 
@@ -2002,7 +1994,9 @@ namespace NpgsqlTests
             }
             catch (InvalidOperationException e)
             {
-                Assert.AreEqual(e.Message, "invalidfunctionname does not exist in pg_proc");
+				ResourceManager resman = new ResourceManager(typeof(NpgsqlCommandBuilder));
+				string expected = string.Format(resman.GetString("Exception_InvalidFunctionName"), "invalidfunctionname");
+                Assert.AreEqual(expected, e.Message);
             }
         }
         
