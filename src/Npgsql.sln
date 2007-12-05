@@ -1,7 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual C# Express 2005
+# Visual Studio 2005
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "Npgsql.csproj", "{F37A690A-A55C-4684-BDE1-E8A45D90BD61}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlTests", "..\testsuite\noninteractive\NUnit20\NpgsqlTests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +15,10 @@ Global
 		{F37A690A-A55C-4684-BDE1-E8A45D90BD61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F37A690A-A55C-4684-BDE1-E8A45D90BD61}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F37A690A-A55C-4684-BDE1-E8A45D90BD61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
