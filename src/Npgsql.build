@@ -99,7 +99,9 @@
                 <include name="${src.dir}/Npgsql/PGUtil.ja.resx"/>
                 <include name="${src.dir}/Npgsql/PGUtil.zh-CN.resx"/>
                 <include name="${src.dir}/Npgsql/PGUtil.resx"/>
-                <include name="${src.dir}/Npgsql/*.resx"/>
+                <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.ja.resx"/>
+                <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.zh-CN.resx"/>
+                <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.resx"/>
 
             </resources>
         </resgen>
