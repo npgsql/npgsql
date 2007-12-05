@@ -2346,7 +2346,6 @@ namespace NpgsqlTests
             command.ExecuteScalar();
             
             
-            
         }
 
     }

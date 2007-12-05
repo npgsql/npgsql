@@ -1,5 +1,6 @@
 @echo off
 
+
 set PSQL=psql
 set NPGSQL_HOST=127.0.0.1
 set NPGSQL_PORT=5432

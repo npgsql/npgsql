@@ -146,7 +146,6 @@ namespace NpgsqlTests
             
             Assert.AreEqual("public, public", searchpath );
             
-
             
         }
 		
