@@ -117,37 +117,55 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Exception_CommandTimeoutLessZero" xml:space="preserve">
-    <value>コマンドタイムアウトはゼロ以下に設定できません.</value>
+  <data name="Log_ErrorResponse" xml:space="preserve">
+    <value>サーバーからのエラー完了応答メッセージ: {0}.</value>
   </data>
-  <data name="Exception_SetConnectionInTransaction" xml:space="preserve">
-    <value>接続・プロパティは、トランザクションのコミット前に変更でききません.</value>
+  <data name="Log_NoticeResponse" xml:space="preserve">
+    <value>サーバからの通知メッセージ: {0}.</value>
   </data>
-  <data name="Exception_SetTransactionInTransaction" xml:space="preserve">
-    <value>トランザクション・プロパティは、トランザクションのコミット前に変更でききません.</value>
+  <data name="Log_AuthenticationOK" xml:space="preserve">
+    <value>認証OKを受け取りました。</value>
   </data>
-  <data name="Exception_CommandTypeTableDirect" xml:space="preserve">
-    <value>テキストのみのストアドプロシジャ・タイプはサポートされます!</value>
+  <data name="Log_AuthenticationClearTextRequest" xml:space="preserve">
+    <value>サーバは、クリアテキストのパスワード認証を要求しました。</value>
   </data>
-  <data name="Exception_BackendErrors" xml:space="preserve">
-    <value>バックエンドによって報告されたエラーがあります.</value>
+  <data name="Log_AuthenticationMD5Request" xml:space="preserve">
+    <value>サーバは、MD5のパスワード認証を要求しました。</value>
   </data>
-  <data name="Exception_MediatorErrors" xml:space="preserve">
-    <value> {0}() に間違いがあります:</value>
+  <data name="Exception_AuthenticationMethodNotSupported" xml:space="preserve">
+    <value>単に、AuthenticationClearTextPassword と AuthenticationMD5Password はサポートされます。 {0} を受け付けます。</value>
   </data>
-  <data name="Exception_MediatorErrors_1P" xml:space="preserve">
-    <value> {0}({1}) に間違いがあります:</value>
+  <data name="Log_ProtocolMessage" xml:space="preserve">
+    <value>{0} メッセージをサーバーから受け取りました。</value>
   </data>
-  <data name="Exception_ConnectionNull" xml:space="preserve">
-    <value>接続は設定されません.</value>
+  <data name="Log_Listen" xml:space="preserve">
+    <value>{0} メッセージをサーバーから受け取りました。</value>
   </data>
-  <data name="Exception_ConnectionNotOpen" xml:space="preserve">
-    <value>接続は開いていません.</value>
+  <data name="Log_CompletedResponse" xml:space="preserve">
+    <value>サーバーからの完了応答メッセージ: {0}.</value>
   </data>
-  <data name="Exception_ParamNotInQuery" xml:space="preserve">
-    <value>パラメーター {0} は、クエリで見つけられません.</value>
+  <data name="Log_ParameterStatus" xml:space="preserve">
+    <value>サーバからのパラメータステータスメッセージ: パラメータ = {0}, 値 = {1}</value>
   </data>
-  <data name="Exception_ConnectionBroken" xml:space="preserve">
-    <value>接続は壊れます。</value>
+  <data name="Log_ConnectedTo" xml:space="preserve">
+    <value>{0}:{1} へ接続されました。</value>
+  </data>
+  <data name="Log_QuerySent" xml:space="preserve">
+    <value>クエリ送付: {0}.</value>
+  </data>
+  <data name="Exception_Ssl_RequestError" xml:space="preserve">
+    <value>SSL接続を要求しました。対象のホストはSSL接続で構成されていません。</value>
+  </data>
+  <data name="Exception_ConnectionTimeout" xml:space="preserve">
+    <value>接続確立時にタイムアウトしました。ConnectionStringでタイムアウトの値を増やして下さい。</value>
+  </data>
+  <data name="Log_ConnectingTo" xml:space="preserve">
+    <value>'{0}' に接続するように試みて下さい。</value>
+  </data>
+  <data name="Log_FailedConnection" xml:space="preserve">
+    <value>'{0}' への接続の確立に失敗しました。</value>
+  </data>
+  <data name="Exception_FailedConnection" xml:space="preserve">
+    <value>'{0}' へ接続の確立に失敗しました。</value>
   </data>
 </root>

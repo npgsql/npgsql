@@ -117,37 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Exception_CommandTimeoutLessZero" xml:space="preserve">
-    <value>コマンドタイムアウトはゼロ以下に設定できません.</value>
-  </data>
-  <data name="Exception_SetConnectionInTransaction" xml:space="preserve">
-    <value>接続・プロパティは、トランザクションのコミット前に変更でききません.</value>
-  </data>
-  <data name="Exception_SetTransactionInTransaction" xml:space="preserve">
-    <value>トランザクション・プロパティは、トランザクションのコミット前に変更でききません.</value>
-  </data>
-  <data name="Exception_CommandTypeTableDirect" xml:space="preserve">
-    <value>テキストのみのストアドプロシジャ・タイプはサポートされます!</value>
-  </data>
-  <data name="Exception_BackendErrors" xml:space="preserve">
-    <value>バックエンドによって報告されたエラーがあります.</value>
-  </data>
-  <data name="Exception_MediatorErrors" xml:space="preserve">
-    <value> {0}() に間違いがあります:</value>
-  </data>
-  <data name="Exception_MediatorErrors_1P" xml:space="preserve">
-    <value> {0}({1}) に間違いがあります:</value>
-  </data>
-  <data name="Exception_ConnectionNull" xml:space="preserve">
-    <value>接続は設定されません.</value>
-  </data>
-  <data name="Exception_ConnectionNotOpen" xml:space="preserve">
-    <value>接続は開いていません.</value>
-  </data>
-  <data name="Exception_ParamNotInQuery" xml:space="preserve">
-    <value>パラメーター {0} は、クエリで見つけられません.</value>
-  </data>
-  <data name="Exception_ConnectionBroken" xml:space="preserve">
-    <value>接続は壊れます。</value>
+  <data name="Exception_TypeNotSupported" xml:space="preserve">
+    <value>この型 {0} はまだサポートされません。</value>
   </data>
 </root>
