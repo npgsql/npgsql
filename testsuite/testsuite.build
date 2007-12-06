@@ -14,7 +14,7 @@
                 <include name="Npgsql.dll" />
             </references>
             <resources>
-                <include name="frmMain.resource"/>
+                <include name="frmMain.resources"/>
                 <include name="testsuite.ico"/>
             </resources>
             <sources>
