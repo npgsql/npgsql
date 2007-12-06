@@ -18,25 +18,31 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
+using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Resources;
+using System.ComponentModel;
+using System.Windows.Forms;
 
-//
-[assembly: AssemblyTitle("")]
-[assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]		
+namespace DesignDialog
+{
+  [AttributeUsage(AttributeTargets.Property)]
+  internal class SysDescriptionAttribute : DescriptionAttribute{
+    private bool replaced = false;
+    private ResourceManager resman;
 
-//
+    public SysDescriptionAttribute(string ResourceName, Type ResourceClass) : base(ResourceName){
+      this.resman = new ResourceManager(ResourceClass);
+    }
 
-[assembly: AssemblyVersion("1.0.*")]
-
-//
-[assembly: AssemblyDelaySign(false)]
-[assembly: AssemblyKeyFile("")]
-[assembly: AssemblyKeyName("")]
+    public override string Description {
+      get {
+        if(this.replaced == false){
+          base.DescriptionValue = this.resman.GetString(base.Description);
+          this.replaced = true;
+        }
+        return base.Description;
+      }
+    }
+  }
+}

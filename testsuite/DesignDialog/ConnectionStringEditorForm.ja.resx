@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 1.3
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">1.3</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1">this is my long string</data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        [base64 mime encoded serialized .NET Framework object]
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        [base64 mime encoded string representing a byte array form of the .NET Framework object]
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used forserialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="tp_connection.Text">
+    <value>接続</value>
+  </data>
+  <data name="btn_refresh.Location" type="System.Drawing.Point, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>296, 160</value>
+  </data>
+  <data name="btn_refresh.Size" type="System.Drawing.Size, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>64, 19</value>
+  </data>
+  <data name="btn_refresh.Text">
+    <value>リフレッシュ</value>
+  </data>
+  <data name="btn_check_connection.Text">
+    <value>接続チェック</value>
+  </data>
+  <data name="gb_add_parms.Text">
+    <value>追加パラメータ</value>
+  </data>
+  <data name="lab_timeout.Text">
+    <value>接続タイムアウト:</value>
+  </data>
+  <data name="cb_select_db.Location" type="System.Drawing.Point, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>24, 160</value>
+  </data>
+  <data name="cb_select_db.Size" type="System.Drawing.Size, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>264, 20</value>
+  </data>
+  <data name="lab_select_db.Text">
+    <value>3. サーバーのデータベースを選んで下さい:</value>
+  </data>
+  <data name="lab_password.Text">
+    <value>パスワード:</value>
+  </data>
+  <data name="lab_username.Text">
+    <value>ユーザ名:</value>
+  </data>
+  <data name="lab_login.Size" type="System.Drawing.Size, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>120, 15</value>
+  </data>
+  <data name="lab_login.Text">
+    <value>2. ログイン情報の指定:</value>
+  </data>
+  <data name="lab_server.Size" type="System.Drawing.Size, System.Drawing, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>184, 14</value>
+  </data>
+  <data name="lab_server.Text">
+    <value>1. サーバ名または、IPアドレスの指定</value>
+  </data>
+  <data name="lab_advise.Text">
+    <value>PostgreSQL-データベースに接続するための項目を設定してください</value>
+  </data>
+  <data name="btn_cancel.Text">
+    <value>キャンセル</value>
+  </data>
+  <data name="btn_help.Text">
+    <value>ヘルプ</value>
+  </data>
+  <data name="$this.Text">
+    <value>データ接続プロパティ</value>
+  </data>
+  <data name="&gt;&gt;pgconn.Type">
+    <value>Npgsql.NpgsqlConnection, Npgsql, Version=0.99.3.0, Culture=neutral, PublicKeyToken=null</value>
+  </data>
+	<data name="&gt;&gt;$this.Name">
+		<value>ConnectionStringEditorForm</value>
+	</data>
+	<data name="&gt;&gt;$this.Type">
+		<value>System.Windows.Forms.Form, System.Windows.Forms, Version=1.0.3300.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+	</data>
+	<data name="MsgboxTitle_Error">
+		<value>エラー</value>
+	</data>
+	<data name="MsgboxTitle_Success">
+		<value>成功</value>
+	</data>
+	<data name="MsgboxText_Success">
+		<value>接続テストは成功しました!</value>
+	</data>
+	<data name="MsgboxText_NoServer">
+		<value>サーバ名かIPアドレスを指定してください!</value>
+	</data>
+	<data name="MsgboxText_NoUser">
+		<value>ユーザ名を指定してください!</value>
+	</data>
+	<data name="MsgboxText_NoDb">
+		<value>データベース名を指定してください!</value>
+	</data>
+	<data name="MsgboxText_TimeoutNaN">
+		<value>接続タイムアウトは数値を指定します!</value>
+	</data>
+	<data name="MsgboxText_TimeoutOverflow">
+		<value>接続タイムアウトは、int32までの値を指定できます;-)</value>
+	</data>
+</root>

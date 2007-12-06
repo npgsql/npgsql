@@ -1,3 +1,23 @@
+//	Copyright (C) 2007 The Npgsql Development Team
+//	Npgsql-devel@pgfoundry.org
+//	http://npgsql.projects.postgresql.org/
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+// 
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+// 
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 using System;
 using System.Drawing;
 using System.Collections;
@@ -9,7 +29,7 @@ using Npgsql;
 namespace DesignDialog
 {
 	/// <summary>
-	/// Form1 の概要の説明です。
+	/// 
 	/// </summary>
 	public class Form1 : System.Windows.Forms.Form
 	{
@@ -17,24 +37,20 @@ namespace DesignDialog
 		private System.Windows.Forms.TextBox textBox1;
 		private System.Windows.Forms.Label label1;
 		/// <summary>
-		/// 必要なデザイナ変数です。
+		/// 
 		/// </summary>
 		private System.ComponentModel.Container components = null;
 
 		public Form1()
 		{
 			//
-			// Windows フォーム デザイナ サポートに必要です。
-			//
 			InitializeComponent();
 
-			//
-			// TODO: InitializeComponent 呼び出しの後に、コンストラクタ コードを追加してください。
 			//
 		}
 
 		/// <summary>
-		/// 使用されているリソースに後処理を実行します。
+		/// 
 		/// </summary>
 		protected override void Dispose( bool disposing )
 		{
@@ -48,10 +64,10 @@ namespace DesignDialog
 			base.Dispose( disposing );
 		}
 
-		#region Windows フォーム デザイナで生成されたコード 
+		#region Windows  
 		/// <summary>
-		/// デザイナ サポートに必要なメソッドです。このメソッドの内容を
-		/// コード エディタで変更しないでください。
+		/// 
+		/// 
 		/// </summary>
 		private void InitializeComponent()
 		{
@@ -101,7 +117,7 @@ namespace DesignDialog
 		#endregion
 
 		/// <summary>
-		/// アプリケーションのメイン エントリ ポイントです。
+		/// 
 		/// </summary>
 		[STAThread]
 		static void Main() 
@@ -116,7 +132,7 @@ namespace DesignDialog
 
 		private void button1_Click(object sender, System.EventArgs e)
 		{
-			Npgsql.Design.ConnectionStringEditorForm Nnn = new Npgsql.Design.ConnectionStringEditorForm();
+			ConnectionStringEditorForm Nnn = new ConnectionStringEditorForm();
 			Nnn.ShowDialog();
 			textBox1.Text = Nnn.ConnectionString.ToString();
 		}
