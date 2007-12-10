@@ -41,7 +41,7 @@ namespace Npgsql
     internal sealed class NpgsqlDescribe
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlDescribe";
+        //private static readonly String CLASSNAME = "NpgsqlDescribe";
 
         private Char _whatToDescribe;
         private String _portalName;

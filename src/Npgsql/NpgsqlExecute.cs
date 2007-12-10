@@ -40,7 +40,7 @@ namespace Npgsql
     internal sealed class NpgsqlExecute
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlExecute";
+        //private static readonly String CLASSNAME = "NpgsqlExecute";
 
         private String _portalName;
         private Int32 _maxRows;

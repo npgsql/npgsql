@@ -41,7 +41,7 @@ namespace Npgsql
     internal sealed class NpgsqlSync
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlSync";
+        //private static readonly String CLASSNAME = "NpgsqlSync";
 
         public void WriteToStream(Stream outputStream, Encoding encoding)
         {

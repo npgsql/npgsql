@@ -44,7 +44,7 @@ namespace Npgsql
     {
 
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlBind";
+        //private static readonly String CLASSNAME = "NpgsqlBind";
 
         private String _portalName;
         private String _preparedStatementName;

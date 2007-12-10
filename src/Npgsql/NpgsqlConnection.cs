@@ -401,7 +401,7 @@ namespace Npgsql
         /// <summary>
         /// Begins a database transaction with the specified isolation level.
         /// </summary>
-        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
+        /// <param name="isolationLevel">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
         /// <returns>An <see cref="System.Data.Common.DbTransaction">DbTransaction</see>
         /// object representing the new transaction.</returns>
         /// <remarks>
@@ -820,7 +820,7 @@ namespace Npgsql
         
         /// <summary>
         /// Returns the supported collections
-        /// <summary>
+        /// </summary>
         public override DataTable GetSchema()
         {
             return NpgsqlSchema.GetMetaDataCollections();

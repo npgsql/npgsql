@@ -73,7 +73,6 @@ namespace Npgsql
         
         
         /// <summary>
-
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
         public NpgsqlParameter()

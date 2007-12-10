@@ -45,7 +45,7 @@ namespace Npgsql
     internal sealed class NpgsqlParse
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlParse";
+        //private static readonly String CLASSNAME = "NpgsqlParse";
 
         private String    _prepareName;
         private String    _queryString;

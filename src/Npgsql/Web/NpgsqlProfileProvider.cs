@@ -848,15 +848,10 @@ namespace Npgsql.Web {
                 }
         */
 
-        ///
-        /// Mangement APIs from ProfileProvider class
-        ///
+        //
+        // Mangement APIs from ProfileProvider class
+        //
         
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="profiles"></param>
-        /// <returns></returns>
         /// <summary>
         /// Generates Query
         /// </summary>

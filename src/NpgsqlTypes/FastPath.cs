@@ -103,7 +103,7 @@ namespace NpgsqlTypes
                     return FastpathV2(fnid, resulttype, args);
                 }
             }
-            catch(IOException e)
+            catch(IOException)
             {
                 conn.ClearPool();
                 throw new NpgsqlException("The Connection is broken.");

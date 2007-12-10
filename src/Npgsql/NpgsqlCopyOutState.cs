@@ -38,7 +38,7 @@ namespace Npgsql
     {
         private static NpgsqlCopyOutState _instance = null;
 
-        private readonly String CLASSNAME = "NpgsqlCopyOutState";
+        //private readonly String CLASSNAME = "NpgsqlCopyOutState";
 
         private NpgsqlCopyFormat _copyFormat = null;
 

@@ -41,7 +41,7 @@ namespace Npgsql
     internal sealed class NpgsqlFlush
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlFlush";
+        //private static readonly String CLASSNAME = "NpgsqlFlush";
 
         public void WriteToStream(Stream outputStream, Encoding encoding)
         {

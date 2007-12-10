@@ -133,7 +133,7 @@ namespace Npgsql
                         // connect was successful, leave the loop
                         break;
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
                         socket.Close();

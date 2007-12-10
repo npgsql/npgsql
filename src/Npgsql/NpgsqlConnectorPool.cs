@@ -126,12 +126,12 @@ namespace Npgsql
         /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
         private Hashtable PooledConnectors;
 
-        /// <value>Map of shared connectors, avaliable to the
+        /*/// <value>Map of shared connectors, avaliable to the
         /// next RequestConnector() call.</value>
         /// <remarks>This hashmap will be indexed by connection string.
         /// This key will hold a list of shared connectors available to be used.</remarks>
         // To be implemented
-        //private Hashtable SharedConnectors;
+        //private Hashtable SharedConnectors;*/
 
                     
         /// <value>Timer for tracking unused connections in pools.</value>
@@ -237,7 +237,6 @@ namespace Npgsql
         /// since they always stay in the shared pool.
         /// </remarks>
         /// <param name="Connector">The connector to release.</param>
-        /// <param name="ForceClose">Force the connector to close, even if it is pooled.</param>
         public void ReleaseConnector (NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
             if (Connector.Pooled)
@@ -408,7 +407,7 @@ namespace Npgsql
         /// finalization. This also means, an NpgsqlConnection was leak. We clear pool count so that
         /// client doesn't end running out of connections from pool. When the connection is finalized, its underlying
         /// socket is closed.
-        /// </summary
+        /// </summary>
         public void FixPoolCountBecauseOfConnectionDisposeFalse(NpgsqlConnection Connection)
         {
             ConnectorQueue           Queue;

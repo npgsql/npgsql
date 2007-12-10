@@ -631,10 +631,10 @@ namespace Npgsql
             this._supportsPrepare = (ServerVersion >= new ServerVersion(7, 3, 0));
         }
 
-        /// <value>Counts the numbers of Connections that share
+        /*/// <value>Counts the numbers of Connections that share
         /// this Connector. Used in Release() to decide wether this
         /// connector is to be moved to the PooledConnectors list.</value>
-        // internal int mShareCount;
+        // internal int mShareCount;*/
 
         /// <summary>
         /// Opens the physical connection to the server.

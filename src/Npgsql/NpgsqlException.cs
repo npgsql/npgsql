@@ -45,7 +45,7 @@ namespace Npgsql
         private IList errors;
 
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlException";
+        //private static readonly String CLASSNAME = "NpgsqlException";
         private static ResourceManager resman = new ResourceManager(typeof(NpgsqlException));
 
         // To allow deserialization.

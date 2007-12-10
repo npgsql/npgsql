@@ -38,7 +38,7 @@ namespace Npgsql
     internal sealed class NpgsqlCancelRequest
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlCancelRequest";
+        //private static readonly String CLASSNAME = "NpgsqlCancelRequest";
 
 
         private static Int32 CancelRequestMessageSize = 16;

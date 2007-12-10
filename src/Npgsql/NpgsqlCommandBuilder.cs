@@ -42,7 +42,7 @@ namespace Npgsql
 	{
 
 		// Logging related values
-		private static readonly String CLASSNAME = "NpgsqlCommandBuilder";
+		//private static readonly String CLASSNAME = "NpgsqlCommandBuilder";
 		private static ResourceManager resman = new ResourceManager(typeof(NpgsqlCommandBuilder));
 		private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 

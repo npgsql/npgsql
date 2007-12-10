@@ -342,7 +342,7 @@ namespace Npgsql
 
         /// <summary>
         /// Gets or sets how command results are applied to the <see cref="System.Data.DataRow">DataRow</see>
-        /// when used by the <see cref="System.Data.Common.DbDataAdapter.Update">Update</see>
+        /// when used by the <see cref="System.Data.Common.DbDataAdapter.Update(DataSet)">Update</see>
         /// method of the <see cref="System.Data.Common.DbDataAdapter">DbDataAdapter</see>.
         /// </summary>
         /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
@@ -502,7 +502,7 @@ namespace Npgsql
                 {
                     result = Int32.Parse(ret_string_tokens[ret_string_tokens.Length - 1]);
                 }
-                catch(Exception e)
+                catch(Exception)
                 {
                     // String didn't contain the expected information. Coincidentally, the default result means exactly that.
                 }
@@ -589,7 +589,7 @@ namespace Npgsql
         /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>
         /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
         /// </summary>
-        /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
+        /// <param name="behavior">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {

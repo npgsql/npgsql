@@ -322,17 +322,11 @@ namespace Npgsql
 
 
         /// <summary>
-
         /// Gets a value indicating whether a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> with the specified parameter name exists in the collection.
-
         /// </summary>
-
         /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object to find.</param>
-
         /// <param name="parameter">A reference to the requested parameter is returned in this out param if it is found in the list.  This value is null if the parameter is not found.</param>
-
         /// <returns><b>true</b> if the collection contains the parameter and param will contain the parameter; otherwise, <b>false</b>.</returns>
-
         public bool TryGetValue(string parameterName, out NpgsqlParameter parameter)
         {
 
