@@ -54,4 +54,4 @@ using System;
 // You can specify all values by your own or you can build default build and revision
 // numbers with the '*' character (the default):
 
-[assembly: AssemblyVersion("1.98.1")]
+[assembly: AssemblyVersion("1.98.2")]
