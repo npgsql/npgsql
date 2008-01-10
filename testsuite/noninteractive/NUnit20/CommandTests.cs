@@ -2347,6 +2347,28 @@ namespace NpgsqlTests
             
             
         }
+        
+        [Test]
+        public void ConnectionStringCommandTimeout()
+        {
+           /* NpgsqlConnection connection = new NpgsqlConnection("Server=localhost; Database=test; User=postgres; Password=12345;
+CommandTimeout=180");
+NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", connection);
+connection.Open();*/
+
+        NpgsqlConnection conn = new NpgsqlConnection(_connString + ";CommandTimeout=180");
+        NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", conn);
+        conn.Open();
+        
+        Assert.AreEqual(180, command.CommandTimeout);
+            
+
+            
+            
+        }
+        
+        
+
 
     }
 }

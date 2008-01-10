@@ -295,6 +295,20 @@ namespace Npgsql
         }
         
         /// <summary>
+        /// Gets the time to wait while trying to execute a command
+        /// before terminating the attempt and generating an error.
+        /// </summary>
+        /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
+        
+        
+        public Int32 CommandTimeout {
+            get
+            {
+				return settings.CommandTimeout;
+            }
+        }
+        
+        /// <summary>
         /// Gets the time to wait before closing unused connections in the pool if the count
         /// of all connections exeeds MinPoolSize.
         /// </summary>

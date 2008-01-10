@@ -1527,8 +1527,8 @@ namespace Npgsql
 
         private void SetCommandTimeout()
         {
-            if (Connector != null)
-                timeout = Connector.CommandTimeout;
+            if (Connection != null)
+                timeout = Connection.CommandTimeout;
             else
                 timeout = (int) NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout);
         }
