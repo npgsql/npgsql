@@ -900,10 +900,7 @@ namespace Npgsql
 
         public override void EnlistTransaction(System.Transactions.Transaction transaction)
         {
-            if (Enlist)
-                promotable.Enlist(transaction);
-            else
-                base.EnlistTransaction(transaction);
+            promotable.Enlist(transaction);
         }
 
         protected

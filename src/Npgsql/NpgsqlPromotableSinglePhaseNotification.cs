@@ -44,7 +44,7 @@ namespace Npgsql
         public void Enlist(Transaction tx)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Enlist");
-            if (tx != null && _connection.Enlist)
+            if (tx != null)
             {
                 _isolationLevel = tx.IsolationLevel;
                 if (!tx.EnlistPromotableSinglePhase(this))
