@@ -420,7 +420,15 @@ namespace Npgsql
         {
             // TODO: Add consistency checks.
 
-            return new NpgsqlCommand(CommandText, Connection, Transaction);
+            NpgsqlCommand clone = new NpgsqlCommand(CommandText, Connection, Transaction);
+            clone.CommandTimeout = CommandTimeout;
+            clone.CommandType = CommandType;
+            clone.DesignTimeVisible = DesignTimeVisible;
+            foreach (NpgsqlParameter parameter in Parameters)
+            {
+                clone.Parameters.Add(((ICloneable)parameter).Clone());
+            }
+            return clone;
         }
 
         /// <summary>
