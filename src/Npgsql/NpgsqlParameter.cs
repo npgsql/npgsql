@@ -432,12 +432,26 @@ namespace Npgsql
                 name = value;
                 if (value == null)
                     name = String.Empty;
-                if ( (name.Equals(String.Empty)) || ((name[0] != ':') && (name[0] != '@')) )
-                    name = ':' + name;
+                // no longer prefix with : so that the name returned is the name set
 
                 name = name.Trim();
                 
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", name);
+            }
+        }
+
+        /// <summary>
+        /// The name scrubbed of any optional marker
+        /// </summary>
+        internal string CleanName
+        {
+            get
+            {
+                string name = ParameterName;
+                if (name[0] == ':' || name[0] == '@')
+                    return name.Length > 1 ? name.Substring(1) : string.Empty;
+                else
+                    return name;
             }
         }
 

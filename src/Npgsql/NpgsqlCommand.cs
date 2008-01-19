@@ -546,7 +546,7 @@ namespace Npgsql
                     
                     foreach (NpgsqlParameter p in Parameters)
                     {
-                        if (nrs.RowDescription.FieldIndex(p.ParameterName.Substring(1)) > -1)
+                        if (nrs.RowDescription.FieldIndex(p.CleanName) > -1)
                         {
                             hasMapping = true;
                             break;
@@ -562,7 +562,7 @@ namespace Npgsql
                             if (((p.Direction == ParameterDirection.Output) ||
                                 (p.Direction == ParameterDirection.InputOutput)) && (i < nrs.RowDescription.NumFields ))
                             {
-                                Int32 fieldIndex = nrs.RowDescription.FieldIndex(p.ParameterName.Substring(1));
+                                Int32 fieldIndex = nrs.RowDescription.FieldIndex(p.CleanName);
                                 
                                 if (fieldIndex > -1)
                                 {
@@ -1153,7 +1153,7 @@ namespace Npgsql
                 if ((p.Direction == ParameterDirection.Output) ||
                 (p.Direction == ParameterDirection.InputOutput))
                 {
-                    sb.Append(String.Format("{0} {1}, ", p.ParameterName.Substring(1), p.TypeInfo.Name));
+                    sb.Append(String.Format("{0} {1}, ", p.CleanName, p.TypeInfo.Name));
                 }
             }
             
@@ -1270,7 +1270,7 @@ namespace Npgsql
                         if (!addProcedureParenthesis)
                         {
                             //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
-                            parameterName = parameters[i].ParameterName;
+                            parameterName = parameters[i].CleanName;
                             //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
                             parseCommand = ReplaceParameterValue(parseCommand, parameterName, "$" + (i+1) + "::" + parameters[i].TypeInfo.Name);
                         }
@@ -1332,7 +1332,7 @@ namespace Npgsql
                         if (!addProcedureParenthesis)
                         {
                             //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
-                            parameterName = parameters[i].ParameterName;
+                            parameterName = parameters[i].CleanName;
                             // The space in front of '$' fixes a parsing problem in 7.3 server
                             // which gives errors of operator when finding the caracters '=$' in
                             // prepare text
@@ -1378,7 +1378,9 @@ namespace Npgsql
         {
         
             String quote_pattern = @"['][^']*[']";
-            String pattern = "[- |\n\r\t,)(;=+/<>]" + parameterName + "([- |\n\r\t,)(;=+/<>]|$)";
+            string parameterMarker = string.Empty;
+            // search parameter marker since it is not part of the name
+            String pattern = "[- |\n\r\t,)(;=+/<>][:|@]" + parameterMarker + parameterName + "([- |\n\r\t,)(;=+/<>]|$)";
             Int32 start, end;
             String withoutquote = result;
             Boolean found = false;
@@ -1403,7 +1405,7 @@ namespace Npgsql
                 found = true;
                 Match match = results[0];
                 start = match.Index;
-                if ((match.Length - parameterName.Length) == 2)
+                if ((match.Length - parameterName.Length) == 3)
                     // If the found string is not the end of the string
                     end = match.Index + match.Length - 1;
                 else

@@ -244,17 +244,19 @@ namespace Npgsql
             Int32 index = 0;
 
             if ((parameterName[0] == ':') || (parameterName[0] == '@'))
-
+            {
                 parameterName = parameterName.Remove(0, 1);
+            }
 
 
 
             foreach (NpgsqlParameter parameter in this)
             {
-
-                if (parameter.ParameterName.Remove(0, 1) == parameterName)
-
+                // allow for optional use of ':' and '@' in the ParameterName property
+                if (parameter.CleanName == parameterName)
+                {
                     return index;
+                }
 
                 index++;
             }
