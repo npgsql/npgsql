@@ -139,7 +139,7 @@ namespace Npgsql.Web
 
             if (pConnectionStringSettings == null || pConnectionStringSettings.ConnectionString.Trim() == "")
             {
-                throw new ProviderException("Connection string cannot be blank.");
+                throw new System.Configuration.Provider.ProviderException("Connection string cannot be blank.");
             }
 
             connectionString = pConnectionStringSettings.ConnectionString;
@@ -175,7 +175,7 @@ namespace Npgsql.Web
             {
                 if (!RoleExists(rolename))
                 {
-                    throw new ProviderException("Role name not found.");
+                    throw new System.Configuration.Provider.ProviderException("Role name not found.");
                 }
             }
 
@@ -190,7 +190,7 @@ namespace Npgsql.Web
                 {
                     if (IsUserInRole(username, rolename))
                     {
-                        throw new ProviderException("User is already in role.");
+                        throw new System.Configuration.Provider.ProviderException("User is already in role.");
                     }
                 }
             }
@@ -264,7 +264,7 @@ namespace Npgsql.Web
 
             if (RoleExists(rolename))
             {
-                throw new ProviderException("Role name already exists.");
+                throw new System.Configuration.Provider.ProviderException("Role name already exists.");
             }
 
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
@@ -308,12 +308,12 @@ namespace Npgsql.Web
         {
             if (!RoleExists(rolename))
             {
-                throw new ProviderException("Role does not exist.");
+                throw new System.Configuration.Provider.ProviderException("Role does not exist.");
             }
 
             if (throwOnPopulatedRole && GetUsersInRole(rolename).Length > 0)
             {
-                throw new ProviderException("Cannot delete a populated role.");
+                throw new System.Configuration.Provider.ProviderException("Cannot delete a populated role.");
             }
 
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
@@ -607,7 +607,7 @@ namespace Npgsql.Web
             {
                 if (!RoleExists(rolename))
                 {
-                    throw new ProviderException("Role name not found.");
+                    throw new System.Configuration.Provider.ProviderException("Role name not found.");
                 }
             }
 
@@ -617,7 +617,7 @@ namespace Npgsql.Web
                 {
                     if (!IsUserInRole(username, rolename))
                     {
-                        throw new ProviderException("User is not in role.");
+                        throw new System.Configuration.Provider.ProviderException("User is not in role.");
                     }
                 }
             }
