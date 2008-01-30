@@ -164,6 +164,8 @@ namespace NpgsqlTypes
                 NativeTypeMapping = new NpgsqlNativeTypeMapping();
                 
                 
+                NativeTypeMapping.AddType("oidvector", NpgsqlDbType.Oidvector, DbType.String, true, null);
+                
                 // Conflicting types should have mapped first the non default mappings.
                 // For example, char, varchar and text map to DbType.String. As the most 
                 // common is to use text with string, it has to be the last mapped, in order
@@ -192,12 +194,12 @@ namespace NpgsqlTypes
                 NativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Boolean, true,
                 new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBit));
 
-                NativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
+                NativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, true,
                 new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBoolean));
 
                 NativeTypeMapping.AddTypeAlias("bool", typeof(Boolean));
                                 
-                NativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false,
+                NativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, true,
                 null);
 
                 NativeTypeMapping.AddTypeAlias("int2", typeof(Int16));
@@ -206,12 +208,12 @@ namespace NpgsqlTypes
                 
                 NativeTypeMapping.AddTypeAlias("int2", typeof(Byte));
                 
-                NativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false,
+                NativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, true,
                 null);
 
                 NativeTypeMapping.AddTypeAlias("int4", typeof(Int32));
 
-                NativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false,
+                NativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, true,
                 null);
 
                 NativeTypeMapping.AddTypeAlias("int8", typeof(Int64));
@@ -226,7 +228,7 @@ namespace NpgsqlTypes
 
                 NativeTypeMapping.AddTypeAlias("float8", typeof(Double));
 
-                NativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, false,
+                NativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true,
                 null);
 
                 NativeTypeMapping.AddTypeAlias("numeric", typeof(Decimal));
@@ -321,6 +323,9 @@ namespace NpgsqlTypes
                 // Create a list of all natively supported postgresql data types.
                 NpgsqlBackendTypeInfo[] TypeInfoList = new NpgsqlBackendTypeInfo[]
                 {
+                    new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof(String),
+                        null),
+                        
                     new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof(String),
                         null),
 
@@ -556,15 +561,23 @@ namespace NpgsqlTypes
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
         public Object ConvertToNative(String BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
-            if (_ConvertBackendToNative != null) {
+                 
+            if (_ConvertBackendToNative != null) 
+            {
                 return _ConvertBackendToNative(this, BackendData, TypeSize, TypeModifier);
-            } else {
-                try {
-                	return Convert.ChangeType(BackendData, Type, CultureInfo.InvariantCulture);
-                } catch {
+            } 
+            else
+            {
+                try 
+                {
+                    return Convert.ChangeType(BackendData, Type, CultureInfo.InvariantCulture);
+                }
+                catch 
+                {
                     return BackendData;
                 }
             }
+            
         }
     }
 

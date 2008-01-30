@@ -917,6 +917,7 @@ namespace Npgsql
 
             String result = text;
 
+                        
             if (type == CommandType.StoredProcedure)
             {
 
@@ -972,6 +973,7 @@ namespace Npgsql
             // This is only needed if query string has parameters. Else, just append the
             // parameter values in order they were put in parameter collection.
 
+        
 
             // If parenthesis don't need to be added, they were added by user with parameter names. Replace them.
             if (!addProcedureParenthesis)
@@ -996,17 +998,17 @@ namespace Npgsql
                             // adding the '::<datatype>' on the end of a parameter is a highly
                             // questionable practice, but it is great for debugging!
                             sb.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
-
+                            
                             // Only add data type info if we are calling an stored procedure.
 
-                            if (type == CommandType.StoredProcedure)
-                            {
+                            /*if (type == CommandType.StoredProcedure)
+                            {*/
                                 sb.Append("::");
                                 sb.Append(p.TypeInfo.Name);
 
                                 if (p.TypeInfo.UseSize && (p.Size > 0))
                                     sb.Append("(").Append(p.Size).Append(")");
-                            }
+                            //}
                         }
 
                     }
@@ -1019,7 +1021,7 @@ namespace Npgsql
 
             else
             {
-
+            
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
                     NpgsqlParameter Param = parameters[i];
@@ -1028,7 +1030,7 @@ namespace Npgsql
                     if ((Param.Direction == ParameterDirection.Input) ||
                          (Param.Direction == ParameterDirection.InputOutput))
 
-
+                        
                         result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.Name + ",";
                 }
 
@@ -1113,7 +1115,7 @@ namespace Npgsql
             NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
             
             c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Text));
-            c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Text));
+            c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
             c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
             
             c.Parameters[0].Value = ReturnType;

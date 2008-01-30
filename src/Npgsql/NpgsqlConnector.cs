@@ -726,11 +726,20 @@ namespace Npgsql
             
 			if (!string.IsNullOrEmpty(settings.SearchPath))
             {
-                NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
 				p.Value = settings.SearchPath;
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
                 commandSearchPath.Parameters.Add(p);
+                commandSearchPath.ExecuteNonQuery();*/
+                
+                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+				p.Value = settings.SearchPath;
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
+                commandSearchPath.Parameters.Add(p);
+                commandSearchPath.ExecuteNonQuery();*/
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
                 commandSearchPath.ExecuteNonQuery();
+                
             }
 
             // Make a shallow copy of the type mapping that the connector will own.
