@@ -737,6 +737,15 @@ namespace Npgsql
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
                 commandSearchPath.Parameters.Add(p);
                 commandSearchPath.ExecuteNonQuery();*/
+                
+                // TODO: Add proper message when finding a semicolon in search_path.
+                // This semicolon could lead to a sql injection security hole as someone could write in connection string:
+                // searchpath=public;delete from table; and it would be executed.
+                
+                if (settings.SearchPath.Contains(";"))
+                    throw new InvalidOperationException();
+                    
+                // This is using string concatenation because set search_path doesn't allow type casting. ::text    
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
                 commandSearchPath.ExecuteNonQuery();
                 
