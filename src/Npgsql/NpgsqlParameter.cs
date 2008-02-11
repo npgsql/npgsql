@@ -170,9 +170,7 @@ namespace Npgsql
 
             this.ParameterName = parameterName;
             
-            type_info = NpgsqlTypesHelper.GetNativeTypeInfo(parameterType);
-            if (type_info == null)
-                throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), parameterType));
+            NpgsqlDbType = parameterType; //Allow the setter to catch any exceptions.
 
             this.size = size;
             source_column = sourceColumn;
@@ -228,9 +226,7 @@ namespace Npgsql
             }
             else
             {
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(parameterType);
-                if (type_info == null)
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), parameterType));
+                NpgsqlDbType = parameterType;//allow the setter to catch exceptions if necessary.
             }
 
         }
@@ -339,7 +335,7 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "DbType");
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgsqlDbType");
 
                 return TypeInfo.NpgsqlDbType;
             }
@@ -347,7 +343,9 @@ namespace Npgsql
             // [TODO] Validate data type.
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
+                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
+                if(value == NpgsqlDbType.Array)
+                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
                 type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value);
                 if (type_info == null)
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));

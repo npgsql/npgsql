@@ -33,9 +33,11 @@ namespace NpgsqlTypes
     {
 
     	// This list used to be ordered. But this ordering would break compiled applications
-	// as enum values would change after each insertion. Now, just append new types.
+    	// as enum values would change after each insertion. Now, just append new types.
 	
-        Bigint,
+        // Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
+        Array = int.MinValue,
+        Bigint = 0,
         Boolean,
         Box,
         Bytea,
@@ -64,6 +66,8 @@ namespace NpgsqlTypes
         Uuid,
         Xml,
         Oidvector
+        
+        
         
     }
 

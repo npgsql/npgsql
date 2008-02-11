@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Data;
 using System.Net;
@@ -77,6 +78,19 @@ namespace NpgsqlTypes
             VerifyDefaultTypesMap();
             return NativeTypeMapping[DbType];
         }
+
+        private static Type TestTypedEnumerator(Type type)
+        {
+        	//We can only work out the element type for IEnumerable<T> not for IEnumerable
+        	//so we are looking for IEnumerable<T> for any value of T.
+        	//So we want to find an interface type where GetGenericTypeDefinition == typeof(IEnumerable<>);
+        	//And we can only safely call GetGenericTypeDefinition() if IsGenericType is true, but if it's false
+        	//then the interface clearly isn't an IEnumerable<T>.
+        	foreach(Type iface in type.GetInterfaces())
+        		if(iface.IsGenericType && iface.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
+        			return iface.GetGenericArguments()[0];
+        	return null;
+        }
         
         
 
@@ -89,7 +103,33 @@ namespace NpgsqlTypes
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetBackendTypeNameFromNpgsqlDbType");
 
             VerifyDefaultTypesMap();
-            return NativeTypeMapping[Type];
+
+            if(NativeTypeMapping.ContainsType(Type))
+            	return NativeTypeMapping[Type];
+            // At this point there is no direct mapping, so we see if we have an array or IEnumerable<T>.
+            // Note that we checked for a direct mapping first, so if there is a direct mapping of a class
+            // which implements IEnumerable<T> we will use that (currently this is only string, which
+            // implements IEnumerable<char>.
+            else if(Type.IsArray)
+        		return NpgsqlNativeTypeInfo.ArrayOf(GetNativeTypeInfo(Type.GetElementType()));
+            else
+            {
+            	Type genericType = TestTypedEnumerator(Type);
+            	if(genericType != null)
+	       			return NpgsqlNativeTypeInfo.ArrayOf(GetNativeTypeInfo(genericType));
+	            else
+	            	return null;
+            }
+        }
+        
+        public static bool DefinedType(Type type)
+        {
+        	return NativeTypeMapping.ContainsType(type);
+        }
+        
+        public static bool DefinedType(object item)
+        {
+        	return DefinedType(item.GetType());
         }
 
         // CHECKME
@@ -440,6 +480,15 @@ namespace NpgsqlTypes
 
 
         }
+        
+        //Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
+        //an array of that type.
+        private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
+        {
+        	return new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType,
+        	                                 DbType.Object, null, new ConvertBackendToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ToArray));
+        }
+
 
         /// <summary>
         /// Attempt to map types by issuing a query against pg_type.
@@ -461,6 +510,11 @@ namespace NpgsqlTypes
             foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList) {
                 NameIndex.Add(TypeInfo.Name, TypeInfo);
                 InList.AppendFormat("{0}'{1}'", ((InList.Length > 0) ? ", " : ""), TypeInfo.Name);
+                
+                //do the same for the equivalent array type.
+                NameIndex.Add("_" + TypeInfo.Name, ArrayTypeInfo(TypeInfo));
+                InList.Append(", '_").Append(TypeInfo.Name).Append('\'');
+
             }
 
             if (InList.Length == 0) {
@@ -497,11 +551,12 @@ namespace NpgsqlTypes
     {
         private ConvertBackendToNativeHandler _ConvertBackendToNative;
 
-        internal Int32           _OID;
-        private String           _Name;
-        private NpgsqlDbType     _NpgsqlDbType;
-        private DbType           _DbType;
-        private Type             _Type;
+        internal Int32              _OID;
+        private String              _Name;
+        private NpgsqlDbType  _NpgsqlDbType;
+        private DbType            _DbType;
+        private Type                _Type;
+        
 
         /// <summary>
         /// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
@@ -534,7 +589,7 @@ namespace NpgsqlTypes
         /// </summary>
         public String Name
         { get { return _Name; } }
-
+        
         /// <summary>
         /// NpgsqlDbType.
         /// </summary>
@@ -592,10 +647,26 @@ namespace NpgsqlTypes
         private ConvertNativeToBackendHandler _ConvertNativeToBackend;
 
         private String           _Name;
+        private string           _CastName;
         private NpgsqlDbType     _NpgsqlDbType;
         private DbType           _DbType;
         private Boolean          _Quote;
         private Boolean          _UseSize;
+        private Boolean           _IsArray = false;
+
+        /// <summary>
+        /// Returns an NpgsqlNativeTypeInfo for an array where the elements are of the type
+        /// described by the NpgsqlNativeTypeInfo supplied.
+        /// </summary>
+        public static NpgsqlNativeTypeInfo ArrayOf(NpgsqlNativeTypeInfo elementType)
+        {
+            if(elementType._IsArray)//we've an array of arrays. It's the inner most elements whose type we care about, so the type we have is fine.
+                return elementType;
+            NpgsqlNativeTypeInfo copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType, false, new ConvertNativeToBackendHandler(new ArrayNativeToBackendTypeConverter(elementType).FromArray));
+            copy._IsArray = true;
+            return copy;
+        }
+        
         
         static NpgsqlNativeTypeInfo()
         {
@@ -612,6 +683,7 @@ namespace NpgsqlTypes
         public NpgsqlNativeTypeInfo(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote, ConvertNativeToBackendHandler ConvertNativeToBackend)
         {
             _Name = Name;
+            _CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
             _NpgsqlDbType = NpgsqlDbType;
             _DbType = DbType;
             _Quote = Quote;
@@ -633,6 +705,21 @@ namespace NpgsqlTypes
         /// </summary>
         public String Name
         { get { return _Name; } }
+        
+        public string CastName
+        {
+            get
+            {
+                return _CastName;
+            }
+        }
+        public bool IsArray
+        {
+            get
+            {
+                return _IsArray;
+            }
+        }
 
         /// <summary>
         /// NpgsqlDbType.
@@ -737,7 +824,7 @@ namespace NpgsqlTypes
         
         }
 
-        private static String QuoteString(String S)
+        internal static String QuoteString(String S)
         {
             return String.Format("'{0}'", S);
             
@@ -885,6 +972,14 @@ namespace NpgsqlTypes
             NameIndex[T.Name] = T;
             NpgsqlDbTypeIndex[T.NpgsqlDbType] = T;
             DbTypeIndex[T.DbType] = T;
+            if(!T.IsArray)
+            {
+                NpgsqlNativeTypeInfo arrayType = NpgsqlNativeTypeInfo.ArrayOf(T);
+                NameIndex[arrayType.Name] = arrayType;
+                NameIndex[arrayType.CastName] = arrayType;
+                NpgsqlDbTypeIndex[arrayType.NpgsqlDbType] = arrayType;
+            }
+
         }
 
         /// <summary>

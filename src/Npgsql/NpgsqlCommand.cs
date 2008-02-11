@@ -1004,7 +1004,7 @@ namespace Npgsql
                             /*if (type == CommandType.StoredProcedure)
                             {*/
                                 sb.Append("::");
-                                sb.Append(p.TypeInfo.Name);
+                                sb.Append(p.TypeInfo.CastName);
 
                                 if (p.TypeInfo.UseSize && (p.Size > 0))
                                     sb.Append("(").Append(p.Size).Append(")");
@@ -1031,7 +1031,7 @@ namespace Npgsql
                          (Param.Direction == ParameterDirection.InputOutput))
 
                         
-                        result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.Name + ",";
+                        result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName + ",";
                 }
 
 
@@ -1274,10 +1274,10 @@ namespace Npgsql
                             //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
                             parameterName = parameters[i].CleanName;
                             //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
-                            parseCommand = ReplaceParameterValue(parseCommand, parameterName, "$" + (i+1) + "::" + parameters[i].TypeInfo.Name);
+                            parseCommand = ReplaceParameterValue(parseCommand, parameterName, "$" + (i+1) + "::" + parameters[i].TypeInfo.CastName);
                         }
                         else
-                            parseCommand += "$" + (i+1) + "::" + parameters[i].TypeInfo.Name;
+                            parseCommand += "$" + (i+1) + "::" + parameters[i].TypeInfo.CastName;
                     }
 
                 }
