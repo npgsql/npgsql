@@ -344,8 +344,8 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
-                if(value == NpgsqlDbType.Array)
-                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                /*if(value == NpgsqlDbType.Array)
+                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));*/
                 type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value);
                 if (type_info == null)
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
