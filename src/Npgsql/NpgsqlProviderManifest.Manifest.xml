@@ -57,5 +57,29 @@
     </Type>
   </Types>
   <Functions>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(Boolean)" Mode="In" />
+    </Function>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(Double)" Mode="In" />
+    </Function>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(DateTime)" Mode="In" />
+    </Function>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(Guid)" Mode="In" />
+    </Function>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(String)" Mode="In" />
+    </Function>
+    <Function Name="COUNT" Aggregate="true" BuiltIn="true">
+      <ReturnType Type="Int64" />
+      <Parameter Name="arg" Type="Collection(Binary)" Mode="In" />
+    </Function>
   </Functions>
 </ProviderManifest>
