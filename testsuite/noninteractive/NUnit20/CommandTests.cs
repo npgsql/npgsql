@@ -2367,6 +2367,56 @@ connection.Open();*/
             
         }
         
+        [Test]
+        public void DateTimeOutOfRangeSuppor()
+        {
+           
+
+        NpgsqlCommand command = new NpgsqlCommand("select '10000.01.01'::timestamp", _conn);
+        
+        Object dt = command.ExecuteScalar();
+        
+            
+            
+        }
+        
+        [Test]
+        public void FunctionCallWithOutParameters()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("testoutparameter", _conn);
+            command.CommandType = CommandType.StoredProcedure;
+
+
+            NpgsqlParameter p = new NpgsqlParameter("a", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Input;
+            p.Value = 4;
+            
+            command.Parameters.Add(p);            
+            
+            p = new NpgsqlParameter("b", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Input;
+            p.Value = 4;
+            
+            command.Parameters.Add(p);
+                        
+            p = new NpgsqlParameter("sum", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Output;
+            
+            command.Parameters.Add(p);            
+            p = new NpgsqlParameter("product", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Output;
+
+            command.Parameters.Add(p);
+            
+
+            command.ExecuteNonQuery();
+            
+            
+
+            Assert.AreEqual(8, command.Parameters["sum"].Value);
+            Assert.AreEqual(16, command.Parameters["product"].Value);
+        }
+        
         
 
 

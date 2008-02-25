@@ -92,3 +92,4 @@ $BODY$
 language 'plpgsql' volatile called on null input security invoker;
 
 
+create or replace function testoutparameter(x int, y int, out sum int, out product int) returns record as 'select $1 + $2 , $1 * $2' language 'sql' ;

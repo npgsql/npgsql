@@ -563,7 +563,6 @@ namespace Npgsql
                                 (p.Direction == ParameterDirection.InputOutput)) && (i < nrs.RowDescription.NumFields ))
                             {
                                 Int32 fieldIndex = nrs.RowDescription.FieldIndex(p.CleanName);
-                                
                                 if (fieldIndex > -1)
                                 {
                                     p.Value = nar[fieldIndex];
@@ -922,7 +921,7 @@ namespace Npgsql
             {
 
                 if (Parameters.Count > 0)
-                    functionReturnsRecord = CheckFunctionReturn("record");
+                    functionReturnsRecord = !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
 
                 functionReturnsRefcursor = CheckFunctionReturn("refcursor");
 
@@ -1059,6 +1058,102 @@ namespace Npgsql
             
             return result;
         }
+        
+        
+        private Boolean CheckFunctionHasOutParameters()
+        {
+            // Check if this function has output parameters.
+            // This is used to enable or not the colum definition list 
+            // when calling functions which return record.
+            // Functions which has out or inout parameters have return record
+            // but doesn't allow column definition list.
+            // See http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519
+            // for discussion about that.
+            
+            
+            // inout parameters are only supported from 8.1+ versions.
+            if (Connection.PostgreSqlVersion < new ServerVersion(8, 1, 0))
+                return false;
+             
+             
+            String outParameterExistanceQuery = "select count(*) > 0 from pg_proc where proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+
+            
+            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
+            // when the schema or procedure name do not contain a quote.
+            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
+
+            String returnRecordQuery;
+
+            StringBuilder parameterTypes = new StringBuilder("");
+
+            
+            // Process parameters
+            
+            foreach(NpgsqlParameter p in Parameters)
+            {
+                if ((p.Direction == ParameterDirection.Input) ||
+                     (p.Direction == ParameterDirection.InputOutput))
+                {
+                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
+                }
+            }
+
+            
+            // Process schema name.
+            
+            String schemaName = String.Empty;
+            String procedureName = String.Empty;
+            
+            
+            String[] fullName = CommandText.Split('.');
+            
+            if (fullName.Length == 2)
+            {
+                returnRecordQuery = "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+
+                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+            }
+            else
+            {
+                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
+                //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
+                returnRecordQuery = "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+                
+                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
+            }
+                
+            
+            
+
+            NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
+            
+            c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
+            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+            
+            c.Parameters[0].Value = parameterTypes.ToString();
+            c.Parameters[1].Value = procedureName;
+
+            if (schemaName != null && schemaName.Length > 0)
+            {
+                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                c.Parameters[2].Value = schemaName;
+            }
+            
+
+            Boolean ret = (Boolean) c.ExecuteScalar();
+
+            // reset any responses just before getting new ones
+            connector.Mediator.ResetResponses();
+            
+            // Set command timeout.
+            connector.Mediator.CommandTimeout = CommandTimeout;
+            
+            return ret;
+
+        }
+        
         
         
         
