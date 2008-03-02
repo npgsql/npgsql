@@ -2,15 +2,15 @@
 
 <title>Npgsql: User's Manual</title>
 
-<meta http-equiv="content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="content-Style-Type" content="text/css">
 <meta http-equiv="expires" content="">
 <meta name="category" content="IT/Database/PostgreSQL/Npgsql/Docs/Internal">
-<meta name="filename" content="state-machine.htm">
+<meta name="filename" content="UserManual.html">
 <meta name="date" content="2002-06-29">
 <meta name="author" content="Francisco Jr.">
 <meta name="robots" content="nofollow">
-<meta name="keywords" content="IT; Database; PostgreSQL; Npgsql; Communication; State Machine; Documentation;">
+<meta name="keywords" content="IT; Database; PostgreSQL; Npgsql; Communication; State Machine; Documentation; .Net; C#; ADO.Net; Mono;">
 <meta name="description" content="This document describes the User's Manual of Npgsql.">
 
 <link rel="stylesheet" href="global.css">
@@ -128,7 +128,7 @@ Server: cvs.pgfoundry.org
 <br />
 Repository: /cvsroot/npgsql
 <br />
-Module name: Npgsql
+Module name: Npgsql2
 <br />
 User: anonymous
 <br />
@@ -145,7 +145,7 @@ cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql login
 Hit the Enter key when prompted for a password (none required):
 <br />
 <pre class="CodeBox">
-cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql checkout Npgsql
+cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql checkout Npgsql2
 </pre>
 
 <p> The code will begin transferring: </p>
@@ -154,27 +154,49 @@ cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql checkout Npgsql
 $ cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql login
 Logging in to :pserver:anonymous@cvs.pgfoundry.org:2401/cvsroot/npgsql
 CVS password:
-$ cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql co Npgsql
-cvs checkout: Updating Npgsql
-cvs checkout: Updating Npgsql/admin
-U Npgsql/admin/release.pl
+$ cvs -d :pserver:anonymous@cvs.pgfoundry.org:/cvsroot/npgsql co Npgsql2
+cvs checkout: Updating Npgsql2
+cvs checkout: Updating Npgsql2/admin
+U Npgsql2/admin/release.pl
 cvs checkout: Updating Npgsql/docs
-U Npgsql/docs/Npgsql.zargo
-U Npgsql/docs/NpgsqlConnectionStateMachine.png
-U Npgsql/docs/SuggestedReadings.htm
+U Npgsql2/docs/Npgsql.zargo
+U Npgsql2/docs/NpgsqlConnectionStateMachine.png
+U Npgsql2/docs/SuggestedReadings.htm
 ...
 </pre>
 
 
 <h3> 2.4 Compiling Npgsql</h3>
 
-<p>The officially supported method for compiling Npgsql is <a href="http://nant.sf.net">NAnt</a>.</p>
+<p>The officially supported method for compiling Npgsql is <a href="http://nant.sf.net">NAnt</a> version 0.86 and above. Version 0.86 is needed because it has support for compiling sattelite resources assemblies.</p>
 
 <p>Simply run <i>nant</i> from  the Npgsql/src/Npgsql folder and you're done. It will create a folder named "build"; see the "build/ms" folder for the resulting assemblies.</p>
 
-<p>To run nUnit tests, simply run <i>nant tests</i>. Note that first you need to prepare the database for testing by executing "add_* scripts" in the Npgsql/src/testsuite/noninteractive folder.
 
-<p>We will provide solution projects for other development platforms such as Visual Studio .Net, SharpDevelop, and MonoDevelop.  (We have already received reports of successful solution projects created for these other environments and will make them available soon.)</p>
+<p>We also have project files for MonoDevelop, Visual Studio.Net and Visual Studio.Net 2008.</p>
+
+
+<h3> 2.5 Running Npgsql Unit tests</h3>
+
+<p> In order to be able to run nunit tests you must first setup your tests database.</p>
+
+<p> First, create a database called npgsql_tests:</p>
+
+<pre class="CodeBox">
+createdb npgsql_tests
+</pre>
+
+<p> Later, create an user called npgsql_tests with password npgsql_tests:</p>
+<pre class="CodeBox">
+createuser -NP npgsql_tests
+</pre>
+
+<p> Now, run the scripts to add tables, functions, data etc. These scripts are located in testsuite/noninteractive folder.</p>
+
+<p>To run nUnit tests, simply run:
+<pre class="CodeBox">
+nant tests
+</pre> 
 
 <h2> <a name="section3"></a>3. Npgsql Usage </h2>
 
@@ -244,6 +266,7 @@ public class NpgsqlUserManual
         /// Sslmode:                    Mode for ssl connection control. 
         /// ConnectionLifeTime:         Time to wait before closing unused connections in the pool, in seconds. Default is 15.
         /// SyncNotification:           Specifies if Npgsql should use synchronous notifications
+        /// SearchPath:                 Changes search path to specified and public schemas.
         Encoding can be ASCII or UNICODE. If your application uses characters with accents and it doesn't work with the default settings, try changing it.
         Min pool size, when specified, will make NpgsqlConnection pre-allocate the specified number of connections with the server.
         Sslmode can be one of the following values: 
@@ -745,7 +768,7 @@ public class c
 </p>
 
 <h3> Using output parameters in a query </h3>
-<p> Output parameters can be used with Npgsql. Note that Npgsql "simulates" output parameter by parsing the first result set from the execution of a query and translating it to output parameters value. This can be done in two ways: mapped or not. A mapped parsing, tries to match the column name returned by resultset into a parameter with the same name. If a match is found, only the output parameters which has a match will be updated. If a map is not found, the output parameters are updated based on the order they were added to command parameters collection. This mapping is automatic. When parsing resultset, Npgsql tries to find a match. <b>Both Output and InputOutput parameter directions are supported</b>.</p>
+<p> Output parameters can be used with Npgsql. Note that Npgsql "simulates" output parameter by parsing the first result set from the execution of a query and translating it to output parameters value. This can be done in two ways: mapped or not. A mapped parsing tries to match the column name returned by resultset into a parameter with the same name. If a match is found, only the output parameters which has a match will be updated. If a map is not found, the output parameters are updated based on the order they were added to command parameters collection. This mapping is automatic. When parsing resultset, Npgsql tries to find a match. <b>Both Output and InputOutput parameter directions are supported</b>.</p>
 
 <pre class="CodeBox">
 using System;
@@ -1683,6 +1706,99 @@ NpgsqlCommand("insert into tablea (colb) values ('c')", connection2))
 
 </pre>
 
+
+
+<h3>Working with search paths</h3>
+<p>Npgsql allows you to modify the search path when connecting to a database. In order to do that, just specify it in your connection string with the syntax: searchpath='blablabla,blabla,blabla'. <font color="red"> Note that by specifying a search path in connection string, you may want to add the public schema as it will not be added automatically. </font>
+
+<h3>Working with Arrays</h3>
+<p>In order to use Npgsql array support, you may specify your parameter dbtype as an OR'ed operation. 
+Anything that implements IEnumerable&lt;T&gt; where T is a type already supported by npgsql will be treated the same as T[], anything that implements IEnumerable&lt;U&gt; where U implements IEnumerable&lt;T&gt; will be treated the same as T[,] (but cause an error if it's a "jagged" array, as postgres doesn't	support them) and so on.
+
+For example, to use an array of Int32 you will use something like that:</p>
+
+<pre class="CodeBox">
+command.Parameters.Add(new NpgsqlParameter("arrayParam", NpgsqlDbType.Array | NpgsqlDbType.Int32));
+</pre>
+
+<p> Or you can specify directly the value of parameter to be an array:
+
+<pre class="CodeBox">
+
+Int32 a = new Int32[2];
+
+a[0] = 4;
+a[1] = 2;
+
+command.Parameters.Add(new NpgsqlParameter("@parameter")).Value = a;
+
+</pre>
+
+<p>Here is a complete example:</p>
+<pre class="CodeBox">
+using System;
+using System.Data;
+using Npgsql;
+using NpgsqlTypes;
+
+public class c
+{
+        public static void Main(String[] args)
+        {
+                //NpgsqlEventLog.Level = LogLevel.Debug;
+                //NpgsqlEventLog.LogName = "NpgsqlTests.LogFile";
+                //NpgsqlEventLog.EchoMessages = true;
+
+                NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;");
+                conn.Open();
+
+                NpgsqlCommand d = new NpgsqlCommand();
+
+                Int32[] a = new Int32[2];
+
+                a[0] = 4;
+                a[1] = 2;
+
+
+
+                NpgsqlCommand command = new NpgsqlCommand("select :arrayParam", conn);
+
+                command.Parameters.Add(new NpgsqlParameter("arrayParam", NpgsqlDbType.Array | NpgsqlDbType.Integer));
+
+                command.Parameters[0].Value = a;
+
+                Console.WriteLine(command.ExecuteScalar());
+
+                conn.Close();
+        }
+}
+
+</pre
+
+
+<p> This is what postgresql logs:</p>
+
+<pre class="CodeBox">
+LOG:  connection received: host=127.0.0.1 port=37356
+DEBUG:  forked new backend, pid=10616 socket=6
+LOG:  connection authorized: user=npgsql_tests database=npgsql_tests
+LOG:  statement: SELECT oid, typname FROM pg_type WHERE typname IN ('oidvector', '_oidvector', 'unknown', '_unknown', 'refcursor', '_refcursor', 'char', '_char', 'bpchar', '_bpchar', 'varchar', '_varchar', 'text', '_text', 'name', '_name', 'bytea', '_bytea', 'bit', '_bit', 'bool', '_bool', 'int2', '_int2', 'int4', '_int4', 'int8', '_int8', 'oid', '_oid', 'float4', '_float4', 'float8', '_float8', 'numeric', '_numeric', 'inet', '_inet', 'money', '_money', 'date', '_date', 'time', '_time', 'timetz', '_timetz', 'timestamp', '_timestamp', 'timestamptz', '_timestamptz', 'point', '_point', 'lseg', '_lseg', 'path', '_path', 'box', '_box', 'circle', '_circle', 'polygon', '_polygon', 'uuid', '_uuid', 'xml', '_xml')
+
+LOG:  statement: select array['4','2']::int4[]
+
+LOG:  disconnection: session time: 0:00:00.342 user=npgsql_tests database=npgsql_tests host=127.0.0.1 port=37356
+DEBUG:  server process (PID 10616) exited with exit code 0
+
+</pre>
+
+
+<p> And this is what Npgsql shows in console:</p>
+
+<pre class="CodeBox">
+System.Int32[]
+</pre>
+
+
 <h3> 3.1 Using Npgsql Logging support </h3>
 
 <p> Sometimes it's necessary to trace Npgsql's behaviour to track errors.  Npgsql can log messages to a specified file, to the console, or to both.
@@ -1936,6 +2052,14 @@ You can use them to clear the pool manually.
         <td>Uuid</td>
         <td>Guid</td>
         <td>Guid</td>
+    </tr>
+    <tr class="H2">
+        <td>array</td>
+        <td>Array</td>
+        <td>Object</td>
+        <td>Array <br />
+        In order to use array type, specify NpgsqlDbType as an 'OR'ed type: NpgsqlDbType.Array | NpgsqlDbType.Integer for an array of Int32 for example.
+        </td>
     </tr>
 </table>
 </div>
