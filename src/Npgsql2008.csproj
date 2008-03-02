@@ -49,6 +49,7 @@
     <None Include="Npgsql\Npgsql.snk" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\FastPath.cs" />
     <Compile Include="NpgsqlTypes\FastPathArg.cs" />
     <Compile Include="NpgsqlTypes\LargeObject.cs" />
@@ -314,7 +315,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Npgsql\NpgsqlMetaData.xml" />
+    <EmbeddedResource Include="Npgsql\NpgsqlMetaData.xml" />
     <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.ja.resx">
       <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
       <SubType>Designer</SubType>
