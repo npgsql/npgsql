@@ -565,7 +565,22 @@ namespace Npgsql
         /// <returns>A new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> that is a copy of this instance.</returns>
         object System.ICloneable.Clone()
         {
-            return new NpgsqlParameter(this.ParameterName, this.NpgsqlDbType,	this.Size, this.SourceColumn, this.Direction, this.IsNullable, this.Precision, this.Scale, this.SourceVersion, this.Value);
+            // use fields instead of properties
+            // to avoid auto-initializing something like type_info
+            NpgsqlParameter clone = new NpgsqlParameter();
+            clone.precision = precision;
+            clone.scale = scale;
+            clone.size = size;
+            clone.type_info = type_info;
+            clone.direction = direction;
+            clone.is_nullable = is_nullable;
+            clone.name = name;
+            clone.source_column = source_column;
+            clone.source_version = source_version;
+            clone.value = value;
+            clone.sourceColumnNullMapping = sourceColumnNullMapping;
+
+            return clone;
         }
     }
 }
