@@ -411,6 +411,20 @@ namespace Npgsql
                 return connector.BackendProtocolVersion;
             }
         }
+        
+        /// <summary>
+        /// Process id of backend server.
+        /// This can only be called when there is an active connection.
+        /// </summary>
+        [Browsable(false)]
+        public Int32 ProcessID 
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.BackEndKeyData.ProcessID;
+            }
+        }
 
         /// <summary>
         /// Begins a database transaction with the specified isolation level.
