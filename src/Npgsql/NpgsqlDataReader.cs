@@ -194,6 +194,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "NextResult");
 
             _currentResultset = null;
+            _currentResultsetSchema = null;
             while((_resultsetIndex + 1) < _resultsets.Count && !HaveResultSet())
             {
                 _resultsetIndex++;
