@@ -39,7 +39,7 @@ namespace Npgsql
     /// This class represents a PasswordPacket message sent to backend
     /// PostgreSQL.
     /// </summary>
-    internal sealed class NpgsqlPasswordPacket
+    internal sealed class NpgsqlPasswordPacket : ClientMessage
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlPasswordPacket";
@@ -56,7 +56,7 @@ namespace Npgsql
             this.protocolVersion = protocolVersion;
         }
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
@@ -65,19 +65,19 @@ namespace Npgsql
                 // Write the size of the packet.
                 // 4 + (passwordlength + 1) -> Int32 + NULL terminated string.
                 // output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length + 1))), 0, 4);
-                PGUtil.WriteInt32(outputStream, 4 + encoding.GetByteCount(password) + 1);
+                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
 
                 // Write String.
-                PGUtil.WriteString(password, outputStream, encoding);
+                PGUtil.WriteString(password, outputStream);
 
                 break;
 
             case ProtocolVersion.Version3 :
                 outputStream.WriteByte((Byte)'p');
-                PGUtil.WriteInt32(outputStream, 4 + encoding.GetByteCount(password) + 1);
+                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
 
                 // Write String.
-                PGUtil.WriteString(password, outputStream, encoding);
+                PGUtil.WriteString(password, outputStream);
 
                 break;
 

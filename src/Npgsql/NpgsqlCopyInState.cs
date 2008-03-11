@@ -27,6 +27,7 @@
 
 using System;
 using System.IO;
+using System.Text;
 
 namespace Npgsql
 {
@@ -36,26 +37,12 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlCopyInState : NpgsqlState
     {
-        private static NpgsqlCopyInState _instance = null;
-
-        //private readonly String CLASSNAME = "NpgsqlCopyInState";
+        public static readonly NpgsqlCopyInState Instance = new NpgsqlCopyInState();
 
         private NpgsqlCopyFormat _copyFormat = null;
 
         private NpgsqlCopyInState() : base()
         { }
-
-        public static NpgsqlCopyInState Instance
-        {
-            get
-            {
-                if ( _instance == null )
-                {
-                    _instance = new NpgsqlCopyInState();
-                }
-                return _instance;
-            }
-        }
 
         /// <summary>
         /// Copy format information returned from server.
@@ -102,7 +89,7 @@ namespace Npgsql
         override public void SendCopyData( NpgsqlConnector context, byte[] buf, int off, int len)
         {
             Stream toServer = context.Stream;
-            toServer.WriteByte( (byte)NpgsqlMessageTypes_Ver_3.CopyData );
+            toServer.WriteByte((byte)FrontEndMessageCode.CopyData);
             PGUtil.WriteInt32( toServer, len+4 );
             toServer.Write( buf, off, len );
         }
@@ -113,11 +100,10 @@ namespace Npgsql
         override public void SendCopyDone( NpgsqlConnector context )
         {
             Stream toServer = context.Stream;
-            toServer.WriteByte( (byte)NpgsqlMessageTypes_Ver_3.CopyDone );
+            toServer.WriteByte((byte)FrontEndMessageCode.CopyDone);
             PGUtil.WriteInt32( toServer, 4 ); // message without data
             toServer.Flush();
             ProcessBackendResponses(context);
-            context.CheckErrorsAndNotifications();
         }
         
         /// <summary>
@@ -129,13 +115,12 @@ namespace Npgsql
         override public void SendCopyFail( NpgsqlConnector context, String message )
         {
             Stream toServer = context.Stream;
-            toServer.WriteByte( (byte)NpgsqlMessageTypes_Ver_3.CopyFail );
-            byte[] buf = context.Encoding.GetBytes( ( message == null ? "" : message ) + '\x00' );
+            toServer.WriteByte((byte)FrontEndMessageCode.CopyFail);
+            byte[] buf = ENCODING_UTF8.GetBytes( ( message == null ? "" : message ) + '\x00' );
             PGUtil.WriteInt32( toServer, 4 + buf.Length );
             toServer.Write( buf, 0, buf.Length );
             toServer.Flush();
             ProcessBackendResponses(context);
-            context.CheckErrorsAndNotifications();
         }
     }
 }

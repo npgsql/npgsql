@@ -27,20 +27,18 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Text;
-using System.Resources;
-using System.ComponentModel;
-using System.Collections;
 using System.IO;
+using System.Resources;
+using System.Text;
+using System.Text.RegularExpressions;
 
 using NpgsqlTypes;
 
-using System.Text.RegularExpressions;
-
 #if WITHDESIGN
-using Npgsql.Design;
+
 #endif
 
 namespace Npgsql
@@ -56,7 +54,7 @@ namespace Npgsql
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlCommand";
-        private static ResourceManager resman = new ResourceManager(typeof(NpgsqlCommand));
+        private static ResourceManager resman = new ResourceManager(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
 
         private NpgsqlConnection            connection;
@@ -65,15 +63,13 @@ namespace Npgsql
         private String                      text;
         private Int32                       timeout;
         private CommandType                 type;
-        private NpgsqlParameterCollection   parameters;
+        private readonly NpgsqlParameterCollection   parameters;
         private String                      planName;
-        private Boolean                     designTimeInvisible;
+        private Boolean                     designTimeVisible;
 
         private NpgsqlParse                 parse;
         private NpgsqlBind                  bind;
         
-        private CommandBehavior             commandBehavior;
-
         private Int64                       lastInsertedOID = 0;
 
         // Constructors
@@ -116,7 +112,6 @@ namespace Npgsql
             parameters = new NpgsqlParameterCollection();
             type = CommandType.Text;
             this.Transaction = transaction;
-            commandBehavior = CommandBehavior.Default;
 
             SetCommandTimeout();
             
@@ -136,7 +131,6 @@ namespace Npgsql
             text = cmdText;
             this.connector = connector;
             type = CommandType.Text;
-            commandBehavior = CommandBehavior.Default;
             
             parameters = new NpgsqlParameterCollection();
 
@@ -164,7 +158,6 @@ namespace Npgsql
                 planName = String.Empty;
                 parse = null;
                 bind = null;
-                commandBehavior = CommandBehavior.Default;
             }
         }
 
@@ -454,140 +447,34 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Slightly optimised version of ExecuteNonQuery() for internal ues in cases where the number
+        /// of affected rows is of no interest.
+        /// </summary>
+        internal void ExecuteBlind()
+        {
+            GetReader(CommandBehavior.SequentialAccess).Dispose();
+        }
+        /// <summary>
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
         public override Int32 ExecuteNonQuery()
         {
+            //We treat this as a simple wrapper for calling ExecuteReader() and then
+            //update the records affected count at every call to NextResult();
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteNonQuery");
-
-            // Initialize lastInsertOID
-            lastInsertedOID = 0;
-
-            ExecuteCommand();
-            
-            UpdateOutputParameters();
-            
-            
-            // If nothing is returned, just return -1.
-            if(Connector.Mediator.CompletedResponses.Count == 0)
+            int? ret = null;
+            using(NpgsqlDataReader rdr = GetReader(CommandBehavior.SequentialAccess))
             {
-                return -1;
+                do
+                {
+                    int thisRecord = rdr.RecordsAffected;
+                    if(thisRecord != -1)
+                        ret = (ret ?? 0) + thisRecord;
+                    lastInsertedOID = rdr.LastInsertedOID ?? lastInsertedOID;
+                }while(rdr.NextResult());
             }
-
-            // Check if the response is available.
-            String firstCompletedResponse = (String)Connector.Mediator.CompletedResponses[0];
-
-            if (firstCompletedResponse == null)
-                return -1;
-
-            String[] ret_string_tokens = firstCompletedResponse.Split(null);        // whitespace separator.
-
-
-            // Check if the command was insert, delete, update, fetch or move.
-            // Only theses commands return rows affected.
-            // [FIXME] Is there a better way to check this??
-            if ((String.Compare(ret_string_tokens[0], "INSERT", true) == 0) ||
-                    (String.Compare(ret_string_tokens[0], "UPDATE", true) == 0) ||
-                    (String.Compare(ret_string_tokens[0], "DELETE", true) == 0) ||
-                    (String.Compare(ret_string_tokens[0], "FETCH", true) == 0) ||
-                    (String.Compare(ret_string_tokens[0], "COPY", true) == 0) ||
-                    (String.Compare(ret_string_tokens[0], "MOVE", true) == 0))
-                
-                
-            {
-                if (String.Compare(ret_string_tokens[0], "INSERT", true) == 0)
-                    // Get oid of inserted row.
-                    lastInsertedOID = Int32.Parse(ret_string_tokens[1]);
-                
-                // The number of rows affected is in the third token for insert queries
-                // and in the second token for update and delete queries.
-                // In other words, it is the last token in the 0-based array.
-                // Except for COPY on some older server versions, it appears, so we allow parsing to fail.
-
-                Int32 result = -1;
-                try
-                {
-                    result = Int32.Parse(ret_string_tokens[ret_string_tokens.Length - 1]);
-                }
-                catch(Exception)
-                {
-                    // String didn't contain the expected information. Coincidentally, the default result means exactly that.
-                }
-                return result;
-            }
-            else
-                return -1;
-        }
-        
-        
-        
-        private void UpdateOutputParameters()
-        {
-            // Check if there was some resultset returned. If so, put the result in output parameters.
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "UpdateOutputParameters");
-            
-            // Get ResultSets.
-            ArrayList resultSets = Connector.Mediator.ResultSets;
-            
-            if (resultSets.Count != 0)
-            {
-                NpgsqlResultSet nrs = (NpgsqlResultSet)resultSets[0];
-                                
-                if ((nrs != null) && (nrs.Count > 0))
-                {
-                    NpgsqlAsciiRow nar = (NpgsqlAsciiRow)nrs[0];
-                    
-                    Int32 i = 0;
-                    Boolean hasMapping = false;
-                                        
-                    // First check if there is any mapping between parameter name and resultset name.
-                    // If so, just update output parameters which has mapping.
-                    
-                    foreach (NpgsqlParameter p in Parameters)
-                    {
-                        if (nrs.RowDescription.FieldIndex(p.CleanName) > -1)
-                        {
-                            hasMapping = true;
-                            break;
-                        }
-                        
-                    }
-                                        
-                    
-                    if (hasMapping)
-                    {
-                        foreach (NpgsqlParameter p in Parameters)
-                        {
-                            if (((p.Direction == ParameterDirection.Output) ||
-                                (p.Direction == ParameterDirection.InputOutput)) && (i < nrs.RowDescription.NumFields ))
-                            {
-                                Int32 fieldIndex = nrs.RowDescription.FieldIndex(p.CleanName);
-                                if (fieldIndex > -1)
-                                {
-                                    p.Value = nar[fieldIndex];
-                                    i++;
-                                }
-                                
-                            }
-                        }
-                        
-                    }
-                    else
-                        foreach (NpgsqlParameter p in Parameters)
-                        {
-                            if (((p.Direction == ParameterDirection.Output) ||
-                                (p.Direction == ParameterDirection.InputOutput)) && (i < nrs.RowDescription.NumFields ))
-                            {
-                                p.Value = nar[i];
-                                i++;
-                            }
-                        }
-                }
-                
-            }   
-            
-            
+            return ret ?? -1;
         }
 
         /// <summary>
@@ -600,9 +487,7 @@ namespace Npgsql
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteDbDataReader", behavior);
-
-            return (NpgsqlDataReader)ExecuteReader(behavior);
+            return ExecuteReader(behavior);
         }
 
         /// <summary>
@@ -629,19 +514,42 @@ namespace Npgsql
         /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {
-            // [FIXME] No command behavior handling.
-
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader", cb);
-            commandBehavior = cb;
-
-            ExecuteCommand();
-            
-            UpdateOutputParameters();
-            
-            // Get the resultsets and create a Datareader with them.
-            return new NpgsqlDataReader(Connector.Mediator.ResultSets, Connector.Mediator.CompletedResponses, cb, this);
+            if(connection != null)
+            if(connection.PreloadReader)
+            {
+                //Adjust behaviour so source reader is sequential access - for speed - and doesn't close the connection - or it'll do so at the wrong time.
+                CommandBehavior adjusted = (cb | CommandBehavior.SequentialAccess) & ~CommandBehavior.CloseConnection;
+                return new CachingDataReader(GetReader(adjusted), cb);
+            }
+            return GetReader(cb);
         }
+        internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
+        {
+            CheckConnectionState();
 
+            // reset any responses just before getting new ones
+            Connector.Mediator.ResetResponses();
+            
+            // Set command timeout.
+            connector.Mediator.CommandTimeout = CommandTimeout;
+            
+            
+            using(connector.BlockNotificationThread())
+            {
+
+                if (parse == null)
+                    return new ForwardsOnlyDataReader(connector.QueryEnum(this), cb, this, connector.BlockNotificationThread(), false);
+                    //return new ForwardsOnlyDataReader(connector.QueryEnum(this), cb, this, connector.BlockNotificationThread(), false);
+                else
+                {
+                    BindParameters();
+                    return new ForwardsOnlyDataReader(connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this, connector.BlockNotificationThread(), true);
+                    //return new ForwardsOnlyDataReader(connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this, connector.BlockNotificationThread(), true);
+                }
+            }
+
+        }
         ///<summary>
         /// This method binds the parameters from parameters collection to the bind
         /// message.
@@ -687,12 +595,7 @@ namespace Npgsql
 
             Connector.Bind(bind);
             
-            // See Prepare() method for a discussion of this.
-            Connector.Mediator.RequireReadyForQuery = false;
             Connector.Flush();
-            
-
-            connector.CheckErrorsAndNotifications();
         }
 
         /// <summary>
@@ -703,34 +606,8 @@ namespace Npgsql
         /// or a null reference if the result set is empty.</returns>
         public override Object ExecuteScalar()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteScalar");
-
-            ExecuteCommand();
-
-
-            // Now get the results.
-            // Only the first column of the first row must be returned.
-
-            // Get ResultSets.
-            ArrayList resultSets = Connector.Mediator.ResultSets;
-
-            // First data is the RowDescription object.
-            // Check all resultsets as insert commands could have been sent along
-            // with resultset queries. The insert commands return null and and some queries
-            // may return empty resultsets, so, if we find one of these, skip to next resultset.
-            // If no resultset is found, return null as per specification.
-
-            NpgsqlAsciiRow ascii_row = null;
-            foreach( NpgsqlResultSet nrs in resultSets )
-            {
-                if( (nrs != null) && (nrs.Count > 0) )
-                {
-                    ascii_row = (NpgsqlAsciiRow) nrs[0];
-                    return ascii_row[0];
-                }
-            }
-
-            return null;
+            using(NpgsqlDataReader reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
         /// <summary>
@@ -756,93 +633,84 @@ namespace Npgsql
 
             if (connector.BackendProtocolVersion == ProtocolVersion.Version2)
             {
-                NpgsqlCommand command = new NpgsqlCommand(GetPrepareCommandText(), connector );
-                command.ExecuteNonQuery();
+                using(NpgsqlCommand command = new NpgsqlCommand(GetPrepareCommandText(), connector))
+                    command.ExecuteBlind();
             }
             else
             {
-                try
+                using(connector.BlockNotificationThread())
                 {
-                    
-                    connector.StopNotificationThread();
-                    
-                    // Use the extended query parsing...
-                    planName = connector.NextPlanName();
-                    String portalName = connector.NextPortalName();
-    
-                    parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] {});
-    
-                    connector.Parse(parse);
-                    
-                    // We need that because Flush() doesn't cause backend to send
-                    // ReadyForQuery on error. Without ReadyForQuery, we don't return 
-                    // from query extended processing.
-                    
-                    // We could have used Connector.Flush() which sends us back a
-                    // ReadyForQuery, but on postgresql server below 8.1 there is an error
-                    // with extended query processing which hinders us from using it.
-                    connector.Mediator.RequireReadyForQuery = false;
-                    connector.Flush();
-                    
-                    // Check for errors and/or notifications and do the Right Thing.
-                    connector.CheckErrorsAndNotifications();
-    
-                    
-                    // Description...
-                    NpgsqlDescribe describe = new NpgsqlDescribe('S', planName);
-                
-                
-                    connector.Describe(describe);
-                    
-                    connector.Sync();
-                    
-                    Npgsql.NpgsqlRowDescription returnRowDesc = connector.Mediator.LastRowDescription;
-                
-                    Int16[] resultFormatCodes;
-                    
-                    
-                    if (returnRowDesc != null)
+                    try
                     {
-                        resultFormatCodes = new Int16[returnRowDesc.NumFields];
                         
-                        for (int i=0; i < returnRowDesc.NumFields; i++)
+                        // Use the extended query parsing...
+                        planName = connector.NextPlanName();
+                        String portalName = connector.NextPortalName();
+        
+                        parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] {});
+        
+                        connector.Parse(parse);
+                        
+                        // We need that because Flush() doesn't cause backend to send
+                        // ReadyForQuery on error. Without ReadyForQuery, we don't return 
+                        // from query extended processing.
+                        
+                        // We could have used Connector.Flush() which sends us back a
+                        // ReadyForQuery, but on postgresql server below 8.1 there is an error
+                        // with extended query processing which hinders us from using it.
+                        connector.RequireReadyForQuery = false;
+                        connector.Flush();
+                        
+                        
+                        // Description...
+                        NpgsqlDescribe describe = new NpgsqlDescribe('S', planName);
+                    
+                    
+                        connector.Describe(describe);
+                        
+                        Npgsql.NpgsqlRowDescription returnRowDesc = connector.Sync();
+                    
+                        Int16[] resultFormatCodes;
+                        
+                        
+                        if (returnRowDesc != null)
                         {
-                            Npgsql.NpgsqlRowDescriptionFieldData returnRowDescData = returnRowDesc[i];
+                            resultFormatCodes = new Int16[returnRowDesc.NumFields];
                             
-                            
-                            if (returnRowDescData.type_info != null && returnRowDescData.type_info.NpgsqlDbType == NpgsqlTypes.NpgsqlDbType.Bytea)
+                            for (int i=0; i < returnRowDesc.NumFields; i++)
                             {
-                            // Binary format
-                                resultFormatCodes[i] = (Int16)FormatCode.Binary;
+                                NpgsqlRowDescription.FieldData returnRowDescData = returnRowDesc[i];
+                                
+                                
+                                if (returnRowDescData.TypeInfo != null && returnRowDescData.TypeInfo.NpgsqlDbType == NpgsqlTypes.NpgsqlDbType.Bytea)
+                                {
+                                // Binary format
+                                    resultFormatCodes[i] = (Int16)FormatCode.Binary;
+                                }
+                                else 
+                                // Text Format
+                                    resultFormatCodes[i] = (Int16)FormatCode.Text;
                             }
-                            else 
-                            // Text Format
-                                resultFormatCodes[i] = (Int16)FormatCode.Text;
-                        }
-                    
                         
+                            
+                        }
+                        else
+                            resultFormatCodes = new Int16[]{0};
+                        
+                        bind = new NpgsqlBind("", planName, new Int16[Parameters.Count], null, resultFormatCodes);
+                    }    
+                    catch (IOException e)
+                    {
+                        ClearPoolAndThrowException(e);
                     }
-                    else
-                        resultFormatCodes = new Int16[]{0};
-                    
-                    bind = new NpgsqlBind("", planName, new Int16[Parameters.Count], null, resultFormatCodes);
-                }    
-                catch (IOException e)
-                {
-                    ClearPoolAndThrowException(e);
+                    catch
+                    {
+                        // See ExecuteCommand method for a discussion of this.
+                        connector.Sync();
+                        
+                        throw;
+                    }
                 }
-                catch
-                {
-                    // See ExecuteCommand method for a discussion of this.
-                    connector.Sync();
-                    
-                    throw;
-                }
-                finally
-                {
-                    connector.ResumeNotificationThread();
-                }
-                
                 
                 
             }
@@ -880,10 +748,12 @@ namespace Npgsql
 
 
             // Check the connection state.
-            if (Connector == null || Connector.State != ConnectionState.Open)
+            if (Connector == null || Connector.State == ConnectionState.Closed)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
             }
+            else if(Connector.State != ConnectionState.Open)
+                throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
         }
 
         /// <summary>
@@ -956,11 +826,6 @@ namespace Npgsql
                 if (functionReturnsRecord)
                     result = AddFunctionReturnsRecordSupport(result);
 
-
-                result = AddSingleRowBehaviorSupport(result);
-                
-                result = AddSchemaOnlyBehaviorSupport(result);
-
                 return result;
             }
 
@@ -993,21 +858,13 @@ namespace Npgsql
                         if ((p.Direction == ParameterDirection.Input) ||
                              (p.Direction == ParameterDirection.InputOutput))
                         {
-                            // FIXME DEBUG ONLY
-                            // adding the '::<datatype>' on the end of a parameter is a highly
-                            // questionable practice, but it is great for debugging!
                             sb.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
                             
-                            // Only add data type info if we are calling an stored procedure.
+                            sb.Append("::");
+                            sb.Append(p.TypeInfo.CastName);
 
-                            /*if (type == CommandType.StoredProcedure)
-                            {*/
-                                sb.Append("::");
-                                sb.Append(p.TypeInfo.CastName);
-
-                                if (p.TypeInfo.UseSize && (p.Size > 0))
-                                    sb.Append("(").Append(p.Size).Append(")");
-                            //}
+                            if (p.TypeInfo.UseSize && (p.Size > 0))
+                                sb.Append("(").Append(p.Size).Append(")");
                         }
 
                     }
@@ -1051,111 +908,104 @@ namespace Npgsql
             if (functionReturnsRefcursor)
                 return ProcessRefcursorFunctionReturn(result);
 
-
-            result = AddSingleRowBehaviorSupport(result);
-            
-            result = AddSchemaOnlyBehaviorSupport(result);
-            
             return result;
         }
         
-        
-        private Boolean CheckFunctionHasOutParameters()
-        {
-            // Check if this function has output parameters.
-            // This is used to enable or not the colum definition list 
-            // when calling functions which return record.
-            // Functions which has out or inout parameters have return record
-            // but doesn't allow column definition list.
-            // See http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519
-            // for discussion about that.
-            
-            
-            // inout parameters are only supported from 8.1+ versions.
-            if (Connection.PostgreSqlVersion < new ServerVersion(8, 1, 0))
-                return false;
+         
+         private Boolean CheckFunctionHasOutParameters()
+         {
+             // Check if this function has output parameters.
+             // This is used to enable or not the colum definition list 
+             // when calling functions which return record.
+             // Functions which has out or inout parameters have return record
+             // but doesn't allow column definition list.
+             // See http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519
+             // for discussion about that.
              
              
-            String outParameterExistanceQuery = "select count(*) > 0 from pg_proc where proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+             // inout parameters are only supported from 8.1+ versions.
+             if (Connection.PostgreSqlVersion < new Version(8, 1, 0))
+                 return false;
+              
+              
+             String outParameterExistanceQuery = "select count(*) > 0 from pg_proc where proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+ 
+             
+             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
+             // when the schema or procedure name do not contain a quote.
+             // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
+ 
+             String returnRecordQuery;
+ 
+             StringBuilder parameterTypes = new StringBuilder("");
+ 
+             
+             // Process parameters
+             
+             foreach(NpgsqlParameter p in Parameters)
+             {
+                 if ((p.Direction == ParameterDirection.Input) ||
+                      (p.Direction == ParameterDirection.InputOutput))
+                 {
+                     parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
+                 }
+             }
+ 
+             
+             // Process schema name.
+             
+             String schemaName = String.Empty;
+             String procedureName = String.Empty;
+             
+             
+             String[] fullName = CommandText.Split('.');
+             
+             if (fullName.Length == 2)
+             {
+                 returnRecordQuery = "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+ 
+                 schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                 procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+             }
+             else
+             {
+                 // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
+                 //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
+                 returnRecordQuery = "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
+                 
+                 procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
+             }
+                 
+             
+             
+ 
+             NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
+             
+             c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
+             c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+             
+             c.Parameters[0].Value = parameterTypes.ToString();
+             c.Parameters[1].Value = procedureName;
+ 
+             if (schemaName != null && schemaName.Length > 0)
+             {
+                 c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                 c.Parameters[2].Value = schemaName;
+             }
+             
+ 
+             Boolean ret = (Boolean) c.ExecuteScalar();
+ 
+             // reset any responses just before getting new ones
+             connector.Mediator.ResetResponses();
+             
+             // Set command timeout.
+             connector.Mediator.CommandTimeout = CommandTimeout;
+             
+             return ret;
+ 
+         }
 
-            
-            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
-            // when the schema or procedure name do not contain a quote.
-            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
-
-            String returnRecordQuery;
-
-            StringBuilder parameterTypes = new StringBuilder("");
-
-            
-            // Process parameters
-            
-            foreach(NpgsqlParameter p in Parameters)
-            {
-                if ((p.Direction == ParameterDirection.Input) ||
-                     (p.Direction == ParameterDirection.InputOutput))
-                {
-                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
-                }
-            }
-
-            
-            // Process schema name.
-            
-            String schemaName = String.Empty;
-            String procedureName = String.Empty;
-            
-            
-            String[] fullName = CommandText.Split('.');
-            
-            if (fullName.Length == 2)
-            {
-                returnRecordQuery = "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
-
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
-            }
-            else
-            {
-                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
-                //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
-                returnRecordQuery = "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = 'record' ) and proargtypes=:proargtypes and proname=:proname and ('o' = any (proargmodes) OR 'b' = any(proargmodes))";
-                
-                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
-            }
-                
-            
-            
-
-            NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
-            
-            c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-            
-            c.Parameters[0].Value = parameterTypes.ToString();
-            c.Parameters[1].Value = procedureName;
-
-            if (schemaName != null && schemaName.Length > 0)
-            {
-                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                c.Parameters[2].Value = schemaName;
-            }
-            
-
-            Boolean ret = (Boolean) c.ExecuteScalar();
-
-            // reset any responses just before getting new ones
-            connector.Mediator.ResetResponses();
-            
-            // Set command timeout.
-            connector.Mediator.CommandTimeout = CommandTimeout;
-            
-            return ret;
-
-        }
-        
-        
-        
         
         private Boolean CheckFunctionReturn(String ReturnType)
         {
@@ -1205,26 +1055,27 @@ namespace Npgsql
             }
                 
             
-            
+            bool ret;
 
-            NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
-            
-            c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Text));
-            c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-            
-            c.Parameters[0].Value = ReturnType;
-            c.Parameters[1].Value = parameterTypes.ToString();
-            c.Parameters[2].Value = procedureName;
-
-            if (schemaName != null && schemaName.Length > 0)
+            using(NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection))
             {
-                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-                c.Parameters[3].Value = schemaName;
+                c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Text));
+                c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
+                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+                
+                c.Parameters[0].Value = ReturnType;
+                c.Parameters[1].Value = parameterTypes.ToString();
+                c.Parameters[2].Value = procedureName;
+    
+                if (schemaName != null && schemaName.Length > 0)
+                {
+                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                    c.Parameters[3].Value = schemaName;
+                }
+                
+    
+                ret = (Boolean) c.ExecuteScalar();
             }
-            
-
-            Boolean ret = (Boolean) c.ExecuteScalar();
 
             // reset any responses just before getting new ones
             connector.Mediator.ResetResponses();
@@ -1277,16 +1128,16 @@ namespace Npgsql
                
         private String ProcessRefcursorFunctionReturn(String FunctionCall)
         {
-            NpgsqlCommand c = new NpgsqlCommand(FunctionCall, Connection);
-            
-            NpgsqlDataReader dr = c.ExecuteReader();
-            
             StringBuilder sb = new StringBuilder();
-            
-            while (dr.Read())
+            using(NpgsqlCommand c = new NpgsqlCommand(FunctionCall, Connection))
             {
-                sb.Append("fetch all from \"").Append(dr.GetString(0)).Append("\";");
-                
+                using(NpgsqlDataReader dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                {
+                    while (dr.Read())
+                    {
+                        sb.Append("fetch all from \"").Append(dr.GetString(0)).Append("\";");
+                    }
+                }
             }
             
             sb.Append(";"); // Just in case there is no response from refcursor function return.
@@ -1518,120 +1369,6 @@ namespace Npgsql
             return result;
         }
 
-        
-        private String AddSingleRowBehaviorSupport(String ResultCommandText)
-        {
-            
-            ResultCommandText = ResultCommandText.Trim();
-            
-            // Do not add SingleRowBehavior if SchemaOnly behavior is set.
-            
-            if ((commandBehavior & CommandBehavior.SchemaOnly) == CommandBehavior.SchemaOnly)
-                return ResultCommandText;
-        
-            if ((commandBehavior & CommandBehavior.SingleRow) == CommandBehavior.SingleRow)
-            {
-                if (ResultCommandText.EndsWith(";"))
-                    ResultCommandText = ResultCommandText.Substring(0, ResultCommandText.Length - 1);
-                ResultCommandText += " limit 1;";
-                
-            }
-            
-            
-            
-            return ResultCommandText;
-            
-        }
-        
-        private String AddSchemaOnlyBehaviorSupport(String ResultCommandText)
-        {
-            
-            ResultCommandText = ResultCommandText.Trim();
-        
-            if ((commandBehavior & CommandBehavior.SchemaOnly) == CommandBehavior.SchemaOnly)
-            {
-                if (ResultCommandText.EndsWith(";"))
-                    ResultCommandText = ResultCommandText.Substring(0, ResultCommandText.Length - 1);
-                ResultCommandText += " limit 0;";
-                
-            }
-            
-            
-            return ResultCommandText;
-            
-        }
-
-
-        private void ExecuteCommand()
-        {
-            try
-            {
-                
-            // Check the connection state first.
-            CheckConnectionState();
-
-            // reset any responses just before getting new ones
-            Connector.Mediator.ResetResponses();
-            
-            // Set command timeout.
-            connector.Mediator.CommandTimeout = CommandTimeout;
-            
-            
-            connector.StopNotificationThread();
-
-
-            if (parse == null)
-            {
-                connector.Query(this);
-
-
-                connector.ResumeNotificationThread();
-                
-                // Check for errors and/or notifications and do the Right Thing.
-                connector.CheckErrorsAndNotifications();
-                
-                
-                
-            }
-            else
-            {
-                try
-                {
-
-                    BindParameters();
-
-                    connector.Execute(new NpgsqlExecute(bind.PortalName, 0));
-
-                    // Check for errors and/or notifications and do the Right Thing.
-                    connector.CheckErrorsAndNotifications();
-                }
-                catch
-                {
-                    // As per documentation:
-                    // "[...] When an error is detected while processing any extended-query message,
-                    // the backend issues ErrorResponse, then reads and discards messages until a
-                    // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
-                    // So, send a sync command if we get any problems.
-
-                    connector.Sync();
-                    
-                    throw;
-                }
-                finally
-                {
-                    connector.ResumeNotificationThread();
-                }
-            }
-
-            }
-
-            catch(IOException e)
-            {
-                ClearPoolAndThrowException(e);
-            }
-
-        }
-
         private void SetCommandTimeout()
         {
             if (Connection != null)
@@ -1647,15 +1384,15 @@ namespace Npgsql
 
         }
 
-        public override bool  DesignTimeVisible
+        public override bool DesignTimeVisible
         {
             get 
 	        { 
-		        return !designTimeInvisible;
+		        return designTimeVisible;
 	        }
             set 
 	        { 
-                  designTimeInvisible = !value;
+                  designTimeVisible = value;
 	        }
         }
     }

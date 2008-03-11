@@ -17,17 +17,6 @@ namespace Npgsql.SqlGenerators
             _commandTree = commandTree;
         }
 
-        public override VisitedExpression Visit(DbPropertyExpression expression)
-        {
-            // not quite sure what this does
-            // may be . notation for seperating
-            // scopes (such as schema.table.column)
-            //VisitedExpression variable = expression.Instance.Accept(this);
-            VariableReferenceExpression variable = new VariableReferenceExpression(expression.Instance.Accept(this).ToString(), _variableSubstitution);
-            variable.Append("." + expression.Property.Name);
-            return variable;
-        }
-
         public override void BuildCommand(DbCommand command)
         {
             System.Diagnostics.Debug.Assert(_commandTree.Query is DbProjectExpression);

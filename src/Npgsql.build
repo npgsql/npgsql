@@ -87,6 +87,7 @@
                 <include name="${src.dir}/Npgsql/NpgsqlReadyState.ja.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlReadyState.zh-CN.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlReadyState.resx"/>
+                <include name="${src.dir}/Npgsql/NpgsqlRow.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlState.ja.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlState.zh-CN.resx"/>
                 <include name="${src.dir}/Npgsql/NpgsqlState.resx"/>

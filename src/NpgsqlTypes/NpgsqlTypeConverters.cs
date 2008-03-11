@@ -28,13 +28,11 @@
 // and .NET objects.
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
-
-using Npgsql;
 
 namespace NpgsqlTypes
 {
@@ -374,7 +372,7 @@ namespace NpgsqlTypes
         	   	
         	Match m = pathpolygonRegex.Match(BackendData);
         	Boolean open = (BackendData[0] == '['); 
-        	ArrayList points = new ArrayList();
+        	List<NpgsqlPoint> points = new List<NpgsqlPoint>();
         	    	
         	while (m.Success)
         	{
@@ -408,8 +406,8 @@ namespace NpgsqlTypes
         		
         	}
         	
-        	NpgsqlPath result = new NpgsqlPath((NpgsqlPoint[]) points.ToArray(typeof(NpgsqlPoint)));
-			result.IsOpen = open; 
+        	NpgsqlPath result = new NpgsqlPath(points.ToArray());
+			result.Open = open; 
         	return result;
         	
             
@@ -422,7 +420,7 @@ namespace NpgsqlTypes
         {
             
         	Match m = pathpolygonRegex.Match(BackendData);
-        	ArrayList points = new ArrayList();
+        	List<NpgsqlPoint> points = new List<NpgsqlPoint>();
         	    	
         	while (m.Success)
         	{
@@ -448,7 +446,7 @@ namespace NpgsqlTypes
         		
         	}
         	
-        	return new NpgsqlPolygon((NpgsqlPoint[]) points.ToArray(typeof(NpgsqlPoint)));
+        	return new NpgsqlPolygon(points);
 			
         }
 
@@ -476,6 +474,13 @@ namespace NpgsqlTypes
         {
             return new NpgsqlInet(BackendData);
             
+        }
+        /// <summary>
+        /// interval
+        /// </summary>
+        internal static object ToInterval(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+        	return NpgsqlInterval.Parse(BackendData);
         }
     }
 
@@ -539,7 +544,7 @@ namespace NpgsqlTypes
         {
             StringBuilder   B = new StringBuilder();
 
-            foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData).Points) {
+            foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData)) {
                 B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
             }
 
@@ -553,7 +558,7 @@ namespace NpgsqlTypes
         {
             StringBuilder   B = new StringBuilder();
 
-            foreach (NpgsqlPoint P in ((NpgsqlPolygon)NativeData).Points) {
+            foreach (NpgsqlPoint P in ((NpgsqlPolygon)NativeData)) {
                 B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
             }
 
@@ -578,6 +583,16 @@ namespace NpgsqlTypes
                     return ((NpgsqlInet)NativeData).ToString();
                 else
                     return ((System.Net.IPAddress)NativeData).ToString();
+        }
+        
+        /// <summary>
+        /// Convert to a postgres interval
+        /// </summary>
+        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
+        {
+        	return "interval'" + 
+        		((NativeData is TimeSpan) ? ((NpgsqlInterval)(TimeSpan)NativeData).ToString() : ((NpgsqlInterval)NativeData).ToString())
+        		+ '\'';
         }
     }
 }

@@ -17,31 +17,18 @@
 
 namespace Npgsql.Web {
 
-    using System.Web;
-    using System.Web.UI;
     using System;
-    using System.Web.Profile;
-    using System.Web.Configuration;
-    using System.Security.Principal;
-    using System.Security.Permissions;
-    using System.Globalization;
-    using System.Runtime.Serialization;
-    using System.Collections;
     using System.Collections.Generic;
     using System.Collections.Specialized;
-    using System.Data;
-    using System.Runtime.Serialization.Formatters.Binary;
-    using System.IO;
-    using System.Reflection;
-    using System.Xml.Serialization;
-    using System.Text;
-    using System.Configuration.Provider;
     using System.Configuration;
-    using System.Web.Hosting;
-    //using System.Web.DataAccess;
-    using System.Web.Util;
+    using System.Data;
+    using System.Text;
+    using System.Web.Profile;
 
-    using Npgsql;
+    //using System.Web.DataAccess;
+    
+
+    
 
     /// <summary>
     /// custom Profile provider class
@@ -84,7 +71,7 @@ namespace Npgsql.Web {
                             _appId = Guid.NewGuid();
                             cmd1.Parameters.Add("@ApplicationName", NpgsqlTypes.NpgsqlDbType.Text, 255).Value = ApplicationName;
                             cmd1.Parameters.Add("@ApplicationId", NpgsqlTypes.NpgsqlDbType.Text, 36).Value = _appId.ToString();
-                            cmd1.ExecuteNonQuery();
+                            cmd1.ExecuteBlind();
                         }
                         else _appId = new Guid(tmpAppId);
                         
@@ -352,7 +339,7 @@ namespace Npgsql.Web {
                         cmd.Parameters.Add("@IsUserAnonymous", NpgsqlTypes.NpgsqlDbType.Boolean).Value = !userIsAuthenticated;
                         cmd.Parameters.Add("@LastActivityDate", NpgsqlTypes.NpgsqlDbType.Timestamp).Value = DateTime.UtcNow;
 
-                      cmd.ExecuteNonQuery();
+                      cmd.ExecuteBlind();
                     }
                 }
                 finally {
@@ -441,7 +428,7 @@ namespace Npgsql.Web {
                 cmd.CommandText = NpgsqlCommand.ToString();
                 cmd.CommandType = CommandType.Text;
 
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
 
                 // Need to close reader before we try to update 
                 if (reader != null) {
@@ -523,7 +510,7 @@ namespace Npgsql.Web {
                         // We don't need to start a transaction if we can finish this in one sql command
                         if (!beginTranCalled && numUsersRemaing > 0) {
                             NpgsqlCommand beginCmd = new NpgsqlCommand("BEGIN TRANSACTION", conn);
-                            beginCmd.ExecuteNonQuery();
+                            beginCmd.ExecuteBlind();
                             beginTranCalled = true;
                         }
 
@@ -535,14 +522,14 @@ namespace Npgsql.Web {
 
                     if (beginTranCalled) {
                         cmd = new NpgsqlCommand("COMMIT TRANSACTION", conn);
-                        cmd.ExecuteNonQuery();
+                        cmd.ExecuteBlind();
                         beginTranCalled = false;
                     }
                 }
                 catch {
                     if (beginTranCalled) {
                         NpgsqlCommand cmd = new NpgsqlCommand("ROLLBACK TRANSACTION", conn);
-                        cmd.ExecuteNonQuery();
+                        cmd.ExecuteBlind();
                         beginTranCalled = false;
                     }
                     throw;
@@ -816,7 +803,7 @@ namespace Npgsql.Web {
             cmd.Parameters.Add("@LastUpdatedDate", NpgsqlTypes.NpgsqlDbType.Timestamp).Value = DateTime.UtcNow;
             try
             {
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
             }
             finally
             {
@@ -938,7 +925,7 @@ namespace Npgsql.Web {
                 // Create a temp table TO store the select results
                 cmd = new NpgsqlCommand("CREATE TABLE #PageIndexForProfileUsers(IndexId int IDENTITY (0, 1) NOT NULL, UserId varchar(36))", conn);
                 cmd.CommandTimeout = CommandTimeout;
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
                 cmd.Dispose();
 
                 insertQuery.Append(" ORDER BY UserName");
@@ -949,7 +936,7 @@ namespace Npgsql.Web {
                         cmd.Parameters.Add(arg);
                 }
 
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
                 cmd.Dispose();
 
                 cmdStr = new StringBuilder(200);
@@ -982,7 +969,7 @@ namespace Npgsql.Web {
                 cmd.Dispose();
 
                 cmd = new NpgsqlCommand("DROP TABLE #PageIndexForProfileUsers", conn);
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
 
                 return profiles;
             }

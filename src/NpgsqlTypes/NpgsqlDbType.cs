@@ -36,8 +36,11 @@ namespace NpgsqlTypes
     	// as enum values would change after each insertion. Now, just append new types.
 	
         // Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
+
         Array = int.MinValue,
-        Bigint = 0,
+
+        Bigint = 1,
+
         Boolean,
         Box,
         Bytea,
@@ -65,8 +68,8 @@ namespace NpgsqlTypes
         TimestampTZ,
         Uuid,
         Xml,
-        Oidvector
-        
+        Oidvector,
+        Interval
         
         
     }

@@ -117,33 +117,6 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class InsertExpression : VisitedExpression
-    {
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            sqlText.Append("INSERT INTO ");
-            base.WriteSql(sqlText);
-        }
-    }
-
-    internal class UpdateExpression : VisitedExpression
-    {
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            sqlText.Append("UPDATE ");
-            base.WriteSql(sqlText);
-        }
-    }
-
-    internal class DeleteExpression : VisitedExpression
-    {
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            sqlText.Append("DELETE FROM ");
-            base.WriteSql(sqlText);
-        }
-    }
-
     internal class ColumnExpression : VisitedExpression
     {
         private VisitedExpression _column;
@@ -275,19 +248,6 @@ namespace Npgsql.SqlGenerators
             else
                 sqlText.Append(_name);
             base.WriteSql(sqlText);
-        }
-
-        // override ToString since we don't want variable substitution
-        // until writing out the SQL.
-        public override string ToString()
-        {
-            StringBuilder unsubstitutedText = new StringBuilder();
-            unsubstitutedText.Append(_name);
-            foreach (var expression in this.ExpressionList)
-            {
-                unsubstitutedText.Append(expression.ToString());
-            }
-            return unsubstitutedText.ToString();
         }
     }
 

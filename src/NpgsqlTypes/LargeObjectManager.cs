@@ -86,7 +86,7 @@ namespace NpgsqlTypes
             // This is an example of Fastpath.addFunctions();
             //
             String sql;
-            if (conn.PostgreSqlVersion > new ServerVersion(7, 3, 0))
+            if (conn.PostgreSqlVersion > new Version(7, 3, 0))
             {
 
                 sql = "SELECT p.proname,p.oid "+
@@ -106,24 +106,27 @@ namespace NpgsqlTypes
                    " or proname = 'loread'" +
                    " or proname = 'lowrite'";
 
-            if (conn.PostgreSqlVersion > new ServerVersion(7, 3, 0))
+            if (conn.PostgreSqlVersion > new Version(7, 3, 0))
             {
                 sql += ")";
             }
 
-            IDbCommand cmd = new NpgsqlCommand(sql);
-            cmd.Connection = conn;
-
-            this.fp = new Fastpath(conn,conn.Connector.Stream);
-
-            IDataReader res = cmd.ExecuteReader(CommandBehavior.CloseConnection);
-
-
-            if (res == null)
-                throw new NpgsqlException("postgresql.lo.init");
-
-
-            fp.AddFunctions(res);
+            using(IDbCommand cmd = new NpgsqlCommand(sql))
+            {
+                cmd.Connection = conn;
+    
+                this.fp = new Fastpath(conn,conn.Connector.Stream);
+    
+                using(IDataReader res = cmd.ExecuteReader(CommandBehavior.CloseConnection))//FIXME: We want to close the connection after this?
+                {
+    
+                    if (res == null)
+                        throw new NpgsqlException("postgresql.lo.init");
+        
+        
+                    fp.AddFunctions(res);
+                }
+            }
         }
 
         /*

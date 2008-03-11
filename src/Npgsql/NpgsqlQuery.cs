@@ -35,7 +35,7 @@ namespace Npgsql
     /// <summary>
     /// Summary description for NpgsqlQuery
     /// </summary>
-    internal sealed class NpgsqlQuery
+    internal sealed class NpgsqlQuery : ClientMessage
     {
         private NpgsqlCommand _command;
         private ProtocolVersion _protocolVersion;
@@ -46,7 +46,7 @@ namespace Npgsql
             _protocolVersion = protocolVersion;
 
         }
-        public void WriteToStream( Stream outputStream, Encoding encoding )
+        public override void WriteToStream( Stream outputStream)
         {
             //NpgsqlEventLog.LogMsg( this.ToString() + _commandText, LogLevel.Debug  );
 
@@ -59,17 +59,17 @@ namespace Npgsql
             
             // Send the query to server.
             // Write the byte 'Q' to identify a query message.
-            outputStream.WriteByte((Byte)'Q');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Query);
 
             if (_protocolVersion == ProtocolVersion.Version3)
             {
                 // Write message length. Int32 + string length + null terminator.
-                PGUtil.WriteInt32(outputStream, 4 + encoding.GetByteCount(commandText) + 1);
+                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(commandText) + 1);
             }
 
             // Write the query. In this case it is the CommandText text.
             // It is a string terminated by a C NULL character.
-            PGUtil.WriteString(commandText, outputStream, encoding);
+            PGUtil.WriteString(commandText, outputStream);
         }
 
 

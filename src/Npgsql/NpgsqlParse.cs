@@ -27,12 +27,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.Collections;
 using System.IO;
 using System.Text;
-using System.Net;
-using NpgsqlTypes;
-
 
 namespace Npgsql
 {
@@ -42,7 +38,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlParse
+    internal sealed class NpgsqlParse : ClientMessage
     {
         // Logging related values
         //private static readonly String CLASSNAME = "NpgsqlParse";
@@ -60,9 +56,9 @@ namespace Npgsql
 
         }
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((Byte)'P');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Parse);
 
             // message length =
             // Int32 self
@@ -70,12 +66,12 @@ namespace Npgsql
             // query string + 1 null string terminator
             // + Int16
             // + Int32 * number of parameters.
-            Int32 messageLength = 4 + encoding.GetByteCount(_prepareName) + 1 + encoding.GetByteCount(_queryString) + 1 + 2 + (_parameterIDs.Length * 4);
+            Int32 messageLength = 4 + UTF8Encoding.GetByteCount(_prepareName) + 1 + UTF8Encoding.GetByteCount(_queryString) + 1 + 2 + (_parameterIDs.Length * 4);
             //Int32 messageLength = 4 + _prepareName.Length + 1 + _queryString.Length + 1 + 2 + (_parameterIDs.Length * 4);
 
             PGUtil.WriteInt32(outputStream, messageLength);
-            PGUtil.WriteString(_prepareName, outputStream, encoding);
-            PGUtil.WriteString(_queryString, outputStream, encoding);
+            PGUtil.WriteString(_prepareName, outputStream);
+            PGUtil.WriteString(_queryString, outputStream);
             PGUtil.WriteInt16(outputStream, (Int16)_parameterIDs.Length);
 
 

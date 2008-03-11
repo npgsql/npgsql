@@ -36,30 +36,19 @@ namespace Npgsql
 
     internal sealed class NpgsqlStartupState : NpgsqlState
     {
-        private static NpgsqlStartupState _instance = null;
+        public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
 
         private readonly String CLASSNAME = "NpgsqlStartupState";
 
         private NpgsqlStartupState() : base()
         { }
 
-        public static NpgsqlStartupState Instance
-        {
-            get
-            {
-                if ( _instance == null )
-                {
-                    _instance = new NpgsqlStartupState();
-                }
-                return _instance;
-            }
-        }
         public override void Authenticate( NpgsqlConnector context, string password)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
             NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
             BufferedStream stream = new BufferedStream(context.Stream);
-            pwpck.WriteToStream(stream, context.Encoding);
+            pwpck.WriteToStream(stream);
             stream.Flush();
 
         }

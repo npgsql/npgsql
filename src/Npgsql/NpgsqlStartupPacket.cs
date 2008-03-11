@@ -40,7 +40,7 @@ namespace Npgsql
     /// protocol.
     /// </summary>
     ///
-    internal sealed class NpgsqlStartupPacket
+    internal sealed class NpgsqlStartupPacket : ClientMessage
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlStartupPacket";
@@ -81,24 +81,24 @@ namespace Npgsql
         }
 
 
-        public void WriteToStream(Stream output_stream, Encoding encoding)
+        public override void WriteToStream(Stream output_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
             switch (protocol_version) {
             case ProtocolVersion.Version2 :
-                WriteToStream_Ver_2(output_stream, encoding);
+                WriteToStream_Ver_2(output_stream);
                 break;
 
             case ProtocolVersion.Version3 :
-                WriteToStream_Ver_3(output_stream, encoding);
+                WriteToStream_Ver_3(output_stream);
                 break;
 
             }
         }
 
 
-        private void WriteToStream_Ver_2(Stream output_stream, Encoding encoding)
+        private void WriteToStream_Ver_2(Stream output_stream)
 				{
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream_Ver_2");
 
@@ -108,48 +108,48 @@ namespace Npgsql
             output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(PGUtil.ConvertProtocolVersion(this.protocol_version))), 0, 4);
 
             // Database name.
-            PGUtil.WriteLimString(this.database_name, 64, output_stream, encoding);
+            PGUtil.WriteLimString(this.database_name, 64, output_stream);
 
             // User name.
-            PGUtil.WriteLimString(this.user_name, 32, output_stream, encoding);
+            PGUtil.WriteLimString(this.user_name, 32, output_stream);
 
             // Arguments.
-            PGUtil.WriteLimString(this.arguments, 64, output_stream, encoding);
+            PGUtil.WriteLimString(this.arguments, 64, output_stream);
 
             // Unused.
-            PGUtil.WriteLimString(this.unused, 64, output_stream, encoding);
+            PGUtil.WriteLimString(this.unused, 64, output_stream);
 
             // Optional tty.
-            PGUtil.WriteLimString(this.optional_tty, 64, output_stream, encoding);
+            PGUtil.WriteLimString(this.optional_tty, 64, output_stream);
             output_stream.Flush();
         }
 
 
-        private void WriteToStream_Ver_3(Stream output_stream, Encoding encoding)
+        private void WriteToStream_Ver_3(Stream output_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream_Ver_3");
 
-            PGUtil.WriteInt32(output_stream, 4 + 4 + 5 + (encoding.GetByteCount(user_name) + 1) + 9 + (encoding.GetByteCount(database_name) + 1) + 10 + 4 + 1);
+            PGUtil.WriteInt32(output_stream, 4 + 4 + 5 + (UTF8Encoding.GetByteCount(user_name) + 1) + 9 + (UTF8Encoding.GetByteCount(database_name) + 1) + 10 + 4 + 1);
 
             PGUtil.WriteInt32(output_stream, Npgsql.PGUtil.ConvertProtocolVersion(this.protocol_version));
 
             // User name.
-            PGUtil.WriteString("user", output_stream, encoding);
+            PGUtil.WriteString("user", output_stream);
 
             // User name.
-            PGUtil.WriteString(user_name, output_stream, encoding);
+            PGUtil.WriteString(user_name, output_stream);
 
             // Database name.
-            PGUtil.WriteString("database", output_stream, encoding);
+            PGUtil.WriteString("database", output_stream);
 
             // Database name.
-            PGUtil.WriteString(database_name, output_stream, encoding);
+            PGUtil.WriteString(database_name, output_stream);
 
             // DateStyle.
-            PGUtil.WriteString("DateStyle", output_stream, encoding);
+            PGUtil.WriteString("DateStyle", output_stream);
 
             // DateStyle.
-            PGUtil.WriteString("ISO", output_stream, encoding);
+            PGUtil.WriteString("ISO", output_stream);
 
             output_stream.WriteByte(0);
             output_stream.Flush();

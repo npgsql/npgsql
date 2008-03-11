@@ -110,19 +110,9 @@ namespace Npgsql
                 // Default type for null values is String.
                 this.value = DBNull.Value;
                 type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-                return;
             }
-            else
-            {
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value.GetType());
-                if (type_info == null)
-                {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-                }
-                
-                
-
-            }
+            else if(!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+                throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
         }
 		
 		/// <summary>
@@ -319,8 +309,7 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value);
-                if (type_info == null)
+                if(!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
 
             }
@@ -344,10 +333,9 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
-                /*if(value == NpgsqlDbType.Array)
-                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));*/
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value);
-                if (type_info == null)
+                if(value == NpgsqlDbType.Array)
+                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                if(!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
 
             }
@@ -527,17 +515,8 @@ namespace Npgsql
                         type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
 
                 }
-                else
-                {
-                    if (type_info == null)
-                    {
-                        type_info = NpgsqlTypesHelper.GetNativeTypeInfo(value.GetType());
-                        if (type_info == null)
-                        	throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-                        
-                    }
-
-                }
+                else if(type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
             }
         }
 
@@ -580,7 +559,6 @@ namespace Npgsql
             clone.value = value;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
 
-            return clone;
-        }
+            return clone;        }
     }
 }

@@ -37,10 +37,8 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlExecute
+    internal sealed class NpgsqlExecute : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = "NpgsqlExecute";
 
         private String _portalName;
         private Int32 _maxRows;
@@ -60,15 +58,15 @@ namespace Npgsql
             }
         }
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((Byte)'E');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Execute);
 
             PGUtil.WriteInt32(outputStream, 4 +
-                              encoding.GetByteCount(_portalName) + 1 +
+                              UTF8Encoding.GetByteCount(_portalName) + 1 +
                               4);
 
-            PGUtil.WriteString(_portalName, outputStream, encoding);
+            PGUtil.WriteString(_portalName, outputStream);
             PGUtil.WriteInt32(outputStream, _maxRows);
 
         }

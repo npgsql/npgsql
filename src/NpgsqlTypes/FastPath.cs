@@ -31,9 +31,10 @@
 */
 
 using System;
-using System.Collections;
-using System.IO;
+using System.Collections.Generic;
 using System.Data;
+using System.IO;
+
 using Npgsql;
 
 namespace NpgsqlTypes
@@ -50,7 +51,7 @@ namespace NpgsqlTypes
     {
         // This maps the functions names to their id's (possible unique just
         // to a connection).
-        protected Hashtable func = new Hashtable();
+        protected Dictionary<string, int> func = new Dictionary<string, int>();
 
         protected NpgsqlConnection conn;		// our connection
         protected Stream  stream;	// the network stream
@@ -147,7 +148,6 @@ namespace NpgsqlTypes
                 Exception error = null;
                 Int32 c;
                 Boolean l_endQuery = false;
-                Byte[] input_buffer = new Byte[512];
 
                 while (!l_endQuery)
                 {
@@ -156,35 +156,31 @@ namespace NpgsqlTypes
                     switch (c)
                     {
                     case 'A':	// Asynchronous Notify
-                        Int32 msglen = PGUtil.ReadInt32(stream,input_buffer);
-                        Int32 pid = PGUtil.ReadInt32(stream,input_buffer);
-                        String msg = PGUtil.ReadString(stream,conn.Connector.Encoding);
-                        PGUtil.ReadString(stream,conn.Connector.Encoding);
-                        String param = PGUtil.ReadString(stream,conn.Connector.Encoding);
+                        Int32 msglen = PGUtil.ReadInt32(stream);
+                        Int32 pid = PGUtil.ReadInt32(stream);
+                        String msg = PGUtil.ReadString(stream);
+                        PGUtil.ReadString(stream);
+                        String param = PGUtil.ReadString(stream);
 
-                        conn.Connector.CheckErrorsAndNotifications();
                         break;
                         //------------------------------
                         // Error message returned
                     case 'E':
-                        NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion);
-                        e.ReadFromStream(stream,conn.Connector.Encoding);
+                        NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion, stream);
                         throw new NpgsqlException(e.ToString());
 
                         //------------------------------
                         // Notice from backend
                     case 'N':
-                        Int32 l_nlen = PGUtil.ReadInt32(stream,input_buffer);
+                        Int32 l_nlen = PGUtil.ReadInt32(stream);
 
-                        NpgsqlError e1 = new NpgsqlError(conn.BackendProtocolVersion);
-                        e1.ReadFromStream(stream,conn.Connector.Encoding);
-                        conn.Connector.Mediator.Errors.Add(e1);
+                        conn.Connector.FireNotice(new NpgsqlError(conn.BackendProtocolVersion, stream));
 
                         break;
 
                     case 'V':
-                        Int32 l_msgLen = PGUtil.ReadInt32(stream,input_buffer);
-                        Int32 l_valueLen = PGUtil.ReadInt32(stream,input_buffer);
+                        Int32 l_msgLen = PGUtil.ReadInt32(stream);
+                        Int32 l_valueLen = PGUtil.ReadInt32(stream);
 
                         if (l_valueLen == -1)
                         {
@@ -199,7 +195,7 @@ namespace NpgsqlTypes
                             // Return an Integer if
                             if (resulttype)
 
-                                result = PGUtil.ReadInt32(stream,input_buffer);
+                                result = PGUtil.ReadInt32(stream);
                             else
                             {
                                 Byte[] buf = new Byte[l_valueLen];
@@ -222,7 +218,7 @@ namespace NpgsqlTypes
 
                     case 'Z':
                         //TODO: use size better
-                        if (PGUtil.ReadInt32(stream,input_buffer) != 5)
+                        if (PGUtil.ReadInt32(stream) != 5)
                             throw new NpgsqlException("Received Z" );
                         //TODO: handle transaction status
                         Char l_tStatus = (Char)stream.ReadByte();
@@ -269,7 +265,6 @@ namespace NpgsqlTypes
                 // Now loop, reading the results
                 Object result = null; // our result
                 String errorMessage = "";
-                Byte[] input_buffer = new Byte[512];
                 Int32 c;
                 Boolean l_endQuery = false;
                 while (!l_endQuery)
@@ -280,27 +275,23 @@ namespace NpgsqlTypes
                     {
                     case 'A':	// Asynchronous Notify
                         //TODO: do something with this
-                        Int32 pid = PGUtil.ReadInt32(stream,input_buffer);
-                        String msg = PGUtil.ReadString(stream,conn.Connector.Encoding);
+                        Int32 pid = PGUtil.ReadInt32(stream);
+                        String msg = PGUtil.ReadString(stream);
 
-
-                        conn.Connector.CheckErrorsAndNotifications();
 
                         break;
 
                         //------------------------------
                         // Error message returned
                     case 'E':
-                        NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion);
-                        e.ReadFromStream(stream,conn.Connector.Encoding);
+                        NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion, stream);
                         errorMessage +=  e.Message;
                         break;
 
                         //------------------------------
                         // Notice from backend
                     case 'N':
-                        NpgsqlError notice = new NpgsqlError(conn.BackendProtocolVersion);
-                        notice.ReadFromStream(stream,conn.Connector.Encoding);
+                        NpgsqlError notice = new NpgsqlError(conn.BackendProtocolVersion, stream);
                         errorMessage +=  notice.Message;
                         break;
 
@@ -308,10 +299,10 @@ namespace NpgsqlTypes
                         Char l_nextChar = (Char)stream.ReadByte();
                         if (l_nextChar == 'G')
                         {
-                            Int32 sz = PGUtil.ReadInt32(stream,input_buffer);
+                            Int32 sz = PGUtil.ReadInt32(stream);
                             // Return an Integer if
                             if (resulttype)
-                                result = PGUtil.ReadInt32(stream,input_buffer);
+                                result = PGUtil.ReadInt32(stream);
                             else
                             {
                                 Byte[] buf = new Byte[sz];
@@ -434,7 +425,7 @@ namespace NpgsqlTypes
          *
          * <p>PostgreSQL stores the function id's and their corresponding names in
          * the pg_proc table. To speed things up locally, instead of querying each
-         * function from that table when required, a Hashtable is used. Also, only
+         * function from that table when required, a Dictionary is used. Also, only
          * the function's required are entered into this table, keeping connection
          * times as fast as possible.
          *
@@ -475,11 +466,7 @@ namespace NpgsqlTypes
          */
         public Int32 GetID(String name)
         {
-            Int32 id = (Int32)func[name];
-
-
-
-            return id;
+            return func[name];
         }
     }
 

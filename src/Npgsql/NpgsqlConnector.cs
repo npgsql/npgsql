@@ -28,7 +28,7 @@
 //		          - 06/??/2004 - Glen Parker<glenebob@nwlink.com> rewritten
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Globalization;
 using System.Text;
@@ -92,7 +92,7 @@ namespace Npgsql
         private NpgsqlMediator                   _mediator;
 
         private ProtocolVersion                  _backendProtocolVersion;
-        private ServerVersion                    _serverVersion;
+        private Version                    _serverVersion;
 
         // Values for possible CancelRequest messages.
         private NpgsqlBackEndKeyData             _backend_keydata;
@@ -104,8 +104,6 @@ namespace Npgsql
         private Boolean                          _supportsPrepare = false;
 
         private NpgsqlBackendTypeMapping         _oidToNameMapping = null;
-
-        private Encoding                         _encoding;
 
         private Boolean                          _isInitialized;
 
@@ -129,6 +127,14 @@ namespace Npgsql
         
         // Counter of notification thread start/stop requests in order to 
         internal Int16                            _notificationThreadStopCount;
+        
+        internal ForwardsOnlyDataReader                 CurrentReader;
+        
+        // Some kinds of messages only get one response, and do not
+        // expect a ready_for_query response.
+        private bool _requireReadyForQuery = true;
+        
+        private Dictionary<string, NpgsqlParameterStatus> _serverParameters = new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
 
 
 
@@ -151,6 +157,12 @@ namespace Npgsql
             _notificationThreadStopCount = 1;
             _notificationAutoResetEvent = new AutoResetEvent(true);
 
+        }
+        //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
+        //case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
+        ~NpgsqlConnector()
+        {
+            Close();
         }
 
 
@@ -214,6 +226,8 @@ namespace Npgsql
         internal ConnectionState State {
             get
             {
+                if(CurrentReader != null && !CurrentReader._cleanedUp)
+                    return ConnectionState.Open | ConnectionState.Fetching;
                 return _connection_state;
             }
         }
@@ -231,6 +245,16 @@ namespace Npgsql
         {
             CurrentState.Query(this, queryCommand );
         }
+        internal IEnumerable<IServerResponseObject> QueryEnum(NpgsqlCommand queryCommand)
+        {
+            if(CurrentReader != null)
+            {
+                if(!CurrentReader._cleanedUp)
+                    throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
+                CurrentReader.Close();
+            }
+            return CurrentState.QueryEnum(this, queryCommand);
+        }
 
         internal void Authenticate (string password)
         {
@@ -247,9 +271,14 @@ namespace Npgsql
             CurrentState.Flush(this);
         }
 
-        internal void Sync ()
+        internal void TestConnector()
         {
-            CurrentState.Sync(this);
+        	CurrentState.TestConnector(this);
+        }
+
+        internal NpgsqlRowDescription Sync ()
+        {
+            return CurrentState.Sync(this);
         }
 
         internal void Bind (NpgsqlBind bind)
@@ -266,6 +295,10 @@ namespace Npgsql
         {
             CurrentState.Execute(this, execute);
         }
+        internal IEnumerable<IServerResponseObject> ExecuteEnum(NpgsqlExecute execute)
+        {
+            return CurrentState.ExecuteEnum(this, execute);
+        }
 
 
 
@@ -274,7 +307,7 @@ namespace Npgsql
         /// We try to send a simple query text, select 1 as ConnectionTest;
         /// </summary>
 	
-        internal Boolean IsValid()
+/*        internal Boolean IsValid()
         {
             try
             {
@@ -294,7 +327,7 @@ namespace Npgsql
             }
 
             return true;
-        }
+        }*/
 
 
 
@@ -334,72 +367,28 @@ namespace Npgsql
 
 
         }
-
-        
-
-
-
-        /// <summary>
-        /// Check for mediator errors (sent by backend) and throw the appropriate
-        /// exception if errors found.  This needs to be called after every interaction
-        /// with the backend.
-        /// </summary>
-        internal void CheckErrors()
-        {
-            if (_mediator.Errors.Count > 0)
-            {
-                throw new NpgsqlException(_mediator.Errors);
-            }
-        }
-
-        /// <summary>
-        /// Check for notices and fire the appropiate events.
-        /// This needs to be called after every interaction
-        /// with the backend.
-        /// </summary>
-        internal void CheckNotices()
+        internal void FireNotice(NpgsqlError e)
         {
             if (Notice != null)
             {
-                foreach (NpgsqlError E in _mediator.Notices)
+                try
                 {
-                    Notice(this, new NpgsqlNoticeEventArgs(E));
+                    Notice(this, new NpgsqlNoticeEventArgs(e));
                 }
+                catch{}//Eat exceptions from user code.
             }
         }
 
-        /// <summary>
-        /// Check for notifications and fire the appropiate events.
-        /// This needs to be called after every interaction
-        /// with the backend.
-        /// </summary>
-        internal void CheckNotifications()
+        internal void FireNotification(NpgsqlNotificationEventArgs e)
         {
             if (Notification != null)
             {
-
-                    foreach (NpgsqlNotificationEventArgs E in _mediator.Notifications)
-                    {
-                        // Wrap our notification thread call while running on user land code.
-                        // This prevents our thread of possibly dying there if there is no exception handling.
-                        try
-                        {
-                            Notification(this, E);
-                        }
-                        catch(Exception){}
-                    }
+                try
+                {
+                    Notification(this, e);
                 }
-
-        }
-
-        /// <summary>
-        /// Check for errors AND notifications in one call.
-        /// </summary>
-        internal void CheckErrorsAndNotifications()
-        {
-            CheckNotices();
-            CheckNotifications();
-            CheckErrors();
+                catch{}//Eat exceptions from user code.
+            }
         }
 
         /// <summary>
@@ -458,7 +447,7 @@ namespace Npgsql
         /// <summary>
         /// Version of backend server this connector is connected to.
         /// </summary>
-        internal ServerVersion ServerVersion
+        internal Version ServerVersion
         {
             get
             {
@@ -469,19 +458,6 @@ namespace Npgsql
                 _serverVersion = value;
             }
         }
-
-        internal Encoding Encoding
-        {
-            get
-            {
-                return _encoding;
-            }
-            set
-            {
-                _encoding = value;
-            }
-        }
-
         /// <summary>
         /// Backend protocol version in use by this connector.
         /// </summary>
@@ -574,6 +550,10 @@ namespace Npgsql
             {
                 return _backend_keydata;
             }
+            set
+            {
+                _backend_keydata = value;
+            }
         }
 
         internal NpgsqlBackendTypeMapping OidToNameMapping {
@@ -628,7 +608,7 @@ namespace Npgsql
         // FIXME - should be private
         internal void ProcessServerVersion ()
         {
-            this._supportsPrepare = (ServerVersion >= new ServerVersion(7, 3, 0));
+            this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
         }
 
         /*/// <value>Counts the numbers of Connections that share
@@ -643,86 +623,67 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
+            ServerVersion = null;
             // If Connection.ConnectionString specifies a protocol version, we will
             // not try to fall back to version 2 on failure.
 
 			_backendProtocolVersion = (settings.Protocol == ProtocolVersion.Unknown) ? ProtocolVersion.Version3 : settings.Protocol;
 
             // Reset state to initialize new connector in pool.
-            Encoding = Encoding.Default;
             CurrentState = NpgsqlClosedState.Instance;
 
             // Get a raw connection, possibly SSL...
             CurrentState.Open(this);
-            // Establish protocol communication and handle authentication...
-            CurrentState.Startup(this);
-
-            // Check for protocol not supported.  If we have been told what protocol to use,
-            // we will not try this step.
-			if (_mediator.Errors.Count > 0 && settings.Protocol == ProtocolVersion.Unknown)
+            try
             {
-                // If we attempted protocol version 3, it may be possible to drop back to version 2.
-                if (BackendProtocolVersion == ProtocolVersion.Version3)
-                {
-                    NpgsqlError       Error0 = (NpgsqlError)_mediator.Errors[0];
-
-                    // If NpgsqlError.ReadFromStream_Ver_3() encounters a version 2 error,
-                    // it will set its own protocol version to version 2.  That way, we can tell
-                    // easily if the error was a FATAL: protocol error.
-                    if (Error0.BackendProtocolVersion == ProtocolVersion.Version2)
-                    {
-                        // Try using the 2.0 protocol.
-                        _mediator.ResetResponses();
-                        BackendProtocolVersion = ProtocolVersion.Version2;
-                        CurrentState = NpgsqlClosedState.Instance;
-
-                        // Get a raw connection, possibly SSL...
-                        CurrentState.Open(this);
-                        // Establish protocol communication and handle authentication...
-                        CurrentState.Startup(this);
-                    }
-                }
+                // Establish protocol communication and handle authentication...
+                CurrentState.Startup(this);
             }
+            catch(NpgsqlException ne)
+            {
+                // Check for protocol not supported.  If we have been told what protocol to use,
+                // we will not try this step.
+    			if (settings.Protocol != ProtocolVersion.Unknown)
+    			    throw;
+                // If we attempted protocol version 3, it may be possible to drop back to version 2.
+                if (BackendProtocolVersion != ProtocolVersion.Version3)
+                    throw;
+                NpgsqlError       Error0 = (NpgsqlError)ne.Errors[0];
 
-            // Check for errors and do the Right Thing.
-            // FIXME - CheckErrors needs to be moved to Connector
-            CheckErrors();
+                // If NpgsqlError..ctor() encounters a version 2 error,
+                // it will set its own protocol version to version 2.  That way, we can tell
+                // easily if the error was a FATAL: protocol error.
+                if (Error0.BackendProtocolVersion != ProtocolVersion.Version2)
+                    throw;
+                // Try using the 2.0 protocol.
+                _mediator.ResetResponses();
+                BackendProtocolVersion = ProtocolVersion.Version2;
+                CurrentState = NpgsqlClosedState.Instance;
 
-            _backend_keydata = _mediator.BackendKeyData;
+                // Get a raw connection, possibly SSL...
+                CurrentState.Open(this);
+                // Establish protocol communication and handle authentication...
+                CurrentState.Startup(this);
+            }
 
             // Change the state of connection to open and ready.
             _connection_state = ConnectionState.Open;
             CurrentState = NpgsqlReadyState.Instance;
 
-            String       ServerVersionString = String.Empty;
-
-            // First try to determine backend server version using the newest method.
-            if (((NpgsqlParameterStatus)_mediator.Parameters["__npgsql_server_version"]) != null)
-                ServerVersionString = ((NpgsqlParameterStatus)_mediator.Parameters["__npgsql_server_version"]).ParameterValue;
-
-
             // Fall back to the old way, SELECT VERSION().
             // This should not happen for protocol version 3+.
-            if (ServerVersionString.Length == 0)
+            if (ServerVersion == null)
             {
-                NpgsqlCommand command = new NpgsqlCommand("select version();set DATESTYLE TO ISO;", this);
-                ServerVersionString = PGUtil.ExtractServerVersion( (String)command.ExecuteScalar() );
+                NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
+                ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
             }
-
-            // Cook version string so we can use it for enabling/disabling things based on
-            // backend version.
-            ServerVersion = PGUtil.ParseServerVersion(ServerVersionString);
 
             // Adjust client encoding.
 
             //NpgsqlCommand commandEncoding1 = new NpgsqlCommand("show client_encoding", _connector);
             //String clientEncoding1 = (String)commandEncoding1.ExecuteScalar();
-			if (settings.Encoding.ToUpperInvariant() == "UNICODE")
-            {
-                Encoding = Encoding.UTF8;
-                NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UNICODE", this);
-                commandEncoding.ExecuteNonQuery();
-            }
+            NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this);
+            commandEncoding.ExecuteBlind();
             
 			if (!string.IsNullOrEmpty(settings.SearchPath))
             {
@@ -747,7 +708,7 @@ namespace Npgsql
                     
                 // This is using string concatenation because set search_path doesn't allow type casting. ::text    
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
-                commandSearchPath.ExecuteNonQuery();
+                commandSearchPath.ExecuteBlind();
                 
             }
 
@@ -773,6 +734,8 @@ namespace Npgsql
             try
             {
                 this.CurrentState.Close(this);
+                _serverParameters.Clear();
+                ServerVersion = null;
             }
             catch {}
         }
@@ -845,7 +808,38 @@ namespace Npgsql
             
         }
         
-        internal void StopNotificationThread()
+        //Use with using(){} to perform the sentry pattern
+        //on stopping and starting notification thread
+        //(The sentry pattern is a generalisation of RAII where we
+        //have a pair of actions - one "undoing" the previous
+        //and we want to execute the first and second around other code,
+        //then we treat it much like resource mangement in RAII.
+        //try{}finally{} also does execute-around, but sentry classes
+        //have some extra flexibility (e.g. they can be "owned" by
+        //another object and then cleaned up when that object is
+        //cleaned up), and can act as the sole gate-way
+        //to the code in question, guaranteeing that using code can't be written
+        //so that the "undoing" is forgotten.
+        internal class NotificationThreadBlock : IDisposable
+        {
+            private NpgsqlConnector _connector;
+			public NotificationThreadBlock(NpgsqlConnector connector)
+			{
+			    (_connector = connector).StopNotificationThread();
+			}
+			public void Dispose()
+			{
+			    if(_connector != null)
+			        _connector.ResumeNotificationThread();
+			    _connector = null;
+			}
+        }
+        
+        internal NotificationThreadBlock BlockNotificationThread()
+        {
+            return new NotificationThreadBlock(this);
+        }
+        private void StopNotificationThread()
         {
             
             _notificationThreadStopCount++;
@@ -858,7 +852,7 @@ namespace Npgsql
             }
         }
         
-        internal void ResumeNotificationThread()
+        private void ResumeNotificationThread()
         {
             _notificationThreadStopCount--;
             if (_notificationThreadStopCount == 0)
@@ -906,7 +900,6 @@ namespace Npgsql
                         // reset any responses just before getting new ones
                         this.connector.Mediator.ResetResponses();
                         this.state.ProcessBackendResponses(this.connector);
-                        this.connector.CheckErrorsAndNotifications();
                     }
                
                     this.connector._notificationAutoResetEvent.Set();
@@ -918,7 +911,30 @@ namespace Npgsql
         
         }
 
-
-
+        public bool RequireReadyForQuery
+        {
+            get
+            {
+                return _requireReadyForQuery;
+            }
+            set
+            {
+                _requireReadyForQuery = value;
+            }
+        }
+        public void AddParameterStatus(NpgsqlParameterStatus ps)
+        {
+            if(_serverParameters.ContainsKey(ps.Parameter))
+                _serverParameters[ps.Parameter] = ps;
+            else
+                _serverParameters.Add(ps.Parameter, ps);
+        }
+        public IDictionary<string, NpgsqlParameterStatus> ServerParameters
+        {
+            get
+            {
+                return new ReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters);
+            }
+        }
     }
 }

@@ -27,6 +27,7 @@
 
 using System;
 using System.IO;
+using System.Text;
 
 namespace Npgsql
 {
@@ -35,6 +36,8 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlCopySerializer
     {
+        private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
+        
         public static String
             DEFAULT_DELIMITER = "\t",
             DEFAULT_SEPARATOR = "\n",
@@ -121,7 +124,7 @@ namespace Npgsql
             {
                 if( _delimiterBytes == null )
                 {
-                    _delimiterBytes = Encoding.GetBytes( _delimiter );
+                    _delimiterBytes = ENCODING_UTF8.GetBytes( _delimiter );
                 }
                 return _delimiterBytes;
             }
@@ -152,7 +155,7 @@ namespace Npgsql
             {
                 if( _separatorBytes == null )
                 {
-                    _separatorBytes = Encoding.GetBytes( _separator );
+                    _separatorBytes = ENCODING_UTF8.GetBytes( _separator );
                 }
                 return _separatorBytes;
             }
@@ -183,7 +186,7 @@ namespace Npgsql
             {
                 if( _escapeBytes == null )
                 {
-                    _escapeBytes = Encoding.GetBytes( _escape );
+                    _escapeBytes = ENCODING_UTF8.GetBytes( _escape );
                 }
                 return _escapeBytes;
             }
@@ -214,7 +217,7 @@ namespace Npgsql
             {
                 if( _nullBytes == null )
                 {
-                    _nullBytes = Encoding.GetBytes( _null );
+                    _nullBytes = ENCODING_UTF8.GetBytes( _null );
                 }
                 return _nullBytes;
             }
@@ -294,14 +297,6 @@ namespace Npgsql
             }
             Flush();
             ToStream.Close();
-        }
-
-        protected System.Text.Encoding Encoding
-        {
-            get
-            {
-                return _context.Encoding;
-            }
         }
 
         protected int SpaceInBuffer
@@ -456,9 +451,9 @@ namespace Npgsql
                 // some, possibly all of fieldValue string does not require escaping and can be buffered for output
                 if( escapeAt > bufferedUpto )
                 {
-                    int encodedLength = Encoding.GetByteCount( fieldValue.ToCharArray(bufferedUpto, escapeAt) );
+                    int encodedLength = ENCODING_UTF8.GetByteCount( fieldValue.ToCharArray(bufferedUpto, escapeAt) );
                     MakeRoomForBytes( encodedLength );
-                    _sendBufferAt += Encoding.GetBytes( fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
+                    _sendBufferAt += ENCODING_UTF8.GetBytes( fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
                     bufferedUpto = escapeAt;
                 }
     

@@ -30,18 +30,14 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Text;
-using System.Collections;
 using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 using Mono.Security.Protocol.Tls;
 
-using NpgsqlTypes;
-
 #if WITHDESIGN
-using Npgsql.Design;
+
 #endif
 
 namespace Npgsql
@@ -108,6 +104,9 @@ namespace Npgsql
 
         // Set this when disposed is called.
         private bool                                   disposed = false;
+        
+        // Used when we closed the connector due to an error, but are pretending it's open.
+        private bool _fakingOpen;
 
 		// Strong-typed ConnectionString values
 		private NpgsqlConnectionStringBuilder          settings;
@@ -189,9 +188,6 @@ namespace Npgsql
         /// </li>
         /// <li>
         /// MaxPoolSize:        Max size of connection pool;
-        /// </li>
-        /// <li>
-        /// Encoding:           Encoding to be used; Can be ASCII or UNICODE. Default is ASCII. Use UNICODE if you are having problems with accents.
         /// </li>
         /// <li>
         /// Timeout:            Time to wait for connection open in seconds. Default is 15.
@@ -341,6 +337,17 @@ namespace Npgsql
 				return settings.Database;
             }
         }
+        
+        /// <summary>
+        /// Whether datareaders are loaded in their entirety (for compatibility with earlier code).
+        /// </summary>
+        public bool PreloadReader
+        {
+            get
+            {
+                return settings.PreloadReader;
+            }
+        }
 
         /// <summary>
         /// Gets the database server name.
@@ -385,7 +392,7 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public ServerVersion PostgreSqlVersion
+        public Version PostgreSqlVersion
         {
             get
             {
@@ -413,11 +420,11 @@ namespace Npgsql
         }
         
         /// <summary>
-        /// Process id of backend server.
+        /// ProcessID of postgres process connection is connected to.
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public Int32 ProcessID 
+        public int ProcessID
         {
             get
             {
@@ -537,6 +544,10 @@ namespace Npgsql
             Open();
         }
 
+        internal void EmergencyClose()
+        {
+            _fakingOpen = true;
+        }
         /// <summary>
         /// Releases the connection to the database.  If the connection is pooled, it will be
         ///	made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
@@ -817,6 +828,20 @@ namespace Npgsql
             {
                 throw new ObjectDisposedException(CLASSNAME);
             }
+            
+            if(_fakingOpen)
+            {
+                if(connector != null)
+                {
+                    try
+                    {
+                        Close();
+                    }
+                    catch{}
+                }
+                Open();
+                _fakingOpen = false;
+            }
 
             if (connector == null)
             {
@@ -917,17 +942,15 @@ namespace Npgsql
             promotable.Enlist(transaction);
         }
 
-        protected
 #if NET35
-            override
-#endif
-            DbProviderFactory DbProviderFactory
+        protected override DbProviderFactory DbProviderFactory
         {
             get
             {
                 return NpgsqlFactory.Instance;
             }
         }
+#endif
 
     }
 

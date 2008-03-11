@@ -40,11 +40,8 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlBind
+    internal sealed class NpgsqlBind : ClientMessage
     {
-
-        // Logging related values
-        //private static readonly String CLASSNAME = "NpgsqlBind";
 
         private String _portalName;
         private String _preparedStatementName;
@@ -129,14 +126,14 @@ namespace Npgsql
         }
 
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
 
 
 
             Int32 messageLength = 4 +
-                    encoding.GetByteCount(_portalName) + 1 +
-                    encoding.GetByteCount(_preparedStatementName) + 1 +
+                    UTF8Encoding.GetByteCount(_portalName) + 1 +
+                    UTF8Encoding.GetByteCount(_preparedStatementName) + 1 +
                     2 +
                     (_parameterFormatCodes.Length * 2) +
                     2;
@@ -154,18 +151,18 @@ namespace Npgsql
                                 ((_parameterFormatCodes.Length != 1) && (_parameterFormatCodes[i] == (Int16) FormatCode.Binary)) )
                             messageLength += ((Byte[])_parameterValues[i]).Length;
                         else
-                            messageLength += encoding.GetByteCount((String)_parameterValues[i]);
+                            messageLength += UTF8Encoding.GetByteCount((String)_parameterValues[i]);
 
                 }
 
             messageLength += 2 + (_resultFormatCodes.Length * 2);
 
 
-            outputStream.WriteByte((Byte)'B');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Bind);
 
             PGUtil.WriteInt32(outputStream, messageLength);
-            PGUtil.WriteString(_portalName, outputStream, encoding);
-            PGUtil.WriteString(_preparedStatementName, outputStream, encoding);
+            PGUtil.WriteString(_portalName, outputStream);
+            PGUtil.WriteString(_preparedStatementName, outputStream);
 
             PGUtil.WriteInt16(outputStream, (Int16)_parameterFormatCodes.Length);
 
@@ -197,7 +194,7 @@ namespace Npgsql
                             PGUtil.WriteInt32(outputStream, -1);
                         else
                         {
-                            Byte[] parameterValueBytes = encoding.GetBytes((String)_parameterValues[i]);
+                            Byte[] parameterValueBytes = UTF8Encoding.GetBytes((String)_parameterValues[i]);
                             PGUtil.WriteInt32(outputStream, parameterValueBytes.Length);
                             outputStream.Write(parameterValueBytes, 0, parameterValueBytes.Length);
                         }

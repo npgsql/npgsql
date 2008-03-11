@@ -30,15 +30,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.Reflection;
-using System.Data;
-using System.Data.Common;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.Common;
+
 using NpgsqlTypes;
 
 #if WITHDESIGN
-using Npgsql.Design;
+
 #endif
 
 namespace Npgsql
@@ -54,9 +54,9 @@ namespace Npgsql
     [Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
     #endif
     
-    public sealed class NpgsqlParameterCollection : DbParameterCollection
+    public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
-        private ArrayList InternalList = new ArrayList();
+        private List<NpgsqlParameter> InternalList = new List<NpgsqlParameter>();
 
         // Logging related value
         private static readonly String CLASSNAME = "NpgsqlParameterCollection";
@@ -272,7 +272,7 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsReadOnly");
-                return this.InternalList.IsReadOnly;
+                return false;
             }
         }
 
@@ -295,7 +295,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, value);
             CheckType(value);
-            this.InternalList.Insert(index, value);
+            this.InternalList.Insert(index, (NpgsqlParameter)value);
         }
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", value);
             CheckType(value);
-            this.InternalList.Remove(value);
+            this.InternalList.Remove((NpgsqlParameter)value);
         }
 
         /// <summary>
@@ -317,8 +317,9 @@ namespace Npgsql
         public override bool Contains(object value)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Contains", value);
-            CheckType(value);
-            return this.InternalList.Contains(value);
+            if(!(value is NpgsqlParameter))
+               return false;
+            return this.InternalList.Contains((NpgsqlParameter)value);
         }
 
 
@@ -375,7 +376,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", value);
             CheckType(value);
-            return this.InternalList.IndexOf(value);
+            return this.InternalList.IndexOf((NpgsqlParameter)value);
         }
 
         /// <summary>
@@ -396,7 +397,7 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsFixedSize");
-                return this.InternalList.IsFixedSize;
+                return false;
             }
         }
 
@@ -409,7 +410,7 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsSynchronized");
-                return this.InternalList.IsSynchronized;
+                return (InternalList as ICollection).IsSynchronized;
             }
         }
 
@@ -439,7 +440,8 @@ namespace Npgsql
         public override void CopyTo(Array array, int index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CopyTo", array, index);
-            this.InternalList.CopyTo(array, index);
+            (InternalList as ICollection).CopyTo(array, index);
+            IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
         }
 
         public override object SyncRoot
@@ -447,7 +449,7 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "SyncRoot");
-                return this.InternalList.SyncRoot;
+                return (InternalList as ICollection).SyncRoot;
             }
         }
 
@@ -459,7 +461,7 @@ namespace Npgsql
         /// Returns an enumerator that can iterate through the collection.
         /// </summary>
         /// <returns>An <see cref="System.Collections.IEnumerator">IEnumerator</see> that can be used to iterate through the collection.</returns>
-        public override System.Collections.IEnumerator GetEnumerator()
+        public override IEnumerator GetEnumerator()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetEnumerator");
             return this.InternalList.GetEnumerator();
@@ -504,7 +506,7 @@ namespace Npgsql
         private void CheckType(object Object)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckType", Object);
-            if (Object.GetType() != typeof(NpgsqlParameter))
+            if(!(Object is NpgsqlParameter))
                 throw new InvalidCastException(String.Format(this.resman.GetString("Exception_WrongType"), Object.GetType().ToString()));
         }
 
@@ -518,6 +520,50 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckType", array);
             if (array.GetType() != typeof(NpgsqlParameter[]))
                 throw new InvalidCastException(String.Format(this.resman.GetString("Exception_WrongType"), array.GetType().ToString()));
+        }
+
+        NpgsqlParameter IList<NpgsqlParameter>.this[int index]
+        {
+            get {
+                return InternalList[index];
+            }
+            set {
+                InternalList[index] = value;
+            }
+        }
+        
+        public int IndexOf(NpgsqlParameter item)
+        {
+            return InternalList.IndexOf(item);
+        }
+        
+        public void Insert(int index, NpgsqlParameter item)
+        {
+            InternalList.Insert(index, item);
+        }
+        
+        public bool Contains(NpgsqlParameter item)
+        {
+            return InternalList.Contains(item);
+        }
+        
+        public bool Remove(NpgsqlParameter item)
+        {
+            return Remove(item);
+        }
+        
+        IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
+        {
+            return InternalList.GetEnumerator();
+        }
+        
+        public void CopyTo(NpgsqlParameter[] array, int arrayIndex)
+        {
+            InternalList.CopyTo(array, arrayIndex);
+        }
+        void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
+        {
+            Add(item);
         }
     }
 }

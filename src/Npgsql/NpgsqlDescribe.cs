@@ -38,10 +38,8 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlDescribe
+    internal sealed class NpgsqlDescribe : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = "NpgsqlDescribe";
 
         private Char _whatToDescribe;
         private String _portalName;
@@ -53,16 +51,16 @@ namespace Npgsql
 
         }
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((Byte)'D');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Describe);
 
             PGUtil.WriteInt32(outputStream, 4 +
                               1 +
-                              encoding.GetByteCount(_portalName) + 1);
+                              UTF8Encoding.GetByteCount(_portalName) + 1);
 
             outputStream.WriteByte((Byte)_whatToDescribe);
-            PGUtil.WriteString(_portalName, outputStream, encoding);
+            PGUtil.WriteString(_portalName, outputStream);
 
 
         }

@@ -76,7 +76,7 @@ namespace Npgsql
             commandText.Append(";");
 
             NpgsqlCommand command = new NpgsqlCommand(commandText.ToString(), conn.Connector);
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
             _conn.Connector.Transaction = this;
         }
 
@@ -145,7 +145,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Commit");
 
             NpgsqlCommand command = new NpgsqlCommand("COMMIT", _conn.Connector);
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
             _conn.Connector.Transaction = null;
             _conn = null;
         }
@@ -165,7 +165,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
 
             NpgsqlCommand command = new NpgsqlCommand("ROLLBACK", _conn.Connector);
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
             _conn.Connector.Transaction = null;
             _conn = null;
         }

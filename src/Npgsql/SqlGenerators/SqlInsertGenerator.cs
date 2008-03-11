@@ -17,41 +17,13 @@ namespace Npgsql.SqlGenerators
             _commandTree = commandTree;
         }
 
-        public override VisitedExpression Visit(DbPropertyExpression expression)
-        {
-            DbVariableReferenceExpression variable = expression.Instance as DbVariableReferenceExpression;
-            if (variable == null || variable.VariableName != _projectVarName.Peek())
-                throw new NotSupportedException();
-            return new LiteralExpression(expression.Property.Name);
-        }
-
         public override void BuildCommand(DbCommand command)
         {
-            // TODO: handle _commandTree.Returning and _commandTree.Parameters
-            InsertExpression insert = new InsertExpression();
-            _projectVarName.Push(_commandTree.Target.VariableName);
-            insert.Append(_commandTree.Target.Expression.Accept(this));
-            VisitedExpression columnList = new LiteralExpression("(");
-            VisitedExpression valueList = new LiteralExpression("(");
-            bool first = true;
-            foreach (DbSetClause clause in _commandTree.SetClauses)
+            VisitedExpression ve = _commandTree.Target.Expression.Accept(this);
+            foreach (DbModificationClause clause in _commandTree.SetClauses)
             {
-                if (!first)
-                {
-                    columnList.Append(",");
-                    valueList.Append(",");
-                }
-                columnList.Append(clause.Property.Accept(this));
-                valueList.Append(clause.Value.Accept(this));
-                first = false;
             }
-            _projectVarName.Pop();
-            columnList.Append(")");
-            valueList.Append(")");
-            insert.Append(columnList);
-            insert.Append(" VALUES ");
-            insert.Append(valueList);
-            command.CommandText = insert.ToString();
+            command.CommandText = ve.ToString();
         }
 	}
 }

@@ -27,6 +27,7 @@
 
 
 using System;
+using System.IO;
 
 namespace Npgsql
 {
@@ -38,17 +39,22 @@ namespace Npgsql
         /// <summary>
         /// Process ID of the PostgreSQL backend that sent this notification.
         /// </summary>
-        public Int32 PID = 0;
-
+        public readonly int PID;
         /// <summary>
         /// Condition that triggered that notification.
         /// </summary>
-        public String Condition = null;
+        public readonly string Condition;
+        
+        /// <summary>
+        /// Additional Information From Notifiying Process (for future use, currently postgres always sets this to an empty string)
+        /// </summary>
+        public readonly string AdditionalInformation;
 
-        internal NpgsqlNotificationEventArgs(Int32 nPID, String nCondition)
+        internal NpgsqlNotificationEventArgs(Stream stream, bool readAdditional)
         {
-            PID = nPID;
-            Condition = nCondition;
+            PID = PGUtil.ReadInt32(stream);
+            Condition = PGUtil.ReadString(stream);
+            AdditionalInformation = readAdditional ? PGUtil.ReadString(stream) : string.Empty;
         }
     }
 }

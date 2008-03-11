@@ -28,7 +28,6 @@
 
 using System;
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
@@ -38,14 +37,14 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlFlush
+    internal sealed class NpgsqlFlush : ClientMessage
     {
         // Logging related values
         //private static readonly String CLASSNAME = "NpgsqlFlush";
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((Byte)'H');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Flush);
 
             PGUtil.WriteInt32(outputStream, 4);
 

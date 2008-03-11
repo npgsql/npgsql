@@ -29,8 +29,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Collections;
-using System.Threading;
 
 using Mono.Security.Protocol.Tls;
 
@@ -40,7 +38,7 @@ namespace Npgsql
     internal sealed class NpgsqlClosedState : NpgsqlState
     {
 
-        private static NpgsqlClosedState _instance = new NpgsqlClosedState();
+        private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
         private static readonly String CLASSNAME = "NpgsqlClosedState";
 
 
@@ -182,10 +180,25 @@ namespace Npgsql
                 
                 
             }
+            //FIXME: Exceptions that come from what we are handling should be wrapped - e.g. an error connecting to
+            //the server should definitely be presented to the uesr as an NpgsqlError. Exceptions from userland should
+            //be passed untouched - e.g. ThreadAbortException because the user started this in a thread they created and
+            //then aborted should be passed through.
+            //Are there any others that should be pass through? Alternatively, are there a finite number that should
+            //be wrapped?
+            catch(System.Threading.ThreadAbortException)
+            {
+                throw;
+            }
             catch (Exception e)
             {
                 throw new NpgsqlException(e.Message, e);
             }
+        }
+        
+        public override void Close(NpgsqlConnector context)
+        {
+            //DO NOTHING.
         }
 
     }

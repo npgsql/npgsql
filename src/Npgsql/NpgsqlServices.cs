@@ -62,11 +62,11 @@ namespace Npgsql
             }
             else if ((update = commandTree as DbUpdateCommandTree) != null)
             {
-                sqlGenerator = new SqlUpdateGenerator(update);
+                sqlGenerator = new SqlUpdateGenerator(insert);
             }
             else if ((delete = commandTree as DbDeleteCommandTree) != null)
             {
-                sqlGenerator = new SqlDeleteGenerator(delete);
+                sqlGenerator = new SqlDeleteGenerator(insert);
             }
             else
             {

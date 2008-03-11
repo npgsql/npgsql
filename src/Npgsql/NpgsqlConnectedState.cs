@@ -34,22 +34,10 @@ namespace Npgsql
     internal sealed class NpgsqlConnectedState : NpgsqlState
     {
 
-        private static NpgsqlConnectedState _instance = null;
+        public static readonly NpgsqlConnectedState Instance = new NpgsqlConnectedState();
 
         private NpgsqlConnectedState()
         {}
-
-        public static NpgsqlConnectedState Instance
-        {
-            get
-            {
-                if ( _instance == null )
-                {
-                    _instance = new NpgsqlConnectedState();
-                }
-                return _instance;
-            }
-        }
 
         public override void Startup(NpgsqlConnector context)
         {
@@ -61,8 +49,8 @@ namespace Npgsql
                                                   "",
                                                   "");
 
-            startupPacket.WriteToStream( new BufferedStream(context.Stream), context.Encoding );
-            context.Mediator.RequireReadyForQuery = false;
+            startupPacket.WriteToStream(new BufferedStream(context.Stream));
+            context.RequireReadyForQuery = false;
             context.Mediator.CommandTimeout = 20;
             context.Stream.Flush();
             ProcessBackendResponses( context );
@@ -73,7 +61,7 @@ namespace Npgsql
             NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
             
             
-            CancelRequestMessage.WriteToStream(context.Stream, context.Encoding);
+            CancelRequestMessage.WriteToStream(context.Stream);
             
                 
         }

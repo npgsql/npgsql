@@ -161,7 +161,7 @@ namespace Npgsql
             if( _context.CurrentState is NpgsqlReadyState )
             {
                 _context.Mediator.CopyStream = _copyStream;
-                _cmd.ExecuteNonQuery();
+                _cmd.ExecuteBlind();
                 _disposeCopyStream = _copyStream == null;
                 _copyStream = _context.Mediator.CopyStream;
                 if( _copyStream == null && ! ( _context.CurrentState is NpgsqlReadyState ) )

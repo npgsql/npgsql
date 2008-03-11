@@ -27,12 +27,11 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.Resources;
-using System.IO;
-using System.Text;
 using System.Collections;
-using System.Runtime.Serialization;
 using System.Data.Common;
+using System.IO;
+using System.Resources;
+using System.Runtime.Serialization;
 
 namespace Npgsql
 {

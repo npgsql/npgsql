@@ -26,12 +26,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.Collections;
 using System.IO;
-using System.Text;
-using System.Net;
-using NpgsqlTypes;
-
 
 namespace Npgsql
 {
@@ -43,44 +38,14 @@ namespace Npgsql
     ///
     internal sealed class NpgsqlParameterStatus
     {
-
-        private String _parameter;
-        private String _parameterValue;
-
-
-        public void ReadFromStream(Stream inputStream, Encoding encoding)
+        public readonly string Parameter;
+        public readonly string ParameterValue;
+        public NpgsqlParameterStatus(Stream stream)
         {
-
             //Read message length
-            Byte[] inputBuffer = new Byte[4];
-            PGUtil.CheckedStreamRead(inputStream, inputBuffer, 0, 4 );
-
-            Int32 messageLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(inputBuffer, 0));
-
-            _parameter = PGUtil.ReadString(inputStream, encoding);
-            _parameterValue = PGUtil.ReadString(inputStream, encoding);
-
-
+            PGUtil.EatStreamBytes(stream, 4);
+            Parameter = PGUtil.ReadString(stream);
+            ParameterValue = PGUtil.ReadString(stream);
         }
-
-        public String Parameter
-        {
-            get
-            {
-                return _parameter;
-            }
-        }
-
-        public String ParameterValue
-        {
-            get
-            {
-                return _parameterValue;
-            }
-        }
-
-
     }
-
-
 }

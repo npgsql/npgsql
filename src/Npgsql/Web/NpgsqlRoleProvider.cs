@@ -219,7 +219,7 @@ namespace Npgsql.Web
                     {
                         userParm.Value = username;
                         roleParm.Value = rolename;
-                        cmd.ExecuteNonQuery();
+                        cmd.ExecuteBlind();
                     }
                 }
 
@@ -279,7 +279,7 @@ namespace Npgsql.Web
             {
                 conn.Open();
 
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
             }
             catch (NpgsqlException e)
             {
@@ -338,8 +338,8 @@ namespace Npgsql.Web
                 cmd.Transaction = tran;
                 cmd2.Transaction = tran;
 
-                cmd2.ExecuteNonQuery();
-                cmd.ExecuteNonQuery();
+                cmd2.ExecuteBlind();
+                cmd.ExecuteBlind();
 
                 tran.Commit();
             }
@@ -645,7 +645,7 @@ namespace Npgsql.Web
                     {
                         userParm.Value = username;
                         roleParm.Value = rolename;
-                        cmd.ExecuteNonQuery();
+                        cmd.ExecuteBlind();
                     }
                 }
 

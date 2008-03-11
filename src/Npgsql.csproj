@@ -11,27 +11,41 @@
     <AssemblyName>Npgsql</AssemblyName>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>Npgsql\Npgsql.snk</AssemblyOriginatorKeyFile>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <NoStdLib>False</NoStdLib>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RunCodeAnalysis>False</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>Full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>
-    </DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
+    <DebugType>None</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>
-    </DocumentationFile>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <FileAlignment>4096</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Mono.Security, Version=1.0.5000.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756">
@@ -39,7 +53,7 @@
       <HintPath>..\lib\Mono.Security.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.configuration" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
@@ -68,9 +82,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Npgsql\NpgsqlBackEndKeyData.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Npgsql\NpgsqlBinaryRow.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Npgsql\NpgsqlBind.cs">
@@ -120,9 +131,7 @@
     <Compile Include="Npgsql\NpgsqlDataAdapter.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlDataReader.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Npgsql\NpgsqlDataReader.cs" />
     <Compile Include="Npgsql\NpgsqlDescribe.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -177,9 +186,6 @@
     <Compile Include="Npgsql\NpgsqlReadyState.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlResultSet.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Npgsql\NpgsqlRow.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -189,6 +195,7 @@
     <Compile Include="Npgsql\NpgsqlSchema.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Npgsql\NpgsqlServices.cs" />
     <Compile Include="Npgsql\NpgsqlStartupPacket.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -326,6 +333,10 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.zh-CN.resx">
       <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlRow.resx">
+      <DependentUpon>NpgsqlRow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlEventLog.de.resx">
@@ -477,11 +488,5 @@
     <None Include="Npgsql\Npgsql.snk" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.        Other similar extension points exist, see Microsoft.Common.targets.  <Target Name="BeforeBuild">  </Target>  <Target Name="AfterBuild">  </Target>  -->
 </Project>

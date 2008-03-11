@@ -38,14 +38,14 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlSync
+    internal sealed class NpgsqlSync : ClientMessage
     {
         // Logging related values
         //private static readonly String CLASSNAME = "NpgsqlSync";
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((Byte)'S');
+            outputStream.WriteByte((byte)FrontEndMessageCode.Sync);
 
             PGUtil.WriteInt32(outputStream, 4);
 

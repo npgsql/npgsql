@@ -117,13 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Log_StringRead" xml:space="preserve">
-    <value>String read: {0}.</value>
-  </data>
-  <data name="Log_StringWritten" xml:space="preserve">
-    <value>String written: {0}.</value>
-  </data>
-  <data name="Read_Only_Write_Error" xml:space="preserve">
-    <value>The collection is read-only</value>
+  <data name="Row_Sequential_Field_Error" xml:space="preserve">
+    <value>Invalid attempt to read from column ordinal '{0}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{1}' or greater.</value>
   </data>
 </root>

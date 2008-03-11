@@ -27,7 +27,7 @@
 //                               System.Queue.
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Threading;
 using System.Timers;
 
@@ -41,7 +41,7 @@ namespace Npgsql
         /// <summary>
         /// A queue with an extra Int32 for keeping track of busy connections.
         /// </summary>
-    private class ConnectorQueue : System.Collections.Queue
+    private class ConnectorQueue : Queue<NpgsqlConnector>
         {
             /// <summary>
             /// The number of pooled Connectors that belong to this queue but
@@ -60,7 +60,7 @@ namespace Npgsql
 
         public NpgsqlConnectorPool()
         {
-            PooledConnectors = new Hashtable();
+            PooledConnectors = new Dictionary<string, ConnectorQueue>();
             Timer = new System.Timers.Timer(1000);
             Timer.AutoReset = true;
             Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
@@ -96,7 +96,7 @@ namespace Npgsql
                                 Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
                                 for (Int32 i = 0; i < toBeClosed; ++i)
                                 {
-                                    Connector = (NpgsqlConnector)Queue.Dequeue();
+                                    Connector = Queue.Dequeue();
                                     Connector.Close();
                                 }
                             }
@@ -124,14 +124,14 @@ namespace Npgsql
         /// next RequestConnector() call.</value>
         /// <remarks>This hashmap will be indexed by connection string.
         /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
-        private Hashtable PooledConnectors;
+        private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
 
         /*/// <value>Map of shared connectors, avaliable to the
         /// next RequestConnector() call.</value>
         /// <remarks>This hashmap will be indexed by connection string.
         /// This key will hold a list of shared connectors available to be used.</remarks>
         // To be implemented
-        //private Hashtable SharedConnectors;*/
+        //private Dictionary<?, ?> SharedConnectors;*/
 
                     
         /// <value>Timer for tracking unused connections in pools.</value>
@@ -227,6 +227,24 @@ namespace Npgsql
 
             return Connector;
         }
+        
+        private delegate void CleanUpConnectorDel(NpgsqlConnection Connection, NpgsqlConnector Connector);
+        
+        private void CleanUpConnectorMethod(NpgsqlConnection Connection, NpgsqlConnector Connector)
+        {
+            try
+            {
+                Connector.CurrentReader.Close();
+                Connector.CurrentReader = null;
+                ReleaseConnector(Connection, Connector);
+            }
+            catch{}
+        }
+        
+        private void CleanUpConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
+        {
+            new CleanUpConnectorDel(CleanUpConnectorMethod).BeginInvoke(Connection, Connector, null, null);
+        }
 
         /// <summary>
         /// Releases a connector, possibly back to the pool for future use.
@@ -239,7 +257,9 @@ namespace Npgsql
         /// <param name="Connector">The connector to release.</param>
         public void ReleaseConnector (NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
-            if (Connector.Pooled)
+            if(Connector.CurrentReader != null)
+                CleanUpConnector(Connection, Connector);
+            else if (Connector.Pooled)
             {
                 ReleasePooledConnector(Connection, Connector);
             }
@@ -304,9 +324,7 @@ namespace Npgsql
             NpgsqlConnector       Connector = null;
 
             // Try to find a queue.
-            Queue = (ConnectorQueue)PooledConnectors[Connection.ConnectionString.ToString()];
-
-            if (Queue == null)
+            if(!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
             {
                 Queue = new ConnectorQueue();
                 Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
@@ -325,7 +343,27 @@ namespace Npgsql
 
                 // Check if the connector is still valid.
 
-                Connector = (NpgsqlConnector)Queue.Dequeue();
+                Connector = Queue.Dequeue();
+                try
+                {
+                	Connector.TestConnector();
+                }
+                catch //This connector is broken!
+                {
+                	try
+                	{
+                		Connector.Close();
+                	}
+                	catch
+                	{
+                	    try
+                	    {
+                	        Connector.Stream.Close();
+                	    }
+                	    catch{}
+                	}
+                	return GetPooledConnector(Connection);//Try again
+                }
                 Queue.UseCount++;
 
 
@@ -416,7 +454,7 @@ namespace Npgsql
             lock(this)
             {
                 // Try to find a queue.
-                Queue = (ConnectorQueue)PooledConnectors[Connection.ConnectionString.ToString()];
+                Queue = PooledConnectors[Connection.ConnectionString.ToString()];
 
                 if (Queue != null)
                     Queue.UseCount--;
@@ -451,7 +489,7 @@ namespace Npgsql
             ConnectorQueue           Queue;
 
             // Find the queue.
-            Queue = (ConnectorQueue)PooledConnectors[Connector.ConnectionString];
+            Queue = PooledConnectors[Connector.ConnectionString];
 
             if (Queue == null)
                 return;  // Queue may be emptied by connection problems. See ClearPool below.
@@ -511,7 +549,7 @@ namespace Npgsql
 
             while (Queue.Count > 0)
             {
-                NpgsqlConnector connector = (NpgsqlConnector)Queue.Dequeue();
+                NpgsqlConnector connector = Queue.Dequeue();
 
                 try
                 {
@@ -533,11 +571,11 @@ namespace Npgsql
             lock(this)
             {
                 // Try to find a queue.
-                ConnectorQueue queue = (ConnectorQueue)PooledConnectors[Connection.ConnectionString.ToString()];
+                ConnectorQueue queue = PooledConnectors[Connection.ConnectionString.ToString()];
                 
                 ClearQueue(queue);
 
-                PooledConnectors[Connection.ConnectionString.ToString()] = null;
+                PooledConnectors.Remove(Connection.ConnectionString.ToString());
 
             }
 

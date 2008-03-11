@@ -25,8 +25,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
-
 using System.Reflection;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using System;
 
@@ -46,6 +46,7 @@ using System;
 [assembly: AssemblyCopyright("The Npgsql Development Team")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
+[assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 
 // The assembly version has following format :
 //

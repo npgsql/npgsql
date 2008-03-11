@@ -1012,7 +1012,7 @@ namespace Npgsql.Web
 							updateCmd.Parameters.Add("@user_name", NpgsqlTypes.NpgsqlDbType.Text, 255).Value = username;
 							updateCmd.Parameters.Add("@application_name", NpgsqlTypes.NpgsqlDbType.Text, 255).Value = pApplicationName;
 	
-							updateCmd.ExecuteNonQuery();
+							updateCmd.ExecuteBlind();
 						}
 					}
 					reader.Close();
@@ -1082,7 +1082,7 @@ namespace Npgsql.Web
 							updateCmd.Parameters.Add("@last_activity_date", NpgsqlTypes.NpgsqlDbType.Timestamp).Value = DateTime.Now;   // fixed by Alex .ToString("yyyy/MM/dd HH:mm:ss");
 							updateCmd.Parameters.Add("@UserId", NpgsqlTypes.NpgsqlDbType.Text).Value = providerUserKey;
 	
-							updateCmd.ExecuteNonQuery();
+							updateCmd.ExecuteBlind();
 						}
 					}
 					reader.Close();
@@ -1390,7 +1390,7 @@ namespace Npgsql.Web
             {
                 conn.Open();
 
-                cmd.ExecuteNonQuery();
+                cmd.ExecuteBlind();
             }
             catch (NpgsqlException e)
             {
@@ -1465,7 +1465,7 @@ namespace Npgsql.Web
                         updateCmd.Parameters.Add("@user_name", NpgsqlTypes.NpgsqlDbType.Text, 255).Value = username;
                         updateCmd.Parameters.Add("@application_name", NpgsqlTypes.NpgsqlDbType.Text, 255).Value = pApplicationName;
 
-                        updateCmd.ExecuteNonQuery();
+                        updateCmd.ExecuteBlind();
                     }
                 }
                 else

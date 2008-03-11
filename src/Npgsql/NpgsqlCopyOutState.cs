@@ -36,7 +36,7 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlCopyOutState : NpgsqlState
     {
-        private static NpgsqlCopyOutState _instance = null;
+        public static readonly NpgsqlCopyOutState Instance = new NpgsqlCopyOutState();
 
         //private readonly String CLASSNAME = "NpgsqlCopyOutState";
 
@@ -44,18 +44,6 @@ namespace Npgsql
 
         private NpgsqlCopyOutState() : base()
         { }
-
-        public static NpgsqlCopyOutState Instance
-        {
-            get
-            {
-                if ( _instance == null )
-                {
-                    _instance = new NpgsqlCopyOutState();
-                }
-                return _instance;
-            }
-        }
 
         /// <summary>
         /// Copy format information returned from server.
@@ -95,7 +83,10 @@ namespace Npgsql
         /// </summary>
         override public byte[] GetCopyData( NpgsqlConnector context )
         {
-            ProcessBackendResponses_Ver_3(context); // polling in COPY would take seconds on Windows
+            // polling in COPY would take seconds on Windows
+            foreach(IServerResponseObject obj in ProcessBackendResponses_Ver_3(context))
+                if(obj is IDisposable)
+                    (obj as IDisposable).Dispose();
             return context.Mediator.ReceivedCopyData;
         }
     }

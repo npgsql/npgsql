@@ -30,8 +30,6 @@
 
 using System;
 using System.IO;
-using System.Text;
-using System.Net;
 
 namespace Npgsql
 {
@@ -41,56 +39,18 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlBackEndKeyData
     {
-        // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlBackEndKeyData";
-
-        private Int32 _processId;
-        private Int32 _secretKey;
-
-        private ProtocolVersion _protocolVersion;
-
-        public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion)
+        public readonly int ProcessID;
+        public readonly int SecretKey;
+        public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion, Stream stream)
         {
-            _protocolVersion = protocolVersion;
-            _processId = -1;
-            _secretKey = -1;
-        }
-
-
-        public void ReadFromStream(Stream inputStream)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-
-            Byte[] inputBuffer = new Byte[8];
-
             // Read the BackendKeyData message contents. Two Int32 integers = 8 Bytes.
             // For protocol version 3.0 they are three integers. The first one is just the size of message
             // so, just read it.
-            if (_protocolVersion >= ProtocolVersion.Version3)
-                inputStream.Read(inputBuffer, 0, 4);
+            if (protocolVersion >= ProtocolVersion.Version3)
+                PGUtil.EatStreamBytes(stream, 4);
+            ProcessID = PGUtil.ReadInt32(stream);
+            SecretKey = PGUtil.ReadInt32(stream);
 
-            inputStream.Read(inputBuffer, 0, 8);
-            _processId = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(inputBuffer, 0));
-            _secretKey = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(inputBuffer, 4));
-
-        }
-
-        public Int32 ProcessID
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "ProcessID");
-                return _processId;
-            }
-        }
-
-        public Int32 SecretKey
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "SecretKey");
-                return _secretKey;
-            }
         }
     }
 }

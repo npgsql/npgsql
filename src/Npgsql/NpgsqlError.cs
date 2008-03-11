@@ -55,20 +55,17 @@ namespace Npgsql
     [Serializable]
     public sealed class NpgsqlError
     {
-        // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlError";
-
-        private ProtocolVersion protocol_version;
-        private String _severity = String.Empty;
-        private String _code = String.Empty;
-        private String _message = String.Empty;
-        private String _detail = String.Empty;
-        private String _hint = String.Empty;
-        private String _position = String.Empty;
-        private String _where = String.Empty;
-        private String _file = String.Empty;
-        private String _line = String.Empty;
-        private String _routine = String.Empty;
+        private readonly ProtocolVersion protocol_version;
+        private readonly String _severity = String.Empty;
+        private readonly String _code = String.Empty;
+        private readonly String _message = String.Empty;
+        private readonly String _detail = String.Empty;
+        private readonly String _hint = String.Empty;
+        private readonly String _position = String.Empty;
+        private readonly String _where = String.Empty;
+        private readonly String _file = String.Empty;
+        private readonly String _line = String.Empty;
+        private readonly String _routine = String.Empty;
         private String _errorSql = String.Empty;
 
         /// <summary>
@@ -219,9 +216,78 @@ namespace Npgsql
             return B.ToString();
         }
 
-        internal NpgsqlError(ProtocolVersion protocolVersion)
+        internal NpgsqlError(ProtocolVersion protocolVersion, Stream stream)
         {
-            protocol_version = protocolVersion;
+            switch (protocol_version = protocolVersion)
+            {
+                case ProtocolVersion.Version2 :
+                    string[] parts = PGUtil.ReadString(stream).Split(new char[]{':'}, 2);
+                    if(parts.Length == 2)
+                    {
+                        _severity = parts[0].Trim();
+                        _message = parts[1].Trim();
+                    }
+                    else
+                    {
+                        _severity = string.Empty;
+                        _message = parts[0].Trim();
+                    }
+                    break;
+                case ProtocolVersion.Version3 :
+                    // Check the messageLength value. If it is 1178686529, this would be the
+                    // "FATA" string, which would mean a protocol 2.0 error string.
+                    if (PGUtil.ReadInt32(stream) == 1178686529)
+                    {
+                        string[] v2Parts = ("FATA" + PGUtil.ReadString(stream)).Split(new char[]{':'}, 2);
+                        if(v2Parts.Length == 2)
+                        {
+                            _severity = v2Parts[0].Trim();
+                            _message = v2Parts[1].Trim();
+                        }
+                        else
+                        {
+                            _severity = string.Empty;
+                            _message = v2Parts[0].Trim();
+                        }
+                        protocol_version = ProtocolVersion.Version2;
+                    }
+                    else
+                        for(char field = (char)stream.ReadByte(); field != 0; field = (char)stream.ReadByte())
+                            switch(field)
+                            {
+                                case 'S':
+                                    _severity = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'C':
+                                    _code = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'M':
+                                    _message = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'D':
+                                    _detail = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'H':
+                                    _hint = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'P':
+                                    _position = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'W':
+                                    _where = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'F':
+                                    _file = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'L':
+                                    _line = PGUtil.ReadString(stream);;
+                                    break;
+                                case 'R':
+                                    _routine = PGUtil.ReadString(stream);;
+                                    break;
+                                }
+                        break;
+            }
         }
         
         internal NpgsqlError(ProtocolVersion protocolVersion, String errorMessage)
@@ -238,125 +304,6 @@ namespace Npgsql
             get
             {
                 return protocol_version;
-            }
-        }
-
-        internal void ReadFromStream(Stream inputStream, Encoding encoding)
-        {
-            switch (protocol_version) {
-            case ProtocolVersion.Version2 :
-                ReadFromStream_Ver_2(inputStream, encoding);
-                break;
-
-            case ProtocolVersion.Version3 :
-                ReadFromStream_Ver_3(inputStream, encoding);
-                break;
-
-            }
-        }
-
-        private void ReadFromStream_Ver_2(Stream inputStream, Encoding encoding)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadFromStream_Ver_2");
-
-            String Raw;
-            String[] Parts;
-
-            Raw = PGUtil.ReadString(inputStream, encoding);
-
-            Parts = Raw.Split(new char[] {':'}, 2);
-
-            if (Parts.Length == 2)
-            {
-                _severity = Parts[0].Trim();
-                _message = Parts[1].Trim();
-            }
-            else
-            {
-                _message = Parts[0].Trim();
-            }
-        }
-
-        private void ReadFromStream_Ver_3(Stream inputStream, Encoding encoding)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadFromStream_Ver_3");
-
-            Int32 messageLength = PGUtil.ReadInt32(inputStream, new Byte[4]);
-
-            // [TODO] Would this be the right way to do?
-            // Check the messageLength value. If it is 1178686529, this would be the
-            // "FATA" string, which would mean a protocol 2.0 error string.
-            if (messageLength == 1178686529)
-            {
-								String Raw;
-                String[] Parts;
-
-                Raw = "FATA" + PGUtil.ReadString(inputStream, encoding);
-
-                Parts = Raw.Split(new char[] {':'}, 2);
-
-                if (Parts.Length == 2)
-                {
-                    _severity = Parts[0].Trim();
-                    _message = Parts[1].Trim();
-                }
-                else
-                {
-                    _message = Parts[0].Trim();
-                }
-
-                protocol_version = ProtocolVersion.Version2;
-
-                return;
-            }
-
-            Char field;
-            String fieldValue;
-
-            field = (Char) inputStream.ReadByte();
-
-            // Now start to read fields.
-            while (field != 0)
-            {
-                fieldValue = PGUtil.ReadString(inputStream, encoding);
-
-                switch (field)
-                {
-                case 'S':
-                    _severity = fieldValue;
-                    break;
-                case 'C':
-                    _code = fieldValue;
-                    break;
-                case 'M':
-                    _message = fieldValue;
-                    break;
-                case 'D':
-                    _detail = fieldValue;
-                    break;
-                case 'H':
-                    _hint = fieldValue;
-                    break;
-                case 'P':
-                    _position = fieldValue;
-                    break;
-                case 'W':
-                    _where = fieldValue;
-                    break;
-                case 'F':
-                    _file = fieldValue;
-                    break;
-                case 'L':
-                    _line = fieldValue;
-                    break;
-                case 'R':
-                    _routine = fieldValue;
-                    break;
-
-                }
-
-                field = (Char) inputStream.ReadByte();
-
             }
         }
     }

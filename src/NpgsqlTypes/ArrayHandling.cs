@@ -331,9 +331,9 @@ namespace NpgsqlTypes
         		foreach(string arrayChunk in ArrayChunkEnumeration(stripBraces))
         			list.Add(ToArrayList(TypeInfo, arrayChunk, elementTypeSize, elementTypeModifier));
         	else//We're either dealing with a 1-dimension array or treating a row of an n-dimension array. In either case parse the elements and put them in our ArrayList
-	        	foreach(string token in TokenEnumeration(stripBraces))
+	       	foreach(string token in TokenEnumeration(stripBraces))
         			//Use the NpgsqlBackendTypeInfo for the element type to obtain each element.
-	        		list.Add(_elementConverter.ConvertToNative(token, elementTypeSize, elementTypeModifier));
+	       		list.Add(_elementConverter.ConvertToNative(token, elementTypeSize, elementTypeModifier));
         	return list;
 		}
 		/// <summary>

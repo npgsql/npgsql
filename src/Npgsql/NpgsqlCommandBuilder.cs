@@ -24,6 +24,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
+
+
 using System;
 using System.Resources;
 using System.Data;
@@ -119,49 +121,44 @@ namespace Npgsql
 				procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
 			}
 
-			NpgsqlCommand c = new NpgsqlCommand(query, command.Connection);
-			c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-
-			
-			c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-
-			if (fullName.Length > 1 && schemaName.Length > 0)
+			using(NpgsqlCommand c = new NpgsqlCommand(query, command.Connection))
 			{
-				NpgsqlParameter prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
-				prm.Value = schemaName.Replace("\"", "").Trim();
+    			c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+    			c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
+    			if (fullName.Length > 1 && schemaName.Length > 0)
+    			{
+    				NpgsqlParameter prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+    				prm.Value = schemaName.Replace("\"", "").Trim();
+    			}
+    			String types = (String) c.ExecuteScalar();
+    			if (types == null)
+    				throw new InvalidOperationException (String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
+    
+    			command.Parameters.Clear();
+    			Int32 i = 1;
+    			foreach(String s in types.Split())
+    			{
+    			    NpgsqlBackendTypeInfo typeInfo = null;
+    			    if(!c.Connector.OidToNameMapping.TryGetValue(int.Parse(s), out typeInfo))
+    				{
+    					command.Parameters.Clear();
+    					throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", s));
+    				}
+    				command.Parameters.Add(new NpgsqlParameter("parameter" + i++, typeInfo.NpgsqlDbType));
+    			}
 			}
-			
-			String types = (String) c.ExecuteScalar();
-
-			if (types == null)
-				throw new InvalidOperationException (String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
-			
-			command.Parameters.Clear();
-			Int32 i = 1;
-			
-			foreach(String s in types.Split())
-			{
-				if (!c.Connector.OidToNameMapping.ContainsOID(Int32.Parse(s)))
-				{
-					command.Parameters.Clear();
-					throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", s));
-				}
-				command.Parameters.Add(new NpgsqlParameter("parameter" + i++, c.Connector.OidToNameMapping[Int32.Parse(s)].NpgsqlDbType));
-			}
-			
 		}
-		
-		
+
 		public new NpgsqlCommand GetInsertCommand()
 		{
 			return (NpgsqlCommand)base.GetInsertCommand();
 		}
-		
+
 		public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
 		{
 			return (NpgsqlCommand)base.GetInsertCommand(useColumnsForParameterNames);
 		}
-		
+
 		public new NpgsqlCommand GetUpdateCommand()
 		{
 			return (NpgsqlCommand)base.GetUpdateCommand();
@@ -227,49 +224,96 @@ namespace Npgsql
 		{
 			if (!(adapter is NpgsqlDataAdapter))
 			{
+
 				throw new InvalidOperationException("adapter needs to be a NpgsqlDataAdapter");
+
 			}
+
+
 
 			this.rowUpdatingHandler = new NpgsqlRowUpdatingEventHandler(this.RowUpdatingHandler);
+
 			((NpgsqlDataAdapter)adapter).RowUpdating += this.rowUpdatingHandler;
+
 		}
+
+
 
 		private void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e)
+
 		{
+
 			base.RowUpdatingHandler(e);
+
 		}
+
 		
+
 		public override string QuoteIdentifier(string unquotedIdentifier)
+
 		{
+
 			if (unquotedIdentifier == null)
+
 			{
+
 				throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
+
 			}
+
+
 
 			return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
+
 		}
 
+
+
 		public override string UnquoteIdentifier(string quotedIdentifier)
+
 		{
+
 			if (quotedIdentifier == null)
+
 			{
+
 				throw new ArgumentNullException("Quoted identifier parameter cannot be null");
+
 			}
+
+
 
 			string unquotedIdentifier = quotedIdentifier.Trim();
 
+
+
 			if (unquotedIdentifier.StartsWith(this.QuotePrefix))
+
 			{
+
 				unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
+
 			}
+
 			if (unquotedIdentifier.EndsWith(this.QuoteSuffix))
+
 			{
+
 				unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
+
 			}
+
+
 
 			return unquotedIdentifier;
+
 		}
+
 		
+
 	}
 
+
+
 }
+

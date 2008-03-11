@@ -35,7 +35,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlCancelRequest
+    internal sealed class NpgsqlCancelRequest : ClientMessage
     {
         // Logging related values
         //private static readonly String CLASSNAME = "NpgsqlCancelRequest";
@@ -53,7 +53,7 @@ namespace Npgsql
             
         }
 
-        public void WriteToStream(Stream outputStream, Encoding encoding)
+        public override void WriteToStream(Stream outputStream)
         {
             PGUtil.WriteInt32(outputStream, CancelRequestMessageSize);
             PGUtil.WriteInt32(outputStream, CancelRequestCode);

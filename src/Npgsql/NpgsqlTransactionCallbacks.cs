@@ -98,7 +98,7 @@ namespace Npgsql
             {
                 command = new NpgsqlCommand("COMMIT", connection);
             }
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
         }
 
         public void PrepareTransaction()
@@ -106,7 +106,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
             NpgsqlConnection connection = GetConnection();
             NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), connection);
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
             _prepared = true;
         }
 
@@ -123,7 +123,7 @@ namespace Npgsql
             {
                 command = new NpgsqlCommand("ROLLBACK", connection);
             }
-            command.ExecuteNonQuery();
+            command.ExecuteBlind();
         }
 
         #endregion

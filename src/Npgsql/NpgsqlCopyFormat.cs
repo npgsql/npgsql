@@ -28,14 +28,6 @@
 
 
 using System;
-using System.Data;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Collections;
-using System.Text;
-using System.Resources;
-
 
 namespace Npgsql
 {
