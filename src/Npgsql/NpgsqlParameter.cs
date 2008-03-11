@@ -559,6 +559,7 @@ namespace Npgsql
             clone.value = value;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
 
-            return clone;        }
+            return clone;
+        }
     }
 }

@@ -9,12 +9,18 @@ namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
 	{
-        private Dictionary<string, string> _variableSubstitution = new Dictionary<string, string>();
-        private Stack<string> _projectVarName = new Stack<string>();
-        private Stack<string> _filterVarName = new Stack<string>();
+        protected Dictionary<string, string> _variableSubstitution = new Dictionary<string, string>();
+        protected Stack<string> _projectVarName = new Stack<string>();
+        protected Stack<string> _filterVarName = new Stack<string>();
 
         protected SqlBaseGenerator()
         {
+        }
+
+        private void SubstituteFilterVar(string value)
+        {
+            if (_filterVarName.Count != 0)
+                _variableSubstitution[_filterVarName.Peek()] = value;
         }
 
         public override VisitedExpression Visit(DbViewExpression expression)
@@ -33,7 +39,7 @@ namespace Npgsql.SqlGenerators
             VisitedExpression union = expression.Left.Accept(this);
             union.Append(" UNION ALL ");
             union.Append(expression.Right.Accept(this));
-            return new FromExpression(union, _projectVarName.Peek());
+            return union;
         }
 
         public override VisitedExpression Visit(DbTreatExpression expression)
@@ -51,7 +57,34 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbSortExpression expression)
         {
             // order by
-            throw new NotImplementedException();
+            _filterVarName.Push(expression.Input.VariableName);
+            VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
+            VisitedExpression from;
+            if (!(inputExpression is JoinExpression))
+            {
+                from = new FromExpression(inputExpression, expression.Input.VariableName);
+                _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
+                SubstituteFilterVar(expression.Input.VariableName);
+            }
+            else
+            {
+                from = inputExpression;
+            }
+            _filterVarName.Pop();
+            from.Append(" ORDER BY ");
+            bool first = true;
+            foreach (var order in expression.SortOrder)
+            {
+                if (!first)
+                    from.Append(",");
+                from.Append(order.Expression.Accept(this));
+                if (order.Ascending)
+                    from.Append(" ASC ");
+                else
+                    from.Append(" DESC ");
+                first = false;
+            }
+            return from;
         }
 
         public override VisitedExpression Visit(DbScanExpression expression)
@@ -60,7 +93,9 @@ namespace Npgsql.SqlGenerators
             // may come from a join or a select
             //return new LiteralExpression(expression.Target.MetadataProperties.TryGetValue(
             // replace with better solution
-            _variableSubstitution[_projectVarName.Peek()] = expression.Target.Name;
+            if (_projectVarName.Count != 0) // this can happen in dml
+                _variableSubstitution[_projectVarName.Peek()] = expression.Target.Name;
+            SubstituteFilterVar(expression.Target.Name);
             return new LiteralExpression(expression.Target.Name);
         }
 
@@ -81,26 +116,27 @@ namespace Npgsql.SqlGenerators
             throw new NotImplementedException();
         }
 
-        public override VisitedExpression Visit(DbPropertyExpression expression)
-        {
-            // not quite sure what this does
-            // may be . notation for seperating
-            // scopes (such as schema.table.column)
-            //VisitedExpression variable = expression.Instance.Accept(this);
-            VariableReferenceExpression variable = new VariableReferenceExpression(expression.Instance.Accept(this).ToString(), _variableSubstitution);
-            variable.Append("." + expression.Property.Name);
-            return variable;
-        }
-
         public override VisitedExpression Visit(DbProjectExpression expression)
         {
             VisitedExpression project = expression.Projection.Accept(this);
             project.Append(" FROM ");
             _projectVarName.Push(expression.Input.VariableName);
-            project.Append(expression.Input.Expression.Accept(this));
+            AppendFrom(project, expression.Input.Expression, expression.Input.VariableName);
             _projectVarName.Pop();
 
             return project;
+        }
+
+        private void AppendFrom(VisitedExpression visitedExpression, DbExpression dbFromExpression, string variableName)
+        {
+            VisitedExpression fromExpression = dbFromExpression.Accept(this);
+            if (!(fromExpression is FromExpression) && !(fromExpression is JoinExpression))
+            {
+                fromExpression = new FromExpression(fromExpression, variableName);
+                _variableSubstitution[_projectVarName.Peek()] = variableName;
+                SubstituteFilterVar(variableName);
+            }
+            visitedExpression.Append(fromExpression);
         }
 
         public override VisitedExpression Visit(DbParameterReferenceExpression expression)
@@ -142,20 +178,37 @@ namespace Npgsql.SqlGenerators
         {
             RowType rowType = expression.ResultType.EdmType as RowType;
 
-            if (rowType == null)
-                throw new NotSupportedException();
-
-            // should be the child of a project
-            // which means it's a select
-            ProjectionExpression visitedExpression = new ProjectionExpression();
-            for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
+            if (rowType != null)
             {
-                if (i != 0)
-                    visitedExpression.Append(",");
-                visitedExpression.Append(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
-            }
+                // should be the child of a project
+                // which means it's a select
+                ProjectionExpression visitedExpression = new ProjectionExpression();
+                for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
+                {
+                    if (i != 0)
+                        visitedExpression.Append(",");
+                    visitedExpression.Append(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
+                }
 
-            return visitedExpression;
+                return visitedExpression;
+            }
+            else if (expression.ResultType.EdmType is CollectionType)
+            {
+                ProjectionExpression visitedExpression = new ProjectionExpression();
+                bool first = true;
+                foreach (var arg in expression.Arguments)
+                {
+                    if (!first)
+                        visitedExpression.Append(",");
+                    visitedExpression.Append(arg.Accept(this));
+                    first = false;
+                }
+                return visitedExpression;
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
         }
 
         public override VisitedExpression Visit(DbLimitExpression expression)
@@ -163,6 +216,7 @@ namespace Npgsql.SqlGenerators
             // TODO: what is WithTies?
             FromExpression limit = new FromExpression(expression.Argument.Accept(this), null);
             _variableSubstitution[_projectVarName.Peek()] = limit.Name;
+            SubstituteFilterVar(limit.Name);
             limit.Append(" LIMIT ");
             limit.Append(expression.Limit.Accept(this));
             return limit;
@@ -207,25 +261,33 @@ namespace Npgsql.SqlGenerators
                 joinPartExpression = new FromExpression(joinPartExpression, joinPart.VariableName);
                 variableName = joinPart.VariableName;
             }
+            _projectVarName.Pop();
             if (variableName != null)
             {
-                _projectVarName.Pop();
+                _variableSubstitution[_projectVarName.Peek()] = variableName;
                 string[] dottedNames = _projectVarName.ToArray();
                 // reverse because the stack has them last in first out
                 Array.Reverse(dottedNames);
-                _variableSubstitution[string.Join(".", dottedNames) + "." + joinPart.VariableName] = variableName;
-                _variableSubstitution[_projectVarName.Peek() + "." + joinPart.VariableName] = variableName;
+                SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
                 if (_filterVarName.Count != 0)
                 {
                     dottedNames = _filterVarName.ToArray();
                     // reverse because the stack has them last in first out
                     Array.Reverse(dottedNames);
-                    _variableSubstitution[string.Join(".", dottedNames) + "." + joinPart.VariableName] = variableName;
-                    _variableSubstitution[_filterVarName.Peek() + "." + joinPart.VariableName] = variableName;
+                    SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
                 }
                 _variableSubstitution[joinPart.VariableName] = variableName;
             }
             return joinPartExpression;
+        }
+
+        private void SubstituteAllNames(string[] dottedNames, string joinPartVariableName, string variableName)
+        {
+            int nameCount = dottedNames.Length;
+            for (int i = 0; i < dottedNames.Length; ++i)
+            {
+                _variableSubstitution[string.Join(".", dottedNames, i, nameCount - i) + "." + joinPartVariableName] = variableName;
+            }
         }
 
         public override VisitedExpression Visit(DbIsOfExpression expression)
@@ -279,7 +341,7 @@ namespace Npgsql.SqlGenerators
                 DbFunctionAggregate function = ag as DbFunctionAggregate;
                 if (function == null)
                     throw new NotSupportedException();
-                VisitedExpression functionExpression = VisitFunctionAggregate(function);
+                VisitedExpression functionExpression = VisitFunction(function);
                 if (columnIndex != 0)
                     projectExpression.Append(",");
                 projectExpression.Append(new ColumnExpression(functionExpression, rowType.Properties[columnIndex].Name));
@@ -287,27 +349,23 @@ namespace Npgsql.SqlGenerators
             }
             projectExpression.Append(" FROM ");
             _projectVarName.Push(expression.Input.GroupVariableName);
-            projectExpression.Append(expression.Input.Expression.Accept(this));
+            _filterVarName.Push(expression.Input.VariableName);
+            AppendFrom(projectExpression, expression.Input.Expression, expression.Input.GroupVariableName);
             projectExpression.Append(groupByExpression);
             if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
             {
                 _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_projectVarName.Peek()];
             }
-            _projectVarName.Pop();
-            LeaveVariableScope();
-            _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
-            return new FromExpression(projectExpression, expression.Input.VariableName);
-        }
-
-        private VisitedExpression VisitFunctionAggregate(DbFunctionAggregate function)
-        {
-            FunctionExpression functionExpression = new FunctionExpression(function.Function.Name);
-            foreach (var arg in function.Arguments)
+            if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
             {
-                // TODO: handle Distinct
-                functionExpression.AddArgument(arg.Accept(this));
+                _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_filterVarName.Peek()];
             }
-            return new CastExpression(functionExpression, GetDbType(function.ResultType.EdmType));
+            _projectVarName.Pop();
+            _filterVarName.Pop();
+            LeaveVariableScope();
+            //_variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
+            //return new FromExpression(projectExpression, expression.Input.VariableName);
+            return projectExpression;
         }
 
         public override VisitedExpression Visit(DbRefKeyExpression expression)
@@ -324,9 +382,11 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbFunctionExpression expression)
         {
+            if (expression.IsLambda)
+                throw new NotSupportedException();
             // a function call
             // may be built in, canonical, or user defined
-            throw new NotImplementedException();
+            return VisitFunction(expression.Function, expression.Arguments, expression.ResultType);
         }
 
         public override VisitedExpression Visit(DbFilterExpression expression)
@@ -343,6 +403,8 @@ namespace Npgsql.SqlGenerators
             {
                 from = new FromExpression(inputExpression, expression.Input.VariableName);
                 _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
+                if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
+                    _variableSubstitution[_filterVarName.Peek()] = expression.Input.VariableName;
             }
             else
             {
@@ -363,7 +425,11 @@ namespace Npgsql.SqlGenerators
         {
             // a scalar expression (ie ExecuteScalar)
             // so it will likely be translated into a select
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
+            VisitedExpression scalar = new LiteralExpression("(");
+            scalar.Append(expression.Argument.Accept(this));
+            scalar.Append(")");
+            return scalar;
         }
 
         public override VisitedExpression Visit(DbDistinctExpression expression)
@@ -518,18 +584,83 @@ namespace Npgsql.SqlGenerators
 
         public abstract void BuildCommand(DbCommand command);
 
+        private VisitedExpression VisitFunction(DbFunctionAggregate functionAggregate)
+        {
+            if (functionAggregate.Function.NamespaceName == "Edm")
+            {
+                FunctionExpression aggregate;
+                switch (functionAggregate.Function.Name)
+                {
+                    case "Avg":
+                    case "Count":
+                    case "Min":
+                    case "Max":
+                    case "StdDev":
+                    case "Sum":
+                        aggregate = new FunctionExpression(functionAggregate.Function.Name);
+                        break;
+                    case "BigCount":
+                        aggregate = new FunctionExpression("count");
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
+                System.Diagnostics.Debug.Assert(functionAggregate.Arguments.Count == 1);
+                VisitedExpression aggregateArg;
+                if (functionAggregate.Distinct)
+                {
+                    aggregateArg = new LiteralExpression("DISTINCT ");
+                    aggregateArg.Append(functionAggregate.Arguments[0].Accept(this));
+                }
+                else
+                {
+                    aggregateArg = functionAggregate.Arguments[0].Accept(this);
+                }
+                aggregate.AddArgument(aggregateArg);
+                return new CastExpression(aggregate, GetDbType(functionAggregate.ResultType.EdmType));
+            }
+            throw new NotSupportedException();
+        }
 
-        private Stack<Dictionary<string, string>> _scopeStack = new Stack<Dictionary<string, string>>();
+        private VisitedExpression VisitFunction(EdmFunction function, IList<DbExpression> args, TypeUsage resultType)
+        {
+            if (function.NamespaceName == "Edm")
+            {
+                // TODO: support more functions
+                switch (function.Name)
+                {
+                    case "Length":
+                        FunctionExpression length = new FunctionExpression("char_length");
+                        System.Diagnostics.Debug.Assert(args.Count == 1);
+                        length.AddArgument(args[0].Accept(this));
+                        return new CastExpression(length, GetDbType(resultType.EdmType));
+                    default:
+                        throw new NotSupportedException();
+                }
+            }
+            throw new NotSupportedException();
+        }
+
+
+        private Stack<Dictionary<string, string>> _varScopeStack = new Stack<Dictionary<string, string>>();
+        private Stack<Stack<string>> _projectScopeStack = new Stack<Stack<string>>();
+        private Stack<Stack<string>> _filterScopeStack = new Stack<Stack<string>>();
 
         private void EnterNewVariableScope()
         {
-            _scopeStack.Push(_variableSubstitution);
+            _varScopeStack.Push(_variableSubstitution);
+            _projectScopeStack.Push(_projectVarName);
+            _filterScopeStack.Push(_filterVarName);
             _variableSubstitution = new Dictionary<string, string>();
+            _projectVarName = new Stack<string>();
+            _filterVarName = new Stack<string>();
         }
 
         private void LeaveVariableScope()
         {
-            _variableSubstitution = _scopeStack.Pop();
+            _variableSubstitution = _varScopeStack.Pop();
+            _projectVarName = _projectScopeStack.Pop();
+            _filterVarName = _filterScopeStack.Pop();
         }
     }
 }

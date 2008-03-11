@@ -39,16 +39,19 @@ namespace NpgsqlTests
         
         // Connection tests will use.
         protected NpgsqlConnection _conn = null;
+        protected NpgsqlConnection _connV2 = null;
         
         // Transaction to rollback tests modifications.
         protected NpgsqlTransaction _t = null;
+        protected NpgsqlTransaction _tV2 = null;
         
         // Commit transaction when test finish?   
         private Boolean commitTransaction = false;
         
         // Connection string
         
-        protected String _connString = ConfigurationSettings.AppSettings["ConnectionString"];
+        protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
+        protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
         
         
         protected Boolean CommitTransaction
@@ -75,6 +78,10 @@ namespace NpgsqlTests
             _conn.Open();
             _t = _conn.BeginTransaction();
             
+            _connV2 = new NpgsqlConnection(_connV2String);
+            _connV2.Open();
+            _tV2 = _connV2.BeginTransaction();
+            
             CommitTransaction = false;
         }
 
@@ -89,6 +96,15 @@ namespace NpgsqlTests
                 
             if (_conn.State != ConnectionState.Closed)
                 _conn.Close();
+            
+            if (_tV2 != null && _tV2.Connection != null)
+                if(CommitTransaction)
+                    _tV2.Commit();
+                else
+                    _tV2.Rollback();
+                
+            if (_connV2.State != ConnectionState.Closed)
+                _connV2.Close();
         }
         
     }

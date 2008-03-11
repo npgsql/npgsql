@@ -911,6 +911,7 @@ namespace Npgsql
             return result;
         }
         
+        
          
          private Boolean CheckFunctionHasOutParameters()
          {
@@ -1005,7 +1006,6 @@ namespace Npgsql
              return ret;
  
          }
-
         
         private Boolean CheckFunctionReturn(String ReturnType)
         {

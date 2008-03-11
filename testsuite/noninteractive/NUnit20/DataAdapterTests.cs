@@ -90,6 +90,7 @@ namespace NpgsqlTests
 
             Assert.AreEqual(4, dr2[1]);
             Assert.AreEqual(7.3000000M, dr2[3]);
+            dr2.Close();
         }
 
         [Test]
@@ -162,6 +163,8 @@ namespace NpgsqlTests
             dr2.Read();
             
             Assert.AreEqual(4, dr2["field_int2"]);
+            
+            dr2.Close();
         }
 
         [Test]
@@ -209,6 +212,8 @@ namespace NpgsqlTests
             dr2.Read();
             
             Assert.AreEqual(4, dr2["field_int2"]);
+            
+            dr2.Close();
         }
         
         [Test]
@@ -244,6 +249,150 @@ namespace NpgsqlTests
 
 
             Assert.AreEqual(4, dr2[1]);
+            dr2.Close();
+        }
+    }
+    [TestFixture]
+    public class DataAdapterTestsV2 : BaseClassTests
+    {
+
+        [Test]
+        public void InsertWithDataSet()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select * from tableb", _connV2);
+
+            da.InsertCommand = new NpgsqlCommand("insert into tableb(field_int2, field_timestamp, field_numeric) values (:a, :b, :c)", _connV2);
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
+
+            da.InsertCommand.Parameters[0].Direction = ParameterDirection.Input;
+            da.InsertCommand.Parameters[1].Direction = ParameterDirection.Input;
+            da.InsertCommand.Parameters[2].Direction = ParameterDirection.Input;
+
+            da.InsertCommand.Parameters[0].SourceColumn = "field_int2";
+            da.InsertCommand.Parameters[1].SourceColumn = "field_timestamp";
+            da.InsertCommand.Parameters[2].SourceColumn = "field_numeric";
+
+
+            da.Fill(ds);
+
+
+            DataTable dt = ds.Tables[0];
+
+            DataRow dr = dt.NewRow();
+            dr["field_int2"] = 4;
+            dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
+            dr["field_numeric"] = 7.3M;
+
+            dt.Rows.Add(dr);
+
+
+            DataSet ds2 = ds.GetChanges();
+
+            da.Update(ds2);
+
+            ds.Merge(ds2);
+            ds.AcceptChanges();
+
+
+            NpgsqlDataReader dr2 = new NpgsqlCommand("select * from tableb where field_serial > 4", _connV2).ExecuteReader();
+            dr2.Read();
+
+
+            Assert.AreEqual(4, dr2[1]);
+            Assert.AreEqual(7.3000000M, dr2[3]);
+            
+            dr2.Close();
+        }
+
+        [Test]
+        public void FillWithEmptyResultset()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select * from tableb where field_serial = -1", _connV2);
+
+
+            da.Fill(ds);
+
+            Assert.AreEqual(1, ds.Tables.Count);
+            Assert.AreEqual(4, ds.Tables[0].Columns.Count);
+            Assert.AreEqual("field_serial", ds.Tables[0].Columns[0].ColumnName);
+            Assert.AreEqual("field_int2", ds.Tables[0].Columns[1].ColumnName);
+            Assert.AreEqual("field_timestamp", ds.Tables[0].Columns[2].ColumnName);
+            Assert.AreEqual("field_numeric", ds.Tables[0].Columns[3].ColumnName);
+        }
+
+        [Test]
+        public void UpdateLettingNullFieldValue()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", _connV2);
+            command.ExecuteNonQuery();
+            
+
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", _connV2);
+            da.InsertCommand = new NpgsqlCommand(";", _connV2);
+      			da.UpdateCommand = new NpgsqlCommand("update tableb set field_int2 = :a, field_timestamp = :b, field_numeric = :c where field_serial = :d", _connV2);
+
+            da.UpdateCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+
+            da.UpdateCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+
+            da.UpdateCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
+            
+            da.UpdateCommand.Parameters.Add(new NpgsqlParameter("d", NpgsqlDbType.Bigint));
+
+            da.UpdateCommand.Parameters[0].Direction = ParameterDirection.Input;
+            da.UpdateCommand.Parameters[1].Direction = ParameterDirection.Input;
+            da.UpdateCommand.Parameters[2].Direction = ParameterDirection.Input;
+            da.UpdateCommand.Parameters[3].Direction = ParameterDirection.Input;
+
+            da.UpdateCommand.Parameters[0].SourceColumn = "field_int2";
+            da.UpdateCommand.Parameters[1].SourceColumn = "field_timestamp";
+            da.UpdateCommand.Parameters[2].SourceColumn = "field_numeric";
+            da.UpdateCommand.Parameters[3].SourceColumn = "field_serial";
+
+            da.Fill(ds);
+            
+            DataTable dt = ds.Tables[0];
+            Assert.IsNotNull(dt);
+
+            DataRow dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
+            
+            dr["field_int2"] = 4;
+            
+            DataSet ds2 = ds.GetChanges();
+
+            da.Update(ds2);
+
+            ds.Merge(ds2);
+            ds.AcceptChanges();
+
+
+            NpgsqlDataReader dr2 = new NpgsqlCommand("select * from tableb where field_serial = (select max(field_serial) from tableb)", _connV2).ExecuteReader();
+            dr2.Read();
+            
+            Assert.AreEqual(4, dr2["field_int2"]);
+            
+            dr2.Close();
+        }
+
+        [Test]
+        public void FillWithDuplicateColumnName()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select field_serial, field_serial from tableb", _connV2);
+
+            da.Fill(ds);
         }
     }
 }

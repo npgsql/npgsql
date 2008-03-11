@@ -420,11 +420,11 @@ namespace Npgsql
         }
         
         /// <summary>
-        /// ProcessID of postgres process connection is connected to.
+        /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public int ProcessID
+        public Int32 ProcessID 
         {
             get
             {
@@ -712,7 +712,7 @@ namespace Npgsql
         /// <summary>
         /// Password.
         /// </summary>
-		internal String Password
+		rinternal String Password
 		{
 			get { return settings.Password; }
 		}

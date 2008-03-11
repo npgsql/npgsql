@@ -216,6 +216,12 @@
     <Compile Include="Npgsql\PGUtil.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Npgsql\SqlGenerators\SqlBaseGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\SqlDeleteGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\SqlInsertGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\SqlSelectGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\SqlUpdateGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\VisitedExpression.cs" />
     <Compile Include="Npgsql\Web\NpgsqlMembershipProvider.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -486,6 +492,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Npgsql\Npgsql.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Npgsql\SqlGenerators" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.        Other similar extension points exist, see Microsoft.Common.targets.  <Target Name="BeforeBuild">  </Target>  <Target Name="AfterBuild">  </Target>  -->
