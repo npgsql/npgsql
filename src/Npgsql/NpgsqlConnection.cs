@@ -712,7 +712,7 @@ namespace Npgsql
         /// <summary>
         /// Password.
         /// </summary>
-		rinternal String Password
+		internal String Password
 		{
 			get { return settings.Password; }
 		}
