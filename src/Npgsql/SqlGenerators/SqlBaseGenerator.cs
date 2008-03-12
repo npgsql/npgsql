@@ -634,6 +634,18 @@ namespace Npgsql.SqlGenerators
                         System.Diagnostics.Debug.Assert(args.Count == 1);
                         length.AddArgument(args[0].Accept(this));
                         return new CastExpression(length, GetDbType(resultType.EdmType));
+                    case "Day":
+                    case "Hour":
+                    case "Minute":
+                    case "Month":
+                    case "Second":
+                    case "Year":
+                        FunctionExpression extract_date = new FunctionExpression("extract");
+                        System.Diagnostics.Debug.Assert(args.Count == 1);
+                        VisitedExpression arg = new LiteralExpression(function.Name + " FROM ");
+                        arg.Append(args[0].Accept(this));
+                        extract_date.AddArgument(arg);
+                        return extract_date;
                     default:
                         throw new NotSupportedException();
                 }
