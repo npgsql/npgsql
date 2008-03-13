@@ -765,17 +765,17 @@ namespace Npgsql
                             // Deal with this here so that if there are 
                             // changes in a future backend version, we can handle it here in the
                             // protocol handler and leave everybody else put of it.
-                            StringBuilder filteredVersion = new StringBuilder();
-                            foreach(char c in parameterStatus.ParameterValue)
-                                switch(c)
+                            string versionString = parameterStatus.ParameterValue.Trim();
+                            for(int idx = 0; idx != versionString.Length; ++idx)
+                            {
+                                char c = parameterStatus.ParameterValue[idx];
+                                if(!char.IsDigit(c) && c != '.')
                                 {
-                                    case '0': case '1': case '2': case '3': case '4':
-                                    case '5': case '6': case '7': case '8': case '9':
-                                    case '.':
-                                    filteredVersion.Append(c);
+                                    versionString = versionString.Substring(0, idx);
                                     break;
                                 }
-                            context.ServerVersion = new Version(filteredVersion.ToString());
+                            }
+                            context.ServerVersion = new Version(versionString);
                         }
                         break;
                     case BackEndMessageCode.NoData :
