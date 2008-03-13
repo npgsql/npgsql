@@ -30,7 +30,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Net;
 using System.Text;
 
@@ -51,14 +50,6 @@ namespace NpgsqlTypes
         {
             X = x;
             Y = y;
-        }
-        public static implicit operator PointF(NpgsqlPoint point)
-        {
-            return new PointF(point.X, point.Y);
-        }
-        public static implicit operator NpgsqlPoint(PointF point)
-        {
-            return new NpgsqlPoint(point.X, point.Y);
         }
         public bool Equals(NpgsqlPoint other)
         {
@@ -136,27 +127,12 @@ namespace NpgsqlTypes
                 return Top - Bottom;
             }
         }
-        public SizeF Size
-        {
-            get
-            {
-                return new SizeF(Width, Height);
-            }
-        }
         public bool IsEmpty
         {
             get
             {
                 return Width == 0 || Height == 0;
             }
-        }
-        public static implicit operator RectangleF(NpgsqlBox box)
-        {
-            return new RectangleF(box.Left, box.Top, box.Width, box.Height);
-        }
-        public static implicit operator NpgsqlBox(RectangleF rectF)
-        {
-            return new NpgsqlBox(rectF.Top, rectF.Right, rectF.Bottom, rectF.Left);
         }
         public bool Equals(NpgsqlBox other)
         {
@@ -598,7 +574,7 @@ namespace NpgsqlTypes
 /// <seealso cref="Canonicalize()"/>
 /// </summary>
 [Serializable]
-public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval>, IComparable<NpgsqlInterval>, IComparer<NpgsqlInterval>
+public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval>, IComparable<NpgsqlInterval>, IComparer<NpgsqlInterval>, ICloneable
 {
     #region Constants
     /// <summary>
@@ -657,9 +633,9 @@ public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval
     public static readonly NpgsqlInterval Zero = new NpgsqlInterval(0);
     #endregion
 
-    int _months;
-    int _days;
-    long _ticks;
+    private readonly int _months;
+    private readonly int _days;
+    private readonly long _ticks;
     #region Constructors
     /// <summary>
     /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of ticks.
@@ -1278,6 +1254,14 @@ public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval
             return CompareTo((NpgsqlInterval)other);
         else
             throw new ArgumentException();
+    }
+    public NpgsqlInterval Clone()
+    {
+        return new NpgsqlInterval(_months, _days, _ticks);
+    }
+    object ICloneable.Clone()
+    {
+        return Clone();
     }
     #endregion
     #region To And From Strings
