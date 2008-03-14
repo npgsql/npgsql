@@ -114,8 +114,24 @@ namespace Npgsql
 
             // read until hitting whitespace, which should terminate the version number
             for (; End < VersionString.Length && !char.IsWhiteSpace(VersionString[End]); End++) ;
-
-            return VersionString.Substring(Start, End - Start + 1);
+            
+            // Deal with this here so that if there are 
+            // changes in a future backend version, we can handle it here in the
+            // protocol handler and leave everybody else put of it.
+            
+            VersionString = VersionString.Substring(Start, End - Start + 1);
+            
+            for(int idx = 0; idx != VersionString.Length; ++idx)
+            {
+                char c = VersionString[idx];
+                if(!char.IsDigit(c) && c != '.')
+                {
+                    VersionString = VersionString.Substring(0, idx);
+                    break;
+                }
+            }
+            
+            return VersionString;
         }
 
         /// <summary>
