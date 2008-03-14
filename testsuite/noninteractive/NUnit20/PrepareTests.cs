@@ -12,7 +12,13 @@ namespace NpgsqlTests
     [TestFixture]
     public class PrepareTest : BaseClassTests
     {
-
+        protected override NpgsqlConnection TheConnection {
+            get { return _conn; }
+        }
+        protected override NpgsqlTransaction TheTransaction {
+            get { return _t; }
+            set { _t = value; }
+        }
         protected override void SetUp()
         {
             base.SetUp();
@@ -26,7 +32,7 @@ namespace NpgsqlTests
                          bigint_notnull int8 NOT NULL,
                          bigint_null int8
                          ) WITHOUT OIDS;";
-            NpgsqlCommand cmd = new NpgsqlCommand(sql, _conn);
+            NpgsqlCommand cmd = new NpgsqlCommand(sql, TheConnection);
             cmd.ExecuteNonQuery();
             CommitTransaction = true;
         }
@@ -37,7 +43,7 @@ namespace NpgsqlTests
         {
             
             string sql = @"	DROP TABLE public.preparetest;";
-            NpgsqlCommand cmd = new NpgsqlCommand(sql, _conn);
+            NpgsqlCommand cmd = new NpgsqlCommand(sql, TheConnection);
 
             cmd.ExecuteNonQuery();
             CommitTransaction = true;
@@ -110,7 +116,7 @@ namespace NpgsqlTests
         {
             string sql = @"	INSERT INTO preparetest(varchar_notnull, varchar_null, integer_notnull, integer_null, bigint_notnull, bigint_null)
                          VALUES(:param1, :param2, :param3, :param4, :param5, :param6)";
-            NpgsqlCommand cmd = new NpgsqlCommand(sql, _conn);
+            NpgsqlCommand cmd = new NpgsqlCommand(sql, TheConnection);
 
             NpgsqlParameter p1 = new NpgsqlParameter("param1", DbType.String, 100);
             p1.Value = "One";
@@ -138,7 +144,7 @@ namespace NpgsqlTests
         public void TestSubquery()
         {
             string sql = "SELECT testid FROM preparetest WHERE :p1 IN (SELECT varchar_notnull FROM preparetest)";
-            NpgsqlCommand cmd = new NpgsqlCommand(sql, _conn);
+            NpgsqlCommand cmd = new NpgsqlCommand(sql, TheConnection);
             NpgsqlParameter p1 = new NpgsqlParameter(":p1", DbType.String);
             p1.Value = "blahblah";
             cmd.Parameters.Add(p1);
@@ -149,6 +155,16 @@ namespace NpgsqlTests
             cmd.Prepare(); // Fails
 
             cmd.ExecuteNonQuery();
+        }
+    }
+    [TestFixture]
+    public class PrepareTestV2 : PrepareTest
+    {
+        protected override NpgsqlConnection TheConnection {
+            get { return _connV2; }
+        }
+        protected override NpgsqlTransaction TheTransaction {
+            get { return _tV2; }
         }
     }
 }

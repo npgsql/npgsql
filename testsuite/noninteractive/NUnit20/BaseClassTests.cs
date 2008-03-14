@@ -45,6 +45,9 @@ namespace NpgsqlTests
         protected NpgsqlTransaction _t = null;
         protected NpgsqlTransaction _tV2 = null;
         
+        protected abstract NpgsqlConnection TheConnection{get;}
+        protected abstract NpgsqlTransaction TheTransaction{get;set;}
+        
         // Commit transaction when test finish?   
         private Boolean commitTransaction = false;
         
@@ -52,7 +55,6 @@ namespace NpgsqlTests
         
         protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
         protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
-        
         
         protected Boolean CommitTransaction
         {
