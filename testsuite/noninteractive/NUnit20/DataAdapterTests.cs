@@ -76,7 +76,7 @@ namespace NpgsqlTests
 
             DataRow dr = dt.NewRow();
             dr["field_int2"] = 4;
-            dr["field_timestamp"] = (NpgsqlTimeStamp)new DateTime(2003, 01, 30, 14, 0, 0);
+            dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
             dr["field_numeric"] = 7.3M;
             
 
@@ -187,6 +187,10 @@ namespace NpgsqlTests
         [Test]
         public void UpdateWithDataSet()
         {
+            DoUpdateWithDataSet();
+        }
+        public virtual void DoUpdateWithDataSet()
+        {
             NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", TheConnection);
             command.ExecuteNonQuery();
             
@@ -225,6 +229,10 @@ namespace NpgsqlTests
         
         [Test]
         public void InsertWithCommandBuilderCaseSensitive()
+        {
+            DoInsertWithCommandBuilderCaseSensitive();
+        }
+        public virtual void DoInsertWithCommandBuilderCaseSensitive()
         {
             DataSet ds = new DataSet();
 
@@ -268,6 +276,14 @@ namespace NpgsqlTests
         protected override NpgsqlTransaction TheTransaction {
             get { return _tV2; }
             set { _tV2 = value; }
+        }
+        public override void DoInsertWithCommandBuilderCaseSensitive()
+        {
+            //Not possible with V2?
+        }
+        public override void DoUpdateWithDataSet()
+        {
+            //Not possible with V2?
         }
     }
 }

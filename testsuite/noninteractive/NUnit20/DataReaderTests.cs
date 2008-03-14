@@ -643,7 +643,11 @@ namespace NpgsqlTests
         }
         
         [Test]
-        public virtual void IsIdentityMetadataSupport()
+        public void IsIdentityMetadataSupport()
+        {
+            DoIsIdentityMetadataSupport();
+        }
+        public virtual void DoIsIdentityMetadataSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select * from metadatatest1", TheConnection);
             
@@ -844,7 +848,7 @@ namespace NpgsqlTests
         protected override string TheConnectionString {
             get { return _connV2String; }
         }
-        public override void IsIdentityMetadataSupport()
+        public override void DoIsIdentityMetadataSupport()
         {
             //Not possible with V2?
         }
