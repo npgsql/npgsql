@@ -192,7 +192,6 @@ namespace NpgsqlTypes
                                         DateTimeFormatInfo.InvariantInfo,
                                         DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
         }
-
         /// <summary>
         /// Convert a postgresql money to a System.Decimal.
         /// </summary>
@@ -257,6 +256,8 @@ namespace NpgsqlTypes
         /// </summary>
         internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
         {
+            if(!(NativeData is DateTime))
+                return ExtendedNativeToBackendTypeConverter.ToTimeStamp(TypeInfo, NativeData);
             if (DateTime.MaxValue.Equals(NativeData))
                 return "infinity";
             if (DateTime.MinValue.Equals(NativeData))
@@ -269,6 +270,8 @@ namespace NpgsqlTypes
         /// </summary>
         internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
         {
+            if(!(NativeData is DateTime))
+                return ExtendedNativeToBackendTypeConverter.ToDate(TypeInfo, NativeData);
             return ((DateTime)NativeData).ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo);
         }
 
@@ -277,7 +280,10 @@ namespace NpgsqlTypes
         /// </summary>
         internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
         {
-            return ((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
+            if(!(NativeData is DateTime))
+                return ExtendedNativeToBackendTypeConverter.ToTime(TypeInfo, NativeData);
+            else
+                return ((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
         }
 
         /// <summary>
@@ -478,9 +484,29 @@ namespace NpgsqlTypes
         /// <summary>
         /// interval
         /// </summary>
-        internal static object ToInterval(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static object ToInterval(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
         {
-        	return NpgsqlInterval.Parse(BackendData);
+        	return NpgsqlInterval.Parse(backendData);
+        }
+        internal static object ToTime(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+        {
+            return NpgsqlTime.Parse(backendData);
+        }
+        internal static object ToTimeTZ(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+        {
+            return NpgsqlTimeTZ.Parse(backendData);
+        }
+        internal static object ToDate(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+        {
+            return NpgsqlDate.Parse(backendData);
+        }
+        internal static object ToTimeStamp(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+        {
+            return NpgsqlTimeStamp.Parse(backendData);
+        }
+        internal static object ToTimeStampTZ(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+        {
+            return NpgsqlTimeStampTZ.Parse(backendData);
         }
     }
 
@@ -590,9 +616,43 @@ namespace NpgsqlTypes
         /// </summary>
         internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
         {
-        	return "interval'" + 
-        		((NativeData is TimeSpan) ? ((NpgsqlInterval)(TimeSpan)NativeData).ToString() : ((NpgsqlInterval)NativeData).ToString())
-        		+ '\'';
+        	return ((NativeData is TimeSpan) ? ((NpgsqlInterval)(TimeSpan)NativeData).ToString() : ((NpgsqlInterval)NativeData).ToString());
+        }
+        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData)
+        {
+            if(nativeData is DateTime)
+                return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData);
+            NpgsqlTime time;
+            if(nativeData is TimeSpan)
+                time = (NpgsqlTime)(TimeSpan)nativeData;
+            else
+                time = (NpgsqlTime)nativeData;
+            return time.ToString();
+        }
+        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData)
+        {
+            if(nativeData is DateTime)
+                return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData);
+            NpgsqlTimeTZ time;
+            if(nativeData is TimeSpan)
+                time = (NpgsqlTimeTZ)(TimeSpan)nativeData;
+            else
+                time = (NpgsqlTimeTZ)nativeData;
+            return time.ToString();
+        }
+        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData)
+        {
+            if(nativeData is DateTime)
+                return BasicNativeToBackendTypeConverter.ToDate(typeInfo, nativeData);
+            else
+                return nativeData.ToString();
+        }
+        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData)
+        {
+            if(nativeData is DateTime)
+                return BasicNativeToBackendTypeConverter.ToDateTime(typeInfo, nativeData);
+            else
+                return nativeData.ToString();
         }
     }
 }

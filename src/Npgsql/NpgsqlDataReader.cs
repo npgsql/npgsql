@@ -97,7 +97,6 @@ namespace Npgsql
             }
 
         }
-
         /// <summary>
         /// Return the column name of the column at index <param name="Index"></param>.
         /// </summary>
@@ -182,18 +181,29 @@ namespace Npgsql
         /// </summary>
         /// <param name="i">Index of the field to find.</param>
         /// <returns><see cref="NpgsqlInterval"/> value of the field.</returns>
-        public abstract NpgsqlInterval GetInterval(Int32 i);
-        /// <summary>
-        /// Get the value of a column as a <see cref="System.TimeSpan"/>
-        /// </summary>
-        /// <remarks>If the differences between <see cref="NpgsqlInterval"/> and <see cref="System.Timespan"/>
-        /// in handling of days and months is important to your application, use <see cref="GetInterval()"/>
-        /// instead.</remarks>
-        /// <param name="i">Index of the field to find.</param>
-        /// <returns><see cref="System.TimeSpan"/> value of the field.</returns>
-        public TimeSpan GetTimeSpan(Int32 i)
+        public NpgsqlInterval GetInterval(Int32 i)
         {
-            return (TimeSpan)GetInterval(i);
+            return (NpgsqlInterval)GetValue(i);
+        }
+        public NpgsqlTime GetTime(int i)
+        {
+            return (NpgsqlTime)GetValue(i);
+        }
+        public NpgsqlTimeTZ GetTimeTZ(int i)
+        {
+            return(NpgsqlTimeTZ)GetValue(i);
+        }
+        public NpgsqlTimeStamp GetTimeStamp(int i)
+        {
+            return (NpgsqlTimeStamp)GetValue(i);
+        }
+        public NpgsqlTimeStampTZ GetTimeStampTZ(int i)
+        {
+            return(NpgsqlTimeStampTZ)GetValue(i);
+        }
+        public NpgsqlDate GetDate(int i)
+        {
+            return(NpgsqlDate)GetValue(i);
         }
         protected void SendClosedEvent()
         {
@@ -1176,27 +1186,11 @@ namespace Npgsql
 
             CheckHaveRow();
 
-            Object val = CurrentRow[Index];
-			//Since this can be used from an non-Npgsql-specific interface and we should avoid surprises.
-			//Otherwise we'd have to force someone retrieving a TimeSpan via GetValue to use
-			//TimeSpan ts = (TimeSpan)(NpgsqlInterval)rdr.GetValue(0) or similar.
-			//Which would be incompatible with any other provider that could return TimeSpan values.
-			if(val is NpgsqlInterval)
-            	return (TimeSpan)(NpgsqlInterval)val;
-            return val;
+            object ret = CurrentRow[Index];
+            if(ret is Exception)
+                throw (Exception)ret;
+            return ret;
         }
-        public override NpgsqlInterval GetInterval(int Index)
-        {
-            if (Index < 0 || Index >= CurrentDescription.NumFields)
-            {
-                throw new IndexOutOfRangeException("Column index out of range");
-            }
-
-            CheckHaveRow();
-
-            return(NpgsqlInterval)CurrentRow[Index];
-        }
-
         /// <summary>
         /// Gets raw data from a column.
         /// </summary>
@@ -1365,28 +1359,13 @@ namespace Npgsql
 			Array.Copy(source.ToCharArray(), fieldoffset, buffer, bufferoffset, finalLength);
 			return finalLength;
 		}
-        public override object GetValue(int ordinal)
+        public override Object GetValue(Int32 ordinal)
         {
             CheckHaveRow();
             if(ordinal < 0 || ordinal >= CurrentDescription.NumFields)
                 throw new IndexOutOfRangeException();
-            Object val = _currentRow[ordinal];
-			//Since this can be used from an non-Npgsql-specific interface and we should avoid surprises.
-			//Otherwise we'd have to force someone retrieving a TimeSpan via GetValue to use
-			//TimeSpan ts = (TimeSpan)(NpgsqlInterval)rdr.GetValue(0) or similar.
-			//Which would be incompatible with any other provider that could return TimeSpan values.
-			if(val is NpgsqlInterval)
-            	return (TimeSpan)(NpgsqlInterval)val;
-            return val;
+            return _currentRow[ordinal];
         }
-        public override NpgsqlInterval GetInterval(int i)
-        {
-            CheckHaveRow();
-            if(i < 0 || i >= CurrentDescription.NumFields)
-                throw new IndexOutOfRangeException();
-            return (NpgsqlInterval)_currentRow[i];
-        }
-	    
         public override bool IsDBNull(int ordinal)
         {
             CheckHaveRow();

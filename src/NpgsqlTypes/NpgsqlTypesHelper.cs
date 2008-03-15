@@ -46,11 +46,35 @@ namespace NpgsqlTypes
         private static readonly String CLASSNAME = "NpgsqlTypesHelper";
         private static ResourceManager resman = new ResourceManager(typeof(NpgsqlTypesHelper));
 
+        private struct MappingKey : IEquatable<MappingKey>
+        {
+            public Version Version;
+            public bool UseExtendedTypes;
+            public MappingKey(Version version, bool useExtendedTypes)
+            {
+                this.Version = version;
+                this.UseExtendedTypes = useExtendedTypes;
+            }
+            public bool Equals(MappingKey other)
+            {
+                return UseExtendedTypes.Equals(other.UseExtendedTypes) && Version.Equals(other.Version);
+            }
+            public override bool Equals(object obj)
+            {
+                //Note that Dictionary<T, U> will call IEquatable<T>.Equals() when possible.
+                //This is included for completeness (that and second-guessing Mono while coding on .NET!).
+                return obj != null && obj is MappingKey && Equals((MappingKey)obj);
+            }
+            public override int GetHashCode()
+            {
+                return UseExtendedTypes ? ~Version.GetHashCode() : Version.GetHashCode();
+            }
+        }
         /// <summary>
         /// A cache of basic datatype mappings keyed by server version.  This way we don't
         /// have to load the basic type mappings for every connection.
         /// </summary>
-        private readonly static Dictionary<Version, NpgsqlBackendTypeMapping> BackendTypeMappingCache = new Dictionary<Version, NpgsqlBackendTypeMapping>();
+        private readonly static Dictionary<MappingKey, NpgsqlBackendTypeMapping> BackendTypeMappingCache = new Dictionary<MappingKey, NpgsqlBackendTypeMapping>();
         private readonly static NpgsqlNativeTypeMapping NativeTypeMapping = PrepareDefaultTypesMap();
 
 
@@ -288,16 +312,28 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddType("date", NpgsqlDbType.Date, DbType.Date, true,
             new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToDate));
 
+            nativeTypeMapping.AddTypeAlias("date", typeof(NpgsqlDate));
+
+            nativeTypeMapping.AddType("timetz", NpgsqlDbType.TimeTZ, DbType.Time, true,
+                new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeTZ));
+                
+            nativeTypeMapping.AddTypeAlias("timetz", typeof(NpgsqlTimeTZ));
+
             nativeTypeMapping.AddType("time", NpgsqlDbType.Time, DbType.Time, true,
             new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToTime));
 
+            nativeTypeMapping.AddTypeAlias("time", typeof(NpgsqlTime));
+            
             nativeTypeMapping.AddType("timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, true,
-            new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToDateTime));
+            new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
             nativeTypeMapping.AddTypeAlias("timestamp", typeof(DateTime));
+            nativeTypeMapping.AddTypeAlias("timestamp", typeof(NpgsqlTimeStamp));
 
             nativeTypeMapping.AddType("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, true,
-            new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToDateTime));
+            new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
+            
+            nativeTypeMapping.AddTypeAlias("timestamptz", typeof(NpgsqlTimeStampTZ));
 
             nativeTypeMapping.AddType("point", NpgsqlDbType.Point, DbType.Object, true,
             new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToPoint));
@@ -348,6 +384,129 @@ namespace NpgsqlTypes
             return nativeTypeMapping;
         }
 
+        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes)
+        {
+            yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "refcursor", NpgsqlDbType.Refcursor, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "char", NpgsqlDbType.Char, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Text, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "varchar", NpgsqlDbType.Varchar, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "text", NpgsqlDbType.Text, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Text, DbType.String, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(Byte[]),
+                new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBinary));
+
+            yield return new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Boolean, typeof(Boolean),
+                new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBit));
+
+            yield return new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(Boolean),
+                new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean));
+
+            yield return new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof(Int16),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "int4", NpgsqlDbType.Integer, DbType.Int32, typeof(Int32),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "int8", NpgsqlDbType.Bigint, DbType.Int64, typeof(Int64),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "oid", NpgsqlDbType.Bigint, DbType.Int64, typeof(Int64),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "float4", NpgsqlDbType.Real, DbType.Single, typeof(Single),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "float8", NpgsqlDbType.Double, DbType.Double, typeof(Double),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "numeric", NpgsqlDbType.Numeric, DbType.Decimal, typeof(Decimal),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof(NpgsqlInet), new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet));
+
+            yield return new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof(Decimal),
+                new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney));
+
+            yield return new NpgsqlBackendTypeInfo(0, "point", NpgsqlDbType.Point, DbType.Object, typeof(NpgsqlPoint),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPoint));
+
+            yield return new NpgsqlBackendTypeInfo(0, "lseg", NpgsqlDbType.LSeg, DbType.Object, typeof(NpgsqlLSeg),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToLSeg));
+
+            yield return new NpgsqlBackendTypeInfo(0, "path", NpgsqlDbType.Path, DbType.Object, typeof(NpgsqlPath),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPath));
+
+            yield return new NpgsqlBackendTypeInfo(0, "box", NpgsqlDbType.Box, DbType.Object, typeof(NpgsqlBox),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToBox));
+
+            yield return new NpgsqlBackendTypeInfo(0, "circle", NpgsqlDbType.Circle, DbType.Object, typeof(NpgsqlCircle),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToCircle));
+
+            yield return new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof(NpgsqlPolygon),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon));
+
+            yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof(String),
+                null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
+                new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval));
+
+            if(useExtendedTypes)
+            {
+                yield return new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate),
+                    new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToDate));
+
+                yield return new NpgsqlBackendTypeInfo(0, "time", NpgsqlDbType.Time, DbType.Time, typeof(NpgsqlTime),
+                    new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTime));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timetz", NpgsqlDbType.TimeTZ, DbType.Time, typeof(NpgsqlTimeTZ),
+                    new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeTZ));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(NpgsqlTimeStamp),
+                    new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
+                    new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
+            }
+            else
+            {
+                yield return new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof(DateTime),
+                    new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDate));
+
+                yield return new NpgsqlBackendTypeInfo(0, "time", NpgsqlDbType.Time, DbType.Time, typeof(DateTime),
+                    new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToTime));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timetz", NpgsqlDbType.TimeTZ, DbType.Time, typeof(DateTime),
+                    new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToTime));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(DateTime),
+                    new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime));
+
+                yield return new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(DateTime),
+                    new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime));
+            }
+        }
         ///<summary>
         /// This method creates (or retrieves from cache) a mapping between type and OID 
         /// of all natively supported postgresql data types.
@@ -367,7 +526,7 @@ namespace NpgsqlTypes
                 // Check the cache for an initial types map.
                 NpgsqlBackendTypeMapping oidToNameMapping = null;
 
-                if(BackendTypeMappingCache.TryGetValue(conn.ServerVersion, out oidToNameMapping))
+                if(BackendTypeMappingCache.TryGetValue(new MappingKey(conn.ServerVersion, conn.UseExtendedTypes), out oidToNameMapping))
                 {
                     return oidToNameMapping;
                 }
@@ -376,121 +535,14 @@ namespace NpgsqlTypes
                 oidToNameMapping = new NpgsqlBackendTypeMapping();
 
                 // Create a list of all natively supported postgresql data types.
-                NpgsqlBackendTypeInfo[] TypeInfoList = new NpgsqlBackendTypeInfo[]
-                {
-                    new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof(String),
-                        null),
-                        
-                    new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof(String),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "refcursor", NpgsqlDbType.Refcursor, DbType.String, typeof(String),
-                        null),
-			
-                    new NpgsqlBackendTypeInfo(0, "char", NpgsqlDbType.Char, DbType.String, typeof(String),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Text, DbType.String, typeof(String),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "varchar", NpgsqlDbType.Varchar, DbType.String, typeof(String),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "text", NpgsqlDbType.Text, DbType.String, typeof(String),
-                        null),
-                        
-                    new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Text, DbType.String, typeof(String),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(Byte[]),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBinary)),
-
-                    new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Boolean, typeof(Boolean),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBit)),
-
-                    new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(Boolean),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean)),
-
-
-                    new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof(Int16),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "int4", NpgsqlDbType.Integer, DbType.Int32, typeof(Int32),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "int8", NpgsqlDbType.Bigint, DbType.Int64, typeof(Int64),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "oid", NpgsqlDbType.Bigint, DbType.Int64, typeof(Int64),
-                        null),
-
-
-                    new NpgsqlBackendTypeInfo(0, "float4", NpgsqlDbType.Real, DbType.Single, typeof(Single),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "float8", NpgsqlDbType.Double, DbType.Double, typeof(Double),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "numeric", NpgsqlDbType.Numeric, DbType.Decimal, typeof(Decimal),
-                        null),
-
-                    new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof(NpgsqlInet), new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet)),
-
-                    new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof(Decimal),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney)),
-
-
-                    new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof(DateTime),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDate)),
-
-                    new NpgsqlBackendTypeInfo(0, "time", NpgsqlDbType.Time, DbType.Time, typeof(DateTime),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToTime)),
-
-                    new NpgsqlBackendTypeInfo(0, "timetz", NpgsqlDbType.Time, DbType.Time, typeof(DateTime),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToTime)),
-
-                    new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(DateTime),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime)),
-
-                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(DateTime),
-                        new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToDateTime)),
-
-
-                    new NpgsqlBackendTypeInfo(0, "point", NpgsqlDbType.Point, DbType.Object, typeof(NpgsqlPoint),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPoint)),
-
-                    new NpgsqlBackendTypeInfo(0, "lseg", NpgsqlDbType.LSeg, DbType.Object, typeof(NpgsqlLSeg),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToLSeg)),
-
-                    new NpgsqlBackendTypeInfo(0, "path", NpgsqlDbType.Path, DbType.Object, typeof(NpgsqlPath),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPath)),
-
-                    new NpgsqlBackendTypeInfo(0, "box", NpgsqlDbType.Box, DbType.Object, typeof(NpgsqlBox),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToBox)),
-
-                    new NpgsqlBackendTypeInfo(0, "circle", NpgsqlDbType.Circle, DbType.Object, typeof(NpgsqlCircle),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToCircle)),
-
-                    new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof(NpgsqlPolygon),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon)),
-
-                    new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid),
-                        null),
-                        
-                    new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof(String),
-                        null),
-                         
-                    new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                        new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval))
-                };
 
                 // Attempt to map each type info in the list to an OID on the backend and
                 // add each mapped type to the new type mapping object.
-                LoadTypesMappings(conn, oidToNameMapping, TypeInfoList);
+                LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes));
 
                 // Add this mapping to the per-server-version cache so we don't have to
                 // do these expensive queries on every connection startup.
-                BackendTypeMappingCache.Add(conn.ServerVersion, oidToNameMapping);
+                BackendTypeMappingCache.Add(new MappingKey(conn.ServerVersion, conn.UseExtendedTypes), oidToNameMapping);
 
                 return oidToNameMapping;
             }

@@ -708,6 +708,15 @@ namespace Npgsql
 		{
 			get { return settings.UserName; }
 		}
+		
+		public bool UseExtendedTypes
+		{
+		    get
+		    {
+		        bool ext =  settings.UseExtendedTypes;
+		        return ext;
+		    }
+		}
 
         /// <summary>
         /// Password.

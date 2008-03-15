@@ -62,15 +62,26 @@ namespace Npgsql
 
 		    byte[] buffer = new byte[fieldSize];
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, fieldSize);
-
-			if(field_descr.FormatCode == FormatCode.Text)
+    
+			try
 			{
-    			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-    			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
-    			return NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer), field_descr.TypeSize, field_descr.TypeModifier);
+			    if(field_descr.FormatCode == FormatCode.Text)
+    			{
+        			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
+        			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
+        			return NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer), field_descr.TypeSize, field_descr.TypeModifier);
+    			}
+    			else
+                    return NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, buffer, fieldSize, field_descr.TypeModifier);
 			}
-			else
-                return NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, buffer, fieldSize, field_descr.TypeModifier);
+			catch(InvalidCastException ice)
+			{
+			    return ice;
+			}
+			catch(Exception ex)
+			{
+			    return new InvalidCastException(ex.Message, ex);
+			}
 		}
 		private void AbandonShip()
 		{
@@ -163,7 +174,18 @@ namespace Npgsql
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, field_value_size);
 			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
 			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
-			return NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer), field_descr.TypeSize, field_descr.TypeModifier);
+			try
+			{
+		        return NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer), field_descr.TypeSize, field_descr.TypeModifier);
+			}
+			catch(InvalidCastException ice)
+			{
+			    return ice;
+			}
+			catch(Exception ex)
+			{
+			    return new InvalidCastException(ex.Message, ex);
+			}
 		}
         public override bool IsNextDBNull
         {

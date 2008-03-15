@@ -219,6 +219,13 @@ namespace Npgsql
 			get { return settings.Enlist; }
 		}
         
+        public bool UseExtendedTypes
+        {
+            get
+            {
+                return settings.UseExtendedTypes;
+            }
+        }
 
         /// <summary>
         /// Gets the current state of the connection.

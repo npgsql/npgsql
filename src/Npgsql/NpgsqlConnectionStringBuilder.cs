@@ -131,6 +131,8 @@ namespace Npgsql
 			defaults.Add(Keywords.Enlist, false);
 			
 			defaults.Add(Keywords.PreloadReader, false);
+			
+			defaults.Add(Keywords.UseExtendedTypes, false);
 
 		}
 
@@ -642,6 +644,20 @@ namespace Npgsql
 		        SetValue(GetKeyName(Keywords.PreloadReader), value);
 		    }
 		}
+		
+		private bool _useExtendedTypes;
+		
+		public bool UseExtendedTypes
+		{
+		    get
+		    {
+		        return _useExtendedTypes;
+		    }
+		    set
+		    {
+		        SetValue(GetKeyName(Keywords.UseExtendedTypes), value);
+		    }
+		}
 
 
 		#endregion
@@ -749,6 +765,10 @@ namespace Npgsql
 	            case "PRELOADREADER":
 	            case "PRELOAD READER":
 					return Keywords.PreloadReader;
+					
+				case "USEEXTENDEDTYPES":
+	            case "USE EXTENDED TYPES":
+					return Keywords.UseExtendedTypes;
 
 				default:
 
@@ -1036,6 +1056,12 @@ namespace Npgsql
 						this._preloadReader = ToBoolean(value);
 						
 						break;
+						
+		            case Keywords.UseExtendedTypes:
+						
+						this._useExtendedTypes = ToBoolean(value);
+						
+						break;
 
 				}
 
@@ -1172,7 +1198,9 @@ namespace Npgsql
 
 		Enlist,
 		
-		PreloadReader
+		PreloadReader,
+		
+		UseExtendedTypes
 
 	}
 
