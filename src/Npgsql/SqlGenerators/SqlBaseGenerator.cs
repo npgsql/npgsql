@@ -60,7 +60,7 @@ namespace Npgsql.SqlGenerators
             _filterVarName.Push(expression.Input.VariableName);
             VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
             VisitedExpression from;
-            if (!(inputExpression is JoinExpression))
+            if (!(inputExpression is JoinExpression) && !(inputExpression is FromExpression))
             {
                 from = new FromExpression(inputExpression, expression.Input.VariableName);
                 _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
@@ -68,6 +68,10 @@ namespace Npgsql.SqlGenerators
             }
             else
             {
+                if (inputExpression is FromExpression)
+                {
+                    SubstituteFilterVar(((FromExpression)inputExpression).Name);
+                }
                 from = inputExpression;
             }
             _filterVarName.Pop();
@@ -322,7 +326,7 @@ namespace Npgsql.SqlGenerators
             // complicated
             // GROUP BY expression
             // first implementation this is a COUNT(column) query ???
-            EnterNewVariableScope();
+            //EnterNewVariableScope();
             ProjectionExpression projectExpression = new ProjectionExpression();
             GroupByExpression groupByExpression = new GroupByExpression();
             RowType rowType = ((CollectionType)(expression.ResultType.EdmType)).TypeUsage.EdmType as RowType;
@@ -362,7 +366,7 @@ namespace Npgsql.SqlGenerators
             }
             _projectVarName.Pop();
             _filterVarName.Pop();
-            LeaveVariableScope();
+            //LeaveVariableScope();
             //_variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
             //return new FromExpression(projectExpression, expression.Input.VariableName);
             return projectExpression;
@@ -552,7 +556,55 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbArithmeticExpression expression)
         {
-            throw new NotImplementedException();
+            VisitedExpression arithmeticOperator;
+
+            switch (expression.ExpressionKind)
+            {
+                case DbExpressionKind.Divide:
+                    arithmeticOperator = new LiteralExpression("/");
+                    break;
+                case DbExpressionKind.Minus:
+                    arithmeticOperator = new LiteralExpression("-");
+                    break;
+                case DbExpressionKind.Modulo:
+                    arithmeticOperator = new LiteralExpression("%");
+                    break;
+                case DbExpressionKind.Multiply:
+                    arithmeticOperator = new LiteralExpression("*");
+                    break;
+                case DbExpressionKind.Plus:
+                    arithmeticOperator = new LiteralExpression("+");
+                    break;
+                case DbExpressionKind.UnaryMinus:
+                    arithmeticOperator = new LiteralExpression("-");
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+
+            if (expression.ExpressionKind == DbExpressionKind.UnaryMinus)
+            {
+                System.Diagnostics.Debug.Assert(expression.Arguments.Count == 1);
+                arithmeticOperator.Append("(");
+                arithmeticOperator.Append(expression.Arguments[0].Accept(this));
+                arithmeticOperator.Append(")");
+                return arithmeticOperator;
+            }
+            else
+            {
+                VisitedExpression math = new LiteralExpression("");
+                bool first = true;
+                foreach (DbExpression arg in expression.Arguments)
+                {
+                    if (!first)
+                        math.Append(arithmeticOperator);
+                    math.Append("(");
+                    math.Append(arg.Accept(this));
+                    math.Append(")");
+                    first = false;
+                }
+                return math;
+            }
         }
 
         public override VisitedExpression Visit(DbApplyExpression expression)
@@ -626,14 +678,26 @@ namespace Npgsql.SqlGenerators
         {
             if (function.NamespaceName == "Edm")
             {
+                VisitedExpression arg;
                 // TODO: support more functions
                 switch (function.Name)
                 {
+                        // string functions
+                    case "Left":
+                        FunctionExpression left = new FunctionExpression("substring");
+                        System.Diagnostics.Debug.Assert(args.Count == 2);
+                        arg = args[0].Accept(this);
+                        arg.Append(" FROM 1 FOR ");
+                        arg.Append(args[1].Accept(this));
+                        left.AddArgument(arg);
+                        return left;
                     case "Length":
                         FunctionExpression length = new FunctionExpression("char_length");
                         System.Diagnostics.Debug.Assert(args.Count == 1);
                         length.AddArgument(args[0].Accept(this));
                         return new CastExpression(length, GetDbType(resultType.EdmType));
+
+                        // date functions
                     case "Day":
                     case "Hour":
                     case "Minute":
@@ -642,10 +706,11 @@ namespace Npgsql.SqlGenerators
                     case "Year":
                         FunctionExpression extract_date = new FunctionExpression("extract");
                         System.Diagnostics.Debug.Assert(args.Count == 1);
-                        VisitedExpression arg = new LiteralExpression(function.Name + " FROM ");
+                        arg = new LiteralExpression(function.Name + " FROM ");
                         arg.Append(args[0].Accept(this));
                         extract_date.AddArgument(arg);
                         return extract_date;
+
                     default:
                         throw new NotSupportedException();
                 }
