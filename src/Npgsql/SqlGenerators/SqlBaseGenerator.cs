@@ -51,7 +51,23 @@ namespace Npgsql.SqlGenerators
         {
             // not quite sure, but may be a paging like function
             // almost the opposite of limit, possibly actually the skip those first.
-            throw new NotImplementedException();
+            VisitedExpression offset = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
+            offset.Append(" ORDER BY ");
+            bool first = true;
+            foreach (var order in expression.SortOrder)
+            {
+                if (!first)
+                    offset.Append(",");
+                offset.Append(order.Expression.Accept(this));
+                if (order.Ascending)
+                    offset.Append(" ASC ");
+                else
+                    offset.Append(" DESC ");
+                first = false;
+            }
+            offset.Append(" OFFSET ");
+            offset.Append(expression.Count.Accept(this));
+            return offset;
         }
 
         public override VisitedExpression Visit(DbSortExpression expression)
@@ -133,14 +149,19 @@ namespace Npgsql.SqlGenerators
 
         private void AppendFrom(VisitedExpression visitedExpression, DbExpression dbFromExpression, string variableName)
         {
-            VisitedExpression fromExpression = dbFromExpression.Accept(this);
+            visitedExpression.Append(CheckedConvertFrom(dbFromExpression.Accept(this), variableName));
+        }
+
+        private VisitedExpression CheckedConvertFrom(VisitedExpression fromExpression, string variableName)
+        {
             if (!(fromExpression is FromExpression) && !(fromExpression is JoinExpression))
             {
                 fromExpression = new FromExpression(fromExpression, variableName);
+                if (string.IsNullOrEmpty(variableName)) variableName = ((FromExpression)fromExpression).Name;
                 _variableSubstitution[_projectVarName.Peek()] = variableName;
                 SubstituteFilterVar(variableName);
             }
-            visitedExpression.Append(fromExpression);
+            return fromExpression;
         }
 
         public override VisitedExpression Visit(DbParameterReferenceExpression expression)
@@ -218,9 +239,13 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbLimitExpression expression)
         {
             // TODO: what is WithTies?
-            FromExpression limit = new FromExpression(expression.Argument.Accept(this), null);
-            _variableSubstitution[_projectVarName.Peek()] = limit.Name;
-            SubstituteFilterVar(limit.Name);
+            // limit expressions should be structured like where clauses
+            // see Visit(DbFilterExpression)
+            VisitedExpression limit = expression.Argument.Accept(this);
+            if (!(limit is ProjectionExpression))
+            {
+                limit = CheckedConvertFrom(limit, null);
+            }
             limit.Append(" LIMIT ");
             limit.Append(expression.Limit.Accept(this));
             return limit;
@@ -318,7 +343,10 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbIntersectExpression expression)
         {
             // INTERSECT keyword
-            throw new NotImplementedException();
+            VisitedExpression intersection = expression.Left.Accept(this);
+            intersection.Append(" INTERSECT ");
+            intersection.Append(expression.Right.Accept(this));
+            return intersection;
         }
 
         public override VisitedExpression Visit(DbGroupByExpression expression)
@@ -422,7 +450,10 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbExceptExpression expression)
         {
             // Except keyword
-            throw new NotImplementedException();
+            VisitedExpression except = expression.Left.Accept(this);
+            except.Append(" EXCEPT ");
+            except.Append(expression.Right.Accept(this));
+            return except;
         }
 
         public override VisitedExpression Visit(DbElementExpression expression)
