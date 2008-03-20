@@ -1,4 +1,37 @@
+2008-03-19
 
+	Please note: This release contains changes that will require a recompile of code using it.
+
+New Features:
+	Support for array handling. Parameters can be of type T[] where T is an already supported type. In addition, parameters of a type that support IEnumerable<T> will be treated as T[], types that support IEnumerable<U> where U supports IEnumerable<T> will be treated as a two-dimensional T[] and so on (though if each U has a different number of T items the result is a jagged array and postgres will hence return an error as it doesn't support jagged arrays). The NpgsqlDbType value NpgsqlDbType.Array should be combined using binary-or to produce an array type (e.g. NpgsqlDbType.Array | NpgsqlDbType.Box is an array of box). Direct support for a type is checked first in determining correct handling so byte[] and string are threated as bytea or text by default, not as byte[] or char[] (string implements IEnumerable<char>). GetValue() will also return an array when appropriate. Support for IEnumerable<T> is write-only as the system cannot determine that you might want e.g. List<Int32> rather than Int32[], but when desired a different collection can be created from the returned array (e.g. List<Int32> myList = new List<Int32>((Int32[])reader.GetValue(0)).
+
+	New types for representing dates and times with the extra information postgres provides beyond that available in DateTime and TimeSpan and allowing for dates outside of the range [0001-01-01T00:00:00 - 9999-12-31T23:59:59] that DateTime allows for. These are still under development and likely to be changed in the near-future, so subsequent beta releases may introduce breaking changes.
+
+	DataReader is now loaded as-needed from the source data. This produces a considerable increase in scalability - in particular very large recordsets will now be much faster and use much less memory, and there is no longer a limit after which the provider consumes all available memory (memory usage remains very low even when reading billions of rows).
+
+	Support for CommandBehavior.SequentialAccess. Note that because of the nature of the encoding used by postgres it is not possible to get a count of pending bytes or chars by calling GetBytes() or GetChars() with a null parameter for the buffer when SequentialAccess is being used (this issue does not affect GetBytes() or GetChars() without SequentialAccess). Beyond this issue, the normal peformance benefits of SequentialAccess are now available to Npgsql users (again, bytea of many MB in size can now be read and only the size of your buffer will affect memory consumption).
+
+	While ADO.NET has never allowed an operation on a connection while an IDataReader is open, a side-effect of Npgsql's previous method of creating NpgsqlDataReader objects is that this would not cause an error when users did so. Now doing so will throw an InvalidOperationException as per the spec, but adding "preloadreader=true;" or "preload reader=true;" etc. to the connection string will result in a backwards-compatible mode, so that existing code taking advantage of this lenience need not suddenly break. This loses all of the performance and scalability gains of the new code so it SHOULD ONLY BE USED IN CASES WHERE EXISTING CODE HAS PROBLEMS and is for backwards-compatibility only. Internal use of datareaders uses the new method in either case. It is also notable that if you have a DataReader open, but all its results have been read, that it does not have this issue, so applications which failed to close NpgsqlDataReader objects but always read all available data will not need to use this backwards-compatibility mode (this is still strictly not allowed by the spec, so authors of such applications are advised that they may experience errors should they try to extend their applications to support other databases).
+
+	Increased resiliance to loss of underlying connection (should e.g. postgres be restarted between Npgsql operations) and stream corruption (should e.g. a thread be aborted during read or write operations).
+
+	Increased resiliance in the face of an unexpected value - still throws an error on Get* but survives the error.
+
+	Dropped support for client encodings other than UTF-8. Since .NET/Mono can always convert a string to and from UTF-8, all supported postgres versions can always accept and send strings in UTF-8, and there are no values that either .NET nor postgres can use as a character that cannot be encoded in UTF-8, the only real result of allowing other encodings is to introduce the possibility of certain bugs that cannot happen with UTF-8. The handling of "ascii" was also not strictly ASCII, in a way in which handling of characters outside the range [U+0000 - U+007F] was undefined and often different betweent the client and the server. The Encoding property of NpgsqlConnectionStringBuilder is left for backwards-compatibility, but will always return "UNICODE", will silently ignore attempts to set it, and is marked as obsolete (so using it will raise warning 618).
+
+	Changed NpgsqlConnection.PostgreSqlVersion to return a System.Version as ServerVersion offered no functionality beyond that offered by Server.Version, a class more familiar to .NET/Mono hackers, and more easily used along with other code. ServerVersion still exists for backwards compatibility, which can be implicitly cast to and from System.Version. Any use of ServerVersion will raise warning 618 on compiling. This change also removes a flaw with ServerVersion.GetHashCode() which was producing poor hash codes that made hash collisions highly likely (because this is used internally for several reasons there would be a needless performance hit if you the same application made use of two servers with different, but clashing, versions. E.g. if you connected to an 8.1.2, 8.2.1, 8.3.0 and a 8.3.1 server retrieving the correct internal information for the first three would be slowed down by their having the same hash codes).
+
+	Removed some dead code and unused namespace imports (slight speed up on compile time).
+	
+	Duplication of tests for different connection string values, to catch any bugs that only occur with some settings.
+
+Bug fixes:
+	[#1000396] CommandBehavior.SingleResult and CommandBehavior.SingleRow producing invalid SQL with some queries. While previous fixes had improved this, there are always edge-cases for which the previous method would fail, or worse would silently change the effects of a query. SingleRow and SchemaOnly now do not alter the command set (users can still use LIMIT in a natural way for commands that will only ever be used in this way), but extraneous information is skipped as efficiently as possible.
+	[#1008865] Incorrect parsing of OID for lastInsertedOID.
+	[#1000721] Failure on reading > 1million rows. See note on lazy-loading of datareader.
+	[#1010317] GetSchemaTable() returning first result even if NextResult() has been called between first and subsequent calls.
+	[#1000721] Memory Usage, ExecuteReader and > 1 Million Rows - Fixed with functionality change to load datareader as needed.
+	[#1000659] Cannot pass array as a parameter to plgsql function call - Fixed with addition of array-handling support.
 
 2007-11-06
 
