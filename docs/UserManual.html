@@ -1361,7 +1361,9 @@ This is the default notification mechanism used in Npgsql. It is called asynchro
 
 <h4> Synchronous notifications </h4>
 
-Starting with Npgsql 1.0, there is support for synchronous notifications. When working in this mode, Npgsql is able to receive a notificaton upon its instantiation and deliver it to client. All this is done without any additional interaction between the client and server (as described above).
+Starting with Npgsql 1.0, there is support for synchronous notifications. When working in this mode, Npgsql is able to receive a notificaton upon its instantiation and deliver it to client. All this is done without any additional interaction between the client and server (as described above). 
+
+<p><font color="red">Important notice:</font> When using Synchronous notification, you can't execute commands inside your notification handler function. If you do so, you will hang Npgsql as the thread which handles the notification is the same which handles Npgsql communication with backend. If you want to use any commands, please, create another connection and use it instead. This is not the best solution but we are studying better ways to do that instead of needing another connection.</p>
 
 
 The code to receive the notification is the same for both modes:
