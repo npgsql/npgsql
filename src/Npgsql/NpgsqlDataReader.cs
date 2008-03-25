@@ -42,6 +42,16 @@ namespace Npgsql
     /// </summary>
     public abstract class NpgsqlDataReader : DbDataReader
     {
+        //NpgsqlDataReader is abstract because the desired implementation depends upon whether the user
+        //is using the backwards-compatibility option of preloading the entire reader (configurable from the
+        //connection string).
+        //Everything that can be done here is, but where the implementation must be different between the
+        //two modi operandi, that code will differ between the two implementations, ForwardsOnlyDataReader
+        //and CachingDataReader.
+        //Since the concrete classes are internal and returned to the user through an NpgsqlDataReader reference,
+        //the differences between the two is hidden from the user. Because CachingDataReader is a less efficient
+        //class supplied only to resolve some backwards-compatibility issues that are possible with some code, all
+        //internal use uses ForwardsOnlyDataReader directly.
         internal NpgsqlConnector _connector;
         internal NpgsqlConnection _connection;
         internal DataTable _currentResultsetSchema;
@@ -839,6 +849,14 @@ namespace Npgsql
             return new DbEnumerator(this);
         }
     }
+    
+    /// <summary>
+    /// This is the primary implementation of NpgsqlDataReader. It is the one used in normal cases (where the 
+    /// preload-reader option is not set in the connection string to resolve some potential backwards-compatibility
+    /// issues), the only implementation used internally, and in cases where CachingDataReader is used, it is still
+    /// used to do the actual "leg-work" of turning a response stream from the server into a datareader-style
+    /// object - with CachingDataReader then filling it's cache from here.
+    /// </summary>
 	internal class ForwardsOnlyDataReader : NpgsqlDataReader, IStreamOwner
 	{
         private IEnumerator<IServerResponseObject>      _dataEnumerator;
@@ -852,7 +870,7 @@ namespace Npgsql
         private NpgsqlConnector.NotificationThreadBlock _threadBlock;
         private bool                                    _synchOnReadError;//maybe this should always be done?
         
-        //Unfortunately we sometimes done know we're going to be dealing with
+        //Unfortunately we sometimes don't know we're going to be dealing with
         //a description until it comes when we look for a row or a message, and
         //we may also need test if we may have rows for HasRows before the first call
         //to Read(), so we need to be able to cache one of each.
@@ -1220,6 +1238,25 @@ namespace Npgsql
         }
         
     }
+	
+	/// <summary>
+	/// <para>Provides an implementation of NpgsqlDataReader in which all data is pre-loaded into memory.
+	/// This operates by first creating a ForwardsOnlyDataReader as usual, and then loading all of it's
+	/// Rows into memory. There is a general principle that when there is a trade-off between a class design that
+	/// is more efficient and/or scalable on the one hand and one that is less efficient but has more functionality
+	/// (in this case the internal-only functionality of caching results) that one can build the less efficent class
+	/// from the most efficient without significant extra loss in efficiency, but not the other way around. The relationship
+	/// between ForwardsOnlyDataReader and CachingDataReader is an example of this).</para>
+	/// <para>Since the interface presented to the user is still forwards-only, queues are used to
+	/// store this information, so that dequeueing as we go we give the garbage collector the best opportunity
+	/// possible to reclaim any memory that is no longer in use.</para>
+	/// <para>ForwardsOnlyDataReader being used to actually
+	/// obtain the information from the server means that the "leg-work" is still only done (and need only be
+	/// maintained) in one place.</para>
+	/// <para>This class exists to allow for certain potential backwards-compatibility issues to be resolved
+	/// with little effort on the part of affected users. It is considerably less efficient than ForwardsOnlyDataReader
+	/// and hence never used internally.</para>
+	/// </summary>
 	internal class CachingDataReader : NpgsqlDataReader
 	{
 	    private class DataRow : List<object>{}
