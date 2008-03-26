@@ -116,7 +116,15 @@ namespace Npgsql.SqlGenerators
             if (_projectVarName.Count != 0) // this can happen in dml
                 _variableSubstitution[_projectVarName.Peek()] = expression.Target.Name;
             SubstituteFilterVar(expression.Target.Name);
-            return new LiteralExpression(expression.Target.Name);
+            if (expression.Target.MetadataProperties.Contains("DefiningQuery"))
+            {
+                MetadataProperty definingQuery = expression.Target.MetadataProperties.GetValue("DefiningQuery", false);
+                return new LiteralExpression("(" + definingQuery.Value + ")");
+            }
+            else
+            {
+                return new LiteralExpression(expression.Target.Name);
+            }
         }
 
         public override VisitedExpression Visit(DbRelationshipNavigationExpression expression)
@@ -544,19 +552,19 @@ namespace Npgsql.SqlGenerators
             switch (primitiveType.PrimitiveTypeKind)
             {
                 case PrimitiveTypeKind.Boolean:
-                    return "boolean";
+                    return "bool";
                 case PrimitiveTypeKind.Int16:
-                    return "smallint";
+                    return "int2";
                 case PrimitiveTypeKind.Int32:
-                    return "integer";
+                    return "int4";
                 case PrimitiveTypeKind.Int64:
-                    return "bigint";
+                    return "int8";
                 case PrimitiveTypeKind.String:
-                    return "character varying";
+                    return "varchar";
                 case PrimitiveTypeKind.Decimal:
                     return "numeric";
                 case PrimitiveTypeKind.DateTime:
-                    return "timestamp without time zone";
+                    return "timestamp";
             }
             throw new NotSupportedException();
         }

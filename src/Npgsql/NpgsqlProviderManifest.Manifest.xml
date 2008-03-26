@@ -1,15 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ProviderManifest Namespace="Npgsql" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/providermanifest">
   <Types>
-    <Type Name="boolean" PrimitiveTypeKind="Boolean">
+    <Type Name="bool" PrimitiveTypeKind="Boolean">
     </Type>
-    <Type Name="smallint" PrimitiveTypeKind="Int16">
+    <Type Name="int2" PrimitiveTypeKind="Int16">
     </Type>
-    <Type Name="integer" PrimitiveTypeKind="Int32">
+    <Type Name="int4" PrimitiveTypeKind="Int32">
     </Type>
-    <Type Name="bigint" PrimitiveTypeKind="Int64">
+    <Type Name="int8" PrimitiveTypeKind="Int64">
     </Type>
-    <Type Name="number" PrimitiveTypeKind="Decimal">
+    <Type Name="numeric" PrimitiveTypeKind="Decimal">
       <FacetDescriptions>
         <!-- TODO: Need a good value for Precision and Scale -->
         <!-- Currently using defaults that match money -->
@@ -17,13 +17,15 @@
         <Scale Minimum="0" Maximum="29" Default="4" Constant="false" />
       </FacetDescriptions>
     </Type>
-    <Type Name="real" PrimitiveTypeKind="Single">
+    <Type Name="float4" PrimitiveTypeKind="Single">
     </Type>
-    <Type Name="character varying" PrimitiveTypeKind="String">
+    <Type Name="float8" PrimitiveTypeKind="Double">
+    </Type>
+    <Type Name="varchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength Default="false" Constant="true" />
-        <!-- TODO: Need a good value for Default -->
-        <MaxLength Minimum="1" Maximum="1073741823" Default="1" Constant="false" />
+        <!-- TODO: Need a good value for Default (1073741823) -->
+        <MaxLength Minimum="1" Maximum="8000" Default="8000" Constant="false" />
         <Unicode Default="true" Constant="true" />
       </FacetDescriptions>
     </Type>
@@ -35,7 +37,7 @@
         <Unicode Default="true" Constant="true" />
       </FacetDescriptions>
     </Type>
-    <Type Name="character" PrimitiveTypeKind="String">
+    <Type Name="bpchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength Default="true" Constant="true" />
         <!-- TODO: Need a good value for Default -->
@@ -43,7 +45,7 @@
         <Unicode Default="true" Constant="true" />
       </FacetDescriptions>
     </Type>
-    <Type Name="timestamp without time zone" PrimitiveTypeKind="DateTime">
+    <Type Name="timestamp" PrimitiveTypeKind="DateTime">
       <FacetDescriptions>
         <DateTimeKind Default="Unspecified" Constant="true"/>
         <PreserveSeconds Default="true" Constant="true"/>

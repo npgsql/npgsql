@@ -81,14 +81,16 @@ namespace Npgsql
         {
             if (connection == null)
                 throw new ArgumentNullException("connection");
-            return new NpgsqlProviderManifest();
+            // TODO: used to use connection.ServerVersion
+            // that doesn't work with a closed connection.
+            return new NpgsqlProviderManifest("");
         }
 
         protected override DbProviderManifest GetDbProviderManifest(string versionHint)
         {
             if (versionHint == null)
                 throw new ArgumentNullException("versionHint");
-            return new NpgsqlProviderManifest();
+            return new NpgsqlProviderManifest(versionHint);
         }
     }
 }
