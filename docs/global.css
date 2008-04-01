@@ -115,8 +115,7 @@ PRE         {
             line-height: 140%
             }
 
-PRE.CodeBox {
-            Font-Family: Courier New, Courier, monospace;
+.CodeBox {
             color: darkblue;
             background-color:WhiteSmoke;
             border: solid thin lightgrey;
@@ -127,7 +126,10 @@ PRE.CodeBox {
             padding-right: 10;
             padding-bottom: 10;
             }
-
+            
+code{
+    Font-Family: Courier New, Courier, monospace;
+}
 TABLE       {
             Font-Size: 100%
             }

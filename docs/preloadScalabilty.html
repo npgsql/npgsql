@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Scalability of "Preload Reader" Connection-String Option</title>
+        <link rel="stylesheet" href="global.css" />
+	</head>
+	<body>
+	    <h1>Scalability of "Preload Reader" Connection-String Option</h1>
+	    <p>
+	        The following graph compares the time take to return the first and last rows of a large request
+	        of varying sizes. Precise figures are not given as they depend too much upon record size, connection
+	        to database, CPU and memory of the machine and so on, and what is of significance is the comparative
+	        performance of the two methods on the same machine under roughly similar conditions.
+	    </p>
+	    <p>
+	        <img src="time.png" alt="" />
+	    </p>
+	    <p>
+	        As can be seen, the time to return the first row of results (blue) remains practically nil for preloading
+	        not being used no matter how many results are return, while the time to return all results (black) increases
+	        linearly.
+	    </p>
+	    <p>
+	        Meanwhile, the time to return all results with preloading turned on (red) increases far more rapidly and
+	        does not scale linearly with 90,000 or so rows being a practical maximum on the machine used. The time to
+	        the first result is almost as long as that to the last, which prevents desktop applications from rendering
+	        partial results, web applications from writing to an unbuffered web-stream, and so on.
+	    </p>
+	    <p>
+	        If you have multiple users (e.g. with a web application) the effects upon memory are even more significant.
+	    </p>
+	    <p>
+	        <img src="memory.png" alt="" />
+	    </p>
+	    <p>
+	        The memory usage of a datareader without preloading used (grey) remains low throughout, while that used with
+	        preloading (purple) increases with the number of rows. It is this that made 90,000 a practical maximum on the test
+	        machine.
+	    </p>
+	    <p>
+	        Since available memory is a resource shared between different threads, the impact of this will be greater
+	        in applications like web applications, because each request will impact upon the others.
+	    </p>
+	    <p>
+	        For this reason, it is recommended that code which depends upon preloading of datareaders be changed to no
+	        longer require it, and the option turned off.
+	    </p>
+	    <p>
+	        <a href="UserManual.html">Back to User Manual</a>
+	    </p>
+	</body>
+</html>
