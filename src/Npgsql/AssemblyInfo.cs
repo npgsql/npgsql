@@ -25,12 +25,11 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
+using System;
 using System.Reflection;
 using System.Resources;
-using System.Runtime.CompilerServices;
-using System;
 
-[assembly:CLSCompliant(true)]
+[assembly : CLSCompliant(true)]
 
 // Information about this assembly is defined by the following
 // attributes.
@@ -38,15 +37,15 @@ using System;
 // change them to the information which is associated with the assembly
 // you compile.
 
-[assembly: AssemblyTitle("Npgsql - .Net Data Provider for PostgreSQL")]
-[assembly: AssemblyDescription(".Net Data Provider for PostgreSQL")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("The Npgsql Development Team")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]
-[assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
+[assembly : AssemblyTitle("Npgsql - .Net Data Provider for PostgreSQL")]
+[assembly : AssemblyDescription(".Net Data Provider for PostgreSQL")]
+[assembly : AssemblyConfiguration("")]
+[assembly : AssemblyCompany("")]
+[assembly : AssemblyProduct("")]
+[assembly : AssemblyCopyright("The Npgsql Development Team")]
+[assembly : AssemblyTrademark("")]
+[assembly : AssemblyCulture("")]
+[assembly : NeutralResourcesLanguage("en", UltimateResourceFallbackLocation.MainAssembly)]
 
 // The assembly version has following format :
 //
@@ -55,4 +54,4 @@ using System;
 // You can specify all values by your own or you can build default build and revision
 // numbers with the '*' character (the default):
 
-[assembly: AssemblyVersion("1.98.2")]
+[assembly : AssemblyVersion("1.98.2")]

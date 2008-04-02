@@ -25,27 +25,26 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System;
 using System.IO;
 
 namespace Npgsql
 {
+	/// <summary>
+	/// This class represents the ParameterStatus message sent from PostgreSQL
+	/// server.
+	/// </summary>
+	///
+	internal sealed class NpgsqlParameterStatus
+	{
+		public readonly string Parameter;
+		public readonly string ParameterValue;
 
-    /// <summary>
-    /// This class represents the ParameterStatus message sent from PostgreSQL
-    /// server.
-    /// </summary>
-    ///
-    internal sealed class NpgsqlParameterStatus
-    {
-        public readonly string Parameter;
-        public readonly string ParameterValue;
-        public NpgsqlParameterStatus(Stream stream)
-        {
-            //Read message length
-            PGUtil.EatStreamBytes(stream, 4);
-            Parameter = PGUtil.ReadString(stream);
-            ParameterValue = PGUtil.ReadString(stream);
-        }
-    }
+		public NpgsqlParameterStatus(Stream stream)
+		{
+			//Read message length
+			PGUtil.EatStreamBytes(stream, 4);
+			Parameter = PGUtil.ReadString(stream);
+			ParameterValue = PGUtil.ReadString(stream);
+		}
+	}
 }

@@ -28,176 +28,175 @@
 
 
 using System;
-using System.Text;
-using System.Resources;
 using System.Data;
 using System.Data.Common;
-
+using System.Resources;
+using System.Text;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
-    /// </summary>
-    public sealed class NpgsqlTransaction : DbTransaction
-    {
-        private static readonly String CLASSNAME = "NpgsqlTransaction";
-        private static ResourceManager resman = new ResourceManager(typeof(NpgsqlTransaction));
+	/// <summary>
+	/// Represents a transaction to be made in a PostgreSQL database. This class cannot be inherited.
+	/// </summary>
+	public sealed class NpgsqlTransaction : DbTransaction
+	{
+		private static readonly String CLASSNAME = "NpgsqlTransaction";
+		private static ResourceManager resman = new ResourceManager(typeof (NpgsqlTransaction));
 
-        private NpgsqlConnection    _conn = null;
-        private IsolationLevel      _isolation = IsolationLevel.ReadCommitted;
-        private bool                _disposed = false;
+		private NpgsqlConnection _conn = null;
+		private readonly IsolationLevel _isolation = IsolationLevel.ReadCommitted;
+		private bool _disposed = false;
 
-        internal NpgsqlTransaction(NpgsqlConnection conn) : this(conn, IsolationLevel.ReadCommitted)
-        {}
+		internal NpgsqlTransaction(NpgsqlConnection conn)
+			: this(conn, IsolationLevel.ReadCommitted)
+		{
+		}
 
-        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolation)
-        {
-            resman = new System.Resources.ResourceManager(this.GetType());
+		internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolation)
+		{
+			resman = new ResourceManager(this.GetType());
 
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-            
-            _conn = conn;
-            _isolation = isolation;
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
-            StringBuilder commandText = new StringBuilder("BEGIN; SET TRANSACTION ISOLATION LEVEL ");
+			_conn = conn;
+			_isolation = isolation;
 
-            if ( (isolation == IsolationLevel.RepeatableRead) || 
-                 (isolation == IsolationLevel.Serializable)
-               )
-                commandText.Append("SERIALIZABLE");
-            else
-            {
-                // Set isolation level default to read committed.
-                _isolation = IsolationLevel.ReadCommitted;
-                commandText.Append("READ COMMITTED");
-            }
+			StringBuilder commandText = new StringBuilder("BEGIN; SET TRANSACTION ISOLATION LEVEL ");
 
-            commandText.Append(";");
+			if ((isolation == IsolationLevel.RepeatableRead) || (isolation == IsolationLevel.Serializable))
+			{
+				commandText.Append("SERIALIZABLE");
+			}
+			else
+			{
+				// Set isolation level default to read committed.
+				_isolation = IsolationLevel.ReadCommitted;
+				commandText.Append("READ COMMITTED");
+			}
 
-            NpgsqlCommand command = new NpgsqlCommand(commandText.ToString(), conn.Connector);
-            command.ExecuteBlind();
-            _conn.Connector.Transaction = this;
-        }
+			commandText.Append(";");
 
-        /// <summary>
-        /// Gets the <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
-        /// object associated with the transaction, or a null reference if the
-        /// transaction is no longer valid.
-        /// </summary>
-        /// <value>The <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
-        /// object associated with the transaction.</value>
-        public new NpgsqlConnection Connection
-        {
-            get
-            {
-                return _conn;
-            }
-        }
+			NpgsqlCommand command = new NpgsqlCommand(commandText.ToString(), conn.Connector);
+			command.ExecuteBlind();
+			_conn.Connector.Transaction = this;
+		}
 
-        protected override DbConnection DbConnection
-        {
-            get { return Connection; }
-        }
+		/// <summary>
+		/// Gets the <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
+		/// object associated with the transaction, or a null reference if the
+		/// transaction is no longer valid.
+		/// </summary>
+		/// <value>The <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
+		/// object associated with the transaction.</value>
+		public new NpgsqlConnection Connection
+		{
+			get { return _conn; }
+		}
 
-        /// <summary>
-        /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// </summary>
-        /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// The default is <b>ReadCommitted</b>.</value>
-        public override IsolationLevel IsolationLevel
-        {
-            get
-            {
-                if (_conn == null)
-                {
-                    throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
-                }
+		protected override DbConnection DbConnection
+		{
+			get { return Connection; }
+		}
 
-                return _isolation;
-            }
-        }
+		/// <summary>
+		/// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+		/// </summary>
+		/// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+		/// The default is <b>ReadCommitted</b>.</value>
+		public override IsolationLevel IsolationLevel
+		{
+			get
+			{
+				if (_conn == null)
+				{
+					throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+				}
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && this._conn != null)
-            {
-                if (_conn.Connector.Transaction != null)
-                    this.Rollback();
+				return _isolation;
+			}
+		}
 
-                this._disposed = true;
-            }
-            base.Dispose(disposing);
-        }
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing && this._conn != null)
+			{
+				if (_conn.Connector.Transaction != null)
+				{
+					this.Rollback();
+				}
 
-        /// <summary>
-        /// Commits the database transaction.
-        /// </summary>
-        public override void Commit()
-        {
-            CheckDisposed();
+				this._disposed = true;
+			}
+			base.Dispose(disposing);
+		}
 
-            if (_conn == null)
-            {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
-            }
+		/// <summary>
+		/// Commits the database transaction.
+		/// </summary>
+		public override void Commit()
+		{
+			CheckDisposed();
 
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Commit");
+			if (_conn == null)
+			{
+				throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+			}
 
-            NpgsqlCommand command = new NpgsqlCommand("COMMIT", _conn.Connector);
-            command.ExecuteBlind();
-            _conn.Connector.Transaction = null;
-            _conn = null;
-        }
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Commit");
 
-        /// <summary>
-        /// Rolls back a transaction from a pending state.
-        /// </summary>
-        public override void Rollback()
-        {
-            CheckDisposed();
+			NpgsqlCommand command = new NpgsqlCommand("COMMIT", _conn.Connector);
+			command.ExecuteBlind();
+			_conn.Connector.Transaction = null;
+			_conn = null;
+		}
 
-            if (_conn == null)
-            {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
-            }
+		/// <summary>
+		/// Rolls back a transaction from a pending state.
+		/// </summary>
+		public override void Rollback()
+		{
+			CheckDisposed();
 
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
+			if (_conn == null)
+			{
+				throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+			}
 
-            NpgsqlCommand command = new NpgsqlCommand("ROLLBACK", _conn.Connector);
-            command.ExecuteBlind();
-            _conn.Connector.Transaction = null;
-            _conn = null;
-        }
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
 
-        /// <summary>
-        /// Cancel the transaction without telling the backend about it.  This is
-        /// used to make the transaction go away when closing a connection.
-        /// </summary>
-        internal void Cancel()
-        {
-            CheckDisposed();
+			NpgsqlCommand command = new NpgsqlCommand("ROLLBACK", _conn.Connector);
+			command.ExecuteBlind();
+			_conn.Connector.Transaction = null;
+			_conn = null;
+		}
 
-            if (_conn != null)
-            {
-                _conn.Connector.Transaction = null;
-                _conn = null;
-            }
-        }
+		/// <summary>
+		/// Cancel the transaction without telling the backend about it.  This is
+		/// used to make the transaction go away when closing a connection.
+		/// </summary>
+		internal void Cancel()
+		{
+			CheckDisposed();
 
-        internal bool Disposed{
-            get
-            {
-                return _disposed;
-            }
-        }
+			if (_conn != null)
+			{
+				_conn.Connector.Transaction = null;
+				_conn = null;
+			}
+		}
+
+		internal bool Disposed
+		{
+			get { return _disposed; }
+		}
 
 
-        internal void CheckDisposed()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(CLASSNAME);
-
-        }
-    }
+		internal void CheckDisposed()
+		{
+			if (_disposed)
+			{
+				throw new ObjectDisposedException(CLASSNAME);
+			}
+		}
+	}
 }

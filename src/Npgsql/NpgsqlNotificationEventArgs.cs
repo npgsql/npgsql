@@ -31,30 +31,31 @@ using System.IO;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// EventArgs class to send Notification parameters.
-    /// </summary>
-    public class NpgsqlNotificationEventArgs : EventArgs
-    {
-        /// <summary>
-        /// Process ID of the PostgreSQL backend that sent this notification.
-        /// </summary>
-        public readonly int PID;
-        /// <summary>
-        /// Condition that triggered that notification.
-        /// </summary>
-        public readonly string Condition;
-        
-        /// <summary>
-        /// Additional Information From Notifiying Process (for future use, currently postgres always sets this to an empty string)
-        /// </summary>
-        public readonly string AdditionalInformation;
+	/// <summary>
+	/// EventArgs class to send Notification parameters.
+	/// </summary>
+	public class NpgsqlNotificationEventArgs : EventArgs
+	{
+		/// <summary>
+		/// Process ID of the PostgreSQL backend that sent this notification.
+		/// </summary>
+		public readonly int PID;
 
-        internal NpgsqlNotificationEventArgs(Stream stream, bool readAdditional)
-        {
-            PID = PGUtil.ReadInt32(stream);
-            Condition = PGUtil.ReadString(stream);
-            AdditionalInformation = readAdditional ? PGUtil.ReadString(stream) : string.Empty;
-        }
-    }
+		/// <summary>
+		/// Condition that triggered that notification.
+		/// </summary>
+		public readonly string Condition;
+
+		/// <summary>
+		/// Additional Information From Notifiying Process (for future use, currently postgres always sets this to an empty string)
+		/// </summary>
+		public readonly string AdditionalInformation;
+
+		internal NpgsqlNotificationEventArgs(Stream stream, bool readAdditional)
+		{
+			PID = PGUtil.ReadInt32(stream);
+			Condition = PGUtil.ReadString(stream);
+			AdditionalInformation = readAdditional ? PGUtil.ReadString(stream) : string.Empty;
+		}
+	}
 }

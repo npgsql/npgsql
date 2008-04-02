@@ -27,51 +27,47 @@
 
 using System;
 using System.IO;
-using System.Text;
-using System.Net.Sockets;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// Summary description for NpgsqlQuery
-    /// </summary>
-    internal sealed class NpgsqlQuery : ClientMessage
-    {
-        private NpgsqlCommand _command;
-        private ProtocolVersion _protocolVersion;
+	/// <summary>
+	/// Summary description for NpgsqlQuery
+	/// </summary>
+	internal sealed class NpgsqlQuery : ClientMessage
+	{
+		private readonly NpgsqlCommand _command;
+		private readonly ProtocolVersion _protocolVersion;
 
-        public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
-        {
-            _command = command;
-            _protocolVersion = protocolVersion;
+		public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
+		{
+			_command = command;
+			_protocolVersion = protocolVersion;
+		}
 
-        }
-        public override void WriteToStream( Stream outputStream)
-        {
-            //NpgsqlEventLog.LogMsg( this.ToString() + _commandText, LogLevel.Debug  );
-
-
-            String commandText = _command.GetCommandText();
-            
-            // Tell to mediator what command is being sent.
-            
-            _command.Connector.Mediator.SqlSent = commandText;
-            
-            // Send the query to server.
-            // Write the byte 'Q' to identify a query message.
-            outputStream.WriteByte((byte)FrontEndMessageCode.Query);
-
-            if (_protocolVersion == ProtocolVersion.Version3)
-            {
-                // Write message length. Int32 + string length + null terminator.
-                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(commandText) + 1);
-            }
-
-            // Write the query. In this case it is the CommandText text.
-            // It is a string terminated by a C NULL character.
-            PGUtil.WriteString(commandText, outputStream);
-        }
+		public override void WriteToStream(Stream outputStream)
+		{
+			//NpgsqlEventLog.LogMsg( this.ToString() + _commandText, LogLevel.Debug  );
 
 
-    }
+			String commandText = _command.GetCommandText();
+
+			// Tell to mediator what command is being sent.
+
+			_command.Connector.Mediator.SqlSent = commandText;
+
+			// Send the query to server.
+			// Write the byte 'Q' to identify a query message.
+			outputStream.WriteByte((byte) FrontEndMessageCode.Query);
+
+			if (_protocolVersion == ProtocolVersion.Version3)
+			{
+				// Write message length. Int32 + string length + null terminator.
+				PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(commandText) + 1);
+			}
+
+			// Write the query. In this case it is the CommandText text.
+			// It is a string terminated by a C NULL character.
+			PGUtil.WriteString(commandText, outputStream);
+		}
+	}
 }

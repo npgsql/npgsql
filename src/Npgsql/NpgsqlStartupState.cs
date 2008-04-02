@@ -27,30 +27,27 @@
 
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
 
 namespace Npgsql
 {
+	internal sealed class NpgsqlStartupState : NpgsqlState
+	{
+		public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
 
+		private readonly String CLASSNAME = "NpgsqlStartupState";
 
-    internal sealed class NpgsqlStartupState : NpgsqlState
-    {
-        public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
+		private NpgsqlStartupState()
+			: base()
+		{
+		}
 
-        private readonly String CLASSNAME = "NpgsqlStartupState";
-
-        private NpgsqlStartupState() : base()
-        { }
-
-        public override void Authenticate( NpgsqlConnector context, string password)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
-            NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
-            BufferedStream stream = new BufferedStream(context.Stream);
-            pwpck.WriteToStream(stream);
-            stream.Flush();
-
-        }
-    }
+		public override void Authenticate(NpgsqlConnector context, string password)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
+			NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
+			BufferedStream stream = new BufferedStream(context.Stream);
+			pwpck.WriteToStream(stream);
+			stream.Flush();
+		}
+	}
 }

@@ -26,31 +26,25 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System;
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
+	/// <summary>
+	/// This class represents the Parse message sent to PostgreSQL
+	/// server.
+	/// </summary>
+	///
+	internal sealed class NpgsqlSync : ClientMessage
+	{
+		// Logging related values
+		//private static readonly String CLASSNAME = "NpgsqlSync";
 
-    /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
-    /// server.
-    /// </summary>
-    ///
-    internal sealed class NpgsqlSync : ClientMessage
-    {
-        // Logging related values
-        //private static readonly String CLASSNAME = "NpgsqlSync";
+		public override void WriteToStream(Stream outputStream)
+		{
+			outputStream.WriteByte((byte) FrontEndMessageCode.Sync);
 
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream.WriteByte((byte)FrontEndMessageCode.Sync);
-
-            PGUtil.WriteInt32(outputStream, 4);
-
-        }
-
-    }
+			PGUtil.WriteInt32(outputStream, 4);
+		}
+	}
 }
-

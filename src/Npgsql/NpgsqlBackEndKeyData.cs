@@ -28,29 +28,30 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
-using System;
 using System.IO;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// This class represents a BackEndKeyData message received
-    /// from PostgreSQL
-    /// </summary>
-    internal sealed class NpgsqlBackEndKeyData
-    {
-        public readonly int ProcessID;
-        public readonly int SecretKey;
-        public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion, Stream stream)
-        {
-            // Read the BackendKeyData message contents. Two Int32 integers = 8 Bytes.
-            // For protocol version 3.0 they are three integers. The first one is just the size of message
-            // so, just read it.
-            if (protocolVersion >= ProtocolVersion.Version3)
-                PGUtil.EatStreamBytes(stream, 4);
-            ProcessID = PGUtil.ReadInt32(stream);
-            SecretKey = PGUtil.ReadInt32(stream);
+	/// <summary>
+	/// This class represents a BackEndKeyData message received
+	/// from PostgreSQL
+	/// </summary>
+	internal sealed class NpgsqlBackEndKeyData
+	{
+		public readonly int ProcessID;
+		public readonly int SecretKey;
 
-        }
-    }
+		public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion, Stream stream)
+		{
+			// Read the BackendKeyData message contents. Two Int32 integers = 8 Bytes.
+			// For protocol version 3.0 they are three integers. The first one is just the size of message
+			// so, just read it.
+			if (protocolVersion >= ProtocolVersion.Version3)
+			{
+				PGUtil.EatStreamBytes(stream, 4);
+			}
+			ProcessID = PGUtil.ReadInt32(stream);
+			SecretKey = PGUtil.ReadInt32(stream);
+		}
+	}
 }

@@ -24,54 +24,48 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System;
-using Npgsql;
-
 namespace NpgsqlTypes
 {
-    public enum NpgsqlDbType
-    {
+	public enum NpgsqlDbType
+	{
+		// This list used to be ordered. But this ordering would break compiled applications
+		// as enum values would change after each insertion. Now, just append new types.
 
-    	// This list used to be ordered. But this ordering would break compiled applications
-    	// as enum values would change after each insertion. Now, just append new types.
-	
-        // Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
+		// Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
 
-        Array = int.MinValue,
+		Array = int.MinValue,
 
-        Bigint = 1,
+		Bigint = 1,
 
-        Boolean,
-        Box,
-        Bytea,
-        Circle,
-        Char,
-        Date,
-        Double,
-        Integer,
-        Line,
-        LSeg,
-        Money,
-        Numeric,
-        Path,
-        Point,
-        Polygon,
-        Real,
-        Smallint,
-        Text,
-        Time,
-        Timestamp,
-        Varchar,
-        Refcursor,
-        Inet,
-        Bit,
-        TimestampTZ,
-        Uuid,
-        Xml,
-        Oidvector,
-        Interval,
-        TimeTZ
-        
-    }
-
+		Boolean,
+		Box,
+		Bytea,
+		Circle,
+		Char,
+		Date,
+		Double,
+		Integer,
+		Line,
+		LSeg,
+		Money,
+		Numeric,
+		Path,
+		Point,
+		Polygon,
+		Real,
+		Smallint,
+		Text,
+		Time,
+		Timestamp,
+		Varchar,
+		Refcursor,
+		Inet,
+		Bit,
+		TimestampTZ,
+		Uuid,
+		Xml,
+		Oidvector,
+		Interval,
+		TimeTZ
+	}
 }

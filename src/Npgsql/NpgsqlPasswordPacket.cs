@@ -30,58 +30,56 @@
 
 using System;
 using System.IO;
-using System.Text;
-using System.Net;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// This class represents a PasswordPacket message sent to backend
-    /// PostgreSQL.
-    /// </summary>
-    internal sealed class NpgsqlPasswordPacket : ClientMessage
-    {
-        // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlPasswordPacket";
+	/// <summary>
+	/// This class represents a PasswordPacket message sent to backend
+	/// PostgreSQL.
+	/// </summary>
+	internal sealed class NpgsqlPasswordPacket : ClientMessage
+	{
+		// Logging related values
+		private static readonly String CLASSNAME = "NpgsqlPasswordPacket";
 
-        private String password;
-        private ProtocolVersion protocolVersion;
+		private readonly String password;
+		private readonly ProtocolVersion protocolVersion;
 
 
-        public NpgsqlPasswordPacket(String password, ProtocolVersion protocolVersion)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+		public NpgsqlPasswordPacket(String password, ProtocolVersion protocolVersion)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
-            this.password = password;
-            this.protocolVersion = protocolVersion;
-        }
+			this.password = password;
+			this.protocolVersion = protocolVersion;
+		}
 
-        public override void WriteToStream(Stream outputStream)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
+		public override void WriteToStream(Stream outputStream)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
-            switch (protocolVersion) {
-            case ProtocolVersion.Version2 :
-                // Write the size of the packet.
-                // 4 + (passwordlength + 1) -> Int32 + NULL terminated string.
-                // output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length + 1))), 0, 4);
-                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
+			switch (protocolVersion)
+			{
+				case ProtocolVersion.Version2:
+					// Write the size of the packet.
+					// 4 + (passwordlength + 1) -> Int32 + NULL terminated string.
+					// output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length + 1))), 0, 4);
+					PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
 
-                // Write String.
-                PGUtil.WriteString(password, outputStream);
+					// Write String.
+					PGUtil.WriteString(password, outputStream);
 
-                break;
+					break;
 
-            case ProtocolVersion.Version3 :
-                outputStream.WriteByte((Byte)'p');
-                PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
+				case ProtocolVersion.Version3:
+					outputStream.WriteByte((Byte) 'p');
+					PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(password) + 1);
 
-                // Write String.
-                PGUtil.WriteString(password, outputStream);
+					// Write String.
+					PGUtil.WriteString(password, outputStream);
 
-                break;
-
-            }
-        }
-    }
+					break;
+			}
+		}
+	}
 }

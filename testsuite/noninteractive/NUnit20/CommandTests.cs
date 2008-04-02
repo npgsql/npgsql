@@ -1179,7 +1179,7 @@ namespace NpgsqlTests
 
             Decimal result = dr.GetDecimal(3);
 
-            Assert.AreEqual(-4.3000000M, (Decimal)result);
+            Assert.AreEqual(-4.3000000M, result);
             //Assert.AreEqual(11, result.Precision);
             //Assert.AreEqual(7, result.Scale);
             

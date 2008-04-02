@@ -37,67 +37,71 @@ using Npgsql;
 
 namespace NpgsqlTypes
 {
-    public class FastpathArg
-    {
-        /*
+	public class FastpathArg
+	{
+		/*
          * Type of argument, true=integer, false=byte[]
          */
-        public Boolean type;
+		public Boolean type;
 
-        /*
+		/*
          * Integer value if type=true
          */
-        public Int32 value;
+		public Int32 value;
 
-        /*
+		/*
          * Byte value if type=false;
          */
-        public Byte[] bytes;
+		public Byte[] bytes;
 
-        /*
+		/*
          * Constructs an argument that consists of an integer value
          * @param value int value to set
          */
-        public FastpathArg(Int32 value)
-        {
-            type = true;
-            this.value = value;
-        }
 
-        /*
+		public FastpathArg(Int32 value)
+		{
+			type = true;
+			this.value = value;
+		}
+
+		/*
          * Constructs an argument that consists of an array of bytes
          * @param bytes array to store
          */
-        public FastpathArg(Byte[] bytes)
-        {
-            type = false;
-            this.bytes = bytes;
-        }
 
-        /*
+		public FastpathArg(Byte[] bytes)
+		{
+			type = false;
+			this.bytes = bytes;
+		}
+
+		/*
          * Constructs an argument that consists of part of a byte array
          * @param buf source array
          * @param off offset within array
          * @param len length of data to include
          */
-        public FastpathArg(Byte[] buf, Int32 off, Int32 len)
-        {
-            type = false;
-            bytes = new Byte[len];
-            //TODO:
-            bytes = buf;
-        }
 
-        /*
+		public FastpathArg(Byte[] buf, Int32 off, Int32 len)
+		{
+			type = false;
+			bytes = new Byte[len];
+			//TODO:
+			bytes = buf;
+		}
+
+		/*
          * Constructs an argument that consists of a String.
          * @param s String to store
          */
-        public FastpathArg(String s)
-        {
-            //this(s.ToCharArray());
-        }
 
-        /*
+		public FastpathArg(String s)
+		{
+			//this(s.ToCharArray());
+		}
+
+		/*
          * This sends this argument down the network stream.
          *
          * <p>The stream sent consists of the length.int4 then the contents.
@@ -108,32 +112,33 @@ namespace NpgsqlTypes
          * @param s output stream
          * @exception IOException if something failed on the network stream
          */
-        public void Send(Stream s)
-        {
-            if (type)
-            {
-                // argument is an integer
-                PGUtil.WriteInt32(s, 4);
-                PGUtil.WriteInt32(s, value);	// integer value of argument
-            }
-            else
-            {
-                // argument is a byte array
-                PGUtil.WriteInt32(s, bytes.Length);
-                s.Write(bytes,0,bytes.Length);
-            }
-        }
 
-        public Int32 SendSize()
-        {
-            if (type)
-            {
-                return 8;
-            }
-            else
-            {
-                return 4+bytes.Length;
-            }
-        }
-    }
+		public void Send(Stream s)
+		{
+			if (type)
+			{
+				// argument is an integer
+				PGUtil.WriteInt32(s, 4);
+				PGUtil.WriteInt32(s, value); // integer value of argument
+			}
+			else
+			{
+				// argument is a byte array
+				PGUtil.WriteInt32(s, bytes.Length);
+				s.Write(bytes, 0, bytes.Length);
+			}
+		}
+
+		public Int32 SendSize()
+		{
+			if (type)
+			{
+				return 8;
+			}
+			else
+			{
+				return 4 + bytes.Length;
+			}
+		}
+	}
 }

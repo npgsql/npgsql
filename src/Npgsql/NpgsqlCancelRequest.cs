@@ -25,44 +25,39 @@
 
 using System;
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
+	/// <summary>
+	/// This class represents the CancelRequest message sent to PostgreSQL
+	/// server.
+	/// </summary>
+	///
+	internal sealed class NpgsqlCancelRequest : ClientMessage
+	{
+		// Logging related values
+		//private static readonly String CLASSNAME = "NpgsqlCancelRequest";
 
-    /// <summary>
-    /// This class represents the CancelRequest message sent to PostgreSQL
-    /// server.
-    /// </summary>
-    ///
-    internal sealed class NpgsqlCancelRequest : ClientMessage
-    {
-        // Logging related values
-        //private static readonly String CLASSNAME = "NpgsqlCancelRequest";
+
+		private static readonly Int32 CancelRequestMessageSize = 16;
+		private static readonly Int32 CancelRequestCode = 1234 << 16 | 5678;
+
+		private readonly NpgsqlBackEndKeyData BackendKeydata;
 
 
-        private static Int32 CancelRequestMessageSize = 16;
-        private static Int32 CancelRequestCode = 1234 << 16 | 5678;
+		public NpgsqlCancelRequest(NpgsqlBackEndKeyData BackendKeydata)
+		{
+			this.BackendKeydata = BackendKeydata;
+		}
 
-        private NpgsqlBackEndKeyData BackendKeydata;
-        
-        
-        public NpgsqlCancelRequest(NpgsqlBackEndKeyData BackendKeydata)
-        {
-            this.BackendKeydata = BackendKeydata;
-            
-        }
+		public override void WriteToStream(Stream outputStream)
+		{
+			PGUtil.WriteInt32(outputStream, CancelRequestMessageSize);
+			PGUtil.WriteInt32(outputStream, CancelRequestCode);
+			PGUtil.WriteInt32(outputStream, BackendKeydata.ProcessID);
+			PGUtil.WriteInt32(outputStream, BackendKeydata.SecretKey);
 
-        public override void WriteToStream(Stream outputStream)
-        {
-            PGUtil.WriteInt32(outputStream, CancelRequestMessageSize);
-            PGUtil.WriteInt32(outputStream, CancelRequestCode);
-            PGUtil.WriteInt32(outputStream, BackendKeydata.ProcessID);
-            PGUtil.WriteInt32(outputStream, BackendKeydata.SecretKey);
-            
-            outputStream.Flush();
-
-        }
-
-    }
+			outputStream.Flush();
+		}
+	}
 }

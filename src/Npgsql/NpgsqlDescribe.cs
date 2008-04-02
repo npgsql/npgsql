@@ -28,43 +28,33 @@
 
 using System;
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
+	/// <summary>
+	/// This class represents the Parse message sent to PostgreSQL
+	/// server.
+	/// </summary>
+	///
+	internal sealed class NpgsqlDescribe : ClientMessage
+	{
+		private readonly Char _whatToDescribe;
+		private readonly String _portalName;
 
-    /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
-    /// server.
-    /// </summary>
-    ///
-    internal sealed class NpgsqlDescribe : ClientMessage
-    {
+		public NpgsqlDescribe(Char whatToDescribe, String portalName)
+		{
+			_whatToDescribe = whatToDescribe;
+			_portalName = portalName;
+		}
 
-        private Char _whatToDescribe;
-        private String _portalName;
+		public override void WriteToStream(Stream outputStream)
+		{
+			outputStream.WriteByte((byte) FrontEndMessageCode.Describe);
 
-        public NpgsqlDescribe(Char whatToDescribe, String portalName)
-        {
-            _whatToDescribe = whatToDescribe;
-            _portalName = portalName;
+			PGUtil.WriteInt32(outputStream, 4 + 1 + UTF8Encoding.GetByteCount(_portalName) + 1);
 
-        }
-
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream.WriteByte((byte)FrontEndMessageCode.Describe);
-
-            PGUtil.WriteInt32(outputStream, 4 +
-                              1 +
-                              UTF8Encoding.GetByteCount(_portalName) + 1);
-
-            outputStream.WriteByte((Byte)_whatToDescribe);
-            PGUtil.WriteString(_portalName, outputStream);
-
-
-        }
-
-    }
+			outputStream.WriteByte((Byte) _whatToDescribe);
+			PGUtil.WriteString(_portalName, outputStream);
+		}
+	}
 }
-

@@ -34,41 +34,44 @@
 
 using System;
 using System.Data;
+using System.Text;
 using Npgsql;
 
 namespace NpgsqlTypes
 {
-    /// <summary>
-    /// Summary description for LargeObjectManager.
-    /// </summary>
-    public class LargeObjectManager
-    {
-        // the fastpath api for this connection
-        private Fastpath fp;
+	/// <summary>
+	/// Summary description for LargeObjectManager.
+	/// </summary>
+	public class LargeObjectManager
+	{
+		// the fastpath api for this connection
+		private readonly Fastpath fp;
 
-        /*
+		/*
          * This mode indicates we want to write to an object
          */
-        public const Int32 WRITE = 0x00020000;
+		public const Int32 WRITE = 0x00020000;
 
-        /*
+		/*
          * This mode indicates we want to read an object
          */
-        public static  Int32 READ = 0x00040000;
+		public static Int32 READ = 0x00040000;
 
-        /*
+		/*
          * This mode is the default. It indicates we want read and write access to
          * a large object
          */
-        public static Int32 READWRITE = READ | WRITE;
+		public static Int32 READWRITE = READ | WRITE;
 
-        /*
-         * This prevents us being created by mere mortals
-         */
-        private LargeObjectManager()
-        {}
 
-        /*
+		private LargeObjectManager()
+		{
+			/*
+			* This prevents us being created by mere mortals
+			*/
+		}
+
+		/*
          * Constructs the LargeObject API.
          *
          * <p><b>Important Notice</b>
@@ -78,58 +81,69 @@ namespace NpgsqlTypes
          * org.postgresql.Connection class keeps track of the various extension API's
          * and it's advised you use those to gain access, and not going direct.
          */
-        public LargeObjectManager(NpgsqlConnection conn)
-        {
-            // We need Fastpath to do anything
-            // Now get the function oid's for the api
-            //
-            // This is an example of Fastpath.addFunctions();
-            //
-            String sql;
-            if (conn.PostgreSqlVersion > new Version(7, 3, 0))
-            {
 
-                sql = "SELECT p.proname,p.oid "+
-                      " FROM pg_catalog.pg_proc p, pg_catalog.pg_namespace n "+
-                      " WHERE p.pronamespace=n.oid AND n.nspname='pg_catalog' AND (";
-            }
-            else
-            {
-                sql = "SELECT proname,oid FROM pg_proc WHERE ";
-            }
-            sql += " proname = 'lo_open'" +
-                   " or proname = 'lo_close'" +
-                   " or proname = 'lo_creat'" +
-                   " or proname = 'lo_unlink'" +
-                   " or proname = 'lo_lseek'" +
-                   " or proname = 'lo_tell'" +
-                   " or proname = 'loread'" +
-                   " or proname = 'lowrite'";
+		public LargeObjectManager(NpgsqlConnection conn)
+		{
+			// We need Fastpath to do anything
+			// Now get the function oid's for the api
+			//
+			// This is an example of Fastpath.addFunctions();
+			//
+			//String sql;
+			StringBuilder sql = null;
+			try
+			{
+				sql = new StringBuilder();
+				if (conn.PostgreSqlVersion > new Version(7, 3, 0))
+				{
+					sql.Append("SELECT p.proname,p.oid ");
+					sql.Append(" FROM pg_catalog.pg_proc p, pg_catalog.pg_namespace n ");
+					sql.Append(" WHERE p.pronamespace=n.oid AND n.nspname='pg_catalog' AND (");
+				}
+				else
+				{
+					sql.Append("SELECT proname,oid FROM pg_proc WHERE ");
+				}
+				sql.Append(" proname = 'lo_open'");
+				sql.Append(" or proname = 'lo_close'");
+				sql.Append(" or proname = 'lo_creat'");
+				sql.Append(" or proname = 'lo_unlink'");
+				sql.Append(" or proname = 'lo_lseek'");
+				sql.Append(" or proname = 'lo_tell'");
+				sql.Append(" or proname = 'loread'");
+				sql.Append(" or proname = 'lowrite'");
 
-            if (conn.PostgreSqlVersion > new Version(7, 3, 0))
-            {
-                sql += ")";
-            }
+				if (conn.PostgreSqlVersion > new Version(7, 3, 0))
+				{
+					sql.Append(")");
+				}
 
-            using(IDbCommand cmd = new NpgsqlCommand(sql))
-            {
-                cmd.Connection = conn;
-    
-                this.fp = new Fastpath(conn,conn.Connector.Stream);
-    
-                using(IDataReader res = cmd.ExecuteReader(CommandBehavior.CloseConnection))//FIXME: We want to close the connection after this?
-                {
-    
-                    if (res == null)
-                        throw new NpgsqlException("postgresql.lo.init");
-        
-        
-                    fp.AddFunctions(res);
-                }
-            }
-        }
+				using (IDbCommand cmd = new NpgsqlCommand(sql.ToString()))
+				{
+					cmd.Connection = conn;
 
-        /*
+					this.fp = new Fastpath(conn, conn.Connector.Stream);
+
+					using (IDataReader res = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+						//FIXME: We want to close the connection after this?
+					{
+						if (res == null)
+						{
+							throw new NpgsqlException("postgresql.lo.init");
+						}
+
+
+						fp.AddFunctions(res);
+					}
+				}
+			}
+			finally
+			{
+				sql = null;
+			}
+		}
+
+		/*
          * This opens an existing large object, based on its OID. This method
          * assumes that READ and WRITE access is required (the default).
          *
@@ -137,12 +151,13 @@ namespace NpgsqlTypes
          * @return LargeObject instance providing access to the object
          * @exception NpgsqlException on error
          */
-        public LargeObject Open(Int32 oid)
-        {
-            return new LargeObject(fp, oid, READWRITE);
-        }
 
-        /*
+		public LargeObject Open(Int32 oid)
+		{
+			return new LargeObject(fp, oid, READWRITE);
+		}
+
+		/*
          * This opens an existing large object, based on its OID
          *
          * @param oid of large object
@@ -150,12 +165,13 @@ namespace NpgsqlTypes
          * @return LargeObject instance providing access to the object
          * @exception NpgsqlException on error
          */
-        public LargeObject Open(Int32 oid, Int32 mode)
-        {
-            return new LargeObject(fp, oid, mode);
-        }
 
-        /*
+		public LargeObject Open(Int32 oid, Int32 mode)
+		{
+			return new LargeObject(fp, oid, mode);
+		}
+
+		/*
          * This creates a large object, returning its OID.
          *
          * <p>It defaults to READWRITE for the new object's attributes.
@@ -163,41 +179,44 @@ namespace NpgsqlTypes
          * @return oid of new object
          * @exception NpgsqlException on error
          */
-        public Int32 Create()
-        {
-            FastpathArg[] args = new FastpathArg[1];
-            args[0] = new FastpathArg(READWRITE);
-            return fp.GetInteger("lo_creat", args);
-        }
 
-        /*
+		public Int32 Create()
+		{
+			FastpathArg[] args = new FastpathArg[1];
+			args[0] = new FastpathArg(READWRITE);
+			return fp.GetInteger("lo_creat", args);
+		}
+
+		/*
          * This creates a large object, returning its OID
          *
          * @param mode a bitmask describing different attributes of the new object
          * @return oid of new object
          * @exception NpgsqlException on error
          */
-        public Int32 Create(Int32 mode)
-        {
-            FastpathArg[] args = new FastpathArg[1];
-            args[0] = new FastpathArg(mode);
-            return fp.GetInteger("lo_creat", args);
-        }
 
-        /*
+		public Int32 Create(Int32 mode)
+		{
+			FastpathArg[] args = new FastpathArg[1];
+			args[0] = new FastpathArg(mode);
+			return fp.GetInteger("lo_creat", args);
+		}
+
+		/*
          * This deletes a large object.
          *
          * @param oid describing object to delete
          * @exception NpgsqlException on error
          */
-        public void Delete(Int32 oid)
-        {
-            FastpathArg[] args = new FastpathArg[1];
-            args[0] = new FastpathArg(oid);
-            fp.FastpathCall("lo_unlink", false, args);
-        }
 
-        /*
+		public void Delete(Int32 oid)
+		{
+			FastpathArg[] args = new FastpathArg[1];
+			args[0] = new FastpathArg(oid);
+			fp.FastpathCall("lo_unlink", false, args);
+		}
+
+		/*
          * This deletes a large object.
          *
          * <p>It is identical to the delete method, and is supplied as the C API uses
@@ -206,11 +225,10 @@ namespace NpgsqlTypes
          * @param oid describing object to delete
          * @exception NpgsqlException on error
          */
-        public void Unlink(Int32 oid)
-        {
-            Delete(oid);
-        }
 
-    }
-
+		public void Unlink(Int32 oid)
+		{
+			Delete(oid);
+		}
+	}
 }

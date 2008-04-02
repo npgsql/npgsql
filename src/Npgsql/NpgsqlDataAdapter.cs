@@ -30,250 +30,192 @@
 using System;
 using System.Data;
 using System.Data.Common;
-using System.Resources;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdated">RowUpdated</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlRowUpdatedEventArgs">NpgsqlRowUpdatedEventArgs</see> that contains the event data.</param>
-    public delegate void NpgsqlRowUpdatedEventHandler(Object sender, NpgsqlRowUpdatedEventArgs e);
+	/// <summary>
+	/// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdated">RowUpdated</see> events.
+	/// </summary>
+	/// <param name="sender">The source of the event.</param>
+	/// <param name="e">A <see cref="NpgsqlRowUpdatedEventArgs">NpgsqlRowUpdatedEventArgs</see> that contains the event data.</param>
+	public delegate void NpgsqlRowUpdatedEventHandler(Object sender, NpgsqlRowUpdatedEventArgs e);
 
-    /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs">NpgsqlRowUpdatingEventArgs</see> that contains the event data.</param>
-    public delegate void NpgsqlRowUpdatingEventHandler(Object sender, NpgsqlRowUpdatingEventArgs e);
-
-
-    /// <summary>
-    /// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
-    /// </summary>
-    public sealed class NpgsqlDataAdapter : DbDataAdapter, IDbDataAdapter
-    {
-
-        private NpgsqlCommand       _selectCommand;
-        private NpgsqlCommand       _updateCommand;
-        private NpgsqlCommand       _deleteCommand;
-        private NpgsqlCommand       _insertCommand;
-
-        // Log support
-        private static readonly String CLASSNAME = "NpgsqlDataAdapter";
+	/// <summary>
+	/// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
+	/// </summary>
+	/// <param name="sender">The source of the event.</param>
+	/// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs">NpgsqlRowUpdatingEventArgs</see> that contains the event data.</param>
+	public delegate void NpgsqlRowUpdatingEventHandler(Object sender, NpgsqlRowUpdatingEventArgs e);
 
 
-        public event NpgsqlRowUpdatedEventHandler RowUpdated;
-        public event NpgsqlRowUpdatingEventHandler RowUpdating;
+	/// <summary>
+	/// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
+	/// </summary>
+	public sealed class NpgsqlDataAdapter : DbDataAdapter, IDbDataAdapter
+	{
+		private NpgsqlCommand _selectCommand;
+		private NpgsqlCommand _updateCommand;
+		private NpgsqlCommand _deleteCommand;
+		private NpgsqlCommand _insertCommand;
 
-        public NpgsqlDataAdapter()
-        {}
-
-        public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-            _selectCommand = selectCommand;
-        }
-
-        public NpgsqlDataAdapter(String selectCommandText, NpgsqlConnection selectConnection) : this(new NpgsqlCommand(selectCommandText, selectConnection))
-        {}
-
-        public NpgsqlDataAdapter(String selectCommandText, String selectConnectionString) : this(selectCommandText, new NpgsqlConnection(selectConnectionString))
-        {}
+		// Log support
+		private static readonly String CLASSNAME = "NpgsqlDataAdapter";
 
 
-        protected override RowUpdatedEventArgs CreateRowUpdatedEvent(
-            DataRow dataRow,
-            IDbCommand command,
-            StatementType statementType,
-            DataTableMapping tableMapping
-        )
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatedEvent");
-            return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
+		public event NpgsqlRowUpdatedEventHandler RowUpdated;
+		public event NpgsqlRowUpdatingEventHandler RowUpdating;
+
+		public NpgsqlDataAdapter()
+		{
+		}
+
+		public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+			_selectCommand = selectCommand;
+		}
+
+		public NpgsqlDataAdapter(String selectCommandText, NpgsqlConnection selectConnection)
+			: this(new NpgsqlCommand(selectCommandText, selectConnection))
+		{
+		}
+
+		public NpgsqlDataAdapter(String selectCommandText, String selectConnectionString)
+			: this(selectCommandText, new NpgsqlConnection(selectConnectionString))
+		{
+		}
 
 
+		protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
+		                                                             StatementType statementType,
+		                                                             DataTableMapping tableMapping)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatedEvent");
+			return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
+		}
 
-        }
+		protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
+		                                                               StatementType statementType,
+		                                                               DataTableMapping tableMapping)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatingEvent");
+			return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
+		}
 
-        protected override RowUpdatingEventArgs CreateRowUpdatingEvent(
-            DataRow dataRow,
-            IDbCommand command,
-            StatementType statementType,
-            DataTableMapping tableMapping
-        )
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatingEvent");
-            return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
-        }
+		protected override void OnRowUpdated(RowUpdatedEventArgs value)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdated");
+			//base.OnRowUpdated(value);
+			if ((RowUpdated != null) && (value is NpgsqlRowUpdatedEventArgs))
+			{
+				RowUpdated(this, (NpgsqlRowUpdatedEventArgs) value);
+			}
+		}
 
-        protected override void OnRowUpdated(
-            RowUpdatedEventArgs value
-        )
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdated");
-            //base.OnRowUpdated(value);
-            if ((RowUpdated != null) && (value is NpgsqlRowUpdatedEventArgs))
-                RowUpdated(this, (NpgsqlRowUpdatedEventArgs) value);
+		protected override void OnRowUpdating(RowUpdatingEventArgs value)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdating");
+			if ((RowUpdating != null) && (value is NpgsqlRowUpdatingEventArgs))
+			{
+				RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
+			}
+		}
 
-        }
+		ITableMappingCollection IDataAdapter.TableMappings
+		{
+			get { return TableMappings; }
+		}
 
-        protected override void OnRowUpdating(
-            RowUpdatingEventArgs value
-        )
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdating");
-            if ((RowUpdating != null) && (value is NpgsqlRowUpdatingEventArgs))
-                RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
-        }
+		IDbCommand IDbDataAdapter.DeleteCommand
+		{
+			get
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.DeleteCommand");
+				return DeleteCommand;
+			}
 
-        ITableMappingCollection IDataAdapter.TableMappings
-        {
-            get
-            {
-                return TableMappings;
-            }
-        }
-
-        IDbCommand IDbDataAdapter.DeleteCommand
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.DeleteCommand");
-                return (NpgsqlCommand) DeleteCommand;
-            }
-
-            set
-            {
-                DeleteCommand = (NpgsqlCommand) value;
-            }
-        }
+			set { DeleteCommand = (NpgsqlCommand) value; }
+		}
 
 
-        public new NpgsqlCommand DeleteCommand
-        {
-            get
-            {
-                return _deleteCommand;
-            }
+		public new NpgsqlCommand DeleteCommand
+		{
+			get { return _deleteCommand; }
 
-            set
-            {
-                _deleteCommand = value;
-            }
-        }
+			set { _deleteCommand = value; }
+		}
 
-        IDbCommand IDbDataAdapter.SelectCommand
-        {
-            get
-            {
-                return (NpgsqlCommand) SelectCommand;
-            }
+		IDbCommand IDbDataAdapter.SelectCommand
+		{
+			get { return SelectCommand; }
 
-            set
-            {
-                SelectCommand = (NpgsqlCommand) value;
-            }
-        }
+			set { SelectCommand = (NpgsqlCommand) value; }
+		}
 
 
-        public new NpgsqlCommand SelectCommand
-        {
-            get
-            {
-                return _selectCommand;
-            }
+		public new NpgsqlCommand SelectCommand
+		{
+			get { return _selectCommand; }
 
-            set
-            {
-                _selectCommand = value;
-            }
-        }
+			set { _selectCommand = value; }
+		}
 
-        IDbCommand IDbDataAdapter.UpdateCommand
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.UpdateCommand");
-                return (NpgsqlCommand) UpdateCommand;
-            }
+		IDbCommand IDbDataAdapter.UpdateCommand
+		{
+			get
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.UpdateCommand");
+				return UpdateCommand;
+			}
 
-            set
-            {
-                UpdateCommand = (NpgsqlCommand) value;
-            }
-        }
+			set { UpdateCommand = (NpgsqlCommand) value; }
+		}
 
 
-        public new NpgsqlCommand UpdateCommand
-        {
-            get
-            {
-                return _updateCommand;
-            }
+		public new NpgsqlCommand UpdateCommand
+		{
+			get { return _updateCommand; }
 
-            set
-            {
-                _updateCommand = value;
-            }
-        }
+			set { _updateCommand = value; }
+		}
 
-        IDbCommand IDbDataAdapter.InsertCommand
-        {
-            get
-            {
-                return (NpgsqlCommand) InsertCommand;
-            }
+		IDbCommand IDbDataAdapter.InsertCommand
+		{
+			get { return InsertCommand; }
 
-            set
-            {
-                InsertCommand = (NpgsqlCommand) value;
-            }
-        }
+			set { InsertCommand = (NpgsqlCommand) value; }
+		}
 
 
-        public new NpgsqlCommand InsertCommand
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "InsertCommand");
-                return _insertCommand;
-            }
+		public new NpgsqlCommand InsertCommand
+		{
+			get
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "InsertCommand");
+				return _insertCommand;
+			}
 
-            set
-            {
-                _insertCommand = value;
-            }
-        }
-
-
-    }
+			set { _insertCommand = value; }
+		}
+	}
 }
-
 
 public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
 {
-    public NpgsqlRowUpdatingEventArgs (
-        DataRow dataRow,
-        IDbCommand command,
-        StatementType statementType,
-        DataTableMapping tableMapping
-    ) : base(dataRow, command, statementType, tableMapping)
+	public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
+	                                  DataTableMapping tableMapping)
+		: base(dataRow, command, statementType, tableMapping)
 
-    {}
-
+	{
+	}
 }
 
 public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
 {
-    public NpgsqlRowUpdatedEventArgs (
-        DataRow dataRow,
-        IDbCommand command,
-        StatementType statementType,
-        DataTableMapping tableMapping
-    ) : base(dataRow, command, statementType, tableMapping)
+	public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
+	                                 DataTableMapping tableMapping)
+		: base(dataRow, command, statementType, tableMapping)
 
-    {}
-
+	{
+	}
 }

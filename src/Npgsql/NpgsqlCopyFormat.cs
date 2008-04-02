@@ -31,52 +31,45 @@ using System;
 
 namespace Npgsql
 {
+	/// <summary>
+	/// Represents information about COPY operation data transfer format as returned by server.
+	/// </summary>
+	public sealed class NpgsqlCopyFormat
+	{
+		private readonly byte _copyFormat;
+		private readonly Int16[] _copyFieldFormats;
 
-    /// <summary>
-    /// Represents information about COPY operation data transfer format as returned by server.
-    /// </summary>
-    public sealed class NpgsqlCopyFormat
-    {
-        private byte _copyFormat;
-        private Int16[] _copyFieldFormats;
+		/// <summary>
+		/// Only created when a CopyInResponse or CopyOutResponse is received by NpgsqlState.ProcessBackendResponses()
+		/// </summary>
+		internal NpgsqlCopyFormat(byte copyFormat, Int16[] fieldFormats)
+		{
+			_copyFormat = copyFormat;
+			_copyFieldFormats = fieldFormats;
+		}
 
-        /// <summary>
-        /// Only created when a CopyInResponse or CopyOutResponse is received by NpgsqlState.ProcessBackendResponses()
-        /// </summary>
-        internal NpgsqlCopyFormat( byte copyFormat, Int16[] fieldFormats )
-        {
-            _copyFormat = copyFormat;
-            _copyFieldFormats = fieldFormats;
-        }
+		/// <summary>
+		/// Returns true if this operation is currently active and in binary format.
+		/// </summary>
+		public bool IsBinary
+		{
+			get { return _copyFormat != 0; }
+		}
 
-        /// <summary>
-        /// Returns true if this operation is currently active and in binary format.
-        /// </summary>
-        public bool IsBinary
-        {
-            get
-            {
-                return _copyFormat != 0;
-            }
-        }
+		/// <summary>
+		/// Returns true if this operation is currently active and field at given location is in binary format.
+		/// </summary>
+		public bool FieldIsBinary(int fieldNumber)
+		{
+			return _copyFieldFormats[fieldNumber] != 0;
+		}
 
-        /// <summary>
-        /// Returns true if this operation is currently active and field at given location is in binary format.
-        /// </summary>
-        public bool FieldIsBinary(int fieldNumber)
-        {
-            return _copyFieldFormats[fieldNumber] != 0;
-        }
-
-        /// <summary>
-        /// Returns number of fields if this operation is currently active, otherwise -1
-        /// </summary>
-        public int FieldCount
-        {
-            get
-            {
-                return _copyFieldFormats.Length;
-            }
-        }
-    }
+		/// <summary>
+		/// Returns number of fields if this operation is currently active, otherwise -1
+		/// </summary>
+		public int FieldCount
+		{
+			get { return _copyFieldFormats.Length; }
+		}
+	}
 }

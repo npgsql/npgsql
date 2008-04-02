@@ -25,46 +25,37 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System;
 using System.IO;
-
 
 namespace Npgsql
 {
-    internal sealed class NpgsqlConnectedState : NpgsqlState
-    {
+	internal sealed class NpgsqlConnectedState : NpgsqlState
+	{
+		public static readonly NpgsqlConnectedState Instance = new NpgsqlConnectedState();
 
-        public static readonly NpgsqlConnectedState Instance = new NpgsqlConnectedState();
+		private NpgsqlConnectedState()
+		{
+		}
 
-        private NpgsqlConnectedState()
-        {}
+		public override void Startup(NpgsqlConnector context)
+		{
+			NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(296, //Not used.
+			                                                            context.BackendProtocolVersion, context.Database,
+			                                                            context.UserName, "", "", "");
 
-        public override void Startup(NpgsqlConnector context)
-        {
-            NpgsqlStartupPacket startupPacket  = new NpgsqlStartupPacket(296, //Not used.
-                                                  context.BackendProtocolVersion,
-                                                  context.Database,
-                                                  context.UserName,
-                                                  "",
-                                                  "",
-                                                  "");
+			startupPacket.WriteToStream(new BufferedStream(context.Stream));
+			context.RequireReadyForQuery = false;
+			context.Mediator.CommandTimeout = 20;
+			context.Stream.Flush();
+			ProcessBackendResponses(context);
+		}
 
-            startupPacket.WriteToStream(new BufferedStream(context.Stream));
-            context.RequireReadyForQuery = false;
-            context.Mediator.CommandTimeout = 20;
-            context.Stream.Flush();
-            ProcessBackendResponses( context );
-        }
-        
-        public override void CancelRequest(NpgsqlConnector context)
-        {
-            NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
-            
-            
-            CancelRequestMessage.WriteToStream(context.Stream);
-            
-                
-        }
+		public override void CancelRequest(NpgsqlConnector context)
+		{
+			NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
 
-    }
+
+			CancelRequestMessage.WriteToStream(context.Stream);
+		}
+	}
 }

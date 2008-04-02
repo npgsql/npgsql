@@ -43,6 +43,7 @@ namespace NpgsqlTypes
 	internal class ArrayNativeToBackendTypeConverter
 	{
 		private readonly NpgsqlNativeTypeInfo _elementConverter;
+
 		/// <summary>
 		/// Create an ArrayNativeToBackendTypeConverter with the element converter passed
 		/// </summary>
@@ -51,32 +52,45 @@ namespace NpgsqlTypes
 		{
 			_elementConverter = elementConverter;
 		}
+
 		/// <summary>
 		/// Serialise the enumeration or array.
 		/// </summary>
 		public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData)
-        {//just prepend "array" and then pass to WriteItem.
-            StringBuilder sb = new StringBuilder("array");
-			if(WriteItem(TypeInfo, NativeData, sb))
+		{
+//just prepend "array" and then pass to WriteItem.
+			StringBuilder sb = new StringBuilder("array");
+			if (WriteItem(TypeInfo, NativeData, sb))
+			{
 				return sb.ToString();
+			}
 			else
+			{
 				return "'{}'";
-        }
+			}
+		}
+
 		private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb)
-		{	//item could be:
+		{
+			//item could be:
 			//an element - in which case we call the NpgsqlNativeTypeInfo for that type to serialise it.
 			//an array - in which case we call WriteArray,
 			//an Ienumerable - in which case we call WriteEnumeration
-			if(NpgsqlTypesHelper.DefinedType(item))
+			if (NpgsqlTypesHelper.DefinedType(item))
 			{
 				sb.Append(_elementConverter.ConvertToBackend(item, false));
 				return true;
 			}
-			else if(item is Array)
+			else if (item is Array)
+			{
 				return WriteArray(TypeInfo, item as Array, sb);
+			}
 			else
+			{
 				return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
+			}
 		}
+
 		private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb)
 		{
 			bool writtenSomething = false;
@@ -86,11 +100,12 @@ namespace NpgsqlTypes
 			do
 			{
 				lengths.Add(ar.GetLength(--c));
-			}while(c != 0);
-			
+			}
+			while (c != 0);
+
 			//c is now zero. Might as well reuse it!
-			
-			foreach(object item in ar)
+
+			foreach (object item in ar)
 			{
 				//to work out how many [ characters we need we need to work where we are compared to the dimensions.
 				//Say we are at position 24 in a 3 * 4 * 5 array.
@@ -98,58 +113,73 @@ namespace NpgsqlTypes
 				//We're at the end of a square as 24 % (3 * 4) == 24 % (12) == 0 so write one [ for that.
 				//We're not at the end of a cube as 24 % (3 * 4 * 5) == 24 % (30) != 0, so we're finished for that pass.
 				int curlength = 1;
-				foreach(int lengthTest in lengths)
+				foreach (int lengthTest in lengths)
 				{
-					if(c % (curlength *= lengthTest) == 0)
+					if (c%(curlength *= lengthTest) == 0)
+					{
 						sb.Append('[');
+					}
 					else
+					{
 						break;
+					}
 				}
 
 				//Write whatever the element is.
 				writtenSomething |= WriteItem(TypeInfo, item, sb);
-				++c;//up our counter for knowing when to write [ and ]
+				++c; //up our counter for knowing when to write [ and ]
 
 				//same logic as above for writing [ this time writing ]
 				curlength = 1;
-				foreach(int lengthTest in lengths)
+				foreach (int lengthTest in lengths)
 				{
-					if(c % (curlength *= lengthTest) == 0)
+					if (c%(curlength *= lengthTest) == 0)
+					{
 						sb.Append(']');
+					}
 					else
+					{
 						break;
+					}
 				}
 
 				//comma between each item.
 				sb.Append(',');
 			}
-			if(writtenSomething)
+			if (writtenSomething)
+			{
 				//last comma was one too many.
 				sb.Remove(sb.Length - 1, 1);
+			}
 			return writtenSomething;
 		}
+
 		private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb)
 		{
 			bool writtenSomething = false;
 			sb.Append('[');
 			//write each item with a comma between them.
-			foreach(object item in col)
+			foreach (object item in col)
 			{
 				writtenSomething |= WriteItem(TypeInfo, item, sb);
 				sb.Append(',');
 			}
-			if(writtenSomething)
+			if (writtenSomething)
+			{
 				//last comma was one too many. Replace it with the final }
 				sb[sb.Length - 1] = ']';
+			}
 			return writtenSomething;
 		}
 	}
+
 	/// <summary>
 	/// Handles parsing of pg arrays into .NET arrays.
 	/// </summary>
 	internal class ArrayBackendToNativeTypeConverter
 	{
 		#region Helper Classes
+
 		/// <summary>
 		/// Takes a string representation of a pg 1-dimensional array
 		/// (or a 1-dimensional row within an n-dimensional array)
@@ -165,24 +195,26 @@ namespace NpgsqlTypes
 			//have different handling. When we reach a comma that isn't in a quoted
 			//section we yield return the string we have built and then clear it
 			//to continue with the next.
-			for(int idx = 0; idx < source.Length; ++idx)
+			for (int idx = 0; idx < source.Length; ++idx)
 			{
 				char c = source[idx];
-				switch(c)
+				switch (c)
 				{
-					case '"'://entering of leaving a quoted string
+					case '"': //entering of leaving a quoted string
 						inQuoted = !inQuoted;
 						break;
-					case ','://ending this item, unless we're in a quoted string.
-						if(inQuoted)
+					case ',': //ending this item, unless we're in a quoted string.
+						if (inQuoted)
+						{
 							sb.Append(',');
+						}
 						else
 						{
 							yield return sb.ToString();
 							sb = new StringBuilder(source.Length - idx);
 						}
 						break;
-					case '\\'://next char is an escaped character, grab it, ignore the \ we are on now.
+					case '\\': //next char is an escaped character, grab it, ignore the \ we are on now.
 						sb.Append(source[++idx]);
 						break;
 					default:
@@ -192,6 +224,7 @@ namespace NpgsqlTypes
 			}
 			yield return sb.ToString();
 		}
+
 		/// <summary>
 		/// Takes a string representation of a pg n-dimensional array
 		/// and allows enumeration of the string represenations of the next
@@ -208,33 +241,40 @@ namespace NpgsqlTypes
 			int braceCount = 0;
 			int startIdx = 0;
 			int len = source.Length;
-			for(int idx = 0; idx != len; ++idx)
-				switch(source[idx])
+			for (int idx = 0; idx != len; ++idx)
+			{
+				switch (source[idx])
 				{
-					case '"'://beginning or ending a quoted chunk.
+					case '"': //beginning or ending a quoted chunk.
 						inQuoted = !inQuoted;
 						break;
 					case ',':
-						if(braceCount == 0)//if bracecount is zero we've done our chunk
+						if (braceCount == 0) //if bracecount is zero we've done our chunk
 						{
 							yield return source.Substring(startIdx, idx - startIdx);
 							startIdx = idx + 1;
 						}
 						break;
-					case '\\'://next character is escaped. Skip it.
+					case '\\': //next character is escaped. Skip it.
 						++idx;
 						break;
-					case '{'://up the brace count if this isn't in a quoted string
-						if(!inQuoted)
+					case '{': //up the brace count if this isn't in a quoted string
+						if (!inQuoted)
+						{
 							++braceCount;
+						}
 						break;
-					case '}'://lower the brace count if this isn't in a quoted string
-						if(!inQuoted)
+					case '}': //lower the brace count if this isn't in a quoted string
+						if (!inQuoted)
+						{
 							--braceCount;
+						}
 						break;
 				}
+			}
 			yield return source.Substring(startIdx);
 		}
+
 		/// <summary>
 		/// Takes an array of ints and treats them like the limits of a set of counters.
 		/// Retains a matching set of ints that is set to all zeros on the first ++
@@ -246,32 +286,39 @@ namespace NpgsqlTypes
 		private class IntSetIterator
 		{
 			private readonly int[] _bounds;
-			private int[] _current;
+			private readonly int[] _current;
+
 			public IntSetIterator(int[] bounds)
 			{
 				_current = new int[(_bounds = bounds).Length];
-				_current[_current.Length - 1] = -1;//zero after first ++
+				_current[_current.Length - 1] = -1; //zero after first ++
 			}
+
 			public IntSetIterator(List<int> bounds)
-				:this(bounds.ToArray()){}
+				: this(bounds.ToArray())
+			{
+			}
+
 			public int[] Bounds
 			{
-				get
-				{
-					return _bounds;
-				}
+				get { return _bounds; }
 			}
+
 			public static implicit operator int[](IntSetIterator isi)
 			{
 				return isi._current;
 			}
+
 			public static IntSetIterator operator ++(IntSetIterator isi)
 			{
-				for(int idx = isi._current.Length - 1; ++isi._current[idx] == isi._bounds[idx]; --idx)
+				for (int idx = isi._current.Length - 1; ++isi._current[idx] == isi._bounds[idx]; --idx)
+				{
 					isi._current[idx] = 0;
+				}
 				return isi;
 			}
 		}
+
 		/// <summary>
 		/// Takes an ArrayList which may be an ArrayList of ArrayLists, an ArrayList of ArrayLists of ArrayLists
 		/// and so on and enumerates the items that aren't ArrayLists (the leaf nodes if we think of the ArrayList
@@ -285,22 +332,29 @@ namespace NpgsqlTypes
 			//This sort of recursive enumeration used to be really fiddly. .NET2.0's yield makes it trivial. Hurray!
 			Stack<IEnumerator> stk = new Stack<IEnumerator>();
 			stk.Push(list.GetEnumerator());
-			while(stk.Count != 0)
+			while (stk.Count != 0)
 			{
 				IEnumerator ienum = stk.Peek();
-				while(ienum.MoveNext())
+				while (ienum.MoveNext())
 				{
 					object obj = ienum.Current;
-					if(obj is ArrayList)
+					if (obj is ArrayList)
+					{
 						stk.Push(ienum = (obj as ArrayList).GetEnumerator());
+					}
 					else
+					{
 						yield return obj;
+					}
 				}
 				stk.Pop();
 			}
 		}
+
 		#endregion
-		private NpgsqlBackendTypeInfo _elementConverter;
+
+		private readonly NpgsqlBackendTypeInfo _elementConverter;
+
 		/// <summary>
 		/// Create a new ArrayBackendToNativeTypeConverter
 		/// </summary>
@@ -309,33 +363,50 @@ namespace NpgsqlTypes
 		{
 			_elementConverter = elementConverter;
 		}
+
 		/// <summary>
 		/// Creates an array from pg representation.
 		/// </summary>
-        public object ToArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
-        {//first create an arraylist, then convert it to an array.
-        	return ToArray(ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier), _elementConverter.Type);
-        }
+		public object ToArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		{
+//first create an arraylist, then convert it to an array.
+			return ToArray(ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier), _elementConverter.Type);
+		}
+
 		/// <summary>
 		/// Creates an array list from pg represenation of an array.
 		/// Multidimensional arrays are treated as ArrayLists of ArrayLists
 		/// </summary>
-		private ArrayList ToArrayList(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 elementTypeSize, Int32 elementTypeModifier)
+		private ArrayList ToArrayList(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 elementTypeSize,
+		                              Int32 elementTypeModifier)
 		{
-        	ArrayList list = new ArrayList();
-        	//remove the braces on either side and work on what they contain.
-        	string stripBraces = BackendData.Trim().Substring(1, BackendData.Length - 2).Trim();
-        	if(stripBraces.Length == 0)
-        		return list;
-        	if(stripBraces[0] == '{')//there are still braces so we have an n-dimension array. Recursively build an ArrayList of ArrayLists
-        		foreach(string arrayChunk in ArrayChunkEnumeration(stripBraces))
-        			list.Add(ToArrayList(TypeInfo, arrayChunk, elementTypeSize, elementTypeModifier));
-        	else//We're either dealing with a 1-dimension array or treating a row of an n-dimension array. In either case parse the elements and put them in our ArrayList
-	       	foreach(string token in TokenEnumeration(stripBraces))
-        			//Use the NpgsqlBackendTypeInfo for the element type to obtain each element.
-	       		list.Add(_elementConverter.ConvertToNative(token, elementTypeSize, elementTypeModifier));
-        	return list;
+			ArrayList list = new ArrayList();
+			//remove the braces on either side and work on what they contain.
+			string stripBraces = BackendData.Trim().Substring(1, BackendData.Length - 2).Trim();
+			if (stripBraces.Length == 0)
+			{
+				return list;
+			}
+			if (stripBraces[0] == '{')
+				//there are still braces so we have an n-dimension array. Recursively build an ArrayList of ArrayLists
+			{
+				foreach (string arrayChunk in ArrayChunkEnumeration(stripBraces))
+				{
+					list.Add(ToArrayList(TypeInfo, arrayChunk, elementTypeSize, elementTypeModifier));
+				}
+			}
+			else
+				//We're either dealing with a 1-dimension array or treating a row of an n-dimension array. In either case parse the elements and put them in our ArrayList
+			{
+				foreach (string token in TokenEnumeration(stripBraces))
+				{
+					//Use the NpgsqlBackendTypeInfo for the element type to obtain each element.
+					list.Add(_elementConverter.ConvertToNative(token, elementTypeSize, elementTypeModifier));
+				}
+			}
+			return list;
 		}
+
 		/// <summary>
 		/// Creates an n-dimensional array from an ArrayList of ArrayLists or
 		/// a 1-dimensional array from something else. 
@@ -350,24 +421,33 @@ namespace NpgsqlTypes
 			//We then find out the type of that item.
 			List<int> dimensions = new List<int>();
 			object item = list;
-			for(ArrayList itemAsList = item as ArrayList; item is ArrayList; itemAsList = (item = itemAsList[0]) as ArrayList)
+			for (ArrayList itemAsList = item as ArrayList; item is ArrayList; itemAsList = (item = itemAsList[0]) as ArrayList)
 			{
-				int dimension = itemAsList.Count;
-				if(dimension == 0)
-					return Array.CreateInstance(elementType, 0);
-				dimensions.Add(dimension);
+				if (itemAsList != null)
+				{
+					int dimension = itemAsList.Count;
+					if (dimension == 0)
+					{
+						return Array.CreateInstance(elementType, 0);
+					}
+					dimensions.Add(dimension);
+				}
 			}
 
-			if(dimensions.Count == 1)//1-dimension array so we can just use ArrayList.ToArray()
+			if (dimensions.Count == 1) //1-dimension array so we can just use ArrayList.ToArray()
+			{
 				return list.ToArray(elementType);
-			
+			}
+
 			//Get an IntSetIterator to hold the position we're setting.
 			IntSetIterator isi = new IntSetIterator(dimensions);
 			//Create our array.
 			Array ret = Array.CreateInstance(elementType, isi.Bounds);
 			//Get each item and put it in the array at the appropriate place.
-			foreach(object val in RecursiveArrayListEnumeration(list))
+			foreach (object val in RecursiveArrayListEnumeration(list))
+			{
 				ret.SetValue(val, ++isi);
+			}
 			return ret;
 		}
 	}

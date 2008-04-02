@@ -1,7 +1,6 @@
 // created on 29/11/2007
 
 
-
 // Npgsql.NpgsqlConnectionStringBuilder.cs
 
 //
@@ -57,33 +56,23 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
-
 using System;
-
 using System.Collections.Generic;
-
-using System.Text;
-
 using System.Data.Common;
-
-
+using System.Resources;
 
 namespace Npgsql
 
 {
-
 	public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
 
 	{
+		private static readonly ResourceManager resman = new ResourceManager(typeof (NpgsqlConnectionStringBuilder));
 
-		private static System.Resources.ResourceManager resman = new System.Resources.ResourceManager(typeof(NpgsqlConnectionStringBuilder));
-
-		private static Dictionary<Keywords, object> defaults = new Dictionary<Keywords, object>();
-
+		private static readonly Dictionary<Keywords, object> defaults = new Dictionary<Keywords, object>();
 
 
 		private string originalConnectionString;
-
 
 
 		private const int POOL_SIZE_LIMIT = 1024;
@@ -91,11 +80,9 @@ namespace Npgsql
 		private const int TIMEOUT_LIMIT = 1024;
 
 
-
 		static NpgsqlConnectionStringBuilder()
 
 		{
-
 			defaults.Add(Keywords.Host, string.Empty);
 
 			defaults.Add(Keywords.Port, 5432);
@@ -129,113 +116,82 @@ namespace Npgsql
 			defaults.Add(Keywords.CommandTimeout, 20);
 
 			defaults.Add(Keywords.Enlist, false);
-			
+
 			defaults.Add(Keywords.PreloadReader, false);
-			
+
 			defaults.Add(Keywords.UseExtendedTypes, false);
-
 		}
-
 
 
 		public NpgsqlConnectionStringBuilder()
 
 		{
-
 			this.Clear();
-
 		}
 
 		public NpgsqlConnectionStringBuilder(string connectionString)
 
 		{
-
 			this.originalConnectionString = connectionString;
 
 			base.ConnectionString = connectionString;
-
 		}
 
 
-
 		/// <summary>
-
 		/// Return an exact copy of this NpgsqlConnectionString.
-
 		/// </summary>
-
 		public NpgsqlConnectionStringBuilder Clone()
 
 		{
-
 			NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
 
 			foreach (string key in this.Keys)
 
 			{
-
 				builder[key] = this[key];
-
 			}
 
 			return builder;
-
 		}
 
-
-
 		#region Parsing Functions
-
-
 
 		private static SslMode ToSslMode(object value)
 
 		{
-
 			if (value is SslMode)
 
 			{
-
-				return (SslMode)value;
-
+				return (SslMode) value;
 			}
 
 			else
 
 			{
-
-				return (SslMode)Enum.Parse(typeof(SslMode), value.ToString(), true);
-
+				return (SslMode) Enum.Parse(typeof (SslMode), value.ToString(), true);
 			}
-
 		}
-
 
 
 		private static ProtocolVersion ToProtocolVersion(object value)
 
 		{
-
 			if (value is ProtocolVersion)
 
 			{
-
-				return (ProtocolVersion)value;
-
+				return (ProtocolVersion) value;
 			}
 
 			else
 
 			{
-
 				int ver = Convert.ToInt32(value);
-
 
 
 				switch (ver)
 
 				{
-
 					case 2:
 
 						return ProtocolVersion.Version2;
@@ -247,23 +203,17 @@ namespace Npgsql
 					default:
 
 						throw new InvalidCastException(value.ToString());
-
 				}
-
 			}
-
 		}
-
 
 
 		private static string ToString(ProtocolVersion protocolVersion)
 
 		{
-
-			switch(protocolVersion)
+			switch (protocolVersion)
 
 			{
-
 				case ProtocolVersion.Version2:
 
 					return "2";
@@ -275,55 +225,42 @@ namespace Npgsql
 				default:
 
 					return string.Empty;
-
 			}
-
 		}
-
 
 
 		private static int ToInt32(object value, int min, int max, string key)
 
 		{
-
 			int v = Convert.ToInt32(value);
 
 			if (v < min)
 
 			{
-
 				throw new ArgumentOutOfRangeException(String.Format(resman.GetString("Exception_IntegerKeyValMin"), key, min), key);
-
 			}
 
 			else if (v > max)
 
 			{
-
 				throw new ArgumentOutOfRangeException(String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, max), key);
-
 			}
 
 			return v;
-
 		}
-
 
 
 		private static Boolean ToBoolean(object value)
 
 		{
-
 			string text = value as string;
 
 			if (text != null)
 
 			{
-
 				switch (text.ToLowerInvariant())
 
 				{
-
 					case "t":
 
 					case "true":
@@ -333,7 +270,6 @@ namespace Npgsql
 					case "yes":
 
 						return true;
-
 
 
 					case "f":
@@ -347,331 +283,247 @@ namespace Npgsql
 						return false;
 
 
-
 					default:
 
 						throw new InvalidCastException(value.ToString());
-
 				}
-
 			}
 
 			else
 
 			{
-
 				return Convert.ToBoolean(value);
-
 			}
-
 		}
 
 		#endregion
 
-
-
 		#region Properties
 
-
-
 		private string _host;
-
 
 
 		public string Host
 
 		{
-
 			get { return _host; }
 
 			set { SetValue(GetKeyName(Keywords.Host), value); }
-
 		}
-
 
 
 		private int _port;
 
 
-
 		public int Port
 
 		{
-
 			get { return _port; }
 
 			set { SetValue(GetKeyName(Keywords.Port), value); }
-
 		}
-
 
 
 		private ProtocolVersion _protocol;
 
 
-
 		public ProtocolVersion Protocol
 
 		{
-
 			get { return _protocol; }
 
 			set { SetValue(GetKeyName(Keywords.Protocol), value); }
-
 		}
 
 		private string _database;
 
 
-
 		public string Database
 
 		{
-
 			get { return _database; }
 
 			set { SetValue(GetKeyName(Keywords.Database), value); }
-
 		}
 
 		private string _username;
 
 
-
 		public string UserName
 
 		{
-
 			get { return _username; }
 
 			set { SetValue(GetKeyName(Keywords.UserName), value); }
-
 		}
 
 		private string _password;
 
 
-
 		public string Password
 
 		{
-
 			get { return _password; }
 
 			set { SetValue(GetKeyName(Keywords.Password), value); }
-
 		}
 
 		private bool _ssl;
 
 
-
 		public bool SSL
 
 		{
-
 			get { return _ssl; }
 
 			set { SetValue(GetKeyName(Keywords.SSL), value); }
-
 		}
-
 
 
 		private SslMode _sslmode;
 
 
-
 		public SslMode SslMode
 
 		{
-
 			get { return _sslmode; }
 
 			set { SetValue(GetKeyName(Keywords.SslMode), value); }
-
 		}
 
 
-        [Obsolete("UTF-8 is always used regardless of this setting.")]
-        public string Encoding
+		[Obsolete("UTF-8 is always used regardless of this setting.")]
+		public string Encoding
 		{
-
 			get { return "UNICODE"; }
 
-			set { }
-
+			//set { }
 		}
-
 
 
 		private int _timeout;
 
 
-
 		public int Timeout
 
 		{
-
 			get { return _timeout; }
 
 			set { SetValue(GetKeyName(Keywords.Timeout), value); }
-
 		}
 
 		private string _searchpath;
 
 
-
 		public string SearchPath
 
 		{
-
 			get { return _searchpath; }
 
 			set { SetValue(GetKeyName(Keywords.SearchPath), value); }
-
 		}
 
 		private bool _pooling;
 
 
-
 		public bool Pooling
 
 		{
-
 			get { return _pooling; }
 
 			set { SetValue(GetKeyName(Keywords.Pooling), value); }
-
 		}
 
 		private int _connection_life_time;
 
 
-
 		public int ConnectionLifeTime
 
 		{
-
 			get { return _connection_life_time; }
 
 			set { SetValue(GetKeyName(Keywords.ConnectionLifeTime), value); }
-
 		}
 
 		private int _min_pool_size;
 
 
-
 		public int MinPoolSize
 
 		{
-
 			get { return _min_pool_size; }
 
 			set { SetValue(GetKeyName(Keywords.MinPoolSize), value); }
-
 		}
 
 		private int _max_pool_size;
 
 
-
 		public int MaxPoolSize
 
 		{
-
 			get { return _max_pool_size; }
 
 			set { SetValue(GetKeyName(Keywords.MaxPoolSize), value); }
-
 		}
 
 		private bool _sync_notification;
 
 
-
 		public bool SyncNotification
 
 		{
-
 			get { return _sync_notification; }
 
 			set { SetValue(GetKeyName(Keywords.SyncNotification), value); }
-
 		}
 
 		private int _command_timeout;
 
 
-
 		public int CommandTimeout
 
 		{
-
 			get { return _command_timeout; }
 
 			set { SetValue(GetKeyName(Keywords.CommandTimeout), value); }
-
 		}
 
 		private bool _enlist;
 
 
-
 		public bool Enlist
 
 		{
-
 			get { return _enlist; }
 
 			set { SetValue(GetKeyName(Keywords.Enlist), value); }
-
 		}
 
 		private bool _preloadReader;
-		
+
 		public bool PreloadReader
 		{
-		    get
-		    {
-		        return _preloadReader;
-		    }
-		    set
-		    {
-		        SetValue(GetKeyName(Keywords.PreloadReader), value);
-		    }
+			get { return _preloadReader; }
+			set { SetValue(GetKeyName(Keywords.PreloadReader), value); }
 		}
-		
+
 		private bool _useExtendedTypes;
-		
+
 		public bool UseExtendedTypes
 		{
-		    get
-		    {
-		        return _useExtendedTypes;
-		    }
-		    set
-		    {
-		        SetValue(GetKeyName(Keywords.UseExtendedTypes), value);
-		    }
+			get { return _useExtendedTypes; }
+			set { SetValue(GetKeyName(Keywords.UseExtendedTypes), value); }
 		}
 
-
 		#endregion
-
-
 
 		private static Keywords GetKey(string key)
 
 		{
-
 			switch (key.ToUpperInvariant())
 
 			{
-
 				case "HOST":
 
 				case "SERVER":
@@ -761,137 +613,101 @@ namespace Npgsql
 				case "ENLIST":
 
 					return Keywords.Enlist;
-					
-	            case "PRELOADREADER":
-	            case "PRELOAD READER":
+
+				case "PRELOADREADER":
+				case "PRELOAD READER":
 					return Keywords.PreloadReader;
-					
+
 				case "USEEXTENDEDTYPES":
-	            case "USE EXTENDED TYPES":
+				case "USE EXTENDED TYPES":
 					return Keywords.UseExtendedTypes;
 
 				default:
 
 					throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
-
 			}
-
 		}
-
 
 
 		internal static string GetKeyName(Keywords keyword)
 
 		{
-
 			if (keyword == Keywords.UserName)
 
 			{
-
 				return "USER ID";
-
 			}
 
 			else
 
 			{
-
 				return keyword.ToString().ToUpperInvariant();
-
 			}
-
 		}
-
 
 
 		internal static object GetDefaultValue(Keywords keyword)
 
 		{
-
 			return defaults[keyword];
-
 		}
 
 
-
 		/// <summary>
-
 		/// Case insensative accessor for indivual connection string values.
-
 		/// </summary>
-
 		public override object this[string keyword]
 
 		{
-
 			get { return this[GetKey(keyword)]; }
 
 			set { this[GetKey(keyword)] = value; }
-
 		}
 
 		public object this[Keywords keyword]
 
 		{
-
 			get { return base[GetKeyName(keyword)]; }
 
 			set { SetValue(GetKeyName(keyword), value); }
-
 		}
-
 
 
 		public override bool Remove(string keyword)
 
 		{
-
 			Keywords key = GetKey(keyword);
 
 			SetValue(key, defaults[key]);
 
 			return base.Remove(keyword);
-
 		}
-
 
 
 		public bool ContainsKey(Keywords keyword)
 
 		{
-
 			return base.ContainsKey(GetKeyName(keyword));
-
 		}
 
 
-
 		/// <summary>
-
 		/// This function will set value for known key, both private member and base[key].
-
 		/// </summary>
-
 		/// <param name="keyword"></param>
-
 		/// <param name="value"></param>
-
 		private void SetValue(string keyword, object value)
 
 		{
-
 			if (value == null)
 
 			{
-
 				Remove(keyword);
-
 			}
 
 			else
 
 			{
-
 				Keywords key = GetKey(keyword);
 
 				SetValue(key, value);
@@ -899,51 +715,34 @@ namespace Npgsql
 				if (key == Keywords.Protocol)
 
 				{
-
 					base[GetKeyName(key)] = ToString(this.Protocol);
-
 				}
 
 				else
 
 				{
-
 					base[GetKeyName(key)] = value;
-
 				}
-
 			}
-
 		}
 
 
-
 		/// <summary>
-
 		/// The function will modify private member only, not base[key].
-
 		/// </summary>
-
 		/// <param name="keyword"></param>
-
 		/// <param name="value"></param>
-
 		private void SetValue(Keywords keyword, object value)
 
 		{
-
 			string key_name = GetKeyName(keyword);
 
 			try
 
 			{
-
-
-
 				switch (keyword)
 
 				{
-
 					case Keywords.Host:
 
 						this._host = Convert.ToString(value);
@@ -1050,33 +849,29 @@ namespace Npgsql
 						this._enlist = ToBoolean(value);
 
 						break;
-						
-		            case Keywords.PreloadReader:
-						
+
+					case Keywords.PreloadReader:
+
 						this._preloadReader = ToBoolean(value);
-						
+
 						break;
-						
-		            case Keywords.UseExtendedTypes:
-						
+
+					case Keywords.UseExtendedTypes:
+
 						this._useExtendedTypes = ToBoolean(value);
-						
+
 						break;
-
 				}
-
 			}
 
 			catch (InvalidCastException exception)
 
 			{
-
 				string exception_template = string.Empty;
 
 				switch (keyword)
 
 				{
-
 					case Keywords.Port:
 
 					case Keywords.Timeout:
@@ -1108,53 +903,38 @@ namespace Npgsql
 						exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
 
 						break;
-
 				}
 
 				if (!string.IsNullOrEmpty(exception_template))
 
 				{
-
 					throw new ArgumentException(string.Format(exception_template, key_name), key_name, exception);
-
 				}
 
 				throw;
-
 			}
-
 		}
 
 		/// <summary>
-
 		/// Clear the member and assign them to the default value.
-
 		/// </summary>
-
 		public override void Clear()
 
 		{
-
 			base.Clear();
 
 			foreach (Keywords keyword in defaults.Keys)
 
 			{
-
 				SetValue(keyword, defaults[keyword]);
-
 			}
-
 		}
-
 	}
-
 
 
 	public enum Keywords
 
 	{
-
 		Host,
 
 		Port,
@@ -1171,8 +951,7 @@ namespace Npgsql
 
 		SslMode,
 
-		[Obsolete("UTF-8 is always used regardless of this setting.")]
-		Encoding,
+		[Obsolete("UTF-8 is always used regardless of this setting.")] Encoding,
 
 		Timeout,
 
@@ -1197,19 +976,16 @@ namespace Npgsql
 		// These are for the resource manager
 
 		Enlist,
-		
+
 		PreloadReader,
-		
+
 		UseExtendedTypes
-
 	}
-
 
 
 	public enum SslMode
 
 	{
-
 		Disable = 1 << 0,
 
 		Allow = 1 << 1,
@@ -1217,8 +993,5 @@ namespace Npgsql
 		Prefer = 1 << 2,
 
 		Require = 1 << 3
-
 	}
-
 }
-
