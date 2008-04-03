@@ -622,13 +622,6 @@ namespace Npgsql
 				ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
 			}
 
-			// Adjust client encoding.
-
-			//NpgsqlCommand commandEncoding1 = new NpgsqlCommand("show client_encoding", _connector);
-			//String clientEncoding1 = (String)commandEncoding1.ExecuteScalar();
-			NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this);
-			commandEncoding.ExecuteBlind();
-
             // Adjust client encoding.
 
             NpgsqlParameterStatus clientEncodingParam = null;
