@@ -629,9 +629,18 @@ namespace Npgsql
 			NpgsqlCommand commandEncoding = new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this);
 			commandEncoding.ExecuteBlind();
 
-			if (!string.IsNullOrEmpty(settings.SearchPath))
-			{
-				/*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+            // Adjust client encoding.
+
+            NpgsqlParameterStatus clientEncodingParam = null;
+            if(
+                !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
+                (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
+              )
+                new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+
+            if (!string.IsNullOrEmpty(settings.SearchPath))
+            {
+                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
 				p.Value = settings.SearchPath;
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
                 commandSearchPath.Parameters.Add(p);
