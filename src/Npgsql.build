@@ -135,6 +135,7 @@
                 <include name="System.Configuration.dll" />
                 <include name="System.Transactions.dll" />
                 <include name="System.Web.dll" />
+                <include name="System.Xml.dll" />
                 <include name="${tls.lib}" />
             </references>
 <!--
