@@ -1,9 +1,11 @@
-2008-03-19
+2008-04-xx
+	Npgsql2 Beta3
+
 
 	Please note: This release contains changes that will require a recompile of code using it.
 
 New Features:
-	Support for array handling. Parameters can be of type T[] where T is an already supported type. In addition, parameters of a type that support IEnumerable<T> will be treated as T[], types that support IEnumerable<U> where U supports IEnumerable<T> will be treated as a two-dimensional T[] and so on (though if each U has a different number of T items the result is a jagged array and postgres will hence return an error as it doesn't support jagged arrays). The NpgsqlDbType value NpgsqlDbType.Array should be combined using binary-or to produce an array type (e.g. NpgsqlDbType.Array | NpgsqlDbType.Box is an array of box). Direct support for a type is checked first in determining correct handling so byte[] and string are threated as bytea or text by default, not as byte[] or char[] (string implements IEnumerable<char>). GetValue() will also return an array when appropriate. Support for IEnumerable<T> is write-only as the system cannot determine that you might want e.g. List<Int32> rather than Int32[], but when desired a different collection can be created from the returned array (e.g. List<Int32> myList = new List<Int32>((Int32[])reader.GetValue(0)).
+	[#1010216] Support for array handling. Parameters can be of type T[] where T is an already supported type. In addition, parameters of a type that support IEnumerable<T> will be treated as T[], types that support IEnumerable<U> where U supports IEnumerable<T> will be treated as a two-dimensional T[] and so on (though if each U has a different number of T items the result is a jagged array and postgres will hence return an error as it doesn't support jagged arrays). The NpgsqlDbType value NpgsqlDbType.Array should be combined using binary-or to produce an array type (e.g. NpgsqlDbType.Array | NpgsqlDbType.Box is an array of box). Direct support for a type is checked first in determining correct handling so byte[] and string are threated as bytea or text by default, not as byte[] or char[] (string implements IEnumerable<char>). GetValue() will also return an array when appropriate. Support for IEnumerable<T> is write-only as the system cannot determine that you might want e.g. List<Int32> rather than Int32[], but when desired a different collection can be created from the returned array (e.g. List<Int32> myList = new List<Int32>((Int32[])reader.GetValue(0)).
 
 	New types for representing dates and times with the extra information postgres provides beyond that available in DateTime and TimeSpan and allowing for dates outside of the range [0001-01-01T00:00:00 - 9999-12-31T23:59:59] that DateTime allows for. These are still under development and likely to be changed in the near-future, so subsequent beta releases may introduce breaking changes.
 
@@ -25,6 +27,13 @@ New Features:
 	
 	Duplication of tests for different connection string values, to catch any bugs that only occur with some settings.
 
+	Added support for parameters explicit typing on plain queries (this support was already present when calling functions). Now when sending queries, Npgsql will send the exact typing of the parameters as specified by DbType or NpgsqlDbType enums. This will allow better type matching between client and server. Thanks Jon Hanna, Josh Cooley and Agrinei for heads up. See http://pgfoundry.org/forum/message.php?msg_id=1002944 for more info.
+
+	Added support to search_path in connection string. Thanks Andrus Moor for patch! See here: http://pgfoundry.org/forum/message.php?msg_id=1002859 for discussion.
+
+	Added support to property ProcessID in NpgsqlConnection.
+	[#1010312] Code cleanup. Thanks Alaric Dailey for patch.
+
 Bug fixes:
 	[#1000396] CommandBehavior.SingleResult and CommandBehavior.SingleRow producing invalid SQL with some queries. While previous fixes had improved this, there are always edge-cases for which the previous method would fail, or worse would silently change the effects of a query. SingleRow and SchemaOnly now do not alter the command set (users can still use LIMIT in a natural way for commands that will only ever be used in this way), but extraneous information is skipped as efficiently as possible.
 	[#1008865] Incorrect parsing of OID for lastInsertedOID.
@@ -32,6 +41,11 @@ Bug fixes:
 	[#1010317] GetSchemaTable() returning first result even if NextResult() has been called between first and subsequent calls.
 	[#1000721] Memory Usage, ExecuteReader and > 1 Million Rows - Fixed with functionality change to load datareader as needed.
 	[#1000659] Cannot pass array as a parameter to plgsql function call - Fixed with addition of array-handling support.
+	[#1002776] The connection string parameter CommandTimeout does't affected on Command.CommandTimeout. Thanks Oleg Ufaev for patch.
+	Npgsql used to prepend ":" to parameter names when they were added without it. This was causing problems with Entity framework and also was wrong at first place. Now Npgsql returns the name correctly. (Josh Cooley)
+	Fixed problem when calling functions with inout or out parameters. They were being incorrectly added with a column list	which was complained by postgresql server: ERROR: 42601: a column definition list is only allowed for functions returning "record". See http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519 for discussion about this. Thanks very much to Anton Andreev (fn30762 at fmi dot uni-sofia dot bg) for his help providing test cases.
+	Fixed NpgsqlSchema.GetDataSourceInformation() which was throwing exception. Thanks Patrik Husfloen (husfloen at gmail dot com) for patch.
+	[#1010218] Send 'SET CLIENT_ENCODING TO UNICODE' command only if required. Thanks David Bachmann for patch.
 
 2007-11-06
 
