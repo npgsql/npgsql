@@ -256,6 +256,7 @@ public class NpgsqlUserManual
         <dt><code>Protocol</code></dt><dd>Protocol version to use, instead of automatic; Integer 2 or 3</dd>
         <dt><code>Database</code></dt><dd>Database name. Defaults to user name if not specified</dd>
         <dt><code>User Id</code></dt><dd>User name</dd>
+	<dt><code>Integrated Security</code></dt><dd>Set to use windows integrated security. Default=false</dd>
         <dt><code>Password</code></dt><dd>Password for clear text authentication</dd>
         <dt><code>SSL</code></dt><dd>True or False. Controls whether to attempt a secure connection. Default = False</dd>
         <dt><code>Pooling</code></dt><dd>True or False. Controls whether connection pooling is used. Default = True</dd>
@@ -324,7 +325,8 @@ public class NpgsqlUserManual
             <p>
                 The default is "false".
             </p>
-        </dl>
+        </dd>
+	
 </div>
 
 <h3> Using NpgsqlCommand to add a row in a table </h3>
