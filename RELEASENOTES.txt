@@ -1,10 +1,12 @@
-2008-04-xx
+2008-04-07
 	Npgsql2 Beta3
 
 
 	Please note: This release contains changes that will require a recompile of code using it.
 
 New Features:
+
+	Added support for integrated security on windows. In order to use it, just use the connection string parameter: Integrated Security=true. Thanks Brar Piening for patch!
 	[#1010216] Support for array handling. Parameters can be of type T[] where T is an already supported type. In addition, parameters of a type that support IEnumerable<T> will be treated as T[], types that support IEnumerable<U> where U supports IEnumerable<T> will be treated as a two-dimensional T[] and so on (though if each U has a different number of T items the result is a jagged array and postgres will hence return an error as it doesn't support jagged arrays). The NpgsqlDbType value NpgsqlDbType.Array should be combined using binary-or to produce an array type (e.g. NpgsqlDbType.Array | NpgsqlDbType.Box is an array of box). Direct support for a type is checked first in determining correct handling so byte[] and string are threated as bytea or text by default, not as byte[] or char[] (string implements IEnumerable<char>). GetValue() will also return an array when appropriate. Support for IEnumerable<T> is write-only as the system cannot determine that you might want e.g. List<Int32> rather than Int32[], but when desired a different collection can be created from the returned array (e.g. List<Int32> myList = new List<Int32>((Int32[])reader.GetValue(0)).
 
 	New types for representing dates and times with the extra information postgres provides beyond that available in DateTime and TimeSpan and allowing for dates outside of the range [0001-01-01T00:00:00 - 9999-12-31T23:59:59] that DateTime allows for. These are still under development and likely to be changed in the near-future, so subsequent beta releases may introduce breaking changes.
