@@ -1,3 +1,1265 @@
+2008-04-07 01:14  fxjr
+
+	Changed:
+		RELEASENOTES.txt (1.7), "Exp", lines: +3 -1
+
+	Updated release notes for Npgsql beta3 release
+
+2008-04-07 01:12  fxjr
+
+	Changed:
+		docs/UserManual.html (1.9), "Exp", lines: +4 -2
+
+	Added documentation about integrated security.
+
+2008-04-07 01:02  jbcooley
+
+	Changed:
+		src/Npgsql2008.csproj (1.12), "Exp", lines: +56 -0
+
+	Added additional resources to project
+
+2008-04-07 00:55  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.6), "Exp", lines: +2 -2
+
+	Change Integrated Security default to false.  Fix Integrated
+	Security property to store using the correct key.
+
+2008-04-07 00:24  jbcooley
+
+	Changed:
+		src/Npgsql2008.csproj (1.11), "Exp", lines: +2 -1
+		src/Npgsql/NpgsqlConnection.cs (1.21), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.5), "Exp", lines: +62 -5
+		src/Npgsql/NpgsqlConnector.cs (1.18), "Exp", lines: +18 -1
+		src/Npgsql/NpgsqlState.cs (1.12), "Exp", lines: +39 -4
+
+	Added SSPI patch from Brar Piening
+
+2008-04-05 21:28  jbcooley
+
+	Changed:
+		testsuite/noninteractive/NUnit20/NpgsqlTests2008.csproj (1.3), "Exp", lines: +109 -109
+
+	Added assembly reference to fix build
+
+2008-04-05 21:28  jbcooley
+
+	Changed:
+		src/Npgsql2008.csproj (1.10), "Exp", lines: +2 -0
+
+	Added missing files to fix build
+
+2008-04-05 14:05  fxjr
+
+	Changed:
+		src/Npgsql.mdp (1.5), "Exp", lines: +11 -2
+
+
+
+		Fixed assembly references. Fixed assembly signing.
+
+2008-04-05 01:23  fxjr
+
+	Changed:
+		src/Npgsql.mdp (1.4), "Exp", lines: +1 -10
+
+	Added missing DateDataTypes.cs file to project
+
+2008-04-05 00:10  fxjr
+
+	Changed:
+		RELEASENOTES.txt (1.6), "Exp", lines: +16 -2
+
+
+
+		Updated RELEASENOTES.txt
+
+2008-04-04 23:44  fxjr
+
+	Changed:
+		src/Npgsql.mdp (1.3), "Exp", lines: +71 -69
+
+
+
+		Updated Monodevelop project file.
+
+2008-04-04 23:43  fxjr
+
+	Changed:
+		src/Npgsql.build (1.13), "Exp", lines: +1 -0
+
+
+
+		Added missing assembly reference.
+
+2008-04-04 23:41  fxjr
+
+	Changed:
+		src/Npgsql/AssemblyInfo.cs (1.11), "Exp", lines: +1 -1
+
+
+
+		Updated assembly version to Beta3 release
+
+2008-04-03 08:03  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlConnector.cs (1.16), "Exp", lines: +13 -4
+		src/Npgsql/NpgsqlConnector.cs (1.17), "Exp", lines: +0 -7
+
+	Don't change client encoding if we know it to already be utf-8.
+	Thanks to David Bachmann.
+
+2008-04-02 12:16  fxjr
+
+	Changed:
+		src/Npgsql/AssemblyInfo.cs (1.10), "Exp", lines: +12 -13
+		src/Npgsql/HashAlgorithm.cs (1.2), "Exp", lines: +190 -198
+		src/Npgsql/MD5.cs (1.3), "Exp", lines: +25 -32
+		src/Npgsql/MD5CryptoServiceProvider.cs (1.3), "Exp", lines: +539 -498
+		src/Npgsql/NpgsqlAsciiRow.cs (1.5), "Exp", lines: +151 -118
+		src/Npgsql/NpgsqlBackEndKeyData.cs (1.4), "Exp", lines: +22 -21
+		src/Npgsql/NpgsqlBind.cs (1.5), "Exp", lines: +149 -185
+		src/Npgsql/NpgsqlCancelRequest.cs (1.5), "Exp", lines: +33 -38
+		src/Npgsql/NpgsqlClosedState.cs (1.10), "Exp", lines: +139 -145
+		src/Npgsql/NpgsqlCommand.cs (1.20), "Exp", lines: +1374 -1326
+		src/Npgsql/NpgsqlCommandBuilder.cs (1.13), "Exp", lines: +66 -95
+		src/Npgsql/NpgsqlConnectedState.cs (1.5), "Exp", lines: +30 -39
+		src/Npgsql/NpgsqlConnection.cs (1.20), "Exp", lines: +755 -759
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.4), "Exp", lines: +36 -263
+		src/Npgsql/NpgsqlConnector.cs (1.15), "Exp", lines: +684 -763
+		src/Npgsql/NpgsqlConnectorPool.cs (1.8), "Exp", lines: +563 -556
+		src/Npgsql/NpgsqlCopyFormat.cs (1.3), "Exp", lines: +38 -45
+		src/Npgsql/NpgsqlCopyIn.cs (1.5), "Exp", lines: +182 -202
+		src/Npgsql/NpgsqlCopyInState.cs (1.6), "Exp", lines: +92 -94
+		src/Npgsql/NpgsqlCopyInStream.cs (1.4), "Exp", lines: +153 -170
+		src/Npgsql/NpgsqlCopyOut.cs (1.5), "Exp", lines: +158 -170
+		src/Npgsql/NpgsqlCopyOutState.cs (1.6), "Exp", lines: +66 -61
+		src/Npgsql/NpgsqlCopyOutStream.cs (1.4), "Exp", lines: +189 -207
+		src/Npgsql/NpgsqlCopySerializer.cs (1.3), "Exp", lines: +440 -457
+		src/Npgsql/NpgsqlDataAdapter.cs (1.5), "Exp", lines: +177 -235
+		src/Npgsql/NpgsqlDataReader.cs (1.12), "Exp", lines: +1478 -1312
+		src/Npgsql/NpgsqlDescribe.cs (1.5), "Exp", lines: +27 -37
+		src/Npgsql/NpgsqlError.cs (1.4), "Exp", lines: +252 -276
+		src/Npgsql/NpgsqlEventLog.cs (1.3), "Exp", lines: +356 -316
+		src/Npgsql/NpgsqlException.cs (1.8), "Exp", lines: +202 -243
+		src/Npgsql/NpgsqlExecute.cs (1.5), "Exp", lines: +33 -44
+		src/Npgsql/NpgsqlFactory.cs (1.5), "Exp", lines: +50 -56
+		src/Npgsql/NpgsqlFlush.cs (1.5), "Exp", lines: +18 -23
+		src/Npgsql/NpgsqlMediator.cs (1.7), "Exp", lines: +73 -104
+		src/Npgsql/NpgsqlMessageTypes.cs (1.6), "Exp", lines: +17 -20
+		src/Npgsql/NpgsqlNotificationEventArgs.cs (1.4), "Exp", lines: +27 -26
+		src/Npgsql/NpgsqlParameter.cs (1.14), "Exp", lines: +536 -523
+		src/Npgsql/NpgsqlParameterCollection.cs (1.7), "Exp", lines: +508 -508
+		src/Npgsql/NpgsqlParameterStatus.cs (1.4), "Exp", lines: +18 -19
+		src/Npgsql/NpgsqlParse.cs (1.5), "Exp", lines: +49 -53
+		src/Npgsql/NpgsqlPasswordPacket.cs (1.4), "Exp", lines: +50 -52
+		src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs (1.4), "Exp", lines: +153 -149
+		src/Npgsql/NpgsqlQuery.cs (1.4), "Exp", lines: +41 -45
+		src/Npgsql/NpgsqlReadyState.cs (1.4), "Exp", lines: +124 -129
+		src/Npgsql/NpgsqlResourceManager.cs (1.3), "Exp", lines: +121 -118
+		src/Npgsql/NpgsqlRow.cs (1.4), "Exp", lines: +298 -229
+		src/Npgsql/NpgsqlRowDescription.cs (1.6), "Exp", lines: +180 -154
+		src/Npgsql/NpgsqlSchema.cs (1.5), "Exp", lines: +272 -263
+		src/Npgsql/NpgsqlServices.cs (1.6), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlStartupPacket.cs (1.4), "Exp", lines: +117 -123
+		src/Npgsql/NpgsqlStartupState.cs (1.4), "Exp", lines: +21 -24
+		src/Npgsql/NpgsqlState.cs (1.11), "Exp", lines: +941 -871
+		src/Npgsql/NpgsqlSync.cs (1.5), "Exp", lines: +18 -24
+		src/Npgsql/NpgsqlTransaction.cs (1.5), "Exp", lines: +167 -168
+		src/Npgsql/NpgsqlTransactionCallbacks.cs (1.4), "Exp", lines: +112 -113
+		src/Npgsql/PGUtil.cs (1.6), "Exp", lines: +693 -633
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.5), "Exp", lines: +1 -1
+		src/Npgsql/Web/NpgsqlMembershipProvider.cs (1.6), "Exp", lines: +1750 -1727
+		src/Npgsql/Web/NpgsqlProfileProvider.cs (1.7), "Exp", lines: +1152 -973
+		src/Npgsql/Web/NpgsqlRoleProvider.cs (1.7), "Exp", lines: +772 -729
+		src/NpgsqlTypes/ArrayHandling.cs (1.3), "Exp", lines: +153 -73
+		src/NpgsqlTypes/DateDatatypes.cs (1.2), "Exp", lines: +3390 -3004
+		src/NpgsqlTypes/FastPath.cs (1.6), "Exp", lines: +339 -316
+		src/NpgsqlTypes/FastPathArg.cs (1.3), "Exp", lines: +68 -63
+		src/NpgsqlTypes/LargeObject.cs (1.4), "Exp", lines: +143 -135
+		src/NpgsqlTypes/LargeObjectManager.cs (1.6), "Exp", lines: +126 -108
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.11), "Exp", lines: +43 -49
+		src/NpgsqlTypes/NpgsqlTypeConverters.cs (1.6), "Exp", lines: +627 -610
+		src/NpgsqlTypes/NpgsqlTypes.cs (1.7), "Exp", lines: +571 -514
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.14), "Exp", lines: +1182 -1138
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.9), "Exp", lines: +1 -1
+
+
+
+		[#1010312] Code cleanup. Thanks Alaric Dailey for patch.
+
+2008-04-01 13:11  talliesin
+
+	Added:
+		docs/memory.png (1.1)
+		docs/preloadScalabilty.html (1.1)
+		docs/time.png (1.1)
+	Changed:
+		docs/UserManual.html (1.8), "Exp", lines: +156 -151
+		docs/global.css (1.2), "Exp", lines: +6 -4
+
+	Update documentation
+
+2008-03-25 22:33  jbcooley
+
+	Added:
+		src/Npgsql/NpgsqlSchema.msl (1.1)
+		src/Npgsql/NpgsqlSchema.ssdl (1.1)
+	Changed:
+		src/Npgsql/NpgsqlProviderManifest.Manifest.xml (1.3), "Exp", lines: +13 -11
+		src/Npgsql/NpgsqlProviderManifest.cs (1.3), "Exp", lines: +116 -40
+		src/Npgsql/NpgsqlServices.cs (1.5), "Exp", lines: +4 -2
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.8), "Exp", lines: +15 -7
+		src/Npgsql2008.csproj (1.9), "Exp", lines: +2 -0
+
+	Better support for the edmgen tool and other tools that use the
+	manifest and metadata api
+
+2008-03-25 11:55  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlDataReader.cs (1.11), "Exp", lines: +38 -1
+
+	Some more commenting
+
+2008-03-22 20:17  fxjr
+
+	Changed:
+		docs/UserManual.html (1.7), "Exp", lines: +4 -2
+
+
+
+		Added a notice to not use execute a command inside a
+	notification handler. Thanks Xavier Thomas (xavie dot .thomas dot
+	1980 at gmail dot com) for heads up.
+
+2008-03-20 08:15  talliesin
+
+	Changed:
+		RELEASENOTES.txt (1.5), "Exp", lines: +33 -0
+
+	[no log message]
+
+2008-03-16 23:55  jbcooley
+
+	Changed:
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.7), "Exp", lines: +39 -8
+
+	Added support for INTERSECT and EXCEPT.  Fixed LIMIT when used in
+	joins.
+
+2008-03-15 01:24  jbcooley
+
+	Changed:
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.6), "Exp", lines: +70 -5
+
+	Pass more tests by supporting more edm functions and better
+	variable substitution
+
+2008-03-15 01:22  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlServices.cs (1.4), "Exp", lines: +2 -2
+
+	Fix construction of SqlGenerators
+
+2008-03-14 23:17  talliesin
+
+	Added:
+		src/NpgsqlTypes/DateDatatypes.cs (1.1)
+	Changed:
+		src/Npgsql.csproj (1.12), "Exp", lines: +0 -1
+		src/Npgsql.sln (1.5), "Exp", lines: +4 -0
+		src/Npgsql/NpgsqlAsciiRow.cs (1.4), "Exp", lines: +30 -8
+		src/Npgsql/NpgsqlConnection.cs (1.19), "Exp", lines: +9 -0
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.3), "Exp", lines: +29 -1
+		src/Npgsql/NpgsqlConnector.cs (1.14), "Exp", lines: +7 -0
+		src/Npgsql/NpgsqlDataReader.cs (1.10), "Exp", lines: +28 -49
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.10), "Exp", lines: +2 -2
+		src/NpgsqlTypes/NpgsqlTypeConverters.cs (1.5), "Exp", lines: +67 -7
+		src/NpgsqlTypes/NpgsqlTypes.cs (1.6), "Exp", lines: +0 -950
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.13), "Exp", lines: +155 -103
+
+	Data types supporting date ranges outside of those supported by
+	System.DateTime and the greater variety and detail provided by
+	postgres' date and time datatypes.
+
+		Moved Npgsql into the same file, as it is similar in some
+	ways.
+
+		Becaues these datatypes can clash with cases where one uses
+	System.DateTime with a DataAdaptor, added a connection string
+	option to choose between the the two.
+
+		Also added error handling for the case where
+	System.DateTime is being used, and an unexpected value outside of
+	its range appears in data.
+
+2008-03-14 17:58  talliesin
+
+	Changed:
+		testsuite/noninteractive/NUnit20/DataAdapterTests.cs (1.4), "Exp", lines: +17 -1
+		testsuite/noninteractive/NUnit20/DataReaderTests.cs (1.4), "Exp", lines: +6 -2
+
+	[no log message]
+
+2008-03-14 17:45  talliesin
+
+	Changed:
+		testsuite/noninteractive/NUnit20/BaseClassTests.cs (1.3), "Exp", lines: +3 -1
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.8), "Exp", lines: +161 -2496
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.6), "Exp", lines: +26 -123
+		testsuite/noninteractive/NUnit20/DataAdapterTests.cs (1.3), "Exp", lines: +30 -155
+		testsuite/noninteractive/NUnit20/DataReaderTests.cs (1.3), "Exp", lines: +75 -781
+		testsuite/noninteractive/NUnit20/PrepareTests.cs (1.2), "Exp", lines: +21 -5
+
+	Inherit V2 tests from V3 tests to keep consistency between them.
+
+2008-03-14 01:46  fxjr
+
+	Changed:
+		src/Npgsql/PGUtil.cs (1.5), "Exp", lines: +18 -2
+
+
+
+		Fixed handling of non digit chars when extracting server
+	version from "select version()" return. It was giving problems for
+	server versions in the format: 8.3beta1 for example.
+
+2008-03-14 01:44  fxjr
+
+	Changed:
+		testsuite/noninteractive/NUnit20/NpgsqlTests.dll.config (1.2), "Exp", lines: +1 -0
+
+
+
+		Added connection string for tests using protocol version 2
+
+2008-03-14 01:44  fxjr
+
+	Changed:
+		testsuite/noninteractive/NUnit20/NpgsqlTests.build (1.3), "Exp", lines: +1 -0
+
+
+
+		Added System.Configuration assembly reference to build test
+	cases. Now testcases compile ok with nant
+
+2008-03-13 12:49  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlState.cs (1.10), "Exp", lines: +8 -8
+
+	Better block on "beta" in server version strings - doesn't pick up
+	numbers following "beta".
+
+2008-03-13 12:05  talliesin
+
+	Changed:
+		src/NpgsqlTypes/NpgsqlTypes.cs (1.5), "Exp", lines: +12 -28
+
+	Remove dependencies upon System.Drawing.
+
+		Make NpgsqlInterval clonable
+
+2008-03-13 12:03  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlState.cs (1.9), "Exp", lines: +13 -2
+
+	Fix server version breaking on "beta"
+
+2008-03-12 00:49  jbcooley
+
+	Changed:
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.5), "Exp", lines: +12 -0
+
+	Support date extraction functions
+
+2008-03-11 14:21  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlConnection.cs (1.18), "Exp", lines: +1 -1
+
+	Silly typo!
+
+2008-03-11 13:57  talliesin
+
+	Changed:
+		src/.cvsignore (1.3), "Exp", lines: +1 -2
+		src/Npgsql.csproj (1.11), "Exp", lines: +9 -0
+		src/Npgsql/NpgsqlCommand.cs (1.19), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlConnection.cs (1.17), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlParameter.cs (1.13), "Exp", lines: +2 -1
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.4), "Exp", lines: +185 -54
+		src/Npgsql/SqlGenerators/SqlDeleteGenerator.cs (1.4), "Exp", lines: +30 -1
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.4), "Exp", lines: +31 -3
+		src/Npgsql/SqlGenerators/SqlSelectGenerator.cs (1.4), "Exp", lines: +11 -0
+		src/Npgsql/SqlGenerators/SqlUpdateGenerator.cs (1.4), "Exp", lines: +42 -2
+		src/Npgsql/SqlGenerators/VisitedExpression.cs (1.4), "Exp", lines: +40 -0
+		testsuite/noninteractive/NUnit20/App.config (1.3), "Exp", lines: +8 -7
+		testsuite/noninteractive/NUnit20/BaseClassTests.cs (1.2), "Exp", lines: +17 -1
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.7), "Exp", lines: +2373 -33
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.5), "Exp", lines: +121 -1
+		testsuite/noninteractive/NUnit20/DataAdapterTests.cs (1.2), "Exp", lines: +149 -0
+		testsuite/noninteractive/NUnit20/DataReaderTests.cs (1.2), "Exp", lines: +877 -9
+		testsuite/noninteractive/NUnit20/NpgsqlTests.csproj (1.3), "Exp", lines: +66 -68
+		testsuite/noninteractive/add_functions.sql (1.3), "Exp", lines: +0 -1
+
+	Redo merge.
+
+2008-03-11 07:46  talliesin
+
+	Deleted:
+		src/Npgsql/NpgsqlBinaryRow.cs (1.3)
+		src/Npgsql/NpgsqlResultSet.cs (1.3)
+	Changed:
+		src/Npgsql.build (1.12), "Exp", lines: +1 -0
+		src/.cvsignore (1.2), "Exp", lines: +3 -0
+		src/Npgsql.csproj (1.10), "Exp", lines: +491 -486
+		src/Npgsql.sln (1.4), "Exp", lines: +9 -1
+		src/Npgsql2008.csproj (1.8), "Exp", lines: +5 -4
+		src/Npgsql/AssemblyInfo.cs (1.9), "Exp", lines: +2 -1
+		src/Npgsql/NpgsqlAsciiRow.cs (1.3), "Exp", lines: +124 -166
+		src/Npgsql/NpgsqlBackEndKeyData.cs (1.3), "Exp", lines: +7 -47
+		src/Npgsql/NpgsqlBind.cs (1.4), "Exp", lines: +9 -12
+		src/Npgsql/NpgsqlCancelRequest.cs (1.4), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlClosedState.cs (1.9), "Exp", lines: +16 -3
+		src/Npgsql/NpgsqlCommand.cs (1.18), "Exp", lines: +251 -514
+		src/Npgsql/NpgsqlCommandBuilder.cs (1.12), "Exp", lines: +302 -258
+		src/Npgsql/NpgsqlConnectedState.cs (1.4), "Exp", lines: +4 -16
+		src/NpgsqlTypes/ArrayHandling.cs (1.2), "Exp", lines: +373 -373
+		src/NpgsqlTypes/FastPath.cs (1.5), "Exp", lines: +24 -37
+		src/NpgsqlTypes/LargeObjectManager.cs (1.5), "Exp", lines: +18 -15
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.9), "Exp", lines: +8 -5
+		src/NpgsqlTypes/NpgsqlTypeConverters.cs (1.4), "Exp", lines: +26 -11
+		src/NpgsqlTypes/NpgsqlTypes.cs (1.4), "Exp", lines: +1388 -150
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.12), "Exp", lines: +304 -266
+		src/Npgsql/NpgsqlConnection.cs (1.16), "Exp", lines: +38 -15
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.2), "Exp", lines: +1196 -588
+		src/Npgsql/NpgsqlConnector.cs (1.13), "Exp", lines: +152 -136
+		src/Npgsql/NpgsqlConnectorPool.cs (1.7), "Exp", lines: +54 -16
+		src/Npgsql/NpgsqlCopyFormat.cs (1.2), "Exp", lines: +0 -8
+		src/Npgsql/NpgsqlCopyIn.cs (1.4), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCopyInState.cs (1.5), "Exp", lines: +6 -21
+		src/Npgsql/NpgsqlCopyOut.cs (1.4), "Exp", lines: +1 -5
+		src/Npgsql/NpgsqlCopyOutState.cs (1.5), "Exp", lines: +5 -14
+		src/Npgsql/NpgsqlCopySerializer.cs (1.2), "Exp", lines: +9 -14
+		src/Npgsql/NpgsqlDataReader.cs (1.9), "Exp", lines: +899 -647
+		src/Npgsql/NpgsqlDescribe.cs (1.4), "Exp", lines: +5 -7
+		src/Npgsql/NpgsqlError.cs (1.3), "Exp", lines: +82 -135
+		src/Npgsql/NpgsqlException.cs (1.7), "Exp", lines: +3 -4
+		src/Npgsql/NpgsqlExecute.cs (1.4), "Exp", lines: +5 -7
+		src/Npgsql/NpgsqlFlush.cs (1.4), "Exp", lines: +3 -4
+		src/Npgsql/NpgsqlMediator.cs (1.6), "Exp", lines: +1 -175
+		src/Npgsql/NpgsqlMessageTypes.cs (1.5), "Exp", lines: +15 -114
+		src/Npgsql/NpgsqlNotificationEventArgs.cs (1.3), "Exp", lines: +12 -6
+		src/Npgsql/NpgsqlParameter.cs (1.12), "Exp", lines: +9 -31
+		src/Npgsql/NpgsqlParameterCollection.cs (1.6), "Exp", lines: +64 -18
+		src/Npgsql/NpgsqlParameterStatus.cs (1.3), "Exp", lines: +6 -41
+		src/Npgsql/NpgsqlParse.cs (1.4), "Exp", lines: +6 -10
+		src/Npgsql/NpgsqlPasswordPacket.cs (1.3), "Exp", lines: +6 -6
+		src/Npgsql/NpgsqlQuery.cs (1.3), "Exp", lines: +5 -5
+		src/Npgsql/NpgsqlReadyState.cs (1.3), "Exp", lines: +27 -25
+		src/Npgsql/NpgsqlRow.cs (1.3), "Exp", lines: +359 -28
+		src/Npgsql/NpgsqlRow.resx (1.2), "Exp", lines: +123 -0
+		src/Npgsql/NpgsqlRowDescription.cs (1.5), "Exp", lines: +120 -172
+		src/Npgsql/NpgsqlServices.cs (1.3), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlStartupPacket.cs (1.3), "Exp", lines: +18 -18
+		src/Npgsql/NpgsqlStartupState.cs (1.3), "Exp", lines: +2 -13
+		src/Npgsql/NpgsqlState.cs (1.8), "Exp", lines: +695 -648
+		src/Npgsql/NpgsqlSync.cs (1.4), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlTransaction.cs (1.4), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlTransactionCallbacks.cs (1.3), "Exp", lines: +3 -3
+		src/Npgsql/PGUtil.cs (1.4), "Exp", lines: +402 -141
+		src/Npgsql/PGUtil.resx (1.2), "Exp", lines: +78 -56
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.3), "Exp", lines: +54 -185
+		src/Npgsql/SqlGenerators/SqlDeleteGenerator.cs (1.3), "Exp", lines: +1 -30
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.3), "Exp", lines: +3 -31
+		src/Npgsql/SqlGenerators/SqlSelectGenerator.cs (1.3), "Exp", lines: +0 -11
+		src/Npgsql/SqlGenerators/SqlUpdateGenerator.cs (1.3), "Exp", lines: +2 -42
+		src/Npgsql/SqlGenerators/VisitedExpression.cs (1.3), "Exp", lines: +0 -40
+		src/Npgsql/Web/NpgsqlMembershipProvider.cs (1.5), "Exp", lines: +4 -4
+		src/Npgsql/Web/NpgsqlProfileProvider.cs (1.6), "Exp", lines: +15 -28
+		src/Npgsql/Web/NpgsqlRoleProvider.cs (1.6), "Exp", lines: +5 -5
+
+	Merge in RELEASE_2_0_ALPHA3
+
+2008-03-11 06:53  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlDataReader.cs (1.7.2.3), "Exp", lines: +27 -5
+
+	Check for NpgsqlInterval value in caching reader's GetValue()
+
+2008-03-10 22:11  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlServices.cs (1.2), "Exp", lines: +2 -0
+
+	Added support for dml
+
+2008-03-10 21:48  talliesin
+
+	Changed:
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.11.2.2), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCommand.cs (1.17.2.2), "Exp", lines: +35 -36
+		src/Npgsql/NpgsqlConnection.cs (1.14.2.2), "Exp", lines: +11 -0
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.1.2.2), "Exp", lines: +28 -1
+		src/Npgsql/NpgsqlConnector.cs (1.12.2.2), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlDataReader.cs (1.7.2.2), "Exp", lines: +764 -657
+		src/Npgsql/NpgsqlRowDescription.cs (1.4.2.2), "Exp", lines: +0 -5
+		src/Npgsql/NpgsqlState.cs (1.7.2.2), "Exp", lines: +0 -4
+		testsuite/noninteractive/NUnit20/DataReaderTests.cs (1.1.2.2), "Exp", lines: +16 -0
+
+	Allow for caching of entire datareader for backwards compatibility.
+
+2008-03-10 08:33  talliesin
+
+	Changed:
+		src/Npgsql/NpgsqlDataReader.cs (1.8), "Exp", lines: +1 -0
+
+	Fix reported bug #1010310
+
+2008-03-10 07:58  talliesin
+
+	Deleted:
+		src/Npgsql/NpgsqlBinaryRow.cs (1.2.2.1)
+		src/Npgsql/NpgsqlResultSet.cs (1.2.2.1)
+	Changed:
+		src/.cvsignore (1.1.2.1), "Exp", lines: +2 -0
+		src/Npgsql.build (1.11.2.1), "Exp", lines: +1 -0
+		src/Npgsql.csproj (1.9.2.1), "Exp", lines: +491 -486
+		src/Npgsql.sln (1.3.2.1), "Exp", lines: +9 -1
+		src/Npgsql2008.csproj (1.7.2.1), "Exp", lines: +5 -4
+		src/Npgsql/AssemblyInfo.cs (1.8.2.1), "Exp", lines: +2 -1
+		src/Npgsql/NpgsqlAsciiRow.cs (1.2.2.1), "Exp", lines: +124 -166
+		src/Npgsql/NpgsqlBackEndKeyData.cs (1.2.2.1), "Exp", lines: +7 -47
+		src/Npgsql/NpgsqlBind.cs (1.3.2.1), "Exp", lines: +9 -12
+		src/Npgsql/NpgsqlCancelRequest.cs (1.3.2.1), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlClosedState.cs (1.8.2.1), "Exp", lines: +16 -3
+		src/Npgsql/NpgsqlCommand.cs (1.17.2.1), "Exp", lines: +163 -519
+		src/Npgsql/NpgsqlCommandBuilder.cs (1.11.2.1), "Exp", lines: +302 -258
+		src/Npgsql/NpgsqlConnectedState.cs (1.3.2.1), "Exp", lines: +4 -16
+		src/Npgsql/NpgsqlConnection.cs (1.14.2.1), "Exp", lines: +39 -13
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.1.2.1), "Exp", lines: +1169 -588
+		src/Npgsql/NpgsqlConnector.cs (1.12.2.1), "Exp", lines: +152 -136
+		src/Npgsql/NpgsqlConnectorPool.cs (1.6.2.1), "Exp", lines: +54 -16
+		src/Npgsql/NpgsqlCopyFormat.cs (1.1.2.1), "Exp", lines: +0 -8
+		src/Npgsql/NpgsqlCopyIn.cs (1.3.2.1), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCopyInState.cs (1.4.2.1), "Exp", lines: +6 -21
+		src/NpgsqlTypes/ArrayHandling.cs (1.1.2.1), "Exp", lines: +373 -373
+		src/NpgsqlTypes/FastPath.cs (1.4.2.1), "Exp", lines: +24 -37
+		src/NpgsqlTypes/LargeObjectManager.cs (1.4.2.1), "Exp", lines: +18 -15
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.8.2.1), "Exp", lines: +8 -5
+		src/NpgsqlTypes/NpgsqlTypeConverters.cs (1.3.2.1), "Exp", lines: +26 -11
+		src/NpgsqlTypes/NpgsqlTypes.cs (1.3.2.1), "Exp", lines: +1388 -150
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.11.2.1), "Exp", lines: +304 -266
+		src/Npgsql/NpgsqlCopyOut.cs (1.3.2.1), "Exp", lines: +1 -5
+		src/Npgsql/NpgsqlCopyOutState.cs (1.4.2.1), "Exp", lines: +5 -14
+		src/Npgsql/NpgsqlCopySerializer.cs (1.1.2.1), "Exp", lines: +9 -14
+		src/Npgsql/NpgsqlDataReader.cs (1.7.2.1), "Exp", lines: +495 -371
+		src/Npgsql/NpgsqlDescribe.cs (1.3.2.1), "Exp", lines: +5 -7
+		src/Npgsql/NpgsqlError.cs (1.2.2.1), "Exp", lines: +82 -135
+		src/Npgsql/NpgsqlException.cs (1.6.2.1), "Exp", lines: +3 -4
+		src/Npgsql/NpgsqlExecute.cs (1.3.2.1), "Exp", lines: +5 -7
+		src/Npgsql/NpgsqlFlush.cs (1.3.2.1), "Exp", lines: +3 -4
+		src/Npgsql/NpgsqlMediator.cs (1.5.2.1), "Exp", lines: +1 -175
+		src/Npgsql/NpgsqlMessageTypes.cs (1.4.2.1), "Exp", lines: +15 -114
+		src/Npgsql/NpgsqlNotificationEventArgs.cs (1.2.2.1), "Exp", lines: +12 -6
+		src/Npgsql/NpgsqlParameter.cs (1.11.2.1), "Exp", lines: +9 -45
+		src/Npgsql/NpgsqlParameterCollection.cs (1.5.2.1), "Exp", lines: +64 -18
+		src/Npgsql/NpgsqlParameterStatus.cs (1.2.2.1), "Exp", lines: +6 -41
+		src/Npgsql/NpgsqlParse.cs (1.3.2.1), "Exp", lines: +6 -10
+		src/Npgsql/NpgsqlPasswordPacket.cs (1.2.2.1), "Exp", lines: +6 -6
+		src/Npgsql/NpgsqlQuery.cs (1.2.2.1), "Exp", lines: +5 -5
+		src/Npgsql/NpgsqlReadyState.cs (1.2.2.1), "Exp", lines: +27 -25
+		src/Npgsql/NpgsqlRow.cs (1.2.2.1), "Exp", lines: +359 -28
+		src/Npgsql/NpgsqlRow.resx (1.1.2.1), "Exp", lines: +123 -0
+		src/Npgsql/NpgsqlRowDescription.cs (1.4.2.1), "Exp", lines: +123 -170
+		src/Npgsql/NpgsqlStartupPacket.cs (1.2.2.1), "Exp", lines: +18 -18
+		src/Npgsql/NpgsqlStartupState.cs (1.2.2.1), "Exp", lines: +2 -13
+		src/Npgsql/NpgsqlState.cs (1.7.2.1), "Exp", lines: +699 -648
+		src/Npgsql/NpgsqlSync.cs (1.3.2.1), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlTransaction.cs (1.3.2.1), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlTransactionCallbacks.cs (1.2.2.1), "Exp", lines: +3 -3
+		src/Npgsql/PGUtil.cs (1.3.2.1), "Exp", lines: +402 -141
+		src/Npgsql/PGUtil.resx (1.1.2.1), "Exp", lines: +78 -56
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.2.2.1), "Exp", lines: +54 -185
+		src/Npgsql/SqlGenerators/SqlDeleteGenerator.cs (1.2.2.1), "Exp", lines: +1 -30
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.2.2.1), "Exp", lines: +3 -31
+		src/Npgsql/SqlGenerators/SqlSelectGenerator.cs (1.2.2.1), "Exp", lines: +0 -11
+		src/Npgsql/SqlGenerators/SqlUpdateGenerator.cs (1.2.2.1), "Exp", lines: +2 -42
+		src/Npgsql/SqlGenerators/VisitedExpression.cs (1.2.2.1), "Exp", lines: +0 -40
+		src/Npgsql/Web/NpgsqlMembershipProvider.cs (1.4.2.1), "Exp", lines: +4 -4
+		src/Npgsql/Web/NpgsqlProfileProvider.cs (1.5.2.1), "Exp", lines: +15 -28
+		src/Npgsql/Web/NpgsqlRoleProvider.cs (1.5.2.1), "Exp", lines: +5 -5
+		testsuite/noninteractive/add_functions.sql (1.2.2.1), "Exp", lines: +0 -1
+		testsuite/noninteractive/NUnit20/App.config (1.2.2.1), "Exp", lines: +15 -7
+		testsuite/noninteractive/NUnit20/BaseClassTests.cs (1.1.2.1), "Exp", lines: +17 -1
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.6.2.1), "Exp", lines: +2374 -34
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.4.2.1), "Exp", lines: +121 -1
+		testsuite/noninteractive/NUnit20/DataAdapterTests.cs (1.1.2.1), "Exp", lines: +149 -0
+		testsuite/noninteractive/NUnit20/DataReaderTests.cs (1.1.2.1), "Exp", lines: +862 -10
+		testsuite/noninteractive/NUnit20/NpgsqlTests.csproj (1.2.2.1), "Exp", lines: +66 -68
+
+	In new branch:
+
+		Change behaviour of datareader to be lazy-loaded as read
+	rather than read in one batch.
+
+		Many changes to facilitate above change.
+
+		Only use UTF-8 encoding.
+
+		Use of typed collections instead of untyped, throughout.
+
+		Better recovery from thread-abort.
+
+		Better survival of connection damage. Connections retrieved
+	from pool checked before use.
+
+		Add separate test cases for version2 protocol, so that
+	version2 and version3 can be simultaneously tested.
+
+		Change test cases to close datareaders after use. The
+	documentation for ExecuteReader says "While the IDataReader is in
+	use, the associated IDbConnection is busy serving the IDataReader.
+	While in this state, no other operations can be performed on the
+	IDbConnection other than closing it. This is the case until the
+	Close method of the DataReader is called. If the DataReader is
+	created with CommandBehavior set to CloseConnection, closing the
+	DataReader closes the connection automatically." Npgsql previously
+	didn't enforce this rule, but has to with these changes. All test
+	cases that broke this rule therefore had to be changed.
+
+2008-03-09 19:51  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlConnection.cs (1.15), "Exp", lines: +14 -0
+
+
+
+		Added support to property ProcessID in NpgsqlConnection.
+
+2008-03-06 01:48  jbcooley
+
+	Changed:
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.2), "Exp", lines: +185 -54
+		src/Npgsql/SqlGenerators/SqlDeleteGenerator.cs (1.2), "Exp", lines: +30 -1
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.2), "Exp", lines: +31 -3
+		src/Npgsql/SqlGenerators/SqlSelectGenerator.cs (1.2), "Exp", lines: +11 -0
+		src/Npgsql/SqlGenerators/SqlUpdateGenerator.cs (1.2), "Exp", lines: +42 -2
+		src/Npgsql/SqlGenerators/VisitedExpression.cs (1.2), "Exp", lines: +40 -0
+
+	More select statement support plus simple dml support
+
+2008-03-06 01:47  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlParameter.cs (1.11), "Exp", lines: +16 -1
+
+	Fix Clone method so that type_info doesn't get automatically
+	initialized through the property getter.
+
+2008-03-02 00:46  fxjr
+
+	Changed:
+		docs/UserManual.html (1.6), "Exp", lines: +141 -17
+
+
+
+		Added information about running nunit tests, searchpath
+	connection string parameter and array support.
+
+2008-03-02 00:30  fxjr
+
+	Changed:
+		src/Npgsql2008.csproj (1.7), "Exp", lines: +2 -1
+
+
+
+		Added ArrayHandling.cs to project and changes the build
+	action on NpgsqlMetaData.xml to embedded resource.
+	NpgsqlSchema.GetDataSourceInformation() was throing exception
+	without this fix. Thanks Patrik Husfloen (husfloen at gmail dot
+	com) for patch.
+
+2008-02-25 02:53  fxjr
+
+	Changed:
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.6), "Exp", lines: +50 -0
+		src/Npgsql/NpgsqlCommand.cs (1.17), "Exp", lines: +97 -2
+		testsuite/noninteractive/add_functions.sql (1.2), "Exp", lines: +1 -0
+
+
+
+		Fixed problem when calling functions with inout or out
+	parameters. They were being incorrectly added with a column list
+	which was complained by postgresql server: ERROR: 42601: a column
+	definition list is only allowed for functions returning "record".
+	See
+	http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519
+	for discussion about this. Thanks very much to Anton Andreev
+	(fn30762 at fmi dot uni-sofia dot bg) for his help providing test
+	cases.
+
+2008-02-18 01:46  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlProviderManifest.Manifest.xml (1.2), "Exp", lines: +24 -0
+
+	added support for the COUNT function
+
+2008-02-18 01:45  jbcooley
+
+	Added:
+		src/Npgsql/SqlGenerators/SqlBaseGenerator.cs (1.1)
+		src/Npgsql/SqlGenerators/SqlDeleteGenerator.cs (1.1)
+		src/Npgsql/SqlGenerators/SqlInsertGenerator.cs (1.1)
+		src/Npgsql/SqlGenerators/SqlSelectGenerator.cs (1.1)
+		src/Npgsql/SqlGenerators/SqlUpdateGenerator.cs (1.1)
+		src/Npgsql/SqlGenerators/VisitedExpression.cs (1.1)
+
+	Adding SqlGenerators for entity framework
+
+2008-02-14 11:50  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlParameter.cs (1.10), "Exp", lines: +2 -2
+
+
+		Removed verification of NpgsqlDbType.Array when setting
+	NpgsqlDbType property. As BigInt has an enum value of 0, user would
+	have problems if they try to specify an array of bigint because
+	NpgsqlDbType.Array | NpgsqlDbType.Bigint == NpgsqlDbType.Array.
+	This decision was based in the fact that to fix this problem, we
+	would need to change all enum values which would lead to break
+	already compiled clients. Thanks Jon Hanna for discussion about
+	that.
+
+2008-02-11 02:16  fxjr
+
+	Added:
+		src/NpgsqlTypes/ArrayHandling.cs (1.1)
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.16), "Exp", lines: +4 -4
+		src/Npgsql/NpgsqlParameter.cs (1.9), "Exp", lines: +6 -8
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.8), "Exp", lines: +6 -2
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.11), "Exp", lines: +103 -8
+		src/Npgsql/NpgsqlParameter.resx (1.2), "Exp", lines: +4 -1
+
+
+
+		[#1010216] Array Handling. Not fully tested by comments
+	welcome Added support for array datatype. Anything that implements
+	IEnumerable<T> where T is a type already supported by npgsql will
+	be treated the same as T[], anything that implements IEnumerable<U>
+	where U implements IEnumerable<T> will be treated the same as T[,]
+	(but cause an error if it's a "jagged" array, as postgres doesn't
+	support them) and so on. In order to use it, just use an array or
+	IEnumerable<T> as parameter value. Also, you can specify the
+	NpgsqlDbType as an or'ed value to say it is an array: Binary or
+	with other values. E.g. Array of Box is NpgsqlDbType.Array |
+	NpgsqlDbType.Box. Thanks Jon Hanna (jon at hackcraft dot net) for
+	patches. Also thanks Michael Parshin (parshim at gmail dot com) for
+	his help fixing bugs.
+
+2008-01-30 20:01  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlConnector.cs (1.12), "Exp", lines: +9 -0
+
+
+
+		Reverted search_path patch to original as proposed by
+	Andrus Moor with an slightly modification to use = instead of TO.
+	See here: http://pgfoundry.org/forum/message.php?msg_id=1002859 for
+	discussion.
+
+		Added check for semicolon (;) in searchpath connection
+	string parameter to prevent from a sql injection attack.
+
+		Now, public schema isn't added automatically anymore. User
+	has to add it if she sets search_path in connection string.
+
+2008-01-30 18:37  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.15), "Exp", lines: +9 -7
+		src/Npgsql/NpgsqlConnector.cs (1.11), "Exp", lines: +10 -1
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.7), "Exp", lines: +2 -1
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.10), "Exp", lines: +23 -10
+
+
+		Added support for parameters explicit typing on plain
+	queries (this support was already present when calling functions).
+	Now when sending queries, Npgsql will send the exact typing of the
+	parameters as specified by DbType or NpgsqlDbType enums. This will
+	allow better type matching between client and server. Thanks Jon
+	Hanna, Josh Cooley and Agrinei for heads up. See
+	http://pgfoundry.org/forum/message.php?msg_id=1002944 for more
+	info.
+
+2008-01-24 22:44  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlProviderManifest.cs (1.2), "Exp", lines: +3 -1
+
+	wrapped code in #ifdef ENTITIES since this class also uses entity
+	framework classes as Francisco pointed out.
+
+2008-01-21 11:33  jbcooley
+
+	Changed:
+		src/Npgsql2008.csproj (1.6), "Exp", lines: +3 -6
+
+	remove entity requirements from project.  (Shouldn't have been
+	comitted before)
+
+2008-01-21 11:28  jbcooley
+
+	Added:
+		src/Npgsql/NpgsqlProviderManifest.Manifest.xml (1.1)
+		src/Npgsql/NpgsqlProviderManifest.cs (1.1)
+		src/Npgsql/NpgsqlServices.cs (1.1)
+	Changed:
+		src/Npgsql2008.csproj (1.5), "Exp", lines: +346 -371
+		src/Npgsql/Web/NpgsqlMembershipProvider.cs (1.4), "Exp", lines: +30 -30
+		src/Npgsql/Web/NpgsqlProfileProvider.cs (1.5), "Exp", lines: +7 -7
+		src/Npgsql/Web/NpgsqlRoleProvider.cs (1.5), "Exp", lines: +8 -8
+
+	Initial bits of Entity Framework support (#ifdef out)
+
+2008-01-19 03:05  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.14), "Exp", lines: +9 -7
+		src/Npgsql/NpgsqlParameter.cs (1.8), "Exp", lines: +16 -2
+		src/Npgsql/NpgsqlParameterCollection.cs (1.5), "Exp", lines: +6 -4
+
+	do not prepend a : to the front of the parameter name when no
+	marker is present.  This keeps the name the same as it was set and
+	is required for entity framework support.
+
+2008-01-18 12:14  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.13), "Exp", lines: +9 -1
+
+	Clone more properties, most importantly the parameters.  Necessary
+	for entity framework support.
+
+2008-01-13 01:13  jbcooley
+
+	Changed:
+		src/Npgsql/NpgsqlConnection.cs (1.14), "Exp", lines: +1 -4
+		src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs (1.3), "Exp", lines: +1 -1
+
+	Enable System.Transactions support for EnlistTransaction even when
+	enlist=false is set.  (Thanks for the feedback from  Dean Ward)
+
+2008-01-10 16:50  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.12), "Exp", lines: +2 -2
+		src/Npgsql/NpgsqlConnection.cs (1.13), "Exp", lines: +14 -0
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.5), "Exp", lines: +22 -0
+
+
+		[#1002776] The connection string parameter CommandTimeout
+	does't affected on Command.CommandTimeout. Thanks Oleg Ufaev for
+	patch.
+
+2007-12-20 03:08  jbcooley
+
+	Changed:
+		src/Npgsql/AssemblyInfo.cs (1.8), "Exp", lines: +1 -1
+
+	updated assembly version to beta 2. (version 1.98.2)
+
+2007-12-10 13:34  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlBind.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCancelRequest.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlClosedState.cs (1.8), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCommand.cs (1.11), "Exp", lines: +3 -3
+		src/Npgsql/NpgsqlCommandBuilder.cs (1.11), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlConnection.cs (1.12), "Exp", lines: +2 -2
+		src/Npgsql/NpgsqlConnector.cs (1.10), "Exp", lines: +2 -2
+		src/Npgsql/NpgsqlConnectorPool.cs (1.6), "Exp", lines: +3 -4
+		src/Npgsql/NpgsqlCopyInState.cs (1.4), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlCopyOutState.cs (1.4), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlDataAdapter.cs (1.4), "Exp", lines: +2 -2
+		src/Npgsql/NpgsqlDescribe.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlException.cs (1.6), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlExecute.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlFlush.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlParameter.cs (1.7), "Exp", lines: +0 -1
+		src/Npgsql/NpgsqlParameterCollection.cs (1.4), "Exp", lines: +0 -6
+		src/Npgsql/NpgsqlParse.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlSync.cs (1.3), "Exp", lines: +1 -1
+		src/Npgsql/Web/NpgsqlProfileProvider.cs (1.4), "Exp", lines: +3 -8
+		src/NpgsqlTypes/FastPath.cs (1.4), "Exp", lines: +1 -1
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.9), "Exp", lines: +3 -8
+
+
+		Fixed compilation warnings. Thanks Jon Hanna (jon at
+	hackcraft dot net) for patches.
+
+2007-12-06 02:56  h-saito
+
+	Added:
+		testsuite/MiniTerminal/Npsql.csproj (1.1)
+		testsuite/MiniTerminal/Npsql.sln (1.1)
+
+	add the VisualStudio project.
+
+2007-12-06 02:31  h-saito
+
+	Added:
+		testsuite/DesignDialog/ConnectionStringEditor.cs (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.cs (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.de.resx (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.es.resx (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.fi.resx (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.ja.resx (1.1)
+		testsuite/DesignDialog/ConnectionStringEditorForm.resx (1.1)
+		testsuite/DesignDialog/DesignDialog.suo (1.1)
+		testsuite/DesignDialog/ParameterConverter.cs (1.1)
+		testsuite/DesignDialog/SysDescriptionAttribute.cs (1.1)
+	Changed:
+		testsuite/DesignDialog/AssemblyInfo.cs (1.2), "Exp", lines: +42 -58
+		testsuite/DesignDialog/DesignDialog.cs (1.2), "Exp", lines: +140 -124
+		testsuite/DesignDialog/DesignDialog.csproj (1.2), "Exp", lines: +142 -125
+		testsuite/DesignDialog/DesignDialog.sln (1.2), "Exp", lines: +12 -14
+
+	Npgsql2 does not support a design dialog.  Therefore, the sample is
+	shown here.
+
+2007-12-06 00:24  h-saito
+
+	Changed:
+		testsuite/testsuite.build (1.2), "Exp", lines: +1 -1
+
+	Fixed typo.
+
+2007-12-06 00:18  h-saito
+
+	Added:
+		testsuite/testsuite.build (1.1)
+
+	add the nant build file of testsuite(GUI).
+
+2007-12-05 23:07  h-saito
+
+	Changed:
+		src/Npgsql2008.csproj (1.4), "Exp", lines: +28 -1
+
+	add the japanese resources.
+
+2007-12-05 18:55  fxjr
+
+	Changed:
+		testsuite/noninteractive/add_data.sql (1.3), "Exp", lines: +1 -2
+		testsuite/noninteractive/add_tables.sql (1.5), "Exp", lines: +0 -1
+		testsuite/noninteractive/cleanDB.bat (1.2), "Exp", lines: +1 -0
+		testsuite/noninteractive/makeDB.bat (1.2), "Exp", lines: +1 -0
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.4), "Exp", lines: +0 -1
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.4), "Exp", lines: +0 -1
+
+
+		[#1010209] Patch for test suite. Thanks Tao Wang for
+	patches.
+
+2007-12-05 18:49  fxjr
+
+	Changed:
+		src/Npgsql.sln (1.3), "Exp", lines: +1 -0
+		src/Npgsql2008.sln (1.3), "Exp", lines: +1 -0
+		testsuite/noninteractive/NUnit20/App.config (1.2), "Exp", lines: +2 -1
+		testsuite/noninteractive/NUnit20/NpgsqlTests.csproj (1.2), "Exp", lines: +2 -1
+		testsuite/noninteractive/NUnit20/NpgsqlTests2008.csproj (1.2), "Exp", lines: +2 -1
+
+
+		[#1010201] Include NUnit20 testsuite to VS solution file.
+	Thanks Tao Wang for patches.
+
+2007-12-05 18:28  fxjr
+
+	Added:
+		testsuite/noninteractive/NUnit20/App.config (1.1)
+		testsuite/noninteractive/NUnit20/NpgsqlTests.csproj (1.1)
+		testsuite/noninteractive/NUnit20/NpgsqlTests2008.csproj (1.1)
+	Changed:
+		src/Npgsql.sln (1.2), "Exp", lines: +7 -1
+		src/Npgsql2008.sln (1.2), "Exp", lines: +6 -0
+
+
+		Added NUnit test cases to vs.net solution files. Thanks Tao
+	Wang for patches.
+
+2007-12-05 18:14  fxjr
+
+	Added:
+		testsuite/noninteractive/cleanDB.bat (1.1)
+		testsuite/noninteractive/makeDB.bat (1.1)
+	Changed:
+		testsuite/noninteractive/add_data.sql (1.2), "Exp", lines: +1 -1
+		testsuite/noninteractive/add_tables.sql (1.4), "Exp", lines: +2 -2
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.3), "Exp", lines: +7 -13
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.3), "Exp", lines: +33 -4
+
+
+
+		Fixed nunit tests, added some util scripts. Thanks Tao Wang
+	for patches.
+
+2007-12-05 01:20  h-saito
+
+	Changed:
+		src/Npgsql.build (1.11), "Exp", lines: +3 -1
+
+	Entry failure of NpgsqlTypes resource.
+
+2007-12-05 00:43  h-saito
+
+	Changed:
+		src/Npgsql.build (1.10), "Exp", lines: +24 -2
+		src/Npgsql.csproj (1.9), "Exp", lines: +37 -1
+
+	add the resources.
+
+2007-12-05 00:33  h-saito
+
+	Added:
+		src/Npgsql/NpgsqlClosedState.ja.resx (1.1)
+		src/Npgsql/NpgsqlCommandBuilder.ja.resx (1.1)
+		src/Npgsql/NpgsqlConnectedState.ja.resx (1.1)
+		src/Npgsql/NpgsqlConnectionStringBuilder.ja.resx (1.1)
+		src/Npgsql/NpgsqlException.ja.resx (1.1)
+		src/Npgsql/NpgsqlReadyState.ja.resx (1.1)
+		src/Npgsql/NpgsqlState.ja.resx (1.1)
+		src/Npgsql/PGUtil.ja.resx (1.1)
+		src/NpgsqlTypes/NpgsqlTypesHelper.ja.resx (1.1)
+	Changed:
+		src/Npgsql/NpgsqlCommand.ja.resx (1.2), "Exp", lines: +152 -129
+
+	update the japanese resources.
+
+2007-12-04 16:30  fxjr
+
+	Changed:
+		src/Npgsql.csproj (1.8), "Exp", lines: +41 -6
+		src/Npgsql2008.csproj (1.3), "Exp", lines: +343 -316
+
+
+
+		Applied patch to add files modified by patch: [#1010202]
+	Adding NpgsqlConnectionStringBuilder class (with cache support).
+	Thanks Tao Wang for patch.
+
+2007-12-03 11:12  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.10), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlConnection.cs (1.11), "Exp", lines: +80 -90
+		src/Npgsql/NpgsqlConnector.cs (1.9), "Exp", lines: +40 -71
+		src/Npgsql/NpgsqlConnectorPool.cs (1.5), "Exp", lines: +1 -1
+		src/Npgsql/NpgsqlFactory.cs (1.4), "Exp", lines: +5 -0
+
+
+		[#1010202] Adding NpgsqlConnectionStringBuilder class (with
+	cache support). Thanks Tao Wang (dancefire at gmail dot com) for
+	patches!
+
+2007-12-02 16:21  fxjr
+
+	Changed:
+		testsuite/noninteractive/NUnit20/CommandTests.cs (1.2), "Exp", lines: +28 -0
+
+
+		Added another changedatabase test to test recent patches.
+	Thanks Tao Wang for patch.
+
+2007-12-02 16:06  fxjr
+
+	Deleted:
+		src/Npgsql/NpgsqlConnectionString.cs (1.9)
+		src/Npgsql/NpgsqlConnectionString.resx (1.2)
+		src/Npgsql/NpgsqlConnectionString.zh-CN.resx (1.2)
+	Added:
+		src/Npgsql/Cache.cs (1.1)
+		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.1)
+		src/Npgsql/NpgsqlConnectionStringBuilder.resx (1.1)
+		src/Npgsql/NpgsqlConnectionStringBuilder.zh-CN.resx (1.1)
+
+
+		[#1010202] Adding NpgsqlConnectionStringBuilder class (with
+	cache support). Thanks Tao Wang for patches!
+
+2007-12-02 15:26  fxjr
+
+	Added:
+		src/NpgsqlTypes/NpgsqlTypesHelper.zh-CN.resx (1.1)
+
+
+		Added simplified chinese resource. Thanks Tao Wang for
+	patch!
+
+2007-12-02 15:24  fxjr
+
+	Deleted:
+		src/Npgsql/NpgsqlTypesHelper.zh-CN.resx (1.2)
+
+
+		Removed incorrectly added file.
+
+2007-11-27 15:57  fxjr
+
+	Added:
+		src/Npgsql/NpgsqlClosedState.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlCommandBuilder.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlConnectedState.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlConnectionString.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlException.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlReadyState.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlState.zh-CN.resx (1.1)
+		src/Npgsql/NpgsqlTypesHelper.zh-CN.resx (1.1)
+		src/Npgsql/PGUtil.zh-CN.resx (1.1)
+
+
+		Added missing zh-CN resource files. Thanks Tao Wang
+	(dancefire at gmail dot com) for patches.
+
+2007-11-26 18:04  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlConnection.cs (1.10), "Exp", lines: +3 -0
+		src/Npgsql/NpgsqlConnectionString.cs (1.8), "Exp", lines: +1 -0
+		src/Npgsql/NpgsqlConnector.cs (1.8), "Exp", lines: +9 -0
+		testsuite/noninteractive/NUnit20/ConnectionTests.cs (1.2), "Exp", lines: +41 -0
+
+
+		Added support for setting search path in connection string.
+	You can use now searchpath=blabla in your connection string. You
+	don't need to specify public search path as it is automatically
+	added if you specify a custom search path. Thanks Andrus Moor
+	(kobruleht2 at hot dot ee) for patch.
+
+2007-11-26 16:31  fxjr
+
+	Changed:
+		src/Npgsql.csproj (1.7), "Exp", lines: +416 -392
+
+
+		Added missing zh-CN resources to VS.Net project file.
+	Fixed line ending from unix format to dos format so vs.net can open
+	project by double click on explorer. Thanks Tao Wang (dancefire at
+	gmail dot com) for patches!
+
+2007-11-22 11:35  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlClosedState.cs (1.7), "Exp", lines: +0 -1
+
+
+
+		I applied incorrectly Daniel's patch. Now it is ok. Sorry
+	for that :(
+
+2007-11-22 11:29  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlClosedState.cs (1.6), "Exp", lines: +48 -7
+		src/Npgsql/NpgsqlState.resx (1.2), "Exp", lines: +11 -0
+
+
+		Fixed bug when trying to connect to ipv6 hosts. Also, added
+	support for connecting to server names which have multiple ip
+	addresses. Thanks Daniel Nauck (dna at mono-project dot de) for
+	patch.
+
+2007-11-22 02:20  jbcooley
+
+	Changed:
+		src/Npgsql2008.csproj (1.2), "Exp", lines: +21 -11
+
+	Remove bad files from project and added zn-CH resx files.
+
+2007-11-22 02:16  jbcooley
+
+	Changed:
+		src/Npgsql.csproj (1.6), "Exp", lines: +1 -0
+
+	Added NpgsqlCopySerializer
+
+2007-11-22 02:14  jbcooley
+
+	Added:
+		src/Npgsql2008.csproj (1.1)
+		src/Npgsql2008.sln (1.1)
+
+	Solution and Project for Visual Studio 2008.  Also includes
+	definition for NET35.
+
+2007-11-17 12:58  fxjr
+
+	Changed:
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.6), "Exp", lines: +1 -0
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.8), "Exp", lines: +1 -1
+
+
+		Added mapping for the new 'xml' native type available in
+	PostgreSQL 8.3:
+	http://www.postgresql.org/docs/8.3/static/datatype-xml.html This is
+	'simple' patch that allow tu use String for type DbType.Xml. Thanks
+	David Bachmann (david dot bachmann at ersystems dot ch) for
+	patches.
+
+2007-11-16 12:43  fxjr
+
+	Changed:
+		src/Npgsql.csproj (1.5), "Exp", lines: +2 -1
+		src/NpgsqlTypes/NpgsqlDbType.cs (1.5), "Exp", lines: +2 -1
+		src/NpgsqlTypes/NpgsqlTypesHelper.cs (1.7), "Exp", lines: +6 -0
+
+
+
+		Npgsql.csproj: Missing reference to NpgsqlCopyFormat.cs
+	added.
+
+		NpgsqlDbType.cs, NpgsqlTypesHelper.cs: This patch add
+	mapping for the new 'xml' native type available in PostgreSQL 8.3:
+	http://www.postgresql.org/docs/8.3/static/datatype-xml.html
+
+		This is 'simple' patch that allow tu use String for type
+	DbType.Xml.
+
+2007-11-15 22:10  fxjr
+
+	Changed:
+		src/Npgsql/NpgsqlCommand.cs (1.9), "Exp", lines: +2 -2
+
+
+		 [#1010187] Problem with parsing parameters and "<" or ">"
+	operator with Prepare().
+		 [#1010186] Thread safety problem when Parsing command
+	text.
+		 Thanks Hubert FONGARNAND for patches!
+
+2007-11-06 14:22  fxjr
+
+	Changed:
+		ChangeLog (1.4), "Exp", lines: +39 -0
+
+	[no log message]
+
 2007-11-06 14:21  fxjr
 
 	Changed:
@@ -98,14 +1360,14 @@
 		Added initial information about System.Transactions
 	support. Thanks Josh Cooley
 
-2007-11-03 20:38  jbcooley
+2007-11-03 21:38  jbcooley
 
 	Changed:
 		src/Npgsql/NpgsqlTransactionCallbacks.cs (1.2), "Exp", lines: +43 -65
 
 	Improve handleing of closed connections and non-pooled connections
 
-2007-11-03 18:42  fxjr
+2007-11-03 19:42  fxjr
 
 	Added:
 		src/Npgsql/NpgsqlMetaData.xml (1.1)
@@ -123,7 +1385,7 @@
 	Improved NpgsqlCommandBuilder so it now conforms to ADO.NET 2.0
 	standards. Thanks Rasha (strasha at gmail dot com) for patch.
 
-2007-11-01 21:41  jbcooley
+2007-11-01 22:41  jbcooley
 
 	Changed:
 		src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs (1.2), "Exp", lines: +0 -1
@@ -134,7 +1396,7 @@
 		  Improve handleing of closed connections and non-pooled
 	connections
 
-2007-11-01 00:06  jbcooley
+2007-11-01 01:06  jbcooley
 
 	Changed:
 		src/Npgsql/NpgsqlConnection.cs (1.8), "Exp", lines: +12 -0
@@ -144,7 +1406,7 @@
 
 		  Adding pieces for ado.net 3.5 and ado.net entities.
 
-2007-10-18 10:55  fxjr
+2007-10-18 11:55  fxjr
 
 	Changed:
 		testsuite/noninteractive/NUnit20/NpgsqlTests.build (1.2), "Exp", lines: +6 -2
@@ -156,7 +1418,7 @@
 	-at- ardatis dot com) from nant dev team for coding this property.
 	Now, Npgsql tests are easier to run.
 
-2007-10-14 17:20  fxjr
+2007-10-14 18:20  fxjr
 
 	Changed:
 		src/Npgsql/NpgsqlDataReader.cs (1.7), "Exp", lines: +3 -3
