@@ -120,7 +120,7 @@ namespace Npgsql
 			defaults.Add(Keywords.PreloadReader, false);
 
 			defaults.Add(Keywords.UseExtendedTypes, false);
-            defaults.Add(Keywords.IntegratedSecurity, true);
+            defaults.Add(Keywords.IntegratedSecurity, false);
 		}
 
 
@@ -560,7 +560,7 @@ namespace Npgsql
         public bool IntegratedSecurity
         {
             get { return _integrated_security; }
-            set { SetValue(GetKeyName(Keywords.Enlist), value); }
+            set { SetValue(GetKeyName(Keywords.IntegratedSecurity), value); }
         }
 
 		#endregion
