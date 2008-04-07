@@ -21,7 +21,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -133,6 +133,7 @@
     <Compile Include="Npgsql\SqlGenerators\SqlSelectGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlUpdateGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\VisitedExpression.cs" />
+    <Compile Include="Npgsql\SSPIHandler.cs" />
     <Compile Include="Npgsql\Web\NpgsqlMembershipProvider.cs" />
     <Compile Include="Npgsql\Web\NpgsqlProfileProvider.cs" />
     <Compile Include="Npgsql\Web\NpgsqlRoleProvider.cs" />

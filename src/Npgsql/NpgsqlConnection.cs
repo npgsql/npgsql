@@ -501,7 +501,7 @@ namespace Npgsql
 				throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
 											NpgsqlConnectionStringBuilder.GetKeyName(Keywords.Host));
 			}
-			if (!settings.ContainsKey(Keywords.UserName))
+			if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
 			{
 				throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
 											NpgsqlConnectionStringBuilder.GetKeyName(Keywords.UserName));

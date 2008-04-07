@@ -34,6 +34,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Resources;
 using System.Text;
+using System.Net;
 
 namespace Npgsql
 {
@@ -612,7 +613,10 @@ namespace Npgsql
 			AuthenticationClearTextPassword = 3,
 			AuthenticationCryptPassword = 4,
 			AuthenticationMD5Password = 5,
-			AuthenticationSCMCredential = 6
+			AuthenticationSCMCredential = 6,
+            AuthenticationGSS = 7,
+            AuthenticationGSSContinue = 8,
+            AuthenticationSSPI = 9
 		}
 
 		protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_3(NpgsqlConnector context)
@@ -660,8 +664,8 @@ namespace Npgsql
 
 							NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "AuthenticationRequest");
 
-							// Eat length
-							PGUtil.ReadInt32(stream);
+                            // Get the length in case we're getting AuthenticationGSSContinue 
+                            int authDataLength = PGUtil.ReadInt32(stream) - 8;
 
 							AuthenticationRequestType authType = (AuthenticationRequestType) PGUtil.ReadInt32(stream);
 							switch (authType)
@@ -730,7 +734,38 @@ namespace Npgsql
 
 									context.Authenticate(sb.ToString());
 
-									break;
+                                    break;
+#if WINDOWS && UNMANAGED
+
+                                case AuthenticationRequestType.AuthenticationSSPI:
+                                    {
+                                        if (context.IntegratedSecurity)
+                                        {
+                                            // For SSPI we have to get the IP-Address (hostname doesn't work)
+                                            string ipAddressString = ((IPEndPoint)context.Socket.RemoteEndPoint).Address.ToString();
+                                            context.SSPI = new SSPIHandler(ipAddressString, "POSTGRES");
+                                            ChangeState(context, NpgsqlStartupState.Instance);
+                                            context.Authenticate(context.SSPI.Continue(null));
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            // TODO: correct exception
+                                            throw new Exception();
+                                        }
+                                    }
+
+
+                                case AuthenticationRequestType.AuthenticationGSSContinue:
+                                    {
+                                        byte[] authData = new byte[authDataLength];
+                                        PGUtil.CheckedStreamRead(stream, authData, 0, authDataLength);
+                                        context.Authenticate(context.SSPI.Continue(authData));
+                                        break;
+                                    }
+
+#endif
+
 								default:
 									// Only AuthenticationClearTextPassword and AuthenticationMD5Password supported for now.
 									errors.Add(

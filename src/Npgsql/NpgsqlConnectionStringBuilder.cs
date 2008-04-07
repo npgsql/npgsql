@@ -120,6 +120,7 @@ namespace Npgsql
 			defaults.Add(Keywords.PreloadReader, false);
 
 			defaults.Add(Keywords.UseExtendedTypes, false);
+            defaults.Add(Keywords.IntegratedSecurity, true);
 		}
 
 
@@ -296,6 +297,36 @@ namespace Npgsql
 			}
 		}
 
+        private Boolean ToIntegratedSecurity(object value)
+        {
+            string text = value as string;
+            if (text != null)
+            {
+                switch (text.ToLowerInvariant())
+                {
+                    case "t":
+                    case "true":
+                    case "y":
+                    case "yes":
+                    case "sspi":
+                        return true;
+
+                    case "f":
+                    case "false":
+                    case "n":
+                    case "no":
+                        return false;
+
+                    default:
+                        throw new InvalidCastException(value.ToString());
+                }
+            }
+            else
+            {
+                return Convert.ToBoolean(value);
+            }
+        }
+
 		#endregion
 
 		#region Properties
@@ -352,7 +383,15 @@ namespace Npgsql
 		public string UserName
 
 		{
-			get { return _username; }
+			get
+            {
+                if (_integrated_security)
+                {
+                    System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    _username = identity.Name.Split('\\')[1];
+                }
+                return _username;
+            }
 
 			set { SetValue(GetKeyName(Keywords.UserName), value); }
 		}
@@ -516,6 +555,14 @@ namespace Npgsql
 			set { SetValue(GetKeyName(Keywords.UseExtendedTypes), value); }
 		}
 
+        private bool _integrated_security;
+
+        public bool IntegratedSecurity
+        {
+            get { return _integrated_security; }
+            set { SetValue(GetKeyName(Keywords.Enlist), value); }
+        }
+
 		#endregion
 
 		private static Keywords GetKey(string key)
@@ -620,7 +667,9 @@ namespace Npgsql
 
 				case "USEEXTENDEDTYPES":
 				case "USE EXTENDED TYPES":
-					return Keywords.UseExtendedTypes;
+                    return Keywords.UseExtendedTypes;
+                case "INTEGRATED SECURITY":
+                    return Keywords.IntegratedSecurity;
 
 				default:
 
@@ -636,7 +685,11 @@ namespace Npgsql
 
 			{
 				return "USER ID";
-			}
+            }
+            else if (keyword == Keywords.IntegratedSecurity)
+            {
+                return "INTEGRATED SECURITY";
+            }
 
 			else
 
@@ -860,7 +913,10 @@ namespace Npgsql
 
 						this._useExtendedTypes = ToBoolean(value);
 
-						break;
+                        break;
+                    case Keywords.IntegratedSecurity:
+                        this._integrated_security = ToIntegratedSecurity(value);
+                        break;
 				}
 			}
 
@@ -979,7 +1035,8 @@ namespace Npgsql
 
 		PreloadReader,
 
-		UseExtendedTypes
+		UseExtendedTypes,
+        IntegratedSecurity
 	}
 
 

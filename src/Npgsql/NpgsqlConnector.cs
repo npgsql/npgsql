@@ -130,7 +130,19 @@ namespace Npgsql
 		private bool _requireReadyForQuery = true;
 
 		private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
-			new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+            new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+
+#if WINDOWS && UNMANAGED
+
+        private SSPIHandler _sspi;
+
+        internal SSPIHandler SSPI
+        {
+            get { return _sspi; }
+            set { _sspi = value; }
+        }
+
+#endif
 
 
 		/// <summary>
@@ -215,6 +227,11 @@ namespace Npgsql
 		{
 			get { return settings.UseExtendedTypes; }
 		}
+
+        internal Boolean IntegratedSecurity
+        {
+            get { return settings.IntegratedSecurity; }
+        }
 
 		/// <summary>
 		/// Gets the current state of the connection.
