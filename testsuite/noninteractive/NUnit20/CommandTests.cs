@@ -1,3 +1,9 @@
+// CommandTests.cs created with MonoDevelop
+// User: fxjr at 11:40 PM 4/9/2008
+//
+// To change standard headers go to Edit->Preferences->Coding->Standard Headers
+//
+
 // created on 30/11/2002 at 22:35
 //
 // Author:
@@ -2388,6 +2394,28 @@ namespace NpgsqlTests
             
         }
         
+        [Test]
+        public void CharParameterValueSupport()
+        {
+            const String query = @"create temp table test ( tc char(1) );
+            insert into test values(' ');
+            select * from test where tc=:charparam";
+
+            NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);
+
+            IDbDataParameter sqlParam = command.CreateParameter();
+            sqlParam.ParameterName = "charparam";
+            
+            // Exception Can't cast System.Char into any valid DbType.
+            sqlParam.Value = ' ';
+            command.Parameters.Add(sqlParam);
+
+            String res = (String)command.ExecuteScalar();
+            
+            Assert.AreEqual(" ", res);                    
+            
+            
+        }
         [Test]
         public void ConnectionStringCommandTimeout()
         {

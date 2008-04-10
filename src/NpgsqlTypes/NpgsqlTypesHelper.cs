@@ -261,6 +261,8 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddType("refcursor", NpgsqlDbType.Refcursor, DbType.String, true, null);
 
 			nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, true, null);
+			
+			nativeTypeMapping.AddTypeAlias("char", typeof (Char));
 
 			nativeTypeMapping.AddType("varchar", NpgsqlDbType.Varchar, DbType.String, true, null);
 
