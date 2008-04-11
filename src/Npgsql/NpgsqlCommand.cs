@@ -591,7 +591,7 @@ namespace Npgsql
 						if (parameters[i].Value != DBNull.Value)
 						{
 							parameterFormatCodes[i] = (Int16)FormatCode.Binary;
-							parameterValues[i] = parameters[i].Value;
+							parameterValues[i] = (byte[])parameters[i].Value;
 						}
 						else
 						{
