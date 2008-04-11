@@ -152,7 +152,9 @@ namespace Npgsql.Web
 					pPasswordFormat = MembershipPasswordFormat.Clear;
 					break;
 				default:
-					throw new ProviderException("Password format not supported.");
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Password format not supported.");
 			}
 
 			//
@@ -163,8 +165,10 @@ namespace Npgsql.Web
 				ConfigurationManager.ConnectionStrings[config["connectionStringName"]];
 
 			if (ConnectionStringSettings == null || string.IsNullOrEmpty(ConnectionStringSettings.ConnectionString.Trim()))
-			{
-				throw new ProviderException("Connection string cannot be blank.");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Connection string cannot be blank.");
 			}
 
 			connectionString = ConnectionStringSettings.ConnectionString;
@@ -326,7 +330,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "ChangePassword");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -379,7 +385,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "ChangePasswordQuestionAndAnswer");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -542,7 +550,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "DeleteUser");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -613,7 +623,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetAllUsers");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -665,7 +677,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetNumberOfUsersOnline");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -689,13 +703,17 @@ namespace Npgsql.Web
 		public override string GetPassword(string username, string answer)
 		{
 			if (!EnablePasswordRetrieval)
-			{
-				throw new ProviderException("Password Retrieval Not Enabled.");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Password Retrieval Not Enabled.");
 			}
 
 			if (PasswordFormat == MembershipPasswordFormat.Hashed)
-			{
-				throw new ProviderException("Cannot retrieve Hashed passwords.");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Cannot retrieve Hashed passwords.");
 			}
 
 			NpgsqlConnection conn = new NpgsqlConnection(connectionString);
@@ -739,8 +757,10 @@ namespace Npgsql.Web
 			{
 				if (WriteExceptionsToEventLog)
 				{
-					WriteToEventLog(e, "GetPassword");
-					throw new ProviderException(exceptionMessage);
+                    WriteToEventLog(e, "GetPassword");
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -813,7 +833,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUserNameById(Guid Id)");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -870,7 +892,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUserId()");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -941,7 +965,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUser(String, Boolean)");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1017,7 +1043,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUser(String, Boolean)");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1090,7 +1118,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUser(Object, Boolean)");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1172,7 +1202,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "UnlockUser");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1222,7 +1254,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "GetUserNameByEmail");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1259,7 +1293,9 @@ namespace Npgsql.Web
 			{
 				UpdateFailureCount(username, "passwordAnswer");
 
-				throw new ProviderException("Password answer required for password reset.");
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Password answer required for password reset.");
 			}
 
 			string newPassword = Membership.GeneratePassword(newPasswordLength, MinRequiredNonAlphanumericCharacters);
@@ -1344,7 +1380,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "ResetPassword");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1403,7 +1441,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "UpdateUser");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1492,7 +1532,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "ValidateUser");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1583,8 +1625,10 @@ namespace Npgsql.Web
 					cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
 
 					if (cmd.ExecuteNonQuery() < 0)
-					{
-						throw new ProviderException("Unable to update failure count and window start.");
+                    {
+                        // use fully qualified name so as not to conflict with System.Data.ProviderException
+                        // in System.Data.Entity assembly
+						throw new System.Configuration.Provider.ProviderException("Unable to update failure count and window start.");
 					}
 				}
 				else
@@ -1604,8 +1648,10 @@ namespace Npgsql.Web
 						cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
 
 						if (cmd.ExecuteNonQuery() < 0)
-						{
-							throw new ProviderException("Unable to lock out user.");
+                        {
+                            // use fully qualified name so as not to conflict with System.Data.ProviderException
+                            // in System.Data.Entity assembly
+							throw new System.Configuration.Provider.ProviderException("Unable to lock out user.");
 						}
 					}
 					else
@@ -1630,8 +1676,10 @@ namespace Npgsql.Web
 						cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
 
 						if (cmd.ExecuteNonQuery() < 0)
-						{
-							throw new ProviderException("Unable to update failure count.");
+                        {
+                            // use fully qualified name so as not to conflict with System.Data.ProviderException
+                            // in System.Data.Entity assembly
+							throw new System.Configuration.Provider.ProviderException("Unable to update failure count.");
 						}
 					}
 				}
@@ -1642,7 +1690,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "UpdateFailureCount");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1713,8 +1763,10 @@ namespace Npgsql.Web
 					hash.Key = HexToByte(encryptionKey);
 					encodedPassword = Convert.ToBase64String(hash.ComputeHash(Encoding.Unicode.GetBytes(password)));
 					break;
-				default:
-					throw new ProviderException("Unsupported password format.");
+                default:
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Unsupported password format.");
 			}
 
 			return encodedPassword;
@@ -1737,10 +1789,14 @@ namespace Npgsql.Web
 				case MembershipPasswordFormat.Encrypted:
 					password = Encoding.Unicode.GetString(DecryptPassword(Convert.FromBase64String(password)));
 					break;
-				case MembershipPasswordFormat.Hashed:
-					throw new ProviderException("Cannot unencode a hashed password.");
-				default:
-					throw new ProviderException("Unsupported password format.");
+                case MembershipPasswordFormat.Hashed:
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Cannot unencode a hashed password.");
+                default:
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Unsupported password format.");
 			}
 
 			return password;
@@ -1823,7 +1879,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "FindUsersByName");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{
@@ -1905,7 +1963,9 @@ namespace Npgsql.Web
 				{
 					WriteToEventLog(e, "FindUsersByEmail");
 
-					throw new ProviderException(exceptionMessage);
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(exceptionMessage);
 				}
 				else
 				{

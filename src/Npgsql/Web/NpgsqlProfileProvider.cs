@@ -161,8 +161,10 @@ namespace Npgsql.Web
 
 			string temp = config["connectionStringName"];
 			if (String.IsNullOrEmpty(temp))
-			{
-				throw new ProviderException("connectionStringName not specified");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("connectionStringName not specified");
 			}
 
 			//
@@ -173,8 +175,10 @@ namespace Npgsql.Web
 
 			if (pConnectionStringSettings == null ||
 			    string.IsNullOrEmpty((pConnectionStringSettings.ConnectionString ?? string.Empty).Trim()))
-			{
-				throw new ProviderException("Connection string cannot be blank.");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Connection string cannot be blank.");
 			}
 
 			_NpgsqlConnectionString = pConnectionStringSettings.ConnectionString;
@@ -186,14 +190,18 @@ namespace Npgsql.Web
 			}
 
 			if (_appName.Length > 256)
-			{
-				throw new ProviderException("Application name too long");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("Application name too long");
 			}
 
 			_table = config["table"];
 			if (string.IsNullOrEmpty(_table))
-			{
-				throw new ProviderException("No table specified");
+            {
+                // use fully qualified name so as not to conflict with System.Data.ProviderException
+                // in System.Data.Entity assembly
+				throw new System.Configuration.Provider.ProviderException("No table specified");
 			}
 			EnsureValidTableOrColumnName(_table);
 
@@ -211,8 +219,10 @@ namespace Npgsql.Web
 			{
 				string attribUnrecognized = config.GetKey(0);
 				if (!String.IsNullOrEmpty(attribUnrecognized))
-				{
-					throw new ProviderException(string.Format("Unrecognized config attribute:{0}", attribUnrecognized));
+                {
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException(string.Format("Unrecognized config attribute:{0}", attribUnrecognized));
 				}
 			}
 		}
@@ -234,8 +244,10 @@ namespace Npgsql.Web
 					throw new ArgumentNullException("ApplicationName");
 				}
 				if (value.Length > 256)
-				{
-					throw new ProviderException("Application name too long");
+                {
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Application name too long");
 				}
 				_appName = value;
 			}
@@ -842,8 +854,10 @@ namespace Npgsql.Web
 			for (int i = 0; i < name.Length; ++i)
 			{
 				if (!Char.IsLetterOrDigit(name[i]) && s_legalChars.IndexOf(name[i]) == -1)
-				{
-					throw new ProviderException("Table and column names cannot contain: " + name[i]);
+                {
+                    // use fully qualified name so as not to conflict with System.Data.ProviderException
+                    // in System.Data.Entity assembly
+					throw new System.Configuration.Provider.ProviderException("Table and column names cannot contain: " + name[i]);
 				}
 			}
 		}
