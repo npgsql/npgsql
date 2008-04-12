@@ -786,7 +786,7 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteReaderBeforeClosingReader()
         {
-            if(TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
+            if (TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
                 throw new InvalidOperationException();
             NpgsqlCommand cmd1 = new NpgsqlCommand("select field_serial from tablea", TheConnection);
             using(NpgsqlDataReader dr1 = cmd1.ExecuteReader())
@@ -799,7 +799,7 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteScalarBeforeClosingReader()
         {
-            if(TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
+            if (TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
                 throw new InvalidOperationException();
             NpgsqlCommand cmd1 = new NpgsqlCommand("select field_serial from tablea", TheConnection);
             using(NpgsqlDataReader dr1 = cmd1.ExecuteReader())
@@ -812,7 +812,7 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteNonQueryBeforeClosingReader()
         {
-            if(TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
+            if (TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
                 throw new InvalidOperationException();
             NpgsqlCommand cmd1 = new NpgsqlCommand("select field_serial from tablea", TheConnection);
             using(NpgsqlDataReader dr1 = cmd1.ExecuteReader())
@@ -825,7 +825,7 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void PrepareBeforeClosingReader()
         {
-            if(TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
+            if (TheConnection.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
                 throw new InvalidOperationException();
             NpgsqlCommand cmd1 = new NpgsqlCommand("select field_serial from tablea", TheConnection);
             using(NpgsqlDataReader dr1 = cmd1.ExecuteReader())
@@ -833,6 +833,19 @@ namespace NpgsqlTests
                 NpgsqlCommand cmd2 = new NpgsqlCommand("select * from tablea", TheConnection);
                 cmd2.Prepare();
             }
+        }
+
+        [Test]
+        public void LoadDataTable()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select * from tableh", TheConnection);
+            NpgsqlDataReader dr = command.ExecuteReader();
+            DataTable dt = new DataTable();
+            dt.Load(dr);
+            dr.Close();
+
+            Assert.AreEqual(5, dt.Columns[1].MaxLength);
+            Assert.AreEqual(5, dt.Columns[2].MaxLength);
         }
     }
     [TestFixture]
