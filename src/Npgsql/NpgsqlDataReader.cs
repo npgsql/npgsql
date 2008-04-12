@@ -448,9 +448,9 @@ namespace Npgsql
 
 		private void FillSchemaTable_v2(DataTable schema)
 		{
-			List<string> keyList = (_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo
-			                       	? new List<string>(GetPrimaryKeys(GetTableNameFromQuery()))
-			                       	: new List<string>();
+            List<string> keyList = (_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo
+                                    ? new List<string>(GetPrimaryKeys(GetTableNameFromQuery()))
+                                    : new List<string>();
 
 			for (Int16 i = 0; i < CurrentDescription.NumFields; i++)
 			{
@@ -490,8 +490,8 @@ namespace Npgsql
 				row["BaseTableName"] = "";
 				row["BaseColumnName"] = GetName(i);
 				row["DataType"] = GetFieldType(i);
-				row["AllowDBNull"] = false;
-					//Set to false as previous implementation would always return false here. Is this correct?
+				row["AllowDBNull"] = true;
+                    // without other information, must allow dbnull on the client
 				if (CurrentDescription[i].TypeInfo != null)
 				{
 					row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
@@ -511,9 +511,12 @@ namespace Npgsql
 
 		private void FillSchemaTable_v3(DataTable schema)
 		{
-			Dictionary<long, Table> oidTableLookup = new Dictionary<long, Table>();
+            Dictionary<long, Table> oidTableLookup = new Dictionary<long, Table>();
 			KeyLookup keyLookup = new KeyLookup();
-			Dictionary<string, Column> columnLookup = new Dictionary<string, Column>();
+            // needs to be null because there is a difference
+            // between an empty dictionary and not setting it
+            // the default values will be different
+			Dictionary<string, Column> columnLookup = null;
 
 			if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
 			{
@@ -731,7 +734,7 @@ namespace Npgsql
 
 		private Boolean IsNullable(Dictionary<string, Column> columnLookup, Int32 FieldIndex)
 		{
-			if (CurrentDescription[FieldIndex].TableOID == 0)
+			if (columnLookup == null || CurrentDescription[FieldIndex].TableOID == 0)
 			{
 				return true;
 			}
@@ -743,7 +746,7 @@ namespace Npgsql
 
 		private string GetBaseColumnName(Dictionary<string, Column> columnLookup, Int32 FieldIndex)
 		{
-			if (CurrentDescription[FieldIndex].TableOID == 0)
+			if (columnLookup == null || CurrentDescription[FieldIndex].TableOID == 0)
 			{
 				return GetName(FieldIndex);
 			}
@@ -755,7 +758,7 @@ namespace Npgsql
 
 		private bool IsAutoIncrement(Dictionary<string, Column> columnLookup, Int32 FieldIndex)
 		{
-			if (CurrentDescription[FieldIndex].TableOID == 0)
+			if (columnLookup == null || CurrentDescription[FieldIndex].TableOID == 0)
 			{
 				return false;
 			}
