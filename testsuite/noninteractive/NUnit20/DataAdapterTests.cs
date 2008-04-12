@@ -119,6 +119,82 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void FillAddWithKey()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", TheConnection);
+
+            da.MissingSchemaAction = MissingSchemaAction.AddWithKey;
+            da.Fill(ds);
+
+            DataColumn field_serial = ds.Tables[0].Columns[0];
+            DataColumn field_int2 = ds.Tables[0].Columns[1];
+            DataColumn field_timestamp = ds.Tables[0].Columns[2];
+            DataColumn field_numeric = ds.Tables[0].Columns[3];
+
+            Assert.IsFalse(field_serial.AllowDBNull);
+            Assert.IsTrue(field_serial.AutoIncrement);
+            Assert.AreEqual("field_serial", field_serial.ColumnName);
+            Assert.AreEqual(typeof(int), field_serial.DataType);
+            Assert.AreEqual(0, field_serial.Ordinal);
+            Assert.IsTrue(field_serial.Unique);
+
+            Assert.IsTrue(field_int2.AllowDBNull);
+            Assert.IsFalse(field_int2.AutoIncrement);
+            Assert.AreEqual("field_int2", field_int2.ColumnName);
+            Assert.AreEqual(typeof(short), field_int2.DataType);
+            Assert.AreEqual(1, field_int2.Ordinal);
+            Assert.IsFalse(field_int2.Unique);
+
+            Assert.IsTrue(field_timestamp.AllowDBNull);
+            Assert.IsFalse(field_timestamp.AutoIncrement);
+            Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
+            Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
+            Assert.AreEqual(2, field_timestamp.Ordinal);
+            Assert.IsFalse(field_timestamp.Unique);
+
+            Assert.IsTrue(field_numeric.AllowDBNull);
+            Assert.IsFalse(field_numeric.AutoIncrement);
+            Assert.AreEqual("field_numeric", field_numeric.ColumnName);
+            Assert.AreEqual(typeof(decimal), field_numeric.DataType);
+            Assert.AreEqual(3, field_numeric.Ordinal);
+            Assert.IsFalse(field_numeric.Unique);
+        }
+
+        [Test]
+        public void FillAddColumns()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", TheConnection);
+
+            da.MissingSchemaAction = MissingSchemaAction.Add;
+            da.Fill(ds);
+
+            DataColumn field_serial = ds.Tables[0].Columns[0];
+            DataColumn field_int2 = ds.Tables[0].Columns[1];
+            DataColumn field_timestamp = ds.Tables[0].Columns[2];
+            DataColumn field_numeric = ds.Tables[0].Columns[3];
+
+            Assert.AreEqual("field_serial", field_serial.ColumnName);
+            Assert.AreEqual(typeof(int), field_serial.DataType);
+            Assert.AreEqual(0, field_serial.Ordinal);
+
+            Assert.AreEqual("field_int2", field_int2.ColumnName);
+            Assert.AreEqual(typeof(short), field_int2.DataType);
+            Assert.AreEqual(1, field_int2.Ordinal);
+
+            Assert.AreEqual("field_timestamp", field_timestamp.ColumnName);
+            Assert.AreEqual(typeof(DateTime), field_timestamp.DataType);
+            Assert.AreEqual(2, field_timestamp.Ordinal);
+
+            Assert.AreEqual("field_numeric", field_numeric.ColumnName);
+            Assert.AreEqual(typeof(decimal), field_numeric.DataType);
+            Assert.AreEqual(3, field_numeric.Ordinal);
+        }
+
+        [Test]
         public void UpdateLettingNullFieldValue()
         {
             NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", TheConnection);
