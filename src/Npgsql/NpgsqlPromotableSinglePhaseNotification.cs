@@ -93,12 +93,20 @@ namespace Npgsql
 		public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
+            // try to rollback the transaction with either the
+            // ADO.NET transaction or the callbacks that managed the
+            // two phase commit transaction.
 			if (_npgsqlTx != null)
 			{
 				_npgsqlTx.Rollback();
 				_npgsqlTx.Dispose();
 				_npgsqlTx = null;
 			}
+            else if (_callbacks != null)
+            {
+                _callbacks.RollbackTransaction();
+                _callbacks = null;
+            }
 			singlePhaseEnlistment.Aborted();
 		}
 
@@ -128,13 +136,21 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Promote");
 			INpgsqlResourceManager rm = CreateResourceManager();
-			_callbacks = new NpgsqlTransactionCallbacks(_connection);
+            // may not be null if Prepare is called first
+            if (_callbacks == null)
+            {
+                _callbacks = new NpgsqlTransactionCallbacks(_connection);
+            }
 			byte[] token = rm.Promote(_callbacks);
-			// cancel the NpgsqlTransaction since this will
-			// be handled by a two phase commit.
-			_npgsqlTx.Cancel();
-			_npgsqlTx.Dispose();
-			_npgsqlTx = null;
+            // mostly likely case for this is the transaction has been prepared.
+            if (_npgsqlTx != null)
+            {
+                // cancel the NpgsqlTransaction since this will
+                // be handled by a two phase commit.
+                _npgsqlTx.Cancel();
+                _npgsqlTx.Dispose();
+                _npgsqlTx = null;
+            }
 			return token;
 		}
 
@@ -147,7 +163,7 @@ namespace Npgsql
 			// TODO: create network proxy for resource manager
 			if (_resourceManager == null)
 			{
-				AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager");
+				AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
 				_resourceManager =
 					(INpgsqlResourceManager)
 					rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
