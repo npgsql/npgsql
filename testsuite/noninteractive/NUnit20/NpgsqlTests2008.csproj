@@ -67,6 +67,7 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
     <Reference Include="System.XML" />
   </ItemGroup>
@@ -78,6 +79,7 @@
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="DataReaderTests.cs" />
     <Compile Include="PrepareTests.cs" />
+    <Compile Include="SystemTransactionsTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
