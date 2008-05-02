@@ -28,6 +28,7 @@ int::to-string(version::get-minor(framework::get-version(framework::get-target-f
 	  <include name="${nunit.files}" />
           <include name="${ms.build.dir}/Npgsql.dll" />
 	  <include name="System.Data.dll" />
+	  <include name="System.Transactions.dll" />
 	  <include name="System.Web.dll" />
 	  <include name="System.Configuration.dll" />
         </references>
