@@ -862,7 +862,7 @@ namespace NpgsqlTests
         
         
         
-    		[Test]
+    	[Test]
         public void ByteaParameterSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_bytea = :bytesData", TheConnection);
@@ -873,6 +873,24 @@ namespace NpgsqlTests
       			command.Parameters[":bytesData"].Value = bytes;
 
 
+            Object result = command.ExecuteNonQuery();
+            
+
+            Assert.AreEqual(-1, result);
+        }
+        
+        [Test]
+        public void ByteaParameterWithPrepareSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_bytea = :bytesData", TheConnection);
+            
+            Byte[] bytes = new Byte[]{45,44};
+            
+            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
+      			command.Parameters[":bytesData"].Value = bytes;
+
+
+            command.Prepare();
             Object result = command.ExecuteNonQuery();
             
 
