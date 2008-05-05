@@ -33,6 +33,8 @@ namespace Npgsql
 		private IsolationLevel _isolationLevel;
 		private NpgsqlTransaction _npgsqlTx;
 		private NpgsqlTransactionCallbacks _callbacks;
+        private INpgsqlResourceManager _rm;
+        private bool _inTransaction;
 
 		private static readonly String CLASSNAME = "NpgsqlPromotableSinglePhaseNotification";
 
@@ -52,9 +54,10 @@ namespace Npgsql
 					// must already have a durable resource
 					// start transaction
 					_npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
-					INpgsqlResourceManager rm = CreateResourceManager();
-					// this got broken fix it
-					rm.Enlist(new NpgsqlTransactionCallbacks(_connection), TransactionInterop.GetTransmitterPropagationToken(tx));
+                    _inTransaction = true;
+                    _rm = CreateResourceManager();
+                    _callbacks = new NpgsqlTransactionCallbacks(_connection);
+                    _rm.Enlist(_callbacks, TransactionInterop.GetTransmitterPropagationToken(tx));
 					// enlisted in distributed transaction
 					// disconnect and cleanup local transaction
 					_npgsqlTx.Cancel();
@@ -69,17 +72,24 @@ namespace Npgsql
 		/// </summary>
 		public void Prepare()
 		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
-			if (_npgsqlTx != null)
-			{
-				_callbacks = new NpgsqlTransactionCallbacks(_connection);
-				_callbacks.PrepareTransaction();
-				// cancel the NpgsqlTransaction since this will
-				// be handled by a two phase commit.
-				_npgsqlTx.Cancel();
-				_npgsqlTx.Dispose();
-				_npgsqlTx = null;
-			}
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
+            if (_inTransaction)
+            {
+                // may not be null if Promote or Enlist is called first
+                if (_callbacks == null)
+                {
+                    _callbacks = new NpgsqlTransactionCallbacks(_connection);
+                }
+                _callbacks.PrepareTransaction();
+                if (_npgsqlTx != null)
+                {
+                    // cancel the NpgsqlTransaction since this will
+                    // be handled by a two phase commit.
+                    _npgsqlTx.Cancel();
+                    _npgsqlTx.Dispose();
+                    _npgsqlTx = null;
+                }
+            }
 		}
 
 		#region IPromotableSinglePhaseNotification Members
@@ -88,6 +98,7 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Initialize");
 			_npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
+            _inTransaction = true;
 		}
 
 		public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
@@ -100,14 +111,24 @@ namespace Npgsql
 			{
 				_npgsqlTx.Rollback();
 				_npgsqlTx.Dispose();
-				_npgsqlTx = null;
+                _npgsqlTx = null;
+                singlePhaseEnlistment.Aborted();
 			}
             else if (_callbacks != null)
             {
-                _callbacks.RollbackTransaction();
+                if (_rm != null)
+                {
+                    _rm.RollbackWork(_callbacks.GetName());
+                    singlePhaseEnlistment.Aborted();
+                }
+                else
+                {
+                    _callbacks.RollbackTransaction();
+                    singlePhaseEnlistment.Aborted();
+                }
                 _callbacks = null;
             }
-			singlePhaseEnlistment.Aborted();
+            _inTransaction = false;
 		}
 
 		public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
@@ -122,10 +143,19 @@ namespace Npgsql
 			}
 			else if (_callbacks != null)
 			{
-				INpgsqlResourceManager rm = CreateResourceManager();
-				rm.CommitWork(_callbacks.GetName());
-				singlePhaseEnlistment.Committed();
+                if (_rm != null)
+                {
+                    _rm.CommitWork(_callbacks.GetName());
+                    singlePhaseEnlistment.Committed();
+                }
+                else
+                {
+                    _callbacks.CommitTransaction();
+                    singlePhaseEnlistment.Committed();
+                }
+                _callbacks = null;
 			}
+            _inTransaction = false;
 		}
 
 		#endregion
@@ -135,13 +165,13 @@ namespace Npgsql
 		public byte[] Promote()
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Promote");
-			INpgsqlResourceManager rm = CreateResourceManager();
-            // may not be null if Prepare is called first
+            _rm = CreateResourceManager();
+            // may not be null if Prepare or Enlist is called first
             if (_callbacks == null)
             {
                 _callbacks = new NpgsqlTransactionCallbacks(_connection);
             }
-			byte[] token = rm.Promote(_callbacks);
+            byte[] token = _rm.Promote(_callbacks);
             // mostly likely case for this is the transaction has been prepared.
             if (_npgsqlTx != null)
             {
