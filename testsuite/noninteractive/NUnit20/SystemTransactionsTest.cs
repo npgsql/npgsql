@@ -99,13 +99,21 @@ namespace NpgsqlTests
                 }
                 // not commiting here.
             }
+            // This is an attempt to wait for the distributed transaction to rollback
+            // not guaranteed to work, but should be good enough for testing purposes.
+            System.Threading.Thread.Sleep(500);
+            AssertNoTransactions();
+            // ensure they no longer exist since we rolled back
+            AssertRowNotExist("field_text", field_serial1);
+            AssertRowNotExist("field_int4", field_serial2);
+        }
+
+        private void AssertNoTransactions()
+        {
             // ensure no transactions remain
             NpgsqlCommand command = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", TheConnection);
             command.Parameters.Add(new NpgsqlParameter("database", TheConnection.Database));
             Assert.AreEqual(0, command.ExecuteScalar());
-            // ensure they no longer exist since we rolled back
-            AssertRowNotExist("field_text", field_serial1);
-            AssertRowNotExist("field_int4", field_serial2);
         }
 
         private void AssertRowNotExist(string columnName, int field_serial)
@@ -114,6 +122,13 @@ namespace NpgsqlTests
             command.Parameters.Add(new NpgsqlParameter("p0", field_serial));
             object result = command.ExecuteScalar();
             Assert.AreEqual(null, result);
+        }
+
+        [Test]
+        public void TwoDistributedInSequence()
+        {
+            DistributedTransactionRollback();
+            DistributedTransactionRollback();
         }
 	}
 
