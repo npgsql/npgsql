@@ -11,7 +11,7 @@
         from pg_class c
           left join pg_namespace n
           on n.oid = c.relnamespace
-        where c.relkind = 'r'
+        where c.relkind = 'r' and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgViews" EntityType="NpgsqlSchema.View">
@@ -26,7 +26,7 @@
         from pg_class c
           left join pg_namespace n
           on n.oid = c.relnamespace
-        where c.relkind = 'v'
+        where c.relkind = 'v' and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgFunctions" EntityType="NpgsqlSchema.Function">
@@ -49,7 +49,7 @@
           on n.oid = p.pronamespace
           left join pg_type t
           on p.prorettype = t.oid
-        where p.proretset = false and false
+        where p.proretset = false  and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgTableColumns" EntityType="NpgsqlSchema.TableColumn">
@@ -86,7 +86,8 @@
           on a.atttypid = t.oid
           left join pg_attrdef ad
           on a.attrelid = ad.adrelid and a.attnum = ad.adnum
-        where t.typtype = 'b' and c.relkind = 'r'
+        where t.typtype = 'b' and c.relkind = 'r' and a.attnum >= 0 and c.relnamespace in
+        (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgViewColumns" EntityType="NpgsqlSchema.ViewColumn">
@@ -123,7 +124,8 @@
           on a.atttypid = t.oid
           left join pg_attrdef ad
           on a.attrelid = ad.adrelid AND a.attnum = ad.adnum
-        where t.typtype = 'b' and c.relkind = 'v'
+        where t.typtype = 'b' and c.relkind = 'v' and a.attnum >= 0 and c.relnamespace in
+        (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgFunctionParameters" EntityType="NpgsqlSchema.FunctionParameter">
@@ -159,6 +161,7 @@
               join pg_proc p
               on n.oid = p.pronamespace) ss
           on t.oid = (ss.x).x
+          where ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgPrimaryKeys" EntityType="NpgsqlSchema.PrimaryKey">
@@ -172,18 +175,20 @@
           r.oid AS roid,
           c.oid as coid,
           c.conname,
-          information_schema._pg_expandarray(c.conkey) as x
+          information_schema._pg_expandarray(c.conkey) as x,
+          r.relnamespace as rrelnamespace
           from pg_constraint c
             join pg_class r
             on r.oid = c.conrelid
           where c.contype = 'p' and r.relkind = 'r') ss
-        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped
+        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped and rrelnamespace in
+        (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgForeignKeys" EntityType="NpgsqlSchema.ForeignKey">
       <DefiningQuery>
         select
-        c.oid as id,
+        cast(c.oid as varchar) as id,
         c.conname as name,
         (c.confupdtype = 'c') as is_cascade_delete
         from pg_constraint c
