@@ -119,12 +119,13 @@ namespace Npgsql.SqlGenerators
             if (expression.Target.MetadataProperties.Contains("DefiningQuery"))
             {
                 MetadataProperty definingQuery = expression.Target.MetadataProperties.GetValue("DefiningQuery", false);
-                return new LiteralExpression("(" + definingQuery.Value + ")");
+                if (definingQuery.Value != null)
+                {
+                    return new LiteralExpression("(" + definingQuery.Value + ")");
+                }
             }
-            else
-            {
-                return new LiteralExpression(expression.Target.Name);
-            }
+
+            return new LiteralExpression(expression.Target.Name);
         }
 
         public override VisitedExpression Visit(DbRelationshipNavigationExpression expression)
