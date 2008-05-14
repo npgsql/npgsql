@@ -86,9 +86,10 @@ namespace NpgsqlTypes
 					}
 					else if (Char.IsDigit(BackendData[byteAPosition + 1]))
 					{
-						octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
-						octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
-						octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
+                        octalValue = Convert.ToByte(BackendData.Substring(byteAPosition + 1, 3), 8);
+                        //octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
+                        //octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
+                        //octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
 						byteAPosition += 4;
 					}
 					else
