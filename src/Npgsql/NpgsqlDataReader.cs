@@ -1307,9 +1307,16 @@ namespace Npgsql
 		/// <returns>True if the reader was advanced, otherwise false.</returns>
 		public override Boolean NextResult()
 		{
-			CurrentRow = null;
-			_currentResultsetSchema = null;
-			return (_currentDescription = GetNextRowDescription()) != null;
+            try
+            {
+                CurrentRow = null;
+                _currentResultsetSchema = null;
+                return (_currentDescription = GetNextRowDescription()) != null;
+            }
+            catch (System.IO.IOException ex)
+            {
+                throw _command.ClearPoolAndCreateException(ex);
+            }
 		}
 
 		/// <summary>
@@ -1318,8 +1325,15 @@ namespace Npgsql
 		/// <returns>True if the reader was advanced, otherwise false.</returns>
 		public override Boolean Read()
 		{
-			//CurrentRow = null;
-			return (CurrentRow = GetNextRow(true)) != null;
+            try
+            {
+                //CurrentRow = null;
+                return (CurrentRow = GetNextRow(true)) != null;
+            }
+            catch (System.IO.IOException ex)
+            {
+                throw _command.ClearPoolAndCreateException(ex);
+            }
 		}
 
 		/// <summary>

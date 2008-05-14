@@ -123,6 +123,8 @@ namespace Npgsql
 		// Counter of notification thread start/stop requests in order to 
 		internal Int16 _notificationThreadStopCount;
 
+        private Exception _notificationException;
+
 		internal ForwardsOnlyDataReader CurrentReader;
 
 		// Some kinds of messages only get one response, and do not
@@ -803,6 +805,11 @@ namespace Npgsql
 
 		private void StopNotificationThread()
 		{
+            // first check to see if an exception has
+            // been thrown by the notification thread.
+            if (_notificationException != null)
+                throw _notificationException;
+
 			_notificationThreadStopCount++;
 
 			if (_notificationThreadStopCount == 1) // If this call was the first to increment.
@@ -841,21 +848,29 @@ namespace Npgsql
 
 			internal void ProcessServerMessages()
 			{
-				while (true)
-				{
-					Thread.Sleep(0);
-						//To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
-					this.connector._notificationAutoResetEvent.WaitOne();
+                try
+                {
+                    while (true)
+                    {
+                        Thread.Sleep(0);
+                        //To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
+                        this.connector._notificationAutoResetEvent.WaitOne();
 
-					if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
-					{
-						// reset any responses just before getting new ones
-						this.connector.Mediator.ResetResponses();
-						this.state.ProcessBackendResponses(this.connector);
-					}
+                        if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
+                        {
+                            // reset any responses just before getting new ones
+                            this.connector.Mediator.ResetResponses();
+                            this.state.ProcessBackendResponses(this.connector);
+                        }
 
-					this.connector._notificationAutoResetEvent.Set();
-				}
+                        this.connector._notificationAutoResetEvent.Set();
+                    }
+                }
+                catch (IOException ex)
+                {
+                    this.connector._notificationException = ex;
+                    this.connector._notificationAutoResetEvent.Set();
+                }
 
 			}
 

@@ -461,9 +461,7 @@ namespace Npgsql
 			lock (this)
 			{
 				// Try to find a queue.
-				Queue = PooledConnectors[Connection.ConnectionString];
-
-				if (Queue != null)
+                if (PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue) && Queue != null)
 				{
 					Queue.UseCount--;
 				}
@@ -498,9 +496,7 @@ namespace Npgsql
 			ConnectorQueue Queue;
 
 			// Find the queue.
-			Queue = PooledConnectors[Connector.ConnectionString];
-
-			if (Queue == null)
+			if (!PooledConnectors.TryGetValue(Connector.ConnectionString, out Queue) || Queue == null)
 			{
 				return; // Queue may be emptied by connection problems. See ClearPool below.
 			}
@@ -583,12 +579,14 @@ namespace Npgsql
 			// Prevent multithread access to connection pool count.
 			lock (this)
 			{
+                ConnectorQueue queue;
 				// Try to find a queue.
-				ConnectorQueue queue = PooledConnectors[Connection.ConnectionString];
+                if (PooledConnectors.TryGetValue(Connection.ConnectionString, out queue))
+                {
+                    ClearQueue(queue);
 
-				ClearQueue(queue);
-
-				PooledConnectors.Remove(Connection.ConnectionString);
+                    PooledConnectors.Remove(Connection.ConnectionString);
+                }
 			}
 		}
 

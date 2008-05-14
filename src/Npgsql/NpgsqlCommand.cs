@@ -536,31 +536,38 @@ namespace Npgsql
 
 		internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
 		{
-			CheckConnectionState();
+            try
+            {
+                CheckConnectionState();
 
-			// reset any responses just before getting new ones
-			Connector.Mediator.ResetResponses();
+                // reset any responses just before getting new ones
+                Connector.Mediator.ResetResponses();
 
-			// Set command timeout.
-			m_Connector.Mediator.CommandTimeout = CommandTimeout;
+                // Set command timeout.
+                m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
 
-			using (m_Connector.BlockNotificationThread())
-			{
-				if (parse == null)
-				{
-					return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
-				}
-				//return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
-				else
-				{
-					BindParameters();
-					return
-						new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this,
-												   m_Connector.BlockNotificationThread(), true);
-					//return new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this, m_Connector.BlockNotificationThread(), true);
-				}
-			}
+                using (m_Connector.BlockNotificationThread())
+                {
+                    if (parse == null)
+                    {
+                        return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
+                    }
+                    //return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
+                    else
+                    {
+                        BindParameters();
+                        return
+                            new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this,
+                                                       m_Connector.BlockNotificationThread(), true);
+                        //return new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this, m_Connector.BlockNotificationThread(), true);
+                    }
+                }
+            }
+            catch (IOException ex)
+            {
+                throw ClearPoolAndCreateException(ex);
+            }
 		}
 
 		///<summary>
@@ -718,7 +725,7 @@ namespace Npgsql
 					}
 					catch (IOException e)
 					{
-						ClearPoolAndThrowException(e);
+						throw ClearPoolAndCreateException(e);
 					}
 					catch
 					{
@@ -1432,10 +1439,10 @@ namespace Npgsql
 			}
 		}
 
-		private void ClearPoolAndThrowException(Exception e)
+        internal NpgsqlException ClearPoolAndCreateException(Exception e)
 		{
 			Connection.ClearPool();
-			throw new NpgsqlException(resman.GetString("Exception_ConnectionBroken"), e);
+			return new NpgsqlException(resman.GetString("Exception_ConnectionBroken"), e);
 		}
 
 		public override bool DesignTimeVisible
