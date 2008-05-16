@@ -1,42 +1,103 @@
-2008-04-07 01:14  fxjr
+2008-05-14	jbcooley
+	* src/Npgsql/AssemblyInfo.cs 1.12:
+		bump version number for beta 4
 
-	Changed:
-		RELEASENOTES.txt (1.7), "Exp", lines: +3 -1
+	* src/Npgsql/NpgsqlCommand.cs 1.22:
+	* src/Npgsql/NpgsqlConnector.cs 1.19:
+	* src/Npgsql/NpgsqlConnectorPool.cs 1.9:
+	* src/Npgsql/NpgsqlDataReader.cs 1.14:
+		Handle IOExceptions and translate them to NpgsqlExceptions.  
+		Also migrate IOExceptions from the listen thread to the thread 
+		owning the connection.
 
-	Updated release notes for Npgsql beta3 release
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.7:
+		bug #1010372.  Changed the way bytes were parsed.  Thanks to 
+		Matt Robinson for reporting the bug.
 
-2008-04-07 01:12  fxjr
+2008-05-07	jbcooley
+	* src/Npgsql/NpgsqlSchema.ssdl 1.2:
+		Restrict metadata access from the pg_catalog and 
+		information_schema schemas.  This makes edmgen return only 
+		interesting tables.  In my samples, these are the tables in 
+		public.  (Similar for views, columns, keys, etc.)
 
-	Changed:
-		docs/UserManual.html (1.9), "Exp", lines: +4 -2
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs 1.9:
+		Check that a defining query has a value before using it.
 
-	Added documentation about integrated security.
+2008-05-05	jbcooley
+	* testsuite/noninteractive/NUnit20/SystemTransactionsTest.cs 1.2:
+		Additional
 
-2008-04-07 01:02  jbcooley
+	* src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs 1.6:
+	* src/Npgsql/NpgsqlResourceManager.cs 1.4:
+	* src/Npgsql/NpgsqlTransactionCallbacks.cs 1.5:
+		Improvements in System.Transactions support.  Fixed 
+		NullReferenceException initially supported by Chris Coleman.
 
-	Changed:
-		src/Npgsql2008.csproj (1.12), "Exp", lines: +56 -0
+2008-05-03	fxjr
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.11:
+		
+		
+		Added a prepared bytea support test.
 
-	Added additional resources to project
+2008-05-02	fxjr
+	* testsuite/noninteractive/NUnit20/NpgsqlTests.build 1.4:
+		
+		
+		Added missing System.Transactions.dll assembly so tests can be compiled ok.
 
-2008-04-07 00:55  jbcooley
+2008-04-28	jbcooley
+	* src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs 1.5:
+		Improvements to System.Transactions support.  Thanks to Chris 
+		Coleman for reporting the bug which lead to these improvements.
 
-	Changed:
-		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.6), "Exp", lines: +2 -2
+	* testsuite/noninteractive/NUnit20/NpgsqlTests2008.csproj 1.4:
+	* testsuite/noninteractive/NUnit20/SystemTransactionsTest.cs 1.1:
+		Added tests for System.Transactions
 
-	Change Integrated Security default to false.  Fix Integrated
-	Security property to store using the correct key.
+	* testsuite/noninteractive/NUnit20/DataAdapterTests.cs 1.6:
+		Make Fill test work with version 2 of the protocol
 
-2008-04-07 00:24  jbcooley
+2008-04-12	jbcooley
+	* src/Npgsql/NpgsqlDataReader.cs 1.13:
+		#1010371 - Fix DataTable.Load by fixing 
+		NpgsqlDataReader.GetSchemaTable.  Thanks to Fraser Kp for 
+		reporting the bug.
 
-	Changed:
-		src/Npgsql2008.csproj (1.11), "Exp", lines: +2 -1
-		src/Npgsql/NpgsqlConnection.cs (1.21), "Exp", lines: +1 -1
-		src/Npgsql/NpgsqlConnectionStringBuilder.cs (1.5), "Exp", lines: +62 -5
-		src/Npgsql/NpgsqlConnector.cs (1.18), "Exp", lines: +18 -1
-		src/Npgsql/NpgsqlState.cs (1.12), "Exp", lines: +39 -4
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs 1.5:
+		Test for DataTable.Load and using varchar and char.
 
-	Added SSPI patch from Brar Piening
+	* testsuite/noninteractive/NUnit20/DataAdapterTests.cs 1.5:
+		Tests for Fill and populating schema
+
+2008-04-11	jbcooley
+	* src/Npgsql2008.csproj 1.13:
+	* src/Npgsql2008.sln 1.4:
+		Add Entity Framework configurations to allow 2.0 versions and 
+		3.5 + Entity Framework versions through configuration selection.
+
+	* src/Npgsql/Web/NpgsqlMembershipProvider.cs 1.7:
+	* src/Npgsql/Web/NpgsqlProfileProvider.cs 1.8:
+		Fully qualify type name for ProviderException so that it doesn't 
+		conflict with System.Data.ProviderException in 
+		System.Data.Entity assembly
+
+2008-04-11	fxjr
+	* src/Npgsql/NpgsqlCommand.cs 1.21:
+		
+		
+		Readded cast for byte[] when handling bytea parameters which was removed by mistake. This was giving problems with byte[] support. Thanks Alaric for heads up.
+
+2008-04-10	jbcooley
+	* src/Npgsql/SSPIHandler.cs 1.1:
+		Sspi patch from Brar Piening
+
+2008-04-10	fxjr
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.15:
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.10:
+		
+		
+		Fixed mapping for char parameter values. Now, Npgsql won't throw a DbType cast exception when trying to assign a char to a parameter value. Also, Npgsql will send the proper cast ::char when sending queries. See http://pgfoundry.org/forum/message.php?msg_id=1003367 for discussion about that. Thanks Andrus Moor for testcase.
 
 2008-04-05 21:28  jbcooley
 
