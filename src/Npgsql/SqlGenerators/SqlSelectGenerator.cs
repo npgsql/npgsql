@@ -17,6 +17,11 @@ namespace Npgsql.SqlGenerators
             _commandTree = commandTree;
         }
 
+        protected SqlSelectGenerator()
+        {
+            // used only for other generators such as returning
+        }
+
         public override VisitedExpression Visit(DbPropertyExpression expression)
         {
             // not quite sure what this does

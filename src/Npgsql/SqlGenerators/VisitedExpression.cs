@@ -62,9 +62,9 @@ namespace Npgsql.SqlGenerators
     internal class ConstantExpression : VisitedExpression
     {
         private PrimitiveTypeKind _primitiveType;
-        private string _value;
+        private object _value;
 
-        public ConstantExpression(string value, TypeUsage edmType)
+        public ConstantExpression(object value, TypeUsage edmType)
         {
             if (edmType == null)
                 throw new ArgumentNullException("edmType");
@@ -88,7 +88,10 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append("'" + _value + "'");
                     break;
                 case PrimitiveTypeKind.Boolean:
-                    sqlText.Append(_value.ToUpperInvariant());
+                    sqlText.Append(_value.ToString().ToUpperInvariant());
+                    break;
+                case PrimitiveTypeKind.DateTime:
+                    sqlText.AppendFormat("'{0:s}'", _value);
                     break;
             }
             base.WriteSql(sqlText);
@@ -216,6 +219,12 @@ namespace Npgsql.SqlGenerators
             _condition = condition;
         }
 
+        public VisitedExpression Condition
+        {
+            get { return _condition; }
+            set { _condition = value; }
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             _left.WriteSql(sqlText);
@@ -273,7 +282,18 @@ namespace Npgsql.SqlGenerators
             if (_variableSubstitution.ContainsKey(_name))
                 sqlText.Append(_variableSubstitution[_name]);
             else
-                sqlText.Append(_name);
+            {
+                // TODO: come up with a better solution
+                // need some way of removing extra levels of dots
+                if (_name.Contains("."))
+                {
+                    sqlText.Append(_name.Substring(_name.LastIndexOf('.') + 1));
+                }
+                else
+                {
+                    sqlText.Append(_name);
+                }
+            }
             base.WriteSql(sqlText);
         }
 
@@ -349,6 +369,28 @@ namespace Npgsql.SqlGenerators
         {
             if (ExpressionList.Count != 0)
                 sqlText.Append(" GROUP BY ");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class AndExpression : VisitedExpression
+    {
+        private VisitedExpression _left;
+        private VisitedExpression _right;
+
+        public AndExpression(VisitedExpression left, VisitedExpression right)
+        {
+            _left = left;
+            _right = right;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            sqlText.Append("(");
+            _left.WriteSql(sqlText);
+            sqlText.Append(") AND (");
+            _right.WriteSql(sqlText);
+            sqlText.Append(")");
             base.WriteSql(sqlText);
         }
     }

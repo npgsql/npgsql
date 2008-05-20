@@ -19,6 +19,11 @@ namespace Npgsql
             _token = serverVersion;
         }
 
+        public override string Provider
+        {
+            get { return "Npgsql"; }
+        }
+
         protected override XmlReader GetDbInformation(string informationType)
         {
             XmlReader xmlReader = null;
@@ -96,7 +101,17 @@ namespace Npgsql
                     return TypeUsage.CreateStringTypeUsage(primitiveType, isUnicode, false);
                 case "timestamp":
                     // TODO: make sure the arguments are correct here
-                    return TypeUsage.CreateDateTimeTypeUsage(primitiveType, true, DateTimeKind.Unspecified);
+                    if (storeType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
+                        !facet.IsUnbounded && facet.Value != null)
+                    {
+                        return TypeUsage.CreateDateTimeTypeUsage(primitiveType, (byte)facet.Value);
+                    }
+                    else
+                    {
+                        return TypeUsage.CreateDateTimeTypeUsage(primitiveType, null);
+                    }
+                case "date":
+                    return TypeUsage.CreateDateTimeTypeUsage(primitiveType, 0);
                 case "bytea":
                     {
                         if (storeType.Facets.TryGetValue(MaxLengthFacet, false, out facet) &&
@@ -182,7 +197,15 @@ namespace Npgsql
                         return TypeUsage.CreateStringTypeUsage(StoreTypeNameToStorePrimitiveType["text"], isUnicode, false);
                     }
                 case PrimitiveTypeKind.DateTime:
-                    return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["timestamp"], true, DateTimeKind.Unspecified);
+                    if (edmType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
+                        !facet.IsUnbounded && facet.Value != null)
+                    {
+                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["timestamp"], (byte)facet.Value);
+                    }
+                    else
+                    {
+                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["timestamp"], null);
+                    }
                 case PrimitiveTypeKind.Binary:
                     {
                         if (edmType.Facets.TryGetValue(MaxLengthFacet, false, out facet) &&

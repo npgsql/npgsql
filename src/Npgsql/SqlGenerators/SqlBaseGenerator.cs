@@ -23,11 +23,6 @@ namespace Npgsql.SqlGenerators
                 _variableSubstitution[_filterVarName.Peek()] = value;
         }
 
-        public override VisitedExpression Visit(DbViewExpression expression)
-        {
-            throw new NotImplementedException();
-        }
-
         public override VisitedExpression Visit(DbVariableReferenceExpression expression)
         {
             return new VariableReferenceExpression(expression.VariableName, _variableSubstitution);
@@ -288,8 +283,16 @@ namespace Npgsql.SqlGenerators
         private VisitedExpression VisitJoinPart(DbExpressionBinding joinPart)
         {
             _projectVarName.Push(joinPart.VariableName);
-            string variableName = null; 
-            VisitedExpression joinPartExpression = joinPart.Expression.Accept(this);
+            string variableName = null;
+            VisitedExpression joinPartExpression = null;
+            if (joinPart.Expression is DbFilterExpression)
+            {
+                joinPartExpression = VisitFilterExpression((DbFilterExpression)joinPart.Expression, true);
+            }
+            else
+            {
+                joinPartExpression = joinPart.Expression.Accept(this);
+            }
             if (joinPartExpression is FromExpression)
             {
                 variableName = ((FromExpression)joinPartExpression).Name;
@@ -432,6 +435,11 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbFilterExpression expression)
         {
+            return VisitFilterExpression(expression, false);
+        }
+
+        private VisitedExpression VisitFilterExpression(DbFilterExpression expression, bool partOfJoin)
+        {
             // complicated
             // similar logic used for other expressions (such as group by)
             // TODO: this is too simple.  Replace this
@@ -446,12 +454,23 @@ namespace Npgsql.SqlGenerators
                 _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
                 if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
                     _variableSubstitution[_filterVarName.Peek()] = expression.Input.VariableName;
+                from.Append(new WhereExpression(expression.Predicate.Accept(this)));
             }
             else
             {
+                // TODO: this isn't quite right
+                // need to make this work for general case of where as part of a join
                 from = inputExpression;
+
+                if (partOfJoin)
+                {
+                    ((JoinExpression)from).Condition = new AndExpression(((JoinExpression)from).Condition, expression.Predicate.Accept(this));
+                }
+                else
+                {
+                    from.Append(new WhereExpression(expression.Predicate.Accept(this)));
+                }
             }
-            from.Append(new WhereExpression(expression.Predicate.Accept(this)));
             _filterVarName.Pop();
             return from;
         }
@@ -504,7 +523,7 @@ namespace Npgsql.SqlGenerators
             // may require some formatting depending on the type
             //throw new NotImplementedException();
             // TODO: this is just for testing
-            return new ConstantExpression(expression.Value.ToString(), expression.ResultType);
+            return new ConstantExpression(expression.Value, expression.ResultType);
         }
 
         public override VisitedExpression Visit(DbComparisonExpression expression)

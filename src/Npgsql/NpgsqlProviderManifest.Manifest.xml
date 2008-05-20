@@ -12,9 +12,9 @@
     <Type Name="numeric" PrimitiveTypeKind="Decimal">
       <FacetDescriptions>
         <!-- TODO: Need a good value for Precision and Scale -->
-        <!-- Currently using defaults that match money -->
-        <Precision Minimum="1" Maximum="29" Default="19" Constant="false" />
-        <Scale Minimum="0" Maximum="29" Default="4" Constant="false" />
+        <!-- Currently using DefaultValues that match money -->
+        <Precision Minimum="1" Maximum="29" DefaultValue="19" Constant="false" />
+        <Scale Minimum="0" Maximum="29" DefaultValue="4" Constant="false" />
       </FacetDescriptions>
     </Type>
     <Type Name="float4" PrimitiveTypeKind="Single">
@@ -23,38 +23,42 @@
     </Type>
     <Type Name="varchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
-        <FixedLength Default="false" Constant="true" />
-        <!-- TODO: Need a good value for Default (1073741823) -->
-        <MaxLength Minimum="1" Maximum="8000" Default="8000" Constant="false" />
-        <Unicode Default="true" Constant="true" />
+        <FixedLength DefaultValue="false" Constant="true" />
+        <!-- TODO: Need a good value for DefaultValue (1073741823) -->
+        <MaxLength Minimum="1" Maximum="8000" DefaultValue="8000" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
     <Type Name="text" PrimitiveTypeKind="String">
       <FacetDescriptions>
-        <FixedLength Default="false" Constant="true" />
+        <FixedLength DefaultValue="false" Constant="true" />
         <!-- TODO: Need a good value for MaxLength -->
-        <MaxLength Default="1073741823" Constant="true" />
-        <Unicode Default="true" Constant="true" />
+        <MaxLength DefaultValue="1073741823" Constant="true" />
+        <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
     <Type Name="bpchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
-        <FixedLength Default="true" Constant="true" />
-        <!-- TODO: Need a good value for Default -->
-        <MaxLength Minimum="1" Maximum="1073741823" Default="1" Constant="false" />
-        <Unicode Default="true" Constant="true" />
+        <FixedLength DefaultValue="true" Constant="true" />
+        <!-- TODO: Need a good value for DefaultValue -->
+        <MaxLength Minimum="1" Maximum="1073741823" DefaultValue="1" Constant="false" />
+        <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
     <Type Name="timestamp" PrimitiveTypeKind="DateTime">
       <FacetDescriptions>
-        <DateTimeKind Default="Unspecified" Constant="true"/>
-        <PreserveSeconds Default="true" Constant="true"/>
+        <Precision DefaultValue="6" Constant="true"/>
+      </FacetDescriptions>
+    </Type>
+    <Type Name="date" PrimitiveTypeKind="DateTime">
+      <FacetDescriptions>
+        <Precision DefaultValue="0" Constant="true"/>
       </FacetDescriptions>
     </Type>
     <Type Name="bytea" PrimitiveTypeKind="Binary">
       <FacetDescriptions>
-        <FixedLength Default="false" Constant="true" />
-        <MaxLength Default="2147483647" Constant="true" />
+        <FixedLength DefaultValue="false" Constant="true" />
+        <MaxLength DefaultValue="2147483647" Constant="true" />
       </FacetDescriptions>
     </Type>
   </Types>

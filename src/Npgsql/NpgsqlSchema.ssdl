@@ -1,62 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Schema Namespace="NpgsqlSchema" Alias="Self" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/ssdl">
+<Schema Namespace="NpgsqlSchema" Provider="Npgsql" ProviderManifestToken="8.1.3" Alias="Self" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/ssdl">
   <EntityContainer Name="NpgsqlSchema">
     <EntitySet Name="PgTables" EntityType="NpgsqlSchema.Table">
       <DefiningQuery>
         select
         cast(c.oid as varchar) as id,
-        current_database() as catalog,
-        n.nspname AS schema,
-        c.relname AS name
+        c.relname AS name,
+        current_database() as catalog_name,
+        n.nspname AS schema_name
         from pg_class c
           left join pg_namespace n
           on n.oid = c.relnamespace
         where c.relkind = 'r' and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
-    <EntitySet Name="PgViews" EntityType="NpgsqlSchema.View">
-      <DefiningQuery>
-        select
-        cast(c.oid as varchar) as id,
-        current_database() as catalog,
-        n.nspname AS schema,
-        c.relname AS name,
-        pg_get_viewdef(c.oid) AS definition,
-        false as is_updatable
-        from pg_class c
-          left join pg_namespace n
-          on n.oid = c.relnamespace
-        where c.relkind = 'v' and n.nspname not in ('pg_catalog','information_schema')
-      </DefiningQuery>
-    </EntitySet>
-    <EntitySet Name="PgFunctions" EntityType="NpgsqlSchema.Function">
-      <DefiningQuery>
-        select
-        cast(p.oid as varchar) as id,
-        current_database() as catalog,
-        n.nspname AS schema,
-        p.proname as name,
-        t.typname as returntype,
-        null::int4 as max_length,
-        null::int4 as precision,
-        null::int4 as scale,
-        true as is_composable,
-        false as is_aggregate,
-        false as is_builtin,
-        false as is_niladic
-        from pg_proc p
-          left join pg_namespace n
-          on n.oid = p.pronamespace
-          left join pg_type t
-          on p.prorettype = t.oid
-        where p.proretset = false  and n.nspname not in ('pg_catalog','information_schema')
-      </DefiningQuery>
-    </EntitySet>
     <EntitySet Name="PgTableColumns" EntityType="NpgsqlSchema.TableColumn">
       <DefiningQuery>
         select
         cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as id,
-        cast(c.oid as varchar) as tableid,
+        cast(c.oid as varchar) as table_id,
         a.attname as name,
         a.attnum as ordinal,
         not a.attnotnull as is_nullable,
@@ -71,14 +33,31 @@
           else null
         end as precision,
         case
+          when t.typname in ('time', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
+          when t.typname = 'interval' then a.atttypmod &amp; 65535
+          else null
+        end as datetime_precision,
+        case
           when t.typname = 'numeric' and a.atttypmod != -1 then (a.atttypmod - 4) &amp; 65535
           else null
         end as scale,
         case
+          when a.attndims = 0 then false
+          else true
+        end as is_multiset,
+        null as collation_catalog_name,
+        null as collation_schema_name,
+        null as collation_name,
+        null as char_set_catalog_name,
+        null as char_set_schema_name,
+        null as char_set_name,
+        case
           when pg_get_expr(ad.adbin, ad.adrelid) like 'nextval%' then true
           else false
         end as is_identity,
-        false as is_generated
+        false as is_generated,
+-- default value column
+        null as default_value
         from pg_attribute a
           join pg_class c
           on a.attrelid = c.oid
@@ -90,11 +69,104 @@
         (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
+    <EntitySet Name="PgConstraints" EntityType="NpgsqlSchema.Constraint">
+      <DefiningQuery>
+        select
+        cast(c.oid as varchar) as id,
+        cast(c.conrelid as varchar) as table_id,
+        c.conname as name,
+        c.condeferrable as is_deferrable,
+        c.condeferred as is_initially_deferred,
+        c.contype as constraint_type,
+        c.consrc as expression,
+        case c.confupdtype
+          when 'c' then 'CASCADE'
+          when 'n' then 'SET NULL'
+          when 'd' then 'SET DEFAULT'
+          when 'r' then 'RESTRICT'
+          when 'a' then 'NO ACTION'
+          else NULL
+        end AS update_rule,
+        case c.confdeltype
+          when 'c' then 'CASCADE'
+          when 'n' then 'SET NULL'
+          when 'd' then 'SET DEFAULT'
+          when 'r' then 'RESTRICT'
+          when 'a' then 'NO ACTION'
+          else NULL
+        end AS delete_rule
+        from pg_constraint c
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgForeignKeyColumns" EntityType="NpgsqlSchema.ForeignKeyColumn">
+      <DefiningQuery>
+        select
+        cast(fkc.constraint_id as varchar) || '.' || cast(fkc.ordinal as varchar) as id,
+        fkc.ordinal as ordinal,
+        fkc.columnid as from_columnid,
+        pkc.columnid as to_columnid,
+        cast(fkc.constraint_id as varchar) as constraint_id
+        from (select
+        ss.coid as constraint_id,
+        ss.confrelid,
+        ss.confkey,
+        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
+        (ss.x).n as ordinal
+        from pg_attribute a
+        join (select
+        r.oid AS roid,
+        c.confrelid,
+        c.confkey,
+        c.oid as coid,
+        c.conname,
+        information_schema._pg_expandarray(c.conkey) as x
+        from pg_constraint c
+        join pg_class r
+        on r.oid = c.conrelid
+        where c.contype = 'f' and r.relkind = 'r') ss
+        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) fkc
+        join (select
+        ss.coid as constraint_id,
+        ss.conrelid,
+        ss.conkey,
+        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
+        (ss.x).n as ordinal
+        from pg_attribute a
+        join (select
+        r.oid AS roid,
+        c.conrelid,
+        c.conkey,
+        c.oid as coid,
+        c.conname,
+        information_schema._pg_expandarray(c.conkey) as x
+        from pg_constraint c
+        join pg_class r
+        on r.oid = c.conrelid
+        where ((c.contype = ANY (ARRAY['p', 'u'])) OR c.contype IS NULL) and r.relkind = 'r') ss
+        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) pkc
+        on fkc.confrelid = pkc.conrelid
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgViews" EntityType="NpgsqlSchema.View">
+      <DefiningQuery>
+        select
+        cast(c.oid as varchar) as id,
+        c.relname AS name,
+        current_database() as catalog_name,
+        n.nspname AS schema_name,
+        false as is_updatable,
+        pg_get_viewdef(c.oid) AS view_definition
+        from pg_class c
+          left join pg_namespace n
+          on n.oid = c.relnamespace
+        where c.relkind = 'v' and n.nspname not in ('pg_catalog','information_schema')
+      </DefiningQuery>
+    </EntitySet>
     <EntitySet Name="PgViewColumns" EntityType="NpgsqlSchema.ViewColumn">
       <DefiningQuery>
         select
         cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as id,
-        cast(c.oid as varchar) as viewid,
+        cast(c.oid as varchar) as view_id,
         a.attname as name,
         a.attnum as ordinal,
         not a.attnotnull as is_nullable,
@@ -109,14 +181,31 @@
           else null
         end as precision,
         case
+          when t.typname in ('time', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
+          when t.typname = 'interval' then a.atttypmod &amp; 65535
+          else null
+        end as datetime_precision,
+        case
           when t.typname = 'numeric' and a.atttypmod != -1 then (a.atttypmod - 4) &amp; 65535
           else null
         end as scale,
         case
+          when a.attndims = 0 then false
+          else true
+        end as is_multiset,
+        null as collation_catalog_name,
+        null as collation_schema_name,
+        null as collation_name,
+        null as char_set_catalog_name,
+        null as char_set_schema_name,
+        null as char_set_name,
+        case
           when pg_get_expr(ad.adbin, ad.adrelid) like 'nextval%' then true
           else false
         end as is_identity,
-        false as is_generated
+        false as is_generated,
+-- default value column
+        null as default_value
         from pg_attribute a
           join pg_class c
           on a.attrelid = c.oid
@@ -128,27 +217,74 @@
         (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
+    <EntitySet Name="PgViewConstraints" EntityType="NpgsqlSchema.ViewConstraint">
+      <DefiningQuery>
+        select '1'::varchar as id, '1'::varchar as view_id, '1'::varchar as name, false as is_deferrable, false as is_initially_deferred, 'p'::varchar as constraint_type, '1'::varchar as expression, '1'::varchar as update_rule, '1'::varchar as delete_rule where 1=0
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgViewForeignKeys" EntityType="NpgsqlSchema.ViewForeignKey">
+      <DefiningQuery>
+        select '1'::varchar as id, 0 as ordinal where 1=0
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgFunctions" EntityType="NpgsqlSchema.Function">
+      <DefiningQuery>
+        select
+        cast(p.oid as varchar) as id,
+        current_database() as catalog_name,
+        n.nspname AS schema_name,
+        p.proname as name,
+        false as is_builtin,
+        false as is_niladic,
+        t.typname as returntype,
+        null as max_length,
+        null as precision,
+        null as datetime_precision,
+        null as scale,
+        null as collation_catalog_name,
+        null as collation_schema_name,
+        null as collation_name,
+        null as char_set_catalog_name,
+        null as char_set_schema_name,
+        null as char_set_name,
+        false as is_aggregate
+        from pg_proc p
+        left join pg_namespace n
+        on n.oid = p.pronamespace
+        left join pg_type t
+        on p.prorettype = t.oid
+        where p.proretset = false and n.nspname not in ('pg_catalog','information_schema')
+      </DefiningQuery>
+    </EntitySet>
     <EntitySet Name="PgFunctionParameters" EntityType="NpgsqlSchema.FunctionParameter">
       <DefiningQuery>
         select
         cast(ss.p_oid as varchar) || '.' || cast((ss.x).n as varchar) as id,
-        cast(ss.p_oid as varchar) as functionid,
+        cast(ss.p_oid as varchar) as function_id,
         case
           when NULLIF(ss.proargnames[(ss.x).n], '') is null then 'x'
           else ss.proargnames[(ss.x).n]
         end as name,
         (ss.x).n as ordinal,
         t.typname as type_name,
-        null::int4 as max_length,
-        null::int4 as precision,
-        null::int4 as scale,
+        null as max_length,
+        null as precision,
+        null as datetime_precision,
+        null as scale,
+        null as collation_catalog_name,
+        null as collation_schema_name,
+        null as collation_name,
+        null as char_set_catalog_name,
+        null as char_set_schema_name,
+        null as char_set_name,
         case
           when ss.proargmodes IS null then 'IN'
           when ss.proargmodes[(ss.x).n] = 'i' then 'IN'
           when ss.proargmodes[(ss.x).n] = 'o' then 'OUT'
           when ss.proargmodes[(ss.x).n] = 'b' then 'INOUT'
           else null
-        end as mode
+        end as mode,
+        null as default
         from pg_type t
           join (select
             n.nspname AS n_nspname,
@@ -156,19 +292,84 @@
             p.oid AS p_oid,
             p.proargnames,
             p.proargmodes,
+            p.proretset,
             information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
             from pg_namespace n
               join pg_proc p
               on n.oid = p.pronamespace) ss
           on t.oid = (ss.x).x
-          where ss.n_nspname not in ('pg_catalog','information_schema')
+          where ss.proretset = false and ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
-    <EntitySet Name="PgPrimaryKeys" EntityType="NpgsqlSchema.PrimaryKey">
+    <EntitySet Name="PgProcedures" EntityType="NpgsqlSchema.Procedure">
       <DefiningQuery>
         select
-        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as id,
-        ss.conname as name,
+        cast(p.oid as varchar) as id,
+        current_database() as catalog_name,
+        n.nspname AS schema_name,
+        p.proname as name,
+        false as is_builtin,
+        false as is_niladic,
+        t.typname as returntype,
+        false as is_aggregate
+        from pg_proc p
+        left join pg_namespace n
+        on n.oid = p.pronamespace
+        left join pg_type t
+        on p.prorettype = t.oid
+        where p.proretset = true and n.nspname not in ('pg_catalog','information_schema')
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgProcedureParameters" EntityType="NpgsqlSchema.ProcedureParameter">
+      <DefiningQuery>
+        select
+        cast(ss.p_oid as varchar) || '.' || cast((ss.x).n as varchar) as id,
+        cast(ss.p_oid as varchar) as procedure_id,
+        case
+          when NULLIF(ss.proargnames[(ss.x).n], '') is null then 'x'
+          else ss.proargnames[(ss.x).n]
+        end as name,
+        (ss.x).n as ordinal,
+        t.typname as type_name,
+        null as max_length,
+        null as precision,
+        null as datetime_precision,
+        null as scale,
+        null as collation_catalog_name,
+        null as collation_schema_name,
+        null as collation_name,
+        null as char_set_catalog_name,
+        null as char_set_schema_name,
+        null as char_set_name,
+        case
+          when ss.proargmodes IS null then 'IN'
+          when ss.proargmodes[(ss.x).n] = 'i' then 'IN'
+          when ss.proargmodes[(ss.x).n] = 'o' then 'OUT'
+          when ss.proargmodes[(ss.x).n] = 'b' then 'INOUT'
+          else null
+        end as mode,
+        null as default
+        from pg_type t
+          join (select
+            n.nspname AS n_nspname,
+            p.proname,
+            p.oid AS p_oid,
+            p.proargnames,
+            p.proargmodes,
+            p.proretset,
+            information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
+            from pg_namespace n
+              join pg_proc p
+              on n.oid = p.pronamespace) ss
+          on t.oid = (ss.x).x
+          where ss.proretset = true and ss.n_nspname not in ('pg_catalog','information_schema')
+      </DefiningQuery>
+    </EntitySet>
+    <EntitySet Name="PgConstraintColumns" EntityType="NpgsqlSchema.ConstraintColumn">
+      <DefiningQuery>
+        select
+        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as column_id,
+        cast(coid as varchar) as constraint_id,
         (ss.x).n as ordinal
         from pg_attribute a
         join (select
@@ -180,76 +381,28 @@
           from pg_constraint c
             join pg_class r
             on r.oid = c.conrelid
-          where c.contype = 'p' and r.relkind = 'r') ss
+          where r.relkind = 'r') ss
         on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped and rrelnamespace in
         (select oid from pg_namespace where nspname not in ('pg_catalog','information_schema'))
       </DefiningQuery>
     </EntitySet>
-    <EntitySet Name="PgForeignKeys" EntityType="NpgsqlSchema.ForeignKey">
+    <EntitySet Name="PgViewConstraintColumns" EntityType="NpgsqlSchema.ViewConstraintColumn">
       <DefiningQuery>
-        select
-        cast(c.oid as varchar) as id,
-        c.conname as name,
-        (c.confupdtype = 'c') as is_cascade_delete
-        from pg_constraint c
-        where c.contype = 'f'
+        select '1'::varchar as column_id, '1'::varchar as constraint_id where 1=0
       </DefiningQuery>
     </EntitySet>
-    <EntitySet Name="PgForeignKeyColumns" EntityType="NpgsqlSchema.ForeignKeyColumn">
+    <EntitySet Name="PgViewForeignKeyColumns" EntityType="NpgsqlSchema.ViewForeignKeyColumn">
       <DefiningQuery>
-        select
-        cast(fkc.relationshipid as varchar) || '.' || cast(fkc.ordinal as varchar) as id,
-        fkc.ordinal as ordinal,
-        fkc.columnid as to_columnid,
-        pkc.columnid as from_columnid,
-        cast(fkc.relationshipid as varchar) as relationshipid
-        from (select
-          ss.coid as relationshipId,
-          ss.confrelid,
-          ss.confkey,
-          cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
-          (ss.x).n as ordinal
-          from pg_attribute a
-          join (select
-            r.oid AS roid,
-            c.confrelid,
-            c.confkey,
-            c.oid as coid,
-            c.conname,
-            information_schema._pg_expandarray(c.conkey) as x
-            from pg_constraint c
-              join pg_class r
-              on r.oid = c.conrelid
-            where c.contype = 'f' and r.relkind = 'r') ss
-          on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) fkc
-          join (select
-            ss.coid as relationshipId,
-            ss.conrelid,
-            ss.conkey,
-            cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
-            (ss.x).n as ordinal
-            from pg_attribute a
-              join (select
-                r.oid AS roid,
-                c.conrelid,
-                c.conkey,
-                c.oid as coid,
-                c.conname,
-                information_schema._pg_expandarray(c.conkey) as x
-                from pg_constraint c
-                  join pg_class r
-                  on r.oid = c.conrelid
-                where ((c.contype = ANY (ARRAY['p', 'u'])) OR c.contype IS NULL) and r.relkind = 'r') ss
-              on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) pkc
-          on fkc.confrelid = pkc.conrelid
+        select '1'::varchar as id, '1'::varchar as constraint_id, '1'::varchar as from_columnid, '1'::varchar as to_columnid, 0 as ordinal where 1=0
       </DefiningQuery>
     </EntitySet>
     
-    <AssociationSet Association="NpgsqlSchema.ColumnPrimaryKey" Name="ColumnPrimaryKeys" />
+    <AssociationSet Association="NpgsqlSchema.TableTableColumn" Name="TableTableColumns" />
+    <AssociationSet Association="NpgsqlSchema.TableTableConstraint" Name="TableTableConstraints"/>
+    <AssociationSet Association="NpgsqlSchema.TableConstraintColumn" Name="TableConstraintColumns"/>
     <AssociationSet Association="NpgsqlSchema.RelationshipRelationshipColumnMap" Name="RelationshipRelationshipColumnMaps" />
     <AssociationSet Association="NpgsqlSchema.FromColumnRelationshipColumnMap" Name="FromColumnRelationshipColumnMaps" />
     <AssociationSet Association="NpgsqlSchema.ToColumnRelationshipColumnMap" Name="ToColumnRelationshipColumnMaps" />
-    <AssociationSet Association="NpgsqlSchema.TableTableColumn" Name="TableTableColumns" />
     <AssociationSet Association="NpgsqlSchema.ViewViewColumn" Name="ViewViewColumns" />
     <AssociationSet Association="NpgsqlSchema.FunctionFunctionParameter" Name="FunctionFunctionParameters" />
   </EntityContainer>
@@ -257,132 +410,275 @@
     <Key>
       <PropertyRef Name="id"/>
     </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="catalog" Type="varchar"/>
-    <Property Name="schema" Type="varchar" Nullable="false"/>
+    <Property Name="id" Type="varchar" Nullable="false"/>
     <Property Name="name" Type="varchar" Nullable="false"/>
-  </EntityType>
-  <EntityType Name="View">
-    <Key>
-      <PropertyRef Name="id"/>
-    </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="catalog" Type="varchar"/>
-    <Property Name="schema" Type="varchar" Nullable="false"/>
-    <Property Name="name" Type="varchar" Nullable="false"/>
-    <Property Name="definition" Type="text" Nullable="false"/>
-    <Property Name="is_updatable" Type="bool" Nullable="false"/>
-  </EntityType>
-  <EntityType Name="Function">
-    <Key>
-      <PropertyRef Name="id"/>
-    </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="catalog" Type="varchar"/>
-    <Property Name="schema" Type="varchar" Nullable="false"/>
-    <Property Name="name" Type="varchar" Nullable="false"/>
-    <Property Name="returntype" Type="varchar"/>
-    <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int4"/>
-    <Property Name="scale" Type="int4"/>
-    <Property Name="is_composable" Type="bool"/>
-    <Property Name="is_aggregate" Type="bool"/>
-    <Property Name="is_builtin" Type="bool"/>
-    <Property Name="is_niladic" Type="bool"/>
+    <Property Name="catalog_name" Type="varchar"/>
+    <Property Name="schema_name" Type="varchar"/>
   </EntityType>
   <EntityType Name="TableColumn">
     <Key>
       <PropertyRef Name="id"/>
     </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="tableid" Type="text" Nullable="false"/>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="table_id" Type="varchar" Nullable="false"/>
     <Property Name="name" Type="varchar" Nullable="false"/>
     <Property Name="ordinal" Type="int4" Nullable="false"/>
     <Property Name="is_nullable" Type="bool" Nullable="false"/>
     <Property Name="type_name" Type="varchar" Nullable="false"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int4"/>
+    <Property Name="precision" Type="int2"/>
+    <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
+    <Property Name="collation_catalog_name" Type="varchar"/>
+    <Property Name="collation_schema_name" Type="varchar"/>
+    <Property Name="collation_name" Type="varchar"/>
+    <Property Name="char_set_catalog_name" Type="varchar"/>
+    <Property Name="char_set_schema_name" Type="varchar"/>
+    <Property Name="char_set_name" Type="varchar"/>
+    <Property Name="is_multiset" Type="bool" Nullable="false"/>
     <Property Name="is_identity" Type="bool" Nullable="false"/>
     <Property Name="is_generated" Type="bool" Nullable="false"/>
+    <Property Name="default_value" Type="text"/>
   </EntityType>
-  <EntityType Name="ViewColumn">
+  <EntityType Name="Constraint">
     <Key>
       <PropertyRef Name="id"/>
     </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="viewid" Type="text" Nullable="false"/>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="table_id" Type="varchar" Nullable="false"/>
     <Property Name="name" Type="varchar" Nullable="false"/>
-    <Property Name="ordinal" Type="int4" Nullable="false"/>
-    <Property Name="is_nullable" Type="bool" Nullable="false"/>
-    <Property Name="type_name" Type="varchar" Nullable="false"/>
-    <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int4"/>
-    <Property Name="scale" Type="int4"/>
-    <Property Name="is_identity" Type="bool" Nullable="false"/>
-    <Property Name="is_generated" Type="bool" Nullable="false"/>
-  </EntityType>
-  <EntityType Name="FunctionParameter">
-    <Key>
-      <PropertyRef Name="id"/>
-    </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="functionid" Type="text" Nullable="false"/>
-    <Property Name="name" Type="text" Nullable="false"/>
-    <Property Name="ordinal" Type="int4" Nullable="false"/>
-    <Property Name="type_name" Type="varchar" Nullable="false"/>
-    <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int4"/>
-    <Property Name="scale" Type="int4"/>
-    <Property Name="mode" Type="varchar"/>
-  </EntityType>
-  <EntityType Name="PrimaryKey">
-    <Key>
-      <PropertyRef Name="id"/>
-    </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
-    <Property Name="name" Type="varchar" Nullable="false"/>
-    <Property Name="ordinal" Type="int4" Nullable="false"/>
+    <Property Name="is_deferrable" Type="bool" Nullable="false"/>
+    <Property Name="is_initially_deferred" Type="bool" Nullable="false"/>
+    <Property Name="constraint_type" Type="varchar"/>
+    <Property Name="expression" Type="text"/>
+    <Property Name="update_rule" Type="text"/>
+    <Property Name="delete_rule" Type="text"/>
   </EntityType>
   <EntityType Name="ForeignKey">
     <Key>
       <PropertyRef Name="id"/>
     </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
+    <Property Name="id" Type="varchar" Nullable="false"/>
     <Property Name="name" Type="varchar" Nullable="false"/>
-    <Property Name="is_cascade_delete" Type="bool" Nullable="false"/>
+    <Property Name="update_rule" Type="varchar" Nullable="false"/>
+    <Property Name="delete_rule" Type="varchar" Nullable="false"/>
   </EntityType>
   <EntityType Name="ForeignKeyColumn">
     <Key>
       <PropertyRef Name="id"/>
     </Key>
-    <Property Name="id" Type="text" Nullable="false"/>
+    <Property Name="id" Type="varchar" Nullable="false"/>
     <Property Name="ordinal" Type="int4" Nullable="false"/>
-    <Property Name="to_columnid" Type="text" Nullable="false"/>
-    <Property Name="from_columnid" Type="text" Nullable="false"/>
-    <Property Name="relationshipid" Type="text" Nullable="false"/>
+    <Property Name="to_columnid" Type="varchar" Nullable="false"/>
+    <Property Name="from_columnid" Type="varchar" Nullable="false"/>
+    <Property Name="constraint_id" Type="varchar" Nullable="false"/>
   </EntityType>
-  <Association Name="ColumnPrimaryKey">
-    <End Type="NpgsqlSchema.TableColumn" Role="TableColumn" Multiplicity="1"/>
-    <End Type="NpgsqlSchema.PrimaryKey" Role="PrimaryKey" Multiplicity="0..1"/>
+  <EntityType Name="View">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="name" Type="varchar" Nullable="false"/>
+    <Property Name="catalog_name" Type="varchar"/>
+    <Property Name="schema_name" Type="varchar"/>
+    <Property Name="definition" Type="text"/>
+    <Property Name="is_updatable" Type="bool" Nullable="false"/>
+  </EntityType>
+  <EntityType Name="ViewColumn">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="view_id" Type="varchar" Nullable="false"/>
+    <Property Name="name" Type="varchar" Nullable="false"/>
+    <Property Name="ordinal" Type="int4" Nullable="false"/>
+    <Property Name="is_nullable" Type="bool" Nullable="false"/>
+    <Property Name="type_name" Type="varchar" Nullable="false"/>
+    <Property Name="max_length" Type="int4"/>
+    <Property Name="precision" Type="int2"/>
+    <Property Name="datetime_precision" Type="int4"/>
+    <Property Name="scale" Type="int4"/>
+    <Property Name="collation_catalog_name" Type="varchar"/>
+    <Property Name="collation_schema_name" Type="varchar"/>
+    <Property Name="collation_name" Type="varchar"/>
+    <Property Name="char_set_catalog_name" Type="varchar"/>
+    <Property Name="char_set_schema_name" Type="varchar"/>
+    <Property Name="char_set_name" Type="varchar"/>
+    <Property Name="is_multiset" Type="bool" Nullable="false"/>
+    <Property Name="is_identity" Type="bool" Nullable="false"/>
+    <Property Name="is_generated" Type="bool" Nullable="false"/>
+    <Property Name="default_value" Type="text"/>
+  </EntityType>
+  <EntityType Name="ViewConstraint">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="view_id" Type="varchar" Nullable="false"/>
+    <Property Name="name" Type="varchar" Nullable="false"/>
+    <Property Name="is_deferrable" Type="bool" Nullable="false"/>
+    <Property Name="is_initially_deferred" Type="bool" Nullable="false"/>
+    <Property Name="constraint_type" Type="varchar" Nullable="false"/>
+    <Property Name="expression" Type="text"/>
+    <Property Name="update_rule" Type="text"/>
+    <Property Name="delete_rule" Type="text"/>
+  </EntityType>
+  <EntityType Name="ViewForeignKey">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="ordinal" Type="int4" Nullable="false"/>
+  </EntityType>
+  <EntityType Name="Function">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="catalog_name" Type="varchar"/>
+    <Property Name="schema_name" Type="varchar"/>
+    <Property Name="name" Type="varchar" Nullable="false"/>
+    <Property Name="is_builtin" Type="bool"/>
+    <Property Name="is_niladic" Type="bool"/>
+    <Property Name="returntype" Type="varchar"/>
+    <Property Name="max_length" Type="int4"/>
+    <Property Name="precision" Type="int2"/>
+    <Property Name="datetime_precision" Type="int4"/>
+    <Property Name="scale" Type="int4"/>
+    <Property Name="collation_catalog_name" Type="varchar"/>
+    <Property Name="collation_schema_name" Type="varchar"/>
+    <Property Name="collation_name" Type="varchar"/>
+    <Property Name="char_set_catalog_name" Type="varchar"/>
+    <Property Name="char_set_schema_name" Type="varchar"/>
+    <Property Name="char_set_name" Type="varchar"/>
+    <Property Name="is_multiset" Type="bool" Nullable="false"/>
+    <Property Name="is_aggregate" Type="bool"/>
+  </EntityType>
+  <EntityType Name="FunctionParameter">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="function_id" Type="varchar" Nullable="false"/>
+    <Property Name="name" Type="text" Nullable="false"/>
+    <Property Name="ordinal" Type="int4" Nullable="false"/>
+    <Property Name="type_name" Type="varchar" Nullable="false"/>
+    <Property Name="max_length" Type="int4"/>
+    <Property Name="precision" Type="int2"/>
+    <Property Name="datetime_precision" Type="int4"/>
+    <Property Name="scale" Type="int4"/>
+    <Property Name="collation_catalog_name" Type="varchar"/>
+    <Property Name="collation_schema_name" Type="varchar"/>
+    <Property Name="collation_name" Type="varchar"/>
+    <Property Name="char_set_catalog_name" Type="varchar"/>
+    <Property Name="char_set_schema_name" Type="varchar"/>
+    <Property Name="char_set_name" Type="varchar"/>
+    <Property Name="is_multiset" Type="bool" Nullable="false"/>
+    <Property Name="mode" Type="varchar"/>
+    <Property Name="default" Type="text"/>
+  </EntityType>
+  <EntityType Name="Procedure">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="catalog_name" Type="varchar"/>
+    <Property Name="schema_name" Type="varchar"/>
+    <Property Name="name" Type="varchar" Nullable="false"/>
+  </EntityType>
+  <EntityType Name="ProcedureParameter">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="procedure_id" Type="varchar" Nullable="false"/>
+    <Property Name="name" Type="text" Nullable="false"/>
+    <Property Name="ordinal" Type="int4" Nullable="false"/>
+    <Property Name="type_name" Type="varchar" Nullable="false"/>
+    <Property Name="max_length" Type="int4"/>
+    <Property Name="precision" Type="int2"/>
+    <Property Name="datetime_precision" Type="int4"/>
+    <Property Name="scale" Type="int4"/>
+    <Property Name="collation_catalog_name" Type="varchar"/>
+    <Property Name="collation_schema_name" Type="varchar"/>
+    <Property Name="collation_name" Type="varchar"/>
+    <Property Name="char_set_catalog_name" Type="varchar"/>
+    <Property Name="char_set_schema_name" Type="varchar"/>
+    <Property Name="char_set_name" Type="varchar"/>
+    <Property Name="is_multiset" Type="bool" Nullable="false"/>
+    <Property Name="mode" Type="varchar"/>
+    <Property Name="default" Type="text"/>
+  </EntityType>
+  <EntityType Name="ConstraintColumn">
+    <Key>
+      <PropertyRef Name="column_id"/>
+      <PropertyRef Name="constraint_id"/>
+    </Key>
+    <Property Name="column_id" Type="varchar" Nullable="false"/>
+    <Property Name="constraint_id" Type="varchar" Nullable="false"/>
+  </EntityType>
+  <EntityType Name="ViewForeignKeyColumn">
+    <Key>
+      <PropertyRef Name="id"/>
+    </Key>
+    <Property Name="id" Type="varchar" Nullable="false"/>
+    <Property Name="constraint_id" Type="varchar" Nullable="false"/>
+    <Property Name="from_columnid" Type="varchar" Nullable="false"/>
+    <Property Name="to_columnid" Type="varchar" Nullable="false"/>
+  </EntityType>
+  <EntityType Name="ViewConstraintColumn">
+    <Key>
+      <PropertyRef Name="column_id"/>
+      <PropertyRef Name="constraint_id"/>
+    </Key>
+    <Property Name="column_id" Type="varchar" Nullable="false"/>
+    <Property Name="constraint_id" Type="varchar" Nullable="false"/>
+  </EntityType>
+  <Association Name="TableTableColumn">
+    <End Type="NpgsqlSchema.Table" Role="Table" Multiplicity="1"/>
+    <End Type="NpgsqlSchema.TableColumn" Role="TableColumn" Multiplicity="*"/>
     <ReferentialConstraint>
-      <Principal Role="TableColumn">
+      <Principal Role="Table">
         <PropertyRef Name="id"/>
       </Principal>
-      <Dependent Role="PrimaryKey">
+      <Dependent Role="TableColumn">
+        <PropertyRef Name="table_id"/>
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="TableTableConstraint">
+    <End Type="NpgsqlSchema.Table" Role="Table" Multiplicity="1"/>
+    <End Type="NpgsqlSchema.Constraint" Role="Constraint" Multiplicity="*"/>
+    <ReferentialConstraint>
+      <Principal Role="Table">
         <PropertyRef Name="id"/>
+      </Principal>
+      <Dependent Role="Constraint">
+        <PropertyRef Name="table_id"/>
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="TableConstraintColumn">
+    <End Type="NpgsqlSchema.Constraint" Role="Constraint" Multiplicity="1"/>
+    <End Type="NpgsqlSchema.ConstraintColumn" Role="ConstraintColumn" Multiplicity="*"/>
+    <ReferentialConstraint>
+      <Principal Role="Constraint">
+        <PropertyRef Name="id"/>
+      </Principal>
+      <Dependent Role="ConstraintColumn">
+        <PropertyRef Name="constraint_id"/>
       </Dependent>
     </ReferentialConstraint>
   </Association>
   <Association Name="RelationshipRelationshipColumnMap">
-    <End Type="NpgsqlSchema.ForeignKey" Role="ForeignKey" Multiplicity="1"/>
+    <End Type="NpgsqlSchema.Constraint" Role="ForeignKey" Multiplicity="1"/>
     <End Type="NpgsqlSchema.ForeignKeyColumn" Role="ForeignKeyColumn" Multiplicity="*"/>
     <ReferentialConstraint>
       <Principal Role="ForeignKey">
         <PropertyRef Name="id"/>
       </Principal>
       <Dependent Role="ForeignKeyColumn">
-        <PropertyRef Name="relationshipid"/>
+        <PropertyRef Name="constraint_id"/>
       </Dependent>
     </ReferentialConstraint>
   </Association>
@@ -410,18 +706,6 @@
       </Dependent>
     </ReferentialConstraint>
   </Association>
-  <Association Name="TableTableColumn">
-    <End Type="NpgsqlSchema.Table" Role="Table" Multiplicity="1"/>
-    <End Type="NpgsqlSchema.TableColumn" Role="TableColumn" Multiplicity="*"/>
-    <ReferentialConstraint>
-      <Principal Role="Table">
-        <PropertyRef Name="id"/>
-      </Principal>
-      <Dependent Role="TableColumn">
-        <PropertyRef Name="tableid"/>
-      </Dependent>
-    </ReferentialConstraint>
-  </Association>
   <Association Name="ViewViewColumn">
     <End Type="NpgsqlSchema.View" Role="View" Multiplicity="1"/>
     <End Type="NpgsqlSchema.ViewColumn" Role="ViewColumn" Multiplicity="*"/>
@@ -430,7 +714,7 @@
         <PropertyRef Name="id"/>
       </Principal>
       <Dependent Role="ViewColumn">
-        <PropertyRef Name="viewid"/>
+        <PropertyRef Name="view_id"/>
       </Dependent>
     </ReferentialConstraint>
   </Association>
@@ -442,7 +726,7 @@
         <PropertyRef Name="id"/>
       </Principal>
       <Dependent Role="FunctionParameter">
-        <PropertyRef Name="functionid"/>
+        <PropertyRef Name="function_id"/>
       </Dependent>
     </ReferentialConstraint>
   </Association>

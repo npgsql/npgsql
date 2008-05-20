@@ -18,19 +18,17 @@ namespace Npgsql
             get { return _instance; }
         }
 
-        protected override DbCommandDefinition CreateDbCommandDefinition(DbConnection connection, DbCommandTree commandTree)
+        protected override DbCommandDefinition CreateDbCommandDefinition(DbProviderManifest providerManifest, DbCommandTree commandTree)
         {
-            return CreateCommandDefinition(CreateDbCommand(connection, commandTree));
+            return CreateCommandDefinition(CreateDbCommand(commandTree));
         }
 
-        private DbCommand CreateDbCommand(DbConnection connection, DbCommandTree commandTree)
+        private DbCommand CreateDbCommand(DbCommandTree commandTree)
         {
-            if (connection == null)
-                throw new ArgumentNullException("connection");
             if (commandTree == null)
                 throw new ArgumentNullException("commandTree");
 
-            DbCommand command = connection.CreateCommand();
+            DbCommand command = NpgsqlFactory.Instance.CreateCommand();
 
             foreach (KeyValuePair<string, TypeUsage> parameter in commandTree.Parameters)
             {
@@ -77,13 +75,29 @@ namespace Npgsql
             sqlGenerator.BuildCommand(command);
         }
 
-        protected override DbProviderManifest GetDbProviderManifest(DbConnection connection)
+        protected override string GetDbProviderManifestToken(DbConnection connection)
         {
             if (connection == null)
                 throw new ArgumentNullException("connection");
             // TODO: used to use connection.ServerVersion
             // that doesn't work with a closed connection.
-            return new NpgsqlProviderManifest("");
+            bool openedConnection = false;
+            try
+            {
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    connection.Open();
+                    openedConnection = true;
+                }
+                return connection.ServerVersion;
+            }
+            finally
+            {
+                if (openedConnection)
+                {
+                    connection.Close();
+                }
+            }
         }
 
         protected override DbProviderManifest GetDbProviderManifest(string versionHint)

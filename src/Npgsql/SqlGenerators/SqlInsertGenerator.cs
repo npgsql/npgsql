@@ -9,6 +9,7 @@ namespace Npgsql.SqlGenerators
     internal class SqlInsertGenerator : SqlBaseGenerator
 	{
         private DbInsertCommandTree _commandTree;
+        private bool _processingReturning;
 
         public SqlInsertGenerator(DbInsertCommandTree commandTree)
         {
@@ -22,7 +23,14 @@ namespace Npgsql.SqlGenerators
             DbVariableReferenceExpression variable = expression.Instance as DbVariableReferenceExpression;
             if (variable == null || variable.VariableName != _projectVarName.Peek())
                 throw new NotSupportedException();
-            return new LiteralExpression(expression.Property.Name);
+            if (!_processingReturning)
+            {
+                return new LiteralExpression(expression.Property.Name);
+            }
+            else
+            {
+                return new LiteralExpression("currval(pg_get_serial_sequence('" + _variableSubstitution[variable.VariableName] + "', '" + expression.Property.Name + "'))");
+            }
         }
 
         public override void BuildCommand(DbCommand command)
@@ -45,12 +53,18 @@ namespace Npgsql.SqlGenerators
                 valueList.Append(clause.Value.Accept(this));
                 first = false;
             }
-            _projectVarName.Pop();
             columnList.Append(")");
             valueList.Append(")");
             insert.Append(columnList);
             insert.Append(" VALUES ");
             insert.Append(valueList);
+            if (_commandTree.Returning != null)
+            {
+                insert.Append(";");
+                _processingReturning = true;
+                insert.Append(_commandTree.Returning.Accept(this));
+            }
+            _projectVarName.Pop();
             command.CommandText = insert.ToString();
         }
 	}
