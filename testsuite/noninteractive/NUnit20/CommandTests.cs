@@ -2453,10 +2453,55 @@ connection.Open();*/
             
         }
         
+         [Test]
+        public void ParameterExplicitType()
+        {
+            
+            object param = 1;
+            
+            using(NpgsqlCommand cmd = new NpgsqlCommand("select a, max(b) from (select :param as a, 1 as b) x group by a", TheConnection))
+            {
+                cmd.Parameters.Add("param", param);
+                cmd.Parameters[0].DbType = DbType.Int32;
+                
+                using(IDataReader rdr = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                {
+                    rdr.Read();
+                }
+
+                param = "text";
+                cmd.Parameters[0].DbType = DbType.String;
+                using(IDataReader rdr = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                {
+                    rdr.Read();
+                }
+            
+            }
+        }
+        
+
+        [Test]
+        public void ParameterExplicitType2()
+        {
+
+            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
+           //sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                      //next line causes exception "ERROR: 42883: operator does not exist:    date = text"           command.ExecuteScalar();
+        }
+        
+        [Test]
+        public void ParameterExplicitType2DbTypeObject()
+        {
+
+            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
+           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                      //next line causes exception "ERROR: 42883: operator does not exist:    date = text"           command.ExecuteScalar();
+        }
+        
+               
         
 
 
     }
+    
 
     [TestFixture]
     public class CommandTestsV2 : CommandTests
