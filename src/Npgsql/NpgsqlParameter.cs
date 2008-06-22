@@ -70,6 +70,7 @@ namespace Npgsql
 		private Boolean sourceColumnNullMapping;
 		private readonly ResourceManager resman;
 
+        private Boolean useCast = false;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> class.
@@ -261,6 +262,15 @@ namespace Npgsql
 				precision = value;
 			}
 		}
+		
+		
+		public Boolean UseCast
+		{
+		    get
+		    {
+		        return useCast;
+		    }
+		}
 
 		/// <summary>
 		/// Gets or sets the number of decimal places to which
@@ -319,13 +329,17 @@ namespace Npgsql
 			} // [TODO] Validate data type.
 			set
 			{
-				NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
-				if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
-				{
-					throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
-				}
-			}
-		}
+			    
+			    NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
+			    
+			    useCast = value != DbType.Object;
+                
+                if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
+                {
+                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                }
+            }
+        }
 
 		/// <summary>
 		/// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
@@ -343,6 +357,7 @@ namespace Npgsql
 			set
 			{
 				NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
+				useCast = true;
 				if (value == NpgsqlDbType.Array)
 				{
 					throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));

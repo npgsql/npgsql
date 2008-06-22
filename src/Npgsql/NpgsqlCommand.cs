@@ -896,18 +896,24 @@ namespace Npgsql
 
 					if ((s[0] == ':' || s[0] == '@') && Parameters.TryGetValue(s, out p))
 					{
-						// It's a parameter. Lets handle it.
+                        
+                        // It's a parameter. Lets handle it.
 						if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
 						{
-							sb.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
-
-							sb.Append("::");
-							sb.Append(p.TypeInfo.CastName);
-
-							if (p.TypeInfo.UseSize && (p.Size > 0))
+						    
+						    sb.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
+							
+							if (p.UseCast)
 							{
-								sb.Append("(").Append(p.Size).Append(")");
-							}
+							    sb.Append("::");
+							    sb.Append(p.TypeInfo.CastName);
+							
+
+        							if (p.TypeInfo.UseSize && (p.Size > 0))
+        							{
+        								sb.Append("(").Append(p.Size).Append(")");
+        							}
+        					    }
 						}
 					}
 					else

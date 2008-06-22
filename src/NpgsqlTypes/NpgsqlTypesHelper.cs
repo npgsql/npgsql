@@ -271,6 +271,7 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddDbTypeAlias("text", DbType.StringFixedLength);
 			nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiString);
 			nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiStringFixedLength);
+			
 			nativeTypeMapping.AddTypeAlias("text", typeof (String));
 
 
@@ -390,6 +391,10 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
 			nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
+			
+			nativeTypeMapping.AddDbTypeAlias("text", DbType.Object);
+			
+			
 			return nativeTypeMapping;
 		}
 
@@ -1153,10 +1158,10 @@ namespace NpgsqlTypes
 
 		public void AddDbTypeAlias(String Name, DbType DbType)
 		{
-			if (DbTypeIndex.ContainsKey(DbType))
+			/*if (DbTypeIndex.ContainsKey(DbType))
 			{
-				throw new Exception("NpgsqlDbType already aliased");
-			}
+				throw new Exception("DbType already aliased");
+			}*/
 
 			DbTypeIndex[DbType] = NameIndex[Name];
 		}
