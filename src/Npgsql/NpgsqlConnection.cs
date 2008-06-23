@@ -366,7 +366,7 @@ namespace Npgsql
 		/// </summary>
 		/// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
 		[Browsable(false)]
-		public override ConnectionState State
+		public ConnectionState FullState
 		{
 			get
 			{
@@ -384,6 +384,19 @@ namespace Npgsql
 		}
 
 		/// <summary>
+		/// Gets whether the current state of the connection is Open or Closed
+		/// </summary>
+		/// <value>ConnectionState.Open or ConnectionState.Closed</value>
+		[Browsable(false)]
+        public override ConnectionState State
+        {
+            get
+            {
+                return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
+            }
+        }
+
+        /// <summary>
 		/// Version of the PostgreSQL backend.
 		/// This can only be called when there is an active connection.
 		/// </summary>
@@ -630,7 +643,7 @@ namespace Npgsql
 				}
 				else
 				{
-					if (State != ConnectionState.Closed)
+					if (FullState != ConnectionState.Closed)
 					{
 						NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
 						NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);

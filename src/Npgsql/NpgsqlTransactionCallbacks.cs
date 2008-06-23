@@ -62,7 +62,7 @@ namespace Npgsql
 
 		private NpgsqlConnection GetConnection()
 		{
-			if (_connection == null || (_connection.State & ConnectionState.Open) != ConnectionState.Open)
+			if (_connection == null || (_connection.FullState & ConnectionState.Open) != ConnectionState.Open)
 			{
 				_connection = new NpgsqlConnection(_connectionString);
 				_connection.Open();
