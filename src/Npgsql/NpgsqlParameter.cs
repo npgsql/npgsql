@@ -268,7 +268,7 @@ namespace Npgsql
 		{
 		    get
 		    {
-		        return useCast;
+		        return useCast && (value != DBNull.Value);
 		    }
 		}
 
