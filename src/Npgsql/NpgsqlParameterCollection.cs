@@ -242,8 +242,8 @@ namespace Npgsql
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", parameterName);
 
 			// Iterate values to see what is the index of parameter.
-			Int32 index = 0;
-
+			int index = 0;
+		        int bestChoose = -1;
 			if ((parameterName[0] == ':') || (parameterName[0] == '@'))
 			{
 				parameterName = parameterName.Remove(0, 1);
@@ -253,14 +253,18 @@ namespace Npgsql
 			foreach (NpgsqlParameter parameter in this)
 			{
 				// allow for optional use of ':' and '@' in the ParameterName property
-				if (parameter.CleanName == parameterName)
+                		string cleanName = parameter.CleanName;
+		                if(cleanName == parameterName)
 				{
 					return index;
 				}
-
+				if(string.Compare(parameterName, cleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
+				{
+				    bestChoose = index;
+				}
 				index++;
 			}
-			return -1;
+			return bestChoose;
 		}
 
 		#endregion
