@@ -103,6 +103,7 @@
                 <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.ja.resx"/>
                 <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.zh-CN.resx"/>
                 <include name="${src.dir}/NpgsqlTypes/NpgsqlTypesHelper.resx"/>
+                <include name="${src.dir}/Npgsql/*.resx"/>
 
             </resources>
         </resgen>
