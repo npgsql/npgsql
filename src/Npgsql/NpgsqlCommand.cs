@@ -1267,12 +1267,19 @@ namespace Npgsql
 							//result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
 							parameterName = parameters[i].CleanName;
 							//textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
-							parseCommand =
-								ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName));
+							
+							// Just add typecast if needed.
+							if (parameters[i].UseCast)
+							    parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName));
+							else
+							    parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}", (i + 1)));
 						}
 						else
 						{
-							parseCommand += string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName);
+						    if (parameters[i].UseCast)
+						        	parseCommand += string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName);
+					        	else
+					        	    	parseCommand += string.Format("${0}", (i + 1));
 						}
 					}
 				}
@@ -1358,7 +1365,10 @@ namespace Npgsql
 				for (i = 0; i < parameters.Count; i++)
 				{
 					//                    command.Append(NpgsqlTypesHelper.GetDefaultTypeInfo(parameters[i].DbType));
-					command.Append(parameters[i].TypeInfo.Name);
+					if (parameters[i].UseCast)
+					    command.Append(parameters[i].TypeInfo.Name);
+					else
+					    command.Append("unknown");
 
 					command.Append(',');
 				}
