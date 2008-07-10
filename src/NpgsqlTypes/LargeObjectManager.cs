@@ -124,8 +124,7 @@ namespace NpgsqlTypes
 
 					this.fp = new Fastpath(conn, conn.Connector.Stream);
 
-					using (IDataReader res = cmd.ExecuteReader(CommandBehavior.CloseConnection))
-						//FIXME: We want to close the connection after this?
+					using (IDataReader res = cmd.ExecuteReader())
 					{
 						if (res == null)
 						{
