@@ -169,11 +169,27 @@
       <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.de.resx">
+      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.ja.resx">
+      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.zh-CN.resx">
+      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlClosedState.resx">
       <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlCommand.de.resx">
+      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlCommand.fr.resx">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -217,6 +233,10 @@
       <DependentUpon>NpgsqlConnection.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlConnection.fr.resx">
+      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlConnection.ja.resx">
       <DependentUpon>NpgsqlConnection.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -241,6 +261,10 @@
       <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.fr.resx">
+      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlEventLog.ja.resx">
       <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -257,6 +281,14 @@
       <DependentUpon>NpgsqlException.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlException.de.resx">
+      <DependentUpon>NpgsqlException.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlException.fr.resx">
+      <DependentUpon>NpgsqlException.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlParameter.de.resx">
       <DependentUpon>NpgsqlParameter.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -266,6 +298,10 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlParameter.fi.resx">
+      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlParameter.fr.resx">
       <DependentUpon>NpgsqlParameter.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -293,6 +329,10 @@
       <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.fr.resx">
+      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.ja.resx">
       <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
       <SubType>Designer</SubType>
@@ -309,11 +349,35 @@
       <DependentUpon>NpgsqlReadyState.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlReadyState.de.resx">
+      <DependentUpon>NpgsqlReadyState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlReadyState.fr.resx">
+      <DependentUpon>NpgsqlReadyState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlRow.resx">
       <DependentUpon>NpgsqlRow.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlRow.de.resx">
+      <DependentUpon>NpgsqlRow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlRow.fr.resx">
+      <DependentUpon>NpgsqlRow.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlState.resx">
+      <DependentUpon>NpgsqlState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlState.de.resx">
+      <DependentUpon>NpgsqlState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlState.fr.resx">
       <DependentUpon>NpgsqlState.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -326,6 +390,10 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlTransaction.fi.resx">
+      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.fr.resx">
       <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -345,10 +413,26 @@
       <DependentUpon>PGUtil.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\PGUtil.de.resx">
+      <DependentUpon>PGUtil.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\PGUtil.fr.resx">
+      <DependentUpon>PGUtil.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Npgsql\NpgsqlMetaData.xml" />
     <EmbeddedResource Include="Npgsql\NpgsqlClosedState.ja.resx">
+      <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlClosedState.de.resx">
+      <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlClosedState.fr.resx">
       <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -360,8 +444,24 @@
       <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.fr.resx">
+      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.de.resx">
+      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.zh-CN.resx">
       <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlConnectedState.de.resx">
+      <DependentUpon>NpgsqlConnectedState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlConnectedState.fr.resx">
+      <DependentUpon>NpgsqlConnectedState.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlConnectedState.ja.resx">
@@ -370,6 +470,14 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlConnectedState.zh-CN.resx">
       <DependentUpon>NpgsqlConnectedState.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.de.resx">
+      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.fr.resx">
+      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.ja.resx">
