@@ -245,7 +245,7 @@ namespace Npgsql
 		/// </summary>
 		public override Guid GetGuid(Int32 i)
 		{
-			return new Guid((string) GetValue(i));
+			return (Guid) GetValue(i);
 		}
 
 		/// <summary>

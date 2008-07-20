@@ -474,7 +474,8 @@ namespace NpgsqlTypes
 				new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof (NpgsqlPolygon),
 				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon));
 
-			yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof (Guid), null);
+			yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof (Guid), new
+ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 
 			yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof (String), null);
 
