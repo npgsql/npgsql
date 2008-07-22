@@ -253,7 +253,7 @@
         on n.oid = p.pronamespace
         left join pg_type t
         on p.prorettype = t.oid
-        where p.proretset = false and n.nspname not in ('pg_catalog','information_schema')
+        where (p.proretset = false and t.typname != 'void') and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgFunctionParameters" EntityType="NpgsqlSchema.FunctionParameter">
@@ -293,12 +293,15 @@
             p.proargnames,
             p.proargmodes,
             p.proretset,
+            p.prorettype,
             information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
             from pg_namespace n
               join pg_proc p
               on n.oid = p.pronamespace) ss
           on t.oid = (ss.x).x
-          where ss.proretset = false and ss.n_nspname not in ('pg_catalog','information_schema')
+            join pg_type rt
+          on ss.prorettype = rt.oid
+          where (ss.proretset = false and rt.typname != 'void') and ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgProcedures" EntityType="NpgsqlSchema.Procedure">
@@ -310,14 +313,14 @@
         p.proname as name,
         false as is_builtin,
         false as is_niladic,
-        t.typname as returntype,
+        --t.typname as returntype,
         false as is_aggregate
         from pg_proc p
         left join pg_namespace n
         on n.oid = p.pronamespace
         left join pg_type t
         on p.prorettype = t.oid
-        where p.proretset = true and n.nspname not in ('pg_catalog','information_schema')
+        where (p.proretset = true or t.typname = 'void') and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgProcedureParameters" EntityType="NpgsqlSchema.ProcedureParameter">
@@ -357,12 +360,15 @@
             p.proargnames,
             p.proargmodes,
             p.proretset,
+            p.prorettype,
             information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
             from pg_namespace n
               join pg_proc p
               on n.oid = p.pronamespace) ss
           on t.oid = (ss.x).x
-          where ss.proretset = true and ss.n_nspname not in ('pg_catalog','information_schema')
+            join pg_type rt
+          on ss.prorettype = rt.oid
+          where (ss.proretset = true or rt.typname = 'void') and ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgConstraintColumns" EntityType="NpgsqlSchema.ConstraintColumn">
