@@ -161,7 +161,7 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             _column.WriteSql(sqlText);
-            sqlText.Append(" AS " + _columnName);
+            sqlText.Append(" AS " + SqlBaseGenerator.QuoteIdentifier(_columnName));
             base.WriteSql(sqlText);
         }
     }
@@ -199,7 +199,7 @@ namespace Npgsql.SqlGenerators
             if (wrap)
                 sqlText.Append(")");
             sqlText.Append(" AS ");
-            sqlText.Append(_name);
+            sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
             base.WriteSql(sqlText);
         }
     }
@@ -280,7 +280,7 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             if (_variableSubstitution.ContainsKey(_name))
-                sqlText.Append(_variableSubstitution[_name]);
+                sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_variableSubstitution[_name]));
             else
             {
                 // TODO: come up with a better solution

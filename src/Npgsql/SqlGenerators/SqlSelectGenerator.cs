@@ -29,7 +29,7 @@ namespace Npgsql.SqlGenerators
             // scopes (such as schema.table.column)
             //VisitedExpression variable = expression.Instance.Accept(this);
             VariableReferenceExpression variable = new VariableReferenceExpression(expression.Instance.Accept(this).ToString(), _variableSubstitution);
-            variable.Append("." + expression.Property.Name);
+            variable.Append("." + QuoteIdentifier(expression.Property.Name));
             return variable;
         }
 

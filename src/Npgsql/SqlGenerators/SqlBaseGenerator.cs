@@ -120,7 +120,7 @@ namespace Npgsql.SqlGenerators
                 }
             }
 
-            return new LiteralExpression(expression.Target.Name);
+            return new LiteralExpression(QuoteIdentifier(expression.Target.Name));
         }
 
         public override VisitedExpression Visit(DbRelationshipNavigationExpression expression)
@@ -135,7 +135,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbQuantifierExpression expression)
         {
-            // EXISTS or NOT EXISTS depending on expression.ExpressionKind
+            // TODO: EXISTS or NOT EXISTS depending on expression.ExpressionKind
             // comes with it's built in test (subselect for EXISTS)
             throw new NotImplementedException();
         }
@@ -414,13 +414,11 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbRefKeyExpression expression)
         {
-            // not supported by sample
             throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbEntityRefExpression expression)
         {
-            // not supported by sample
             throw new NotImplementedException();
         }
 
@@ -508,12 +506,12 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbDerefExpression expression)
         {
-            // don't know.  Sample generator doesn't support it.
             throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbCrossJoinExpression expression)
         {
+            // TODO: join without ON
             throw new NotImplementedException();
         }
 
@@ -671,9 +669,7 @@ namespace Npgsql.SqlGenerators
             // like a join, but used when one of the arguments is a function.
             // it lets you return the results of a function call given values from the
             // other table.
-            // see: http://www.sqlteam.com/article/using-cross-apply-in-sql-server-2005
-            // for ideas on implementing
-            // see: http://www.paragoncorporation.com/ITConsumerGuide.aspx?ArticleID=1
+            // sql standard seems to be lateral join
             throw new NotImplementedException();
         }
 
@@ -694,6 +690,11 @@ namespace Npgsql.SqlGenerators
         }
 
         public abstract void BuildCommand(DbCommand command);
+
+        internal static string QuoteIdentifier(string identifier)
+        {
+            return "\"" + identifier.Replace("\"", "\"\"") + "\"";
+        }
 
         private VisitedExpression VisitFunction(DbFunctionAggregate functionAggregate)
         {
