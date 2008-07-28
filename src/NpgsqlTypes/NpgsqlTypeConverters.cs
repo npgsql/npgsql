@@ -446,6 +446,11 @@ namespace NpgsqlTypes
 		{
 			return new NpgsqlInet(BackendData);
 		}
+		
+        internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            return new Guid(BackendData);
+        }
 
 		/// <summary>
 		/// interval
