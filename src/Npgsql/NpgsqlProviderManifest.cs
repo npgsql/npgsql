@@ -134,10 +134,10 @@ namespace Npgsql
             if (edmType == null)
                 throw new ArgumentNullException("edmType");
 
-            if (edmType.BuiltInTypeKind != BuiltInTypeKind.PrimitiveType)
+            PrimitiveType primitiveType = edmType.EdmType as PrimitiveType;
+            if (primitiveType != null)
                 throw new ArgumentException("Store does not support specified edm type");
 
-            PrimitiveType primitiveType = edmType.EdmType as PrimitiveType;
             // TODO: come up with way to determin if unicode is used
             bool isUnicode = true;
             Facet facet;
