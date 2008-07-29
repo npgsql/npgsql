@@ -32,6 +32,7 @@ using System.Data;
 using System.Data.Common;
 using System.Resources;
 using System.Text;
+using System.Threading;
 
 namespace Npgsql
 {
@@ -122,7 +123,19 @@ namespace Npgsql
 			{
 				if (_conn.Connector.Transaction != null)
 				{
-					this.Rollback();
+                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                    {
+                        // can't count on Rollback working if the thread has been aborted
+                        // need to copy since Cancel will set it to null
+                        NpgsqlConnection conn = _conn;
+                        Cancel();
+                        // must close connection since transaction hasn't been rolled back
+                        conn.Close();
+                    }
+                    else
+                    {
+                        this.Rollback();
+                    }
 				}
 
 				this._disposed = true;

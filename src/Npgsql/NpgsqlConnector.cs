@@ -242,7 +242,7 @@ namespace Npgsql
 		{
 			get
 			{
-				if (CurrentReader != null && !CurrentReader._cleanedUp)
+                if (_connection_state != ConnectionState.Closed && CurrentReader != null && !CurrentReader._cleanedUp)
 				{
 					return ConnectionState.Open | ConnectionState.Fetching;
 				}
@@ -354,8 +354,11 @@ namespace Npgsql
 		/// </summary>
 		internal void ReleaseResources()
 		{
-			ReleasePlansPortals();
-			ReleaseRegisteredListen();
+            if (_connection_state != ConnectionState.Closed)
+            {
+                ReleasePlansPortals();
+                ReleaseRegisteredListen();
+            }
 		}
 
 		internal void ReleaseRegisteredListen()
@@ -699,9 +702,13 @@ namespace Npgsql
 		{
 			try
 			{
-				this.CurrentState.Close(this);
-				_serverParameters.Clear();
-				ServerVersion = null;
+                if (_connection_state != ConnectionState.Closed)
+                {
+                    _connection_state = ConnectionState.Closed;
+                    this.CurrentState.Close(this);
+                    _serverParameters.Clear();
+                    ServerVersion = null;
+                }
 			}
 			catch
 			{

@@ -531,7 +531,8 @@ namespace Npgsql
 				}
 			}
 
-			if (Connector.State == ConnectionState.Open)
+			if (Connector.State == ConnectionState.Open &&
+                (Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
 			{
 				// Release all resources associated with this connector.
 				Connector.ReleaseResources();
