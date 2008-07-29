@@ -1,3 +1,140 @@
+2008-07-29	jbcooley
+	* src/Npgsql/NpgsqlProviderManifest.cs 1.5:
+		Bug 1010440 - Check for correct type when getting store type.
+		  Thanks to Thanh Trung Le for reporting the bug and offering the solution.
+
+	* src/Npgsql/NpgsqlConnector.cs 1.20:
+	* src/Npgsql/NpgsqlConnectorPool.cs 1.10:
+	* src/Npgsql/NpgsqlTransaction.cs 1.6:
+		Make Npgsql more stable in the face of Thread.Abort.  Many 
+		thanks to Andreas Schönebeck for reporting this and providing a 
+		very solid test case.
+
+2008-07-28	fxjr
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.8:
+		
+		[#1010231] Reading result set with UUID is very slow
+		
+		Forgot to add the patch for the NpgsqlTypeConverters.cs file. Sorry for that. Now cvs head compiles ok. Thanks Matthew Gabeler-Lee and Josh Cooley for heads up.
+
+2008-07-22	jbcooley
+	* src/Npgsql/NpgsqlSchema.ssdl 1.4:
+		Improve function metadata queries
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs 1.11:
+	* src/Npgsql/SqlGenerators/SqlSelectGenerator.cs 1.6:
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.6:
+		quote identifiers when generating sql
+
+2008-07-20	fxjr
+	* src/Npgsql/NpgsqlDataReader.cs 1.15:
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.17:
+		
+		[#1010231] Reading result set with UUID is very slow
+		[#1010230] Reading result set with UUID is very slow
+		
+		Applied patch to handle uuid types better. Now, instead of relying on ChangeType, it was added an explicit handler for uuid types.
+		Thanks Michael Parshin and Matthew Gabeler-Lee for patches.
+
+2008-07-13	fxjr
+	* src/Npgsql/NpgsqlClosedState.de.resx 1.1:
+	* src/Npgsql/NpgsqlCommandBuilder.de.resx 1.1:
+	* src/Npgsql/NpgsqlConnectedState.de.resx 1.1:
+	* src/Npgsql/NpgsqlConnectionStringBuilder.de.resx 1.1:
+	* src/Npgsql/NpgsqlException.de.resx 1.1:
+	* src/Npgsql/NpgsqlReadyState.de.resx 1.1:
+	* src/Npgsql/NpgsqlRow.de.resx 1.1:
+	* src/Npgsql/NpgsqlState.de.resx 1.1:
+	* src/Npgsql/PGUtil.de.resx 1.1:
+	* src/Npgsql2008.csproj 1.14:
+	* src/NpgsqlTypes/NpgsqlTypesHelper.de.resx 1.1:
+		
+		[#1010425] Patch for actual german translation
+		
+		Added missing german localization files and fix VS.Net 2008 project file to use them and previous french localization commited.
+		Thanks Christian Graefe (christian.graefe @nospam@ web.de) for patch.
+
+2008-07-10	fxjr
+	* src/NpgsqlTypes/LargeObjectManager.cs 1.7:
+		
+		Fixed a problem where LargeObjectManager was incorrectly closing the connection.
+		Thanks Jordan A from forum discussion: http://pgfoundry.org/forum/forum.php?thread_id=1790&forum_id=519 for heads up.
+
+2008-07-09	fxjr
+	* src/Npgsql/NpgsqlCommand.cs 1.24:
+		
+		Added support to not add type casts with prepared statements. Previous patch only added this capability for non prepared queries. Now, types without casts have the type written as "unknown" so type inference is done by server backend.
+
+2008-07-04	fxjr
+	* src/Npgsql.build 1.14:
+	* src/Npgsql/NpgsqlClosedState.fr.resx 1.1:
+	* src/Npgsql/NpgsqlCommand.fr.resx 1.1:
+	* src/Npgsql/NpgsqlCommandBuilder.fr.resx 1.1:
+	* src/Npgsql/NpgsqlConnectedState.fr.resx 1.1:
+	* src/Npgsql/NpgsqlConnection.fr.resx 1.1:
+	* src/Npgsql/NpgsqlConnectionStringBuilder.fr.resx 1.1:
+	* src/Npgsql/NpgsqlEventLog.fr.resx 1.1:
+	* src/Npgsql/NpgsqlException.fr.resx 1.1:
+	* src/Npgsql/NpgsqlParameter.fr.resx 1.1:
+	* src/Npgsql/NpgsqlParameterCollection.fr.resx 1.1:
+	* src/Npgsql/NpgsqlReadyState.fr.resx 1.1:
+	* src/Npgsql/NpgsqlRow.fr.resx 1.1:
+	* src/Npgsql/NpgsqlState.fr.resx 1.1:
+	* src/Npgsql/NpgsqlTransaction.fr.resx 1.1:
+	* src/Npgsql/PGUtil.fr.resx 1.1:
+		[#1010424] French localization
+		Added French localization. Thanks Mathieu Cartoixa (mathieu.cartoixa @nospam@ free.fr) for patch.
+
+2008-07-03	fxjr
+	* src/Npgsql/NpgsqlParameterCollection.cs 1.8:
+		
+		
+		[#1010421] Matching of parameter names should be case insensitive.
+		Npgsql now searches for index of parameter names using case sensitivity and case insensitivity.
+		Thanks Waldemar Bergstreiser for patch.
+
+2008-06-26	fxjr
+	* src/Npgsql/NpgsqlParameter.cs 1.16:
+		
+		Added support to not add casts to null values.
+		Thanks Waldemar Bergstreiser for heads up.
+
+2008-06-23	talliesin
+	* src/Npgsql/NpgsqlConnection.cs 1.22:
+	* src/Npgsql/NpgsqlTransactionCallbacks.cs 1.6:
+		NpgsqlConnection.State only returns Open or Closed. FullState 
+		returns Or'd version.
+
+2008-06-22	fxjr
+	* src/Npgsql/NpgsqlCommand.cs 1.23:
+	* src/Npgsql/NpgsqlParameter.cs 1.15:
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.16:
+		
+		
+		[#1003400] Later type binding for DbType.Object
+		
+		Fixed problems with explicit parameter datatype casting. Now, whenever as parameter has a dbtype.object data type, the cast will be turned off. This will revert the flexibility of letting the type specification to postgresql itself.
+		
+		If a user wants to turn cast on, just specify a dbtype value other than object or specify an NpgsqlDbType. See: http://pgfoundry.org/forum/message.php?msg_id=1003583, http://pgfoundry.org/forum/message.php?msg_id=1003620 and http://pgfoundry.org/tracker/index.php?func=detail&aid=1003400&group_id=1000140&atid=592 for discussions about that. Also, DbType.Object is mapped in NpgsqlTypesHelper as an alias to text datatype on internal mapping.
+		
+		Thanks Waldemar Bergstreiser and Andrus Moor for discussions about that.
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.12:
+		
+		Added tests for parameter casts.
+
+2008-05-20	jbcooley
+	* src/Npgsql/NpgsqlProviderManifest.Manifest.xml 1.4:
+	* src/Npgsql/NpgsqlProviderManifest.cs 1.4:
+	* src/Npgsql/NpgsqlSchema.msl 1.2:
+	* src/Npgsql/NpgsqlSchema.ssdl 1.3:
+	* src/Npgsql/NpgsqlServices.cs 1.7:
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs 1.10:
+	* src/Npgsql/SqlGenerators/SqlInsertGenerator.cs 1.6:
+	* src/Npgsql/SqlGenerators/SqlSelectGenerator.cs 1.5:
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.5:
+		updates to Entity Framework support for .NET 3.5 SP1 beta
+
 2008-05-14	jbcooley
 	* src/Npgsql/AssemblyInfo.cs 1.12:
 		bump version number for beta 4
