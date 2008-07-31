@@ -31,10 +31,8 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbUnionAllExpression expression)
         {
             // UNION ALL keyword
-            VisitedExpression union = expression.Left.Accept(this);
-            union.Append(" UNION ALL ");
-            union.Append(expression.Right.Accept(this));
-            return union;
+            return new CombinedProjectionExpression(expression.Left.Accept(this),
+                "UNION ALL", expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbTreatExpression expression)
@@ -46,7 +44,7 @@ namespace Npgsql.SqlGenerators
         {
             // not quite sure, but may be a paging like function
             // almost the opposite of limit, possibly actually the skip those first.
-            VisitedExpression offset = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
+            InputExpression offset = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
             offset.Append(" ORDER BY ");
             bool first = true;
             foreach (var order in expression.SortOrder)
@@ -70,8 +68,8 @@ namespace Npgsql.SqlGenerators
             // order by
             _filterVarName.Push(expression.Input.VariableName);
             VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
-            VisitedExpression from;
-            if (!(inputExpression is JoinExpression) && !(inputExpression is FromExpression))
+            InputExpression from = inputExpression as InputExpression;
+            if (from == null)
             {
                 from = new FromExpression(inputExpression, expression.Input.VariableName);
                 _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
@@ -79,25 +77,16 @@ namespace Npgsql.SqlGenerators
             }
             else
             {
-                if (inputExpression is FromExpression)
+                if (from is FromExpression)
                 {
-                    SubstituteFilterVar(((FromExpression)inputExpression).Name);
+                    SubstituteFilterVar(((FromExpression)from).Name);
                 }
-                from = inputExpression;
             }
             _filterVarName.Pop();
-            from.Append(" ORDER BY ");
-            bool first = true;
+            from.OrderBy = new OrderByExpression();
             foreach (var order in expression.SortOrder)
             {
-                if (!first)
-                    from.Append(",");
-                from.Append(order.Expression.Accept(this));
-                if (order.Ascending)
-                    from.Append(" ASC ");
-                else
-                    from.Append(" DESC ");
-                first = false;
+                from.OrderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
             }
             return from;
         }
@@ -142,30 +131,28 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbProjectExpression expression)
         {
-            VisitedExpression project = expression.Projection.Accept(this);
-            project.Append(" FROM ");
+            ProjectionExpression project = expression.Projection.Accept(this) as ProjectionExpression;
+            // TODO: test if this should always be true
+            if (project == null)
+                throw new NotSupportedException();
             _projectVarName.Push(expression.Input.VariableName);
-            AppendFrom(project, expression.Input.Expression, expression.Input.VariableName);
+            project.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
             _projectVarName.Pop();
 
             return project;
         }
 
-        private void AppendFrom(VisitedExpression visitedExpression, DbExpression dbFromExpression, string variableName)
+        internal InputExpression CheckedConvertFrom(VisitedExpression fromExpression, string variableName)
         {
-            visitedExpression.Append(CheckedConvertFrom(dbFromExpression.Accept(this), variableName));
-        }
-
-        private VisitedExpression CheckedConvertFrom(VisitedExpression fromExpression, string variableName)
-        {
-            if (!(fromExpression is FromExpression) && !(fromExpression is JoinExpression))
+            InputExpression result = fromExpression as InputExpression;
+            if (result == null)
             {
-                fromExpression = new FromExpression(fromExpression, variableName);
-                if (string.IsNullOrEmpty(variableName)) variableName = ((FromExpression)fromExpression).Name;
+                result = new FromExpression(fromExpression, variableName);
+                if (string.IsNullOrEmpty(variableName)) variableName = ((FromExpression)result).Name;
                 _variableSubstitution[_projectVarName.Peek()] = variableName;
                 SubstituteFilterVar(variableName);
             }
-            return fromExpression;
+            return result;
         }
 
         public override VisitedExpression Visit(DbParameterReferenceExpression expression)
@@ -176,12 +163,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbOrExpression expression)
         {
-            LiteralExpression or = new LiteralExpression("(");
-            or.Append(expression.Left.Accept(this));
-            or.Append(") OR (");
-            or.Append(expression.Right.Accept(this));
-            or.Append(")");
-            return or;
+            return new BooleanExpression("OR", expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbOfTypeExpression expression)
@@ -196,11 +178,19 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbNotExpression expression)
         {
-            // TODO: produces ugly SQL, particularly in the case of NOT NOT EXISTS
-            LiteralExpression not = new LiteralExpression(" NOT (");
-            not.Append(expression.Argument.Accept(this));
-            not.Append(")");
-            return not;
+            // argument can be a "NOT EXISTS" or similar operator that can be negated.
+            // Convert the not if that's the case
+            VisitedExpression argument = expression.Argument.Accept(this);
+            NegatableExpression negatable = argument as NegatableExpression;
+            if (negatable != null)
+            {
+                negatable.Negate();
+                return negatable;
+            }
+            else
+            {
+                return new NegateExpression(argument);
+            }
         }
 
         public override VisitedExpression Visit(DbNewInstanceExpression expression)
@@ -214,9 +204,7 @@ namespace Npgsql.SqlGenerators
                 ProjectionExpression visitedExpression = new ProjectionExpression();
                 for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
                 {
-                    if (i != 0)
-                        visitedExpression.Append(",");
-                    visitedExpression.Append(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
+                    visitedExpression.AppendColumn(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
                 }
 
                 return visitedExpression;
@@ -224,13 +212,9 @@ namespace Npgsql.SqlGenerators
             else if (expression.ResultType.EdmType is CollectionType)
             {
                 ProjectionExpression visitedExpression = new ProjectionExpression();
-                bool first = true;
                 foreach (var arg in expression.Arguments)
                 {
-                    if (!first)
-                        visitedExpression.Append(",");
-                    visitedExpression.Append(arg.Accept(this));
-                    first = false;
+                    visitedExpression.AppendColumn(arg.Accept(this));
                 }
                 return visitedExpression;
             }
@@ -242,16 +226,25 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbLimitExpression expression)
         {
-            // TODO: what is WithTies?
+            // Need more complex operation where ties are needed
+            // TODO: implement WithTies
+            if (expression.WithTies)
+                throw new NotSupportedException();
             // limit expressions should be structured like where clauses
             // see Visit(DbFilterExpression)
             VisitedExpression limit = expression.Argument.Accept(this);
+            InputExpression input;
             if (!(limit is ProjectionExpression))
             {
-                limit = CheckedConvertFrom(limit, null);
+                input = CheckedConvertFrom(limit, null);
+                // return this value
+                limit = input;
             }
-            limit.Append(" LIMIT ");
-            limit.Append(expression.Limit.Accept(this));
+            else
+            {
+                input = ((ProjectionExpression)limit).From;
+            }
+            input.Limit = new LimitExpression(expression.Limit.Accept(this));
             return limit;
         }
 
@@ -261,10 +254,7 @@ namespace Npgsql.SqlGenerators
             // also uses ESCAPE
             // ESCAPE may be way of identifying wild cards
             // TODO: enhance this.  Only supporting simple case for now
-            VisitedExpression visited = expression.Argument.Accept(this);
-            visited.Append(" LIKE ");
-            visited.Append(expression.Pattern.Accept(this));
-            return visited;
+            return new BooleanExpression("LIKE", expression.Argument.Accept(this), expression.Pattern.Accept(this));
         }
 
         public override VisitedExpression Visit(DbJoinExpression expression)
@@ -338,27 +328,20 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbIsNullExpression expression)
         {
-            VisitedExpression visited = expression.Argument.Accept(this);
-            visited.Append(" IS NULL ");
-            return visited;
+            return new IsNullExpression(expression.Argument.Accept(this));
         }
 
         public override VisitedExpression Visit(DbIsEmptyExpression expression)
         {
             // NOT EXISTS
-            LiteralExpression exists = new LiteralExpression(" NOT EXISTS (");
-            exists.Append(expression.Argument.Accept(this));
-            exists.Append(")");
-            return exists;
+            return new ExistsExpression(expression.Argument.Accept(this)).Negate();
         }
 
         public override VisitedExpression Visit(DbIntersectExpression expression)
         {
             // INTERSECT keyword
-            VisitedExpression intersection = expression.Left.Accept(this);
-            intersection.Append(" INTERSECT ");
-            intersection.Append(expression.Right.Accept(this));
-            return intersection;
+            return new CombinedProjectionExpression(expression.Left.Accept(this),
+                "INTERSECT", expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbGroupByExpression expression)
@@ -373,11 +356,9 @@ namespace Npgsql.SqlGenerators
             int columnIndex = 0;
             foreach (var key in expression.Keys)
             {
-                if (columnIndex != 0)
-                    projectExpression.Append(",");
                 VisitedExpression keyColumnExpression = key.Accept(this);
-                projectExpression.Append(new ColumnExpression(keyColumnExpression, rowType.Properties[columnIndex].Name));
-                groupByExpression.Append(keyColumnExpression);
+                projectExpression.AppendColumn(new ColumnExpression(keyColumnExpression, rowType.Properties[columnIndex].Name));
+                groupByExpression.AppendGroupingKey(keyColumnExpression);
                 ++columnIndex;
             }
             foreach (var ag in expression.Aggregates)
@@ -386,16 +367,13 @@ namespace Npgsql.SqlGenerators
                 if (function == null)
                     throw new NotSupportedException();
                 VisitedExpression functionExpression = VisitFunction(function);
-                if (columnIndex != 0)
-                    projectExpression.Append(",");
-                projectExpression.Append(new ColumnExpression(functionExpression, rowType.Properties[columnIndex].Name));
+                projectExpression.AppendColumn(new ColumnExpression(functionExpression, rowType.Properties[columnIndex].Name));
                 ++columnIndex;
             }
-            projectExpression.Append(" FROM ");
             _projectVarName.Push(expression.Input.GroupVariableName);
             _filterVarName.Push(expression.Input.VariableName);
-            AppendFrom(projectExpression, expression.Input.Expression, expression.Input.GroupVariableName);
-            projectExpression.Append(groupByExpression);
+            projectExpression.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.GroupVariableName);
+            projectExpression.From.GroupBy = groupByExpression;
             if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
             {
                 _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_projectVarName.Peek()];
@@ -444,42 +422,52 @@ namespace Npgsql.SqlGenerators
             // need to move the from keyword out so that it can be used in the project
             // when there is no where clause
             _filterVarName.Push(expression.Input.VariableName);
-            VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
-            VisitedExpression from;
+            InputExpression inputExpression = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
             if (!(inputExpression is JoinExpression))
             {
-                from = new FromExpression(inputExpression, expression.Input.VariableName);
-                _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
-                if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
-                    _variableSubstitution[_filterVarName.Peek()] = expression.Input.VariableName;
-                from.Append(new WhereExpression(expression.Predicate.Accept(this)));
+                //from = new FromExpression(inputExpression, expression.Input.VariableName);
+                FromExpression from = (FromExpression)inputExpression;
+                if (from.Where != null)
+                {
+                    _variableSubstitution[expression.Input.VariableName] = from.Name;
+                    from.Where.And(expression.Predicate.Accept(this));
+                }
+                else
+                {
+                    _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
+                    if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
+                        _variableSubstitution[_filterVarName.Peek()] = expression.Input.VariableName;
+                    from.Where = new WhereExpression(expression.Predicate.Accept(this));
+                }
             }
             else
             {
                 // TODO: this isn't quite right
                 // need to make this work for general case of where as part of a join
-                from = inputExpression;
+                JoinExpression join = (JoinExpression)inputExpression;
 
                 if (partOfJoin)
                 {
-                    ((JoinExpression)from).Condition = new AndExpression(((JoinExpression)from).Condition, expression.Predicate.Accept(this));
+                    join.Condition = new BooleanExpression("AND", join.Condition, expression.Predicate.Accept(this));
                 }
                 else
                 {
-                    from.Append(new WhereExpression(expression.Predicate.Accept(this)));
+                    VisitedExpression predicate = expression.Predicate.Accept(this);
+                    if (join.Where != null)
+                        join.Where.And(predicate);
+                    else
+                        join.Where = new WhereExpression(predicate);
                 }
             }
             _filterVarName.Pop();
-            return from;
+            return inputExpression;
         }
 
         public override VisitedExpression Visit(DbExceptExpression expression)
         {
             // Except keyword
-            VisitedExpression except = expression.Left.Accept(this);
-            except.Append(" EXCEPT ");
-            except.Append(expression.Right.Accept(this));
-            return except;
+            return new CombinedProjectionExpression(expression.Left.Accept(this),
+                "EXCEPT", expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbElementExpression expression)
@@ -487,7 +475,7 @@ namespace Npgsql.SqlGenerators
             // a scalar expression (ie ExecuteScalar)
             // so it will likely be translated into a select
             //throw new NotImplementedException();
-            VisitedExpression scalar = new LiteralExpression("(");
+            LiteralExpression scalar = new LiteralExpression("(");
             scalar.Append(expression.Argument.Accept(this));
             scalar.Append(")");
             return scalar;
@@ -526,35 +514,34 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbComparisonExpression expression)
         {
-            VisitedExpression comparison = expression.Left.Accept(this);
+            string comparisonOperator;
             switch (expression.ExpressionKind)
             {
                 case DbExpressionKind.Equals:
-                    comparison.Append("=");
+                    comparisonOperator = "=";
                     break;
                 case DbExpressionKind.GreaterThan:
-                    comparison.Append(">");
+                    comparisonOperator = ">";
                     break;
                 case DbExpressionKind.GreaterThanOrEquals:
-                    comparison.Append(">=");
+                    comparisonOperator = ">=";
                     break;
                 case DbExpressionKind.LessThan:
-                    comparison.Append("<");
+                    comparisonOperator = "<";
                     break;
                 case DbExpressionKind.LessThanOrEquals:
-                    comparison.Append("<=");
+                    comparisonOperator = "<=";
                     break;
                 case DbExpressionKind.Like:
-                    comparison.Append(" LIKE ");
+                    comparisonOperator = " LIKE ";
                     break;
                 case DbExpressionKind.NotEquals:
-                    comparison.Append("!=");
+                    comparisonOperator = "!=";
                     break;
                 default:
                     throw new NotSupportedException();
             }
-            comparison.Append(expression.Right.Accept(this));
-            return comparison;
+            return new BooleanExpression(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbCastExpression expression)
@@ -581,8 +568,14 @@ namespace Npgsql.SqlGenerators
                     return "varchar";
                 case PrimitiveTypeKind.Decimal:
                     return "numeric";
+                case PrimitiveTypeKind.Single:
+                    return "float4";
+                case PrimitiveTypeKind.Double:
+                    return "float8";
                 case PrimitiveTypeKind.DateTime:
                     return "timestamp";
+                case PrimitiveTypeKind.Binary:
+                    return "bytea";
             }
             throw new NotSupportedException();
         }
@@ -613,7 +606,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbArithmeticExpression expression)
         {
-            VisitedExpression arithmeticOperator;
+            LiteralExpression arithmeticOperator;
 
             switch (expression.ExpressionKind)
             {
@@ -649,7 +642,7 @@ namespace Npgsql.SqlGenerators
             }
             else
             {
-                VisitedExpression math = new LiteralExpression("");
+                LiteralExpression math = new LiteralExpression("");
                 bool first = true;
                 foreach (DbExpression arg in expression.Arguments)
                 {
@@ -675,12 +668,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbAndExpression expression)
         {
-            LiteralExpression and = new LiteralExpression("(");
-            and.Append(expression.Left.Accept(this));
-            and.Append(") AND (");
-            and.Append(expression.Right.Accept(this));
-            and.Append(")");
-            return and;
+            return new BooleanExpression("AND", expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbExpression expression)
@@ -722,7 +710,7 @@ namespace Npgsql.SqlGenerators
                 if (functionAggregate.Distinct)
                 {
                     aggregateArg = new LiteralExpression("DISTINCT ");
-                    aggregateArg.Append(functionAggregate.Arguments[0].Accept(this));
+                    ((LiteralExpression)aggregateArg).Append(functionAggregate.Arguments[0].Accept(this));
                 }
                 else
                 {
@@ -767,7 +755,7 @@ namespace Npgsql.SqlGenerators
                         FunctionExpression extract_date = new FunctionExpression("extract");
                         System.Diagnostics.Debug.Assert(args.Count == 1);
                         arg = new LiteralExpression(function.Name + " FROM ");
-                        arg.Append(args[0].Accept(this));
+                        ((LiteralExpression)arg).Append(args[0].Accept(this));
                         extract_date.AddArgument(arg);
                         return extract_date;
 

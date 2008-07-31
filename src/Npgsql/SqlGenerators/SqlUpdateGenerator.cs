@@ -30,23 +30,14 @@ namespace Npgsql.SqlGenerators
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
             UpdateExpression update = new UpdateExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
-            update.Append(_commandTree.Target.Expression.Accept(this));
-            update.Append(" SET ");
-            bool first = true;
+            update.AppendTarget(_commandTree.Target.Expression.Accept(this));
             foreach (DbSetClause clause in _commandTree.SetClauses)
             {
-                if (!first)
-                    update.Append(",");
-                VisitedExpression assignment = clause.Property.Accept(this);
-                assignment.Append("=");
-                assignment.Append(clause.Value.Accept(this));
-                update.Append(assignment);
-                first = false;
+                update.AppendSet(clause.Property.Accept(this), clause.Value.Accept(this));
             }
             if (_commandTree.Predicate != null)
             {
-                update.Append(" WHERE ");
-                update.Append(_commandTree.Predicate.Accept(this));
+                update.AppendWhere(_commandTree.Predicate.Accept(this));
             }
             _projectVarName.Pop();
             command.CommandText = update.ToString();

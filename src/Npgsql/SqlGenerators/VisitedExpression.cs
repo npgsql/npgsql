@@ -52,6 +52,16 @@ namespace Npgsql.SqlGenerators
             _literal = literal;
         }
 
+        public new void Append(VisitedExpression expresion)
+        {
+            base.Append(expresion);
+        }
+
+        public new void Append(string literal)
+        {
+            base.Append(literal);
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append(_literal);
@@ -109,7 +119,20 @@ namespace Npgsql.SqlGenerators
 
     internal class ProjectionExpression : VisitedExpression
     {
+        private bool requiresColumnSeperator;
+        private InputExpression _from;
+
         public bool Distinct { get; set; }
+        public InputExpression From
+        {
+            get { return _from; }
+            set
+            {
+                _from = value;
+                Append(" FROM ");
+                Append(_from);
+            }
+        }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
@@ -118,19 +141,89 @@ namespace Npgsql.SqlGenerators
                 sqlText.Append("DISTINCT ");
             base.WriteSql(sqlText);
         }
+
+        public void AppendColumn(VisitedExpression column)
+        {
+            if (requiresColumnSeperator)
+                Append(",");
+            Append(column);
+            requiresColumnSeperator = true;
+        }
     }
 
     internal class InsertExpression : VisitedExpression
     {
+        public void AppendTarget(VisitedExpression target)
+        {
+            Append(target);
+        }
+
+        public void AppendColumns(IEnumerable<VisitedExpression> columns)
+        {
+            Append("(");
+            bool first = true;
+            foreach (VisitedExpression expression in columns)
+            {
+                if (!first)
+                    Append(",");
+                Append(expression);
+            }
+            Append(")");
+        }
+
+        public void AppendValues(IEnumerable<VisitedExpression> columns)
+        {
+            Append(" VALUES (");
+            bool first = true;
+            foreach (VisitedExpression expression in columns)
+            {
+                if (!first)
+                    Append(",");
+                Append(expression);
+            }
+            Append(")");
+        }
+
+        public VisitedExpression ReturningExpression { get; set; }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append("INSERT INTO ");
             base.WriteSql(sqlText);
+            if (ReturningExpression != null)
+            {
+                sqlText.Append(";");
+                ReturningExpression.WriteSql(sqlText);
+            }
         }
     }
 
     internal class UpdateExpression : VisitedExpression
     {
+        private bool _setSeperatorRequired;
+
+        public void AppendTarget(VisitedExpression target)
+        {
+            Append(target);
+        }
+
+        public void AppendSet(VisitedExpression property, VisitedExpression value)
+        {
+            if (_setSeperatorRequired)
+                Append(",");
+            else
+                Append(" SET ");
+            Append(property);
+            Append("=");
+            Append(value);
+            _setSeperatorRequired = true;
+        }
+
+        public void AppendWhere(VisitedExpression where)
+        {
+            Append(where);
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append("UPDATE ");
@@ -140,6 +233,17 @@ namespace Npgsql.SqlGenerators
 
     internal class DeleteExpression : VisitedExpression
     {
+        public void AppendFrom(VisitedExpression from)
+        {
+            Append(from);
+        }
+
+        public void AppendWhere(VisitedExpression where)
+        {
+            Append(" WHERE ");
+            Append(where);
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append("DELETE FROM ");
@@ -166,7 +270,74 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class FromExpression : VisitedExpression
+    internal class InputExpression : VisitedExpression
+    {
+        //public new void Append(VisitedExpression expresion)
+        //{
+        //    base.Append(expresion);
+        //}
+
+        //public new void Append(string literal)
+        //{
+        //    base.Append(literal);
+        //}
+
+        private WhereExpression _where;
+
+        public WhereExpression Where
+        {
+            get { return _where; }
+            set
+            {
+                _where = value;
+                //Append(_where);
+            }
+        }
+
+        private GroupByExpression _groupBy;
+
+        public GroupByExpression GroupBy
+        {
+            get { return _groupBy; }
+            set
+            {
+                _groupBy = value;
+                //Append(_groupBy);
+            }
+        }
+
+        private OrderByExpression _orderBy;
+
+        public OrderByExpression OrderBy
+        {
+            get { return _orderBy; }
+            set { _orderBy = value; }
+        }
+
+        private LimitExpression _limit;
+
+        public LimitExpression Limit
+        {
+            get { return _limit; }
+            set
+            {
+                _limit = value;
+                //Append(" LIMIT ");
+                //Append(_limit);
+            }
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            base.WriteSql(sqlText);
+            if (Where != null) Where.WriteSql(sqlText);
+            if (GroupBy != null) GroupBy.WriteSql(sqlText);
+            if (OrderBy != null) OrderBy.WriteSql(sqlText);
+            if (Limit != null) Limit.WriteSql(sqlText);
+        }
+    }
+
+    internal class FromExpression : InputExpression
     {
         private VisitedExpression _from;
         private string _name;
@@ -204,7 +375,7 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class JoinExpression : VisitedExpression
+    internal class JoinExpression : InputExpression
     {
         private VisitedExpression _left;
         private DbExpressionKind _joinType;
@@ -264,6 +435,11 @@ namespace Npgsql.SqlGenerators
             _where.WriteSql(sqlText);
             base.WriteSql(sqlText);
         }
+
+        internal void And(VisitedExpression andAlso)
+        {
+            _where = new BooleanExpression("AND", _where, andAlso);
+        }
     }
 
     internal class VariableReferenceExpression : VisitedExpression
@@ -291,7 +467,7 @@ namespace Npgsql.SqlGenerators
                 }
                 else
                 {
-                    sqlText.Append(_name);
+                    sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
                 }
             }
             base.WriteSql(sqlText);
@@ -308,6 +484,26 @@ namespace Npgsql.SqlGenerators
                 unsubstitutedText.Append(expression.ToString());
             }
             return unsubstitutedText.ToString();
+        }
+    }
+
+    internal class PropertyExpression : VisitedExpression
+    {
+        private VariableReferenceExpression _variable;
+        private string _property;
+
+        public PropertyExpression(VariableReferenceExpression variable, string property)
+        {
+            _variable = variable;
+            _property = property;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            _variable.WriteSql(sqlText);
+            sqlText.Append(".");
+            sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_property));
+            base.WriteSql(sqlText);
         }
     }
 
@@ -365,6 +561,11 @@ namespace Npgsql.SqlGenerators
 
     internal class GroupByExpression : VisitedExpression
     {
+        public void AppendGroupingKey(VisitedExpression key)
+        {
+            Append(key);
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             if (ExpressionList.Count != 0)
@@ -373,24 +574,177 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class AndExpression : VisitedExpression
+    internal class LimitExpression : VisitedExpression
     {
+        private VisitedExpression _arg;
+
+        public LimitExpression(VisitedExpression arg)
+        {
+            _arg = arg;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            sqlText.Append(" LIMIT ");
+            _arg.WriteSql(sqlText);
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class BooleanExpression : VisitedExpression
+    {
+        private string _booleanOperator;
         private VisitedExpression _left;
         private VisitedExpression _right;
 
-        public AndExpression(VisitedExpression left, VisitedExpression right)
+        public BooleanExpression(string booleanOperator, VisitedExpression left, VisitedExpression right)
         {
+            _booleanOperator = booleanOperator;
             _left = left;
             _right = right;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            sqlText.Append("(");
+            bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
+            bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
+            if (wrapLeft)
+                sqlText.Append("(");
             _left.WriteSql(sqlText);
-            sqlText.Append(") AND (");
+            if (wrapLeft)
+                sqlText.Append(") ");
+            sqlText.Append(_booleanOperator);
+            if (wrapRight)
+                sqlText.Append(" (");
             _right.WriteSql(sqlText);
+            if (wrapRight)
+                sqlText.Append(")");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class CombinedProjectionExpression : VisitedExpression
+    {
+        private VisitedExpression _first;
+        private VisitedExpression _second;
+        private string _setOperator;
+
+        public CombinedProjectionExpression(VisitedExpression first, string setOperator, VisitedExpression second)
+        {
+            _first = first;
+            _setOperator = setOperator;
+            _second = second;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            _first.WriteSql(sqlText);
+            sqlText.Append(" ");
+            sqlText.Append(_setOperator);
+            sqlText.Append(" ");
+            _second.WriteSql(sqlText);
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class NegatableExpression : VisitedExpression
+    {
+        private bool _negated;
+
+        protected bool Negated
+        {
+            get { return _negated; }
+            set { _negated = value; }
+        }
+
+        public NegatableExpression Negate()
+        {
+            _negated = !_negated;
+            // allows to be used inline
+            return this;
+        }
+    }
+
+    internal class ExistsExpression : NegatableExpression
+    {
+        private VisitedExpression _argument;
+
+        public ExistsExpression(VisitedExpression argument)
+        {
+            _argument = argument;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            if (Negated)
+                sqlText.Append("NOT ");
+            sqlText.Append("EXISTS (");
+            _argument.WriteSql(sqlText);
             sqlText.Append(")");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class NegateExpression : NegatableExpression
+    {
+        private VisitedExpression _argument;
+
+        public NegateExpression(VisitedExpression argument)
+        {
+            _argument = argument;
+            Negated = true;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            if (Negated)
+                sqlText.Append(" NOT ");
+            sqlText.Append("(");
+            _argument.WriteSql(sqlText);
+            sqlText.Append(")");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class IsNullExpression : NegatableExpression
+    {
+        private VisitedExpression _argument;
+
+        public IsNullExpression(VisitedExpression argument)
+        {
+            _argument = argument;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            _argument.WriteSql(sqlText);
+            sqlText.Append(" IS ");
+            if (Negated)
+                sqlText.Append("NOT ");
+            sqlText.Append("NULL ");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    class OrderByExpression : VisitedExpression
+    {
+        private bool _requiresOrderSeperator;
+
+        public void AppendSort(VisitedExpression sort, bool ascending)
+        {
+            if (_requiresOrderSeperator)
+                Append(",");
+            Append(sort);
+            if (ascending)
+                Append(" ASC ");
+            else
+                Append(" DESC ");
+            _requiresOrderSeperator = true;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            sqlText.Append(" ORDER BY ");
             base.WriteSql(sqlText);
         }
     }

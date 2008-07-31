@@ -30,11 +30,10 @@ namespace Npgsql.SqlGenerators
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
             DeleteExpression delete = new DeleteExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
-            delete.Append(_commandTree.Target.Expression.Accept(this));
+            delete.AppendFrom(_commandTree.Target.Expression.Accept(this));
             if (_commandTree.Predicate != null)
             {
-                delete.Append(" WHERE ");
-                delete.Append(_commandTree.Predicate.Accept(this));
+                delete.AppendWhere(_commandTree.Predicate.Accept(this));
             }
             _projectVarName.Pop();
             command.CommandText = delete.ToString();

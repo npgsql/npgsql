@@ -38,31 +38,20 @@ namespace Npgsql.SqlGenerators
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
             InsertExpression insert = new InsertExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
-            insert.Append(_commandTree.Target.Expression.Accept(this));
-            VisitedExpression columnList = new LiteralExpression("(");
-            VisitedExpression valueList = new LiteralExpression("(");
-            bool first = true;
+            insert.AppendTarget(_commandTree.Target.Expression.Accept(this));
+            List<VisitedExpression> columns = new List<VisitedExpression>();
+            List<VisitedExpression> values = new List<VisitedExpression>();
             foreach (DbSetClause clause in _commandTree.SetClauses)
             {
-                if (!first)
-                {
-                    columnList.Append(",");
-                    valueList.Append(",");
-                }
-                columnList.Append(clause.Property.Accept(this));
-                valueList.Append(clause.Value.Accept(this));
-                first = false;
+                columns.Add(clause.Property.Accept(this));
+                values.Add(clause.Value.Accept(this));
             }
-            columnList.Append(")");
-            valueList.Append(")");
-            insert.Append(columnList);
-            insert.Append(" VALUES ");
-            insert.Append(valueList);
+            insert.AppendColumns(columns);
+            insert.AppendValues(values);
             if (_commandTree.Returning != null)
             {
-                insert.Append(";");
                 _processingReturning = true;
-                insert.Append(_commandTree.Returning.Accept(this));
+                insert.ReturningExpression = _commandTree.Returning.Accept(this);
             }
             _projectVarName.Pop();
             command.CommandText = insert.ToString();
