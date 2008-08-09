@@ -288,7 +288,7 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("bool", typeof (Boolean));
 
-			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, true, null);
+			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false, null);
 
 			nativeTypeMapping.AddTypeAlias("int2", typeof (Int16));
 
@@ -296,11 +296,11 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("int2", typeof (Byte));
 
-			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, true, null);
+			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false, null);
 
 			nativeTypeMapping.AddTypeAlias("int4", typeof (Int32));
 
-			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, true, null);
+			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false, null);
 
 			nativeTypeMapping.AddTypeAlias("int8", typeof (Int64));
 

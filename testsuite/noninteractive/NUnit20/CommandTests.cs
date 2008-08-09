@@ -2485,7 +2485,7 @@ connection.Open();*/
         {
 
             const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
-           //sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                      //next line causes exception "ERROR: 42883: operator does not exist:    date = text"           command.ExecuteScalar();
+           //sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                                 command.ExecuteScalar();
         }
         
         [Test]
@@ -2493,10 +2493,61 @@ connection.Open();*/
         {
 
             const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
-           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                      //next line causes exception "ERROR: 42883: operator does not exist:    date = text"           command.ExecuteScalar();
+           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                                 command.ExecuteScalar();
         }
         
-               
+        [Test]
+        public void ParameterExplicitType2DbTypeObjectWithPrepare()
+        {
+
+		new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
+		
+            const string query = @"select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);			IDbDataParameter sqlParam = command.CreateParameter();			sqlParam.ParameterName = "param";			sqlParam.Value = "2008-1-1";
+           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);           
+           command.Prepare();                      command.ExecuteScalar();
+        }
+        
+        [Test]
+        public void ParameterExplicitType2DbTypeObjectWithPrepare2()
+        {
+
+            new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
+            
+            const string query = @"select * from test where tc=:param or tc=:param2";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
+           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);
+           
+           sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param2";           sqlParam.Value = DateTime.Now;
+           sqlParam.DbType = DbType.Date;           command.Parameters.Add(sqlParam);           
+           command.Prepare();                      command.ExecuteScalar();
+        }
+
+        [Test]
+        public void Int32WithoutQuotesPolygon()
+        {
+
+            NpgsqlCommand a = new NpgsqlCommand("select 'polygon ((:a :b))' ", TheConnection);
+            a.Parameters.Add(new NpgsqlParameter("a", 1));
+            a.Parameters.Add(new NpgsqlParameter("b", 1));
+            
+            a.ExecuteScalar();
+                      
+                 
+        }
+        
+        [Test]
+        public void Int32WithoutQuotesPolygon2()
+        {
+
+            NpgsqlCommand a = new NpgsqlCommand("select 'polygon ((:a :b))' ", TheConnection);
+            a.Parameters.Add(new NpgsqlParameter("a", 1)).DbType = DbType.Int32;
+            a.Parameters.Add(new NpgsqlParameter("b", 1)).DbType = DbType.Int32;
+            
+            a.ExecuteScalar();
+                      
+                 
+        }
+
+        
         
 
 
