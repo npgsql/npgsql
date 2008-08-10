@@ -157,6 +157,28 @@ namespace NpgsqlTests
             
             
         }
+        
+        [Test]
+        public void ConnectorNotInitializedException1000581()
+        {
+            
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandText = @"SELECT 123";
+
+            for(int i = 0; i < 2; i++)
+            {
+                NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
+                connection.Open();
+                command.Connection = connection;
+                command.Transaction = connection.BeginTransaction();
+                command.ExecuteScalar();
+                command.Transaction.Commit();
+                connection.Close();
+
+            }
+            
+            
+        }
 		
     }
     [TestFixture]

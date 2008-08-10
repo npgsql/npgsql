@@ -245,11 +245,14 @@ namespace Npgsql
 				//if (this.transaction != null && this.transaction.Connection == null)
 				//  this.transaction = null;
 
-				if (this.transaction != null && this.connection != null && this.Connector.Transaction != null)
+                // All this checking needs revising. It should be simpler.
+                // This this.Connector != null check was added to remove the nullreferenceexception in case
+                // of the previous connection has been closed which makes Connector null and so the last check would fail.
+                // See bug 1000581 for more details.
+                if (this.transaction != null && this.connection != null && this.Connector != null && this.Connector.Transaction != null)
 				{
 					throw new InvalidOperationException(resman.GetString("Exception_SetConnectionInTransaction"));
 				}
-
 
 				this.connection = value;
 				Transaction = null;
