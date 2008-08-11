@@ -60,6 +60,22 @@ namespace NpgsqlTests
             while(dr.Read());
         }*/
         [Test]
+        public void RecordsAffecte()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("insert into tablea(field_int4) values (7); insert into tablea(field_int4) values (8)", TheConnection);
+
+            NpgsqlDataReader dr = command.ExecuteReader();
+            try
+            {
+                Assert.AreEqual(2, dr.RecordsAffected);
+            }
+            finally
+            {
+                dr.Close();
+            }
+        }
+
+        [Test]
         public void GetBoolean()
         {
             
