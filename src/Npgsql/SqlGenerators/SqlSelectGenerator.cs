@@ -12,8 +12,6 @@ namespace Npgsql.SqlGenerators
 
         public SqlSelectGenerator(DbQueryCommandTree commandTree)
         {
-            commandTree.Validate();
-
             _commandTree = commandTree;
         }
 

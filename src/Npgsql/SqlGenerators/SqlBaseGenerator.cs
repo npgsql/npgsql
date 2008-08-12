@@ -109,7 +109,20 @@ namespace Npgsql.SqlGenerators
                 }
             }
 
-            return new LiteralExpression(QuoteIdentifier(expression.Target.Name));
+            MetadataProperty metadata;
+            LiteralExpression scan;
+            if (expression.Target.MetadataProperties.TryGetValue("Schema", false, out metadata) && metadata.Value != null)
+            {
+                scan = new LiteralExpression(QuoteIdentifier(metadata.Value.ToString()));
+            }
+            else
+            {
+                scan = new LiteralExpression(QuoteIdentifier(expression.Target.EntityContainer.Name));
+            }
+            scan.Append(".");
+            scan.Append(QuoteIdentifier(expression.Target.Name));
+
+            return scan;
         }
 
         public override VisitedExpression Visit(DbRelationshipNavigationExpression expression)
@@ -402,8 +415,6 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbFunctionExpression expression)
         {
-            if (expression.IsLambda)
-                throw new NotSupportedException();
             // a function call
             // may be built in, canonical, or user defined
             return VisitFunction(expression.Function, expression.Arguments, expression.ResultType);

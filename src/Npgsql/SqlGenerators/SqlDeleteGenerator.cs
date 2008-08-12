@@ -12,8 +12,6 @@ namespace Npgsql.SqlGenerators
 
         public SqlDeleteGenerator(DbDeleteCommandTree commandTree)
         {
-            commandTree.Validate();
-
             _commandTree = commandTree;
         }
 

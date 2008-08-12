@@ -13,8 +13,6 @@ namespace Npgsql.SqlGenerators
 
         public SqlInsertGenerator(DbInsertCommandTree commandTree)
         {
-            commandTree.Validate();
-
             _commandTree = commandTree;
         }
 
