@@ -11,17 +11,9 @@ namespace Npgsql
 {
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
 	{
-        private string _token;
-
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
-            _token = serverVersion;
-        }
-
-        public override string Provider
-        {
-            get { return "Npgsql"; }
         }
 
         protected override XmlReader GetDbInformation(string informationType)
@@ -135,7 +127,7 @@ namespace Npgsql
                 throw new ArgumentNullException("edmType");
 
             PrimitiveType primitiveType = edmType.EdmType as PrimitiveType;
-            if (primitiveType != null)
+            if (primitiveType == null)
                 throw new ArgumentException("Store does not support specified edm type");
 
             // TODO: come up with way to determin if unicode is used
@@ -222,11 +214,6 @@ namespace Npgsql
             }
 
             throw new NotSupportedException();
-        }
-
-        public override string Token
-        {
-            get { return _token; }
         }
 
         private static XmlReader CreateXmlReaderForResource(string resourceName)
