@@ -937,7 +937,10 @@ namespace Npgsql
 
 					if ((Param.Direction == ParameterDirection.Input) || (Param.Direction == ParameterDirection.InputOutput))
 					{
-						result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName + ",";
+					    if (Param.UseCast)
+					        result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName + ",";
+					    else
+					        result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + ",";
 					}
 				}
 
