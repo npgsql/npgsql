@@ -84,9 +84,11 @@ namespace NpgsqlTests
 
 
             DataSet ds2 = ds.GetChanges();
+            
 
             da.Update(ds2);
-
+            
+            
             ds.Merge(ds2);
             ds.AcceptChanges();
 
@@ -98,6 +100,89 @@ namespace NpgsqlTests
             Assert.AreEqual(4, dr2[1]);
             Assert.AreEqual(7.3000000M, dr2[3]);
             dr2.Close();
+        }
+        
+        [Test]
+        public void DataAdapterUpdateReturnValue()
+        {
+            DataSet ds = new DataSet();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select * from tableb", TheConnection);
+
+            da.InsertCommand = new NpgsqlCommand("insert into tableb(field_int2, field_timestamp, field_numeric) values (:a, :b, :c)", TheConnection);
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
+
+            da.InsertCommand.Parameters[0].Direction = ParameterDirection.Input;
+            da.InsertCommand.Parameters[1].Direction = ParameterDirection.Input;
+            da.InsertCommand.Parameters[2].Direction = ParameterDirection.Input;
+
+            da.InsertCommand.Parameters[0].SourceColumn = "field_int2";
+            da.InsertCommand.Parameters[1].SourceColumn = "field_timestamp";
+            da.InsertCommand.Parameters[2].SourceColumn = "field_numeric";
+
+
+            da.Fill(ds);
+
+
+            DataTable dt = ds.Tables[0];
+
+            DataRow dr = dt.NewRow();
+            dr["field_int2"] = 4;
+            dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
+            dr["field_numeric"] = 7.3M;
+            
+
+            dt.Rows.Add(dr);
+            
+            dr = dt.NewRow();
+            dr["field_int2"] = 4;
+            dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
+            dr["field_numeric"] = 7.3M;
+            
+            dt.Rows.Add(dr);
+
+
+            DataSet ds2 = ds.GetChanges();
+            
+
+            int daupdate = da.Update(ds2);
+            
+            Assert.AreEqual(2, daupdate);
+            
+            
+
+         
+        }
+        
+        [Test]
+        public void DataAdapterUpdateReturnValue2()
+        {
+            
+            NpgsqlCommand cmd = TheConnection.CreateCommand();
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter("select * from tabled", TheConnection);
+            NpgsqlCommandBuilder cb = new NpgsqlCommandBuilder(da);
+            DataSet ds = new DataSet();
+            da.Fill(ds);
+
+            //## Insert a new row with id = 1
+            ds.Tables[0].Rows.Add(new Object[] {0.4, 0.5});
+            da.Update(ds);
+
+            //## change id from 1 to 2
+            cmd.CommandText = "update tabled set field_float4 = 0.8 where id = (select max(field_serial) from tabled)";
+            cmd.ExecuteNonQuery();
+
+            //## change value to newvalue
+            ds.Tables[0].Rows[0][1] = 0.7;
+            //## update should fail, and make a DBConcurrencyException
+            int count = da.Update(ds);
+            //## count is 1, even if the isn't updated in the database
+            Assert.AreEqual(0, count);
         }
 
         [Test]
