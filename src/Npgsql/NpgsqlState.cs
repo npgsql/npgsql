@@ -969,14 +969,12 @@ namespace Npgsql
 			string[] tokens = PGUtil.ReadString(stream).Split();
 			if (tokens.Length > 1)
 			{
-				try
-				{
-					_rowsAffected = int.Parse(tokens[tokens.Length - 1]);
-				}
-				catch (FormatException)
-				{
-					_rowsAffected = null;
-				}
+				int rowsAffected;
+				if (int.TryParse(tokens[tokens.Length - 1], out rowsAffected))
+				    _rowsAffected = rowsAffected;
+				else
+				    _rowsAffected = null;
+				
 			}
 			_lastInsertedOID = (tokens.Length > 2 && tokens[0].Trim().ToUpperInvariant() == "INSERT")
 			                   	? long.Parse(tokens[1])
