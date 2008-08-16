@@ -1,14 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ProviderManifest Namespace="Npgsql" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/providermanifest">
   <Types>
-    <Type Name="bool" PrimitiveTypeKind="Boolean">
-    </Type>
-    <Type Name="int2" PrimitiveTypeKind="Int16">
-    </Type>
-    <Type Name="int4" PrimitiveTypeKind="Int32">
-    </Type>
-    <Type Name="int8" PrimitiveTypeKind="Int64">
-    </Type>
+    <Type Name="bool" PrimitiveTypeKind="Boolean"/>
+    <Type Name="int2" PrimitiveTypeKind="Int16"/>
+    <Type Name="int4" PrimitiveTypeKind="Int32"/>
+    <Type Name="int8" PrimitiveTypeKind="Int64"/>
     <Type Name="numeric" PrimitiveTypeKind="Decimal">
       <FacetDescriptions>
         <!-- TODO: Need a good value for Precision and Scale -->
@@ -17,10 +13,8 @@
         <Scale Minimum="0" Maximum="29" DefaultValue="4" Constant="false" />
       </FacetDescriptions>
     </Type>
-    <Type Name="float4" PrimitiveTypeKind="Single">
-    </Type>
-    <Type Name="float8" PrimitiveTypeKind="Double">
-    </Type>
+    <Type Name="float4" PrimitiveTypeKind="Single"/>
+    <Type Name="float8" PrimitiveTypeKind="Double"/>
     <Type Name="varchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength DefaultValue="false" Constant="true" />
@@ -61,6 +55,7 @@
         <MaxLength DefaultValue="2147483647" Constant="true" />
       </FacetDescriptions>
     </Type>
+    <Type Name="uuid" PrimitiveTypeKind="Guid"/>
   </Types>
   <Functions>
     <Function Name="COUNT" Aggregate="true" BuiltIn="true">
