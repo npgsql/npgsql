@@ -2546,6 +2546,34 @@ connection.Open();*/
                       
                  
         }
+        
+        [Test]
+        public void TestUUIDDataType()
+        {
+
+            string createTable =
+            @"DROP TABLE if exists public.person;
+            CREATE TABLE public.person ( 
+            person_id serial PRIMARY KEY NOT NULL,
+            person_uuid uuid NOT NULL
+            ) WITH(OIDS=FALSE);";
+            NpgsqlCommand command = new NpgsqlCommand(createTable, TheConnection);
+            command.ExecuteNonQuery();
+
+            string insertSql = "INSERT INTO person (person_uuid) VALUES (:param1);";
+            NpgsqlParameter uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
+            uuidDbParam.Value = Guid.NewGuid();
+
+            command = new NpgsqlCommand(insertSql, TheConnection);
+            command.Parameters.Add(uuidDbParam);
+            command.ExecuteNonQuery();
+
+            command = new NpgsqlCommand("SELECT person_uuid::uuid FROM person LIMIT 1", TheConnection);
+
+
+            object result = command.ExecuteScalar();
+            Assert.AreEqual(typeof(Guid), result.GetType());
+        }
 
         
         
