@@ -432,7 +432,7 @@
     <Property Name="is_nullable" Type="bool" Nullable="false"/>
     <Property Name="type_name" Type="varchar" Nullable="false"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int2"/>
+    <Property Name="precision" Type="int4"/>
     <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
     <Property Name="collation_catalog_name" Type="varchar"/>
@@ -501,7 +501,7 @@
     <Property Name="is_nullable" Type="bool" Nullable="false"/>
     <Property Name="type_name" Type="varchar" Nullable="false"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int2"/>
+    <Property Name="precision" Type="int4"/>
     <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
     <Property Name="collation_catalog_name" Type="varchar"/>
@@ -548,7 +548,7 @@
     <Property Name="is_niladic" Type="bool"/>
     <Property Name="returntype" Type="varchar"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int2"/>
+    <Property Name="precision" Type="int4"/>
     <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
     <Property Name="collation_catalog_name" Type="varchar"/>
@@ -570,7 +570,7 @@
     <Property Name="ordinal" Type="int4" Nullable="false"/>
     <Property Name="type_name" Type="varchar" Nullable="false"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int2"/>
+    <Property Name="precision" Type="int4"/>
     <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
     <Property Name="collation_catalog_name" Type="varchar"/>
@@ -602,7 +602,7 @@
     <Property Name="ordinal" Type="int4" Nullable="false"/>
     <Property Name="type_name" Type="varchar" Nullable="false"/>
     <Property Name="max_length" Type="int4"/>
-    <Property Name="precision" Type="int2"/>
+    <Property Name="precision" Type="int4"/>
     <Property Name="datetime_precision" Type="int4"/>
     <Property Name="scale" Type="int4"/>
     <Property Name="collation_catalog_name" Type="varchar"/>
