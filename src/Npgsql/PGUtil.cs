@@ -180,6 +180,9 @@ namespace Npgsql
 				}
 			}
 
+            if (NpgsqlEventLog.Level >= LogLevel.Debug)
+                NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
+                
 			return ENCODING_UTF8.GetString(buffer.ToArray());
 		}
 
