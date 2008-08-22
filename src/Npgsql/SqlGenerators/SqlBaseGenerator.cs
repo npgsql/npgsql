@@ -459,6 +459,7 @@ namespace Npgsql.SqlGenerators
 
                 if (partOfJoin)
                 {
+                    System.Diagnostics.Debug.Assert(join.Condition != null);
                     join.Condition = new BooleanExpression("AND", join.Condition, expression.Predicate.Accept(this));
                 }
                 else
@@ -510,8 +511,11 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbCrossJoinExpression expression)
         {
-            // TODO: join without ON
-            throw new NotImplementedException();
+            // join without ON
+            return new JoinExpression(VisitJoinPart(expression.Inputs[0]),
+                expression.ExpressionKind,
+                VisitJoinPart(expression.Inputs[1]),
+                null);
         }
 
         public override VisitedExpression Visit(DbConstantExpression expression)
@@ -755,6 +759,12 @@ namespace Npgsql.SqlGenerators
                         System.Diagnostics.Debug.Assert(args.Count == 1);
                         length.AddArgument(args[0].Accept(this));
                         return new CastExpression(length, GetDbType(resultType.EdmType));
+                    case "Concat":
+                        System.Diagnostics.Debug.Assert(args.Count == 2);
+                        arg = args[0].Accept(this);
+                        arg.Append(" || ");
+                        arg.Append(args[1].Accept(this));
+                        return arg;
 
                         // date functions
                     case "Day":
