@@ -23,11 +23,13 @@ namespace Npgsql.SqlGenerators
                 throw new NotSupportedException();
             if (!_processingReturning)
             {
-                return new LiteralExpression(expression.Property.Name);
+                return new LiteralExpression(QuoteIdentifier(expression.Property.Name));
             }
             else
             {
-                return new LiteralExpression("currval(pg_get_serial_sequence('" + _variableSubstitution[variable.VariableName] + "', '" + expression.Property.Name + "'))");
+                // the table name needs to be quoted, the column name does not.
+                // http://archives.postgresql.org/pgsql-bugs/2007-01/msg00102.php
+                return new LiteralExpression("currval(pg_get_serial_sequence('" + QuoteIdentifier(_variableSubstitution[variable.VariableName]) + "', '" + expression.Property.Name + "'))");
             }
         }
 

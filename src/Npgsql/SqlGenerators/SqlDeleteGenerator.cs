@@ -20,7 +20,7 @@ namespace Npgsql.SqlGenerators
             DbVariableReferenceExpression variable = expression.Instance as DbVariableReferenceExpression;
             if (variable == null || variable.VariableName != _projectVarName.Peek())
                 throw new NotSupportedException();
-            return new LiteralExpression(expression.Property.Name);
+            return new LiteralExpression(QuoteIdentifier(expression.Property.Name));
         }
 
         public override void BuildCommand(DbCommand command)
