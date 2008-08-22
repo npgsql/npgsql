@@ -167,6 +167,7 @@ namespace Npgsql.SqlGenerators
                 if (!first)
                     Append(",");
                 Append(expression);
+                first = false;
             }
             Append(")");
         }
@@ -180,6 +181,7 @@ namespace Npgsql.SqlGenerators
                 if (!first)
                     Append(",");
                 Append(expression);
+                first = false;
             }
             Append(")");
         }
@@ -221,6 +223,7 @@ namespace Npgsql.SqlGenerators
 
         public void AppendWhere(VisitedExpression where)
         {
+            Append(" WHERE ");
             Append(where);
         }
 
@@ -410,12 +413,18 @@ namespace Npgsql.SqlGenerators
                 case DbExpressionKind.FullOuterJoin:
                     sqlText.Append(" FULL OUTER JOIN ");
                     break;
+                case DbExpressionKind.CrossJoin:
+                    sqlText.Append(" CROSS JOIN ");
+                    break;
                 default:
                     throw new NotSupportedException();
             }
             _right.WriteSql(sqlText);
-            sqlText.Append(" ON ");
-            _condition.WriteSql(sqlText);
+            if (_joinType != DbExpressionKind.CrossJoin)
+            {
+                sqlText.Append(" ON ");
+                _condition.WriteSql(sqlText);
+            }
             base.WriteSql(sqlText);
         }
     }
