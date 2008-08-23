@@ -747,13 +747,11 @@ namespace Npgsql.SqlGenerators
                 {
                         // string functions
                     case "Left":
-                        FunctionExpression left = new FunctionExpression("substring");
                         System.Diagnostics.Debug.Assert(args.Count == 2);
-                        arg = args[0].Accept(this);
-                        arg.Append(" FROM 1 FOR ");
-                        arg.Append(args[1].Accept(this));
-                        left.AddArgument(arg);
-                        return left;
+                        return Substring(args[0].Accept(this), new LiteralExpression(" 1 "), args[1].Accept(this));
+                    case "Substring":
+                        System.Diagnostics.Debug.Assert(args.Count == 3);
+                        return Substring(args[0].Accept(this), args[1].Accept(this), args[2].Accept(this));
                     case "Length":
                         FunctionExpression length = new FunctionExpression("char_length");
                         System.Diagnostics.Debug.Assert(args.Count == 1);
@@ -765,6 +763,32 @@ namespace Npgsql.SqlGenerators
                         arg.Append(" || ");
                         arg.Append(args[1].Accept(this));
                         return arg;
+                    case "IndexOf":
+                        System.Diagnostics.Debug.Assert(args.Count == 2);
+                        FunctionExpression indexOf = new FunctionExpression("position");
+                        arg = args[0].Accept(this);
+                        arg.Append(" in ");
+                        arg.Append(args[1].Accept(this));
+                        indexOf.AddArgument(arg);
+                        return indexOf;
+                    case "LTrim":
+                        return StringModifier("ltrim", args);
+                    case "RTrim":
+                        return StringModifier("rtrim", args);
+                    case "Trim":
+                        return StringModifier("btrim", args);
+                    case "ToUpper":
+                        return StringModifier("upper", args);
+                    case "ToLower":
+                        return StringModifier("lower", args);
+                    case "Replace":
+                        FunctionExpression replace = new FunctionExpression("replace");
+                        System.Diagnostics.Debug.Assert(args.Count == 3);
+                        replace.AddArgument(args[0].Accept(this));
+                        replace.AddArgument(args[1].Accept(this));
+                        replace.AddArgument(args[2].Accept(this));
+                        return replace;
+                        // case "Reverse":
 
                         // date functions
                     case "Day":
@@ -773,18 +797,101 @@ namespace Npgsql.SqlGenerators
                     case "Month":
                     case "Second":
                     case "Year":
-                        FunctionExpression extract_date = new FunctionExpression("extract");
-                        System.Diagnostics.Debug.Assert(args.Count == 1);
-                        arg = new LiteralExpression(function.Name + " FROM ");
-                        ((LiteralExpression)arg).Append(args[0].Accept(this));
-                        extract_date.AddArgument(arg);
-                        return extract_date;
+                        return DatePart(function.Name, args);
+                    case "Millisecond":
+                        return DatePart("milliseconds", args);
+                    case "GetTotalOffsetMinutes":
+                        VisitedExpression timezone = DatePart("timezone", args);
+                        timezone.Append("/60");
+                        return timezone;
+                    case "CurrentDateTime":
+                        return new LiteralExpression("LOCALTIMESTAMP");
+                    case "CurrentUtcDateTime":
+                        LiteralExpression utcNow = new LiteralExpression("CURRENT_TIMESTAMP");
+                        utcNow.Append(" AT TIME ZONE 'UTC'");
+                        return utcNow;
+                    case "CurrentDateTimeOffset":
+                        // TODO: this doesn't work yet because the reader
+                        // doesn't return DateTimeOffset.
+                        return new LiteralExpression("CURRENT_TIMESTAMP");
 
+                        // bitwise operators
+                    case "BitwiseAnd":
+                        return BitwiseOperator(args, " & ");
+                    case "BitwiseOr":
+                        return BitwiseOperator(args, " | ");
+                    case "BitwiseXor":
+                        return BitwiseOperator(args, " # ");
+                    case "BitwiseNot":
+                        System.Diagnostics.Debug.Assert(args.Count == 1);
+                        LiteralExpression not = new LiteralExpression("~ ");
+                        not.Append(args[0].Accept(this));
+                        return not;
+
+                        // math operators
+                    case "Abs":
+                    case "Ceiling":
+                    case "Floor":
+                    case "Round":
+                        return UnaryMath(function.Name, args);
+
+                    case "NewGuid":
+                        return new FunctionExpression("uuid_generate_v4");
+
+                    case "Right":
+                    // TODO: need to clone expression for use in substring and length
                     default:
-                        throw new NotSupportedException();
+                        throw new NotSupportedException("NotSupported " + function.Name);
                 }
             }
             throw new NotSupportedException();
+        }
+
+        private VisitedExpression Substring(VisitedExpression source, VisitedExpression start, VisitedExpression count)
+        {
+            FunctionExpression substring = new FunctionExpression("substr");
+            substring.AddArgument(source);
+            substring.AddArgument(start);
+            substring.AddArgument(count);
+            return substring;
+        }
+
+        private VisitedExpression UnaryMath(string funcName, IList<DbExpression> args)
+        {
+            FunctionExpression mathFunction = new FunctionExpression(funcName);
+            System.Diagnostics.Debug.Assert(args.Count == 1);
+            mathFunction.AddArgument(args[0].Accept(this));
+            return mathFunction;
+        }
+
+        private VisitedExpression StringModifier(string modifier, IList<DbExpression> args)
+        {
+            FunctionExpression modifierFunction = new FunctionExpression(modifier);
+            System.Diagnostics.Debug.Assert(args.Count == 1);
+            modifierFunction.AddArgument(args[0].Accept(this));
+            return modifierFunction;
+        }
+
+        private VisitedExpression DatePart(string partName, IList<DbExpression> args)
+        {
+
+            FunctionExpression extract_date = new FunctionExpression("cast(extract");
+            System.Diagnostics.Debug.Assert(args.Count == 1);
+            VisitedExpression arg = new LiteralExpression(partName + " FROM ");
+            arg.Append(args[0].Accept(this));
+            extract_date.AddArgument(arg);
+            // need to convert to Int32 to match cononical function
+            extract_date.Append(" as int4)");
+            return extract_date;
+        }
+
+        private VisitedExpression BitwiseOperator(IList<DbExpression> args, string oper)
+        {
+            System.Diagnostics.Debug.Assert(args.Count == 2);
+            VisitedExpression arg = args[0].Accept(this);
+            arg.Append(oper);
+            arg.Append(args[1].Accept(this));
+            return arg;
         }
 
 
