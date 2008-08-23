@@ -88,21 +88,52 @@ namespace Npgsql.SqlGenerators
         {
             switch (_primitiveType)
             {
-                case PrimitiveTypeKind.Int16:
-                case PrimitiveTypeKind.Int32:
-                case PrimitiveTypeKind.Int64:
-                case PrimitiveTypeKind.Decimal:
-                    sqlText.Append(_value);
-                    break;
-                case PrimitiveTypeKind.String:
-                    sqlText.Append("'" + _value + "'");
+                case PrimitiveTypeKind.Binary:
+                    {
+                        sqlText.AppendFormat("decode('{0}', 'base64')", Convert.ToBase64String((byte[])_value));
+                    }
                     break;
                 case PrimitiveTypeKind.Boolean:
                     sqlText.Append(_value.ToString().ToUpperInvariant());
                     break;
                 case PrimitiveTypeKind.DateTime:
-                    sqlText.AppendFormat("'{0:s}'", _value);
+                    sqlText.AppendFormat("TIMESTAMP '{0:s}'", _value);
                     break;
+                case PrimitiveTypeKind.DateTimeOffset:
+                    sqlText.AppendFormat("TIMESTAMP WITH TIME ZONE '{0:o}'", _value);
+                    break;
+                case PrimitiveTypeKind.Decimal:
+                    sqlText.AppendFormat("cast({0} as numeric)", _value);
+                    break;
+                case PrimitiveTypeKind.Double:
+                    sqlText.AppendFormat("cast({0} as float8)", _value);
+                    break;
+                case PrimitiveTypeKind.Int16:
+                    sqlText.AppendFormat("cast({0} as int2)", _value);
+                    break;
+                case PrimitiveTypeKind.Int32:
+                    sqlText.AppendFormat("{0}", _value);
+                    break;
+                case PrimitiveTypeKind.Int64:
+                    sqlText.AppendFormat("cast({0} as int8)", _value);
+                    break;
+                case PrimitiveTypeKind.Single:
+                    sqlText.AppendFormat("cast({0} as float4)", _value);
+                    break;
+                case PrimitiveTypeKind.Guid:
+                    sqlText.Append(_value);
+                    break;
+                case PrimitiveTypeKind.String:
+                    sqlText.Append("'" + _value + "'");
+                    break;
+                case PrimitiveTypeKind.Time:
+                    sqlText.AppendFormat("TIME '{0:T}'", _value);
+                    break;
+                case PrimitiveTypeKind.Byte:
+                case PrimitiveTypeKind.SByte:
+                default:
+                    // TODO: must support more constant value types.
+                    throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
             base.WriteSql(sqlText);
         }
@@ -275,16 +306,6 @@ namespace Npgsql.SqlGenerators
 
     internal class InputExpression : VisitedExpression
     {
-        //public new void Append(VisitedExpression expresion)
-        //{
-        //    base.Append(expresion);
-        //}
-
-        //public new void Append(string literal)
-        //{
-        //    base.Append(literal);
-        //}
-
         private WhereExpression _where;
 
         public WhereExpression Where
@@ -293,7 +314,6 @@ namespace Npgsql.SqlGenerators
             set
             {
                 _where = value;
-                //Append(_where);
             }
         }
 
@@ -305,7 +325,6 @@ namespace Npgsql.SqlGenerators
             set
             {
                 _groupBy = value;
-                //Append(_groupBy);
             }
         }
 
@@ -325,8 +344,6 @@ namespace Npgsql.SqlGenerators
             set
             {
                 _limit = value;
-                //Append(" LIMIT ");
-                //Append(_limit);
             }
         }
 
