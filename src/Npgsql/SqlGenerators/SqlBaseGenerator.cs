@@ -742,7 +742,6 @@ namespace Npgsql.SqlGenerators
             if (function.NamespaceName == "Edm")
             {
                 VisitedExpression arg;
-                // TODO: support more functions
                 switch (function.Name)
                 {
                         // string functions
