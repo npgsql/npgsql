@@ -59,6 +59,7 @@ namespace Npgsql
                 case "int8":
                 case "float4":
                 case "float8":
+                case "uuid":
                     return TypeUsage.CreateDefaultTypeUsage(primitiveType);
                 case "numeric":
                     {
@@ -90,6 +91,7 @@ namespace Npgsql
                     else
                         return TypeUsage.CreateStringTypeUsage(primitiveType, isUnicode, false);
                 case "text":
+                case "xml":
                     return TypeUsage.CreateStringTypeUsage(primitiveType, isUnicode, false);
                 case "timestamp":
                     // TODO: make sure the arguments are correct here
@@ -207,10 +209,13 @@ namespace Npgsql
                         }
                         return TypeUsage.CreateBinaryTypeUsage(StoreTypeNameToStorePrimitiveType["bytea"], false);
                     }
+                case PrimitiveTypeKind.Guid:
+                    return TypeUsage.CreateDefaultTypeUsage(StoreTypeNameToStorePrimitiveType["uuid"]);
                 // notably missing
                 // PrimitiveTypeKind.Byte:
-                // PrimitiveTypeKind.Guid:
                 // PrimitiveTypeKind.SByte:
+                // PrimitiveTypeKind.DateTimeOffset:
+                // PrimitiveTypeKind.Time:
             }
 
             throw new NotSupportedException();
