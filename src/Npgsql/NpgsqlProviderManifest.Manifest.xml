@@ -31,6 +31,14 @@
         <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
+    <Type Name="xml" PrimitiveTypeKind="String">
+      <FacetDescriptions>
+        <FixedLength DefaultValue="false" Constant="true" />
+        <!-- TODO: Need a good value for MaxLength -->
+        <MaxLength DefaultValue="1073741823" Constant="true" />
+        <Unicode DefaultValue="true" Constant="true" />
+      </FacetDescriptions>
+    </Type>
     <Type Name="bpchar" PrimitiveTypeKind="String">
       <FacetDescriptions>
         <FixedLength DefaultValue="true" Constant="true" />
