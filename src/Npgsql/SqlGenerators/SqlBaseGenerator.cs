@@ -591,6 +591,8 @@ namespace Npgsql.SqlGenerators
                     return "timestamp";
                 case PrimitiveTypeKind.Binary:
                     return "bytea";
+                case PrimitiveTypeKind.Guid:
+                    return "uuid";
             }
             throw new NotSupportedException();
         }
