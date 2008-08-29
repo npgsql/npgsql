@@ -354,6 +354,7 @@ namespace Npgsql
 				try
 				{
 					Connector.TestConnector();
+					Connector.RequireReadyForQuery = true;
 				}
 				catch //This connector is broken!
 				{
