@@ -525,16 +525,29 @@ namespace Npgsql
 		public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader", cb);
-			if (connection != null)
-			{
-				if (connection.PreloadReader)
-				{
-					//Adjust behaviour so source reader is sequential access - for speed - and doesn't close the connection - or it'll do so at the wrong time.
-					CommandBehavior adjusted = (cb | CommandBehavior.SequentialAccess) & ~CommandBehavior.CloseConnection;
-					return new CachingDataReader(GetReader(adjusted), cb);
-				}
-			}
-			return GetReader(cb);
+			
+			// Close connection if requested even when there is an error.
+			try
+            {
+                if (connection != null)
+                {
+                    if (connection.PreloadReader)
+                    {
+                        //Adjust behaviour so source reader is sequential access - for speed - and doesn't close the connection - or it'll do so at the wrong time.
+                        CommandBehavior adjusted = (cb | CommandBehavior.SequentialAccess) & ~CommandBehavior.CloseConnection;
+                        return new CachingDataReader(GetReader(adjusted), cb);
+        				}
+                }
+                return GetReader(cb);
+            }
+            finally
+            {
+                if ((cb & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+			    {
+				    connection.Close();
+			    }
+            }
+        		
 		}
 
 		internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
