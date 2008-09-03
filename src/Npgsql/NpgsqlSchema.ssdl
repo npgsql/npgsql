@@ -42,8 +42,8 @@
           else null
         end as scale,
         case
-          when a.attndims = 0 then false
-          else true
+          when t.typlen = -1 and t.typelem != 0 then true
+          else false
         end as is_multiset,
         null as collation_catalog_name,
         null as collation_schema_name,
@@ -190,8 +190,8 @@
           else null
         end as scale,
         case
-          when a.attndims = 0 then false
-          else true
+          when t.typlen = -1 and t.typelem != 0 then true
+          else false
         end as is_multiset,
         null as collation_catalog_name,
         null as collation_schema_name,
@@ -242,8 +242,8 @@
         null as datetime_precision,
         null as scale,
         case
-          when a.attndims = 0 then false
-          else true
+          when t.typlen = -1 and t.typelem != 0 then true
+          else false
         end as is_multiset,
         null as collation_catalog_name,
         null as collation_schema_name,
@@ -257,8 +257,6 @@
         on n.oid = p.pronamespace
         left join pg_type t
         on p.prorettype = t.oid
-        left join pg_attribute a
-        on a.atttypid = t.oid
         where (p.proretset = false and t.typname != 'void') and n.nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
@@ -278,8 +276,8 @@
         null as datetime_precision,
         null as scale,
         case
-          when a.attndims = 0 then false
-          else true
+          when t.typlen = -1 and t.typelem != 0 then true
+          else false
         end as is_multiset,
         null as collation_catalog_name,
         null as collation_schema_name,
@@ -311,8 +309,6 @@
           on t.oid = (ss.x).x
             join pg_type rt
           on ss.prorettype = rt.oid
-        left join pg_attribute a
-        on a.atttypid = t.oid
           where (ss.proretset = false and rt.typname != 'void') and ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
@@ -351,8 +347,8 @@
         null as datetime_precision,
         null as scale,
         case
-          when a.attndims = 0 then false
-          else true
+          when t.typlen = -1 and t.typelem != 0 then true
+          else false
         end as is_multiset,
         null as collation_catalog_name,
         null as collation_schema_name,
@@ -384,8 +380,6 @@
           on t.oid = (ss.x).x
             join pg_type rt
           on ss.prorettype = rt.oid
-        left join pg_attribute a
-        on a.atttypid = t.oid
           where (ss.proretset = true or rt.typname = 'void') and ss.n_nspname not in ('pg_catalog','information_schema')
       </DefiningQuery>
     </EntitySet>
