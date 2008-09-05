@@ -600,6 +600,7 @@ namespace Npgsql
 				{
 					ClearQueue(Queue);
 				}
+				PooledConnectors.Clear();
 			}
 		}
 	}
