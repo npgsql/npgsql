@@ -328,7 +328,7 @@ namespace Npgsql
 		/// This method checks if the connector is still ok.
 		/// We try to send a simple query text, select 1 as ConnectionTest;
 		/// </summary>
-/*        internal Boolean IsValid()
+        internal Boolean IsValid()
         {
             try
             {
@@ -338,7 +338,7 @@ namespace Npgsql
                 
                 // Clear mediator.
                 Mediator.ResetResponses();
-                Mediator.ResetExpectations();
+                this.RequireReadyForQuery = true;
                 
                 
             }
@@ -348,7 +348,7 @@ namespace Npgsql
             }
 
             return true;
-        }*/
+        }
 		/// <summary>
 		/// This method is responsible for releasing all resources associated with this Connector.
 		/// </summary>
