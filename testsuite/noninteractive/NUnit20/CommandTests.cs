@@ -2574,8 +2574,36 @@ connection.Open();*/
             object result = command.ExecuteScalar();
             Assert.AreEqual(typeof(Guid), result.GetType());
         }
-
         
+        [Test]
+        public void TestBug1006158OutputParameters()
+        {
+
+            string createFunction =
+            @"CREATE OR REPLACE FUNCTION more_params(OUT a integer, OUT b boolean) AS
+            $BODY$DECLARE
+                BEGIN
+                	a := 3;
+                	b := true;
+                END;$BODY$
+              LANGUAGE 'plpgsql' VOLATILE;";
+              
+            NpgsqlCommand command = new NpgsqlCommand(createFunction, TheConnection);
+            command.ExecuteNonQuery();
+
+            command = new NpgsqlCommand("more_params", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+            command.Parameters[0].Direction = ParameterDirection.Output;
+            command.Parameters.Add(new NpgsqlParameter("b", DbType.Boolean));
+            command.Parameters[1].Direction = ParameterDirection.Output;
+
+            Object result = command.ExecuteScalar();
+
+            Assert.AreEqual(3, command.Parameters[0].Value);
+            Assert.AreEqual(true, command.Parameters[1].Value);
+        }
         
 
 
