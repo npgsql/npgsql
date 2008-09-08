@@ -130,12 +130,14 @@ namespace Npgsql
 			this.Clear();
 		}
 
-		public NpgsqlConnectionStringBuilder(string connectionString)
+		public NpgsqlConnectionStringBuilder(string connectionString) 
 
 		{
-			this.originalConnectionString = connectionString;
+		    this.Clear();
+		    
+		    this.originalConnectionString = connectionString;
 
-			base.ConnectionString = connectionString;
+		    base.ConnectionString = connectionString;
 		}
 
 
@@ -862,9 +864,9 @@ namespace Npgsql
 						break;
 
 					case Keywords.Pooling:
-
+					    
 						this._pooling = ToBoolean(value);
-
+						
 						break;
 
 					case Keywords.ConnectionLifeTime:

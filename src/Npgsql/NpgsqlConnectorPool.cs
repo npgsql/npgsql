@@ -351,7 +351,7 @@ namespace Npgsql
 				// Check if the connector is still valid.
 
 				Connector = Queue.Dequeue();
-				try
+				/*try
 				{
 					Connector.TestConnector();
 					Connector.RequireReadyForQuery = true;
@@ -373,7 +373,27 @@ namespace Npgsql
 						}
 					}
 					return GetPooledConnector(Connection); //Try again
-				}
+				}*/
+				
+				if (!Connector.IsValid())
+				{
+        				try
+        					{
+        						Connector.Close();
+        					}
+        					catch
+        					{
+        						try
+        						{
+        							Connector.Stream.Close();
+        						}
+        						catch
+        						{
+        						}
+        					}
+        					return GetPooledConnector(Connection); //Try again
+        		    
+    				}
 				Queue.UseCount++;
 			}
 			else if (Queue.Count + Queue.UseCount < Connection.MaxPoolSize)
@@ -497,7 +517,7 @@ namespace Npgsql
 			ConnectorQueue Queue;
 
 			// Find the queue.
-			if (!PooledConnectors.TryGetValue(Connector.ConnectionString, out Queue) || Queue == null)
+			if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue) || Queue == null)
 			{
 				return; // Queue may be emptied by connection problems. See ClearPool below.
 			}
@@ -591,7 +611,8 @@ namespace Npgsql
                 }
 			}
 		}
-
+		
+		
 		internal void ClearAllPools()
 		{
 			lock (this)
@@ -600,7 +621,7 @@ namespace Npgsql
 				{
 					ClearQueue(Queue);
 				}
-				PooledConnectors.Clear();
+                                PooledConnectors.Clear();
 			}
 		}
 	}
