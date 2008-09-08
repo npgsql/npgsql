@@ -35,6 +35,7 @@ using System.Net.Sockets;
 using System.Resources;
 using System.Text;
 using System.Net;
+using System.Threading;
 
 namespace Npgsql
 {
@@ -347,6 +348,8 @@ namespace Npgsql
 		///
 		internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum(NpgsqlConnector context)
 		{
+		    try
+		    {
 			// Process commandTimeout behavior.
 
 			if ((context.Mediator.CommandTimeout > 0) &&
@@ -378,6 +381,17 @@ namespace Npgsql
 				default:
 					throw new NpgsqlException(resman.GetString("Exception_UnknownProtocol"));
 			}
+			
+			}
+			
+			catch(ThreadAbortException)
+			{
+			    context.CancelRequest();
+			    context.Close();
+			    
+			    throw;
+			}
+			    
 		}
 
 		protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_2(NpgsqlConnector context)
