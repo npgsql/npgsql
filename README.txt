@@ -50,6 +50,7 @@ CONTACT INFO
     
     Web:
     All info related to Npgsql can be found in its homepage:
+    http://www.npgsql.org
     http://npgsql.projects.postgresql.org
     
     
