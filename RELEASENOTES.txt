@@ -1,3 +1,19 @@
+
+2008-09-12
+    Npgsql2 RC2
+    
+    This version contains some fixes and updates for latest entity framework release.
+    We are already in feature freeze and not so many things were added this time.
+    
+    Highlights include:
+    
+    Npgsql2 rc2 now supports .NET 3.5 sp1 with Entity Framework support.  We support model generation by the command line edmgen.exe tool.  This requires the Npgsql be registered in the provider <DbProviderFactories> section of machine.config.
+    
+    A lot of fixes were done on connection pool handling. Also, when running under Mono, Npgsql wasn't using connection pool. Now it is.
+    
+    We added some code to better handle threadabort when executing queries with Npgsql. It isn't perfect but is much better than with previous versions.
+    
+
 2008-04-07
 	Npgsql2 Beta3
 
