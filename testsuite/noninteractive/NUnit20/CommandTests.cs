@@ -2605,6 +2605,59 @@ connection.Open();*/
             Assert.AreEqual(true, command.Parameters[1].Value);
         }
         
+        
+        [Test]
+        public void TestSavePoint()
+        {
+            
+            if (TheConnection.PostgreSqlVersion < new Version("8.0.0"))
+                return;
+                
+            const String theSavePoint = "theSavePoint";
+            
+            TheTransaction.Save(theSavePoint);
+            
+            new NpgsqlCommand("insert into tablea (field_text) values ('savepointtest')", TheConnection).ExecuteNonQuery();
+            
+            object result = new NpgsqlCommand("select count(*) from tablea where field_text = 'savepointtest'", TheConnection).ExecuteScalar();
+            
+            Assert.AreEqual(1, result);
+            
+            TheTransaction.Rollback(theSavePoint);
+            
+            result = new NpgsqlCommand("select count(*) from tablea where field_text = 'savepointtest'", TheConnection).ExecuteScalar();
+            
+            Assert.AreEqual(0, result);
+            
+        }
+        
+        [Test]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestSavePointWithSemicolon()
+        {
+            if (TheConnection.PostgreSqlVersion < new Version("8.0.0"))
+                // Fake exception just to make test pass;
+                throw new InvalidOperationException();
+            
+            const String theSavePoint = "theSavePoint;";
+            
+            TheTransaction.Save(theSavePoint);
+            
+            new NpgsqlCommand("insert into tablea (field_text) values ('savepointtest')", TheConnection).ExecuteNonQuery();
+            
+            object result = new NpgsqlCommand("select count(*) from tablea where field_text = 'savepointtest'", TheConnection).ExecuteScalar();
+            
+            Assert.AreEqual(1, result);
+            
+            TheTransaction.Rollback(theSavePoint);
+            
+            result = new NpgsqlCommand("select count(*) from tablea where field_text = 'savepointtest'", TheConnection).ExecuteScalar();
+            
+            Assert.AreEqual(0, result);
+            
+        }
+        
+        
 
 
     }
