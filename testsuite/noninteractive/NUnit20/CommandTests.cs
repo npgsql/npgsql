@@ -7,11 +7,11 @@
 // created on 30/11/2002 at 22:35
 //
 // Author:
-// 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
+//     Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -671,7 +671,7 @@ namespace NpgsqlTests
         [Test]
         public void FunctionReturnVoid()
         {
-			NpgsqlCommand command = new NpgsqlCommand("testreturnvoid()", TheConnection);
+            NpgsqlCommand command = new NpgsqlCommand("testreturnvoid()", TheConnection);
             command.CommandType = CommandType.StoredProcedure;
             command.ExecuteNonQuery();
         }
@@ -789,8 +789,8 @@ namespace NpgsqlTests
             RecievedNotification = true;
         }
 
-		
-    		[Test]
+        
+            [Test]
         public void ByteSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_int2) values (:a)", TheConnection);
@@ -807,7 +807,7 @@ namespace NpgsqlTests
         }
         
         
-    		[Test]
+            [Test]
         public void ByteaSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_serial = 1", TheConnection);
@@ -824,15 +824,15 @@ namespace NpgsqlTests
         {
             Byte[] toStore = { 1 };
 
-  		    	NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
-      	    cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-  		    	cmd.Parameters[0].Value = toStore;
-      			cmd.ExecuteNonQuery();
+                  NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
+              cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
+                  cmd.Parameters[0].Value = toStore;
+                  cmd.ExecuteNonQuery();
 
-  	  	  	cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
-			
-    			  Byte[] result = (Byte[])cmd.ExecuteScalar();
-			
+                  cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+            
+                  Byte[] result = (Byte[])cmd.ExecuteScalar();
+            
             Assert.AreEqual(1, result.Length);
 
         }
@@ -862,7 +862,7 @@ namespace NpgsqlTests
         
         
         
-    	[Test]
+        [Test]
         public void ByteaParameterSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_bytea = :bytesData", TheConnection);
@@ -870,7 +870,7 @@ namespace NpgsqlTests
             Byte[] bytes = new Byte[]{45,44};
             
             command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-      			command.Parameters[":bytesData"].Value = bytes;
+                  command.Parameters[":bytesData"].Value = bytes;
 
 
             Object result = command.ExecuteNonQuery();
@@ -887,7 +887,7 @@ namespace NpgsqlTests
             Byte[] bytes = new Byte[]{45,44};
             
             command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-      			command.Parameters[":bytesData"].Value = bytes;
+                  command.Parameters[":bytesData"].Value = bytes;
 
 
             command.Prepare();
@@ -898,7 +898,7 @@ namespace NpgsqlTests
         }
         
         
-    		[Test]
+            [Test]
         public void EnumSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_int2) values (:a)", TheConnection);
@@ -1738,20 +1738,20 @@ namespace NpgsqlTests
         public void SetParameterValueNull()
         {
             NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
-      			NpgsqlParameter param = cmd.CreateParameter();
-      			param.ParameterName="val";
+                  NpgsqlParameter param = cmd.CreateParameter();
+                  param.ParameterName="val";
             param.NpgsqlDbType = NpgsqlDbType.Bytea;
-      			param.Value = DBNull.Value;
-			
-      			cmd.Parameters.Add(param);
-			
-      			cmd.ExecuteNonQuery();
+                  param.Value = DBNull.Value;
+            
+                  cmd.Parameters.Add(param);
+            
+                  cmd.ExecuteNonQuery();
 
-      			cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
-			
-      			Object result = cmd.ExecuteScalar();
-			
-			
+                  cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+            
+                  Object result = cmd.ExecuteScalar();
+            
+            
             Assert.AreEqual(DBNull.Value, result);
         }
         
@@ -2056,8 +2056,8 @@ namespace NpgsqlTests
             }
             catch (InvalidOperationException e)
             {
-				ResourceManager resman = new ResourceManager(typeof(NpgsqlCommandBuilder));
-				string expected = string.Format(resman.GetString("Exception_InvalidFunctionName"), "invalidfunctionname");
+                ResourceManager resman = new ResourceManager(typeof(NpgsqlCommandBuilder));
+                string expected = string.Format(resman.GetString("Exception_InvalidFunctionName"), "invalidfunctionname");
                 Assert.AreEqual(expected, e.Message);
             }
         }
@@ -2500,11 +2500,11 @@ connection.Open();*/
         public void ParameterExplicitType2DbTypeObjectWithPrepare()
         {
 
-		new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
-		
-            const string query = @"select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);			IDbDataParameter sqlParam = command.CreateParameter();			sqlParam.ParameterName = "param";			sqlParam.Value = "2008-1-1";
-           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);           
-           command.Prepare();                      command.ExecuteScalar();
+            new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
+        
+            const string query = @"select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);            IDbDataParameter sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param";            sqlParam.Value = "2008-1-1";
+            sqlParam.DbType = DbType.Object;            command.Parameters.Add(sqlParam);           
+            command.Prepare();                       command.ExecuteScalar();
         }
         
         [Test]
@@ -2513,12 +2513,12 @@ connection.Open();*/
 
             new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
             
-            const string query = @"select * from test where tc=:param or tc=:param2";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
-           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);
-           
-           sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param2";           sqlParam.Value = DateTime.Now;
-           sqlParam.DbType = DbType.Date;           command.Parameters.Add(sqlParam);           
-           command.Prepare();                      command.ExecuteScalar();
+            const string query = @"select * from test where tc=:param or tc=:param2";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);            IDbDataParameter sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param";            sqlParam.Value = "2008-1-1";
+            sqlParam.DbType = DbType.Object;            command.Parameters.Add(sqlParam);
+            
+            sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param2";            sqlParam.Value = DateTime.Now;
+            sqlParam.DbType = DbType.Date;            command.Parameters.Add(sqlParam);            
+            command.Prepare();                        command.ExecuteScalar();
         }
 
         [Test]
@@ -2583,8 +2583,8 @@ connection.Open();*/
             @"CREATE OR REPLACE FUNCTION more_params(OUT a integer, OUT b boolean) AS
             $BODY$DECLARE
                 BEGIN
-                	a := 3;
-                	b := true;
+                    a := 3;
+                    b := true;
                 END;$BODY$
               LANGUAGE 'plpgsql' VOLATILE;";
               
@@ -2656,6 +2656,27 @@ connection.Open();*/
             Assert.AreEqual(0, result);
             
         }
+        
+        [Test]
+        public void TestPreparedStatementParameterCastIsNotAdded()
+        {
+            // Test by Waldemar Bergstreiser            
+
+            new NpgsqlCommand("create table testpreparedstatementparametercast ( C1 int );", TheConnection).ExecuteNonQuery();
+            IDbCommand cmd = new NpgsqlCommand("select C1 from testpreparedstatementparametercast where :p0 is null or  C1 = :p0 ", TheConnection);
+            
+            IDbDataParameter paramP0 = cmd.CreateParameter();
+            paramP0.ParameterName = "p0";
+            paramP0.DbType = DbType.Int32;
+            cmd.Parameters.Add(paramP0);
+            cmd.Prepare();    // This cause a runtime exception // Tested with PostgreSQL 8.3 //
+             
+            
+            
+        }
+        
+        
+        
         
         
 
