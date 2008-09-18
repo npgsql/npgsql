@@ -2675,6 +2675,19 @@ connection.Open();*/
             
         }
         
+        [Test]
+        [ExpectedException(typeof(NpgsqlException))]
+        public void TestErrorInPreparedStatementCausesReleaseConnectionToThrowException()
+        {
+            // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.             
+
+            IDbCommand cmd = new NpgsqlCommand("sele", TheConnection);
+            
+            cmd.Prepare();    
+             
+            
+            
+        }
         
         
         
