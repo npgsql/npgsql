@@ -386,8 +386,12 @@ namespace Npgsql
             
             catch(ThreadAbortException)
             {
-                context.CancelRequest();
-                context.Close();
+                try
+                {
+                    context.CancelRequest();
+                    context.Close();
+                }
+                catch {}
                 
                 throw;
             }
