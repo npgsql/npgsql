@@ -383,6 +383,7 @@ namespace Npgsql
                     {
                         Query(new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i), this));
                     }
+                    
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch(Exception) {}
                 }
