@@ -121,8 +121,6 @@ namespace Npgsql.SqlGenerators
                     sqlText.AppendFormat("cast({0} as float4)", _value);
                     break;
                 case PrimitiveTypeKind.Guid:
-                    sqlText.Append(_value);
-                    break;
                 case PrimitiveTypeKind.String:
                     sqlText.Append("'" + _value + "'");
                     break;
