@@ -288,7 +288,6 @@ namespace Npgsql
 									;
 									break;
 								
-								
 							}
 						}
 					}
