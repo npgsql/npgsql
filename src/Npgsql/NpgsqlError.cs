@@ -62,6 +62,8 @@ namespace Npgsql
 		private readonly String _detail = String.Empty;
 		private readonly String _hint = String.Empty;
 		private readonly String _position = String.Empty;
+		private readonly String _internalPosition = String.Empty;
+		private readonly String _internalQuery = String.Empty;
 		private readonly String _where = String.Empty;
 		private readonly String _file = String.Empty;
 		private readonly String _line = String.Empty;
@@ -116,6 +118,21 @@ namespace Npgsql
 			get { return _position; }
 		}
 
+		/// <summary>
+		/// Position (one based) within the query string where the error was encounterd.  This position refers to an internal command executed for example inside a PL/pgSQL function. PostgreSQL 7.4 and up.
+		/// </summary>
+		public String InternalPosition
+		{
+			get { return _internalPosition; }
+		}
+
+		/// <summary>
+		/// Internal query string where the error was encounterd.  This position refers to an internal command executed for example inside a PL/pgSQL function. PostgreSQL 7.4 and up.
+		/// </summary>
+		public String InternalQuery
+		{
+			get { return _internalQuery; }
+		}
 		/// <summary>
 		/// Trace back information.  PostgreSQL 7.4 and up.
 		/// </summary>
@@ -246,6 +263,14 @@ namespace Npgsql
 									_position = PGUtil.ReadString(stream);
 									;
 									break;
+								case 'p':
+									_internalPosition = PGUtil.ReadString(stream);
+									;
+									break;
+								case 'q':
+									_internalQuery = PGUtil.ReadString(stream);
+									;
+									break;
 								case 'W':
 									_where = PGUtil.ReadString(stream);
 									;
@@ -262,6 +287,8 @@ namespace Npgsql
 									_routine = PGUtil.ReadString(stream);
 									;
 									break;
+								
+								
 							}
 						}
 					}
