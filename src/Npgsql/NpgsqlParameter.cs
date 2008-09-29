@@ -542,7 +542,6 @@ namespace Npgsql
                     // don't really know what to do - leave default and do further exploration
                     // Default type for null values is String.
                     this.value = DBNull.Value;
-                    useCast = false;
                     if (type_info == null)
                     {
                         type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
