@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Data.Metadata.Edm;
 using System.Data.Common.CommandTrees;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.SqlGenerators
 {
@@ -86,15 +88,13 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
+            NpgsqlNativeTypeInfo typeInfo;
             switch (_primitiveType)
             {
                 case PrimitiveTypeKind.Binary:
                     {
                         sqlText.AppendFormat("decode('{0}', 'base64')", Convert.ToBase64String((byte[])_value));
                     }
-                    break;
-                case PrimitiveTypeKind.Boolean:
-                    sqlText.Append(_value.ToString().ToUpperInvariant());
                     break;
                 case PrimitiveTypeKind.DateTime:
                     sqlText.AppendFormat("TIMESTAMP '{0:s}'", _value);
@@ -120,9 +120,11 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Single:
                     sqlText.AppendFormat("cast({0} as float4)", _value);
                     break;
+                case PrimitiveTypeKind.Boolean:
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
-                    sqlText.Append("'" + _value + "'");
+                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
+                    sqlText.Append(typeInfo.ConvertToBackend(_value, false));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat("TIME '{0:T}'", _value);
@@ -134,6 +136,21 @@ namespace Npgsql.SqlGenerators
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
             base.WriteSql(sqlText);
+        }
+
+        private DbType GetDbType(PrimitiveTypeKind _primitiveType)
+        {
+            switch (_primitiveType)
+            {
+                case PrimitiveTypeKind.Boolean:
+                    return DbType.Boolean;
+                case PrimitiveTypeKind.Guid:
+                    return DbType.Guid;
+                case PrimitiveTypeKind.String:
+                    return DbType.String;
+                default:
+                    return DbType.Object;
+            }
         }
     }
 
