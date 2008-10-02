@@ -369,8 +369,9 @@ namespace Npgsql
                     //We should have gotten an error from CancelRequest(). Whether we did or not, what we
                     //really have is a timeout exception, and that will be less confusing to the user than
                     //"operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
+                    // Changed message again to report about the two possible timeouts: connection or command as the establishment timeout only was confusing users when the timeout was a command timeout.
                 }
-                throw new NpgsqlException(resman.GetString("Exception_ConnectionTimeout"));
+                throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
             }
             switch (context.BackendProtocolVersion)
             {
