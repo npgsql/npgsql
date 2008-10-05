@@ -2689,6 +2689,34 @@ connection.Open();*/
             
         }
         
+        [Test]
+        public void TestBug1010488ArrayParameterWithNullValue()
+        {
+            // Test by Christ Akkermans       
+
+            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID                             
+            AS $$
+            DECLARE
+            BEGIN
+            END
+            $$ LANGUAGE plpgsql;", TheConnection).ExecuteNonQuery();
+            
+            using (NpgsqlCommand cmd = new NpgsqlCommand("NullTest", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+                parameter.Value = new object[] { 5, 5, DBNull.Value };
+                cmd.Parameters.Add(parameter);
+ 
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.ExecuteNonQuery();
+            }
+             
+            
+            
+        }
+
+        
         
         
         

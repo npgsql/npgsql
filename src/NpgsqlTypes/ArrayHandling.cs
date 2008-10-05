@@ -73,13 +73,13 @@ namespace NpgsqlTypes
         private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb)
         {
             //item could be:
+            //an Ienumerable - in which case we call WriteEnumeration
             //an element - in which case we call the NpgsqlNativeTypeInfo for that type to serialise it.
             //an array - in which case we call WriteArray,
-            //an Ienumerable - in which case we call WriteEnumeration
-            if (NpgsqlTypesHelper.DefinedType(item))
+
+            if (item is IEnumerable)
             {
-                sb.Append(_elementConverter.ConvertToBackend(item, false));
-                return true;
+                return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
             }
             else if (item is Array)
             {
@@ -87,8 +87,11 @@ namespace NpgsqlTypes
             }
             else
             {
-                return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
+                sb.Append(_elementConverter.ConvertToBackend(item, false));
+                return true;
+
             }
+            
         }
 
         private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb)
