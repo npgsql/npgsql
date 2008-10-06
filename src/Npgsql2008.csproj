@@ -72,7 +72,6 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Transactions" />
-    <Reference Include="System.Web" />
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
@@ -164,9 +163,6 @@
     <Compile Include="Npgsql\SqlGenerators\SqlUpdateGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\VisitedExpression.cs" />
     <Compile Include="Npgsql\SSPIHandler.cs" />
-    <Compile Include="Npgsql\Web\NpgsqlMembershipProvider.cs" />
-    <Compile Include="Npgsql\Web\NpgsqlProfileProvider.cs" />
-    <Compile Include="Npgsql\Web\NpgsqlRoleProvider.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.resx">
