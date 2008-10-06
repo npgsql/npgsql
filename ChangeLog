@@ -1,12 +1,103 @@
-2008-09-12 01:06  fxjr
+2008-10-06	jbcooley
+	* src/Npgsql/AssemblyInfo.cs 1.15:
+		updated to 2.0 for final release.
 
-	* RELEASENOTES.txt:
-	  Added release notes for Npgsql2 RC2 release.
+	* src/Npgsql2008.csproj 1.16:
+		removed dependencies on System.Web
 
-2008-09-12 00:35  fxjr
+2008-10-05	fxjr
+	* src/NpgsqlTypes/ArrayHandling.cs 1.4:
+		
+		Changed tabs to spaces (4)
 
-	* src/Npgsql/AssemblyInfo.cs:
-	  Changed assembly version to RC2
+	* src/NpgsqlTypes/ArrayHandling.cs 1.5:
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.19:
+		
+		[#1010488] NgsqlParameter of type containing DBNull values throws NullReferenceException. Thanks Christ Akkermans for testcase. Now, Npgsql handles first elements which aren't null as Arrays and IEnumerables. Also added test case for this bug.
+
+2008-10-04	fxjr
+	* src/Npgsql.build 1.15:
+		
+		Removed build of asp.net providers as well as System.Web dependencies. Now we use Daniel Nauck's providers.
+
+2008-10-02	fxjr
+	* src/Npgsql/NpgsqlState.cs 1.17:
+	* src/Npgsql/NpgsqlState.resx 1.3:
+		
+		Fixed misleading timeout error message. As the only timeout which was being reported was about connection establishment, command execution timeouts were being misinterpreted and users couldn't find easily what was going wrong.
+
+2008-09-30	jbcooley
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.11:
+		use standard literal formatters for strings, booleans, and 
+		guids.
+
+2008-09-29	fxjr
+	* src/Npgsql/NpgsqlError.cs 1.6:
+		
+		
+		[npgsql-help][1004020] Backend sent unrecognized response type: q
+		
+		References for previous patch: http://pgfoundry.org/forum/message.php?msg_id=1004022.
+
+	* src/Npgsql/NpgsqlError.cs 1.5:
+		
+		
+		Fixed error message: Backend sent unrecognized response type: q. There was an error on Error message handling where we were letting some fields without processing. Thanks Eric Montague (eric @nospam@ nuws.com) for heads up and tests.
+
+	* src/Npgsql/NpgsqlParameter.cs 1.18:
+		
+		
+		Added casts when parameter is null. This was causing problems with prepare statements when parameter type was set to a value other than DbType.Object and its value was set to null. The prepare statement wasn't receiving the cast. Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up.
+
+2008-09-28	jbcooley
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.10:
+		Quote uuid constants when used in expression.  Thanks to Yann 
+		Robin for the fix.
+
+2008-09-23	fxjr
+	* src/Npgsql/NpgsqlState.cs 1.16:
+		
+		Added try/catch to handle possible problems when cancelling a request because of a threadabortexception. Thanks to Andreas Schönebeck for heads up.
+
+	* src/Npgsql/NpgsqlState.cs 1.15:
+		
+		Fixed tabs to 4 spaces.
+
+	* src/Npgsql/NpgsqlConnector.cs 1.24:
+		
+		[#1010461] Prepare invalid SQL statement causes ERROR: 26000 when Npgsql.NpgsqlConnection disposed. Fixed in previous revision. Forgot to reference bug report.
+
+2008-09-18	fxjr
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.17:
+		
+		Fixed tabs to 4 spaces
+		
+		Added test to check a problem where prepared statements were lacking casts even when user set dbtype or npgsqldbtype. Now the casts are properly added when needed. Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up and test case.
+
+	* src/Npgsql/NpgsqlConnector.cs 1.23:
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.18:
+		
+		Fixed a bug where Npgsql was throwing exceptions when releasing connection to pool and there were portal names which were associated with invalid prepared queries. Npgsql tried to deallocate them and threw exceptions. Now this is property surrounded by a try/catch block.
+
+	* src/Npgsql/NpgsqlParameter.cs 1.17:
+		
+		Fixed tabs to 4 spaces.
+		
+		Fixed a problem where prepared statements were lacking casts even when user set dbtype or npgsqldbtype. Now the casts are properly added when needed.
+		Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up and testcase.
+
+	* src/Npgsql/NpgsqlCommand.cs 1.29:
+		
+		Fixed tabs to be changed to 4 spaces.
+
+2008-09-16	fxjr
+	* src/Npgsql/NpgsqlConnector.cs 1.22:
+	* src/Npgsql/NpgsqlTransaction.cs 1.7:
+	* src/Npgsql/NpgsqlTransaction.resx 1.2:
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.16:
+		
+		[#1010474] Savepoint support is missing.
+		Fixed. Also converted all tabs to spaces 4.
 
 2008-09-10 02:02  fxjr
 
