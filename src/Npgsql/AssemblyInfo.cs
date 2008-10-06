@@ -54,4 +54,4 @@ using System.Resources;
 // You can specify all values by your own or you can build default build and revision
 // numbers with the '*' character (the default):
 
-[assembly : AssemblyVersion("1.99.2")]
+[assembly : AssemblyVersion("2.0.0")]
