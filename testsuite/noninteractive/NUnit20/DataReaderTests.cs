@@ -372,6 +372,15 @@ namespace NpgsqlTests
             Console.WriteLine(dr.IsDBNull(1));
         }
 
+        [Test]
+        public void GetInt32ArrayFieldType()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select cast(null as integer[])", TheConnection);
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                Assert.AreEqual(typeof(int[]), dr.GetFieldType(0));
+            }
+        }
 
         [Test]
         public void TestOverlappedParameterNames()
