@@ -580,7 +580,7 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 		{
 			return
 				new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
-				                          null,
+				                          elementInfo.Type.MakeArrayType(),
 				                          new ConvertBackendToNativeHandler(
 				                          	new ArrayBackendToNativeTypeConverter(elementInfo).ToArray));
 		}
@@ -677,6 +677,8 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 		public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
 		                             ConvertBackendToNativeHandler ConvertBackendToNative)
 		{
+            if (Type == null)
+                throw new ArgumentNullException("Type");
 			_OID = OID;
 			_Name = Name;
 			_NpgsqlDbType = NpgsqlDbType;
