@@ -280,7 +280,7 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("bytea", typeof (Byte[]));
 
-			nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Boolean, true,
+			nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Boolean, false,
 			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBit));
 
 			nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, true,

@@ -1235,7 +1235,11 @@ namespace Npgsql
 
             for (Int32 i = 0; i < parameters.Count; i++)
             {
-                result.Append(parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, false) + ',');
+                if (parameters[i].UseCast)
+                    result.Append(string.Format("{0}::{1},", parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, false), parameters[i].TypeInfo.CastName));
+                else
+                    result.Append(parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, false) + ',');
+                    
             }
 
             result = result.Remove(result.Length - 1, 1);
