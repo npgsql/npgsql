@@ -1638,6 +1638,31 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TestBoolParameter1()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            NpgsqlCommand command = new NpgsqlCommand("select case when (foo is null) then false else foo end as bar from (select :a as foo) as x", TheConnection);
+            NpgsqlParameter p0 = new NpgsqlParameter(":a", true);
+            // with setting pramater type
+            p0.DbType = DbType.Boolean;
+            command.Parameters.Add(p0);
+
+            command.ExecuteScalar();
+        }
+
+        [Test]
+        public void TestBoolParameter2()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            NpgsqlCommand command = new NpgsqlCommand("select case when (foo is null) then false else foo end as bar from (select :a as foo) as x", TheConnection);
+            NpgsqlParameter p0 = new NpgsqlParameter(":a", true);
+            // not setting parameter type
+            command.Parameters.Add(p0);
+
+            command.ExecuteScalar();
+        }
+
+        [Test]
         public void TestPointSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_point from tablee where field_serial = 1", TheConnection);
