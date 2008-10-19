@@ -2183,6 +2183,40 @@ namespace NpgsqlTests
             
             Assert.AreEqual(DateTime.MinValue, result);
         }
+        
+        [Test]
+        public void InsertMinusInfinityDateTimeSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("insert into tableb(field_timestamp) values (:a);", TheConnection);
+            
+
+            NpgsqlParameter p = new NpgsqlParameter("a", DateTime.MinValue);
+
+            command.Parameters.Add(p);
+
+            command.ExecuteNonQuery();
+            
+            command = new NpgsqlCommand("select field_timestamp from tableb where field_serial = (select max(field_serial) from tableb);", TheConnection);
+            
+            Object result = command.ExecuteScalar();
+            
+            Assert.AreEqual(DateTime.MinValue, result);
+        }
+
+        [Test]
+        public void MinusInfinityDateTimeSupport()
+        {
+            NpgsqlCommand command = TheConnection.CreateCommand();
+                       
+            command.Parameters.Add(new NpgsqlParameter("p0", DateTime.MinValue));
+
+            command.CommandText = "select 1 where current_date=:p0";
+            
+            Object result = command.ExecuteScalar();
+            
+            Assert.AreEqual(null, result);
+        }
+
 
         [Test]
         public void InetTypeSupport()
