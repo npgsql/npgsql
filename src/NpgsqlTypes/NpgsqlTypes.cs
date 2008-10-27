@@ -77,9 +77,10 @@ namespace NpgsqlTypes
 
     public struct NpgsqlBox : IEquatable<NpgsqlBox>
     {
-        public NpgsqlPoint UpperRight;
-        public NpgsqlPoint LowerLeft;
-
+        
+        private NpgsqlPoint _upperRight;
+        private NpgsqlPoint _lowerLeft;
+        
         public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
         {
             UpperRight = upperRight;
@@ -91,6 +92,34 @@ namespace NpgsqlTypes
         {
         }
 
+        public NpgsqlPoint UpperRight
+        {
+            get
+            {
+                return _upperRight;
+            }
+            
+            set
+            {
+                _upperRight = value;
+            }
+            
+        }
+        
+        public NpgsqlPoint LowerLeft
+        {
+            get
+            {
+                return _lowerLeft;
+            }
+            
+            set
+            {
+                _lowerLeft = value;
+            }
+            
+        }
+        
         public float Left
         {
             get { return LowerLeft.X; }
