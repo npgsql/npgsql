@@ -40,14 +40,41 @@ namespace NpgsqlTypes
     /// </summary>
     public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
     {
-        public Single X;
-        public Single Y;
+        private Single _x;
+        private Single _y;
 
         public NpgsqlPoint(Single x, Single y)
         {
             X = x;
             Y = y;
         }
+        
+        public Single X
+        {
+            get
+            {
+                return _x;
+            }
+            
+            set
+            {
+                _x = value;
+            }
+        }
+        
+        public Single Y
+        {
+            get
+            {
+                return _y;
+            }
+            
+            set
+            {
+                _y = value;
+            }
+        }
+
 
         public bool Equals(NpgsqlPoint other)
         {
@@ -237,7 +264,7 @@ namespace NpgsqlTypes
     /// </summary>
     public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
     {
-        public bool Open;
+        private bool _open;
         private readonly List<NpgsqlPoint> _points;
 
         public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
@@ -248,6 +275,10 @@ namespace NpgsqlTypes
 
         public NpgsqlPath(IEnumerable<NpgsqlPoint> points)
             : this(points, false)
+        {
+        }
+        
+        public NpgsqlPath(NpgsqlPoint[] points) : this((IEnumerable<NpgsqlPoint>)points, false)
         {
         }
 
@@ -266,6 +297,19 @@ namespace NpgsqlTypes
         public NpgsqlPath(int capacity)
             : this(capacity, false)
         {
+        }
+        
+        public bool Open
+        {
+            get
+            {
+                return _open;
+            }
+            
+            set
+            {
+                _open = value;
+            }
         }
 
         public NpgsqlPoint this[int index]
@@ -389,6 +433,10 @@ namespace NpgsqlTypes
         public NpgsqlPolygon(IEnumerable<NpgsqlPoint> points)
         {
             _points = new List<NpgsqlPoint>(points);
+        }
+        
+        public NpgsqlPolygon(NpgsqlPoint[] points) : this ((IEnumerable<NpgsqlPoint>) points)
+        {
         }
 
         public NpgsqlPoint this[int index]
