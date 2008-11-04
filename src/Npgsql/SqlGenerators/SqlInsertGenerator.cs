@@ -29,13 +29,31 @@ namespace Npgsql.SqlGenerators
             {
                 // the table name needs to be quoted, the column name does not.
                 // http://archives.postgresql.org/pgsql-bugs/2007-01/msg00102.php
-                return new LiteralExpression("currval(pg_get_serial_sequence('" + QuoteIdentifier(_variableSubstitution[variable.VariableName]) + "', '" + expression.Property.Name + "'))");
+                string tableName = QuoteIdentifier(_variableSubstitution[variable.VariableName]);
+                if (variable.VariableName == _commandTree.Target.VariableName)
+                {
+                    // try to get the table name schema qualified.
+                    DbScanExpression scan = _commandTree.Target.Expression as DbScanExpression;
+                    if (scan != null)
+                    {
+                        System.Data.Metadata.Edm.MetadataProperty metadata;
+                        if (scan.Target.MetadataProperties.TryGetValue("Schema", false, out metadata) && metadata.Value != null)
+                        {
+                            tableName = QuoteIdentifier(metadata.Value.ToString()) + "." + tableName;
+                        }
+                        else
+                        {
+                            tableName = QuoteIdentifier(scan.Target.EntityContainer.Name) + "." + tableName;
+                        }
+                    }
+                }
+                return new LiteralExpression("currval(pg_get_serial_sequence('" + tableName + "', '" + expression.Property.Name + "'))");
             }
         }
 
         public override void BuildCommand(DbCommand command)
         {
-            // TODO: handle _commandTree.Returning and _commandTree.Parameters
+            // TODO: handle_commandTree.Parameters
             InsertExpression insert = new InsertExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
             insert.AppendTarget(_commandTree.Target.Expression.Accept(this));
