@@ -45,8 +45,8 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint(Single x, Single y)
         {
-            X = x;
-            Y = y;
+            _x = x;
+            _y = y;
         }
         
         public Single X
@@ -110,8 +110,8 @@ namespace NpgsqlTypes
         
         public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
         {
-            UpperRight = upperRight;
-            LowerLeft = lowerLeft;
+            _upperRight = upperRight;
+            _lowerLeft = lowerLeft;
         }
 
         public NpgsqlBox(float Top, float Right, float Bottom, float Left)
@@ -270,7 +270,7 @@ namespace NpgsqlTypes
         public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
         {
             _points = new List<NpgsqlPoint>(points);
-            Open = open;
+            _open = open;
         }
 
         public NpgsqlPath(IEnumerable<NpgsqlPoint> points)
@@ -285,13 +285,13 @@ namespace NpgsqlTypes
         public NpgsqlPath(bool open)
         {
             _points = new List<NpgsqlPoint>();
-            Open = open;
+            _open = open;
         }
 
         public NpgsqlPath(int capacity, bool open)
         {
             _points = new List<NpgsqlPoint>(capacity);
-            Open = open;
+            _open = open;
         }
 
         public NpgsqlPath(int capacity)
