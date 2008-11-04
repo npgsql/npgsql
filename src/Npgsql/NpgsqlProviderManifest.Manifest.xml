@@ -19,7 +19,7 @@
       <FacetDescriptions>
         <FixedLength DefaultValue="false" Constant="true" />
         <!-- TODO: Need a good value for DefaultValue (1073741823) -->
-        <MaxLength Minimum="1" Maximum="8000" DefaultValue="8000" Constant="false" />
+        <MaxLength Minimum="1" Maximum="1073741823" DefaultValue="8000" Constant="false" />
         <Unicode DefaultValue="true" Constant="true" />
       </FacetDescriptions>
     </Type>
