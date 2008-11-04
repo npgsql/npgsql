@@ -1,4 +1,30 @@
 
+2008-10-04
+
+    Npgsql2 2.0.1
+    
+    This version brings some minor bugfixes since 2.0 release.
+    
+    Fixed a bug where boolean values were being quoted. This was giving problems with edmgen tool for entityframework support.
+    Fix for a date and infinity values comparison.
+From patch:
+
+"This check for Datetime.minvalue and maxvalue is needed in order to
+workaround a problem when comparing date values with infinity.
+This is a known issue with postgresql and it is reported here:
+http://archives.postgresql.org/pgsql-general/2008-10/msg00535.php
+Josh's solution to add cast is documented here:
+http://pgfoundry.org/forum/message.php?msg_id=1004118"
+
+Thanks Josh for fix idea.
+
+[#1010488] NgsqlParameter of type containing DBNull values throws NullReferenceException. Thanks Christ Akkermans for testcase.
+
+Changed some NpgsqlTypes namespace structs in order to get better Npgsql1 compatibility in order to have Npgsql2 included in future Mono releases. Thanks Josh Cooley for last minute fix on those changes.
+
+Fixed SqlInsertGenerator: Add schema qualification to table name when fetching sequence values. Thanks Josh Cooley for fix.
+
+
 2008-09-12
     Npgsql2 RC2
     
