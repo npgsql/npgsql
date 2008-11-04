@@ -423,7 +423,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Npgsql\NpgsqlMetaData.xml" />
+    <EmbeddedResource Include="Npgsql\NpgsqlMetaData.xml" />
     <EmbeddedResource Include="Npgsql\NpgsqlClosedState.ja.resx">
       <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
       <SubType>Designer</SubType>
