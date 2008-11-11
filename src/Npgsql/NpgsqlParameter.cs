@@ -276,7 +276,7 @@ namespace Npgsql
                 // Josh's solution to add cast is documented here:
                 // http://pgfoundry.org/forum/message.php?msg_id=1004118
                 
-                return useCast || DateTime.MinValue.Equals(value) || DateTime.MinValue.Equals(value);
+                return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value);
             }
         }
 
