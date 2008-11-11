@@ -73,6 +73,17 @@ namespace Npgsql
         private NpgsqlBind bind;
 
         private Int64 lastInsertedOID = 0;
+        
+        // locals about function support so we don`t need to check it everytime a function is called.
+        
+        private Boolean functionChecksDone = false;
+        
+        private Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
+
+        private Boolean functionReturnsRecord = false; // Functions don't return record by default.
+
+        private Boolean functionReturnsRefcursor = false; // Functions don't return refcursor by default.
+
 
         // Constructors
 
@@ -167,6 +178,8 @@ namespace Npgsql
                 planName = String.Empty;
                 parse = null;
                 bind = null;
+                
+                functionChecksDone = false;
             }
         }
 
@@ -825,29 +838,30 @@ namespace Npgsql
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetClearCommandText");
             }
 
-            Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
-
-            Boolean functionReturnsRecord = false; // Functions don't return record by default.
-
-            Boolean functionReturnsRefcursor = false; // Functions don't return refcursor by default.
 
             String result = text;
 
 
             if (type == CommandType.StoredProcedure)
             {
-                if (Parameters.Count > 0)
+                
+                if (!functionChecksDone)
                 {
-                    functionReturnsRecord = !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
-                }
-
-                functionReturnsRefcursor = CheckFunctionReturn("refcursor");
-
-                // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
-                if ((!result.Trim().EndsWith(")")) && (!result.Trim().EndsWith(";")))
-                {
-                    addProcedureParenthesis = true;
-                    result += "(";
+                    if (Parameters.Count > 0)
+                    {
+                        functionReturnsRecord = !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
+                    }
+    
+                    functionReturnsRefcursor = CheckFunctionReturn("refcursor");
+    
+                    // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
+                    if ((!result.Trim().EndsWith(")")) && (!result.Trim().EndsWith(";")))
+                    {
+                        addProcedureParenthesis = true;
+                        
+                    }
+                    
+                    functionChecksDone = true;
                 }
 
                 if (Connector.SupportsPrepare)
@@ -868,7 +882,7 @@ namespace Npgsql
             {
                 if (addProcedureParenthesis)
                 {
-                    result += ")";
+                    result += "()";
                 }
 
 
@@ -885,7 +899,8 @@ namespace Npgsql
                 {
                     result = AddFunctionReturnsRecordSupport(result);
                 }
-
+                
+               
                 return result;
             }
 
@@ -945,6 +960,8 @@ namespace Npgsql
 
             else
             {
+                result += "(";
+                
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
                     NpgsqlParameter Param = parameters[i];
