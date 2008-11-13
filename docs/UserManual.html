@@ -1914,6 +1914,59 @@ the best performance implications, it will ensure that the pool remains stay con
 when problems arise. Two methods to clear the pools are available through NpgsqlConnection: ClearPool and ClearAllPools. 
 You can use them to clear the pool manually.
 
+<h3> 3.4 Using Npgsql with ProviderFactory </h3>
+
+<p> Npgsql can be used with Provider Factory pattern which allows you to write code which is independent of database you are using.</p>
+<p> In order to do that, you have to use the following configuration:</p>
+
+<pre class="CodeBox">
+&lt;?xml version="1.0" encoding="iso-8859-1" ?&gt;
+&lt;configuration&gt;
+
+&lt;system.data&gt;
+&lt;DbProviderFactories&gt;
+
+&lt;add name="Npgsql Data Provider" invariant="Npgsql" support="FF" description=".Net Framework Data Provider for Postgresql Server" type="Npgsql.NpgsqlFactory, Npgsql, Version=2.0.1.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7" /&gt;
+
+&lt;/DbProviderFactories&gt;
+&lt;/system.data&gt;
+
+&lt;/configuration&gt;
+</pre>
+
+<p> This configuration can be put inside the global machine.config file or in the application specific .config file.</p>
+
+<p> After that, you can write code like the following:</p>
+
+<pre class="CodeBox">
+
+
+using System;
+using System.Data;
+using System.Data.Common;
+
+
+public class c
+{
+    public static void Main(String[] args)
+    {
+    
+       DbProviderFactory factory = DbProviderFactories.GetFactory("Npgsql");
+       
+       DbConnection conn = factory.CreateConnection();
+       
+       conn.ConnectionString = "Server=127.0.0.1;User id=npgsql_tests;password=npgsql_tests;";
+       
+       conn.Open();
+       
+       conn.Close();
+    
+    
+    }
+}
+</pre>
+
+
 
 <h2> 4. Current Npgsql Status </h2>
 
