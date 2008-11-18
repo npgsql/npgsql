@@ -585,21 +585,19 @@ namespace Npgsql
 			
 				promotable.Prepare();
 
-				if (connector != null)
+				connector.Notification -= NotificationDelegate;
+				connector.Notice -= NoticeDelegate;
+
+				if (SyncNotification)
 				{
-					connector.Notification -= NotificationDelegate;
-					connector.Notice -= NoticeDelegate;
-
-					if (SyncNotification)
-					{
-						connector.RemoveNotificationThread();
-					}
-
-					NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
-
-
-					connector = null;
+					connector.RemoveNotificationThread();
 				}
+
+				NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+
+
+				connector = null;
+			
 			}
 		}
 
