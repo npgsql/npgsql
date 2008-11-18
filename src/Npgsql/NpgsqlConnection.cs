@@ -577,11 +577,12 @@ namespace Npgsql
 		///	made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
 		/// </summary>
 		public override void Close()
-		{
-			if (!disposed)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
+            
+			if (connector != null)
 			{
-				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-
+			
 				promotable.Prepare();
 
 				if (connector != null)
