@@ -1323,6 +1323,12 @@ namespace Npgsql
                             else
                                 parseCommand += string.Format("${0}", (i + 1));
                         }
+                        
+                        if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
+                        {
+                            parseCommand += string.Format("({0})", parameters[i].Size);
+                        }
+                    
                     }
                 }
             }
