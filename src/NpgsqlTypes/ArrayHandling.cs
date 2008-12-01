@@ -76,8 +76,11 @@ namespace NpgsqlTypes
             //an Ienumerable - in which case we call WriteEnumeration
             //an element - in which case we call the NpgsqlNativeTypeInfo for that type to serialise it.
             //an array - in which case we call WriteArray,
+            
+            // Even an string being an IEnumerable, it shouldn't be processed. It will be processed on the last else.
+            // See http://pgfoundry.org/tracker/?func=detail&atid=592&aid=1010514&group_id=1000140 for more info.
 
-            if (item is IEnumerable)
+            if (!(item is string) && item is IEnumerable )
             {
                 return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
             }

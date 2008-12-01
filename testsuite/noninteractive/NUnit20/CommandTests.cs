@@ -2216,6 +2216,21 @@ namespace NpgsqlTests
             
             Assert.AreEqual(null, result);
         }
+        
+        
+        [Test]
+        public void PlusInfinityDateTimeSupport()
+        {
+            NpgsqlCommand command = TheConnection.CreateCommand();
+                       
+            command.Parameters.Add(new NpgsqlParameter("p0", DateTime.MaxValue));
+
+            command.CommandText = "select 1 where current_date=:p0";
+            
+            Object result = command.ExecuteScalar();
+            
+            Assert.AreEqual(null, result);
+        }
 
 
         [Test]
@@ -2727,7 +2742,7 @@ connection.Open();*/
             IDbDataParameter paramP0 = cmd.CreateParameter();
             paramP0.ParameterName = "p0";
             paramP0.DbType = DbType.Int32;
-            cmd.Parameters.Add(paramP0);
+        cmd.Parameters.Add(paramP0);
             cmd.Prepare();    // This cause a runtime exception // Tested with PostgreSQL 8.3 //
              
             
@@ -2742,17 +2757,17 @@ connection.Open();*/
 
             IDbCommand cmd = new NpgsqlCommand("sele", TheConnection);
             
-            cmd.Prepare();    
+                cmd.Prepare();    
              
             
-            
-        }
+        
+    }
         
         [Test]
         public void TestBug1010488ArrayParameterWithNullValue()
         {
             // Test by Christ Akkermans       
-
+            
             new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID                             
             AS $$
             DECLARE
@@ -2770,16 +2785,24 @@ connection.Open();*/
                 cmd.CommandType = System.Data.CommandType.StoredProcedure;
                 cmd.ExecuteNonQuery();
             }
-             
+        }
+
+        [Test]
+        public void VarCharArrayHandling()
+        {
+            
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Varchar | NpgsqlDbType.Array);
+                parameter.Value = new object[] { "test", "test"};
+                cmd.Parameters.Add(parameter);
+ 
+                cmd.ExecuteNonQuery();
+            }
             
             
         }
-
-        
-        
-        
-        
-
 
     }
     
