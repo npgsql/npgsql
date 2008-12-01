@@ -2761,7 +2761,7 @@ connection.Open();*/
              
             
         
-    }
+        }
         
         [Test]
         public void TestBug1010488ArrayParameterWithNullValue()
@@ -2796,6 +2796,23 @@ connection.Open();*/
 
                 NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Varchar | NpgsqlDbType.Array);
                 parameter.Value = new object[] { "test", "test"};
+                cmd.Parameters.Add(parameter);
+ 
+                cmd.ExecuteNonQuery();
+            }
+            
+            
+        }
+        
+        [Test]
+        public void Bug1010521NpgsqlIntervalShouldBeQuoted()
+        {
+            
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Interval);
+                parameter.Value = new NpgsqlInterval(DateTime.Now.TimeOfDay);
                 cmd.Parameters.Add(parameter);
  
                 cmd.ExecuteNonQuery();

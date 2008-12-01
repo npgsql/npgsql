@@ -386,7 +386,7 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null);
 
-			nativeTypeMapping.AddType("interval", NpgsqlDbType.Interval, DbType.Object, false,
+			nativeTypeMapping.AddType("interval", NpgsqlDbType.Interval, DbType.Object, true,
 			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToInterval));
 
 			nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
