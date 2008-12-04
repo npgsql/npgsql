@@ -2,8 +2,7 @@
   <PropertyGroup>
     <ProjectTypeGuids>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <ProjectGuid>{E9C258D7-0D8E-4E6A-9857-5C6438591755}</ProjectGuid>
-    <RootNamespace>
-    </RootNamespace>
+    <RootNamespace>NpgsqlTests</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <FileUpgradeFlags>
@@ -80,6 +79,7 @@
     <Compile Include="DataReaderTests.cs" />
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
+    <Compile Include="TypesTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
