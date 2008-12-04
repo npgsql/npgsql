@@ -829,22 +829,23 @@ namespace NpgsqlTypes
 				if (idx > 0)
 				{
 					years = int.Parse(str.Substring(0, idx));
-					str = str.Substring(idx + 5);
+                    str = SafeSubstring(str, idx + 5);
 				}
 				idx = str.IndexOf("mon");
 				if (idx > 0)
 				{
 					months = int.Parse(str.Substring(0, idx));
-					str = str.Substring(idx + 4);
+                    str = SafeSubstring(str, idx + 4);
 				}
 				idx = str.IndexOf("day");
 				if (idx > 0)
 				{
 					days = int.Parse(str.Substring(0, idx));
-					str = str.Substring(idx + 4).Trim();
+                    str = SafeSubstring(str, idx + 4).Trim();
 				}
 				if (str.Length > 0)
 				{
+                    bool isNegative = str[0] == '-';
 					string[] parts = str.Split(':');
 					switch (parts.Length) //One of those times that fall-through would actually be good.
 					{
@@ -861,6 +862,11 @@ namespace NpgsqlTypes
 							seconds = decimal.Parse(parts[2]);
 							break;
 					}
+                    if (isNegative)
+                    {
+                        minutes *= -1;
+                        seconds *= -1;
+                    }
 				}
 				long ticks = hours*TicksPerHour + minutes*TicksPerMinute + (long) (seconds*TicksPerSecond);
 				return new NpgsqlInterval(years*MonthsPerYear + months, days, ticks);
@@ -874,6 +880,14 @@ namespace NpgsqlTypes
 				throw new FormatException();
 			}
 		}
+
+        private static string SafeSubstring(string s, int startIndex)
+        {
+            if (startIndex >= s.Length)
+                return string.Empty;
+            else
+                return s.Substring(startIndex);
+        }
 
 		/// <summary>
 		/// Attempt to parse a <see cref="String"/> to produce an <see cref="NpgsqlInterval"/>.
