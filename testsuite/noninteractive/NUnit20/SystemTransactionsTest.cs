@@ -108,6 +108,35 @@ namespace NpgsqlTests
             AssertRowNotExist("field_int4", field_serial2);
         }
 
+        [Test]
+        public void FunctionTestTimestamptzParameterSupport()
+        {
+            string connectionString = TheConnectionString + ";enlist=true";
+            using (TransactionScope scope = new TransactionScope())
+            {
+                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    NpgsqlCommand command = new NpgsqlCommand("testtimestamptzparameter", connection);
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    command.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
+
+                    //NpgsqlDataReader dr = command.ExecuteReader();
+
+                    //Int32 count = 0;
+
+                    //while (dr.Read())
+                        //count++;
+                    NpgsqlDataAdapter da = new NpgsqlDataAdapter(command);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    Assert.IsTrue(dt.Rows.Count > 1);
+                }
+            }
+        }
+
         private void AssertNoTransactions()
         {
             // ensure no transactions remain
