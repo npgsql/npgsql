@@ -159,6 +159,22 @@ namespace NpgsqlTests
             DistributedTransactionRollback();
             DistributedTransactionRollback();
         }
+
+        [Test]
+        public void ReuseConnection()
+        {
+            string connectionString = TheConnectionString + ";enlist=true";
+            using (TransactionScope scope = new TransactionScope())
+            {
+                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+                {
+                    connection.Open();
+                    connection.Close();
+                    connection.Open();
+                    connection.Close();
+                }
+            }
+        }
 	}
 
     public class SystemTransactionsTestV2 : SystemTransactionsTest
