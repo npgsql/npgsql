@@ -120,7 +120,8 @@ namespace Npgsql
 		// Connector being used for the active connection.
 		private NpgsqlConnector connector = null;
 
-		private readonly NpgsqlPromotableSinglePhaseNotification promotable = null;
+        private NpgsqlPromotableSinglePhaseNotification promotable = null;
+
 
 		/// <summary>
 		/// Initializes a new instance of the
@@ -533,7 +534,7 @@ namespace Npgsql
 
 			if (Enlist)
 			{
-				promotable.Enlist(Transaction.Current);
+				Promotable.Enlist(Transaction.Current);
 			}
 		}
 
@@ -582,8 +583,9 @@ namespace Npgsql
             
 			if (connector != null)
 			{
-			
-				promotable.Prepare();
+				Promotable.Prepare();
+                // clear the way for another promotable transaction
+                promotable = null;
 
 				connector.Notification -= NotificationDelegate;
 				connector.Notice -= NoticeDelegate;
@@ -827,7 +829,12 @@ namespace Npgsql
 
 		//
 		// Private methods and properties
-		//
+        //
+
+        private NpgsqlPromotableSinglePhaseNotification Promotable
+        {
+            get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
+        }
 
 
 		/// <summary>
@@ -960,7 +967,7 @@ namespace Npgsql
 
 		public override void EnlistTransaction(Transaction transaction)
 		{
-			promotable.Enlist(transaction);
+			Promotable.Enlist(transaction);
 		}
 
 #if NET35
