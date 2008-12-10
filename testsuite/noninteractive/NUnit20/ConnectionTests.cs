@@ -26,6 +26,7 @@ using Npgsql;
 using System.Data;
 using System.Resources;
 using NUnit.Framework;
+using System.Collections.Generic;
 
 namespace NpgsqlTests
 {
@@ -179,7 +180,53 @@ namespace NpgsqlTests
             
             
         }
-		
+
+        [Test]
+        public void UseAllConnectionsInPool()
+        {
+            List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
+            // repeat test to exersize pool
+            for (int i = 0; i < 10; ++i)
+            {
+                try
+                {
+                    // 19 since base class opens one and the default pool size is 20
+                    for (int j = 0; j < 19; ++j)
+                    {
+                        NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
+                        connection.Open();
+                        openedConnections.Add(connection);
+                    }
+                }
+                finally
+                {
+                    openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+                    openedConnections.Clear();
+                }
+            }
+        }
+
+        [Test]
+        [ExpectedException]
+        public void ExceedConnectionsInPool()
+        {
+            List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
+            try
+            {
+                // exceed default pool size of 20
+                for (int i = 0; i < 21; ++i)
+                {
+                    NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
+                    connection.Open();
+                    openedConnections.Add(connection);
+                }
+            }
+            finally
+            {
+                openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+            }
+        }
+
     }
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
