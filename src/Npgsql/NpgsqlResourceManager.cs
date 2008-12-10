@@ -83,7 +83,7 @@ namespace Npgsql
 
         #endregion
 
-		private class DurableResourceManager : IEnlistmentNotification
+		private class DurableResourceManager : ISinglePhaseNotification
 		{
 			private CommittableTransaction _tx;
 			private NpgsqlResourceManager _rm;
@@ -147,7 +147,18 @@ namespace Npgsql
 				_callbacks.Dispose();
 			}
 
-			#endregion
+            #endregion
+
+            #region ISinglePhaseNotification Members
+
+            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+            {
+                _callbacks.CommitTransaction();
+                singlePhaseEnlistment.Committed();
+                _callbacks.Dispose();
+            }
+
+            #endregion
 
 			private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
 
@@ -161,6 +172,6 @@ namespace Npgsql
 				tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
                 return tx;
 			}
-		}
+        }
     }
 }
