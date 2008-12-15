@@ -1,103 +1,366 @@
-2008-10-06	jbcooley
-	* src/Npgsql/AssemblyInfo.cs 1.15:
-		updated to 2.0 for final release.
+2008-12-10 02:42  jbcooley
 
-	* src/Npgsql2008.csproj 1.16:
-		removed dependencies on System.Web
+	* testsuite/noninteractive/NUnit20/SystemTransactionsTest.cs: Reuse
+	  connection in transaction - test provided by Wouter Claeys
 
-2008-10-05	fxjr
-	* src/NpgsqlTypes/ArrayHandling.cs 1.4:
-		
-		Changed tabs to spaces (4)
+2008-12-10 02:39  jbcooley
 
-	* src/NpgsqlTypes/ArrayHandling.cs 1.5:
-	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.19:
-		
-		[#1010488] NgsqlParameter of type containing DBNull values throws NullReferenceException. Thanks Christ Akkermans for testcase. Now, Npgsql handles first elements which aren't null as Arrays and IEnumerables. Also added test case for this bug.
+	* testsuite/noninteractive/NUnit20/ConnectionTests.cs: Add
+	  connection pool tests
 
-2008-10-04	fxjr
-	* src/Npgsql.build 1.15:
-		
-		Removed build of asp.net providers as well as System.Web dependencies. Now we use Daniel Nauck's providers.
+2008-12-10 02:39  jbcooley
 
-2008-10-02	fxjr
-	* src/Npgsql/NpgsqlState.cs 1.17:
-	* src/Npgsql/NpgsqlState.resx 1.3:
-		
-		Fixed misleading timeout error message. As the only timeout which was being reported was about connection establishment, command execution timeouts were being misinterpreted and users couldn't find easily what was going wrong.
+	* src/Npgsql/NpgsqlConnection.cs: Handle case where same connection
+	  object is closed and opened again while inside a
+	  TransactionScope.
 
-2008-09-30	jbcooley
-	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.11:
-		use standard literal formatters for strings, booleans, and 
-		guids.
+2008-12-10 02:09  jbcooley
 
-2008-09-29	fxjr
-	* src/Npgsql/NpgsqlError.cs 1.6:
-		
-		
-		[npgsql-help][1004020] Backend sent unrecognized response type: q
-		
-		References for previous patch: http://pgfoundry.org/forum/message.php?msg_id=1004022.
+	* src/Npgsql/NpgsqlResourceManager.cs: Support
+	  ISinglePhaseNotification to simplify some distributed transaction
+	  workflows
 
-	* src/Npgsql/NpgsqlError.cs 1.5:
-		
-		
-		Fixed error message: Backend sent unrecognized response type: q. There was an error on Error message handling where we were letting some fields without processing. Thanks Eric Montague (eric @nospam@ nuws.com) for heads up and tests.
+2008-12-04 02:20  jbcooley
 
-	* src/Npgsql/NpgsqlParameter.cs 1.18:
-		
-		
-		Added casts when parameter is null. This was causing problems with prepare statements when parameter type was set to a value other than DbType.Object and its value was set to null. The prepare statement wasn't receiving the cast. Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up.
+	* testsuite/noninteractive/NUnit20/SystemTransactionsTest.cs:
+	  Ensure refcursors work with System.Transactions.
 
-2008-09-28	jbcooley
-	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.10:
-		Quote uuid constants when used in expression.  Thanks to Yann 
-		Robin for the fix.
+2008-12-04 02:19  jbcooley
 
-2008-09-23	fxjr
-	* src/Npgsql/NpgsqlState.cs 1.16:
-		
-		Added try/catch to handle possible problems when cancelling a request because of a threadabortexception. Thanks to Andreas Schönebeck for heads up.
+	* testsuite/noninteractive/NUnit20/: NpgsqlTests2008.csproj,
+	  TypesTests.cs: Tests for NpgsqlInterval - to be expanded to other
+	  NpgsqlTypes in the future.
 
-	* src/Npgsql/NpgsqlState.cs 1.15:
-		
-		Fixed tabs to 4 spaces.
+2008-12-04 02:18  jbcooley
 
-	* src/Npgsql/NpgsqlConnector.cs 1.24:
-		
-		[#1010461] Prepare invalid SQL statement causes ERROR: 26000 when Npgsql.NpgsqlConnection disposed. Fixed in previous revision. Forgot to reference bug report.
+	* src/NpgsqlTypes/DateDatatypes.cs: Handle negative values (thanks
+	  to Mathieu Fenniak <mathieu@fenniak.net>) and singular values
+	  such as "1 day"
 
-2008-09-18	fxjr
-	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.17:
-		
-		Fixed tabs to 4 spaces
-		
-		Added test to check a problem where prepared statements were lacking casts even when user set dbtype or npgsqldbtype. Now the casts are properly added when needed. Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up and test case.
+2008-12-01 01:07  fxjr
 
-	* src/Npgsql/NpgsqlConnector.cs 1.23:
-	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.18:
-		
-		Fixed a bug where Npgsql was throwing exceptions when releasing connection to pool and there were portal names which were associated with invalid prepared queries. Npgsql tried to deallocate them and threw exceptions. Now this is property surrounded by a try/catch block.
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  [#1010521] NpgsqlInterval should be quoted.  Added corresponding
+	  test case.
 
-	* src/Npgsql/NpgsqlParameter.cs 1.17:
-		
-		Fixed tabs to 4 spaces.
-		
-		Fixed a problem where prepared statements were lacking casts even when user set dbtype or npgsqldbtype. Now the casts are properly added when needed.
-		Thanks Waldemar Bergstreiser (wbr at bergstreiser dot com) for heads up and testcase.
+	  Thanks Todd Lucas (tl @nospam@ onlyshallow.com) for patch.
 
-	* src/Npgsql/NpgsqlCommand.cs 1.29:
-		
-		Fixed tabs to be changed to 4 spaces.
+2008-12-01 00:44  fxjr
 
-2008-09-16	fxjr
-	* src/Npgsql/NpgsqlConnector.cs 1.22:
-	* src/Npgsql/NpgsqlTransaction.cs 1.7:
-	* src/Npgsql/NpgsqlTransaction.resx 1.2:
-	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.16:
-		
-		[#1010474] Savepoint support is missing.
-		Fixed. Also converted all tabs to spaces 4.
+	* src/NpgsqlTypes/ArrayHandling.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  [#1010488] NgsqlParameter of type containing DBNull values throws
+	  NullReferenceException Patch [#1010514] array handling.
+
+	  Thanks to Rikard Pavelic (rikard.pavelic @nospam@ zg.htnet.hr)
+	  for array handling patch which fixed 1010488 bug. The patch
+	  applied was slightly different from original but with the same
+	  effect. Just changed to not add another if and use all the
+	  conditions in the existing if.
+
+2008-11-24 12:01  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Fixed problem where parameters size wasn't being handled with
+	  prepared statements.	This fix Daniel AspNet Providers Ticket 7.
+
+	  Thanks Daniel for bringing this to my attention.
+
+	  http://dev.nauck-it.de/aspsqlprovider/ticket/7
+
+2008-11-18 12:59  fxjr
+
+	* src/Npgsql/NpgsqlConnection.cs:
+	  Removed a redundant check which was already being done with
+	  previous patch.
+
+2008-11-18 12:57  fxjr
+
+	* src/Npgsql/NpgsqlConnection.cs:
+	  Made NpgsqlConnection.Close log its entrance before any other
+	  code.  Fixed condition tested by Close to see if it should run or
+	  not.
+
+2008-11-13 11:54  fxjr
+
+	* docs/UserManual.html:
+	  Added documentation about ProviderFactory configuration. Thanks
+	  Alaric for heads up.
+
+2008-11-11 15:58  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  [#1010495] Bad performance calling a (empty) function very often.
+	  Now NpgsqlCommand caches previous results of internal checkings
+	  which were taking too much time if the command was used more than
+	  once.
+
+2008-11-11 14:58  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fixed a typo which prevented DateTime.MaxValue to work on
+	  previous patch.  Thanks Andrus Moor for heads up.
+
+2008-11-04 20:01  jbcooley
+
+	* src/Npgsql/NpgsqlProviderManifest.Manifest.xml: Updated varchar
+	  maximum length.
+
+2008-11-04 01:38  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated assembly info for 2.0.1 release
+
+2008-11-04 01:28  fxjr
+
+	* RELEASENOTES.txt:
+	  Updated release notes for 2.0.1 release
+
+2008-11-04 01:23  jbcooley
+
+	* src/Npgsql2008.csproj: Embedded NpgsqlMetaData.xml as a resource.
+
+2008-11-04 00:32  jbcooley
+
+	* src/Npgsql/SqlGenerators/SqlInsertGenerator.cs: Add schema
+	  qualification to table name when fetching sequence values.
+
+2008-11-03 22:17  jbcooley
+
+	* src/NpgsqlTypes/NpgsqlTypes.cs: Change constructors so the
+	  Microsoft C# compiler recognizes the fields have been set.
+
+2008-10-27 13:07  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypes.cs:
+	  Changed at Miguel's request to provide same constructors and
+	  properties as previous version of Npgsql in order to not break
+	  existing code.
+
+2008-10-27 12:30  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypes.cs:
+	  Changed public fields into properties. Miguel de Icaza from Mono
+	  project asked for this change because previous versions of Npgsql
+	  used to have properties and this change could break existing
+	  clients.
+
+2008-10-27 12:22  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypes.cs:
+	  Changed tabs to spaces 4
+
+2008-10-19 11:40  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added tests for date and infinity comparisions.
+
+	  Thanks Andrus Moor for heads up and test case.
+
+2008-10-19 11:39  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fix for a date and infinity values comparison.  From patch:
+
+	  "This check for Datetime.minvalue and maxvalue is needed in order
+	  to workaround a problem when comparing date values with infinity.
+	   This is a known issue with postgresql and it is reported here:
+	  http://archives.postgresql.org/pgsql-general/2008-10/msg00535.php
+	  Josh's solution to add cast is documented here:
+	  http://pgfoundry.org/forum/message.php?msg_id=1004118"
+
+	  Thanks Josh for fix idea.
+
+2008-10-16 12:05  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs:
+	  Fixed problem with literal boolean values. Previous patch only
+	  fixed for bit mapping. I forgot to fix for boolean mapping too!
+	  Thanks Josh Cooley for test cases and heads up.
+
+2008-10-14 22:16  jbcooley
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs: Create test for
+	  boolean literal support in parameters.
+
+2008-10-10 21:34  fxjr
+
+	* src/: Npgsql/NpgsqlCommand.cs, NpgsqlTypes/NpgsqlTypesHelper.cs:
+
+	  Fixed a bug where boolean values were being quoted which caused
+	  problems with edmgen support. Also, fixed a problem raised by
+	  this modification when using protocol 2: when issuing an execute
+	  statement after being prepared the cast wasn't being issued. It
+	  was being sent as execute npgsqlplan1(1) when it should be
+	  execute npgsqlplan1(1::bit).
+
+2008-10-06 21:55  jbcooley
+
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs: Test for
+	  GetFieldType with arrays.
+
+2008-10-06 21:54  jbcooley
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs: Provide type information
+	  for arrays and ensure that NpgsqlBackendTypeInfo always has Type.
+
+2008-10-06 01:23  jbcooley
+
+	* ChangeLog: Updated for 2.0 release
+
+2008-10-06 01:15  jbcooley
+
+	* src/Npgsql/AssemblyInfo.cs: updated to 2.0 for final release.
+
+2008-10-06 01:07  jbcooley
+
+	* src/Npgsql2008.csproj: removed dependencies on System.Web
+
+2008-10-05 14:34  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs,
+	  src/NpgsqlTypes/ArrayHandling.cs:
+	  [#1010488] NgsqlParameter of type containing DBNull values throws
+	  NullReferenceException. Thanks Christ Akkermans for testcase.
+	  Now, Npgsql handles first elements which aren't null as Arrays
+	  and IEnumerables. Also added test case for this bug.
+
+2008-10-05 14:17  fxjr
+
+	* src/NpgsqlTypes/ArrayHandling.cs:
+	  Changed tabs to spaces (4)
+
+2008-10-04 02:58  fxjr
+
+	* src/Npgsql.build:
+	  Removed build of asp.net providers as well as System.Web
+	  dependencies. Now we use Daniel Nauck's providers.
+
+2008-10-02 11:00  fxjr
+
+	* src/Npgsql/: NpgsqlState.cs, NpgsqlState.resx:
+	  Fixed misleading timeout error message. As the only timeout which
+	  was being reported was about connection establishment, command
+	  execution timeouts were being misinterpreted and users couldn't
+	  find easily what was going wrong.
+
+2008-09-30 00:45  jbcooley
+
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs: use standard
+	  literal formatters for strings, booleans, and guids.
+
+2008-09-29 19:41  fxjr
+
+	* src/Npgsql/NpgsqlError.cs:
+
+	  [npgsql-help][1004020] Backend sent unrecognized response type: q
+
+	  References for previous patch:
+	  http://pgfoundry.org/forum/message.php?msg_id=1004022.
+
+2008-09-29 19:38  fxjr
+
+	* src/Npgsql/NpgsqlError.cs:
+
+	  Fixed error message: Backend sent unrecognized response type: q.
+	  There was an error on Error message handling where we were
+	  letting some fields without processing. Thanks Eric Montague
+	  (eric @nospam@ nuws.com) for heads up and tests.
+
+2008-09-29 12:34  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+
+	  Added casts when parameter is null. This was causing problems
+	  with prepare statements when parameter type was set to a value
+	  other than DbType.Object and its value was set to null. The
+	  prepare statement wasn't receiving the cast. Thanks Waldemar
+	  Bergstreiser (wbr at bergstreiser dot com) for heads up.
+
+2008-09-27 22:27  jbcooley
+
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs: Quote uuid
+	  constants when used in expression.  Thanks to Yann Robin for the
+	  fix.
+
+2008-09-23 01:04  fxjr
+
+	* src/Npgsql/NpgsqlState.cs:
+	  Added try/catch to handle possible problems when cancelling a
+	  request because of a threadabortexception. Thanks to Andreas
+	  Schönebeck for heads up.
+
+2008-09-23 00:59  fxjr
+
+	* src/Npgsql/NpgsqlState.cs:
+	  Fixed tabs to 4 spaces.
+
+2008-09-23 00:36  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+	  [#1010461] Prepare invalid SQL statement causes ERROR: 26000 when
+	  Npgsql.NpgsqlConnection disposed. Fixed in previous revision.
+	  Forgot to reference bug report.
+
+2008-09-18 02:26  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed a bug where Npgsql was throwing exceptions when releasing
+	  connection to pool and there were portal names which were
+	  associated with invalid prepared queries. Npgsql tried to
+	  deallocate them and threw exceptions. Now this is property
+	  surrounded by a try/catch block.
+
+2008-09-18 01:58  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed tabs to 4 spaces
+
+	  Added test to check a problem where prepared statements were
+	  lacking casts even when user set dbtype or npgsqldbtype. Now the
+	  casts are properly added when needed. Thanks Waldemar
+	  Bergstreiser (wbr at bergstreiser dot com) for heads up and test
+	  case.
+
+2008-09-18 01:52  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fixed tabs to 4 spaces.
+
+	  Fixed a problem where prepared statements were lacking casts even
+	  when user set dbtype or npgsqldbtype. Now the casts are properly
+	  added when needed.  Thanks Waldemar Bergstreiser (wbr at
+	  bergstreiser dot com) for heads up and testcase.
+
+2008-09-18 01:48  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Fixed tabs to be changed to 4 spaces.
+
+2008-09-15 22:02  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs, src/Npgsql/NpgsqlTransaction.cs,
+	  src/Npgsql/NpgsqlTransaction.resx,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  [#1010474] Savepoint support is missing.  Fixed. Also converted
+	  all tabs to spaces 4.
+
+2008-09-12 01:07  fxjr
+
+	* ChangeLog:
+	  Updated changelog for Npgsql RC2 release
+
+2008-09-12 01:06  fxjr
+
+	* RELEASENOTES.txt:
+	  Added release notes for Npgsql2 RC2 release.
+
+2008-09-12 00:35  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Changed assembly version to RC2
 
 2008-09-10 02:02  fxjr
 

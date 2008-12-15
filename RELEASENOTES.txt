@@ -1,4 +1,28 @@
 
+2008-12-15
+
+    Npgsql 2.0.2
+    
+Fixes:
+
+    Fix the fix for datetime.MinValue and MaxValue. Only MinValue was fixed. Now both Min and Max are fixed. Thanks Andrus Moor for heads up.(fxjr)
+    Fixed problem with parameter sizes and prepared statements.(fxjr)
+    [#1010488] NgsqlParameter of type containing DBNull values throws NullReferenceException
+    [#1010521] NpgsqlInterval should be quoted.
+    Datetime with negative values (thanks to Mathieu Fenniak <mathieu@fenniak.net>) and singular values  such as "1 day"
+    [#1010495] Bad performance calling a (empty) function very often.
+  
+	  
+New additions:
+    
+    Added documentation about how to use Npgsql with Provider Factory. Thanks Alaric for heads up.
+    Ensure refcursors work with System.Transactions. (Josh)
+    
+    On this release, Josh Cooley fixed some bugs on Entity Framework support and System.Transactions.
+      
+    For more information about those and other fixes, please, see our ChangeLog.
+    
+  
 2008-10-04
 
     Npgsql2 2.0.1
