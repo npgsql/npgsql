@@ -1,3 +1,17 @@
+2008-12-15 01:42  jbcooley
+
+	* testsuite/noninteractive/NUnit20/ConnectionTests.cs: Change
+	  ExpectedException attriubte to pass type.
+
+2008-12-15 01:11  jbcooley
+
+	* src/Npgsql/AssemblyInfo.cs: Updated version for 2.0.2 release.
+
+2008-12-15 01:00  fxjr
+
+	* ChangeLog, RELEASENOTES.txt:
+	  Updated ReleaseNotes and ChangeLog for 2.0.2 release.
+
 2008-12-10 02:42  jbcooley
 
 	* testsuite/noninteractive/NUnit20/SystemTransactionsTest.cs: Reuse
