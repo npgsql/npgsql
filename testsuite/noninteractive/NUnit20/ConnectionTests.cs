@@ -207,7 +207,7 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException]
+        [ExpectedException(typeof(Exception))]
         public void ExceedConnectionsInPool()
         {
             List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
