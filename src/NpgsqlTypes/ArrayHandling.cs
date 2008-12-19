@@ -80,19 +80,23 @@ namespace NpgsqlTypes
             // Even an string being an IEnumerable, it shouldn't be processed. It will be processed on the last else.
             // See http://pgfoundry.org/tracker/?func=detail&atid=592&aid=1010514&group_id=1000140 for more info.
 
-            if (!(item is string) && item is IEnumerable )
+            if(NpgsqlTypesHelper.DefinedType(item))
             {
-                return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
+                sb.Append(_elementConverter.ConvertToBackend(item, false));
+                return true;
             }
             else if (item is Array)
             {
                 return WriteArray(TypeInfo, item as Array, sb);
             }
-            else
+            else if (item is IEnumerable)
             {
+                return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
+            }
+            else
+            {//This shouldn't really be reachable.
                 sb.Append(_elementConverter.ConvertToBackend(item, false));
                 return true;
-
             }
             
         }
