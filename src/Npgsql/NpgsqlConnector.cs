@@ -540,6 +540,14 @@ namespace Npgsql
         {
             get { return _oidToNameMapping; }
         }
+        
+        internal Version CompatVersion
+        {
+            get
+            {
+                return settings.Compatible;
+            }
+        }
 
         /// <summary>
         /// The connection mediator.

@@ -326,6 +326,38 @@ public class NpgsqlUserManual
                 The default is "false".
             </p>
         </dd>
+        <dt><code>Compatibility</code></dt>
+        <dd>
+            <p>
+                This version is intended as a simpler method of dealing with breaking changes to adding yet more and more connection
+                string options. It takes a single value in the form of a version number (a.b[.c[.d]]). Changes that could break
+                existing code will, when possible, copy the behaviour prior of version number. The first such version is
+                2.0.2.1, so a value of "2.0.2" would not have its new behaviour.
+                <table>
+                    <thead><tr><th scope="col">Version</th><th scope="col">Behaviour</th></tr>
+                    <tbody>
+                        <tr>
+                            <th scope="row">2.0.2</th>
+                            <td>
+                                <ol>
+                                    <li>GetOrdinal will return -1 if the field name is not found.</li>
+                                    <li>GetOrdinal is kana-width sensitive.</li>
+                                </ol>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">2.0.2.1</th>
+                            <td>
+                                <ol>
+                                    <li>GetOrdinal will throw IndexOutOfRangeException if the field name is not found.</li>
+                                    <li>GetOrdinal is kana-width insensitive.</li>
+                                </ol>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </p>
+        </dd>
 	
 </div>
 

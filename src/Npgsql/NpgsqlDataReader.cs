@@ -146,6 +146,13 @@ namespace Npgsql
 		{
 			get { return GetValue(i); }
 		}
+		
+		public bool HasOrdinal(string fieldName)
+		{
+		    if(CurrentDescription == null)
+		        throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+		    return CurrentDescription.HasOrdinal(fieldName);
+		}
 
 		/// <summary>
 		/// Return the column name of the column named <param name="Name"></param>.
@@ -153,9 +160,7 @@ namespace Npgsql
 		public override Int32 GetOrdinal(String Name)
 		{
 			if (CurrentDescription == null)
-			{
-				throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
-			}
+				throw new InvalidOperationException("Invalid attempt to read when no data is present.");
 			return CurrentDescription.FieldIndex(Name);
 		}
 
@@ -167,12 +172,7 @@ namespace Npgsql
 		{
 			get
 			{
-				Int32 fieldIndex = CurrentDescription.FieldIndex(name);
-				if (fieldIndex == -1)
-				{
-					throw new IndexOutOfRangeException("Field not found");
-				}
-				return GetValue(fieldIndex);
+				return GetValue(GetOrdinal(name));
 			}
 		}
 
@@ -1002,7 +1002,7 @@ namespace Npgsql
 				{
 					if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
 					{
-						int idx = CurrentDescription.FieldIndex(p.CleanName);
+						int idx = CurrentDescription.TryFieldIndex(p.CleanName);
 						if (idx == -1)
 						{
 							pending.Enqueue(p);
@@ -1479,7 +1479,7 @@ namespace Npgsql
 				{
 					if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
 					{
-						int idx = CurrentDescription.FieldIndex(p.CleanName);
+						int idx = CurrentDescription.TryFieldIndex(p.CleanName);
 						if (idx == -1)
 						{
 							pending.Enqueue(p);

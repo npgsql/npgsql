@@ -1,3 +1,9 @@
+2008-12-18
+
+    [#1010496] GetOrdinal Implementation differs from Interface Standard. The two deviations were:
+    1. We were not katakana-width insensitive.
+    2. We did not throw IndexOutOfRangeException if the field is not found.
+    Both fixes could break running code, so we should be alert for that possibility.
 
 2008-12-15
 

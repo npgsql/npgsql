@@ -121,6 +121,8 @@ namespace Npgsql
 
 			defaults.Add(Keywords.UseExtendedTypes, false);
             defaults.Add(Keywords.IntegratedSecurity, false);
+            
+            defaults.Add(Keywords.Compatible, NpgsqlConnection.NpgsqlVersion);
 		}
 
 
@@ -564,6 +566,23 @@ namespace Npgsql
             get { return _integrated_security; }
             set { SetValue(GetKeyName(Keywords.IntegratedSecurity), value); }
         }
+        
+        private Version _compatible;
+        /// <summary>
+        /// Compatibilty version. When possible, behaviour caused by breaking changes will be preserved
+        /// if this version is less than that where the breaking change was introduced.
+        /// </summary>
+        public Version Compatible
+        {
+            get
+            {
+                return _compatible;
+            }
+            set
+            {
+                SetValue(GetKeyName(Keywords.Compatible), value);
+            }
+        }
 
 		#endregion
 
@@ -672,7 +691,8 @@ namespace Npgsql
                     return Keywords.UseExtendedTypes;
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
-
+                case "COMPATIBLE":
+                    return Keywords.Compatible;
 				default:
 
 					throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
@@ -681,23 +701,16 @@ namespace Npgsql
 
 
 		internal static string GetKeyName(Keywords keyword)
-
 		{
-			if (keyword == Keywords.UserName)
-
-			{
-				return "USER ID";
-            }
-            else if (keyword == Keywords.IntegratedSecurity)
-            {
-                return "INTEGRATED SECURITY";
-            }
-
-			else
-
-			{
-				return keyword.ToString().ToUpperInvariant();
-			}
+		    switch(keyword)
+		    {
+		        case Keywords.UserName:
+    				return "USER ID";
+                case Keywords.IntegratedSecurity:
+    				return "INTEGRATED SECURITY";
+                default:
+    				return keyword.ToString().ToUpperInvariant();
+		    }
 		}
 
 
@@ -919,6 +932,10 @@ namespace Npgsql
                     case Keywords.IntegratedSecurity:
                         this._integrated_security = ToIntegratedSecurity(value);
                         break;
+                        
+                    case Keywords.Compatible:
+                        _compatible = new Version(value.ToString());
+                        break;
 				}
 			}
 
@@ -1038,7 +1055,8 @@ namespace Npgsql
 		PreloadReader,
 
 		UseExtendedTypes,
-        IntegratedSecurity
+        IntegratedSecurity,
+        Compatible
 	}
 
 

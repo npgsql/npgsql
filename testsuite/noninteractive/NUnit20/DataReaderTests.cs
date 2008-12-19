@@ -1,4 +1,4 @@
-// created on 27/12/2002 at 17:05
+﻿// created on 27/12/2002 at 17:05
 //
 // Author:
 // 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
@@ -775,6 +775,30 @@ namespace NpgsqlTests
             Assert.AreEqual(0, i);
         }
         
+        [Test]
+        [ExpectedException(typeof(IndexOutOfRangeException))]
+        public void FieldNameDoesntExistOnGetOrdinal()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_serial from tablea", TheConnection);
+            
+
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                int idx =  dr.GetOrdinal("field_int");
+            }
+        }
+        
+        [Test]
+        public void FieldNameDoesntExistBackwardsCompat()
+        {
+            using(NpgsqlConnection backCompatCon = new NpgsqlConnection(TheConnectionString + ";Compatible=2.0.2"))
+                using(NpgsqlCommand command = new NpgsqlCommand("select field_serial from tablea", backCompatCon))
+                {
+                    backCompatCon.Open();
+                    using(IDataReader rdr = command.ExecuteReader())
+                        Assert.AreEqual(rdr.GetOrdinal("field_int"), -1);
+                }
+        }
         
         [Test]
         [ExpectedException(typeof(IndexOutOfRangeException))]
@@ -789,6 +813,34 @@ namespace NpgsqlTests
                 
                 Object a = dr["field_int"];
                 Assert.IsNotNull(a);
+            }
+        }
+        
+        [Test]
+        public void FieldNameKanaWidthWideRequestForNarrowFieldName()
+        {//Should ignore Kana width and hence find the first of these two fields
+            NpgsqlCommand command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ, 124 as ヲァィゥェォャ", TheConnection);
+
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                
+                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);
+                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);// Wide version.
+            }
+        }
+        
+        [Test]
+        public void FieldNameKanaWidthNarrowRequestForWideFieldName()
+        {//Should ignore Kana width and hence find the first of these two fields
+            NpgsqlCommand command = new NpgsqlCommand("select 123 as ヲァィゥェォャ, 124 as ｦｧｨｩｪｫｬ", TheConnection);
+
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                
+                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);
+                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);// Narrow version.
             }
         }
         

@@ -520,7 +520,7 @@ namespace Npgsql
                             }
                             break;
                         case BackEndMessageCode.RowDescription:
-                            yield return lastRowDescription = new NpgsqlRowDescriptionV2(stream, context.OidToNameMapping);
+                            yield return lastRowDescription = new NpgsqlRowDescriptionV2(stream, context.OidToNameMapping, context.CompatVersion);
                             ;
                             break;
                         case BackEndMessageCode.DataRow:
@@ -794,7 +794,7 @@ namespace Npgsql
                             }
                             break;
                         case BackEndMessageCode.RowDescription:
-                            yield return lastRowDescription = new NpgsqlRowDescriptionV3(stream, context.OidToNameMapping);
+                            yield return lastRowDescription = new NpgsqlRowDescriptionV3(stream, context.OidToNameMapping, context.CompatVersion);
                             break;
                         case BackEndMessageCode.ParameterDescription:
 
