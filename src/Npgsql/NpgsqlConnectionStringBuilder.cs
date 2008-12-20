@@ -59,6 +59,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Reflection;
 using System.Resources;
 
 namespace Npgsql
@@ -67,7 +68,7 @@ namespace Npgsql
 	public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
 
 	{
-		private static readonly ResourceManager resman = new ResourceManager(typeof (NpgsqlConnectionStringBuilder));
+		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private static readonly Dictionary<Keywords, object> defaults = new Dictionary<Keywords, object>();
 
@@ -122,7 +123,7 @@ namespace Npgsql
 			defaults.Add(Keywords.UseExtendedTypes, false);
             defaults.Add(Keywords.IntegratedSecurity, false);
             
-            defaults.Add(Keywords.Compatible, NpgsqlConnection.NpgsqlVersion);
+            defaults.Add(Keywords.Compatible, THIS_VERSION);
 		}
 
 
@@ -568,6 +569,7 @@ namespace Npgsql
         }
         
         private Version _compatible;
+        private static readonly Version THIS_VERSION = MethodBase.GetCurrentMethod().DeclaringType.Assembly.GetName().Version;
         /// <summary>
         /// Compatibilty version. When possible, behaviour caused by breaking changes will be preserved
         /// if this version is less than that where the breaking change was introduced.
@@ -934,7 +936,10 @@ namespace Npgsql
                         break;
                         
                     case Keywords.Compatible:
-                        _compatible = new Version(value.ToString());
+                        Version ver = new Version(value.ToString());
+                        if(ver > THIS_VERSION)
+                            throw new ArgumentException("Attempt to set compatibility with version " + value + " when using version " + THIS_VERSION);
+                        _compatible = ver;
                         break;
 				}
 			}

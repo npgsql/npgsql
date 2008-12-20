@@ -38,7 +38,7 @@ namespace Npgsql
 	internal sealed class NpgsqlSync : ClientMessage
 	{
 		// Logging related values
-		//private static readonly String CLASSNAME = "NpgsqlSync";
+		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		public override void WriteToStream(Stream outputStream)
 		{

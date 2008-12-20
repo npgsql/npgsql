@@ -34,6 +34,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.Common;
+using System.Reflection;
 using System.Resources;
 using NpgsqlTypes;
 
@@ -59,17 +60,16 @@ namespace Npgsql
 		private readonly List<NpgsqlParameter> InternalList = new List<NpgsqlParameter>();
 
 		// Logging related value
-		private static readonly String CLASSNAME = "NpgsqlParameterCollection";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		// Our resource manager
-		private readonly ResourceManager resman;
+		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 		/// <summary>
 		/// Initializes a new instance of the NpgsqlParameterCollection class.
 		/// </summary>
 		internal NpgsqlParameterCollection()
 		{
-			this.resman = new ResourceManager(this.GetType());
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 		}
 
@@ -508,7 +508,7 @@ namespace Npgsql
 			if (!(Object is NpgsqlParameter))
 			{
 				throw new InvalidCastException(
-					String.Format(this.resman.GetString("Exception_WrongType"), Object.GetType()));
+					String.Format(resman.GetString("Exception_WrongType"), Object.GetType()));
 			}
 		}
 

@@ -28,6 +28,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
+using System.Reflection;
 using System.Resources;
 using NpgsqlTypes;
 
@@ -39,8 +40,8 @@ namespace Npgsql
 	public sealed class NpgsqlCommandBuilder : DbCommandBuilder
 	{
 		// Logging related values
-		//private static readonly String CLASSNAME = "NpgsqlCommandBuilder";
-		private readonly  static ResourceManager resman = new ResourceManager(typeof (NpgsqlCommandBuilder));
+		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+		private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 		private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
 

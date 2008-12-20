@@ -29,6 +29,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
 using SecurityProtocolType=Mono.Security.Protocol.Tls.SecurityProtocolType;
@@ -38,7 +39,7 @@ namespace Npgsql
 	internal sealed class NpgsqlClosedState : NpgsqlState
 	{
 		private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
-		private static readonly String CLASSNAME = "NpgsqlClosedState";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 
 		private NpgsqlClosedState()

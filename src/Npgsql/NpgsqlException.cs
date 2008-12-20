@@ -30,6 +30,7 @@ using System;
 using System.Collections;
 using System.Data.Common;
 using System.IO;
+using System.Reflection;
 using System.Resources;
 using System.Runtime.Serialization;
 
@@ -44,8 +45,8 @@ namespace Npgsql
 		private readonly IList errors;
 
 		// Logging related values
-		//private static readonly String CLASSNAME = "NpgsqlException";
-		private static readonly ResourceManager resman = new ResourceManager(typeof (NpgsqlException));
+		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 		// To allow deserialization.
 		private NpgsqlException(SerializationInfo info, StreamingContext context)

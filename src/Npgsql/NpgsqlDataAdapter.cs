@@ -30,6 +30,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 
 namespace Npgsql
 {
@@ -59,7 +60,7 @@ namespace Npgsql
 		private NpgsqlCommand _insertCommand;
 
 		// Log support
-		private static readonly String CLASSNAME = "NpgsqlDataAdapter";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 
 		public event NpgsqlRowUpdatedEventHandler RowUpdated;

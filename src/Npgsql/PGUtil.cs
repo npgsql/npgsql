@@ -45,7 +45,7 @@ namespace Npgsql
 	internal static class PGUtil
 	{
 		// Logging related values
-		private static readonly String CLASSNAME = "PGUtil";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 		internal static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 		//TODO: What should this value be?
 		//There is an obvious balancing act in setting this value. The larger the value, the fewer times

@@ -24,6 +24,7 @@
 
 using System;
 using System.Data;
+using System.Reflection;
 
 namespace Npgsql
 {
@@ -43,7 +44,7 @@ namespace Npgsql
 		private bool _prepared;
 		private readonly string _txName = Guid.NewGuid().ToString();
 
-		private static readonly String CLASSNAME = "NpgsqlTransactionCallbacks";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
 		{

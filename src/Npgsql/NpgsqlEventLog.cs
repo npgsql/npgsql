@@ -30,6 +30,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Resources;
 
 namespace Npgsql
@@ -60,7 +61,7 @@ namespace Npgsql
 	public class NpgsqlEventLog
 	{
 		// Logging related values
-		private static readonly String CLASSNAME = "NpgsqlEventLog";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 		private static String logfile;
 		private static LogLevel level;
 		private static Boolean echomessages;
@@ -74,7 +75,7 @@ namespace Npgsql
 		// static constructor
 		static NpgsqlEventLog()
 		{
-			LogResMan = new ResourceManager(typeof(NpgsqlEventLog));
+			LogResMan = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 		}
 
 		///<summary>

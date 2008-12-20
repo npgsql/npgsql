@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Text;
+using System.Reflection;
 using System.Threading;
 using NpgsqlTypes;
 
@@ -970,7 +971,7 @@ namespace Npgsql
 		private NpgsqlRow _pendingRow = null;
 
 		// Logging related values
-		private static readonly String CLASSNAME = "ForwardsOnlyDataReader";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
 		                                NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,

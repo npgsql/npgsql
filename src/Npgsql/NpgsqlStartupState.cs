@@ -27,6 +27,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 
 namespace Npgsql
 {
@@ -34,7 +35,7 @@ namespace Npgsql
 	{
 		public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
 
-		private readonly String CLASSNAME = "NpgsqlStartupState";
+		private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		private NpgsqlStartupState()
 			: base()

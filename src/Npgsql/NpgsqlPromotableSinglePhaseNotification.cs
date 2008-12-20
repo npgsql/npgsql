@@ -23,6 +23,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Reflection;
 using System.Transactions;
 
 namespace Npgsql
@@ -36,7 +37,7 @@ namespace Npgsql
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
 
-		private static readonly String CLASSNAME = "NpgsqlPromotableSinglePhaseNotification";
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		public NpgsqlPromotableSinglePhaseNotification(NpgsqlConnection connection)
 		{

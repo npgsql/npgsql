@@ -30,6 +30,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -67,8 +68,8 @@ namespace Npgsql
 	public sealed class NpgsqlConnection : DbConnection, ICloneable
 	{
 		// Logging related values
-		private static readonly String CLASSNAME = "NpgsqlConnection";
-		private static readonly ResourceManager resman = new ResourceManager(typeof(NpgsqlConnection));
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 		// Parsed connection string cache
 		private static readonly Cache<NpgsqlConnectionStringBuilder> cache = new Cache<NpgsqlConnectionStringBuilder>();
@@ -394,14 +395,6 @@ namespace Npgsql
             get
             {
                 return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
-            }
-        }
-        
-        public static Version NpgsqlVersion
-        {
-            get
-            {
-                return typeof(NpgsqlConnection).Assembly.GetName().Version;
             }
         }
         

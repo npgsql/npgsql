@@ -31,10 +31,11 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Resources;
 using System.Text;
-using System.Net;
 using System.Threading;
 
 namespace Npgsql
@@ -46,8 +47,8 @@ namespace Npgsql
     internal abstract class NpgsqlState
     {
         protected static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
-        private readonly String CLASSNAME = "NpgsqlState";
-        protected static ResourceManager resman = new ResourceManager(typeof (NpgsqlState));
+        private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        protected readonly static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         internal NpgsqlState()
         {

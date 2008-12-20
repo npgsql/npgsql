@@ -54,7 +54,7 @@ namespace Npgsql
     public sealed class NpgsqlCommand : DbCommand, ICloneable
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlCommand";
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
         private static readonly Regex POSTGRES_TEXT_ARRAY = new Regex(@"^array\[+'", RegexOptions.Compiled | RegexOptions.CultureInvariant);

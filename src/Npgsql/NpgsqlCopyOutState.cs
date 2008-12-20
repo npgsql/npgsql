@@ -38,7 +38,7 @@ namespace Npgsql
 	{
 		public static readonly NpgsqlCopyOutState Instance = new NpgsqlCopyOutState();
 
-		//private readonly String CLASSNAME = "NpgsqlCopyOutState";
+		//private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		private NpgsqlCopyFormat _copyFormat = null;
 

@@ -31,6 +31,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 using System.Resources;
 using NpgsqlTypes;
 
@@ -50,7 +51,7 @@ namespace Npgsql
     public sealed class NpgsqlParameter : DbParameter, ICloneable
     {
         // Logging related values
-        private static readonly String CLASSNAME = "NpgsqlParameter";
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         // Fields to implement IDbDataParameter interface.
         private byte precision = 0;
@@ -68,7 +69,7 @@ namespace Npgsql
         private DataRowVersion source_version = DataRowVersion.Current;
         private Object value = DBNull.Value;
         private Boolean sourceColumnNullMapping;
-        private readonly ResourceManager resman;
+        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Boolean useCast = false;
 
@@ -77,7 +78,6 @@ namespace Npgsql
         /// </summary>
         public NpgsqlParameter()
         {
-            resman = new ResourceManager(this.GetType());
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
         }
@@ -98,7 +98,6 @@ namespace Npgsql
         /// </remarks>
         public NpgsqlParameter(String parameterName, object value)
         {
-            resman = new ResourceManager(this.GetType());
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, value);
 
             this.ParameterName = parameterName;
@@ -163,8 +162,6 @@ namespace Npgsql
         /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
         public NpgsqlParameter(String parameterName, NpgsqlDbType parameterType, Int32 size, String sourceColumn)
         {
-            resman = new ResourceManager(this.GetType());
-
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, parameterType, size, source_column);
 
             this.ParameterName = parameterName;
@@ -206,8 +203,6 @@ namespace Npgsql
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
         {
-            resman = new ResourceManager(this.GetType());
-
             this.ParameterName = parameterName;
             this.Size = size;
             this.SourceColumn = sourceColumn;

@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace Npgsql
 {
@@ -41,7 +42,7 @@ namespace Npgsql
 
 		private static readonly NpgsqlSync _syncMessage = new NpgsqlSync();
 
-		private readonly String CLASSNAME = "NpgsqlReadyState";
+		private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		private NpgsqlReadyState()
 			: base()

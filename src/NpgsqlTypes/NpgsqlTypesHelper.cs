@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Net;
+using System.Reflection;
 using System.Resources;
 using System.Text;
 using Npgsql;
@@ -39,11 +40,11 @@ namespace NpgsqlTypes
 	///	This class contains helper methods for type conversion between
 	/// the .Net type system and postgresql.
 	/// </summary>
-	internal abstract class NpgsqlTypesHelper
+	internal static class NpgsqlTypesHelper
 	{
 		// Logging related values
-		private static readonly String CLASSNAME = "NpgsqlTypesHelper";
-		private static ResourceManager resman = new ResourceManager(typeof (NpgsqlTypesHelper));
+		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 		private struct MappingKey : IEquatable<MappingKey>
 		{

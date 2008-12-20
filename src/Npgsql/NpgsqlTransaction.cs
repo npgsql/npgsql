@@ -30,6 +30,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Threading;
@@ -41,8 +42,8 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlTransaction : DbTransaction
     {
-        private static readonly String CLASSNAME = "NpgsqlTransaction";
-        private static ResourceManager resman = new ResourceManager(typeof (NpgsqlTransaction));
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private NpgsqlConnection _conn = null;
         private readonly IsolationLevel _isolation = IsolationLevel.ReadCommitted;
@@ -55,8 +56,6 @@ namespace Npgsql
 
         internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolation)
         {
-            resman = new ResourceManager(this.GetType());
-
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             _conn = conn;
