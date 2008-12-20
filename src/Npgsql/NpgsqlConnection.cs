@@ -401,12 +401,7 @@ namespace Npgsql
         {
             get
             {
-                //Update this to be just greater than the last released version.
-                //This then can become the next released version, though we
-                //could also jump (e.g. if last release is 2.1.4.2 then this
-                //would be set to 2.1.4.3, but next release could actually be
-                //2.1.5.0, 2.2.0.0 or 3.0.0.0
-                return new Version(2, 0, 2, 1);
+                return typeof(NpgsqlConnection).Assembly.GetName().Version;
             }
         }
         

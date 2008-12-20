@@ -54,4 +54,6 @@ using System.Resources;
 // You can specify all values by your own or you can build default build and revision
 // numbers with the '*' character (the default):
 
-[assembly : AssemblyVersion("2.0.2")]
+// added .1 for cvs version.
+// remove and increment for build
+[assembly : AssemblyVersion("2.0.2.1")]
