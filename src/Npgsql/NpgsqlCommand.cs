@@ -55,8 +55,9 @@ namespace Npgsql
     {
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlCommand";
-        private static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-        private readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
+        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
+        private static readonly Regex POSTGRES_TEXT_ARRAY = new Regex(@"^array\[+'", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private NpgsqlConnection connection;
         private NpgsqlConnector m_Connector; //renamed to account for hiding it in a local function
@@ -145,7 +146,6 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlCommand(String cmdText, NpgsqlConnector connector)
         {
-            resman = new ResourceManager(this.GetType());
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
 
@@ -830,7 +830,36 @@ namespace Npgsql
 
         }
 
-
+        private static void PassEscapedArray(StringBuilder query, string array)
+        {
+            bool inTextLiteral = false;
+            int endAt = array.Length - 1;//leave last char for separate append as we don't have to continually check we're safe to add the next char too.
+            for(int i = 0; i != endAt; ++i)
+            {
+                if(array[i] == '\'')
+                {
+                    if(!inTextLiteral)
+                    {
+                        query.Append("E'");
+                        inTextLiteral = true;
+                    }
+                    else if(array[i + 1] == '\'')//SQL-escaped '
+                    {
+                        query.Append("''");
+                        ++i;
+                    }
+                    else
+                    {
+                        query.Append('\'');
+                        inTextLiteral = false;
+                    }
+                }
+                else
+                    query.Append(array[i]);
+            }
+            query.Append(array[endAt]);
+        }
+        
         private String GetClearCommandText()
         {
             if (NpgsqlEventLog.Level == LogLevel.Debug)
@@ -933,8 +962,36 @@ namespace Npgsql
                         // It's a parameter. Lets handle it.
                         if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
                         {
+                            //Start the probably-redundant parenthesis. Queries should operate much as if they were in the a parameter or
+                            //variable in a postgres function. Generally this is the case without the parentheses (hence "probably redundant")
+                            //but there are exceptions to this rule. E.g. consider the postgres function:
+                            //
+                            //CREATE FUNCTION first_param(integer[])RETURNS int AS'select $1[1]'LANGUAGE 'sql' STABLE STRICT;
+                            //
+                            //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
+                            sb.Append('(');
                             
-                            sb.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
+                            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
+                            
+                            if(Connector.UseConformantStrings)
+                                switch(serialised[0])
+                                {
+                                    case '\''://type passed as string or string with type.
+                                    //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
+                                        sb.Append("E").Append(serialised);
+                                        break;
+                                    case 'a':
+                                        if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
+                                            PassEscapedArray(sb, serialised);
+                                        else
+                                            sb.Append(serialised);
+                                        break;
+                                    default:
+                                        sb.Append(serialised);
+                                        break;
+                                }
+                            else
+                                sb.Append(serialised);
                             
                             if (p.UseCast)
                             {
@@ -942,11 +999,13 @@ namespace Npgsql
                                 sb.Append(p.TypeInfo.CastName);
                             
 
-                                    if (p.TypeInfo.UseSize && (p.Size > 0))
-                                    {
-                                        sb.Append("(").Append(p.Size).Append(")");
-                                    }
+                                if (p.TypeInfo.UseSize && (p.Size > 0))
+                                {
+                                    sb.Append("(").Append(p.Size).Append(")");
                                 }
+                            }
+                            
+                            sb.Append(')');//Close probably-redundant parenthesis.
                         }
                     }
                     else

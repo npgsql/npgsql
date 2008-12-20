@@ -132,6 +132,8 @@ namespace Npgsql
         // Some kinds of messages only get one response, and do not
         // expect a ready_for_query response.
         private bool _requireReadyForQuery = true;
+        
+        private bool? _useConformantStrings;
 
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
@@ -676,7 +678,7 @@ namespace Npgsql
                 (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
               )
                 new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
-
+            
             if (!string.IsNullOrEmpty(settings.SearchPath))
             {
                 /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
@@ -923,11 +925,63 @@ namespace Npgsql
             {
                 _serverParameters.Add(ps.Parameter, ps);
             }
+            _useConformantStrings = null;
         }
 
         public IDictionary<string, NpgsqlParameterStatus> ServerParameters
         {
             get { return new ReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
+        }
+        public string CheckParameter(string paramName)
+        {
+            NpgsqlParameterStatus ps = null;
+            if(_serverParameters.TryGetValue(paramName, out ps))
+                return ps.ParameterValue;
+            try
+            {
+                using(NpgsqlCommand cmd = new NpgsqlCommand("show " + paramName, this))
+                {
+                    string paramValue = (string)cmd.ExecuteScalar();
+                    AddParameterStatus(new NpgsqlParameterStatus(paramName, paramValue));
+                    return paramValue;
+                }
+            }
+            catch(NpgsqlException ne)
+            {
+                if(ne.Code == "42704")//unrecognized configuration parameter
+                    return null;
+                else
+                    throw;
+            }
+        }
+        private bool CheckStringConformanceRequirements()
+        {
+            //If standards_conforming_strings is "on" then postgres will handle \ in strings differently to how we expect, unless
+            //an escaped-string literal is use (E'example\n' rather than 'example\n'. At time of writing this defaults
+            //to "off", but documentation says this will change to default "on" in the future, and it can still be "on" now.
+            //escape_string_warning being "on" (current default) will result in a warning, but not an error, on every such
+            //string, which is not ideal.
+            //On the other hand, earlier versions of postgres do not have the escaped-literal syntax and will error if it
+            //is used. Version numbers could be checked, but here the approach taken is to check on what the server is
+            //explicitly requesting.
+            
+            NpgsqlParameterStatus warning = null;
+            if(_serverParameters.TryGetValue("escape_string_warning", out warning) && warning.ParameterValue == "on")//try the most commonly set at time of coding first
+                return true;
+            NpgsqlParameterStatus insist = null;
+            if(_serverParameters.TryGetValue("standard_conforming_strings", out insist) && insist.ParameterValue == "on")
+                return true;
+            if(warning != null && insist != null)//both where present and "off".
+                return false;
+            //We need to check at least one of these on the server.
+            return CheckParameter("standard_conforming_strings") == "on" || CheckParameter("escape_string_warning") == "on";
+        }
+        public bool UseConformantStrings
+        {
+            get
+            {
+                return _useConformantStrings ?? (_useConformantStrings = CheckStringConformanceRequirements()).Value;
+            }
         }
     }
 }

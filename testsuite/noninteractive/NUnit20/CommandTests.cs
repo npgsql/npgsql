@@ -1,4 +1,4 @@
-// CommandTests.cs created with MonoDevelop
+﻿// CommandTests.cs created with MonoDevelop
 // User: fxjr at 11:40 PM 4/9/2008
 //
 // To change standard headers go to Edit->Preferences->Coding->Standard Headers
@@ -706,6 +706,63 @@ namespace NpgsqlTests
             Assert.AreEqual(4, command.Parameters["a"].Value);
             Assert.AreEqual(5, command.Parameters["b"].Value);
             Assert.AreEqual(-1, command.Parameters["c"].Value);
+        }
+        
+        [Test]
+        public void StringEscapeSyntax()
+        {
+            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            {
+                new NpgsqlCommand("set standard_conforming_strings=off;set escape_string_warning=off", TheConnection).ExecuteNonQuery();
+            }
+            catch{}
+            string cmdTxt = "select :par";
+            NpgsqlCommand command = new NpgsqlCommand(cmdTxt, TheConnection);
+            NpgsqlCommand arrCommand = new NpgsqlCommand(cmdTxt, TheConnection);
+            string testStrPar = "This string has a 'literal' backslash \\";
+            string[,] testArrPar = new string[,]{{testStrPar, ""}, {testStrPar, testStrPar}};
+            command.Parameters.Add(":par", testStrPar);
+            using(IDataReader rdr = command.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(rdr.GetString(0), testStrPar);
+            }
+            arrCommand.Parameters.Add(":par", testArrPar);
+            using(IDataReader rdr = arrCommand.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(((string[,])rdr.GetValue(0))[0,0], testStrPar);
+            }
+            
+            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            {
+                new NpgsqlCommand("set standard_conforming_strings=on;set escape_string_warning=on", TheConnection).ExecuteNonQuery();
+            }
+            catch{}
+            using(IDataReader rdr = command.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(rdr.GetString(0), testStrPar);
+            }
+            using(IDataReader rdr = arrCommand.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(((string[,])rdr.GetValue(0))[0,0], testStrPar);
+            }
+        }
+        
+        [Test]
+        public void ParameterAndOperatorUnclear()
+        {
+            //Without parenthesis the meaning of [, . and potentially other characters is
+            //a syntax error. See comment in NpgsqlCommand.GetClearCommandText() on "usually-redundant parenthesis".
+            NpgsqlCommand command = new NpgsqlCommand("select :arr[2]", TheConnection);
+            command.Parameters.Add(":arr", new int[]{5,4,3,2,1});
+            using(IDataReader rdr = command.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(rdr.GetInt32(0), 4);
+            }
         }
         
         [Test]
@@ -2558,16 +2615,36 @@ connection.Open();*/
         public void ParameterExplicitType2()
         {
 
-            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
-           //sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                                 command.ExecuteScalar();
+            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";
+        
+            NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);
+
+           IDbDataParameter sqlParam = command.CreateParameter();
+           sqlParam.ParameterName = "param";
+           sqlParam.Value = "2008-1-1";
+           //sqlParam.DbType = DbType.Object;
+           command.Parameters.Add(sqlParam);
+           
+           
+           command.ExecuteScalar();
         }
         
         [Test]
         public void ParameterExplicitType2DbTypeObject()
         {
 
-            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);           IDbDataParameter sqlParam = command.CreateParameter();           sqlParam.ParameterName = "param";           sqlParam.Value = "2008-1-1";
-           sqlParam.DbType = DbType.Object;           command.Parameters.Add(sqlParam);                                 command.ExecuteScalar();
+            const string query = @"create temp table test ( tc date );  select * from test where tc=:param";
+        
+            NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);
+
+           IDbDataParameter sqlParam = command.CreateParameter();
+           sqlParam.ParameterName = "param";
+           sqlParam.Value = "2008-1-1";
+           sqlParam.DbType = DbType.Object;
+           command.Parameters.Add(sqlParam);
+           
+           
+           command.ExecuteScalar();
         }
         
         [Test]
@@ -2576,9 +2653,19 @@ connection.Open();*/
 
             new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
         
-            const string query = @"select * from test where tc=:param";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);            IDbDataParameter sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param";            sqlParam.Value = "2008-1-1";
-            sqlParam.DbType = DbType.Object;            command.Parameters.Add(sqlParam);           
-            command.Prepare();                       command.ExecuteScalar();
+            const string query = @"select * from test where tc=:param";
+        
+            NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);
+
+            IDbDataParameter sqlParam = command.CreateParameter();
+            sqlParam.ParameterName = "param";
+            sqlParam.Value = "2008-1-1";
+            sqlParam.DbType = DbType.Object;
+            command.Parameters.Add(sqlParam);
+           
+            command.Prepare();
+           
+            command.ExecuteScalar();
         }
         
         [Test]
@@ -2587,12 +2674,25 @@ connection.Open();*/
 
             new NpgsqlCommand("create temp table test ( tc date )", TheConnection).ExecuteNonQuery();
             
-            const string query = @"select * from test where tc=:param or tc=:param2";                    NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);            IDbDataParameter sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param";            sqlParam.Value = "2008-1-1";
-            sqlParam.DbType = DbType.Object;            command.Parameters.Add(sqlParam);
+            const string query = @"select * from test where tc=:param or tc=:param2";
+        
+            NpgsqlCommand command = new NpgsqlCommand(query, TheConnection);
+
+            IDbDataParameter sqlParam = command.CreateParameter();
+            sqlParam.ParameterName = "param";
+            sqlParam.Value = "2008-1-1";
+            sqlParam.DbType = DbType.Object;
+            command.Parameters.Add(sqlParam);
             
-            sqlParam = command.CreateParameter();            sqlParam.ParameterName = "param2";            sqlParam.Value = DateTime.Now;
-            sqlParam.DbType = DbType.Date;            command.Parameters.Add(sqlParam);            
-            command.Prepare();                        command.ExecuteScalar();
+            sqlParam = command.CreateParameter();
+            sqlParam.ParameterName = "param2";
+            sqlParam.Value = DateTime.Now;
+            sqlParam.DbType = DbType.Date;
+            command.Parameters.Add(sqlParam);
+            
+            command.Prepare();
+            
+            command.ExecuteScalar();
         }
 
         [Test]

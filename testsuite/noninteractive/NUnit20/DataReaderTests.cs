@@ -381,6 +381,36 @@ namespace NpgsqlTests
                 Assert.AreEqual(typeof(int[]), dr.GetFieldType(0));
             }
         }
+        
+        [Test]
+        public void TestMultiDimensionalArray()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :i", TheConnection);
+            command.Parameters.Add(":i", (new decimal[,]{{0,1,2},{3,4,5}}));
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                Assert.AreEqual(2, (dr[0] as Array).Rank);
+                decimal[,] da = dr[0] as decimal[,];
+                Assert.AreEqual(da.GetUpperBound(0), 1);
+                Assert.AreEqual(da.GetUpperBound(1), 2);
+                decimal cmp = 0m;
+                foreach(decimal el in da)
+                    Assert.AreEqual(el, cmp++);
+            }
+        }
+        
+        [Test]
+        public void TestArrayOfBytea()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select get_byte(:i[1], 2)", TheConnection);
+            command.Parameters.Add(":i", new byte[][]{new byte[]{0,1,2}, new byte[]{3,4,5}});
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                Assert.AreEqual(dr[0], 2);
+            }
+        }
 
         [Test]
         public void TestOverlappedParameterNames()
