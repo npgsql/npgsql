@@ -570,9 +570,13 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 			//It is of course wasteful that multiple threads could be creating mappings when only one
 			//will be used, but we aim for better overall concurrency at the risk of causing some
 			//threads the extra work.
+		    NpgsqlBackendTypeMapping mappingCheck = null;
+		    //First check without acquiring the lock; don't lock if we don't have to.
+		    if(BackendTypeMappingCache.TryGetValue(key, out mappingCheck))//Another thread built the mapping in the meantime.
+		        return mappingCheck;
 			lock(BackendTypeMappingCache)
 			{
-			    NpgsqlBackendTypeMapping mappingCheck = null;
+			    //Final check. We have the lock now so if this fails it'll continue to fail.
 			    if(BackendTypeMappingCache.TryGetValue(key, out mappingCheck))//Another thread built the mapping in the meantime.
 			        return mappingCheck;
 				// Add this mapping to the per-server-version cache so we don't have to
