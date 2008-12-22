@@ -44,6 +44,7 @@ namespace NpgsqlTypes
 	internal abstract class BasicBackendToNativeTypeConverter
 	{
 		private static readonly String[] DateFormats = new String[] { "yyyy-MM-dd", };
+		private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 		private static readonly String[] TimeFormats =
 			new String[]
@@ -178,8 +179,10 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static Object ToMoney(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
-			// It's a number with a $ on the beginning...
-			return Convert.ToDecimal(BackendData.Substring(1, BackendData.Length - 1), CultureInfo.InvariantCulture);
+			// Will vary according to currency symbol, position of symbol and decimal and thousands separators, but will
+			// alwasy be two-decimal precision number using Arabic (0-9) digits, so we can extract just those digits and
+			// divide by 100.
+			return Convert.ToDecimal(EXCLUDE_DIGITS.Replace(BackendData, string.Empty), CultureInfo.InvariantCulture) / 100m;
 		}
 	}
 
@@ -287,7 +290,10 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
 		{
-			return "$" + ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
+		    //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
+		    //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
+		    //to happen.
+			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
 		}
 	}
 

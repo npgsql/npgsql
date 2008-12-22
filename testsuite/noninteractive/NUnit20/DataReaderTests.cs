@@ -262,6 +262,18 @@ namespace NpgsqlTests
             dr.Close();
         }
 
+        [Test]
+        public void GetMoney()
+        {
+            NpgsqlCommand cmd = new NpgsqlCommand("select :param", TheConnection);
+            decimal monAmount = 1234.5m;
+            cmd.Parameters.Add("param", NpgsqlDbType.Money).Value = monAmount;
+            using(IDataReader rdr = cmd.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(monAmount, rdr[0]);
+            }
+        }
 
         [Test]
         public void GetString()
