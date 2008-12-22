@@ -51,10 +51,10 @@ namespace NpgsqlTypes
 			public readonly Version Version;
 			public readonly bool UseExtendedTypes;
 
-			public MappingKey(Version version, bool useExtendedTypes)
+			public MappingKey(NpgsqlConnector conn)
 			{
-				this.Version = version;
-				this.UseExtendedTypes = useExtendedTypes;
+				Version = conn.ServerVersion;
+				UseExtendedTypes = conn.UseExtendedTypes;
 			}
 
 			public bool Equals(MappingKey other)
@@ -543,33 +543,43 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "LoadTypesMapping");
 
-			// [TODO] Verify another way to get higher concurrency.
-			lock (CLASSNAME)
+		    MappingKey key = new MappingKey(conn);
+			// Check the cache for an initial types map.
+			NpgsqlBackendTypeMapping oidToNameMapping = null;
+
+			if(BackendTypeMappingCache.TryGetValue(key, out oidToNameMapping))
+				return oidToNameMapping;
+
+			// Not in cache, create a new one.
+			oidToNameMapping = new NpgsqlBackendTypeMapping();
+
+			// Create a list of all natively supported postgresql data types.
+
+			// Attempt to map each type info in the list to an OID on the backend and
+			// add each mapped type to the new type mapping object.
+			LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes));
+
+			//We hold the lock for the least time possible on the least scope possible.
+			//We must lock on BackendTypeMappingCache because it will be updated by this operation,
+			//and we must not just add to it, but also check that another thread hasn't updated it
+			//in the meantime. Strictly just doing :
+			//return BackendTypeMappingCache[key] = oidToNameMapping;
+			//as the only call within the locked section should be safe and correct, but we'll assume
+			//there's some subtle problem with temporarily having two copies of the same mapping and
+			//ensure only one is called.
+			//It is of course wasteful that multiple threads could be creating mappings when only one
+			//will be used, but we aim for better overall concurrency at the risk of causing some
+			//threads the extra work.
+			lock(BackendTypeMappingCache)
 			{
-				// Check the cache for an initial types map.
-				NpgsqlBackendTypeMapping oidToNameMapping = null;
-
-				if (
-					BackendTypeMappingCache.TryGetValue(new MappingKey(conn.ServerVersion, conn.UseExtendedTypes), out oidToNameMapping))
-				{
-					return oidToNameMapping;
-				}
-
-				// Not in cache, create a new one.
-				oidToNameMapping = new NpgsqlBackendTypeMapping();
-
-				// Create a list of all natively supported postgresql data types.
-
-				// Attempt to map each type info in the list to an OID on the backend and
-				// add each mapped type to the new type mapping object.
-				LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes));
-
+			    NpgsqlBackendTypeMapping mappingCheck = null;
+			    if(BackendTypeMappingCache.TryGetValue(key, out mappingCheck))//Another thread built the mapping in the meantime.
+			        return mappingCheck;
 				// Add this mapping to the per-server-version cache so we don't have to
 				// do these expensive queries on every connection startup.
-				BackendTypeMappingCache.Add(new MappingKey(conn.ServerVersion, conn.UseExtendedTypes), oidToNameMapping);
-
-				return oidToNameMapping;
+				BackendTypeMappingCache.Add(key, oidToNameMapping);
 			}
+			return oidToNameMapping;
 		}
 
 		//Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
