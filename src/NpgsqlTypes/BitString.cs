@@ -1124,7 +1124,7 @@ namespace NpgsqlTypes
             return _chunks;
         }
         /// <summary>
-        /// Interprets the bitstring as a series of unsigned 32-bit integers and returns those integers.
+        /// Interprets the bitstring as a series of signed 32-bit integers and returns those integers.
         /// Fails if the Bitstring's length is not evenly divisible by 32.
         /// </summary>
         public IEnumerable<int> ToInt32Enumerable()
@@ -1147,7 +1147,7 @@ namespace NpgsqlTypes
                 yield return (ulong)_chunks[i] << 32 | (ulong)_chunks[i + 1];
         }
         /// <summary>
-        /// Interprets the bitstring as a series of unsigned 64-bit integers and returns those integers.
+        /// Interprets the bitstring as a series of signed 64-bit integers and returns those integers.
         /// Fails if the Bitstring's length is not evenly divisible by 64.
         /// </summary>
         public IEnumerable<long> ToInt64Enumerable()
