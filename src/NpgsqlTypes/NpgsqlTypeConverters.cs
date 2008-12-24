@@ -127,6 +127,16 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+		    /// <summary>
+		    /// Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
+		    /// 
+		    /// To ensure compatibility we return a bool if the bitstring is single-length.
+		    /// Maybe we don't need to do this (why do we?) or maybe people used to some other,
+		    /// but taking a conservative approach here.
+		    /// 
+		    /// It means that IDataReader.GetValue() can't be used safely for bitstrings that
+		    /// may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
+		    /// below by reversing it, so if GetBitString() is used, no harm is done.
 		    BitString bs = BitString.Parse(BackendData);
 		    return bs.Length == 1 ? (object)bs[0] : bs;
 		}
@@ -229,6 +239,19 @@ namespace NpgsqlTypes
 		{
 		    if(NativeData is bool)
 		        return ((bool)NativeData) ? "1" : "0";
+		    // It may seem more sensible to just convert an integer to a BitString here and pass it on.
+		    // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
+		    // value smaller than the int.
+		    // Prior to Postgres 8.0, the behaviour would be the same either way. E.g. if 10 were passed to
+		    // a bit(1) then the bits (1010) would be extracted from the left, so resulting in the bitstring B'1'.
+		    // From 8.0 onwards though, if we cast 10 straight to a bit(1) then the right-most bit is taken,
+		    // resulting in B'0'. If we cast it to the "natural" bitstring for it's size first (which is what would
+		    // happen if we did that work here) then it would become B'1010' which would then be cast to bit(1) by
+		    // taking the left-most bit resulting in B'1' (the behaviour one would expect from Postgres 7.x).
+		    // 
+		    // Since we don't know what implicit casts (say by inserting into a table with a bitstring field of
+		    // set size) may happen, we don't know how to ensure expected behaviour. While passing a bitstring
+		    // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
 		    else if(NativeData is int)
 		        return NativeData.ToString();
 		    else

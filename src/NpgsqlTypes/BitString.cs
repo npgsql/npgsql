@@ -913,16 +913,21 @@ namespace NpgsqlTypes
         }
         public bool ToBoolean()
         {
-            if(Length != 0)
+            if(Length != 1)
                 throw new InvalidCastException();
-            return (_chunks[0] & 0x80000000u) != 0;
+            return _chunks[0] != 0;
         }
         public bool ToBoolean(IFormatProvider provider)
         {
             return ToBoolean();
         }
-        public char ToChar(IFormatProvider provider)
+        char IConvertible.ToChar(IFormatProvider provider)
         {
+            //To a char in what character encoding?
+            //If we insist on UTF-8 as a reasonable choice for most modern code, what
+            //do we do with surrogate pairs?
+            //
+            //In all, there's no single reasonable approach to this.
             throw new NotSupportedException();
         }
         [CLSCompliant(false)]
@@ -1037,10 +1042,23 @@ namespace NpgsqlTypes
         {
             return ToString();
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of bits in an encoded character string,
+        /// encoded according to the Encoding passed, and returns that string.
+        /// The bitstring must contain a whole number of octets(bytes) and also be
+        /// valid according to the Encoding passed.
+        /// </summary>
+        /// <param name="encoding">The <see cref="System.Text.Encoding"/> to use in producing the string.</param>
+        /// <returns>The string that was encoded in the BitString.</returns>
         public string ToString(Encoding encoding)
         {
             return encoding.GetString(new List<byte>(ToByteEnumerable()).ToArray());
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of octets (bytes) and returns those octets. Fails
+        /// if the Bitstring does not contain a whole number of octets (its length is not evenly
+        /// divisible by 8).
+        /// </summary>
         public IEnumerable<byte> ToByteEnumerable()
         {
             if(_lastChunkLen % 8 != 0)
@@ -1051,12 +1069,25 @@ namespace NpgsqlTypes
             for(int i = 24; i > 24 - _lastChunkLen; i -=8)
                 yield return (byte)(_chunks[_chunks.Count - 1] >> i);
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of signed octets (bytes) and returns those octets. Fails
+        /// if the Bitstring does not contain a whole number of octets (its length is not evenly
+        /// divisible by 8).
+        /// <remarks>This method is not CLS-Compliant and may not be available to languages that cannot
+        /// handle signed bytes.</remarks>
+        /// </summary>
         [CLSCompliant(false)]
         public IEnumerable<sbyte> ToSByteEnumerable()
         {
             foreach(byte b in ToByteEnumerable())
                 yield return (sbyte)b;
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of unsigned 16-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 16.
+        /// <remarks>This method is not CLS-Compliant and may not be available to languages that cannot
+        /// handle unsigned integers.</remarks>
+        /// </summary>
         [CLSCompliant(false)]
         public IEnumerable<ushort> ToUInt16Enumerable()
         {
@@ -1070,11 +1101,21 @@ namespace NpgsqlTypes
             if(_lastChunkLen == 16)
                 yield return (ushort)(_chunks[_chunks.Count] >> 16);
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of 16-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 16.
+        /// </summary>
         public IEnumerable<short> ToInt16Enumerable()
         {
             foreach(ushort us in ToUInt16Enumerable())
                 yield return (short)us;
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of unsigned 32-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 32.
+        /// <remarks>This method is not CLS-Compliant and may not be available to languages that cannot
+        /// handle unsigned integers.</remarks>
+        /// </summary>
         [CLSCompliant(false)]
         public IEnumerable<uint> ToUInt32Enumerable()
         {
@@ -1082,11 +1123,21 @@ namespace NpgsqlTypes
                 throw new InvalidCastException();
             return _chunks;
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of unsigned 32-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 32.
+        /// </summary>
         public IEnumerable<int> ToInt32Enumerable()
         {
             foreach(uint ui in ToUInt32Enumerable())
                 yield return (int)ui;
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of unsigned 64-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 64.
+        /// <remarks>This method is not CLS-Compliant and may not be available to languages that cannot
+        /// handle unsigned integers.</remarks>
+        /// </summary>
         [CLSCompliant(false)]
         public IEnumerable<ulong> ToUInt64Enumerable()
         {
@@ -1095,6 +1146,10 @@ namespace NpgsqlTypes
             for(int i = 0; i != _chunks.Count; i += 2)
                 yield return (ulong)_chunks[i] << 32 | (ulong)_chunks[i + 1];
         }
+        /// <summary>
+        /// Interprets the bitstring as a series of unsigned 64-bit integers and returns those integers.
+        /// Fails if the Bitstring's length is not evenly divisible by 64.
+        /// </summary>
         public IEnumerable<long> ToInt64Enumerable()
         {
             foreach(ulong ul in ToUInt64Enumerable())
