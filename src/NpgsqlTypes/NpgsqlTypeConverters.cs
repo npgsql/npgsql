@@ -127,7 +127,8 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
-			return (BackendData.ToLower() == "1" ? true : false);
+		    BitString bs = BitString.Parse(BackendData);
+		    return bs.Length == 1 ? (object)bs[0] : bs;
 		}
 
 		/// <summary>
@@ -226,16 +227,12 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
 		{
-			// Convert boolean values to bit or convert int32 values to bit - odd values are 1 and
-			// even numbers are 0.
-			if (NativeData is Boolean)
-			{
-				return ((Boolean)NativeData) ? "1" : "0";
-			}
-			else
-			{
-				return (((Int32)NativeData) % 2 == 1) ? "1" : "0";
-			}
+		    if(NativeData is bool)
+		        return ((bool)NativeData) ? "1" : "0";
+		    else if(NativeData is int)
+		        return NativeData.ToString();
+		    else
+		        return ((BitString)NativeData).ToString("E");
 		}
 
 		/// <summary>

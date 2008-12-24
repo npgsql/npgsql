@@ -194,6 +194,15 @@ namespace Npgsql
 			NpgsqlBackendTypeInfo TI;
 			return TryGetTypeInfo(Index, out TI) ? TI.NpgsqlDbType : NpgsqlDbType.Text;
 		}
+		
+		public BitString GetBitString(int i)
+		{
+		    object ret = GetValue(i);
+		    if(ret is bool)
+		        return new BitString((bool)ret);
+		    else
+		        return (BitString)ret;
+		}
 
 		/// <summary>
 		/// Get the value of a column as a <see cref="NpgsqlInterval"/>.
