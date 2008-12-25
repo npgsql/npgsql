@@ -209,19 +209,16 @@ namespace NpgsqlTypes
 		internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData)
 		{
 			Byte[] byteArray = (Byte[])NativeData;
-			int len = byteArray.Length;
-			char[] res = new char[len * 5];
-
-			for (int i = 0, o = 0; i < len; ++i, o += 5)
-			{
-				byte item = byteArray[i];
-				res[o] = res[o + 1] = '\\';
-				res[o + 2] = (char)('0' + (7 & (item >> 6)));
-				res[o + 3] = (char)('0' + (7 & (item >> 3)));
-				res[o + 4] = (char)('0' + (7 & item));
-			}
-
-			return new String(res);
+			StringBuilder res = new StringBuilder(byteArray.Length * 5);
+			foreach(byte b in byteArray)
+			    if(b >= 0x20 && b < 0x7F)
+			        res.Append((char)b);
+			    else
+			        res.Append("\\\\")
+			            .Append((char)('0' + (7 & (b >> 6))))
+			            .Append((char)('0' + (7 & (b >> 3))))
+			            .Append((char)('0' + (7 & b)));
+            return res.ToString();
 		}
 
 		/// <summary>
