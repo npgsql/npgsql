@@ -291,7 +291,7 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("bool", typeof (Boolean));
 
-			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false, null);
+			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false, BasicNativeToBackendTypeConverter.ToBasicType<short>);
 
 			nativeTypeMapping.AddTypeAlias("int2", typeof (Int16));
 
@@ -299,23 +299,23 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("int2", typeof (Byte));
 
-			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false, null);
+			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false, BasicNativeToBackendTypeConverter.ToBasicType<int>);
 
 			nativeTypeMapping.AddTypeAlias("int4", typeof (Int32));
 
-			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false, null);
+			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false, BasicNativeToBackendTypeConverter.ToBasicType<long>);
 
 			nativeTypeMapping.AddTypeAlias("int8", typeof (Int64));
 
-			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, null);
+			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, BasicNativeToBackendTypeConverter.ToBasicType<float>);
 
 			nativeTypeMapping.AddTypeAlias("float4", typeof (Single));
 
-			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, null);
+			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, BasicNativeToBackendTypeConverter.ToBasicType<double>);
 
 			nativeTypeMapping.AddTypeAlias("float8", typeof (Double));
 
-			nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true, null);
+			nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true, BasicNativeToBackendTypeConverter.ToBasicType<decimal>);
 
 			nativeTypeMapping.AddTypeAlias("numeric", typeof (Decimal));
 

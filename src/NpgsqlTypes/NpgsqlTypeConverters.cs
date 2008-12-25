@@ -312,6 +312,11 @@ namespace NpgsqlTypes
 		    //to happen.
 			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
 		}
+		
+		internal static string ToBasicType<T>(NpgsqlNativeTypeInfo typeInfo, object nativeData)
+		{
+		    return ((IConvertible)nativeData).ToType(typeof(T), null).ToString();
+		}
 	}
 
 
