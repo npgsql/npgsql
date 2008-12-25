@@ -1029,7 +1029,12 @@ namespace Npgsql
                     if ((Param.Direction == ParameterDirection.Input) || (Param.Direction == ParameterDirection.InputOutput))
                     {
                         if (Param.UseCast)
-                            result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName + ",";
+                        {
+                            result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName;
+                            if(Param.TypeInfo.UseSize && Param.Size > 0)
+                                result += "(" + Param.Size + ")";
+                            result += ",";
+                        }
                         else
                             result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + ",";
                     }
