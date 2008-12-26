@@ -573,7 +573,7 @@ namespace Npgsql
         /// is a copy of the current instance.
         /// </summary>
         /// <returns>A new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> that is a copy of this instance.</returns>
-        object ICloneable.Clone()
+        public NpgsqlParameter Clone()
         {
             // use fields instead of properties
             // to avoid auto-initializing something like type_info
@@ -591,6 +591,10 @@ namespace Npgsql
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
 
             return clone;
+        }
+        object ICloneable.Clone()
+        {
+            return Clone();
         }
     }
 }

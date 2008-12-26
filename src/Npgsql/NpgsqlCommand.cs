@@ -66,7 +66,7 @@ namespace Npgsql
         private String text;
         private Int32 timeout;
         private CommandType type;
-        private readonly NpgsqlParameterCollection parameters;
+        private readonly NpgsqlParameterCollection parameters = new NpgsqlParameterCollection();
         private String planName;
         private Boolean designTimeVisible;
 
@@ -134,7 +134,6 @@ namespace Npgsql
                 this.m_Connector = connection.Connector;
             }
 
-            parameters = new NpgsqlParameterCollection();
             type = CommandType.Text;
             this.Transaction = transaction;
 
@@ -153,8 +152,6 @@ namespace Npgsql
             text = cmdText;
             this.m_Connector = connector;
             type = CommandType.Text;
-
-            parameters = new NpgsqlParameterCollection();
 
             // Internal commands aren't affected by command timeout value provided by user.
             timeout = 20;
@@ -438,7 +435,7 @@ namespace Npgsql
             clone.DesignTimeVisible = DesignTimeVisible;
             foreach (NpgsqlParameter parameter in Parameters)
             {
-                clone.Parameters.Add(((ICloneable)parameter).Clone());
+                clone.Parameters.Add(parameter.Clone());
             }
             return clone;
         }
@@ -818,15 +815,11 @@ namespace Npgsql
         /// The parameter name format is <b>:ParameterName</b>.
         /// </summary>
         /// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
-        internal String GetCommandText()
+        internal StringBuilder GetCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            if (string.IsNullOrEmpty(planName))//== String.Empty)
-            {
-                return GetClearCommandText();
-            }
-            return GetPreparedCommandText();
+            return string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
 
         }
 
@@ -860,79 +853,64 @@ namespace Npgsql
             query.Append(array[endAt]);
         }
         
-        private String GetClearCommandText()
+        private StringBuilder GetClearCommandText()
         {
             if (NpgsqlEventLog.Level == LogLevel.Debug)
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetClearCommandText");
             }
 
+            StringBuilder result = PGUtil.TrimStringBuilder(new StringBuilder(text));
 
-            String result = text;
-
-
-            if (type == CommandType.StoredProcedure)
+            switch(type)
             {
-                
-                if (!functionChecksDone)
-                {
-                    if (Parameters.Count > 0)
+                case CommandType.TableDirect:
+                    return result.Insert(0, "select * from "); // There is no parameter support on table direct.
+                case CommandType.StoredProcedure:
+                    if (!functionChecksDone)
                     {
-                        functionReturnsRecord = !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
-                    }
-    
-                    functionReturnsRefcursor = CheckFunctionReturn("refcursor");
-    
-                    // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
-                    if ((!result.Trim().EndsWith(")")) && (!result.Trim().EndsWith(";")))
-                    {
-                        addProcedureParenthesis = true;
+                        functionReturnsRecord = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
+
+                        functionReturnsRefcursor = CheckFunctionReturn("refcursor");
+
+                        // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
+                        switch(result[result.Length - 1])
+                        {
+                            case ')' : case ';':
+                                addProcedureParenthesis = false;
+                                break;
+                            default:
+                                addProcedureParenthesis = true;
+                                break;
+                        }
                         
+                        functionChecksDone = true;
                     }
-                    
-                    functionChecksDone = true;
-                }
 
-                if (Connector.SupportsPrepare)
-                {
-                    result = "select * from " + result; // This syntax is only available in 7.3+ as well SupportsPrepare.
-                }
-                else
-                {
-                    result = "select " + result; //Only a single result return supported. 7.2 and earlier.
-                }
-            }
-            else if (type == CommandType.TableDirect)
-            {
-                return "select * from " + result; // There is no parameter support on table direct.
+                    result.Insert(0,
+                        Connector.SupportsPrepare
+                        ? "select * from " // This syntax is only available in 7.3+ as well SupportsPrepare.
+                        : "select " //Only a single result return supported. 7.2 and earlier.
+                       );
+                    break;
             }
 
-            if (parameters == null || parameters.Count == 0)
+            if (parameters.Count == 0)
             {
                 if (addProcedureParenthesis)
-                {
-                    result += "()";
-                }
-
+                    result.Append("()");
 
                 // If function returns ref cursor just process refcursor-result function call
                 // and return command which will be used to return data from refcursor.
 
                 if (functionReturnsRefcursor)
-                {
-                    return ProcessRefcursorFunctionReturn(result);
-                }
-
+                    return ProcessRefcursorFunctionReturn(result.ToString());
 
                 if (functionReturnsRecord)
-                {
-                    result = AddFunctionReturnsRecordSupport(result);
-                }
-                
+                    AddFunctionReturnsRecordSupport(result);
                
                 return result;
             }
-
 
             // Get parameters in query string to translate them to their actual values.
 
@@ -946,114 +924,101 @@ namespace Npgsql
             if (!addProcedureParenthesis)
             {
                 StringBuilder sb = new StringBuilder();
-                NpgsqlParameter p;
-                string[] queryparts = parameterReplace.Split(result);
-
-                foreach (String s in queryparts)
-                {
-                    if (s == string.Empty)
+                foreach (String s in parameterReplace.Split(result.ToString()))
+                    if (s.Length != 0)
                     {
-                        continue;
-                    }
-
-                    if ((s[0] == ':' || s[0] == '@') && Parameters.TryGetValue(s, out p))
-                    {
-                        
-                        // It's a parameter. Lets handle it.
-                        if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
+                        NpgsqlParameter p;
+                        if ((s[0] == ':' || s[0] == '@') && Parameters.TryGetValue(s, out p))
                         {
-                            //Start the probably-redundant parenthesis. Queries should operate much as if they were in the a parameter or
-                            //variable in a postgres function. Generally this is the case without the parentheses (hence "probably redundant")
-                            //but there are exceptions to this rule. E.g. consider the postgres function:
-                            //
-                            //CREATE FUNCTION first_param(integer[])RETURNS int AS'select $1[1]'LANGUAGE 'sql' STABLE STRICT;
-                            //
-                            //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
-                            sb.Append('(');
-                            
-                            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
-                            
-                            if(Connector.UseConformantStrings)
-                                switch(serialised[0])
-                                {
-                                    case '\''://type passed as string or string with type.
-                                    //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
-                                        sb.Append("E").Append(serialised);
-                                        break;
-                                    case 'a':
-                                        if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
-                                            PassEscapedArray(sb, serialised);
-                                        else
-                                            sb.Append(serialised);
-                                        break;
-                                    default:
-                                        sb.Append(serialised);
-                                        break;
-                                }
-                            else
-                                sb.Append(serialised);
-                            
-                            if (p.UseCast)
+                            // It's a parameter. Lets handle it.
+                            switch(p.Direction)
                             {
-                                sb.Append("::");
-                                sb.Append(p.TypeInfo.CastName);
-                            
+                                case ParameterDirection.Input: case ParameterDirection.InputOutput:
+                                    //Start the probably-redundant parenthesis. Queries should operate much as if they were in the a parameter or
+                                    //variable in a postgres function. Generally this is the case without the parentheses (hence "probably redundant")
+                                    //but there are exceptions to this rule. E.g. consider the postgres function:
+                                    //
+                                    //CREATE FUNCTION first_param(integer[])RETURNS int AS'select $1[1]'LANGUAGE 'sql' STABLE STRICT;
+                                    //
+                                    //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
+                                    sb.Append('(');
+                                    
+                                    string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
 
-                                if (p.TypeInfo.UseSize && (p.Size > 0))
-                                {
-                                    sb.Append("(").Append(p.Size).Append(")");
-                                }
+                                    if(Connector.UseConformantStrings)
+                                        switch(serialised[0])
+                                        {
+                                            case '\''://type passed as string or string with type.
+                                            //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
+                                                sb.Append("E").Append(serialised);
+                                                break;
+                                            case 'a':
+                                                if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
+                                                    PassEscapedArray(sb, serialised);
+                                                else
+                                                    sb.Append(serialised);
+                                                break;
+                                            default:
+                                                sb.Append(serialised);
+                                                break;
+                                        }
+                                    else
+                                        sb.Append(serialised);
+
+                                    if (p.UseCast)
+                                    {
+                                        sb.Append("::").Append(p.TypeInfo.CastName);
+                                        if (p.TypeInfo.UseSize && (p.Size > 0))
+                                            sb.Append('(').Append(p.Size).Append(')');
+                                    }
+                                    
+                                    sb.Append(')');//Close probably-redundant parenthesis.
+                                    break;
                             }
-                            
-                            sb.Append(')');//Close probably-redundant parenthesis.
+                        }
+                        else
+                        {
+                            sb.Append(s);
                         }
                     }
-                    else
-                    {
-                        sb.Append(s);
-                    }
-                }
-
-                result = sb.ToString();
+                result = sb;
             }
 
             else
             {
-                result += "(";
+                result.Append('(');
                 
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
                     NpgsqlParameter Param = parameters[i];
 
 
-                    if ((Param.Direction == ParameterDirection.Input) || (Param.Direction == ParameterDirection.InputOutput))
+                    switch(Param.Direction)
                     {
-                        if (Param.UseCast)
-                        {
-                            result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + "::" + Param.TypeInfo.CastName;
-                            if(Param.TypeInfo.UseSize && Param.Size > 0)
-                                result += "(" + Param.Size + ")";
-                            result += ",";
-                        }
-                        else
-                            result += Param.TypeInfo.ConvertToBackend(Param.Value, false) + ",";
+                        case ParameterDirection.Input: case ParameterDirection.InputOutput:
+                            result.Append(Param.TypeInfo.ConvertToBackend(Param.Value, false));
+                            if (Param.UseCast)
+                            {
+                                result.Append("::").Append(Param.TypeInfo.CastName);
+                                if(Param.TypeInfo.UseSize && Param.Size > 0)
+                                    result.Append('(').Append(Param.Size).Append(')');
+                            }
+                            result.Append(',');
+                            break;
                     }
                 }
 
 
                 // Remove a trailing comma added from parameter handling above. If any.
                 // Maybe there are only output parameters. If so, there will be no comma.
-                if (result.EndsWith(","))
-                {
+                if (result[result.Length - 1] == ',')
                     result = result.Remove(result.Length - 1, 1);
-                }
-
-                result += ")";
+                result.Append(')');
             }
 
             if (functionReturnsRecord)
             {
-                result = AddFunctionReturnsRecordSupport(result);
+                AddFunctionReturnsRecordSupport(result);
             }
 
             // If function returns ref cursor just process refcursor-result function call
@@ -1061,7 +1026,7 @@ namespace Npgsql
 
             if (functionReturnsRefcursor)
             {
-                return ProcessRefcursorFunctionReturn(result);
+                return ProcessRefcursorFunctionReturn(result.ToString());
             }
 
             return result;
@@ -1244,28 +1209,17 @@ namespace Npgsql
         }
 
 
-        private String AddFunctionReturnsRecordSupport(String OriginalResult)
+        private void AddFunctionReturnsRecordSupport(StringBuilder sb)
         {
-            StringBuilder sb = new StringBuilder(OriginalResult);
-
             sb.Append(" as (");
-
             foreach (NpgsqlParameter p in Parameters)
-            {
-                if ((p.Direction == ParameterDirection.Output) || (p.Direction == ParameterDirection.InputOutput))
+                switch(p.Direction)
                 {
-                    sb.Append(String.Format("{0} {1}, ", p.CleanName, p.TypeInfo.Name));
+                    case ParameterDirection.Output: case ParameterDirection.InputOutput:
+                        sb.Append(p.CleanName).Append(" ").Append(p.TypeInfo.Name).Append(",");
+                        break;
                 }
-            }
-
-            String result = sb.ToString();
-
-            result = result.Remove(result.Length - 2, 1);
-
-            result += ")";
-
-
-            return result;
+            sb[sb.Length - 1] = ')';
         }
 
         ///<summary>
@@ -1275,7 +1229,7 @@ namespace Npgsql
         /// in form of one resultset for each cursor open. This way, clients don't need to do anything
         /// else besides calling function normally to get results in this way.
         ///</summary>
-        private String ProcessRefcursorFunctionReturn(String FunctionCall)
+        private StringBuilder ProcessRefcursorFunctionReturn(String FunctionCall)
         {
             StringBuilder sb = new StringBuilder();
             using (NpgsqlCommand c = new NpgsqlCommand(FunctionCall, Connection))
@@ -1297,36 +1251,35 @@ namespace Npgsql
             // Set command timeout.
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
-            return sb.ToString();
+            return sb;
         }
 
 
-        private String GetPreparedCommandText()
+        private StringBuilder GetPreparedCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
 
-            if (parameters.Count == 0)
+            StringBuilder result = new StringBuilder("execute ").Append(planName);
+
+            if(parameters.Count != 0)
             {
-                return string.Format("execute {0}", planName);
+                result.Append('(');
+
+                foreach(NpgsqlParameter p in parameters)
+                {
+                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
+                    if (p.UseCast)
+                    {
+                        result.Append("::").Append(p.TypeInfo.CastName);
+                        if (p.TypeInfo.UseSize && (p.Size > 0))
+                            result.Append('(').Append(p.Size).Append(')');
+                    }
+                    result.Append(',');
+                }
+
+                result[result.Length - 1] = ')';
             }
-
-
-            StringBuilder result = new StringBuilder("execute " + planName + '(');
-
-
-            for (Int32 i = 0; i < parameters.Count; i++)
-            {
-                if (parameters[i].UseCast)
-                    result.Append(string.Format("{0}::{1},", parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, false), parameters[i].TypeInfo.CastName));
-                else
-                    result.Append(parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, false) + ',');
-                    
-            }
-
-            result = result.Remove(result.Length - 1, 1);
-            result.Append(')');
-
-            return result.ToString();
+            return result;
         }
 
 
