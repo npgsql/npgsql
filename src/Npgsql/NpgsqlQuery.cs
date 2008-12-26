@@ -54,7 +54,7 @@ namespace Npgsql
 
 			// Tell to mediator what command is being sent.
 
-			_command.Connector.Mediator.SqlSent = commandText.ToString();
+			_command.Connector.Mediator.SetSqlSent(commandText);
 
 			// Send the query to server.
 			// Write the byte 'Q' to identify a query message.
