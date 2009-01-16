@@ -524,6 +524,8 @@ namespace NpgsqlTypes
         {
             if(null == (object)other)
                 return false;
+            if(ReferenceEquals(_chunks, other._chunks))//short cut on shallow copies
+                return true;
             if(_lastChunkLen != other._lastChunkLen || _chunks.Count != other._chunks.Count)
                 return false;
             for(int i = 0; i != _chunks.Count; ++i)

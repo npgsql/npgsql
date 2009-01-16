@@ -381,9 +381,9 @@ namespace NpgsqlTypes
         public bool Equals(NpgsqlPath other)
         {
             if (Open != other.Open || Count != other.Count)
-            {
                 return false;
-            }
+            else if(ReferenceEquals(_points, other._points))//Short cut for shallow copies.
+                return true;
             for (int i = 0; i != Count; ++i)
             {
                 if (this[i] != other[i])
@@ -508,9 +508,9 @@ namespace NpgsqlTypes
         public bool Equals(NpgsqlPolygon other)
         {
             if (Count != other.Count)
-            {
                 return false;
-            }
+            else if(ReferenceEquals(_points, _points))//Shortcut for copies of each other.
+                return true;
             for (int i = 0; i != Count; ++i)
             {
                 if (this[i] != other[i])
@@ -523,7 +523,7 @@ namespace NpgsqlTypes
 
         public override bool Equals(object obj)
         {
-            return obj != null && obj is NpgsqlPolygon && Equals((NpgsqlPolygon) obj);
+            return obj is NpgsqlPolygon && Equals((NpgsqlPolygon) obj);
         }
 
         public static bool operator ==(NpgsqlPolygon x, NpgsqlPolygon y)
@@ -571,7 +571,7 @@ namespace NpgsqlTypes
 
         public override bool Equals(object obj)
         {
-            return obj != null && obj is NpgsqlCircle && Equals((NpgsqlCircle) obj);
+            return obj is NpgsqlCircle && Equals((NpgsqlCircle) obj);
         }
 
         public override String ToString()
