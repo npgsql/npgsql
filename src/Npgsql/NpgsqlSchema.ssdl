@@ -101,50 +101,23 @@
     <EntitySet Name="PgForeignKeyColumns" EntityType="NpgsqlSchema.ForeignKeyColumn">
       <DefiningQuery>
         select
-        cast(fkc.constraint_id as varchar) || '.' || cast(fkc.ordinal as varchar) as id,
-        fkc.ordinal as ordinal,
-        fkc.columnid as from_columnid,
-        pkc.columnid as to_columnid,
-        cast(fkc.constraint_id as varchar) as constraint_id
-        from (select
-        ss.coid as constraint_id,
-        ss.confrelid,
-        ss.confkey,
-        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
-        (ss.x).n as ordinal
-        from pg_attribute a
-        join (select
-        r.oid AS roid,
-        c.confrelid,
-        c.confkey,
-        c.oid as coid,
+        cast(c.oid as varchar) || '.' || cast((c.confkey).n as varchar) as id,
+        (c.confkey).n as ordinal,
+        cast(pkc.attrelid as varchar) || '.' || cast (pkc.attnum as varchar) as from_columnid,
+        cast(fkc.attrelid as varchar) || '.' || cast (fkc.attnum as varchar) as to_columnid,
+        cast(c.oid as varchar) as constraint_id
+        from (select c.oid,
         c.conname,
-        information_schema._pg_expandarray(c.conkey) as x
-        from pg_constraint c
-        join pg_class r
-        on r.oid = c.conrelid
-        where c.contype = 'f' and r.relkind = 'r') ss
-        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) fkc
-        join (select
-        ss.coid as constraint_id,
-        ss.conrelid,
-        ss.conkey,
-        cast(a.attrelid as varchar) || '.' || cast (a.attnum as varchar) as columnid,
-        (ss.x).n as ordinal
-        from pg_attribute a
-        join (select
-        r.oid AS roid,
         c.conrelid,
-        c.conkey,
-        c.oid as coid,
-        c.conname,
-        information_schema._pg_expandarray(c.conkey) as x
+        information_schema._pg_expandarray(c.conkey) as conkey,
+        c.confrelid,
+        information_schema._pg_expandarray(c.confkey) as confkey
         from pg_constraint c
-        join pg_class r
-        on r.oid = c.conrelid
-        where ((c.contype = ANY (ARRAY['p', 'u'])) OR c.contype IS NULL) and r.relkind = 'r') ss
-        on a.attrelid = ss.roid and a.attnum = (ss.x).x and not a.attisdropped) pkc
-        on fkc.confrelid = pkc.conrelid
+        where contype = 'f') c
+        join pg_class pt on pt.oid = c.conrelid
+        join pg_class ft on ft.oid = c.confrelid
+        join pg_attribute pkc on pkc.attrelid = c.conrelid and pkc.attnum = (c.conkey).x
+        join pg_attribute fkc on fkc.attrelid = c.confrelid and fkc.attnum = (c.confkey).x
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgViews" EntityType="NpgsqlSchema.View">
