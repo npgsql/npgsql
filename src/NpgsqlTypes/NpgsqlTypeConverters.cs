@@ -315,7 +315,7 @@ namespace NpgsqlTypes
 		
 		internal static string ToBasicType<T>(NpgsqlNativeTypeInfo typeInfo, object nativeData)
 		{
-		    return ((IConvertible)nativeData).ToType(typeof(T), null).ToString();
+            return ((IConvertible)nativeData).ToType(typeof(T), CultureInfo.InvariantCulture.NumberFormat).ToString();
 		}
 	}
 
