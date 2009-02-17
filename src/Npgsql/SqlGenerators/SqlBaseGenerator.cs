@@ -42,25 +42,37 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbSkipExpression expression)
         {
-            // not quite sure, but may be a paging like function
-            // almost the opposite of limit, possibly actually the skip those first.
-            InputExpression offset = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
-            offset.Append(" ORDER BY ");
-            bool first = true;
+            // almost the opposite of limit, need to skip first.
+            VisitedExpression skip = expression.Input.Expression.Accept(this);
+            InputExpression input;
+            if (!(skip is ProjectionExpression))
+            {
+                input = CheckedConvertFrom(skip, expression.Input.VariableName);
+                // return this value
+                skip = input;
+            }
+            else
+            {
+                input = ((ProjectionExpression)skip).From;
+                if (input is FromExpression)
+                {
+                    if (_variableSubstitution.ContainsKey(((FromExpression)input).Name))
+                        _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[((FromExpression)input).Name];
+                    else
+                        _variableSubstitution[expression.Input.VariableName] = ((FromExpression)input).Name;
+                }
+            }
+            OrderByExpression orderBy = new OrderByExpression();
             foreach (var order in expression.SortOrder)
             {
-                if (!first)
-                    offset.Append(",");
-                offset.Append(order.Expression.Accept(this));
-                if (order.Ascending)
-                    offset.Append(" ASC ");
-                else
-                    offset.Append(" DESC ");
-                first = false;
+                orderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
             }
-            offset.Append(" OFFSET ");
-            offset.Append(expression.Count.Accept(this));
-            return offset;
+            input.OrderBy = orderBy;
+            input.Skip = new SkipExpression(expression.Count.Accept(this));
+            // ensure skip variable has the right name
+            if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
+                _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_projectVarName.Peek()];
+            return skip;
         }
 
         public override VisitedExpression Visit(DbSortExpression expression)

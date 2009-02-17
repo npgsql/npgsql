@@ -351,6 +351,14 @@ namespace Npgsql.SqlGenerators
             set { _orderBy = value; }
         }
 
+        private SkipExpression _skip;
+
+        public SkipExpression Skip
+        {
+            get { return _skip; }
+            set { _skip = value; }
+        }
+
         private LimitExpression _limit;
 
         public LimitExpression Limit
@@ -368,6 +376,7 @@ namespace Npgsql.SqlGenerators
             if (Where != null) Where.WriteSql(sqlText);
             if (GroupBy != null) GroupBy.WriteSql(sqlText);
             if (OrderBy != null) OrderBy.WriteSql(sqlText);
+            if (Skip != null) Skip.WriteSql(sqlText);
             if (Limit != null) Limit.WriteSql(sqlText);
         }
     }
@@ -627,6 +636,23 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append(" LIMIT ");
+            _arg.WriteSql(sqlText);
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class SkipExpression : VisitedExpression
+    {
+        private VisitedExpression _arg;
+
+        public SkipExpression(VisitedExpression arg)
+        {
+            _arg = arg;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            sqlText.Append(" OFFSET ");
             _arg.WriteSql(sqlText);
             base.WriteSql(sqlText);
         }
