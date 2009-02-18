@@ -123,7 +123,12 @@ namespace Npgsql.SqlGenerators
 
             MetadataProperty metadata;
             LiteralExpression scan;
-            if (expression.Target.MetadataProperties.TryGetValue("Schema", false, out metadata) && metadata.Value != null)
+            string overrideSchema = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Schema";
+            if (expression.Target.MetadataProperties.TryGetValue(overrideSchema, false, out metadata) && metadata.Value != null)
+            {
+                scan = new LiteralExpression(QuoteIdentifier(metadata.Value.ToString()));
+            }
+            else if (expression.Target.MetadataProperties.TryGetValue("Schema", false, out metadata) && metadata.Value != null)
             {
                 scan = new LiteralExpression(QuoteIdentifier(metadata.Value.ToString()));
             }
@@ -132,7 +137,15 @@ namespace Npgsql.SqlGenerators
                 scan = new LiteralExpression(QuoteIdentifier(expression.Target.EntityContainer.Name));
             }
             scan.Append(".");
-            scan.Append(QuoteIdentifier(expression.Target.Name));
+            string overrideTable = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Name";
+            if (expression.Target.MetadataProperties.TryGetValue(overrideTable, false, out metadata) && metadata.Value != null)
+            {
+                scan.Append(QuoteIdentifier(metadata.Value.ToString()));
+            }
+            else
+            {
+                scan.Append(QuoteIdentifier(expression.Target.Name));
+            }
 
             return scan;
         }
