@@ -945,6 +945,12 @@ namespace Npgsql
                                     
                                     string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
 
+                                    // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+                                    // See bug #1010543
+                                    // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
+                                    // only one pair of parentheses for the two purposes instead of two pairs.
+                                    sb.Append('(');
+
                                     if(Connector.UseConformantStrings)
                                         switch(serialised[0])
                                         {
@@ -965,13 +971,16 @@ namespace Npgsql
                                     else
                                         sb.Append(serialised);
 
+                                    sb.Append(')');
+
+                                    
                                     if (p.UseCast)
                                     {
                                         sb.Append("::").Append(p.TypeInfo.CastName);
                                         if (p.TypeInfo.UseSize && (p.Size > 0))
                                             sb.Append('(').Append(p.Size).Append(')');
                                     }
-                                    
+
                                     sb.Append(')');//Close probably-redundant parenthesis.
                                     break;
                             }
@@ -996,7 +1005,11 @@ namespace Npgsql
                     switch(Param.Direction)
                     {
                         case ParameterDirection.Input: case ParameterDirection.InputOutput:
+                            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+                            // See bug #1010543
+                            result.Append('(');
                             result.Append(Param.TypeInfo.ConvertToBackend(Param.Value, false));
+                            result.Append(')');
                             if (Param.UseCast)
                             {
                                 result.Append("::").Append(Param.TypeInfo.CastName);
@@ -1267,7 +1280,11 @@ namespace Npgsql
 
                 foreach(NpgsqlParameter p in parameters)
                 {
+                    // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+                    // See bug #1010543
+                    result.Append('(');
                     result.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
+                    result.Append(')');
                     if (p.UseCast)
                     {
                         result.Append("::").Append(p.TypeInfo.CastName);
