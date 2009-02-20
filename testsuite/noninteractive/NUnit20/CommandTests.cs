@@ -2921,6 +2921,149 @@ connection.Open();*/
             
         }
 
+        [Test]
+        public void Bug1010543Int32MinValueThrowException()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+                parameter.Value = Int32.MinValue;
+                cmd.Parameters.Add(parameter);
+
+                cmd.ExecuteNonQuery();
+            }
+
+
+        }
+
+        [Test]
+        public void Bug1010543Int16MinValueThrowException()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", DbType.Int16);
+                parameter.Value = Int16.MinValue;
+                cmd.Parameters.Add(parameter);
+
+                cmd.ExecuteNonQuery();
+            }
+
+
+
+        }
+        [Test]
+        public void Bug1010543Int16MinValueThrowExceptionPrepared()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", DbType.Int16);
+                parameter.Value = Int16.MinValue;
+                cmd.Parameters.Add(parameter);
+
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+            }
+
+
+
+        }
+
+        [Test]
+        public void HandleInt16MinValueParameter()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+            command.Parameters[0].Value = Int16.MinValue;
+
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int16.MinValue, result);
+        }
+
+        [Test]
+        public void HandleInt32MinValueParameter()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+            command.Parameters[0].Value = Int32.MinValue;
+
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int32.MinValue, result);
+        }
+
+        [Test]
+        public void HandleInt64MinValueParameter()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int64));
+            command.Parameters[0].Value = Int64.MinValue;
+            
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int64.MinValue, result);
+        }
+
+        [Test]
+        public void HandleInt16MinValueParameterPrepared()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+            command.Parameters[0].Value = Int16.MinValue;
+            command.Prepare();
+
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int16.MinValue, result);
+        }
+
+        [Test]
+        public void HandleInt32MinValueParameterPrepared()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+            command.Parameters[0].Value = Int32.MinValue;
+            command.Prepare();
+
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int32.MinValue, result);
+        }
+
+        [Test]
+        public void HandleInt64MinValueParameterPrepared()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :a", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int64));
+            command.Parameters[0].Value = Int64.MinValue;
+            command.Prepare();
+
+            Object result = command.ExecuteScalar();
+            Assert.AreEqual(Int64.MinValue, result);
+        }
+
+
+        [Test]
+        public void Bug1010557BackslashGetDoubled()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text);
+                parameter.Value = "test\\str";
+                cmd.Parameters.Add(parameter);
+
+                object result = cmd.ExecuteScalar();
+                Assert.AreEqual("test\\str", result); 
+            }
+
+
+        }
+
+
+
     }
     
 
