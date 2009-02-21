@@ -230,7 +230,7 @@
         on n.oid = p.pronamespace
         left join pg_type t
         on p.prorettype = t.oid
-        where (p.proretset = false and t.typname != 'void') and n.nspname not in ('pg_catalog','information_schema')
+        where (p.proretset = false and t.typname != 'void') and n.nspname not in ('pg_catalog','information_schema') and p.proname not in (select pg_proc.proname from pg_proc group by pg_proc.proname having count(pg_proc.proname) > 1)
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgFunctionParameters" EntityType="NpgsqlSchema.FunctionParameter">
@@ -278,7 +278,7 @@
             information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
             from pg_namespace n
               join pg_proc p
-              on n.oid = p.pronamespace) ss
+              on n.oid = p.pronamespace and p.proname not in (select pg_proc.proname from pg_proc group by pg_proc.proname having count(pg_proc.proname) > 1)) ss
           on t.oid = (ss.x).x
             join pg_type rt
           on ss.prorettype = rt.oid
@@ -301,7 +301,7 @@
         on n.oid = p.pronamespace
         left join pg_type t
         on p.prorettype = t.oid
-        where (p.proretset = true or t.typname = 'void') and n.nspname not in ('pg_catalog','information_schema')
+        where (p.proretset = true or t.typname = 'void') and n.nspname not in ('pg_catalog','information_schema') and p.proname not in (select pg_proc.proname from pg_proc group by pg_proc.proname having count(pg_proc.proname) > 1)
       </DefiningQuery>
     </EntitySet>
     <EntitySet Name="PgProcedureParameters" EntityType="NpgsqlSchema.ProcedureParameter">
@@ -349,7 +349,7 @@
             information_schema._pg_expandarray(COALESCE(p.proallargtypes, p.proargtypes::oid[])) AS x
             from pg_namespace n
               join pg_proc p
-              on n.oid = p.pronamespace) ss
+              on n.oid = p.pronamespace and p.proname not in (select pg_proc.proname from pg_proc group by pg_proc.proname having count(pg_proc.proname) > 1)) ss
           on t.oid = (ss.x).x
             join pg_type rt
           on ss.prorettype = rt.oid
