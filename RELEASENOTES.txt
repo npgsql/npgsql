@@ -1,4 +1,6 @@
-2008-12-18
+2009-02-24
+
+    Npgsql 2.0.3
 
     [#1010496] GetOrdinal Implementation differs from Interface Standard. The two deviations were:
     1. We were not katakana-width insensitive.
