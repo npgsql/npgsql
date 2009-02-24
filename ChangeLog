@@ -1,3 +1,231 @@
+2009-02-24 02:27  fxjr
+
+	* RELEASENOTES.txt:
+	  Fixed release notes file format.
+
+2009-02-24 02:06  fxjr
+
+	* RELEASENOTES.txt:
+	  Added release note for 2.0.3 release
+
+2009-02-24 01:41  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated for 2.0.3 release
+
+2009-02-21 19:07  jbcooley
+
+	* src/Npgsql/NpgsqlSchema.ssdl: Drop overloaded functions and
+	  procedures since they cause problems for edmgen.
+
+2009-02-19 23:12  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added tests for [#1010543] Parameter value 'Int32.MinValue' throw
+	  NpgsqlException(ERROR: 22003: integer out of range). Thanks David
+	  Bachmann for heads up and tests.
+
+2009-02-19 12:20  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  [#1010543] Parameter value 'Int32.MinValue' throw
+	  NpgsqlException(ERROR: 22003: integer out of range). Thanks David
+	  Bachmann for the ideas about how to solve that on mail list
+	  referenced on this bug report. Also thanks to Josh Cooley for
+	  reviewing the previous attempts to fix that and preventing me of
+	  doing problems. Also thanks Dario Quintana (contacto at
+	  darioquintana dot com dot ar) for his feedback and testing.
+
+2009-02-18 01:27  jbcooley
+
+	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
+	  SqlInsertGenerator.cs: Bug #1010545 - support alternate names for
+	  tables (two schemas same table name) and alternate names for
+	  schemas.  Thanks to Konstantin Shtonda for reporting this
+	  problem.
+
+2009-02-17 11:31  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs:
+
+	  Fixed a culture problem in the ToBasicType<T> method which is
+	  used to send decimal values. With es_ES for example, decimal
+	  values were being sent as 32,3 instead of 32.3. Thanks Antonio
+	  Leiva (antonio dot leiva at gmail dot com) for heads up.
+
+2009-02-17 01:17  jbcooley
+
+	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
+	  VisitedExpression.cs: Fixed bug in skip.  Thanks to gavin w for
+	  reporting the bug.
+
+2009-02-05 01:26  jbcooley
+
+	* src/: Npgsql.VisualStudio2008.csproj, Npgsql2008.sln: Starting
+	  DDEX support for Npgsql
+
+2009-02-05 01:24  jbcooley
+
+	* src/Npgsql2008.csproj: added missing BitString file
+
+2009-01-19 01:20  jbcooley
+
+	* src/Npgsql/NpgsqlSchema.ssdl: Fixed relationships with a simpler
+	  query.  Thanks to Eugênio Ferreira Lima <eugenioflima at
+	  gmail.com>
+
+2009-01-16 14:11  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypes.cs: Seed hashcodes for NpgsqlPath and
+	  NpgsqlPolygon better.
+
+2009-01-16 13:40  talliesin
+
+	* src/NpgsqlTypes/: BitString.cs, NpgsqlTypes.cs: Short-cut some
+	  potentially expensive equality comparisons in cases where objects
+	  are shallow copies of each other.
+
+2009-01-12 09:26  talliesin
+
+	* src/Npgsql/NpgsqlRowDescription.cs: Use Kana-width-insensitive
+	  comparisons supplied by System.Globalization.CompareInfo rather
+	  than rolling our own.
+
+2009-01-07 16:48  talliesin
+
+	* src/NpgsqlTypes/DateDatatypes.cs: Fix for string representation
+	  of some negative intervals. Thanks to Mathieu Fenniak for bashing
+	  out the issues.
+
+2008-12-26 14:08  talliesin
+
+	* src/Npgsql/: NpgsqlMediator.cs, NpgsqlQuery.cs: Only produce
+	  SQLSent string from stringbuilder if needed.
+
+2008-12-26 13:24  talliesin
+
+	* src/Npgsql/: NpgsqlCommand.cs, NpgsqlParameter.cs,
+	  NpgsqlQuery.cs, PGUtil.cs: Fix lack of parameter length in
+	  another case. Replace many cases of string concatenation with
+	  StringBuilder use.
+
+2008-12-25 21:34  talliesin
+
+	* src/Npgsql/NpgsqlCommand.cs: Fix lack of parameter length in
+	  certain cases (bug #1010538).
+
+2008-12-25 15:21  talliesin
+
+	* src/NpgsqlTypes/: NpgsqlTypeConverters.cs, NpgsqlTypesHelper.cs:
+	  More explicit serialisation of numeric types, for added
+	  type-safety (reducing attack surface for exploits based on
+	  passing non-numeric data where numeric data is expected).
+
+2008-12-25 14:35  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs: Improved efficiency in
+	  serialising bytea values from .NET representation to postgres
+	  literal.
+
+2008-12-24 09:41  talliesin
+
+	* src/NpgsqlTypes/BitString.cs: [no log message]
+
+2008-12-24 09:35  talliesin
+
+	* src/NpgsqlTypes/: BitString.cs, NpgsqlDbType.cs,
+	  NpgsqlTypeConverters.cs: BitString handling: 1 minor bug fix,
+	  comments on some of the potentially more confusing code.
+
+2008-12-23 22:17  talliesin
+
+	* src/: NpgsqlTypes/NpgsqlDbType.cs, NpgsqlTypes/BitString.cs,
+	  NpgsqlTypes/NpgsqlTypeConverters.cs,
+	  NpgsqlTypes/NpgsqlTypesHelper.cs, Npgsql/NpgsqlDataReader.cs:
+	  Support for bit strings.
+
+2008-12-22 08:12  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs: Even greater concurrency on
+	  creation of NpgsqlBackendTypeMapping.
+
+2008-12-22 08:07  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs: Greater concurrency on
+	  creation of NpgsqlBackendTypeMapping.
+
+2008-12-21 22:03  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs,
+	  testsuite/noninteractive/NUnit20/DataReaderTests.cs: Make money
+	  datatype handling locale-independent (see item [#1010503]).
+
+2008-12-20 23:57  talliesin
+
+	* src/.cvsignore, testsuite/noninteractive/NUnit20/.cvsignore: [no
+	  log message]
+
+2008-12-20 17:25  talliesin
+
+	* src/: Npgsql/NpgsqlCancelRequest.cs, Npgsql/NpgsqlClosedState.cs,
+	  Npgsql/NpgsqlCommand.cs, Npgsql/NpgsqlCommandBuilder.cs,
+	  Npgsql/NpgsqlConnection.cs,
+	  Npgsql/NpgsqlConnectionStringBuilder.cs,
+	  Npgsql/NpgsqlCopyOutState.cs, Npgsql/NpgsqlDataAdapter.cs,
+	  Npgsql/NpgsqlDataReader.cs, Npgsql/NpgsqlEventLog.cs,
+	  Npgsql/NpgsqlException.cs, Npgsql/NpgsqlFlush.cs,
+	  Npgsql/NpgsqlParameter.cs, Npgsql/NpgsqlParameterCollection.cs,
+	  Npgsql/NpgsqlParse.cs, Npgsql/NpgsqlPasswordPacket.cs,
+	  Npgsql/NpgsqlPromotableSinglePhaseNotification.cs,
+	  Npgsql/NpgsqlReadyState.cs, Npgsql/NpgsqlStartupPacket.cs,
+	  Npgsql/NpgsqlStartupState.cs, Npgsql/NpgsqlState.cs,
+	  Npgsql/NpgsqlSync.cs, Npgsql/NpgsqlTransaction.cs,
+	  Npgsql/NpgsqlTransactionCallbacks.cs, Npgsql/PGUtil.cs,
+	  NpgsqlTypes/NpgsqlTypesHelper.cs: Remove (now pointless and only
+	  recently added) version info from connection. Take default value
+	  from assembly info. Take class info for logging and resources
+	  from reflection information.
+
+2008-12-20 17:07  jbcooley
+
+	* src/Npgsql/: AssemblyInfo.cs, NpgsqlConnection.cs: updated
+	  assembly version for development.  Now exposing reflected
+	  assembly version in the connection.
+
+2008-12-20 15:43  talliesin
+
+	* src/Npgsql/NpgsqlCommand.cs, src/Npgsql/NpgsqlConnector.cs,
+	  src/Npgsql/NpgsqlParameter.cs,
+	  src/Npgsql/NpgsqlParameterStatus.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs,
+	  testsuite/noninteractive/NUnit20/DataReaderTests.cs: Cope with
+	  standard_conforming_strings being "on". No warnings if
+	  escape_string_warning is "on". Fix for syntax errors on certain
+	  constructs in close proximity to parameter values.
+
+2008-12-19 10:31  talliesin
+
+	* src/NpgsqlTypes/ArrayHandling.cs: Change check for string
+	  elements in ArrayNativeToBackendTypeConverter.WriteItem to check
+	  for any directly supported element. Move test for item being an
+	  array above test for it being IEnumerable.
+
+2008-12-18 23:26  talliesin
+
+	* RELEASENOTES.txt, docs/UserManual.html,
+	  src/Npgsql/NpgsqlConnection.cs,
+	  src/Npgsql/NpgsqlConnectionStringBuilder.cs,
+	  src/Npgsql/NpgsqlConnector.cs, src/Npgsql/NpgsqlDataReader.cs,
+	  src/Npgsql/NpgsqlRowDescription.cs, src/Npgsql/NpgsqlState.cs,
+	  testsuite/noninteractive/NUnit20/DataReaderTests.cs: GetOrdinal
+	  fixes for kana-width insensitivity and exception if field name
+	  not found. See feature request #1010496
+
+2008-12-15 01:53  fxjr
+
+	* ChangeLog:
+	  Updated changelog for 2.0.2 release
+
 2008-12-15 01:42  jbcooley
 
 	* testsuite/noninteractive/NUnit20/ConnectionTests.cs: Change
@@ -186,14 +414,14 @@
 
 	  Thanks Josh for fix idea.
 
-2008-10-16 12:05  fxjr
+2008-10-16 11:05  fxjr
 
 	* src/NpgsqlTypes/NpgsqlTypesHelper.cs:
 	  Fixed problem with literal boolean values. Previous patch only
 	  fixed for bit mapping. I forgot to fix for boolean mapping too!
 	  Thanks Josh Cooley for test cases and heads up.
 
-2008-10-14 22:16  jbcooley
+2008-10-14 21:16  jbcooley
 
 	* testsuite/noninteractive/NUnit20/CommandTests.cs: Create test for
 	  boolean literal support in parameters.
