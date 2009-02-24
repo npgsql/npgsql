@@ -4,6 +4,15 @@
     1. We were not katakana-width insensitive.
     2. We did not throw IndexOutOfRangeException if the field is not found.
     Both fixes could break running code, so we should be alert for that possibility.
+    Added support to standard_conforming_strings server setting. Thanks Jon Hanna
+    Added BitString support. Thanks Jon Hanna
+    [#1010543] Parameter value 'Int32.MinValue' throw NpgsqlException(ERROR: 22003: integer out of range). Thanks David Bachmann, Josh Cooley and Dario Quintana for all help and feedback to fix this.
+    [#1010538] The length type modifier for fixed-length character type cast is wrong. Thanks Jon Hanna
+    Drop overloaded functions and procedures since they cause problems for edmgen. Thanks Josh Cooley
+    Fixed relationships with a simpler query.  Thanks to Eugênio Ferreira Lima <eugenioflima at gmail.com>. Thanks Josh Cooley
+    Better support for datetime values. Thanks Jon Hanna.
+
+
 
 2008-12-15
 
