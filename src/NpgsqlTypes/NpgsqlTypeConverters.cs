@@ -211,7 +211,7 @@ namespace NpgsqlTypes
 			Byte[] byteArray = (Byte[])NativeData;
 			StringBuilder res = new StringBuilder(byteArray.Length * 5);
 			foreach(byte b in byteArray)
-			    if(b >= 0x20 && b < 0x7F)
+			    if(b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
 			        res.Append((char)b);
 			    else
 			        res.Append("\\\\")
@@ -315,6 +315,7 @@ namespace NpgsqlTypes
 		
 		internal static string ToBasicType<T>(NpgsqlNativeTypeInfo typeInfo, object nativeData)
 		{
+
             return ((IConvertible)nativeData).ToType(typeof(T), CultureInfo.InvariantCulture.NumberFormat).ToString();
 		}
 	}
