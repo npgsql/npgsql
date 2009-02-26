@@ -312,12 +312,14 @@ namespace NpgsqlTypes
 		    //to happen.
 			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
 		}
-		
-		internal static string ToBasicType<T>(NpgsqlNativeTypeInfo typeInfo, object nativeData)
-		{
+        
 
-            return ((IConvertible)nativeData).ToType(typeof(T), CultureInfo.InvariantCulture.NumberFormat).ToString();
-		}
+        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData)
+        {
+            // This double cast is needed in order to get the enum type handled correctly (IConvertible)
+            // and the decimal separator always as "." regardless of culture (IFormattable)
+            return (((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
+        }
 	}
 
 
