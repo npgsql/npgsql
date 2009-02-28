@@ -1,3 +1,12 @@
+
+2009-02-28
+
+    Npgsql 2.0.4
+    
+    [ npgsql-Bugs-1010562 ] Bytea optimization in 2.0.3 is bad. Thanks Jon Hanna.
+    
+    Fixed a problem with decimal values and localization. Npgsql was sending the value incorrectly.
+
 2009-02-24
 
     Npgsql 2.0.3
