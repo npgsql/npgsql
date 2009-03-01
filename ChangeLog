@@ -1,3 +1,24 @@
+2009-03-01	jbcooley
+	* src/Npgsql/AssemblyInfo.cs 1.20:
+		update assembly info for release.
+
+	* src/policy.2.0.Npgsql.config 1.1:
+		New publisher policy file.
+
+2009-02-28	fxjr
+	* RELEASENOTES.txt 1.14:
+		
+		Added release notes for 2.0.4
+
+2009-02-26	fxjr
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.16:
+		
+		Really fixed culture dependent representation of floating numbers. Now it uses a invariant culture representation. Thanks Antonio Leiva for heads up.
+
+2009-02-25	talliesin
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.15:
+		Fix bug with new bytea conversion [#1010562]2009-02-24 02:27  fxjr
+
 2009-02-24 02:27  fxjr
 
 	* RELEASENOTES.txt:
