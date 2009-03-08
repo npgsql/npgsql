@@ -109,8 +109,23 @@ namespace Npgsql.SqlGenerators
             // may come from a join or a select
             //return new LiteralExpression(expression.Target.MetadataProperties.TryGetValue(
             // replace with better solution
+            MetadataProperty metadata;
+            string tableName;
+            string overrideTable = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Name";
+            if (expression.Target.MetadataProperties.TryGetValue(overrideTable, false, out metadata) && metadata.Value != null)
+            {
+                tableName = metadata.Value.ToString();
+            }
+            else if (expression.Target.MetadataProperties.TryGetValue("Table", false, out metadata) && metadata.Value != null)
+            {
+                tableName = metadata.Value.ToString();
+            }
+            else
+            {
+                tableName = expression.Target.Name;
+            }
             if (_projectVarName.Count != 0) // this can happen in dml
-                _variableSubstitution[_projectVarName.Peek()] = expression.Target.Name;
+                _variableSubstitution[_projectVarName.Peek()] = tableName;
             SubstituteFilterVar(expression.Target.Name);
             if (expression.Target.MetadataProperties.Contains("DefiningQuery"))
             {
@@ -121,7 +136,6 @@ namespace Npgsql.SqlGenerators
                 }
             }
 
-            MetadataProperty metadata;
             LiteralExpression scan;
             string overrideSchema = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Schema";
             if (expression.Target.MetadataProperties.TryGetValue(overrideSchema, false, out metadata) && metadata.Value != null)
@@ -137,15 +151,7 @@ namespace Npgsql.SqlGenerators
                 scan = new LiteralExpression(QuoteIdentifier(expression.Target.EntityContainer.Name));
             }
             scan.Append(".");
-            string overrideTable = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Name";
-            if (expression.Target.MetadataProperties.TryGetValue(overrideTable, false, out metadata) && metadata.Value != null)
-            {
-                scan.Append(QuoteIdentifier(metadata.Value.ToString()));
-            }
-            else
-            {
-                scan.Append(QuoteIdentifier(expression.Target.Name));
-            }
+            scan.Append(QuoteIdentifier(tableName));
 
             return scan;
         }
