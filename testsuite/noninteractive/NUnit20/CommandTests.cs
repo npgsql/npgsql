@@ -3098,6 +3098,31 @@ connection.Open();*/
             cmd.ExecuteScalar();
         }
         
+        [Test]
+        public void PreparedStatementWithParametersWithSize()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p0, :p1;", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p0", NpgsqlDbType.Varchar);
+                parameter.Value = "test";
+                parameter.Size = 10;
+                cmd.Parameters.Add(parameter);
+                
+                parameter = new NpgsqlParameter("p1", NpgsqlDbType.Varchar);
+                parameter.Value = "test";
+                parameter.Size = 10;
+                cmd.Parameters.Add(parameter);
+
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+            }
+
+
+
+        }
+        
        
 
 

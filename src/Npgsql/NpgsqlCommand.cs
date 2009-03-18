@@ -1338,6 +1338,15 @@ namespace Npgsql
                     if ((parameters[i].Direction == ParameterDirection.Input) ||
                         (parameters[i].Direction == ParameterDirection.InputOutput))
                     {
+                        
+                        string parameterSize = "";
+
+                        if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
+                        {
+                            parameterSize += string.Format("({0})", parameters[i].Size);
+                        }
+                        
+
                         if (!addProcedureParenthesis)
                         {
                             //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
@@ -1346,22 +1355,18 @@ namespace Npgsql
                             
                             // Just add typecast if needed.
                             if (parameters[i].UseCast)
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName));
+                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
                             else
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}", (i + 1)));
+                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
                         }
                         else
                         {
                             if (parameters[i].UseCast)
-                                parseCommand += string.Format("${0}::{1}", (i + 1), parameters[i].TypeInfo.CastName);
+                                parseCommand += string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
                             else
-                                parseCommand += string.Format("${0}", (i + 1));
+                                parseCommand += string.Format("${0}{1}", (i + 1), parameterSize);
                         }
-                        
-                        if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
-                        {
-                            parseCommand += string.Format("({0})", parameters[i].Size);
-                        }
+                       
                     
                     }
                 }
