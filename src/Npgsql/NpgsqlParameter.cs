@@ -263,6 +263,10 @@ namespace Npgsql
         {
             get
             {
+                
+                // Prevents casts to be added for null values when they aren't needed.
+                if (!useCast && value == DBNull.Value)
+                    return false;
                 //return useCast; //&& (value != DBNull.Value);
                 // This check for Datetime.minvalue and maxvalue is needed in order to
                 // workaround a problem when comparing date values with infinity.

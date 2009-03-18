@@ -36,6 +36,7 @@ using System.Globalization;
 using System.Net;
 using NpgsqlTypes;
 using System.Resources;
+using System.Threading;
 
 namespace NpgsqlTests
 {
@@ -3061,6 +3062,43 @@ connection.Open();*/
 
 
         }
+
+        [Test]
+        public void NumberConversionWithCulture()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                Thread.CurrentThread.CurrentCulture = new CultureInfo("es-ES");
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double);
+                parameter.Value = 5.5;
+                cmd.Parameters.Add(parameter);
+
+                object result = cmd.ExecuteScalar();
+
+                Thread.CurrentThread.CurrentCulture = new CultureInfo("");
+                Assert.AreEqual(5.5, result);
+
+            }
+
+
+        }
+        
+        [Test]
+        public void TestNullParameterValueInStatement()
+        {
+            // Test by Andrus Moor
+            IDbCommand cmd = TheConnection.CreateCommand();
+            int? i = null;
+            cmd.Parameters.Add(new NpgsqlParameter("p0", i));
+            cmd.CommandText = "select :p0 is null or :p0=0 ";
+            
+            cmd.ExecuteScalar();
+        }
+        
+       
 
 
 
