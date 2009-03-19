@@ -338,12 +338,11 @@ namespace Npgsql
             {
                 // Here we use a fake NpgsqlCommand, just to send the test query string.
                 
-                Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
-                
+                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
+                new NpgsqlCommand("select 1", this).ExecuteScalar();
                 // Clear mediator.
                 Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
-                
                 
             }
             catch
