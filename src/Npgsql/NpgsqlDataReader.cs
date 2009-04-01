@@ -1157,7 +1157,15 @@ namespace Npgsql
 			}
 
 			_pendingDescription = null;
-			_recordsAffected = _nextRecordsAffected;
+			
+			// If there were records affected before,  keep track of their values.
+                        if (_recordsAffected != null)
+                            _recordsAffected += (_nextRecordsAffected ?? 0);
+                        else
+                            _recordsAffected = _nextRecordsAffected;
+			
+                        
+
 			_nextRecordsAffected = null;
 			_lastInsertOID = _nextInsertOID;
 			_nextInsertOID = null;
