@@ -966,6 +966,18 @@ namespace NpgsqlTests
             Assert.AreEqual(5, dt.Columns[1].MaxLength);
             Assert.AreEqual(5, dt.Columns[2].MaxLength);
         }
+
+        [Test]
+        public void HasRowsGetValue()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select 1", TheConnection);
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                Assert.IsTrue(dr.HasRows);
+                Assert.IsTrue(dr.Read());
+                Assert.AreEqual(1, dr.GetValue(0));
+            }
+        }
     }
     [TestFixture]
     public class DataReaderTestsV2 : DataReaderTests
