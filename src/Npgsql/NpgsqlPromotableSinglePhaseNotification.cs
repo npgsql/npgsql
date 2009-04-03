@@ -201,7 +201,7 @@ namespace Npgsql
 					(INpgsqlResourceManager)
 					rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
 					                                 typeof (NpgsqlResourceManager).FullName);
-                _sponser.Register(_resourceManager);
+                _sponser.Register((MarshalByRefObject)_resourceManager);
 			}
 			return _resourceManager;
 			//return new NpgsqlResourceManager();
