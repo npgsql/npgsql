@@ -45,7 +45,7 @@ namespace Npgsql.SqlGenerators
             // almost the opposite of limit, need to skip first.
             VisitedExpression skip = expression.Input.Expression.Accept(this);
             InputExpression input;
-            if (!(skip is ProjectionExpression))
+            if (!(skip is ProjectionExpression) || !(((ProjectionExpression)skip).From is FromExpression))
             {
                 input = CheckedConvertFrom(skip, expression.Input.VariableName);
                 // return this value
@@ -54,13 +54,10 @@ namespace Npgsql.SqlGenerators
             else
             {
                 input = ((ProjectionExpression)skip).From;
-                if (input is FromExpression)
-                {
-                    if (_variableSubstitution.ContainsKey(((FromExpression)input).Name))
-                        _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[((FromExpression)input).Name];
-                    else
-                        _variableSubstitution[expression.Input.VariableName] = ((FromExpression)input).Name;
-                }
+                if (_variableSubstitution.ContainsKey(((FromExpression)input).Name))
+                    _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[((FromExpression)input).Name];
+                else
+                    _variableSubstitution[expression.Input.VariableName] = ((FromExpression)input).Name;
             }
             OrderByExpression orderBy = new OrderByExpression();
             foreach (var order in expression.SortOrder)
