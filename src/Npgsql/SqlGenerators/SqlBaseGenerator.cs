@@ -781,6 +781,18 @@ namespace Npgsql.SqlGenerators
                     case "Left":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
                         return Substring(args[0].Accept(this), new LiteralExpression(" 1 "), args[1].Accept(this));
+                    case "Right":
+                        System.Diagnostics.Debug.Assert(args.Count == 2);
+                        {
+                            var arg0 = args[0].Accept(this);
+                            var arg1 = args[1].Accept(this);
+                            var start = new FunctionExpression("char_length");
+                            start.AddArgument(arg0);
+                            // add one before subtracting count since strings are 1 based in postgresql
+                            start.Append("+1-");
+                            start.Append(arg1);
+                            return Substring(arg0, start);
+                        }
                     case "Substring":
                         System.Diagnostics.Debug.Assert(args.Count == 3);
                         return Substring(args[0].Accept(this), args[1].Accept(this), args[2].Accept(this));
@@ -870,8 +882,6 @@ namespace Npgsql.SqlGenerators
                     case "NewGuid":
                         return new FunctionExpression("uuid_generate_v4");
 
-                    case "Right":
-                    // TODO: need to clone expression for use in substring and length
                     default:
                         throw new NotSupportedException("NotSupported " + function.Name);
                 }
@@ -885,6 +895,14 @@ namespace Npgsql.SqlGenerators
             substring.AddArgument(source);
             substring.AddArgument(start);
             substring.AddArgument(count);
+            return substring;
+        }
+
+        private VisitedExpression Substring(VisitedExpression source, VisitedExpression start)
+        {
+            FunctionExpression substring = new FunctionExpression("substr");
+            substring.AddArgument(source);
+            substring.AddArgument(start);
             return substring;
         }
 
