@@ -41,6 +41,13 @@ using NpgsqlTypes;
 namespace Npgsql
 {
     /// <summary>
+    /// Represents the method that allows the application to provide a certificate collection to be used for SSL clien authentication
+    /// </summary>
+    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
+    public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
+
+
+    /// <summary>
     /// !!! Helper class, for compilation only.
     /// Connector implements the logic for the Connection Objects to
     /// access the physical connection to the database, and isolate
@@ -60,6 +67,11 @@ namespace Npgsql
         /// Occurs on NotificationResponses from the PostgreSQL backend.
         /// </summary>
         internal event NotificationEventHandler Notification;
+
+        /// <summary>
+        /// Called to provide client certificates for SSL handshake.
+        /// </summary>
+        internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
 
         /// <summary>
         /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
@@ -466,6 +478,17 @@ namespace Npgsql
             else
             {
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Default SSL ProvideClientCertificatesCallback implementation.
+        /// </summary>
+        internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
+        {
+            if (ProvideClientCertificatesCallback != null)
+            {
+                ProvideClientCertificatesCallback(certificates);
             }
         }
 

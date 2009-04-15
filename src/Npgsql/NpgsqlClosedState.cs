@@ -33,6 +33,7 @@ using System.Reflection;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
 using SecurityProtocolType=Mono.Security.Protocol.Tls.SecurityProtocolType;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Npgsql
 {
@@ -155,7 +156,18 @@ namespace Npgsql
 					Char response = (Char) stream.ReadByte();
 					if (response == 'S')
 					{
-						stream = new SslClientStream(stream, context.Host, true, SecurityProtocolType.Default);
+                        //create empty collection
+                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
+                            
+                        //trigger the callback to fetch some certificates
+                        context.DefaultProvideClientCertificatesCallback(clientCertificates);
+
+						stream = new SslClientStream(
+                            stream,
+                            context.Host,
+                            true,
+                            SecurityProtocolType.Default,
+                            clientCertificates);
 
 						((SslClientStream) stream).ClientCertSelectionDelegate =
 							new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);

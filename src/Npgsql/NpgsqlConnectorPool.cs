@@ -310,9 +310,10 @@ namespace Npgsql
 
 			Connector = CreateConnector(Connection);
 
-			Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-			Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-			Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
+            Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
+            Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
+            Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
+            Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
 
 			Connector.Open();
 
@@ -400,6 +401,7 @@ namespace Npgsql
 			{
 				Connector = CreateConnector(Connection);
 
+                Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
 				Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
 				Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
 				Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
@@ -432,12 +434,14 @@ namespace Npgsql
 				{
 					NpgsqlConnector Spare = CreateConnector(Connection);
 
+                    Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
 					Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
 					Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
 					Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
 
 					Spare.Open();
 
+                    Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
 					Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
 					Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
 					Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
@@ -496,6 +500,7 @@ namespace Npgsql
 		/// <param name="Connector">Connector to release</param>
 		private static void UngetNonPooledConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
 		{
+            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
 			Connector.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
 			Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
 			Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
@@ -522,6 +527,7 @@ namespace Npgsql
 				return; // Queue may be emptied by connection problems. See ClearPool below.
 			}
 
+            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
 			Connector.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
 			Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
 			Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;

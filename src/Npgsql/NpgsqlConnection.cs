@@ -88,6 +88,14 @@ namespace Npgsql
 
 		internal NotificationEventHandler NotificationDelegate;
 
+        /// <summary>
+        /// Called to provide client certificates for SSL handshake.
+        /// </summary>
+        public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
+        
+        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
+
+
 		/// <summary>
 		/// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
 		/// </summary>
@@ -158,6 +166,7 @@ namespace Npgsql
 			NoticeDelegate = new NoticeEventHandler(OnNotice);
 			NotificationDelegate = new NotificationEventHandler(OnNotification);
 
+            ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
 			CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
 			CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
 			PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
@@ -834,6 +843,17 @@ namespace Npgsql
 				return null;
 			}
 		}
+
+        /// <summary>
+        /// Default SSL ProvideClientCertificatesCallback implementation.
+        /// </summary>
+        internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
+        {
+            if (ProvideClientCertificatesCallback != null)
+            {
+                ProvideClientCertificatesCallback(certificates);
+            }            
+        }
 
 
 		//
