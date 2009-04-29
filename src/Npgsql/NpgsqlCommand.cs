@@ -422,9 +422,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Create a new connection based on this one.
+        /// Create a new command based on this one.
         /// </summary>
-        /// <returns>A new NpgsqlConnection object.</returns>
+        /// <returns>A new NpgsqlCommand object.</returns>
         public NpgsqlCommand Clone()
         {
             // TODO: Add consistency checks.
