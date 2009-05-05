@@ -1,4 +1,4 @@
-﻿// created on 27/12/2002 at 17:05
+// created on 27/12/2002 at 17:05
 //
 // Author:
 // 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
@@ -546,6 +546,9 @@ namespace NpgsqlTests
             NpgsqlCommand command = new NpgsqlCommand("select * from tablea;", TheConnection);
 
             NpgsqlDataReader dr = command.ExecuteReader();
+            
+            //Console.WriteLine(dr.FieldCount);
+            
 
             DataGrid dg = new DataGrid();
 
@@ -966,7 +969,50 @@ namespace NpgsqlTests
             Assert.AreEqual(5, dt.Columns[1].MaxLength);
             Assert.AreEqual(5, dt.Columns[2].MaxLength);
         }
+        [Test]
+        public void CleansupOkWithDisposeCalls()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select * from tablea", TheConnection);
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                
+                dr.Close();
+                using (NpgsqlCommand upd = TheConnection.CreateCommand())
+                {
+                    upd.CommandText = "select * from tablea";
+                    upd.Prepare();
+                }
+                
+           
+            }
+            
+            
+            
+            
+        }
+        
+        [Test]
+        public void GetValueWithNullFields()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select * from tableb", TheConnection);
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                
+                Boolean result = dr.IsDBNull(2);
 
+                Assert.IsTrue(result);
+                
+                
+           
+            }
+            
+            
+            
+            
+        }
+        
         [Test]
         public void HasRowsGetValue()
         {
