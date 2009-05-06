@@ -935,7 +935,7 @@ namespace Npgsql
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyData");
                             Int32 len = PGUtil.ReadInt32(stream) - 4;
                             byte[] buf = new byte[len];
-                            stream.Read(buf, 0, len);
+                            PGUtil.ReadBytes(stream, buf, 0, len);
                             context.Mediator.ReceivedCopyData = buf;
                             yield break; // read data from server one chunk at a time while staying in copy operation mode
 
