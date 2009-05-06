@@ -301,6 +301,30 @@ namespace Npgsql
 			return false;
 		}
 
+        /// <summary>
+        /// Reads requested number of bytes from stream with retries until Stream.Read returns 0 or count is reached.
+        /// </summary>
+        /// <param name="stream">Stream to read</param>
+        /// <param name="buffer">byte buffer to fill</param>
+        /// <param name="offset">starting position to fill the buffer</param>
+        /// <param name="count">number of bytes to read</param>
+        /// <returns>The number of bytes read.  May be less than count if no more bytes are available.</returns>
+        public static int ReadBytes(Stream stream, byte[] buffer, int offset, int count)
+        {
+            int end = offset + count;
+            int got = 0;
+            int need = count;
+            do
+            {
+                got = stream.Read(buffer, offset, need);
+                offset += got;
+                need -= got;
+            }
+            while (offset < end && got != 0);
+            // return bytes read
+            return count - (end - offset);
+        }
+
 		//This is like Encoding.UTF8.GetCharCount() but it ignores a trailing incomplete
 		//character. See comments on ValidUTF8Ending()
 		public static int PessimisticGetCharCount(byte[] buffer, int index, int count)
