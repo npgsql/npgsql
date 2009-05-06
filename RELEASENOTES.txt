@@ -1,4 +1,22 @@
+2009-05-06
 
+    Npgsql 2.0.5
+    
+    Bugs fixed:
+    
+      [#1010379] NpgsqlDataAdapter.Update - Return value is wrong. Thanks Christian Holzner for feedback and testcase.
+	  Fixed regression with prepared statements with parameters with sizes. The size of parameters were being added in the statement tail. Thanks Rodrigo Cuevas (bellinux at gmail dot com) for heads up and Lee Ibbotson (lee.ibbotson @nospam@ sequence.co.uk) for patch. This also solves ticket 11 of Daniel's asp.net providers. http://dev.nauck-it.de/aspsqlprovider/ticket/11.
+	  [npgsql-help][1004683] RE: Statement execution returns incorrect DataSet Improved check of valid connection to consume all the value returned. This may be causing Npgsql to let some data in the stream.  Thanks Andy Berryman for heads up.
+	  [#1010379] NpgsqlDataAdapter.Update - Return value is wrong. Thanks Christian Holzner for feedback and testcase.
+	  [#1010558] Added callback to provide client certificates for ssl authentication.  Thanks Frank Bollack (frank.bollack @nospam@ visapix.de) for patch!
+	  
+	  [#1010599] - update xml docs (fix typo in Clone) Thanks to Lars Carlsson
+	  [#1010267] - read all bytes in a copydata message.
+	  [#1010567] failed LargeObject operation causes NotSupportedException. This patch may also work as a workaround for any seek exception problem. We still have to investigate why Npgsql is letting behind data in the stream.
+	  
+	  Josh Cooley added a lot of fixes for Transactions support and Entity Framework.
+	  
+    
 2009-02-28
 
     Npgsql 2.0.4

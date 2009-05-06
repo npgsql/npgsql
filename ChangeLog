@@ -1,23 +1,151 @@
-2009-03-01	jbcooley
-	* src/Npgsql/AssemblyInfo.cs 1.20:
-		update assembly info for release.
+2009-05-06 00:36  jbcooley
 
-	* src/policy.2.0.Npgsql.config 1.1:
-		New publisher policy file.
+	* src/: policy.2.0.Npgsql.config, Npgsql/AssemblyInfo.cs: Updated
+	  for 2.0.5 release.
 
-2009-02-28	fxjr
-	* RELEASENOTES.txt 1.14:
-		
-		Added release notes for 2.0.4
+2009-05-06 00:30  fxjr
 
-2009-02-26	fxjr
-	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.16:
-		
-		Really fixed culture dependent representation of floating numbers. Now it uses a invariant culture representation. Thanks Antonio Leiva for heads up.
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Fixed line ending inconsistencies.
 
-2009-02-25	talliesin
-	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.15:
-		Fix bug with new bytea conversion [#1010562]2009-02-24 02:27  fxjr
+2009-05-06 00:28  fxjr
+
+	* src/Npgsql/NpgsqlQuery.cs:
+	  [#1010567] failed LargeObject operation causes
+	  NotSupportedException. This patch may also work as a workaround
+	  for any seek exception problem. We still have to investigate why
+	  Npgsql is letting behind data in the stream.
+
+2009-05-05 22:00  jbcooley
+
+	* src/Npgsql/NpgsqlState.cs: bug #1010267 - read all bytes in a
+	  copydata message.
+
+2009-05-05 21:57  jbcooley
+
+	* src/Npgsql/PGUtil.cs: Add helper method to read bytes from stream
+	  even when not all bytes are immediately available.
+
+2009-05-05 00:30  fxjr
+
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs:
+	  Added some tests based on Forums.
+
+2009-04-29 00:24  jbcooley
+
+	* src/Npgsql/NpgsqlCommand.cs: #1010599 - update xml docs (fix typo
+	  in Clone) Thanks to Lars Carlsson
+
+2009-04-15 01:17  fxjr
+
+	* src/Npgsql/: NpgsqlClosedState.cs, NpgsqlConnection.cs,
+	  NpgsqlConnector.cs, NpgsqlConnectorPool.cs:
+	  [#1010558] Added callback to provide client certificates for ssl
+	  authentication.  Thanks Frank Bollack (frank.bollack @nospam@
+	  visapix.de) for patch!
+
+2009-04-10 23:57  jbcooley
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs: Fix skip (offset)
+	  when used with a join
+
+2009-04-10 21:07  jbcooley
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs: Add support for edm
+	  canonical string function "Right"
+
+2009-04-03 01:07  jbcooley
+
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs: Added test
+	  based on forum post.
+
+2009-04-03 01:05  jbcooley
+
+	* src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs: Fix
+	  missing cast from previous commit.
+
+2009-04-03 00:44  jbcooley
+
+	* src/Npgsql/NpgsqlPromotableSinglePhaseNotification.cs: Fix
+	  resource manager lifetime.  This improves System.Transaction
+	  support.
+
+2009-04-01 12:21  fxjr
+
+	* src/Npgsql/NpgsqlDataReader.cs:
+	  [#1010379] NpgsqlDataAdapter.Update - Return value is wrong.
+	  Thanks Christian Holzner for feedback and testcase.
+
+2009-03-19 17:09  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+	  [npgsql-help][1004683] RE: Statement execution returns incorrect
+	  DataSet Improved check of valid connection to consume all the
+	  value returned. This may be causing Npgsql to let some data in
+	  the stream.  Thanks Andy Berryman for heads up.
+
+2009-03-18 11:54  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed regression with prepared statements with parameters with
+	  sizes. The size of parameters were being added in the statement
+	  tail. Thanks Rodrigo Cuevas (bellinux at gmail dot com) for heads
+	  up and Lee Ibbotson (lee.ibbotson @nospam@ sequence.co.uk) for
+	  patch.
+
+	  Added testcase for this problem.
+
+2009-03-18 11:28  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed problem where null parameters were being sent with casts
+	  when they weren't needed and so causing problems. Added testcase
+	  for this problem. Thanks Andrus Moor for testcase and heads up.
+
+	  Also added testcase for numeric float support with different
+	  cultureinfo.
+
+2009-03-08 00:24  jbcooley
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs: Updated scan to
+	  handle Table attribute for cases where the table name is not the
+	  EntitySet name.  Thanks to Konstantin Shtonda for the patch.
+
+2009-02-28 21:15  jbcooley
+
+	* ChangeLog: update for 2.0.4 release
+
+2009-02-28 21:06  jbcooley
+
+	* src/Npgsql/AssemblyInfo.cs: update assembly info for release.
+
+2009-02-28 21:01  jbcooley
+
+	* src/policy.2.0.Npgsql.config: New publisher policy file.
+
+2009-02-28 20:54  fxjr
+
+	* RELEASENOTES.txt:
+	  Added release notes for 2.0.4
+
+2009-02-25 23:06  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs:
+	  Really fixed culture dependent representation of floating
+	  numbers. Now it uses a invariant culture representation. Thanks
+	  Antonio Leiva for heads up.
+
+2009-02-25 12:36  talliesin
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs: Fix bug with new bytea
+	  conversion [#1010562]
+
+2009-02-24 02:30  fxjr
+
+	* ChangeLog:
+	  Updated Changelog for 2.0.3 release
 
 2009-02-24 02:27  fxjr
 
