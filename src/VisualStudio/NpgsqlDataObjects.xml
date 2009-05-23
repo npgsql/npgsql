@@ -3,27 +3,13 @@
   <Types>
     <RootType>
       <Properties>
-        <Property name="Server"/>
-        <Property name="Login"/>
+        <Property name="Host"/>
+        <Property name="Port"/>
+        <Property name="UserName"/>
         <Property name="Database"/>
       </Properties>
       <Services>
-        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetRootObjectSelector">
-          <!-- Map RootType properties to connection string keywords -->
-          <Parameters method="SelectObjects">
-            <Parameter>
-              <Parameter value="Server">
-                <Parameter value="Host"/>
-              </Parameter>
-              <Parameter value="Login">
-                <Parameter value="UserName"/>
-              </Parameter>
-              <Parameter value="Database">
-                <Parameter value="Database"/>
-              </Parameter>
-            </Parameter>
-          </Parameters>
-        </Service>
+        <Service type="IVsDataObjectSelector" implementationType="Npgsql.VisualStudio.NpgsqlObjectSelector"/>
       </Services>
     </RootType>
 
