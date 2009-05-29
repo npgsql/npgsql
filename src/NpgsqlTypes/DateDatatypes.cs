@@ -859,7 +859,7 @@ namespace NpgsqlTypes
 						default:
 							hours = int.Parse(parts[0]);
 							minutes = int.Parse(parts[1]);
-							seconds = decimal.Parse(parts[2]);
+							seconds = decimal.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
 							break;
 					}
                     if (isNegative)
@@ -1930,7 +1930,7 @@ namespace NpgsqlTypes
 					default:
 						hours = int.Parse(parts[0]);
 						minutes = int.Parse(parts[1]);
-						seconds = decimal.Parse(parts[2]);
+                        seconds = decimal.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
 						break;
 				}
 				if (hours < 0 || hours > 24 || minutes < 0 || minutes > 59 || seconds < 0m || seconds >= 60 ||
