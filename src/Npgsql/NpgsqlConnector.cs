@@ -968,13 +968,27 @@ namespace Npgsql
                     return paramValue;
                 }
             }
-            catch(NpgsqlException ne)
+            
+            /*
+             * In case of problems with the command above, we simply return null in order to 
+             * say we don't support it.
+             */
+              
+            catch(NpgsqlException e)
+            {
+                return null;
+            }
+            /*
+             * Original catch handler by Jon Hanna.
+             * 7.3 version doesn't support error code. Only 7.4+
+             
+             * catch(NpgsqlException ne)
             {
                 if(ne.Code == "42704")//unrecognized configuration parameter
                     return null;
                 else
                     throw;
-            }
+            }*/
         }
         private bool CheckStringConformanceRequirements()
         {
