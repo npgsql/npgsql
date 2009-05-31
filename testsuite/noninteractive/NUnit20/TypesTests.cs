@@ -241,6 +241,19 @@ namespace NpgsqlTests
             Assert.AreEqual("1 mon 2 days 03:04:05.006", new NpgsqlInterval(1, 2, 3, 4, 5, 6).ToString());
 
             Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
+
+            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
+            try
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
+                Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
+            }
+            finally
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
+            }
         }
 
         [Test]
@@ -320,6 +333,19 @@ namespace NpgsqlTests
             Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567890).ToString());
 
             Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
+
+            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
+            try
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
+                Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
+            }
+            finally
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
+            }
         }
 
         [Test]
@@ -366,6 +392,27 @@ namespace NpgsqlTests
             Assert.AreEqual(calendar.IsLeapYear(2009), date.IsLeapYear);
             Assert.AreEqual(dateTime.Month, date.Month);
             Assert.AreEqual(dateTime.Year, date.Year);
+        }
+
+        [Test]
+        public void NpgsqlDateToString()
+        {
+            Assert.AreEqual("2009-05-31", new NpgsqlDate(2009, 5, 31).ToString());
+
+            Assert.AreEqual("0001-05-07 BC", new NpgsqlDate(-1, 5, 7).ToString());
+
+            var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
+            try
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
+                Assert.AreEqual("2009-05-31", new NpgsqlDate(2009, 5, 31).ToString());
+            }
+            finally
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
+            }
         }
 
         [Test]
