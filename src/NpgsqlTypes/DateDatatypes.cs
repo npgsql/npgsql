@@ -949,7 +949,7 @@ namespace NpgsqlTypes
 				}
                 // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
                 decimal seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
-                sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######"));
+                sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
 
 			}
 			if (sb[sb.Length - 1] == ' ')
@@ -1889,7 +1889,7 @@ namespace NpgsqlTypes
             decimal seconds = _ticks / (decimal)NpgsqlInterval.TicksPerSecond - (_ticks / NpgsqlInterval.TicksPerMinute) * 60;
 			StringBuilder sb =
 				new StringBuilder(Hours.ToString("D2")).Append(':').Append(Minutes.ToString("D2")).Append(':').Append(
-                    seconds.ToString("0#.######"));
+                    seconds.ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
 			return sb.ToString();
 		}
 
