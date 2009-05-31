@@ -321,5 +321,125 @@ namespace NpgsqlTests
 
             Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
         }
+
+        [Test]
+        public void NpgsqlDateConstructors()
+        {
+            NpgsqlDate date;
+            DateTime dateTime;
+            System.Globalization.Calendar calendar = new System.Globalization.GregorianCalendar();
+
+            date = new NpgsqlDate();
+            Assert.AreEqual(1, date.Day);
+            Assert.AreEqual(DayOfWeek.Monday, date.DayOfWeek);
+            Assert.AreEqual(1, date.DayOfYear);
+            Assert.AreEqual(false, date.IsLeapYear);
+            Assert.AreEqual(1, date.Month);
+            Assert.AreEqual(1, date.Year);
+
+            dateTime = new DateTime(2009, 5, 31);
+            date = new NpgsqlDate(dateTime);
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(2009), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+
+            //Console.WriteLine(new DateTime(2009, 5, 31).Ticks);
+            //Console.WriteLine((new DateTime(2009, 5, 31) - new DateTime(1, 1, 1)).TotalDays);
+            // 2009-5-31
+            dateTime = new DateTime(633793248000000000); // ticks since 1 Jan 1
+            date = new NpgsqlDate(733557); // days since 1 Jan 1
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(2009), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+
+            // copy previous value.  should get same result
+            date = new NpgsqlDate(date);
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(2009), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+        }
+
+        [Test]
+        public void SpecialDates()
+        {
+            NpgsqlDate date;
+            DateTime dateTime;
+            System.Globalization.Calendar calendar = new System.Globalization.GregorianCalendar();
+
+            // a date after a leap year.
+            dateTime = new DateTime(2008, 5, 31);
+            date = new NpgsqlDate(dateTime);
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(2008), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+
+            // A date that is a leap year day.
+            dateTime = new DateTime(2000, 2, 29);
+            date = new NpgsqlDate(2000, 2, 29);
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(2000), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+
+            // A date that is not in a leap year.
+            dateTime = new DateTime(1900, 3, 1);
+            date = new NpgsqlDate(1900, 3, 1);
+            Assert.AreEqual(dateTime.Day, date.Day);
+            Assert.AreEqual(dateTime.DayOfWeek, date.DayOfWeek);
+            Assert.AreEqual(dateTime.DayOfYear, date.DayOfYear);
+            Assert.AreEqual(calendar.IsLeapYear(1900), date.IsLeapYear);
+            Assert.AreEqual(dateTime.Month, date.Month);
+            Assert.AreEqual(dateTime.Year, date.Year);
+
+            // a date after a leap year.
+            date = new NpgsqlDate(-1, 12, 31);
+            Assert.AreEqual(31, date.Day);
+            Assert.AreEqual(DayOfWeek.Sunday, date.DayOfWeek);
+            Assert.AreEqual(366, date.DayOfYear);
+            Assert.AreEqual(true, date.IsLeapYear);
+            Assert.AreEqual(12, date.Month);
+            Assert.AreEqual(-1, date.Year);
+        }
+
+        [Test]
+        public void NpgsqlDateMath()
+        {
+            NpgsqlDate date;
+
+            // add a day to the empty constructor
+            date = new NpgsqlDate() + new NpgsqlInterval(0, 1, 0);
+            Assert.AreEqual(2, date.Day);
+            Assert.AreEqual(DayOfWeek.Tuesday, date.DayOfWeek);
+            Assert.AreEqual(2, date.DayOfYear);
+            Assert.AreEqual(false, date.IsLeapYear);
+            Assert.AreEqual(1, date.Month);
+            Assert.AreEqual(1, date.Year);
+
+            // add a day the same value as the empty constructor
+            date = new NpgsqlDate(1, 1, 1) + new NpgsqlInterval(0, 1, 0);
+            Assert.AreEqual(2, date.Day);
+            Assert.AreEqual(DayOfWeek.Tuesday, date.DayOfWeek);
+            Assert.AreEqual(2, date.DayOfYear);
+            Assert.AreEqual(false, date.IsLeapYear);
+            Assert.AreEqual(1, date.Month);
+            Assert.AreEqual(1, date.Year);
+
+            NpgsqlInterval diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
+            Assert.AreEqual(new NpgsqlInterval(0, 1, 0), diff);
+        }
 	}
 }
