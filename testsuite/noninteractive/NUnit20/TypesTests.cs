@@ -166,14 +166,14 @@ namespace NpgsqlTests
             Assert.AreEqual(456, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(456789, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5));
+            test = new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval();
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(1, test.Days, "Days");
             Assert.AreEqual(2, test.Hours, "Hours");
             Assert.AreEqual(3, test.Minutes, "Minutes");
             Assert.AreEqual(4, test.Seconds, "Seconds");
             Assert.AreEqual(5, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(5000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlInterval(3, 2, 1234567890);
             Assert.AreEqual(3, test.Months, "Months");
@@ -200,7 +200,7 @@ namespace NpgsqlTests
             Assert.AreEqual(3, test.Minutes, "Minutes");
             Assert.AreEqual(4, test.Seconds, "Seconds");
             Assert.AreEqual(5, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(5000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlInterval(1, 2, 3, 4, 5, 6);
             Assert.AreEqual(1, test.Months, "Months");
@@ -209,7 +209,7 @@ namespace NpgsqlTests
             Assert.AreEqual(4, test.Minutes, "Minutes");
             Assert.AreEqual(5, test.Seconds, "Seconds");
             Assert.AreEqual(6, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(6000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7);
             Assert.AreEqual(14, test.Months, "Months");
@@ -218,20 +218,17 @@ namespace NpgsqlTests
             Assert.AreEqual(5, test.Minutes, "Minutes");
             Assert.AreEqual(6, test.Seconds, "Seconds");
             Assert.AreEqual(7, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(7000, test.Microseconds, "Microseconds");
         }
 
         [Test]
         public void NpgsqlIntervalToString()
         {
-            Console.WriteLine(new NpgsqlInterval(1, 2, 3, 4, 5, 6));
-            Console.WriteLine(new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7));
-
             Assert.AreEqual("00:00:00", new NpgsqlInterval().ToString());
 
-            Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567890));
+            Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567890).ToString());
 
-            Assert.AreEqual("1 day 2:3:4.005", new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).ToString());
+            Assert.AreEqual("1 day 02:03:04.005", new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
 
             Assert.AreEqual("3 mons 2 days 00:02:03.456789", new NpgsqlInterval(3, 2, 1234567890).ToString());
 
@@ -268,35 +265,35 @@ namespace NpgsqlTests
             Assert.AreEqual(2, test.Minutes, "Minutes");
             Assert.AreEqual(3, test.Seconds, "Seconds");
             Assert.AreEqual(4, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(4000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlTime(new NpgsqlTime(1, 2, 3, 4));
             Assert.AreEqual(1, test.Hours, "Hours");
             Assert.AreEqual(2, test.Minutes, "Minutes");
             Assert.AreEqual(3, test.Seconds, "Seconds");
-            Assert.AreEqual(4, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
+            Assert.AreEqual(4, test.Microseconds, "Microseconds");
 
             test = new NpgsqlTime(new TimeSpan(0, 1, 2, 3, 4));
             Assert.AreEqual(1, test.Hours, "Hours");
             Assert.AreEqual(2, test.Minutes, "Minutes");
             Assert.AreEqual(3, test.Seconds, "Seconds");
             Assert.AreEqual(4, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(4000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlTime(11, 45, 55.003m);
-            Assert.AreEqual(114, test.Hours, "Hours");
+            Assert.AreEqual(11, test.Hours, "Hours");
             Assert.AreEqual(45, test.Minutes, "Minutes");
             Assert.AreEqual(55, test.Seconds, "Seconds");
             Assert.AreEqual(3, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(3000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlTime(11, 45, 55.003);
-            Assert.AreEqual(114, test.Hours, "Hours");
+            Assert.AreEqual(11, test.Hours, "Hours");
             Assert.AreEqual(45, test.Minutes, "Minutes");
             Assert.AreEqual(55, test.Seconds, "Seconds");
             Assert.AreEqual(3, test.Milliseconds, "Milliseconds");
-            Assert.AreEqual(0, test.Microseconds, "Microseconds");
+            Assert.AreEqual(3000, test.Microseconds, "Microseconds");
 
             test = new NpgsqlTime(4, 38, 53);
             Assert.AreEqual(4, test.Hours, "Hours");
