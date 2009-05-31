@@ -228,6 +228,8 @@ namespace NpgsqlTests
 
             Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567890).ToString());
 
+            Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567891).ToString());
+
             Assert.AreEqual("1 day 02:03:04.005", new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
 
             Assert.AreEqual("3 mons 2 days 00:02:03.456789", new NpgsqlInterval(3, 2, 1234567890).ToString());
@@ -314,6 +316,10 @@ namespace NpgsqlTests
         public void NpgsqlTimeToString()
         {
             Assert.AreEqual("11:45:55.003", new NpgsqlTime(11, 45, 55.003m).ToString());
+
+            Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567890).ToString());
+
+            Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
         }
 	}
 }
