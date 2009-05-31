@@ -947,16 +947,10 @@ namespace NpgsqlTypes
 				{
 					sb.Append('+');
 				}
-				sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(Seconds).ToString("D2"));
-				long remainingTicks = Math.Abs(Ticks)%TicksPerSecond;
-				if (remainingTicks != 0)
-				{
-					while (remainingTicks%10 == 0)
-					{
-						remainingTicks /= 10;
-					}
-					sb.Append('.').Append(remainingTicks);
-				}
+                // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
+                decimal seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
+                sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######"));
+
 			}
 			if (sb[sb.Length - 1] == ' ')
 			{
@@ -1890,19 +1884,12 @@ namespace NpgsqlTypes
 		}
 
 		public override string ToString()
-		{
+        {
+            // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
+            decimal seconds = _ticks / (decimal)NpgsqlInterval.TicksPerSecond - (_ticks / NpgsqlInterval.TicksPerMinute) * 60;
 			StringBuilder sb =
 				new StringBuilder(Hours.ToString("D2")).Append(':').Append(Minutes.ToString("D2")).Append(':').Append(
-					Seconds.ToString("D2"));
-			long remainingTicks = Math.Abs(Ticks)%NpgsqlInterval.TicksPerSecond;
-			if (remainingTicks != 0)
-			{
-				while (remainingTicks%10 == 0)
-				{
-					remainingTicks /= 10;
-				}
-				sb.Append('.').Append(remainingTicks);
-			}
+                    seconds.ToString("0#.######"));
 			return sb.ToString();
 		}
 
