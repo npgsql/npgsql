@@ -198,7 +198,7 @@ namespace NpgsqlTypes
 		/// <param name="seconds">Number of seconds.</param>
 		/// <param name="milliseconds">Number of milliseconds.</param>
 		public NpgsqlInterval(int days, int hours, int minutes, int seconds, int milliseconds)
-			: this(0, days, new TimeSpan(hours, minutes, seconds, milliseconds).Ticks)
+			: this(0, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
 		{
 		}
 
@@ -213,7 +213,7 @@ namespace NpgsqlTypes
 		/// <param name="seconds">Number of seconds.</param>
 		/// <param name="milliseconds">Number of milliseconds.</param>
 		public NpgsqlInterval(int months, int days, int hours, int minutes, int seconds, int milliseconds)
-			: this(months, days, new TimeSpan(hours, minutes, seconds, milliseconds).Ticks)
+			: this(months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
 		{
 		}
 
@@ -230,7 +230,7 @@ namespace NpgsqlTypes
 		/// <param name="seconds">Number of seconds.</param>
 		/// <param name="milliseconds">Number of milliseconds.</param>
 		public NpgsqlInterval(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds)
-			: this(years*12 + months, days, new TimeSpan(hours, minutes, seconds, milliseconds).Ticks)
+			: this(years*12 + months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
 		{
 		}
 
@@ -293,7 +293,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Microseconds
 		{
-			get { return (int) (_ticks/10)%1000000; }
+			get { return (int) ((_ticks/10)%1000000); }
 		}
 
 		/// <summary>
@@ -1825,7 +1825,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Microseconds
 		{
-			get { return (int) (_ticks/10)%1000000; }
+			get { return (int) ((_ticks/10)%1000000); }
 		}
 
 		/// <summary>
