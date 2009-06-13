@@ -66,6 +66,7 @@ namespace NpgsqlTypes
 		Xml,
 		Oidvector,
 		Interval,
-		TimeTZ
+		TimeTZ,
+        Name
 	}
 }

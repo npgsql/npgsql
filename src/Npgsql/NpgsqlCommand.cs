@@ -1118,14 +1118,15 @@ namespace Npgsql
             NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection);
 
             c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Name));
 
+            
             c.Parameters[0].Value = parameterTypes.ToString();
             c.Parameters[1].Value = procedureName;
 
             if (schemaName != null && schemaName.Length > 0)
             {
-                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Name));
                 c.Parameters[2].Value = schemaName;
             }
 
@@ -1194,9 +1195,9 @@ namespace Npgsql
 
             using (NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection))
             {
-                c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Text));
+                c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Name));
                 c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Name));
 
                 c.Parameters[0].Value = ReturnType;
                 c.Parameters[1].Value = parameterTypes.ToString();
@@ -1204,7 +1205,7 @@ namespace Npgsql
 
                 if (schemaName != null && schemaName.Length > 0)
                 {
-                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
+                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Name));
                     c.Parameters[3].Value = schemaName;
                 }
 

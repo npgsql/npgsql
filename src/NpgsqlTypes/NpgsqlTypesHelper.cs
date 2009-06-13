@@ -251,6 +251,8 @@ namespace NpgsqlTypes
 			NpgsqlNativeTypeMapping nativeTypeMapping = new NpgsqlNativeTypeMapping();
 
 
+            nativeTypeMapping.AddType("name", NpgsqlDbType.Name, DbType.String, true, null);
+
 			nativeTypeMapping.AddType("oidvector", NpgsqlDbType.Oidvector, DbType.String, true, null);
 
 			// Conflicting types should have mapped first the non default mappings.
@@ -403,7 +405,7 @@ namespace NpgsqlTypes
 
 		private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes)
 		{
-			yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
 			yield return new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
@@ -417,7 +419,7 @@ namespace NpgsqlTypes
 
 			yield return new NpgsqlBackendTypeInfo(0, "text", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
-			yield return new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Text, DbType.String, typeof (String), null);
+			yield return new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Name, DbType.String, typeof (String), null);
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof (Byte[]),
