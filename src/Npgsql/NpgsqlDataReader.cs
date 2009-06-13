@@ -112,7 +112,7 @@ namespace Npgsql
 		public override Int32 FieldCount
 		{
 			get { 
-                    if (_connection.ConnectionStringValues.Compatible <= Npgsql205)
+                    if (_connector.CompatVersion <= Npgsql205)
                         return CurrentDescription == null ? -1 : CurrentDescription.NumFields; 
                     else
                         // We read msdn documentation and bug report #1010649 that the common return value is 0.
