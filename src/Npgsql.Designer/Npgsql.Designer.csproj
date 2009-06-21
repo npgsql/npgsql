@@ -10,8 +10,8 @@
     <RootNamespace>Npgsql.Designer</RootNamespace>
     <AssemblyName>Npgsql.Designer</AssemblyName>
     <SignAssembly>false</SignAssembly>
-    <RegisterOutputPackage>false</RegisterOutputPackage>
-    <RegisterWithCodebase>false</RegisterWithCodebase>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>-->
+    <!--<RegisterWithCodebase>false</RegisterWithCodebase>-->
     <GeneratePkgDefFile>false</GeneratePkgDefFile>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -31,9 +31,9 @@
     <FileAlignment>512</FileAlignment>
     <PlatformTarget>x86</PlatformTarget>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <RegisterOutputPackage>false</RegisterOutputPackage>
-    <GeneratePkgDefFile>false</GeneratePkgDefFile>
-    <RegisterWithCodebase>false</RegisterWithCodebase>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>-->
+    <!--<GeneratePkgDefFile>false</GeneratePkgDefFile>-->
+    <!--<RegisterWithCodebase>false</RegisterWithCodebase>-->
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -47,9 +47,9 @@
     <FileAlignment>512</FileAlignment>
     <PlatformTarget>x86</PlatformTarget>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <RegisterOutputPackage>false</RegisterOutputPackage>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>
     <RegisterWithCodebase>false</RegisterWithCodebase>
-    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>-->
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
