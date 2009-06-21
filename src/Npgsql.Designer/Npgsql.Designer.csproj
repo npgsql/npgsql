@@ -162,19 +162,19 @@
       <DependentUpon>VSPackage.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-  <ItemGroup>
+  <!--<ItemGroup>
     <VSCTCompile Include="PkgCmd.vsct">
       <ResourceName>1000</ResourceName>
     </VSCTCompile>
-  </ItemGroup>
+  </ItemGroup>-->
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlDataViewSupport2008.xml" />
-    <EmbeddedResource Include="VSPackage.resx">
+    <!--<EmbeddedResource Include="VSPackage.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>VSPackage.Designer.cs</LastGenOutput>
       <MergeWithCTO>true</MergeWithCTO>
       <SubType>Designer</SubType>
-    </EmbeddedResource>
+    </EmbeddedResource>-->
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="ChangePasswordDialog.resx">
