@@ -97,7 +97,7 @@ namespace Npgsql.SqlGenerators
                     }
                     break;
                 case PrimitiveTypeKind.DateTime:
-                    sqlText.AppendFormat("TIMESTAMP '{0:s}'", _value);
+                    sqlText.AppendFormat("TIMESTAMP '{0:o}'", _value);
                     break;
                 case PrimitiveTypeKind.DateTimeOffset:
                     sqlText.AppendFormat("TIMESTAMP WITH TIME ZONE '{0:o}'", _value);
@@ -681,6 +681,83 @@ namespace Npgsql.SqlGenerators
             if (wrapLeft)
                 sqlText.Append(") ");
             sqlText.Append(_booleanOperator);
+            if (wrapRight)
+                sqlText.Append(" (");
+            _right.WriteSql(sqlText);
+            if (wrapRight)
+                sqlText.Append(")");
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class NegatableBooleanExpression : NegatableExpression
+    {
+        private DbExpressionKind _booleanOperator;
+        private VisitedExpression _left;
+        private VisitedExpression _right;
+
+        public NegatableBooleanExpression(DbExpressionKind booleanOperator, VisitedExpression left, VisitedExpression right)
+        {
+            _booleanOperator = booleanOperator;
+            _left = left;
+            _right = right;
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
+            bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
+            if (wrapLeft)
+                sqlText.Append("(");
+            _left.WriteSql(sqlText);
+            if (wrapLeft)
+                sqlText.Append(") ");
+            switch (_booleanOperator)
+            {
+                case DbExpressionKind.Equals:
+                    if (Negated)
+                        sqlText.Append("!=");
+                    else
+                        sqlText.Append("=");
+                    break;
+                case DbExpressionKind.GreaterThan:
+                    if (Negated)
+                        sqlText.Append("<=");
+                    else
+                        sqlText.Append(">");
+                    break;
+                case DbExpressionKind.GreaterThanOrEquals:
+                    if (Negated)
+                        sqlText.Append("<");
+                    else
+                        sqlText.Append(">=");
+                    break;
+                case DbExpressionKind.LessThan:
+                    if (Negated)
+                        sqlText.Append(">=");
+                    else
+                        sqlText.Append("<");
+                    break;
+                case DbExpressionKind.LessThanOrEquals:
+                    if (Negated)
+                        sqlText.Append(">");
+                    else
+                        sqlText.Append("<=");
+                    break;
+                case DbExpressionKind.Like:
+                    if (Negated)
+                        sqlText.Append(" NOT");
+                    sqlText.Append(" LIKE ");
+                    break;
+                case DbExpressionKind.NotEquals:
+                    if (Negated)
+                        sqlText.Append("=");
+                    else
+                        sqlText.Append("!=");
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
             if (wrapRight)
                 sqlText.Append(" (");
             _right.WriteSql(sqlText);
