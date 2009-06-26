@@ -557,34 +557,22 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbComparisonExpression expression)
         {
-            string comparisonOperator;
+            DbExpressionKind comparisonOperator;
             switch (expression.ExpressionKind)
             {
                 case DbExpressionKind.Equals:
-                    comparisonOperator = "=";
-                    break;
                 case DbExpressionKind.GreaterThan:
-                    comparisonOperator = ">";
-                    break;
                 case DbExpressionKind.GreaterThanOrEquals:
-                    comparisonOperator = ">=";
-                    break;
                 case DbExpressionKind.LessThan:
-                    comparisonOperator = "<";
-                    break;
                 case DbExpressionKind.LessThanOrEquals:
-                    comparisonOperator = "<=";
-                    break;
                 case DbExpressionKind.Like:
-                    comparisonOperator = " LIKE ";
-                    break;
                 case DbExpressionKind.NotEquals:
-                    comparisonOperator = "!=";
+                    comparisonOperator = expression.ExpressionKind;
                     break;
                 default:
                     throw new NotSupportedException();
             }
-            return new BooleanExpression(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
+            return new NegatableBooleanExpression(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbCastExpression expression)
