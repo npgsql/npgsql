@@ -89,6 +89,7 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             NpgsqlNativeTypeInfo typeInfo;
+            System.Globalization.NumberFormatInfo ni = NpgsqlNativeTypeInfo.NumberFormat;
             switch (_primitiveType)
             {
                 case PrimitiveTypeKind.Binary:
@@ -97,28 +98,28 @@ namespace Npgsql.SqlGenerators
                     }
                     break;
                 case PrimitiveTypeKind.DateTime:
-                    sqlText.AppendFormat("TIMESTAMP '{0:o}'", _value);
+                    sqlText.AppendFormat(ni, "TIMESTAMP '{0:o}'", _value);
                     break;
                 case PrimitiveTypeKind.DateTimeOffset:
-                    sqlText.AppendFormat("TIMESTAMP WITH TIME ZONE '{0:o}'", _value);
+                    sqlText.AppendFormat(ni, "TIMESTAMP WITH TIME ZONE '{0:o}'", _value);
                     break;
                 case PrimitiveTypeKind.Decimal:
-                    sqlText.AppendFormat("cast({0} as numeric)", _value);
+                    sqlText.AppendFormat(ni, "cast({0} as numeric)", _value);
                     break;
                 case PrimitiveTypeKind.Double:
-                    sqlText.AppendFormat("cast({0} as float8)", _value);
+                    sqlText.AppendFormat(ni, "cast({0} as float8)", _value);
                     break;
                 case PrimitiveTypeKind.Int16:
-                    sqlText.AppendFormat("cast({0} as int2)", _value);
+                    sqlText.AppendFormat(ni, "cast({0} as int2)", _value);
                     break;
                 case PrimitiveTypeKind.Int32:
-                    sqlText.AppendFormat("{0}", _value);
+                    sqlText.AppendFormat(ni, "{0}", _value);
                     break;
                 case PrimitiveTypeKind.Int64:
-                    sqlText.AppendFormat("cast({0} as int8)", _value);
+                    sqlText.AppendFormat(ni, "cast({0} as int8)", _value);
                     break;
                 case PrimitiveTypeKind.Single:
-                    sqlText.AppendFormat("cast({0} as float4)", _value);
+                    sqlText.AppendFormat(ni, "cast({0} as float4)", _value);
                     break;
                 case PrimitiveTypeKind.Boolean:
                 case PrimitiveTypeKind.Guid:
@@ -127,7 +128,7 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(typeInfo.ConvertToBackend(_value, false));
                     break;
                 case PrimitiveTypeKind.Time:
-                    sqlText.AppendFormat("TIME '{0:T}'", _value);
+                    sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
                     break;
                 case PrimitiveTypeKind.Byte:
                 case PrimitiveTypeKind.SByte:
