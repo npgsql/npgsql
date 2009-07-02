@@ -214,7 +214,9 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbNullExpression expression)
         {
-            return new LiteralExpression(" NULL ");
+            // must provide a NULL of the correct type
+            // this is necessary for certain types of union queries.
+            return new CastExpression(new LiteralExpression("NULL"), GetDbType(expression.ResultType.EdmType));
         }
 
         public override VisitedExpression Visit(DbNotExpression expression)
