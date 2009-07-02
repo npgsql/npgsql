@@ -85,6 +85,8 @@ namespace Npgsql
 
         private Boolean functionReturnsRefcursor = false; // Functions don't return refcursor by default.
 
+        private Boolean commandTimeoutSet = false;
+
 
         // Constructors
 
@@ -200,6 +202,9 @@ namespace Npgsql
 
                 timeout = value;
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandTimeout", value);
+
+                commandTimeoutSet = true;
+
             }
         }
 
@@ -1533,6 +1538,9 @@ namespace Npgsql
 
         private void SetCommandTimeout()
         {
+            if (commandTimeoutSet)
+                return;
+
             if (Connection != null)
             {
                 timeout = Connection.CommandTimeout;
