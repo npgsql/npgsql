@@ -1,5 +1,5 @@
-﻿// CommandTests.cs created with MonoDevelop
-// User: fxjr at 11:40 PM 4/9/2008
+// CommandTests.cs created with MonoDevelop
+// User: fxjr at 11:40 PM�4/9/2008
 //
 // To change standard headers go to Edit->Preferences->Coding->Standard Headers
 //
@@ -28,6 +28,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
+
 using Npgsql;
 using NUnit.Framework;
 using NUnit.Core;
@@ -242,7 +243,7 @@ namespace NpgsqlTests
             Assert.AreEqual(5, result);
             
             
-            //reader.FieldCount
+           //reader.FieldCount
         }
         
         
@@ -513,8 +514,7 @@ namespace NpgsqlTests
 
             NpgsqlDataReader dr = command.ExecuteReader();
             Assert.IsNotNull(dr);
-        }
-        
+        }       
 
         [Test]
         public void PreparedStatementWithParameters()
@@ -990,7 +990,7 @@ namespace NpgsqlTests
             command.Parameters[0].Value = dt;
 
             command.ExecuteScalar();
-        }
+       }
 
 
         [Test]
@@ -2372,7 +2372,7 @@ namespace NpgsqlTests
             command.ExecuteNonQuery();
             
             command = new NpgsqlCommand("select field_bit from tablek where field_serial = (select max(field_serial) from tablek);", TheConnection);
-            
+
             Object result = command.ExecuteScalar();
             
             Assert.AreEqual(true, result);
@@ -2626,7 +2626,7 @@ connection.Open();*/
            //sqlParam.DbType = DbType.Object;
            command.Parameters.Add(sqlParam);
            
-           
+          
            command.ExecuteScalar();
         }
         
@@ -2846,7 +2846,7 @@ connection.Open();*/
         cmd.Parameters.Add(paramP0);
             cmd.Prepare();    // This cause a runtime exception // Tested with PostgreSQL 8.3 //
              
-            
+           
             
         }
         
@@ -3118,6 +3118,22 @@ connection.Open();*/
                 cmd.Prepare();
                 cmd.ExecuteNonQuery();
             }
+
+
+
+        }
+
+        [Test]
+        public void CommandTimeoutReset()
+        {
+
+            NpgsqlCommand cmd = new NpgsqlCommand();
+
+            cmd.CommandTimeout = Int32.MaxValue;
+
+            cmd.Connection = TheConnection;
+
+            Assert.AreEqual(Int32.MaxValue, cmd.CommandTimeout);
 
 
 
