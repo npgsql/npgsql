@@ -992,6 +992,34 @@ namespace NpgsqlTests
             
         }
         
+        
+        [Test]
+        public void TestOutParameter2()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("testoutparameter2", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+            
+            command.Parameters.Add(new NpgsqlParameter("@x", NpgsqlDbType.Integer)).Value = 1;
+            command.Parameters.Add(new NpgsqlParameter("@y", NpgsqlDbType.Integer)).Value = 2;
+            command.Parameters.Add(new NpgsqlParameter("@sum", NpgsqlDbType.Integer));
+            command.Parameters.Add(new NpgsqlParameter("@product", NpgsqlDbType.Refcursor));
+            
+            command.Parameters["@sum"].Direction = ParameterDirection.Output;
+            command.Parameters["@product"].Direction = ParameterDirection.Output;
+            
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                
+                Assert.AreEqual(3, command.Parameters["@sum"].Value);
+                Assert.AreEqual(2, command.Parameters["@product"].Value);
+                
+                
+           
+            }
+            
+        }
+
         [Test]
         public void GetValueWithNullFields()
         {
@@ -999,19 +1027,20 @@ namespace NpgsqlTests
             using (NpgsqlDataReader dr = command.ExecuteReader())
             {
                 dr.Read();
-                
+
                 Boolean result = dr.IsDBNull(2);
 
                 Assert.IsTrue(result);
-                
-                
-           
+
+
+
             }
-            
-            
-            
-            
+
+
+
+
         }
+
         
         [Test]
         public void HasRowsGetValue()
