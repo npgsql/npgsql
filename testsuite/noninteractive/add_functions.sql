@@ -42,7 +42,7 @@ begin
 
 t := 0;
 
-while t < 1000000 loop
+while t < 100000000 loop
 t := t + 1;
 end loop;
 
@@ -92,3 +92,6 @@ $BODY$
 language 'plpgsql' volatile called on null input security invoker;
 
 create or replace function testoutparameter(x int, y int, out sum int, out product int) returns record as 'select $1 + $2 , $1 * $2' language 'sql' ;
+
+create or replace function testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';
+
