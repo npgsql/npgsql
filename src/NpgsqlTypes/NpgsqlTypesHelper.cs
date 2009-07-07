@@ -821,6 +821,11 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 			ni.NumberDecimalDigits = 15;
 		}
 
+        internal static NumberFormatInfo NumberFormat
+        {
+            get { return ni; }
+        }
+
 		/// <summary>
 		/// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
 		/// </summary>
