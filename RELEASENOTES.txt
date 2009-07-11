@@ -8,12 +8,28 @@
       [#1010666] CommandTimeout does gets reset to 20 when a Connection object is assigned to it
       [#1010665] Entity Framework Self Referencing Table Bug
       [#1010663] Npgsql 2.0.5 entity framework: cast of numeric values in german culture enviroments fails
+      
       [#1010652] Command checker for output vars is using not performing query
+      
+      [#1010635] Error trying to connect to Postgresql 7.3. Fixed. Now, Npgsql correctly handles standard_conforming_strings. Thanks Jon Hanna for feedback and Juan Carlos Segui for bug report.
+      Use period for decimal seperator between seconds and milliseconds.  Reported by several people. (Josh Cooley)
+      Changed mechanism used to calculate fractional seconds so they get represented correctly in string format. (Josh Cooley)
+      Fix bugs constructor and property bugs in NpgsqlInterval and NpgsqlTime as reported by Otto H. (Josh Cooley)
+      Force InvariantCulture for fractional seconds in ToString (thanks to Otto H) (Josh Cooley)
+      [#1010649] DataReader.FieldCount returning -1. Fixed. Thanks Dario Quintana for bug report.
+      Give type to NULL literals.  See message 1005019.  Bug reported by Eric Adv. (Josh Cooley)
+      [#1010663] - Fix decimal character for decimal numbers.
 
 
       This build should fix the problems people is having with long running queries being cancelled even when the developer sets a high timeout.
       Thanks Adriaan, Npgsql now performs function checks much faster on setups which have too many functions as now Npgsql sends a query which allows server to use indexes to find the function.
       Josh Cooley added fixes to some culture sensible queries. He also fixed problems with unions and NULL values in columns
+
+      Visual Studio Designer support (not working right now)
+      Josh Cooley started to add visual studio designer support to Npgsql. It is not working yet. We are using excellent Robert Simpson's sqlite provider code as a base to ours. Thank you Robert!
+      
+
+
 
 
 2009-05-06
