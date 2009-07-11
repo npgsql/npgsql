@@ -1,20 +1,186 @@
-2009-05-06 00:36  jbcooley
+2009-07-11	jbcooley
+	* src/Npgsql/AssemblyInfo.cs 1.22:
+		update the version number for build 2.0.6.
 
-	* src/: policy.2.0.Npgsql.config, Npgsql/AssemblyInfo.cs: Updated
-	  for 2.0.5 release.
+2009-07-11	fxjr
+	* RELEASENOTES.txt 1.16:
+		
+		Added release notes for 2.0.6 release
 
-2009-05-06 00:30  fxjr
+2009-07-06	fxjr
+	* testsuite/noninteractive/add_functions.sql 1.4:
+		
+		
+		Changed value of busy loop so it can stay longer.
+		
+		Added outputparameter test function
 
-	* src/Npgsql/NpgsqlCommand.cs:
-	  Fixed line ending inconsistencies.
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.28:
+		
+		
+		Added tests for CommandTimeout resetting.
 
-2009-05-06 00:28  fxjr
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs 1.13:
+		
+		Added tests for output parameters
 
-	* src/Npgsql/NpgsqlQuery.cs:
-	  [#1010567] failed LargeObject operation causes
-	  NotSupportedException. This patch may also work as a workaround
-	  for any seek exception problem. We still have to investigate why
-	  Npgsql is letting behind data in the stream.
+2009-07-02	jbcooley
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.14:
+		#1010663 - Fix decimal character for decimal numbers.
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs 1.24:
+		Give type to NULL literals.  See message 1005019.  Bug reported 
+		by Eric Adv.
+
+2009-07-02	fxjr
+	* src/Npgsql/NpgsqlCommand.cs 1.42:
+		
+		[#1010666] CommandTimeout does gets reset to 20 when a Connection object is assigned to it. Now, if a command timeout is set to NpgsqlCommand, it will respect this timeout regardless of the value set in connection string. Thanks Debabrata Das for testcase.
+
+2009-06-26	jbcooley
+	* src/Npgsql/SqlGenerators/VisitedExpression.cs 1.13:
+		simplified boolean expressions when a not is applied.  Also 
+		added subsecond precision for timestamps. (reported by Ibaidul 
+		Sahib)
+
+	* src/Npgsql/SqlGenerators/SqlBaseGenerator.cs 1.23:
+		simplified boolean expressions when a not is applied
+
+2009-06-21	jbcooley
+	* src/Npgsql.Designer/AssemblyInfo.cs 1.1:
+	* src/Npgsql.Designer/ChangePasswordDialog.Designer.cs 1.1:
+	* src/Npgsql.Designer/ChangePasswordDialog.cs 1.1:
+	* src/Npgsql.Designer/ChangePasswordDialog.resx 1.1:
+	* src/Npgsql.Designer/ChangeScriptDialog.Designer.cs 1.1:
+	* src/Npgsql.Designer/ChangeScriptDialog.cs 1.1:
+	* src/Npgsql.Designer/ChangeScriptDialog.resx 1.1:
+	* src/Npgsql.Designer/CtcComponents/Guids.h 1.1:
+	* src/Npgsql.Designer/CtcComponents/PkgCmd.ctc 1.1:
+	* src/Npgsql.Designer/CtcComponents/PkgCmdID.h 1.1:
+	* src/Npgsql.Designer/Design/Check.cs 1.1:
+	* src/Npgsql.Designer/Design/Column.cs 1.1:
+	* src/Npgsql.Designer/Design/ForeignKey.cs 1.1:
+	* src/Npgsql.Designer/Design/Index.cs 1.1:
+	* src/Npgsql.Designer/Design/PrimaryKey.cs 1.1:
+	* src/Npgsql.Designer/Design/SimpleTokenizer.cs 1.1:
+	* src/Npgsql.Designer/Design/Table.cs 1.1:
+	* src/Npgsql.Designer/Design/Trigger.cs 1.1:
+	* src/Npgsql.Designer/Design/Unique.cs 1.1:
+	* src/Npgsql.Designer/Design/View.cs 1.1:
+	* src/Npgsql.Designer/Editors/AutoCompleteColumn.cs 1.1:
+	* src/Npgsql.Designer/Editors/TableDesignerDoc.Designer.cs 1.1:
+	* src/Npgsql.Designer/Editors/TableDesignerDoc.cs 1.1:
+	* src/Npgsql.Designer/Editors/TableDesignerDoc.resx 1.1:
+	* src/Npgsql.Designer/Editors/ViewDesignerDoc.Designer.cs 1.1:
+	* src/Npgsql.Designer/Editors/ViewDesignerDoc.cs 1.1:
+	* src/Npgsql.Designer/Editors/ViewDesignerDoc.resx 1.1:
+	* src/Npgsql.Designer/Npgsql.Designer.csproj 1.1:
+	* src/Npgsql.Designer/Npgsql.Designer.sln 1.1:
+	* src/Npgsql.Designer/NpgsqlAdapterDesigner.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlCommandDesigner.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlCommandHandler.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlConnectionProperties.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlConnectionStringEditor.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlConnectionUIControl.Designer.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlConnectionUIControl.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlConnectionUIControl.resx 1.1:
+	* src/Npgsql.Designer/NpgsqlDataAdapterToolboxItem.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataConnectionSupport.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataObjectIdentifierResolver.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataObjectSupport.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataObjectSupport.xml 1.1:
+	* src/Npgsql.Designer/NpgsqlDataSourceInformation.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataViewSupport.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlDataViewSupport2005.xml 1.1:
+	* src/Npgsql.Designer/NpgsqlDataViewSupport2008.xml 1.1:
+	* src/Npgsql.Designer/NpgsqlPackage.cs 1.1:
+	* src/Npgsql.Designer/NpgsqlProviderObjectFactory.cs 1.1:
+	* src/Npgsql.Designer/PkgCmd.vsct 1.1:
+	* src/Npgsql.Designer/Pkgcmd.h 1.1:
+	* src/Npgsql.Designer/Resources/ToolboxItems.txt 1.1:
+	* src/Npgsql.Designer/Resources/info.png 1.1:
+	* src/Npgsql.Designer/SQLiteConnectionUIControl.resources 1.1:
+	* src/Npgsql.Designer/TableNameDialog.Designer.cs 1.1:
+	* src/Npgsql.Designer/TableNameDialog.cs 1.1:
+	* src/Npgsql.Designer/TableNameDialog.resx 1.1:
+	* src/Npgsql.Designer/VSPackage.Designer.cs 1.1:
+	* src/Npgsql.Designer/VSPackage.resx 1.1:
+		convert SQLite designer to run against Npgsql
+
+	* src/Npgsql.Designer/Npgsql.Designer.csproj 1.2:
+		removed package files.
+
+	* src/Npgsql.Designer/Npgsql.Designer.csproj 1.3:
+		removed more vs sdk dependencies.
+
+2009-06-21	fxjr
+	* src/Npgsql.Designer/Npgsql.Designer.csproj 1.4:
+		
+		Removed the VsSDKTargets project dependency line which completes Josh's modification to make it load with vs.net express.
+
+2009-06-13	fxjr
+	* src/Npgsql/NpgsqlCommand.cs 1.41:
+	* src/NpgsqlTypes/NpgsqlDbType.cs 1.14:
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.28:
+		
+		[#1010652] Command checker for output vars is using not performing query.
+		Npgsql was adding a cast which was causing the query analyzer to use a full table scan instead of using the index. Now, Npgsql adds the proper cast. Thanks Adriaan van Kekem for analyzes and bug report.
+
+	* src/Npgsql/NpgsqlDataReader.cs 1.21:
+		
+		Fixed previous patch as it breaks when using an internal NpgsqlCommand which receives only a Connector in its constructor as the CheckConformingStrings method does. This is caused by not having an NpgsqlConnection available when using this internal constructor. Now it uses the Connector object instead of NpgsqlConnection to get the compatibility version check.
+
+2009-06-09	fxjr
+	* src/Npgsql/NpgsqlDataReader.cs 1.20:
+		[#1010649] DataReader.FieldCount returning -1. Fixed. Thanks 
+		Dario Quintana for bug report.
+
+2009-05-31	jbcooley
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.3:
+		fix bugs in tests for NpgsqlInterval and NpgsqlTime
+
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.4:
+		New tests to represent precision in ToString().
+
+	* src/NpgsqlTypes/DateDatatypes.cs 1.8:
+		Force InvariantCulture for fractional seconds in ToString (
+		thanks to Otto H)
+
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.5:
+		NpgsqlDate tests.
+
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.6:
+		Test ToString in other cultures (thanks to Otto H)
+
+	* src/NpgsqlTypes/DateDatatypes.cs 1.6:
+		Fix bugs constructor and property bugs in NpgsqlInterval and 
+		NpgsqlTime as reported by Otto H.
+
+	* src/NpgsqlTypes/DateDatatypes.cs 1.7:
+		Changed mechanism used to calculate fractional seconds so they 
+		get represented correctly in string format.
+
+2009-05-29	jbcooley
+	* src/NpgsqlTypes/DateDatatypes.cs 1.5:
+		Use period for decimal seperator between seconds and 
+		milliseconds.  Reported by several people.
+
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.2:
+		Many new tests taken from bugs reported by Otto H.
+
+2009-05-29	fxjr
+	* src/Npgsql/NpgsqlConnector.cs 1.29:
+		
+		[#1010635] Error trying to connect to Postgresql 7.3. Fixed. Now, Npgsql correctly handles standard_conforming_strings. Thanks Jon Hanna for feedback and Juan Carlos Segui for bug report.
+
+2009-05-23	jbcooley
+	* src/Npgsql.VisualStudio2008.csproj 1.2:
+	* src/VisualStudio/NpgsqlDataObjects.xml 1.2:
+	* src/VisualStudio/NpgsqlObjectSelector.cs 1.1:
+		incremental changes towards DDEX support
+
+	* src/Npgsql2008.sln 1.6:
+		Added DDEX solution
 
 2009-05-05 22:00  jbcooley
 
