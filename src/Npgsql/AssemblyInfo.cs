@@ -56,4 +56,4 @@ using System.Resources;
 
 // added .1 for cvs version.
 // remove and increment for build
-[assembly : AssemblyVersion("2.0.5.0")]
+[assembly : AssemblyVersion("2.0.6.0")]
