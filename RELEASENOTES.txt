@@ -1,3 +1,21 @@
+
+2009-07-11
+
+    Npgsql 2.0.6
+    
+    Bugs fixed:
+    
+      [#1010666] CommandTimeout does gets reset to 20 when a Connection object is assigned to it
+      [#1010665] Entity Framework Self Referencing Table Bug
+      [#1010663] Npgsql 2.0.5 entity framework: cast of numeric values in german culture enviroments fails
+      [#1010652] Command checker for output vars is using not performing query
+
+
+      This build should fix the problems people is having with long running queries being cancelled even when the developer sets a high timeout.
+      Thanks Adriaan, Npgsql now performs function checks much faster on setups which have too many functions as now Npgsql sends a query which allows server to use indexes to find the function.
+      Josh Cooley added fixes to some culture sensible queries. He also fixed problems with unions and NULL values in columns
+
+
 2009-05-06
 
     Npgsql 2.0.5
