@@ -1,11 +1,6 @@
 2009-07-11	jbcooley
-	* src/Npgsql/AssemblyInfo.cs 1.22:
-		update the version number for build 2.0.6.
-
-2009-07-11	fxjr
-	* RELEASENOTES.txt 1.16:
-		
-		Added release notes for 2.0.6 release
+	* ChangeLog 1.15:
+		updated for release 2.0.6
 
 2009-07-06	fxjr
 	* testsuite/noninteractive/add_functions.sql 1.4:
