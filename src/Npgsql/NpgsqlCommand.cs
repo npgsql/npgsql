@@ -27,6 +27,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -56,7 +57,7 @@ namespace Npgsql
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
+        private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline|RegexOptions.Compiled);
         private static readonly Regex POSTGRES_TEXT_ARRAY = new Regex(@"^array\[+'", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private NpgsqlConnection connection;
@@ -928,12 +929,23 @@ namespace Npgsql
             // If parenthesis don't need to be added, they were added by user with parameter names. Replace them.
             if (!addProcedureParenthesis)
             {
+                Dictionary<string, NpgsqlParameter> parameterIndex = new Dictionary<string, NpgsqlParameter>(parameters.Count);
+                foreach (NpgsqlParameter parameter in parameters)
+                    parameterIndex[parameter.CleanName] = parameter;
+
                 StringBuilder sb = new StringBuilder();
                 foreach (String s in parameterReplace.Split(result.ToString()))
                     if (s.Length != 0)
                     {
-                        NpgsqlParameter p;
-                        if ((s[0] == ':' || s[0] == '@') && Parameters.TryGetValue(s, out p))
+                        NpgsqlParameter p = null;
+                        string parameterName = s;
+                        if ((parameterName[0] == ':') || (parameterName[0] == '@'))
+                        {
+                            parameterName = parameterName.Remove(0, 1);
+                            parameterIndex.TryGetValue(parameterName, out p);
+                        }
+
+                        if (p != null)
                         {
                             // It's a parameter. Lets handle it.
                             switch(p.Direction)
