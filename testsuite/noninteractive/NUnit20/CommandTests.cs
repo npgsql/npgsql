@@ -3139,6 +3139,23 @@ connection.Open();*/
 
         }
         
+        [Test]
+        public void SelectInfinityValueDateDataType()
+        {
+            IDbCommand cmd = TheConnection.CreateCommand();
+            cmd.CommandText = "create temp table test (dt date); insert into test values ('-infinity'::date);select * from test";
+            var dr = cmd.ExecuteReader();
+            dr.Read();
+           // InvalidCastException was unhandled
+          // at Npgsql.ForwardsOnlyDataReader.GetValue(Int32 Index)
+          //  at Npgsql.NpgsqlDataReader.GetDateTime(Int32 i) ..
+
+            dr.GetDateTime(0);
+
+            dr.Close();
+
+        }
+        
        
 
 

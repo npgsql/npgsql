@@ -171,6 +171,18 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static Object ToDate(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+		    // First check for special values infinity and -infinity.
+
+			if (BackendData == "infinity")
+			{
+				return DateTime.MaxValue;
+			}
+
+			if (BackendData == "-infinity")
+			{
+				return DateTime.MinValue;
+			}
+            
 			return
 				DateTime.ParseExact(BackendData, DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
 		}
