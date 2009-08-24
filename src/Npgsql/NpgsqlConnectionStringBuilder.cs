@@ -88,7 +88,7 @@ namespace Npgsql
 
 			defaults.Add(Keywords.Port, 5432);
 
-			defaults.Add(Keywords.Protocol, ProtocolVersion.Unknown);
+			defaults.Add(Keywords.Protocol, ProtocolVersion.Version3);
 
 			defaults.Add(Keywords.Database, string.Empty);
 
@@ -131,6 +131,7 @@ namespace Npgsql
 
 		{
 			this.Clear();
+            
 		}
 
 		public NpgsqlConnectionStringBuilder(string connectionString) 
@@ -788,11 +789,15 @@ namespace Npgsql
 					base[GetKeyName(key)] = ToString(this.Protocol);
 				}
 
-				else
+                else if (key == Keywords.Compatible)
+                {
+                    base[GetKeyName(key)] = ((Version)this.Compatible).ToString();
+                }
 
-				{
-					base[GetKeyName(key)] = value;
-				}
+                else
+                {
+                    base[GetKeyName(key)] = value;
+                }
 			}
 		}
 
@@ -807,6 +812,7 @@ namespace Npgsql
 		{
 			string key_name = GetKeyName(keyword);
 
+            
 			try
 
 			{
@@ -1006,9 +1012,11 @@ namespace Npgsql
 			foreach (Keywords keyword in defaults.Keys)
 
 			{
-				SetValue(keyword, defaults[keyword]);
+                SetValue(GetKeyName(keyword), defaults[keyword]);
 			}
 		}
+
+        
 	}
 
 
