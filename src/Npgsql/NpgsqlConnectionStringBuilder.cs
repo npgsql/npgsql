@@ -1001,6 +1001,7 @@ namespace Npgsql
 			}
 		}
 
+
 		/// <summary>
 		/// Clear the member and assign them to the default value.
 		/// </summary>
