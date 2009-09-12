@@ -3155,7 +3155,20 @@ connection.Open();*/
             dr.Close();
 
         }
-        
+
+        [Test]
+        public void DeriveParametersWithParameterNameFromFunction()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("testoutparameter2", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            NpgsqlCommandBuilder.DeriveParameters(command);
+
+            Assert.AreEqual(":x", command.Parameters[0].ParameterName);
+            Assert.AreEqual(":y", command.Parameters[1].ParameterName);
+            
+
+        }
        
 
 

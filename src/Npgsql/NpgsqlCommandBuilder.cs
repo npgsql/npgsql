@@ -109,13 +109,13 @@ namespace Npgsql
 			if (fullName.Length > 1 && fullName[0].Length > 0)
 			{
 				query =
-					"select proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
+					"select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
 				schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
 				procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
 			}
 			else
 			{
-				query = "select proargtypes from pg_proc where proname = :proname";
+				query = "select proargnames, proargtypes from pg_proc where proname = :proname";
 				procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
 			}
 
@@ -123,12 +123,26 @@ namespace Npgsql
 			{
 				c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
 				c.Parameters[0].Value = procedureName.Replace("\"", "").Trim();
-				if (fullName.Length > 1 &&  !String.IsNullOrEmpty(schemaName))
+				if (fullName.Length > 1 && !String.IsNullOrEmpty(schemaName))
 				{
 					NpgsqlParameter prm = c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Text));
 					prm.Value = schemaName.Replace("\"", "").Trim();
 				}
-				String types = (String) c.ExecuteScalar();
+
+				String[] names = null;
+				String[] types = null;
+
+				using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
+				{
+					if (rdr.Read())
+					{
+						if (!rdr.IsDBNull(0))
+							names = rdr.GetValue(0) as String[];
+						if (!rdr.IsDBNull(1))
+							types = rdr.GetString(1).Split();
+					}
+				}
+
 				if (types == null)
 				{
 					throw new InvalidOperationException(
@@ -136,16 +150,18 @@ namespace Npgsql
 				}
 
 				command.Parameters.Clear();
-				Int32 i = 1;
-				foreach (String s in types.Split())
+				for (Int32 i = 0; i < types.Length; i++)
 				{
 					NpgsqlBackendTypeInfo typeInfo = null;
-					if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(s), out typeInfo))
+					if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
 					{
 						command.Parameters.Clear();
-						throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", s));
+						throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
 					}
-					command.Parameters.Add(new NpgsqlParameter("parameter" + i++, typeInfo.NpgsqlDbType));
+					if (names != null && i < names.Length)
+						command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
+					else
+						command.Parameters.Add(new NpgsqlParameter("parameter" + i + 1, typeInfo.NpgsqlDbType));
 				}
 			}
 		}
@@ -183,14 +199,14 @@ namespace Npgsql
 		//never used
 		//private string QualifiedTableName(string schema, string tableName)
 		//{
-		//    if (schema == null || schema.Length == 0)
-		//    {
-		//        return tableName;
-		//    }
-		//    else
-		//    {
-		//        return schema + "." + tableName;
-		//    }
+		//	if (schema == null || schema.Length == 0)
+		//	{
+		//		return tableName;
+		//	}
+		//	else
+		//	{
+		//		return schema + "." + tableName;
+		//	}
 		//}
 
 /*
