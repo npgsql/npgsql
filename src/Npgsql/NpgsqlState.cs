@@ -363,8 +363,15 @@ namespace Npgsql
                     try
                     {
                         context.CancelRequest();
+                        foreach (IServerResponseObject obj in ProcessBackendResponsesEnum(context))
+                        {
+                            if (obj is IDisposable)
+                            {
+                                (obj as IDisposable).Dispose();
+                            }
+                        }
                     }
-                    catch
+                    catch(Exception ex)
                     {
                     }
                     //We should have gotten an error from CancelRequest(). Whether we did or not, what we
