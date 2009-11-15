@@ -1,4 +1,21 @@
 
+
+2009-11-15
+
+    Npgsql 2.0.7
+    
+    
+    This is a bug fix only release. We are planning to add more features in the next build.
+    
+    
+    Bugs fixed: 
+    
+        [#1010527] Fix query timeout connection corruption.
+        [#1010700] Capture parameter names with NpgsqlCommandBuilder.DeriveParameters.  Thanks Brian Schloz (bschloz @nospam@ hotmail.com) for patch.  Also added nunit testcase.
+        [#1010668] Npgsql ConnectionStringBuilder provides no connectionstring properties. Now Npgsql correctly reports default connectionstring properties. Thanks Alaric Dailey for heads up	  and patch!
+        Fixed bug when trying to retrieve a date value with -infinity value. See more here:	  http://pgfoundry.org/forum/message.php?msg_id=1005249 Thanks Andrus Moor for bug report and test case and Laurenz Albe for reporting the commit where the infinity date value was added.
+        [#1010679] NpgsqlCommand.GetClearCommandText speed optimization. Thanks Dmitri Maximov (dmitri.maximov @nospam@ dataobjects.net) for patch.
+
 2009-07-11
 
     Npgsql 2.0.6
