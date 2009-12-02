@@ -45,7 +45,9 @@ namespace Npgsql
 
 			startupPacket.WriteToStream(new BufferedStream(context.Stream));
 			context.RequireReadyForQuery = false;
-			context.Mediator.CommandTimeout = 20;
+			// This still makes part of the connection stablishment handling. 
+			// So we use the connectiontimeout here too.
+			context.Mediator.CommandTimeout = context.ConnectionTimeout;
 			context.Stream.Flush();
 			ProcessBackendResponses(context);
 		}
