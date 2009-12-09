@@ -488,5 +488,68 @@ namespace NpgsqlTests
             NpgsqlInterval diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
             Assert.AreEqual(new NpgsqlInterval(0, 1, 0), diff);
         }
+
+        [Test]
+        public void NpgsqlTimeZoneParse()
+        {
+            string input;
+            NpgsqlTimeZone test;
+
+            input = "+2";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(2, test.Hours);
+            Assert.AreEqual(0, test.Minutes);
+            Assert.AreEqual(0, test.Seconds);
+
+            input = "-2";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(-2, test.Hours);
+            Assert.AreEqual(0, test.Minutes);
+            Assert.AreEqual(0, test.Seconds);
+
+            input = "+3:45";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(3, test.Hours);
+            Assert.AreEqual(45, test.Minutes);
+            Assert.AreEqual(0, test.Seconds);
+
+            input = "-3:45";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(-3, test.Hours);
+            Assert.AreEqual(-45, test.Minutes);
+            Assert.AreEqual(0, test.Seconds);
+
+            input = "+4:30:01";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(4, test.Hours);
+            Assert.AreEqual(30, test.Minutes);
+            Assert.AreEqual(1, test.Seconds);
+
+            input = "-4:30:01";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(-4, test.Hours);
+            Assert.AreEqual(-30, test.Minutes);
+            Assert.AreEqual(-1, test.Seconds);
+
+
+            input = "+4:30:10";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(4, test.Hours);
+            Assert.AreEqual(30, test.Minutes);
+            Assert.AreEqual(10, test.Seconds);
+
+
+            input = "-4:30:10";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(-4, test.Hours);
+            Assert.AreEqual(-30, test.Minutes);
+            Assert.AreEqual(-10, test.Seconds);
+
+            input = "-13";
+            test = NpgsqlTimeZone.Parse(input);
+            Assert.AreEqual(-13, test.Hours);
+            Assert.AreEqual(0, test.Minutes);
+            Assert.AreEqual(0, test.Seconds);
+        }
 	}
 }
