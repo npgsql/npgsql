@@ -1608,7 +1608,7 @@ namespace NpgsqlTypes
 						seconds = int.Parse(parts[2]);
 						break;
 				}
-				int totalSeconds = hours*60*60 + minutes*60 + seconds*(neg ? -1 : 1);
+				int totalSeconds = (hours*60*60 + minutes*60 + seconds)*(neg ? -1 : 1);
 				return new NpgsqlTimeZone(totalSeconds*NpgsqlInterval.TicksPerSecond);
 			}
 			catch (OverflowException)
