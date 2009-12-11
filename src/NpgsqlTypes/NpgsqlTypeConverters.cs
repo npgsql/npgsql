@@ -44,7 +44,7 @@ namespace NpgsqlTypes
 	internal abstract class BasicBackendToNativeTypeConverter
 	{
 		private static readonly String[] DateFormats = new String[] { "yyyy-MM-dd", };
-		private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+		private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9\\-]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 		private static readonly String[] TimeFormats =
 			new String[]

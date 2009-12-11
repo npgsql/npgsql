@@ -3169,6 +3169,22 @@ connection.Open();*/
             
 
         }
+        
+        [Test]
+        public void NegativeMoneySupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select '-10.5'::money", TheConnection);
+
+
+            NpgsqlDataReader dr = command.ExecuteReader();
+            dr.Read();
+
+            Decimal result = dr.GetDecimal(0);
+
+            Assert.AreEqual(-10.5, result);
+            
+            dr.Close();
+        }
        
 
 
