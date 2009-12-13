@@ -551,5 +551,41 @@ namespace NpgsqlTests
             Assert.AreEqual(0, test.Minutes);
             Assert.AreEqual(0, test.Seconds);
         }
+
+        [Test]
+        public void NpgsqlTimeTzConvert()
+        {
+            NpgsqlTimeTZ timetz = new NpgsqlTimeTZ(13, 3, 45.001, new NpgsqlTimeZone(-5, 0));
+
+            Assert.AreEqual(13, timetz.Hours);
+            Assert.AreEqual(3, timetz.Minutes);
+            Assert.AreEqual(45, timetz.Seconds);
+            Assert.AreEqual(1, timetz.Milliseconds);
+            Assert.AreEqual(-5, timetz.TimeZone.Hours);
+            Assert.AreEqual(0, timetz.TimeZone.Minutes);
+            Assert.AreEqual(0, timetz.TimeZone.Seconds);
+
+            Assert.AreEqual(18, timetz.UTCTime.Hours);
+            Assert.AreEqual(3, timetz.UTCTime.Minutes);
+            Assert.AreEqual(45, timetz.UTCTime.Seconds);
+            Assert.AreEqual(1, timetz.UTCTime.Milliseconds);
+
+            TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
+            // add utc time as timespan to get local time as a timespan
+            TimeSpan localTime = utcOffset + new TimeSpan(0, 18, 3, 45, 1);
+            DateTime localDateTime = (DateTime)timetz;
+
+            Assert.AreEqual(localTime.Hours, localDateTime.Hour);
+            Assert.AreEqual(localTime.Minutes, localDateTime.Minute);
+            Assert.AreEqual(localTime.Seconds, timetz.LocalTime.Seconds);
+            Assert.AreEqual(localTime.Milliseconds, timetz.LocalTime.Milliseconds);
+
+            // LocalTime is really time local to the timezone of the TimeTZ.
+            Assert.AreEqual(13, timetz.LocalTime.Hours);
+            Assert.AreEqual(3, timetz.LocalTime.Minutes);
+            Assert.AreEqual(45, timetz.LocalTime.Seconds);
+            Assert.AreEqual(1, timetz.LocalTime.Milliseconds);
+
+        }
 	}
 }
