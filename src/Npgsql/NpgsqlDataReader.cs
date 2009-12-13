@@ -76,7 +76,7 @@ namespace Npgsql
 
 		internal abstract long? LastInsertedOID { get; }
 
-		private bool TryGetTypeInfo(int fieldIndex, out NpgsqlBackendTypeInfo backendTypeInfo)
+		internal bool TryGetTypeInfo(int fieldIndex, out NpgsqlBackendTypeInfo backendTypeInfo)
 		{
 			if (CurrentDescription == null)
 			{
@@ -103,8 +103,19 @@ namespace Npgsql
 		public override Type GetFieldType(Int32 Index)
 		{
 			NpgsqlBackendTypeInfo TI;
-			return TryGetTypeInfo(Index, out TI) ? TI.Type : typeof (string); //Default type is string.
+			return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof (string); //Default type is string.
 		}
+
+        /// <summary>
+        /// Return the Npgsql specific data type of the column at requested ordinal.
+        /// </summary>
+        /// <param name="ordinal">column position</param>
+        /// <returns>Appropriate Npgsql type for column.</returns>
+        public override Type GetProviderSpecificFieldType(int ordinal)
+        {
+            NpgsqlBackendTypeInfo TI;
+            return TryGetTypeInfo(ordinal, out TI) ? TI.Type : typeof(string); //Default type is string.
+        }
 
 		/// <summary>
 		/// Gets the number of columns in the current row.
@@ -222,32 +233,32 @@ namespace Npgsql
 		/// <returns><see cref="NpgsqlInterval"/> value of the field.</returns>
 		public NpgsqlInterval GetInterval(Int32 i)
 		{
-			return (NpgsqlInterval) GetValue(i);
+            return (NpgsqlInterval)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTime GetTime(int i)
 		{
-			return (NpgsqlTime) GetValue(i);
+            return (NpgsqlTime)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeTZ GetTimeTZ(int i)
 		{
-			return (NpgsqlTimeTZ) GetValue(i);
+            return (NpgsqlTimeTZ)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeStamp GetTimeStamp(int i)
 		{
-			return (NpgsqlTimeStamp) GetValue(i);
+            return (NpgsqlTimeStamp)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeStampTZ GetTimeStampTZ(int i)
 		{
-			return (NpgsqlTimeStampTZ) GetValue(i);
+            return (NpgsqlTimeStampTZ)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlDate GetDate(int i)
 		{
-			return (NpgsqlDate) GetValue(i);
+            return (NpgsqlDate)GetProviderSpecificValue(i);
 		}
 
 		protected void SendClosedEvent()
@@ -344,19 +355,35 @@ namespace Npgsql
 		/// <returns>The number of column values copied.</returns>
 		public override Int32 GetValues(Object[] Values)
 		{
-			CheckHaveRow();
-
-			// Only the number of elements in the array are filled.
-			// It's also possible to pass an array with more that FieldCount elements.
-			Int32 maxColumnIndex = (Values.Length < FieldCount) ? Values.Length : FieldCount;
-
-			for (Int32 i = 0; i < maxColumnIndex; i++)
-			{
-				Values[i] = GetValue(i);
-			}
-
-			return maxColumnIndex;
+            return LoadValues(Values, GetValue);
 		}
+
+        /// <summary>
+        /// Copy values from each column in the current row into <param name="Values"></param>.
+        /// </summary>
+        /// <param name="values">An array appropriately sized to store values from all columns.</param>
+        /// <returns>The number of column values copied.</returns>
+        public override int GetProviderSpecificValues(object[] values)
+        {
+            return LoadValues(values, GetProviderSpecificValue);
+        }
+
+        private delegate object ValueLoader(int ordinal);
+        private int LoadValues(object[] values, ValueLoader getValue)
+        {
+            CheckHaveRow();
+
+            // Only the number of elements in the array are filled.
+            // It's also possible to pass an array with more that FieldCount elements.
+            Int32 maxColumnIndex = (values.Length < FieldCount) ? values.Length : FieldCount;
+
+            for (Int32 i = 0; i < maxColumnIndex; i++)
+            {
+                values[i] = getValue(i);
+            }
+
+            return maxColumnIndex;
+        }
 
 		/// <summary>
 		/// Gets the value of a column as Boolean.
@@ -1366,17 +1393,26 @@ namespace Npgsql
 		/// Return the value of the column at index <param name="Index"></param>.
 		/// </summary>
 		public override Object GetValue(Int32 Index)
+        {
+            object providerValue = GetProviderSpecificValue(Index);
+            NpgsqlBackendTypeInfo backendTypeInfo;
+            if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+                return backendTypeInfo.ConvertToFrameworkType(providerValue);
+            return providerValue;
+        }
+
+        public override object  GetProviderSpecificValue(int ordinal)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
 
-			if (Index < 0 || Index >= CurrentDescription.NumFields)
+            if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
 			{
 				throw new IndexOutOfRangeException("Column index out of range");
 			}
 
 			CheckHaveRow();
 
-			object ret = CurrentRow[Index];
+            object ret = CurrentRow[ordinal];
 			if (ret is Exception)
 			{
 				throw (Exception) ret;
