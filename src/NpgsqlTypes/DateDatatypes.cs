@@ -2036,10 +2036,22 @@ namespace NpgsqlTypes
 			return new TimeSpan(time.Ticks);
 		}
 
-		public static explicit operator NpgsqlTime(TimeSpan interval)
-		{
-			return new NpgsqlTime(interval);
-		}
+        public static explicit operator DateTime(NpgsqlTime time)
+        {
+            try
+            {
+                return new DateTime(time.Ticks, DateTimeKind.Unspecified);
+            }
+            catch
+            {
+                throw new InvalidCastException();
+            }
+        }
+
+        public static explicit operator NpgsqlTime(TimeSpan interval)
+        {
+            return new NpgsqlTime(interval);
+        }
 
 		public NpgsqlTime AddTicks(long ticksAdded)
 		{
@@ -2466,7 +2478,13 @@ namespace NpgsqlTypes
 		public static explicit operator TimeSpan(NpgsqlTimeTZ time)
 		{
 			return (TimeSpan) time.LocalTime;
-		}
+        }
+
+        public static explicit operator DateTime(NpgsqlTimeTZ time)
+        {
+            // LocalTime property is actually time local to TimeZone
+            return new DateTime(time.AtTimeZone(NpgsqlTimeZone.CurrentTimeZone).Ticks, DateTimeKind.Local);
+        }
 	}
 
 	[Serializable]
