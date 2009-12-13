@@ -979,6 +979,7 @@ namespace NpgsqlTests
             DateTime d = (DateTime)command.ExecuteScalar();
 
 
+            Assert.AreEqual(DateTimeKind.Unspecified, d.Kind);
             Assert.AreEqual("2002-02-02 09:00:23Z", d.ToString("u"));
 
             DateTimeFormatInfo culture = new DateTimeFormatInfo();
@@ -1022,6 +1023,7 @@ namespace NpgsqlTests
             DateTime d = (DateTime)command.ExecuteScalar();
 
 
+            Assert.AreEqual(DateTimeKind.Unspecified, d.Kind);
             Assert.AreEqual("2002-03-04", d.ToString("yyyy-MM-dd"));
         }
 
@@ -1033,7 +1035,20 @@ namespace NpgsqlTests
             DateTime d = (DateTime)command.ExecuteScalar();
 
 
+            Assert.AreEqual(DateTimeKind.Unspecified, d.Kind);
             Assert.AreEqual("10:03:45.345", d.ToString("HH:mm:ss.fff"));
+        }
+
+        [Test]
+        public void TimeSupportTimezone()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select '13:03:45.001-05'::timetz", TheConnection);
+
+            DateTime d = (DateTime)command.ExecuteScalar();
+
+
+            Assert.AreEqual(DateTimeKind.Local, d.Kind);
+            Assert.AreEqual("18:03:45.001", d.ToUniversalTime().ToString("HH:mm:ss.fff"));
         }
         
         [Test]
@@ -1042,9 +1057,10 @@ namespace NpgsqlTests
             NpgsqlCommand command = new NpgsqlCommand("set time zone 5;select field_timestamp_with_timezone from tableg where field_serial = 1;", TheConnection);
             
             DateTime d = (DateTime)command.ExecuteScalar();
-            
-            
-            Assert.AreEqual("2002-02-02 09:00:23Z", d.ToString("u"));
+
+
+            Assert.AreEqual(DateTimeKind.Local, d.Kind);
+            Assert.AreEqual("2002-02-02 09:00:23Z", d.ToUniversalTime().ToString("u"));
         }
 
         [Test]
@@ -1052,12 +1068,155 @@ namespace NpgsqlTests
         {
             //Changed the comparison. Did thisassume too much about ToString()?
             NpgsqlCommand command = new NpgsqlCommand("set time zone 5; select field_timestamp_with_timezone from tableg where field_serial = 1;", TheConnection);
-            
-            String s = command.ExecuteScalar().ToString();
+
+            String s = ((DateTime)command.ExecuteScalar()).ToUniversalTime().ToString();
            
             Assert.AreEqual(new DateTime(2002,02,02,09,00,23).ToString() , s);
         }
 
+        [Test]
+        public void DateTimeSupportTimezone3()
+        {
+            //2009-11-11 20:15:43.019-03:30
+            NpgsqlCommand command = new NpgsqlCommand("set time zone 5;select timestamptz'2009-11-11 20:15:43.019-03:30';", TheConnection);
+
+            DateTime d = (DateTime)command.ExecuteScalar();
+
+
+            Assert.AreEqual(DateTimeKind.Local, d.Kind);
+            Assert.AreEqual("2009-11-11 23:45:43Z", d.ToUniversalTime().ToString("u"));
+
+        }
+
+
+        [Test]
+        public void ProviderDateTimeSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_timestamp from tableb where field_serial = 2;", TheConnection);
+
+            NpgsqlTimeStamp ts;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                ts = reader.GetTimeStamp(0);
+            }
+
+            Assert.AreEqual("2002-02-02 09:00:23.345", ts.ToString());
+
+            DateTimeFormatInfo culture = new DateTimeFormatInfo();
+            culture.TimeSeparator = ":";
+            NpgsqlTimeStamp ts1 = NpgsqlTimeStamp.Parse("2004-06-04 09:48:00");
+
+            command.CommandText = "insert into tableb(field_timestamp) values (:a);";
+            command.Parameters.Add(new NpgsqlParameter("a", DbType.DateTime));
+            command.Parameters[0].Value = ts1;
+
+            command.ExecuteScalar();
+        }
+
+
+        [Test]
+        public void ProviderDateTimeSupportNpgsqlDbType()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_timestamp from tableb where field_serial = 2;", TheConnection);
+
+            NpgsqlTimeStamp ts;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                ts = reader.GetTimeStamp(0);
+            }
+
+            Assert.AreEqual("2002-02-02 09:00:23.345", ts.ToString());
+
+            DateTimeFormatInfo culture = new DateTimeFormatInfo();
+            culture.TimeSeparator = ":";
+            NpgsqlTimeStamp ts1 = NpgsqlTimeStamp.Parse("2004-06-04 09:48:00");
+
+            command.CommandText = "insert into tableb(field_timestamp) values (:a);";
+            command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Timestamp));
+            command.Parameters[0].Value = ts1;
+
+            command.ExecuteScalar();
+        }
+
+        [Test]
+        public void ProviderDateSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_date from tablec where field_serial = 1;", TheConnection);
+
+            NpgsqlDate d;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                d = reader.GetDate(0);
+            }
+
+            Assert.AreEqual("2002-03-04", d.ToString());
+        }
+
+        [Test]
+        public void ProviderTimeSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_time from tablec where field_serial = 2;", TheConnection);
+
+            NpgsqlTime t;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                t = reader.GetTime(0);
+            }
+
+
+            Assert.AreEqual("10:03:45.345", t.ToString());
+        }
+
+        [Test]
+        public void ProviderTimeSupportTimezone()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select '13:03:45.001-05'::timetz", TheConnection);
+
+            NpgsqlTimeTZ t;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                t = reader.GetTimeTZ(0);
+            }
+
+            Assert.AreEqual("18:03:45.001", t.AtTimeZone(NpgsqlTimeZone.UTC).LocalTime.ToString());
+        }
+
+        [Test]
+        public void ProviderDateTimeSupportTimezone()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("set time zone 5;select field_timestamp_with_timezone from tableg where field_serial = 1;", TheConnection);
+
+            NpgsqlTimeStampTZ ts;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                ts = reader.GetTimeStampTZ(0);
+            }
+
+            Assert.AreEqual("2002-02-02 09:00:23.345", ts.AtTimeZone(NpgsqlTimeZone.UTC).ToString());
+        }
+
+        [Test]
+        public void ProviderDateTimeSupportTimezone3()
+        {
+            //2009-11-11 20:15:43.019-03:30
+            NpgsqlCommand command = new NpgsqlCommand("set time zone 5;select timestamptz'2009-11-11 20:15:43.019-03:30';", TheConnection);
+
+            NpgsqlTimeStampTZ ts;
+            using (NpgsqlDataReader reader = command.ExecuteReader())
+            {
+                reader.Read();
+                ts = reader.GetTimeStampTZ(0);
+            }
+
+            Assert.AreEqual("2009-11-12 04:45:43.019+05", ts.ToString());
+
+        }
 
         [Test]
         public void NumericSupport()
@@ -3156,17 +3315,31 @@ connection.Open();*/
 
         }
 
+
+
         [Test]
+
         public void DeriveParametersWithParameterNameFromFunction()
+
         {
+
             NpgsqlCommand command = new NpgsqlCommand("testoutparameter2", TheConnection);
+
             command.CommandType = CommandType.StoredProcedure;
+
+
 
             NpgsqlCommandBuilder.DeriveParameters(command);
 
+
+
             Assert.AreEqual(":x", command.Parameters[0].ParameterName);
+
             Assert.AreEqual(":y", command.Parameters[1].ParameterName);
+
             
+
+
 
         }
         
