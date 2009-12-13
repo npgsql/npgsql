@@ -431,6 +431,46 @@ namespace NpgsqlTests
             Assert.AreEqual(4, dr2[1]);
             dr2.Close();
         }
+
+        [Test]
+        public void IntervalAsTimeSpan()
+        {
+            DataTable dt = new DataTable();
+            DataColumn c = dt.Columns.Add("dauer", typeof(TimeSpan));
+            // DataColumn c = dt.Columns.Add("dauer", typeof(NpgsqlInterval));
+            c.AllowDBNull = true;
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
+            command.Connection = TheConnection;
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter();
+            da.SelectCommand = command;
+            da.Fill(dt);
+            foreach (DataRow dr in dt.Rows)
+            {
+                Console.Out.WriteLine(dr["dauer"]);
+            }
+        }
+
+        [Test]
+        public void IntervalAsTimeSpan2()
+        {
+            DataTable dt = new DataTable();
+            //DataColumn c = dt.Columns.Add("dauer", typeof(TimeSpan));
+            // DataColumn c = dt.Columns.Add("dauer", typeof(NpgsqlInterval));
+            //c.AllowDBNull = true;
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
+            command.Connection = TheConnection;
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter();
+            da.SelectCommand = command;
+            da.Fill(dt);
+            foreach (DataRow dr in dt.Rows)
+            {
+                Console.Out.WriteLine(dr["dauer"]);
+            }
+        }
     }
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
