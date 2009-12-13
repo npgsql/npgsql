@@ -27,6 +27,7 @@ using System.Data;
 using System.Resources;
 using NUnit.Framework;
 using System.Collections.Generic;
+using NpgsqlTypes;
 
 namespace NpgsqlTests
 {
@@ -224,6 +225,87 @@ namespace NpgsqlTests
             finally
             {
                 openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+            }
+        }
+
+        [Test]
+        public void NpgsqlErrorRepro1()
+        {
+            using (NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString))
+            {
+                connection.Open();
+                using (NpgsqlTransaction transaction = connection.BeginTransaction())
+                {
+                    LargeObjectManager largeObjectMgr = new LargeObjectManager(connection);
+                    try
+                    {
+                        LargeObject largeObject = largeObjectMgr.Open(-1, LargeObjectManager.READWRITE);
+                        transaction.Commit();
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                        // ignore the LO failure
+                    }
+                } // *1* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
+
+                using (NpgsqlCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM pg_database";
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    {
+                        Assert.IsTrue(reader.Read()); // *2* this fails if the initial connection is used
+                    }
+                }
+            } // *3* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
+        }
+
+        [Test]
+        public void NpgsqlErrorRepro2()
+        {
+            NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
+            connection.Open();
+            NpgsqlTransaction transaction = connection.BeginTransaction();
+            LargeObjectManager largeObjectMgr = new LargeObjectManager(connection);
+            try
+            {
+                LargeObject largeObject = largeObjectMgr.Open(-1, LargeObjectManager.READWRITE);
+                transaction.Commit();
+            }
+            catch
+            {
+                // ignore the LO failure
+                try
+                {
+                    transaction.Dispose();
+                }
+                catch
+                {
+                    // ignore dispose failure
+                }
+                try
+                {
+                    connection.Dispose();
+                }
+                catch
+                {
+                    // ignore dispose failure
+                }
+            }
+
+            using (connection = new NpgsqlConnection(TheConnectionString))
+            {
+                connection.Open();
+                using (NpgsqlCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT * FROM pg_database";
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    {
+                        Assert.IsTrue(reader.Read());
+                        // *1* this fails if the connection for the pool happens to be the bad one from above
+                        Assert.IsTrue(!String.IsNullOrEmpty((string)reader["datname"]));
+                    }
+                }
             }
         }
 
