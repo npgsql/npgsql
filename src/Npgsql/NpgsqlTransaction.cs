@@ -63,7 +63,9 @@ namespace Npgsql
 
             StringBuilder commandText = new StringBuilder("BEGIN; SET TRANSACTION ISOLATION LEVEL ");
 
-            if ((isolation == IsolationLevel.RepeatableRead) || (isolation == IsolationLevel.Serializable))
+            if ((isolation == IsolationLevel.RepeatableRead) ||
+                (isolation == IsolationLevel.Serializable) ||
+                (isolation == IsolationLevel.Snapshot))
             {
                 commandText.Append("SERIALIZABLE");
             }
