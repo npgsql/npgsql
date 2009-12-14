@@ -1111,10 +1111,21 @@ namespace NpgsqlTypes
 
 		public static NpgsqlDate Parse(string str)
 		{
+            
 			if (str == null)
 			{
 				throw new ArgumentNullException("str");
 			}
+
+            // Handle -infinity and infinity special values.
+
+            if (str == "-infinity")
+                return new NpgsqlDate(DateTime.MinValue);
+
+            if (str == "infinity")
+                return new NpgsqlDate(DateTime.MaxValue);
+
+
 			str = str.Trim();
 			try
 			{
