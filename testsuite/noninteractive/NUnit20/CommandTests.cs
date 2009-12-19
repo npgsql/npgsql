@@ -3359,6 +3359,22 @@ connection.Open();*/
             dr.Close();
         }
        
+        [Test]
+        public void Bug1010714AndPatch1010715()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_bytea = :bytesData", TheConnection);
+            
+            Byte[] bytes = new Byte[]{45,44};
+            
+            command.Parameters.AddWithValue(":bytesData", bytes);
+            
+            Assert.AreEqual(DbType.Binary, command.Parameters[0].DbType);
+            
+            Object result = command.ExecuteNonQuery();
+            
+
+            Assert.AreEqual(-1, result);
+        }
 
 
 

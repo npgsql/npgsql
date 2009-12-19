@@ -162,7 +162,14 @@ namespace Npgsql
 		/// If you do not perform this conversion, the compiler will assume you
 		/// are attempting to call the NpgsqlParameterCollection.Add(string, DbType) overload.
 		/// </remarks>
+		[Obsolete("Do not call this method. Use AddWithValue instead.")]
 		public NpgsqlParameter Add(string parameterName, object value)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
+			return this.AddWithValue(parameterName, value);
+		}
+		
+		public NpgsqlParameter AddWithValue(string parameterName, object value)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
 			return this.Add(new NpgsqlParameter(parameterName, value));
