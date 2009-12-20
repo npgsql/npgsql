@@ -141,7 +141,7 @@
                 <value>Connection establishment timeout. Increase Timeout value in ConnectionString.</value>
     </data>    
     <data name="Exception_ConnectionOrCommandTimeout">
-                <value>A timeout has occured. If you were establishing a connection, increase Timeout value in ConnectionString. If you were executing a command, increate the CommandTimeout value in ConnectionString or in your NpgsqlCommand object.</value>
+                <value>A timeout has occured. If you were establishing a connection, increase Timeout value in ConnectionString. If you were executing a command, increase the CommandTimeout value in ConnectionString or in your NpgsqlCommand object.</value>
     </data>    
     <data name="Log_ConnectingTo">
         <value>Attempt to connect to '{0}'.</value>
