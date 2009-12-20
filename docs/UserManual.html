@@ -503,7 +503,7 @@ public static class NpgsqlUserManual
             {
         
                 // Now add the parameter to the parameter collection of the command specifying its type.
-                command.Parameters.Add(new NpgsqlParameter("value1", DbType.Int32));
+                command.Parameters.Add(new NpgsqlParameter("value1", NpgsqlDbType.Integer));
                 
                 // Now, add a value to it and later execute the command as usual.
                 command.Parameters[0].Value = 4;
@@ -553,7 +553,7 @@ public static class NpgsqlUserManual
             using(NpgsqlCommand command = new NpgsqlCommand("select * from tablea where column1 = :column1", conn))
             {
                 // Now add the parameter to the parameter collection of the command specifying its type.
-                command.Parameters.Add(new NpgsqlParameter("column1", DbType.Int32);
+                command.Parameters.Add(new NpgsqlParameter("column1", NpgsqlDbType.Integer);
 
                 // Now, prepare the statement.
                 command.Prepare();
@@ -653,7 +653,7 @@ public static class NpgsqlUserManual
         
  		command.Parameters.Add(new NpgsqlParameter());
             
-		command.Parameters[0].DbType = DbType.Int32;
+		command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Integer;
 		command.Parameters[0].Value = 4;
 		
         Object result = command.ExecuteScalar();
@@ -861,11 +861,11 @@ void AddWithDataSet(NpgsqlConnection conn)
 	da.InsertCommand = new NpgsqlCommand("insert into tableb(field_int2, field_timestamp, field_numeric) " + 
 							" values (:a, :b, :c)", conn);
 			
-	da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
+	da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Smallint));
 	
-	da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+	da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", NpgsqlDbType.Timestamp));
 			
-	da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
+	da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", NpgsqlDbType.Numeric));
 	
 	da.InsertCommand.Parameters[0].Direction = ParameterDirection.Input;
 	da.InsertCommand.Parameters[1].Direction = ParameterDirection.Input;
@@ -1055,7 +1055,7 @@ public class t
 				
 		NpgsqlCommand command = new NpgsqlCommand("insert into tableBytea(field_bytea) values(:bytesData)", conn);
 		
-		NpgsqlParameter param = new NpgsqlParameter(":bytesData", DbType.Binary);
+		NpgsqlParameter param = new NpgsqlParameter(":bytesData", NpgsqlDbType.Bytea);
 
 		param.Value = bytes;
 		
