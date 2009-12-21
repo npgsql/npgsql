@@ -214,9 +214,9 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbNullExpression expression)
         {
-            // must provide a NULL of the correct type
-            // this is necessary for certain types of union queries.
-            return new CastExpression(new LiteralExpression("NULL"), GetDbType(expression.ResultType.EdmType));
+            // select does something different here.  But insert, update, delete, and functions can just use
+            // a NULL literal.
+            return new LiteralExpression("NULL");
         }
 
         public override VisitedExpression Visit(DbNotExpression expression)
@@ -463,7 +463,15 @@ namespace Npgsql.SqlGenerators
             // need to move the from keyword out so that it can be used in the project
             // when there is no where clause
             _filterVarName.Push(expression.Input.VariableName);
-            InputExpression inputExpression = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
+            InputExpression inputExpression;
+            if (expression.Input.Expression is DbFilterExpression)
+            {
+                inputExpression = CheckedConvertFrom(VisitFilterExpression((DbFilterExpression)expression.Input.Expression, partOfJoin), expression.Input.VariableName);
+            }
+            else
+            {
+                inputExpression = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
+            }
             if (!(inputExpression is JoinExpression))
             {
                 //from = new FromExpression(inputExpression, expression.Input.VariableName);
@@ -582,7 +590,7 @@ namespace Npgsql.SqlGenerators
             return new CastExpression(expression.Argument.Accept(this), GetDbType(expression.ResultType.EdmType));
         }
 
-        private string GetDbType(EdmType edmType)
+        protected string GetDbType(EdmType edmType)
         {
             PrimitiveType primitiveType = edmType as PrimitiveType;
             if (primitiveType == null)

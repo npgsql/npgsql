@@ -30,6 +30,13 @@ namespace Npgsql.SqlGenerators
             return new PropertyExpression(variable, expression.Property.Name);
         }
 
+        public override VisitedExpression Visit(DbNullExpression expression)
+        {
+            // must provide a NULL of the correct type
+            // this is necessary for certain types of union queries.
+            return new CastExpression(new LiteralExpression("NULL"), GetDbType(expression.ResultType.EdmType));
+        }
+
         public override void BuildCommand(DbCommand command)
         {
             System.Diagnostics.Debug.Assert(_commandTree.Query is DbProjectExpression);
