@@ -23,7 +23,7 @@ namespace Npgsql.SqlGenerators
                 throw new NotSupportedException();
             if (!_processingReturning)
             {
-                return new LiteralExpression(QuoteIdentifier(expression.Property.Name));
+                return new PropertyExpression(expression.Property);
             }
             else
             {

@@ -27,7 +27,7 @@ namespace Npgsql.SqlGenerators
             // scopes (such as schema.table.column)
             //VisitedExpression variable = expression.Instance.Accept(this);
             VariableReferenceExpression variable = new VariableReferenceExpression(expression.Instance.Accept(this).ToString(), _variableSubstitution);
-            return new PropertyExpression(variable, expression.Property.Name);
+            return new PropertyExpression(variable, expression.Property);
         }
 
         public override VisitedExpression Visit(DbNullExpression expression)

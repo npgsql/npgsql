@@ -4,14 +4,58 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
+using System.Linq;
 
 namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
-	{
-        protected Dictionary<string, string> _variableSubstitution = new Dictionary<string, string>();
+    {
+        internal class IdentifierEqualityComparer : IEqualityComparer<string>
+        {
+            #region IEqualityComparer<string> Members
+
+            public bool Equals(string x, string y)
+            {
+                // they are equal if they exactly match
+                if (x == y)
+                    return true;
+                // if either of them are null, they are
+                // not equal (both are not null because
+                // then they would be equal).  Test this
+                // early to avoid NullReferenceException.
+                if (x == null || y == null)
+                    return false;
+                // if they are both quoted or unquoted
+                // then they are definately different
+                if (x[0] != '"' && y[0] != '"' ||
+                    x[0] == '"' && y[0] == '"')
+                    return false;
+                // one is quoted while the other is not
+                // simplify to the unquoted form
+                return x.Replace("\"", "") == y.Replace("\"", "");
+            }
+
+            public int GetHashCode(string obj)
+            {
+                if (obj == null)
+                    throw new ArgumentNullException();
+                // normal hashcode if the value is unquoted
+                if (obj[0] != '"')
+                    return obj.GetHashCode();
+                // need to remove quotes to get the right hashcode
+                // since the hashcodes need to match for equivalent values.
+                return obj.Replace("\"", "").GetHashCode();
+            }
+
+            #endregion
+        }
+
+        // contains unquoted identifiers, but use a custom IEqualityComparer to allow tests against quoted identifiers
+        protected Dictionary<string, string> _variableSubstitution = new Dictionary<string, string>(new IdentifierEqualityComparer());
         protected Stack<string> _projectVarName = new Stack<string>();
         protected Stack<string> _filterVarName = new Stack<string>();
+        // store off current projection so the top one is the one being built
+        private Stack<ProjectionExpression> _projectExpressions = new Stack<ProjectionExpression>();
 
         protected SqlBaseGenerator()
         {
@@ -75,7 +119,7 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbSortExpression expression)
         {
             // order by
-            _filterVarName.Push(expression.Input.VariableName);
+            PushFilterVar(expression.Input.VariableName);
             VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
             InputExpression from = inputExpression as InputExpression;
             if (from == null)
@@ -91,7 +135,7 @@ namespace Npgsql.SqlGenerators
                     SubstituteFilterVar(((FromExpression)from).Name);
                 }
             }
-            _filterVarName.Pop();
+            PopFilterVar();
             from.OrderBy = new OrderByExpression();
             foreach (var order in expression.SortOrder)
             {
@@ -102,10 +146,6 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbScanExpression expression)
         {
-            // name of a table identifier?
-            // may come from a join or a select
-            //return new LiteralExpression(expression.Target.MetadataProperties.TryGetValue(
-            // replace with better solution
             MetadataProperty metadata;
             string tableName;
             string overrideTable = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Name";
@@ -129,26 +169,24 @@ namespace Npgsql.SqlGenerators
                 MetadataProperty definingQuery = expression.Target.MetadataProperties.GetValue("DefiningQuery", false);
                 if (definingQuery.Value != null)
                 {
-                    return new LiteralExpression("(" + definingQuery.Value + ")");
+                    return new ScanExpression("(" + definingQuery.Value + ")", expression.Target);
                 }
             }
 
-            LiteralExpression scan;
+            ScanExpression scan;
             string overrideSchema = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Schema";
             if (expression.Target.MetadataProperties.TryGetValue(overrideSchema, false, out metadata) && metadata.Value != null)
             {
-                scan = new LiteralExpression(QuoteIdentifier(metadata.Value.ToString()));
+                scan = new ScanExpression(QuoteIdentifier(metadata.Value.ToString()) + "." + QuoteIdentifier(tableName), expression.Target);
             }
             else if (expression.Target.MetadataProperties.TryGetValue("Schema", false, out metadata) && metadata.Value != null)
             {
-                scan = new LiteralExpression(QuoteIdentifier(metadata.Value.ToString()));
+                scan = new ScanExpression(QuoteIdentifier(metadata.Value.ToString()) + "." + QuoteIdentifier(tableName), expression.Target);
             }
             else
             {
-                scan = new LiteralExpression(QuoteIdentifier(expression.Target.EntityContainer.Name));
+                scan = new ScanExpression(QuoteIdentifier(expression.Target.EntityContainer.Name) + "." + QuoteIdentifier(tableName), expression.Target);
             }
-            scan.Append(".");
-            scan.Append(QuoteIdentifier(tableName));
 
             return scan;
         }
@@ -176,9 +214,9 @@ namespace Npgsql.SqlGenerators
             // TODO: test if this should always be true
             if (project == null)
                 throw new NotSupportedException();
-            _projectVarName.Push(expression.Input.VariableName);
+            PushProjectVar(expression.Input.VariableName);
             project.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
-            _projectVarName.Pop();
+            PopProjectVar();
 
             return project;
         }
@@ -188,6 +226,13 @@ namespace Npgsql.SqlGenerators
             InputExpression result = fromExpression as InputExpression;
             if (result == null)
             {
+                // if fromExpression is at the top of _projectExpressions, it should be popped
+                // so that the previous expression is at the top
+                // A projection is either the root VisitedExpression or is a nested select
+                // and will always be converted to a from
+                // at this point the projection is complete and is no longer considered "current"
+                if (object.ReferenceEquals(fromExpression, _projectExpressions.Peek()))
+                    _projectExpressions.Pop();
                 result = new FromExpression(fromExpression, variableName);
                 if (string.IsNullOrEmpty(variableName)) variableName = ((FromExpression)result).Name;
                 _variableSubstitution[_projectVarName.Peek()] = variableName;
@@ -245,6 +290,7 @@ namespace Npgsql.SqlGenerators
                 // should be the child of a project
                 // which means it's a select
                 ProjectionExpression visitedExpression = new ProjectionExpression();
+                _projectExpressions.Push(visitedExpression);
                 for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
                 {
                     visitedExpression.AppendColumn(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
@@ -254,12 +300,27 @@ namespace Npgsql.SqlGenerators
             }
             else if (expression.ResultType.EdmType is CollectionType)
             {
-                ProjectionExpression visitedExpression = new ProjectionExpression();
+                // TODO: handle no arguments
+                VisitedExpression previousExpression = null;
+                VisitedExpression resultExpression = null;
                 foreach (var arg in expression.Arguments)
                 {
-                    visitedExpression.AppendColumn(arg.Accept(this));
+                    ProjectionExpression visitedExpression = new ProjectionExpression();
+                    var visitedColumn = arg.Accept(this);
+                    if (!(visitedColumn is ColumnExpression))
+                        visitedColumn = new ColumnExpression(visitedColumn, "C");
+                    visitedExpression.AppendColumn((ColumnExpression)visitedColumn);
+                    if (previousExpression != null)
+                    {
+                        resultExpression = new CombinedProjectionExpression(previousExpression, "UNION ALL", visitedExpression);
+                    }
+                    else
+                    {
+                        resultExpression = visitedExpression;
+                    }
+                    previousExpression = visitedExpression;
                 }
-                return visitedExpression;
+                return resultExpression;
             }
             else
             {
@@ -303,7 +364,6 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbJoinExpression expression)
         {
             // table join
-            //throw new NotSupportedException();
             // the following code works ok, but the rest of the code doesn't work well in a join
             // need to take _projectVarName and append .left then do the same for right
             // use this to do combo variable substitution
@@ -313,9 +373,9 @@ namespace Npgsql.SqlGenerators
                 expression.JoinCondition.Accept(this));
         }
 
-        private VisitedExpression VisitJoinPart(DbExpressionBinding joinPart)
+        private InputExpression VisitJoinPart(DbExpressionBinding joinPart)
         {
-            _projectVarName.Push(joinPart.VariableName);
+            PushProjectVar(joinPart.VariableName);
             string variableName = null;
             VisitedExpression joinPartExpression = null;
             if (joinPart.Expression is DbFilterExpression)
@@ -335,7 +395,7 @@ namespace Npgsql.SqlGenerators
                 joinPartExpression = new FromExpression(joinPartExpression, joinPart.VariableName);
                 variableName = joinPart.VariableName;
             }
-            _projectVarName.Pop();
+            PopProjectVar();
             if (variableName != null)
             {
                 _variableSubstitution[_projectVarName.Peek()] = variableName;
@@ -343,16 +403,17 @@ namespace Npgsql.SqlGenerators
                 // reverse because the stack has them last in first out
                 Array.Reverse(dottedNames);
                 SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
-                if (_filterVarName.Count != 0)
-                {
-                    dottedNames = _filterVarName.ToArray();
-                    // reverse because the stack has them last in first out
-                    Array.Reverse(dottedNames);
-                    SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
-                }
+                //if (_filterVarName.Count != 0)
+                //{
+                //    dottedNames = _filterVarName.ToArray();
+                //    // reverse because the stack has them last in first out
+                //    Array.Reverse(dottedNames);
+                //    SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
+                //}
+                SubstituteFilterNames(joinPart.VariableName, variableName);
                 _variableSubstitution[joinPart.VariableName] = variableName;
             }
-            return joinPartExpression;
+            return (InputExpression)joinPartExpression;
         }
 
         private void SubstituteAllNames(string[] dottedNames, string joinPartVariableName, string variableName)
@@ -394,6 +455,7 @@ namespace Npgsql.SqlGenerators
             // first implementation this is a COUNT(column) query ???
             //EnterNewVariableScope();
             ProjectionExpression projectExpression = new ProjectionExpression();
+            _projectExpressions.Push(projectExpression);
             GroupByExpression groupByExpression = new GroupByExpression();
             RowType rowType = ((CollectionType)(expression.ResultType.EdmType)).TypeUsage.EdmType as RowType;
             int columnIndex = 0;
@@ -413,8 +475,8 @@ namespace Npgsql.SqlGenerators
                 projectExpression.AppendColumn(new ColumnExpression(functionExpression, rowType.Properties[columnIndex].Name));
                 ++columnIndex;
             }
-            _projectVarName.Push(expression.Input.GroupVariableName);
-            _filterVarName.Push(expression.Input.VariableName);
+            PushProjectVar(expression.Input.GroupVariableName);
+            PushFilterVar(expression.Input.VariableName);
             projectExpression.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.GroupVariableName);
             projectExpression.From.GroupBy = groupByExpression;
             if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
@@ -425,8 +487,8 @@ namespace Npgsql.SqlGenerators
             {
                 _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_filterVarName.Peek()];
             }
-            _projectVarName.Pop();
-            _filterVarName.Pop();
+            PopProjectVar();
+            PopFilterVar();
             //LeaveVariableScope();
             //_variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
             //return new FromExpression(projectExpression, expression.Input.VariableName);
@@ -462,7 +524,7 @@ namespace Npgsql.SqlGenerators
             // TODO: this is too simple.  Replace this
             // need to move the from keyword out so that it can be used in the project
             // when there is no where clause
-            _filterVarName.Push(expression.Input.VariableName);
+            PushFilterVar(expression.Input.VariableName);
             InputExpression inputExpression;
             if (expression.Input.Expression is DbFilterExpression)
             {
@@ -491,11 +553,13 @@ namespace Npgsql.SqlGenerators
             }
             else
             {
-                // TODO: this isn't quite right
-                // need to make this work for general case of where as part of a join
                 JoinExpression join = (JoinExpression)inputExpression;
 
-                if (partOfJoin)
+                // optimized query generation for inner joins
+                // just make filter part of join condition to avoid building extra
+                // nested queries
+                // 
+                if (partOfJoin && join.JoinType == DbExpressionKind.InnerJoin)
                 {
                     System.Diagnostics.Debug.Assert(join.Condition != null);
                     join.Condition = new BooleanExpression("AND", join.Condition, expression.Predicate.Accept(this));
@@ -507,10 +571,112 @@ namespace Npgsql.SqlGenerators
                         join.Where.And(predicate);
                     else
                         join.Where = new WhereExpression(predicate);
+                    if (partOfJoin)
+                    {
+                        // get the working projection
+                        // will use columns from this projection to move
+                        // them into a new inner projection (existing ones will be replaced
+                        var previousProjection = _projectExpressions.Peek();
+                        var projection = new ProjectionExpression();
+                        // get the columns to move from previous working projection
+                        // to the new projection being built from the join          // call ToArray to avoid problems with changing the list later
+                        var movedColumns = GetColumnsForJoin(join, previousProjection).ToArray();
+                        // pair up moved column with it's replacement
+                        var replacementColumns = movedColumns
+                            .Select(c => new { Existing = c, Replacement = GetReplacementColumn(join, c) });
+                        // replace moved columns in the previous working projection
+                        foreach (var entry in replacementColumns)
+                        {
+                            previousProjection.ReplaceColumn(entry.Existing, entry.Replacement);
+                            projection.AppendColumn(entry.Existing);
+                        }
+                        // the moved columns need to have their qualification updated since
+                        // they moved in a level.
+                        AdjustPropertyAccess(movedColumns, _projectVarName.Peek());
+                        // for a short duration, now have a new current projection
+                        _projectExpressions.Push(projection);
+                        projection.From = join;
+                        // since this is wrapping a join inside a projection, need to replace all variables
+                        // that referenced the inner tables.
+                        string searchVar = _projectVarName.Peek() + ".";
+                        foreach (var key in _variableSubstitution.Keys.ToArray())
+                        {
+                            if (key.Contains(searchVar))
+                                _variableSubstitution[key] = _projectVarName.Peek();
+                        }
+                        // can't return a projection from VisitFilterExpression.  Convert to from.
+                        inputExpression = CheckedConvertFrom(projection, _projectVarName.Peek());
+                    }
                 }
             }
-            _filterVarName.Pop();
+            PopFilterVar();
             return inputExpression;
+        }
+
+        /// <summary>
+        /// Given a join expression and a projection, fetch all columns in the projection
+        /// that reference columns in the join.
+        /// </summary>
+        private IEnumerable<ColumnExpression> GetColumnsForJoin(JoinExpression join, ProjectionExpression projectionExpression)
+        {
+            List<string> fromNames = new List<string>();
+            GetFromNames(join, fromNames);
+            foreach (var column in projectionExpression.Columns.OfType<ColumnExpression>())
+            {
+                foreach (var prop in column.GetAccessedProperties())
+                {
+                    System.Text.StringBuilder propName = new System.Text.StringBuilder();
+                    prop.WriteSql(propName);
+                    string table = propName.ToString().Split('.')[0];
+                    if (fromNames.Contains(table))
+                    {
+                        yield return column;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Given an InputExpression append all from names (including nested joins) to the list.
+        /// </summary>
+        private void GetFromNames(InputExpression input, List<string> fromNames)
+        {
+            if (input is FromExpression)
+            {
+                fromNames.Add(QuoteIdentifier(((FromExpression)input).Name));
+            }
+            else
+            {
+                var join = (JoinExpression)input;
+                GetFromNames(join.Left, fromNames);
+                GetFromNames(join.Right, fromNames);
+            }
+        }
+
+        /// <summary>
+        /// Get new ColumnExpression that will be used in projection that had it's existing columns moved.
+        /// These should be simple references to the inner column
+        /// </summary>
+        private ColumnExpression GetReplacementColumn(JoinExpression join, ColumnExpression reassociatedColumn)
+        {
+            return new ColumnExpression(new LiteralExpression(
+                QuoteIdentifier(_projectVarName.Peek()) + "." + QuoteIdentifier(reassociatedColumn.Name)),
+                reassociatedColumn.Name);
+        }
+
+        /// <summary>
+        /// Every property accessed in the list of columns must be adjusted for a new scope
+        /// </summary>
+        private void AdjustPropertyAccess(ColumnExpression[] movedColumns, string projectName)
+        {
+            foreach (var column in movedColumns)
+            {
+                foreach (var prop in column.GetAccessedProperties())
+                {
+                    prop.AdjustVariableAccess(projectName);
+                }
+            }
         }
 
         public override VisitedExpression Visit(DbExceptExpression expression)
@@ -939,27 +1105,74 @@ namespace Npgsql.SqlGenerators
             return arg;
         }
 
-
-        private Stack<Dictionary<string, string>> _varScopeStack = new Stack<Dictionary<string, string>>();
-        private Stack<Stack<string>> _projectScopeStack = new Stack<Stack<string>>();
-        private Stack<Stack<string>> _filterScopeStack = new Stack<Stack<string>>();
-
-        private void EnterNewVariableScope()
+        private Stack<Stack<string>> _filterToProject = new Stack<Stack<string>>();
+        private void PushProjectVar(string projectVar)
         {
-            _varScopeStack.Push(_variableSubstitution);
-            _projectScopeStack.Push(_projectVarName);
-            _filterScopeStack.Push(_filterVarName);
-            _variableSubstitution = new Dictionary<string, string>();
-            _projectVarName = new Stack<string>();
-            _filterVarName = new Stack<string>();
+            _projectVarName.Push(projectVar);
+            foreach (var stack in _filterToProject)
+            {
+                stack.Push(projectVar);
+            }
         }
 
-        private void LeaveVariableScope()
+        private string PopProjectVar()
         {
-            _variableSubstitution = _varScopeStack.Pop();
-            _projectVarName = _projectScopeStack.Pop();
-            _filterVarName = _filterScopeStack.Pop();
+            foreach (var stack in _filterToProject)
+            {
+                stack.Pop();
+            }
+            return _projectVarName.Pop();
         }
+
+        private void PushFilterVar(string filterVar)
+        {
+            _filterVarName.Push(filterVar);
+            var stack = new Stack<string>();
+            stack.Push(filterVar);
+            _filterToProject.Push(stack);
+        }
+
+        private string PopFilterVar()
+        {
+            _filterToProject.Pop();
+            return _filterVarName.Pop();
+        }
+
+        private void SubstituteFilterNames(string joinPartVariableName, string variableName)
+        {
+            if (_filterVarName.Count != 0)
+            {
+                foreach (var stack in _filterToProject)
+                {
+                    string[] dottedNames = stack.ToArray();
+                    // reverse because the stack has them last in first out
+                    Array.Reverse(dottedNames);
+                    SubstituteAllNames(dottedNames, joinPartVariableName, variableName);
+                }
+            }
+        }
+
+
+        //private Stack<Dictionary<string, string>> _varScopeStack = new Stack<Dictionary<string, string>>();
+        //private Stack<Stack<string>> _projectScopeStack = new Stack<Stack<string>>();
+        //private Stack<Stack<string>> _filterScopeStack = new Stack<Stack<string>>();
+
+        //private void EnterNewVariableScope()
+        //{
+        //    _varScopeStack.Push(_variableSubstitution);
+        //    _projectScopeStack.Push(_projectVarName);
+        //    _filterScopeStack.Push(_filterVarName);
+        //    _variableSubstitution = new Dictionary<string, string>();
+        //    _projectVarName = new Stack<string>();
+        //    _filterVarName = new Stack<string>();
+        //}
+
+        //private void LeaveVariableScope()
+        //{
+        //    _variableSubstitution = _varScopeStack.Pop();
+        //    _projectVarName = _projectScopeStack.Pop();
+        //    _filterVarName = _filterScopeStack.Pop();
+        //}
     }
 }
 #endif
