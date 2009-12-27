@@ -225,6 +225,20 @@ namespace Npgsql
         {
             return XmlReader.Create(System.Reflection.Assembly.GetAssembly(typeof(NpgsqlProviderManifest)).GetManifestResourceStream(resourceName));
         }
+
+#if NET40
+        public override bool SupportsEscapingLikeArgument(out char escapeCharacter)
+        {
+            escapeCharacter = '\\';
+            return true;
+        }
+
+        public override string EscapeLikeArgument(string argument)
+        {
+            return argument.Replace("%", "\\%").Replace("_", "\\_");
+        }
+#endif
+
     }
 }
 #endif
