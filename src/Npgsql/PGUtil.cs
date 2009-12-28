@@ -382,10 +382,16 @@ namespace Npgsql
 		{
 			Int32 bytes_from_stream = 0;
 			Int32 total_bytes_read = 0;
+            // need to read in chunks so the socket doesn't run out of memory in recv
+            // the network stream doesn't prevent this and downloading a large bytea
+            // will throw an IOException with an error code of 10055 (WSAENOBUFS)
+            int maxReadChunkSize = 8192;
 
 			while (size > 0)
 			{
-				bytes_from_stream = stream.Read(buffer, offset + total_bytes_read, size);
+                // chunked read of maxReadChunkSize
+                int readSize = (size > maxReadChunkSize) ? maxReadChunkSize : size;
+                bytes_from_stream = stream.Read(buffer, offset + total_bytes_read, readSize);
 				total_bytes_read += bytes_from_stream;
 				size -= bytes_from_stream;
 			}
