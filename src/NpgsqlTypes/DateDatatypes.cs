@@ -1308,14 +1308,26 @@ namespace NpgsqlTypes
 			return new NpgsqlDate(newYear, Month, Day);
 		}
 
-		public NpgsqlDate AddMonths(int months)
-		{
-			int newMonthOffset = Month - 1 + months;
-			int newYear = Year + newMonthOffset/12;
-			int maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonthOffset];
-			int newDay = Day > maxDay ? maxDay : Day;
-			return new NpgsqlDate(newYear, newMonthOffset + 1, newDay);
-		}
+        public NpgsqlDate AddMonths(int months)
+        {
+            int newYear = Year;
+            int newMonth = Month + months;
+
+            while (newMonth > 12)
+            {
+                newMonth -= 12;
+                newYear += 1;
+            };
+            while (newMonth < 1)
+            {
+                newMonth += 12;
+                newYear -= 1;
+            };
+            int maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
+            int newDay = Day > maxDay ? maxDay : Day;
+            return new NpgsqlDate(newYear, newMonth, newDay);
+
+        }
 
 		public NpgsqlDate Add(NpgsqlInterval interval)
 		{

@@ -487,6 +487,27 @@ namespace NpgsqlTests
 
             NpgsqlInterval diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
             Assert.AreEqual(new NpgsqlInterval(0, 1, 0), diff);
+
+            // Test of the addMonths method (positive values added)
+            NpgsqlDate dateForTestMonths = new NpgsqlDate(2008, 1, 1);
+            Assert.AreEqual(dateForTestMonths.AddMonths(0), dateForTestMonths);
+            Assert.AreEqual(dateForTestMonths.AddMonths(4), new NpgsqlDate(2008, 5, 1));
+            Assert.AreEqual(dateForTestMonths.AddMonths(11), new NpgsqlDate(2008, 12, 1));
+            Assert.AreEqual(dateForTestMonths.AddMonths(12), new NpgsqlDate(2009, 1, 1));
+            Assert.AreEqual(dateForTestMonths.AddMonths(14), new NpgsqlDate(2009, 3, 1));
+            dateForTestMonths = new NpgsqlDate(2008, 1, 31);
+            Assert.AreEqual(dateForTestMonths.AddMonths(1), new NpgsqlDate(2008, 2, 29));
+            Assert.AreEqual(dateForTestMonths.AddMonths(13), new NpgsqlDate(2009, 2, 28));
+
+            // Test of the addMonths method (negative values added)
+            dateForTestMonths = new NpgsqlDate(2009, 1, 1);
+            Assert.AreEqual(dateForTestMonths.AddMonths(0), dateForTestMonths);
+            Assert.AreEqual(dateForTestMonths.AddMonths(-4), new NpgsqlDate(2008, 9, 1));
+            Assert.AreEqual(dateForTestMonths.AddMonths(-12), new NpgsqlDate(2008, 1, 1));
+            Assert.AreEqual(dateForTestMonths.AddMonths(-13), new NpgsqlDate(2007, 12, 1));
+            dateForTestMonths = new NpgsqlDate(2009, 3, 31);
+            Assert.AreEqual(dateForTestMonths.AddMonths(-1), new NpgsqlDate(2009, 2, 28));
+            Assert.AreEqual(dateForTestMonths.AddMonths(-13), new NpgsqlDate(2008, 2, 29));
         }
 
         [Test]
