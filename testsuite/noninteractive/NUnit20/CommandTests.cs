@@ -2663,6 +2663,21 @@ namespace NpgsqlTests
             
             
         }
+        
+        [Test]
+        public void CaseSensitiveParameterNames()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :p1", TheConnection);
+            
+            command.Parameters.Add(new NpgsqlParameter("P1", NpgsqlDbType.Integer)).Value = 5;
+
+            
+            Object result = command.ExecuteScalar();
+            
+            Assert.AreEqual(5, result);
+            
+        }
+
 
         [Test]
         public void FunctionTestTimestamptzParameterSupport()
@@ -3375,7 +3390,36 @@ connection.Open();*/
 
             Assert.AreEqual(-1, result);
         }
+        
+        [Test]
+        public void TestReturnIPAddressFromNpgsqlDataAdapter()
+        {
+            // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
+            // for a discussion where an NpgsqlInet type isn't shown in a datagrid
+            // This test tries to check if the type returned is an IPAddress when using
+            // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
+            
+            NpgsqlCommand command = new NpgsqlCommand("select '192.168.10.10'::inet;", TheConnection);
+            
+            
+            
+            
+            
+            NpgsqlDataReader dr = command.ExecuteReader();
+            dr.Read();
 
+            Object result = dr.GetValue(0);
+            
+            dr.Close();
+            
+
+            Assert.AreEqual(typeof(IPAddress), result.GetType());
+            
+            
+
+
+            
+        }
 
 
     }

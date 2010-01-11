@@ -929,7 +929,7 @@ namespace Npgsql
             // If parenthesis don't need to be added, they were added by user with parameter names. Replace them.
             if (!addProcedureParenthesis)
             {
-                Dictionary<string, NpgsqlParameter> parameterIndex = new Dictionary<string, NpgsqlParameter>(parameters.Count);
+                Dictionary<string, NpgsqlParameter> parameterIndex = new Dictionary<string, NpgsqlParameter>(parameters.Count, StringComparer.InvariantCultureIgnoreCase);
                 foreach (NpgsqlParameter parameter in parameters)
                     parameterIndex[parameter.CleanName] = parameter;
 
