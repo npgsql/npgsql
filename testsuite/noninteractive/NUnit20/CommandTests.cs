@@ -1087,6 +1087,21 @@ namespace NpgsqlTests
             Assert.AreEqual("2009-11-11 23:45:43Z", d.ToUniversalTime().ToString("u"));
 
         }
+        
+        [Test]
+        public void DateTimeSupportTimezoneEuropeAmsterdam()
+        {
+            //1929-08-19 00:00:00+01:19:32
+            // This test was provided by Christ Akkermans.
+            
+            NpgsqlCommand command = new NpgsqlCommand("SET TIME ZONE 'Europe/Amsterdam';SELECT '1929-08-19 00:00:00'::timestamptz;", TheConnection);
+
+            DateTime d = (DateTime)command.ExecuteScalar();
+            
+           
+
+        }
+
 
 
         [Test]
