@@ -25,8 +25,8 @@ namespace Npgsql
         [StructLayout(LayoutKind.Sequential)]
         private struct SecHandle
         {
-            public int dwLower;
-            public int dwUpper;
+            public IntPtr dwLower;
+            public IntPtr dwUpper;
         }
 
         [StructLayout(LayoutKind.Sequential)]
