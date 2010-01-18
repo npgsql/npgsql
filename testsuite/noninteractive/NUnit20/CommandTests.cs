@@ -3407,7 +3407,7 @@ connection.Open();*/
         }
         
         [Test]
-        public void TestReturnIPAddressFromNpgsqlDataAdapter()
+        public void TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
         {
             // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
             // for a discussion where an NpgsqlInet type isn't shown in a datagrid
@@ -3415,9 +3415,6 @@ connection.Open();*/
             // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
             
             NpgsqlCommand command = new NpgsqlCommand("select '192.168.10.10'::inet;", TheConnection);
-            
-            
-            
             
             
             NpgsqlDataReader dr = command.ExecuteReader();
@@ -3431,8 +3428,31 @@ connection.Open();*/
             Assert.AreEqual(typeof(IPAddress), result.GetType());
             
             
+        }
+        
+        [Test]
+        public void TestNpgsqlSpecificTypesCLRTypesNpgsqlTimeStamp()
+        {
+            // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
+            // for a discussion where an NpgsqlInet type isn't shown in a datagrid
+            // This test tries to check if the type returned is an IPAddress when using
+            // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
+            
+            NpgsqlCommand command = new NpgsqlCommand("select '2010-01-17 15:45'::timestamp;", TheConnection);
+            
+            
+            NpgsqlDataReader dr = command.ExecuteReader();
+            dr.Read();
 
+            Object result = dr.GetValue(0);
+            Object result2 = dr.GetProviderSpecificValue(0);
+            
+            dr.Close();
+            
 
+            Assert.AreEqual(typeof(DateTime), result.GetType());
+            Assert.AreEqual(typeof(NpgsqlTimeStamp), result2.GetType());
+            
             
         }
 
