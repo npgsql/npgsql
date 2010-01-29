@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CompatibilityEntry Name=".NET Framework 3.0"
+                    Platform="Desktop" 
+                    Version="3.0" 
+                    Priority="3000">
+
+  <Assembly>PresentationBuildTasks, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationCore, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationFramework.Aero, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationFramework.Classic, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationFramework, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationFramework.Luna, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>PresentationFramework.Royale, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>ReachFramework, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.IdentityModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.IdentityModel.Selectors, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.IO.Log, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>System.Printing, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Runtime.Serialization, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Speech, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Workflow.Activities, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Workflow.ComponentModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Workflow.Runtime, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>UIAutomationClient, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>UIAutomationClientsideProviders, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>UIAutomationProvider, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>UIAutomationTypes, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>WindowsBase, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>WindowsFormsIntegration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+</CompatibilityEntry>
