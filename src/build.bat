@@ -1,1 +1,1 @@
-../Tools/NAnt/NAnt.exe %*
+..\Tools\NAnt\NAnt.exe %*
