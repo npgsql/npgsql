@@ -2,10 +2,22 @@
 <!--
     This is the build file of Npgsql
 -->
-<project name="Npgsql" default="build" basedir=".">
+<project name="Npgsql" default="build" basedir="." xmlns="http://nant.sf.net/release/0.86-beta1/nant.xsd">
 
     <!--<property name="nant.settings.currentframework" value="mono-2.0" />-->
-    <property name="src.dir" value="${nant.project.basedir}" />
+    
+    
+    <!-- properties -->
+	<property name="nant.verbosity" value="true" overwrite="false" />
+	<property name="build.configuration" value="Debug" overwrite="false" />
+	<property name="build.target" value="Build" overwrite="false" />
+	<property name="build.project" value="AspSQLProvider.sln" overwrite="false" />
+	<property name="CCNetLabel" value="0.0.0.0" overwrite="false" />
+	<property name="codemetrics.output.type" value="XmlFile" overwrite="false" />
+	
+    
+    
+    <property name="src.dir" value="${project::get-base-directory()}" />
     <property name="build.dir" value="${src.dir}/build"/>
     <property name="ms.build.dir" value="${build.dir}/ms"/>
     <property name="ms.res.dir" value="${build.dir}/res/ms"/>
@@ -16,12 +28,65 @@
     <property name="debug" value="true"/>
     <property name="xmldoc" value="${ms.build.dir}/${assemblyname}.xml"/>
     
+    <property name="build.metrics.dir" value="${path::get-full-path('../BuildMetrics')}" readonly="true" />
+	<property name="publish.dir" value="${path::get-full-path('../Publish')}" readonly="true" />
+	<property name="tools.dir" value="${path::get-full-path('../Tools')}" readonly="true" />
+	<property name="lib.dir" value="${path::get-full-path('lib')}" readonly="true" />
+	<property name="gendarme.project" value="${path::combine(src.dir, 'gendarme.assemblies.txt')}" overwrite="false" />
+	<property name="ndepend.project" value="${path::combine(src.dir, 'NDependProject.xml')}" overwrite="false" />
+	<property name="fxcop.project" value="${path::combine(src.dir, 'AspSQLProvider.FxCop')}" overwrite="false" />
+
+
+    
+    
     <property name="testfiles.dir" value="../testsuite/noninteractive/NUnit20"/>
     <property name="locales" value="de,es,fi"/>
+    
+    
+    
+    
+    <!-- tool path properties -->
+	<property name="nauckit.nant.assembly" value="${path::combine( path::combine(tools.dir, 'NAnt'), 'NauckIT.NAnt.dll')}" readonly="true" />
+	<property name="gendarme.executable" value="${path::combine( path::combine(tools.dir, 'Gendarme'), 'gendarme.exe')}" readonly="true" />
+	<property name="ndepend.executable" value="${path::combine( path::combine(tools.dir, 'NDepend'), 'NDepend.Console.exe')}" readonly="true" />
+	<property name="fxcop.executable" value="${path::combine( path::combine(tools.dir, 'FxCop'), 'FxCopCmd.exe')}" readonly="true" />
+	
+	
+
+	<!-- common assembly info properties -->
+	<property name="assembly.company" value="Npgsql Development Team" readonly="true" />
+	<property name="assembly.product" value="Npgsql" readonly="true" />
+	<property name="assembly.copyright" value="Copyright © 2002 - ${datetime::get-year(datetime::now())} ${assembly.company}" readonly="true" />
+	<property name="assembly.trademark" value="" readonly="true" />
+	<property name="assembly.version" value="${CCNetLabel}" readonly="true" />
+	<property name="assembly.fileversion" value="${CCNetLabel}" readonly="true" />
+    
+    
+    
 
     <target name="clean" description="cleans the build directory">
         <delete dir="${build.dir}" verbose="true" failonerror="true"/>
+        <delete dir="${publish.dir}" if="${directory::exists(publish.dir)}" verbose="${nant.verbosity}" />
     </target>
+    
+    
+    <target name="createAssemblyInfo" description="Create an assembly info file with the current build number">
+		<asminfo language="CSharp" output="${path::combine(src.dir, 'CommonAssemblyInfo.cs')}" verbose="${nant.verbosity}">
+			<imports>
+				<import namespace="System.Reflection" />
+			</imports>
+			<attributes>
+				<attribute type="AssemblyCompanyAttribute" value="${assembly.company}" />
+				<attribute type="AssemblyProductAttribute" value="${assembly.product}" />
+				<attribute type="AssemblyCopyrightAttribute" value="${assembly.copyright}" />
+				<attribute type="AssemblyTrademarkAttribute" value="${assembly.trademark}" />
+				<attribute type="AssemblyVersionAttribute" value="${assembly.version}" />
+				<attribute type="AssemblyFileVersionAttribute" value="${assembly.fileversion}" />
+			</attributes>
+		</asminfo>
+	</target>
+	
+    
 
     <target name="init">
         <mkdir dir="${ms.build.dir}"/>
@@ -30,6 +95,8 @@
         <mkdir dir="${ms.res.dir}/NpgsqlTypes"/>
         <mkdir dir="${mono.build.dir}"/>
         <mkdir dir="${nunit2tests.build.dir}"/>
+        <mkdir dir="${build.metrics.dir}" unless="${directory::exists(build.metrics.dir)}" verbose="${nant.verbosity}" />
+		<mkdir dir="${publish.dir}" unless="${directory::exists(publish.dir)}" verbose="${nant.verbosity}" />
     </target>
 
     <!--
@@ -265,7 +332,7 @@
                     <property name="DocumentPrivates" value="False"/>
                     <property name="DocumentEmptyNamespaces" value="False"/>
                     <property name="IncludeAssemblyVersion" value="True"/>
-                    <property name="CopyrightText" value="Npgsql Development Team 2002-2009"/>
+                    <property name="CopyrightText" value="${assembly.copyright}"/>
                     <property name="CopyrightHref" value=""/>
                     <property name="HtmlHelpName" value="Npgsql"/>
                     <property name="HtmlHelpCompilerFilename" value="hhc.exe"/>
