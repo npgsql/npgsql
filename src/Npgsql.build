@@ -7,12 +7,13 @@
     <!--<property name="nant.settings.currentframework" value="mono-2.0" />-->
     
     
-    <!-- properties -->
-	<property name="nant.verbosity" value="true" overwrite="false" />
-	<property name="build.configuration" value="Debug" overwrite="false" />
-	<property name="build.target" value="Build" overwrite="false" />
-	<property name="build.project" value="AspSQLProvider.sln" overwrite="false" />
-	<property name="CCNetLabel" value="0.0.0.0" overwrite="false" />
+    <!-- properties --> 	
+
+	<property name="nant.verbosity" value="true" overwrite="false" /> 	
+	<property name="build.configuration" value="Debug" overwrite="false" /> 	
+	<property name="build.target" value="Build" overwrite="false" /> 
+	<property name="build.project" value="AspSQLProvider.sln" overwrite="false" /> 	
+	<property name="CCNetLabel" value="0.0.0.0" overwrite="false" /> 	
 	<property name="codemetrics.output.type" value="XmlFile" overwrite="false" />
 	
     
@@ -27,17 +28,22 @@
     <property name="assemblyname" value="Npgsql"/>
     <property name="debug" value="true"/>
     <property name="xmldoc" value="${ms.build.dir}/${assemblyname}.xml"/>
-    
-    <property name="build.metrics.dir" value="${path::get-full-path('../BuildMetrics')}" readonly="true" />
-	<property name="publish.dir" value="${path::get-full-path('../Publish')}" readonly="true" />
-	<property name="tools.dir" value="${path::get-full-path('../Tools')}" readonly="true" />
-	<property name="lib.dir" value="${path::get-full-path('lib')}" readonly="true" />
-	<property name="gendarme.project" value="${path::combine(src.dir, 'gendarme.assemblies.txt')}" overwrite="false" />
-	<property name="ndepend.project" value="${path::combine(src.dir, 'NDependProject.xml')}" overwrite="false" />
-	<property name="fxcop.project" value="${path::combine(src.dir, 'AspSQLProvider.FxCop')}" overwrite="false" />
 
 
+
+
+
+    <property name="build.out.dir" value="${ms.build.dir}" /> 
     
+    <property name="build.metrics.dir" value="${path::get-full-path('../BuildMetrics')}" readonly="true" /> 	
+	<property name="publish.dir" value="${path::get-full-path('../Publish')}" readonly="true" /> 	
+	<property name="tools.dir" value="${path::get-full-path('../Tools')}" readonly="true" /> 	
+	<property name="lib.dir" value="${path::get-full-path('lib')}" readonly="true" /> 	
+	<property name="gendarme.project" value="${path::combine(src.dir, 'gendarme.assemblies.txt')}" overwrite="false" /> 	
+	<property name="ndepend.project" value="${path::combine(src.dir, 'NDependProject.xml')}" overwrite="false" /> 	
+	<property name="fxcop.project" value="${path::combine(src.dir, 'Npgsql.FxCop')}" overwrite="false" /> 
+
+	   
     
     <property name="testfiles.dir" value="../testsuite/noninteractive/NUnit20"/>
     <property name="locales" value="de,es,fi"/>
@@ -45,20 +51,18 @@
     
     
     
-    <!-- tool path properties -->
-	<property name="nauckit.nant.assembly" value="${path::combine( path::combine(tools.dir, 'NAnt'), 'NauckIT.NAnt.dll')}" readonly="true" />
-	<property name="gendarme.executable" value="${path::combine( path::combine(tools.dir, 'Gendarme'), 'gendarme.exe')}" readonly="true" />
-	<property name="ndepend.executable" value="${path::combine( path::combine(tools.dir, 'NDepend'), 'NDepend.Console.exe')}" readonly="true" />
+    <!-- tool path properties --> 	
+	<property name="nauckit.nant.assembly" value="${path::combine( path::combine(tools.dir, 'NAnt'), 'NauckIT.NAnt.dll')}" readonly="true" /> 	
+	<property name="gendarme.executable" value="${path::combine( path::combine(tools.dir, 'Gendarme'), 'gendarme.exe')}" readonly="true" /> 	
+	<property name="ndepend.executable" value="${path::combine( path::combine(tools.dir, 'NDepend'), 'NDepend.Console.exe')}" readonly="true" /> 	
 	<property name="fxcop.executable" value="${path::combine( path::combine(tools.dir, 'FxCop'), 'FxCopCmd.exe')}" readonly="true" />
 	
-	
-
-	<!-- common assembly info properties -->
-	<property name="assembly.company" value="Npgsql Development Team" readonly="true" />
-	<property name="assembly.product" value="Npgsql" readonly="true" />
-	<property name="assembly.copyright" value="Copyright © 2002 - ${datetime::get-year(datetime::now())} ${assembly.company}" readonly="true" />
-	<property name="assembly.trademark" value="" readonly="true" />
-	<property name="assembly.version" value="${CCNetLabel}" readonly="true" />
+	<!-- common assembly info properties --> 	
+	<property name="assembly.company" value="Npgsql Development Team" readonly="true" /> 	
+	<property name="assembly.product" value="Npgsql" readonly="true" /> 	
+	<property name="assembly.copyright" value="Copyright © 2002 - ${datetime::get-year(datetime::now())} ${assembly.company}" readonly="true" /> 	
+	<property name="assembly.trademark" value="" readonly="true" /> 	
+	<property name="assembly.version" value="${CCNetLabel}" readonly="true" /> 	
 	<property name="assembly.fileversion" value="${CCNetLabel}" readonly="true" />
     
     
@@ -70,23 +74,57 @@
     </target>
     
     
-    <target name="createAssemblyInfo" description="Create an assembly info file with the current build number">
-		<asminfo language="CSharp" output="${path::combine(src.dir, 'CommonAssemblyInfo.cs')}" verbose="${nant.verbosity}">
-			<imports>
-				<import namespace="System.Reflection" />
-			</imports>
-			<attributes>
-				<attribute type="AssemblyCompanyAttribute" value="${assembly.company}" />
-				<attribute type="AssemblyProductAttribute" value="${assembly.product}" />
-				<attribute type="AssemblyCopyrightAttribute" value="${assembly.copyright}" />
-				<attribute type="AssemblyTrademarkAttribute" value="${assembly.trademark}" />
-				<attribute type="AssemblyVersionAttribute" value="${assembly.version}" />
-				<attribute type="AssemblyFileVersionAttribute" value="${assembly.fileversion}" />
-			</attributes>
-		</asminfo>
-	</target>
+    <target name="createAssemblyInfo" description="Create an assembly info file with the current build number"> 		<asminfo language="CSharp" output="${path::combine(src.dir, 'CommonAssemblyInfo.cs')}" verbose="${nant.verbosity}"> 			<imports> 				<import namespace="System.Reflection" /> 			</imports> 			<attributes> 				<attribute type="AssemblyCompanyAttribute" value="${assembly.company}" /> 				<attribute type="AssemblyProductAttribute" value="${assembly.product}" /> 				<attribute type="AssemblyCopyrightAttribute" value="${assembly.copyright}" /> 				<attribute type="AssemblyTrademarkAttribute" value="${assembly.trademark}" /> 				<attribute type="AssemblyVersionAttribute" value="${assembly.version}" /> 				<attribute type="AssemblyFileVersionAttribute" value="${assembly.fileversion}" /> 			</attributes> 		</asminfo> 	</target>
 	
     
+	<target name="runGendarme" depends="build" description="Analyze the compiled assemblies with Mono's Gendarme">
+		<loadtasks assembly="${nauckit.nant.assembly}" />
+
+		<if test="${codemetrics.output.type == 'LogFile'}">
+			<property name="gendarme.output.file" value="gendarme-result.log" />
+		</if>
+
+		<if test="${codemetrics.output.type == 'XmlFile'}">
+			<property name="gendarme.output.file" value="gendarme-result.xml" />
+		</if>
+
+		<if test="${codemetrics.output.type == 'HtmlFile'}">
+			<property name="gendarme.output.file" value="gendarme-result.html" />
+		</if>
+
+		<gendarme executable="${gendarme.executable}" outputType="${codemetrics.output.type}" outputFile="${path::combine(build.metrics.dir, gendarme.output.file)}"
+              workingDirectory="${build.out.dir}" assemblyListFile="${gendarme.project}" />
+	</target>
+
+	<target name="runNdepend" depends="build" description="Analyze and collect code metrics of the compiled assemblies with NDepend">
+		<loadtasks assembly="${nauckit.nant.assembly}" />
+
+		<ndepend executable="${ndepend.executable}" projectFile="${ndepend.project}" />
+	</target>
+
+	<target name="runFxCop" depends="build" description="Analyze the compiled assemblies with FxCop">
+		<loadtasks assembly="${nauckit.nant.assembly}" />
+
+		<if test="${codemetrics.output.type == 'LogFile'}">
+			<property name="fxcop.output.file" value="fxcop-result.html" />
+			<property name="fxcop.output.xsl" value="true" />
+		</if>
+
+		<if test="${codemetrics.output.type == 'XmlFile'}">
+			<property name="fxcop.output.file" value="fxcop-result.xml" />
+			<property name="fxcop.output.xsl" value="false" />
+		</if>
+
+		<if test="${codemetrics.output.type == 'HtmlFile'}">
+			<property name="fxcop.output.file" value="fxcop-result.html" />
+			<property name="fxcop.output.xsl" value="true" />
+		</if>
+		
+		<fxcop executable="${fxcop.executable}" projectFile="${fxcop.project}" outputFile="${path::combine(build.metrics.dir, fxcop.output.file)}"
+					 xslFile="${path::combine(tools.dir, 'FxCop/Xml/fxcopreport.xsl')}" applyXsl="${fxcop.output.xsl} "/>
+	</target>
+
+
 
     <target name="init">
         <mkdir dir="${ms.build.dir}"/>
@@ -95,8 +133,7 @@
         <mkdir dir="${ms.res.dir}/NpgsqlTypes"/>
         <mkdir dir="${mono.build.dir}"/>
         <mkdir dir="${nunit2tests.build.dir}"/>
-        <mkdir dir="${build.metrics.dir}" unless="${directory::exists(build.metrics.dir)}" verbose="${nant.verbosity}" />
-		<mkdir dir="${publish.dir}" unless="${directory::exists(publish.dir)}" verbose="${nant.verbosity}" />
+        <mkdir dir="${build.metrics.dir}" unless="${directory::exists(build.metrics.dir)}" verbose="${nant.verbosity}" /> 		<mkdir dir="${publish.dir}" unless="${directory::exists(publish.dir)}" verbose="${nant.verbosity}" />
     </target>
 
     <!--
