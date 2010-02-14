@@ -58,6 +58,8 @@
 	<property name="fxcop.executable" value="${path::combine( path::combine(tools.dir, 'FxCop'), 'FxCopCmd.exe')}" readonly="true" />
 	
 	<!-- common assembly info properties --> 	
+	<property name="assembly.title" value="Npgsql - .Net Data Provider for PostgreSQL" readonly="true" /> 	
+	<property name="assembly.description" value=".Net Data Provider for PostgreSQL" readonly="true" /> 	
 	<property name="assembly.company" value="Npgsql Development Team" readonly="true" /> 	
 	<property name="assembly.product" value="Npgsql" readonly="true" /> 	
 	<property name="assembly.copyright" value="Copyright © 2002 - ${datetime::get-year(datetime::now())} ${assembly.company}" readonly="true" /> 	
@@ -67,6 +69,29 @@
     
     
     
+    
+    <target name="ccnet" depends="clean, init, build, runCodeMetrics, package" description="" />
+
+    
+    <!-- Code analyze metric targets -->
+	<target name="runCodeMetrics" depends="build" description="Analyze and collect code metrics of the compiled assemblies">
+
+		<call target="runGendarme" cascade="false" />
+
+		<!-- Execute Windows only code metric tools -->
+		<if test="${platform::is-windows()}">
+			<!-- Check for NDepend installation -->
+			<if test="${not file::exists(ndepend.executable)}">
+				<echo level="Warning" message="NDepend installation not found at '${ndepend.executable}'. Please install NDepend! Target canceled." />
+			</if>
+			<if test="${file::exists(ndepend.executable)}">
+				<call target="runNdepend" cascade="false" />
+			</if>
+
+			<!-- Run FxCop -->
+			<call target="runFxCop" cascade="false" />
+		</if>
+	</target>
 
     <target name="clean" description="cleans the build directory">
         <delete dir="${build.dir}" verbose="true" failonerror="true"/>
@@ -74,7 +99,28 @@
     </target>
     
     
-    <target name="createAssemblyInfo" description="Create an assembly info file with the current build number"> 		<asminfo language="CSharp" output="${path::combine(src.dir, 'CommonAssemblyInfo.cs')}" verbose="${nant.verbosity}"> 			<imports> 				<import namespace="System.Reflection" /> 			</imports> 			<attributes> 				<attribute type="AssemblyCompanyAttribute" value="${assembly.company}" /> 				<attribute type="AssemblyProductAttribute" value="${assembly.product}" /> 				<attribute type="AssemblyCopyrightAttribute" value="${assembly.copyright}" /> 				<attribute type="AssemblyTrademarkAttribute" value="${assembly.trademark}" /> 				<attribute type="AssemblyVersionAttribute" value="${assembly.version}" /> 				<attribute type="AssemblyFileVersionAttribute" value="${assembly.fileversion}" /> 			</attributes> 		</asminfo> 	</target>
+    <target name="createAssemblyInfo" description="Create an assembly info file with the current build number">
+     		<asminfo language="CSharp" output="${path::combine(src.dir, 'Npgsql/AssemblyInfo.cs')}" verbose="${nant.verbosity}">
+                <imports>
+                    <import namespace="System" />
+                    <import namespace="System.Reflection" />
+                    <import namespace="System.Resources" />
+                </imports>
+                <attributes>
+                    <attribute type="CLSCompliantAttribute" value="true" />
+                    <attribute type="AssemblyTitleAttribute" value="${assembly.title}" />
+                    <attribute type="AssemblyDescriptionAttribute" value="${assembly.description}" />
+                    <attribute type="AssemblyCompanyAttribute" value="${assembly.company}" />
+                    <attribute type="AssemblyProductAttribute" value="${assembly.product}" />
+                    <attribute type="AssemblyCopyrightAttribute" value="${assembly.copyright}" />
+                    <attribute type="AssemblyTrademarkAttribute" value="${assembly.trademark}" /> 
+                    <attribute type="AssemblyVersionAttribute" value="${assembly.version}" /> 	
+                    <attribute type="AssemblyFileVersionAttribute" value="${assembly.fileversion}" /> 
+                    <attribute type="NeutralResourcesLanguageAttribute" value="&quot;en&quot;, UltimateResourceFallbackLocation.MainAssembly" asis="true"/>-->
+                    
+                </attributes> 
+      		</asminfo> 	
+    </target>
 	
     
 	<target name="runGendarme" depends="build" description="Analyze the compiled assemblies with Mono's Gendarme">
@@ -340,6 +386,59 @@
             <test assemblyname="${nunit2tests.build.dir}/NpgsqlTests.dll"/>
         </nunit2>
     </target>
+
+
+<!-- packaging and publishing targets -->
+	<target name="package" depends="clean, build" description="Create and copy the Npgsql distribution to the publish dictionary">
+		
+		<call target="packageSource" cascade="false" />
+
+		<call target="packageZipDistribution" cascade="false" />
+		
+	</target>
+
+	<target name="packageSource" depends="clean, init" description="Creates a zip file containing all sources and tools to build Npgsql">
+		<property name="source.zip.file" value="Npgsql${assembly.version}.src.zip" />
+
+		<zip zipfile="${path::combine(publish.dir, source.zip.file)}" verbose="${nant.verbosity}">
+			<fileset defaultexcludes="true">
+				<include name="*/**" />
+				<exclude name=".git/**" />
+				<exclude name="nant*.log*" />
+				<exclude name="${build.dir}/**" />
+				<exclude name="${build.metrics.dir}/**" />
+				<exclude name="${publish.dir}/**" />
+				<exclude name="${path::get-directory-name(ndepend.executable)}/**" />
+				<exclude name="${src.dir}/**/bin/**"/>
+				<exclude name="${src.dir}/**/obj/**"/>
+				<exclude name="${src.dir}/_Resharper*/**"/>
+				<exclude name="${src.dir}/**/*.user"/>
+				<exclude name="${src.dir}/**/*.suo"/>
+				<exclude name="${src.dir}/*.sln.cache"/>
+				<exclude name="${src.dir}/*.sln.proj"/>
+			</fileset>
+		</zip>
+	</target>
+
+	<target name="packageZipDistribution" depends="clean, build" description="Creates a zip file containing the AspSQLProvider distribution">
+		<property name="dist.zip.file" value="Npgsql${assembly.version}-bin.zip" />
+		
+		<zip zipfile="${path::combine(publish.dir, dist.zip.file)}" verbose="${nant.verbosity}">
+			<fileset basedir="${project::get-base-directory()}/.." defaultexcludes="true">
+				<include name="LICENSE.txt" />
+				<include name="README.txt" />
+				<include name="RELEASENOTES.txt" />
+
+			</fileset>
+			<fileset basedir="${build.out.dir}" defaultexcludes="true">
+				<include name="*/**" />
+			</fileset>
+		</zip>
+	</target>
+
+
+
+
 
     <target name="apidocs" depends="build">
         <ndoc>
