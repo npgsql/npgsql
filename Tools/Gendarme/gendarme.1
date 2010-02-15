@@ -1,47 +1,49 @@
 .\" 
 .\" Gendarme manual page.
 .\"
-.\" Author:
+.\" Authors:
 .\"	Sebastien Pouliot  <sebastien@ximian.com>
+.\"	Jesse Jones  <jesjones@mindspring.com>
 .\"
-.\" Copyright (C) 2005-2006,2008 Novell, Inc (http://www.novell.com)
+.\" Copyright (C) 2005-2006,2008-2009 Novell, Inc (http://www.novell.com)
 .\"
 
 .de Sp
 .if t .sp .5v
 .if n .sp
 ..
-.TH Gendarme "Gendarme 2.4.0.0"
+.TH Gendarme "Gendarme 2.6.0.0"
 .SH NAME
-Gendarme \- Rule-based code analysis for Mono::
+Gendarme \- Rule-based code analysis for Mono.
 .SH SYNOPSIS
 .PP
 .B gendarme [--config configfile] [--set ruleset] [--log file | --xml file | --html file] [options] assemblies ...
 .SH DESCRIPTION
-\fIGendarme\fP is a extensible rule-based tool to find problems in .NET 
+\fIGendarme\fP is a extensible rule-based tool used to find problems in .NET 
 applications and libraries. Gendarme inspects programs and libraries that
 contain code in ECMA CIL format (Mono and .NET) and looks for common 
-problems with the code, problems that compiler do not typically check or
-have not historically checked.
+problems with the code, problems that compilers do not typically check or
+have historically not checked.
 .SH OPTIONS
 .TP
 .I "--config configfile"
-Specify the configuration file. Default is 'rules.xml'.
+Specify the rule sets and rule settings. Default is 'rules.xml'.
 .TP
 .I "--set ruleset"
-Specify the set of rules to verify. Default is '*'.
+Specify a rule set from configfile. Defaults to 'default'.
 .TP
 .I "--log file"
-Save the text output to the specified file.
+Save the report to the specified file. If none of --log, --xml, or --html are used
+then the report is written to stdout.
 .TP
 .I "--xml file"
-Save the output, formatted as XML, to the specified file.
+Save the report, formatted as XML, to the specified file.
 .TP
 .I "--html file"
-Save the output, formatted as HTML, to the specified file.
+Save the report, formatted as HTML, to the specified file.
 .TP
 .I "--ignore ignore-file"
-Do not report the known defects that are part of the specified file.
+Do not report defects listed in the specified file.
 .TP
 .I "--limit N"
 Stop reporting after N defects are found.
@@ -55,31 +57,34 @@ Filter the reported defects to include the specified confidence levels.
 Default is 'normal+' (i.e. low level is ignored).
 .TP
 .I "--quiet"
-Display minimal output (results) from the runner.
+Used to disable progress and other information which is normally written to stdout.
 .TP
 .I "--v|verbose"
-Enable debugging output. You can supply several -v to augment debugging verbosity.
+When present additional progress information is written to stdout. May be used
+more than once to write even more info. 
 .TP
 .I "--version"
-Display Gendarme's version number. This number match the Mono release
-where it was released.
+Display Gendarme's version number. This will match the Mono version number
+that this copy of Gendarme was released with.
 .TP
 .I "assemblies ..."
 Specify the assemblies to verify. You can specify multiple filenames, 
-including masks (? and *). You can also provide a file that list several
-assemblies (one by line) by prefixing the filename with @ on the command 
+including masks (? and *). You can also provide a file that lists several
+assemblies (one per line) by prefixing the filename with @ on the command 
 line.
 .SH FILES
 .TP
+.I ignore-file
+This file is used to filter out defects from gendarme reports. 
+.TP
 .I rules.xml
-This files contains a list of all the rulesets available to Gendarme. Each 
-ruleset includes a list of assemblies in which some, or all, rules can be
-verified (include) or not (exclude).
-+.TP
-+.I gendarme.exe.config
-+Used by debug versions of Gendarme to enable logging for rules. A config
-+file will be generated automatically by the make file. To enable logging
-+for a rule add a switch using the rule's name and set the value to 1.
+This file is used in conjunction with the --set option to control and configure the rules
+used by Gendarme. It contains a set of named rules (rule sets) and each rule set contains 
+a list of rules.
+.TP
+.I gendarme.exe.config
+Used by debug versions of Gendarme to enable logging for rules. It is useful
+for Gendarme's developers (i.e. not meant for end-users).
 .SH ENVIRONMENT VARIABLES
 .TP
 .I GENDARME_COLOR
@@ -92,11 +97,11 @@ E.g.
     GENDARME_COLOR=none gendarme ...
 .fi
 .SH COPYRIGHT
-Copyright (C) 2005-2008 Novell, Inc (http://www.novell.com)
+Copyright (C) 2005-2009 Novell, Inc (http://www.novell.com)
 .SH MAILING LISTS
 Mailing lists are listed at the
 http://groups.google.com/group/gendarme
 .SH WEB SITE
 http://www.mono-project.com/Gendarme
 .SH SEE ALSO
-.BR mono(1)
+.BR gendarme(5), mono(1)
