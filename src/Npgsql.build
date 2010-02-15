@@ -275,7 +275,7 @@
         </resgen>-->
     </target>
 
-    <target name="build" depends="resources">
+    <target name="build" depends="createAssemblyInfo,resources">
         <csc target="library" output="${ms.build.dir}/${assemblyname}.dll" debug="${debug}" doc="${xmldoc}" keyfile="${src.dir}/Npgsql/Npgsql.snk">
             <references>
                 <include name="System.Data.dll" />
