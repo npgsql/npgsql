@@ -344,6 +344,9 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddType("timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, true,
 			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
+            nativeTypeMapping.AddType("abstime", NpgsqlDbType.Abstime, DbType.DateTime, true,
+                                      new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
+
 			nativeTypeMapping.AddTypeAlias("timestamp", typeof (DateTime));
 			nativeTypeMapping.AddTypeAlias("timestamp", typeof (NpgsqlTimeStamp));
 
@@ -507,6 +510,9 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
                 yield return
                     new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(NpgsqlTimeStamp),
                                               new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp));
+                yield return
+                    new NpgsqlBackendTypeInfo(0, "abstime", NpgsqlDbType.Abstime , DbType.DateTime, typeof(NpgsqlTimeStampTZ),
+                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
@@ -549,7 +555,10 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 					new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof (NpgsqlTimeStamp),
                                               new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp),
                                               typeof(DateTime), timestamp => (DateTime)(NpgsqlTimeStamp)timestamp);
-
+                yield return
+                    new NpgsqlBackendTypeInfo(0, "abstime", NpgsqlDbType.Abstime, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
+                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
+                              typeof(DateTime), timestamp => (DateTime)(NpgsqlTimeStampTZ)timestamp);
 				yield return
 					new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof (NpgsqlTimeStampTZ),
                                               new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),

@@ -67,6 +67,7 @@ namespace NpgsqlTypes
 		Oidvector,
 		Interval,
 		TimeTZ,
-        Name
+        Name,
+        Abstime
 	}
 }
