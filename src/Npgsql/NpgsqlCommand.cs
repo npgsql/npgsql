@@ -156,8 +156,10 @@ namespace Npgsql
             this.m_Connector = connector;
             type = CommandType.Text;
 
+            // Removed this setting. It was causing too much problem.
+            // Do internal commands really need different timeout setting?
             // Internal commands aren't affected by command timeout value provided by user.
-            timeout = 20;
+            // timeout = 20;
         }
 
         // Public properties.
