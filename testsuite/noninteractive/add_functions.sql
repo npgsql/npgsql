@@ -95,3 +95,13 @@ create or replace function testoutparameter(x int, y int, out sum int, out produ
 
 create or replace function testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';
 
+create or replace function testreturnrecordresultset(a int4, b int4) returns table (a int4, b int4) as
+$BODY$
+begin
+return query
+select 1, 2;
+end;
+$BODY$
+language 'plpgsql' 
+
+

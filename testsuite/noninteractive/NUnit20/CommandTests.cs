@@ -2121,6 +2121,34 @@ namespace NpgsqlTests
             Assert.AreEqual(5, command.Parameters[1].Value);
         }
         
+        [Test]
+        public void ReturnRecordSupportWithResultset()
+        {
+            
+            NpgsqlCommand command = new NpgsqlCommand("testreturnrecordresultset", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+            
+            command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Integer));
+            command.Parameters[0].Value = 1;
+
+            command.Parameters.Add(new NpgsqlParameter(":b", NpgsqlDbType.Integer));
+            command.Parameters[1].Value = 4;
+
+
+            NpgsqlDataReader dr = null;
+            
+            try
+            {
+                dr = command.ExecuteReader();
+            }
+            finally
+            {
+                if (dr != null)
+                    dr.Close();
+            }
+            
+        }
+
         
         
         [Test]

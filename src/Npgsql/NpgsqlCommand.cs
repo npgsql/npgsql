@@ -82,7 +82,7 @@ namespace Npgsql
         
         private Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
 
-        private Boolean functionReturnsRecord = false; // Functions don't return record by default.
+        private Boolean functionNeedsColumnListDefinition = false; // Functions don't return record by default.
 
         private Boolean functionReturnsRefcursor = false; // Functions don't return refcursor by default.
 
@@ -877,8 +877,9 @@ namespace Npgsql
                 case CommandType.StoredProcedure:
                     if (!functionChecksDone)
                     {
-                        functionReturnsRecord = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
-
+                        //functionNeedsColumnListDefinition = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
+                        functionNeedsColumnListDefinition = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionNeedsColumnDefinitionList();
+                        
                         functionReturnsRefcursor = CheckFunctionReturn("refcursor");
 
                         // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
@@ -914,8 +915,8 @@ namespace Npgsql
                 if (functionReturnsRefcursor)
                     return ProcessRefcursorFunctionReturn(result.ToString());
 
-                if (functionReturnsRecord)
-                    AddFunctionReturnsRecordSupport(result);
+                if (functionNeedsColumnListDefinition)
+                    AddFunctionColumnListSupport(result);
                
                 return result;
             }
@@ -1048,9 +1049,9 @@ namespace Npgsql
                 result.Append(')');
             }
 
-            if (functionReturnsRecord)
+            if (functionNeedsColumnListDefinition)
             {
-                AddFunctionReturnsRecordSupport(result);
+                AddFunctionColumnListSupport(result);
             }
 
             // If function returns ref cursor just process refcursor-result function call
@@ -1241,8 +1242,91 @@ namespace Npgsql
             return ret;
         }
 
+        private Boolean CheckFunctionNeedsColumnDefinitionList()
+        {
+            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
+            // when the schema or procedure name do not contain a quote.
+            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
 
-        private void AddFunctionReturnsRecordSupport(StringBuilder sb)
+
+            // This function checks a flag (proretset) in pg_proc which specifies if it returns a resultset or not.
+            // So, even if a function returns a record but its flag is true, this function doesn't need a column definition list.
+
+            String returnRecordQuery;
+
+            StringBuilder parameterTypes = new StringBuilder("");
+
+
+            // Process parameters
+
+            foreach (NpgsqlParameter p in Parameters)
+            {
+                if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
+                {
+                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
+                }
+            }
+
+
+            // Process schema name.
+
+            String schemaName = String.Empty;
+            String procedureName = String.Empty;
+
+
+            String[] fullName = CommandText.Split('.');
+
+            if (fullName.Length == 2)
+            {
+                returnRecordQuery =
+                    "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname  and proretset = 'f'";
+
+                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
+                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
+            }
+            else
+            {
+                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
+                //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
+                returnRecordQuery =
+                    "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname and proretset = 'f'";
+
+                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
+            }
+
+
+            bool ret;
+
+            using (NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection))
+            {
+                c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Name));
+                c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
+                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Name));
+
+                c.Parameters[0].Value = "record";
+                c.Parameters[1].Value = parameterTypes.ToString();
+                c.Parameters[2].Value = procedureName;
+
+                if (schemaName != null && schemaName.Length > 0)
+                {
+                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Name));
+                    c.Parameters[3].Value = schemaName;
+                }
+
+
+                ret = (Boolean)c.ExecuteScalar();
+            }
+
+            // reset any responses just before getting new ones
+            m_Connector.Mediator.ResetResponses();
+
+            // Set command timeout.
+            m_Connector.Mediator.CommandTimeout = CommandTimeout;
+
+            return ret;
+        }
+
+        private void AddFunctionColumnListSupport(StringBuilder sb)
         {
             sb.Append(" as (");
             foreach (NpgsqlParameter p in Parameters)
