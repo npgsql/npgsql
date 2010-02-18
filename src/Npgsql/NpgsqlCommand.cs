@@ -1250,7 +1250,9 @@ namespace Npgsql
 
 
             // This function checks a flag (proretset) in pg_proc which specifies if it returns a resultset or not.
-            // So, even if a function returns a record but its flag is true, this function doesn't need a column definition list.
+            // So, even if a function returns a record (this is the only type which needs a column definition list) 
+            // but its flag is true, this function doesn't need a column definition list. It may already be implicit inside the
+            // function itself. Check testreturnrecordresultset test function inside nunittests for an example.
 
             String returnRecordQuery;
 
