@@ -527,7 +527,13 @@ namespace Npgsql
 		        sb.Remove(sb.Length - 1, 1);
 		    return sb;
 		}
-	}
+
+        internal static void LogStringWritten(string theString)
+        {
+            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+            
+        }
+    }
 
 	/// <summary>
 	/// Represent the frontend/backend protocol version.
