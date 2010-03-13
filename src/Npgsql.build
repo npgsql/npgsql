@@ -70,7 +70,7 @@
     
     
     
-    <target name="ccnet" depends="clean, init, build, runCodeMetrics, package" description="" />
+    <target name="ccnet" depends="clean, init, build, package" description="" />
 
     
     <!-- Code analyze metric targets -->
