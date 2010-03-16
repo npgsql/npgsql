@@ -753,6 +753,48 @@ namespace NpgsqlTests
         }
         
         [Test]
+        public void FunctionCallStringEscape()
+        {
+            int warnings = 0;
+            NoticeEventHandler countWarn = delegate(Object c, NpgsqlNoticeEventArgs e) { warnings += 1; };
+            TheConnection.Notice += countWarn;
+
+            string testStrPar = "This string has a 'literal' backslash \\";
+            NpgsqlCommand command = new NpgsqlCommand("trim", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.Add(new NpgsqlParameter());
+            command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Varchar;
+            command.Parameters[0].Value = testStrPar;
+
+            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            {
+                new NpgsqlCommand("set escape_string_warning=on", TheConnection).ExecuteNonQuery();
+                new NpgsqlCommand("set standard_conforming_strings=off", TheConnection).ExecuteNonQuery();
+            }
+            catch{}
+            using(IDataReader rdr = command.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(testStrPar, rdr.GetString(0));
+            }
+
+            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            {
+                new NpgsqlCommand("set standard_conforming_strings=on", TheConnection).ExecuteNonQuery();
+            }
+            catch{}
+            using(IDataReader rdr = command.ExecuteReader())
+            {
+                rdr.Read();
+                Assert.AreEqual(testStrPar, rdr.GetString(0));
+            }
+
+            TheConnection.Notice -= countWarn;
+            Assert.AreEqual(0, warnings);
+        }
+
+        
+        [Test]
         public void ParameterAndOperatorUnclear()
         {
             //Without parenthesis the meaning of [, . and potentially other characters is

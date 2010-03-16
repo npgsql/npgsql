@@ -861,6 +861,47 @@ namespace Npgsql
             query.Append(array[endAt]);
         }
         
+        private void PassParam(StringBuilder query, NpgsqlParameter p)
+        {
+                string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
+
+                // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+                // See bug #1010543
+                // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
+                // only one pair of parentheses for the two purposes instead of two pairs.
+                query.Append('(');
+
+                if(Connector.UseConformantStrings)
+                    switch(serialised[0])
+                    {
+                    case '\''://type passed as string or string with type.
+                        //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
+                        query.Append("E").Append(serialised);
+                        break;
+                    case 'a':
+                        if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
+                            PassEscapedArray(query, serialised);
+                        else
+                            query.Append(serialised);
+                        break;
+                    default:
+                        query.Append(serialised);
+                        break;
+                    }
+                else
+                    query.Append(serialised);
+
+                query.Append(')');
+
+
+                if (p.UseCast)
+                {
+                    query.Append("::").Append(p.TypeInfo.CastName);
+                    if (p.TypeInfo.UseSize && (p.Size > 0))
+                        query.Append('(').Append(p.Size).Append(')');
+                }
+        }
+
         private StringBuilder GetClearCommandText()
         {
             if (NpgsqlEventLog.Level == LogLevel.Debug)
@@ -950,58 +991,18 @@ namespace Npgsql
 
                         if (p != null)
                         {
-                            // It's a parameter. Lets handle it.
                             switch(p.Direction)
                             {
                                 case ParameterDirection.Input: case ParameterDirection.InputOutput:
-                                    //Start the probably-redundant parenthesis. Queries should operate much as if they were in the a parameter or
+                                    //Wrap in probably-redundant parentheses. Queries should operate much as if they were in the a parameter or
                                     //variable in a postgres function. Generally this is the case without the parentheses (hence "probably redundant")
                                     //but there are exceptions to this rule. E.g. consider the postgres function:
                                     //
                                     //CREATE FUNCTION first_param(integer[])RETURNS int AS'select $1[1]'LANGUAGE 'sql' STABLE STRICT;
                                     //
                                     //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
-                                    sb.Append('(');
-                                    
-                                    string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
 
-                                    // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
-                                    // See bug #1010543
-                                    // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
-                                    // only one pair of parentheses for the two purposes instead of two pairs.
-                                    sb.Append('(');
-
-                                    if(Connector.UseConformantStrings)
-                                        switch(serialised[0])
-                                        {
-                                            case '\''://type passed as string or string with type.
-                                            //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
-                                                sb.Append("E").Append(serialised);
-                                                break;
-                                            case 'a':
-                                                if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
-                                                    PassEscapedArray(sb, serialised);
-                                                else
-                                                    sb.Append(serialised);
-                                                break;
-                                            default:
-                                                sb.Append(serialised);
-                                                break;
-                                        }
-                                    else
-                                        sb.Append(serialised);
-
-                                    sb.Append(')');
-
-                                    
-                                    if (p.UseCast)
-                                    {
-                                        sb.Append("::").Append(p.TypeInfo.CastName);
-                                        if (p.TypeInfo.UseSize && (p.Size > 0))
-                                            sb.Append('(').Append(p.Size).Append(')');
-                                    }
-
-                                    sb.Append(')');//Close probably-redundant parenthesis.
+                                    sb.Append('('); PassParam(sb, p); sb.Append(')');
                                     break;
                             }
                         }
@@ -1019,28 +1020,14 @@ namespace Npgsql
                 
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
-                    NpgsqlParameter Param = parameters[i];
-
-
-                    switch(Param.Direction)
+                    switch(parameters[i].Direction)
                     {
                         case ParameterDirection.Input: case ParameterDirection.InputOutput:
-                            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
-                            // See bug #1010543
-                            result.Append('(');
-                            result.Append(Param.TypeInfo.ConvertToBackend(Param.Value, false));
-                            result.Append(')');
-                            if (Param.UseCast)
-                            {
-                                result.Append("::").Append(Param.TypeInfo.CastName);
-                                if(Param.TypeInfo.UseSize && Param.Size > 0)
-                                    result.Append('(').Append(Param.Size).Append(')');
-                            }
+                            PassParam(result, parameters[i]);
                             result.Append(',');
                             break;
                     }
                 }
-
 
                 // Remove a trailing comma added from parameter handling above. If any.
                 // Maybe there are only output parameters. If so, there will be no comma.
