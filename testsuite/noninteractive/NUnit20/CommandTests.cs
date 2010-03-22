@@ -680,7 +680,7 @@ namespace NpgsqlTests
         [Test]
         public void StatementOutputParameters()
         {
-            NpgsqlCommand command = new NpgsqlCommand("select 4, 5;", TheConnection);
+            NpgsqlCommand command = new NpgsqlCommand("values (4,5), (6,7)", TheConnection);
                         
             NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int32);
             p.Direction = ParameterDirection.Output;
@@ -704,11 +704,12 @@ namespace NpgsqlTests
                         
             command.ExecuteNonQuery();
             
+            // Should bear the values of the first tuple.
             Assert.AreEqual(4, command.Parameters["a"].Value);
             Assert.AreEqual(5, command.Parameters["b"].Value);
             Assert.AreEqual(-1, command.Parameters["c"].Value);
         }
-        
+
         [Test]
         public void StringEscapeSyntax()
         {
@@ -2164,6 +2165,24 @@ namespace NpgsqlTests
         }
         
         [Test]
+        public void ReturnSetofRecord()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("testreturnsetofrecord", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Integer));
+            command.Parameters[0].Direction = ParameterDirection.Output;
+
+            command.Parameters.Add(new NpgsqlParameter(":b", NpgsqlDbType.Integer));
+            command.Parameters[1].Direction = ParameterDirection.Output;
+
+            command.ExecuteNonQuery();
+            
+            Assert.AreEqual(8, command.Parameters[0].Value);
+            Assert.AreEqual(9, command.Parameters[1].Value);
+        }
+
+        [Test]
         public void ReturnRecordSupportWithResultset()
         {
             
@@ -3525,7 +3544,74 @@ connection.Open();*/
             
             
         }
+        
+        [Test]
+        public void TimeoutFirstParameters()
+        {
+            // The first command of a connection that uses a string parameter
+            // against a server with "standard_conforming_strings = off" trips
+            // an internal "SHOW escape_string_warning".  Verify that this does
+            // not sabotage the requested timeout.
+ 
+            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            conn.Open();
+            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            {
+                new NpgsqlCommand("set standard_conforming_strings=off", conn).ExecuteNonQuery();
+            }
+            catch{}
 
+            NpgsqlCommand command = new NpgsqlCommand("SELECT :dummy, pg_sleep(1.5)", conn);
+            command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
+            command.Parameters[0].Value = "foo";
+            command.CommandTimeout = 1;
+            try
+            {
+                command.ExecuteNonQuery();
+                Assert.Fail("1.5s command survived a 1s timeout");
+            }
+            catch (NpgsqlException e)
+            {
+                // We cannot currently identify that the exception was a timeout
+                // in a locale-independent fashion, so just assume so.
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        [Test]
+        public void TimeoutFirstFunctionCall()
+        {
+            // Function calls entail internal queries; verify that they do not
+            // sabotage the requested timeout.
+
+            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            conn.Open();
+
+            NpgsqlCommand command = new NpgsqlCommand("pg_sleep", conn);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.Add(new NpgsqlParameter());
+            command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
+            command.Parameters[0].Value = 1.5;
+            command.CommandTimeout = 1;
+            try
+            {
+                command.ExecuteNonQuery();
+                Assert.Fail("1.5s function call survived a 1s timeout");
+            }
+            catch (NpgsqlException e)
+            {
+                // We cannot currently identify that the exception was a timeout
+                // in a locale-independent fashion, so just assume so.
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }    
+        
 
     }
     

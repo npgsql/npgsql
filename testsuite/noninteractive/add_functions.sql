@@ -33,6 +33,8 @@ create function ambiguousParameterType(int2, int4, int8, text, varchar(10), char
 
 create function testreturnrecord() returns record as 'select 4 ,5' language 'sql' ;
 
+create function testreturnsetofrecord() returns setof record as 'values (8,9), (6,7)' language 'sql';
+
 CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION funcwaits() returns integer as 
