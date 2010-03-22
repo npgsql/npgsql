@@ -84,8 +84,6 @@ namespace Npgsql
 
         private Boolean functionNeedsColumnListDefinition = false; // Functions don't return record by default.
 
-        private Boolean functionReturnsRefcursor = false; // Functions don't return refcursor by default.
-
         private Boolean commandTimeoutSet = false;
 
 
@@ -585,19 +583,34 @@ namespace Npgsql
 
                 using (m_Connector.BlockNotificationThread())
                 {
+                    ForwardsOnlyDataReader reader;
                     if (parse == null)
                     {
-                        return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
+                        reader = new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this,
+                                                            m_Connector.BlockNotificationThread(), false);
+                        if (type == CommandType.StoredProcedure
+                            && reader.FieldCount == 1
+                            && reader.GetDataTypeName(0) == "refcursor")
+                        {
+                            // When a function returns a sole column of refcursor, transparently
+                            // FETCH ALL from every such cursor and return those results.
+                            StringBuilder sb = new StringBuilder();
+                            while (reader.Read())
+                            {
+                                sb.Append("fetch all from \"").Append(reader.GetString(0)).Append("\";");
+                            }
+                            sb.Append(";"); // Just in case the list of cursors is empty.
+
+                            reader = new NpgsqlCommand(sb.ToString(), Connection).GetReader(reader._behavior);
+                        }
                     }
-                    //return new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this, m_Connector.BlockNotificationThread(), false);
                     else
                     {
                         BindParameters();
-                        return
-                            new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this,
-                                                       m_Connector.BlockNotificationThread(), true);
-                        //return new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this, m_Connector.BlockNotificationThread(), true);
+                        reader = new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this,
+                                                            m_Connector.BlockNotificationThread(), true);
                     }
+                    return reader;
                 }
             }
             catch (IOException ex)
@@ -920,8 +933,6 @@ namespace Npgsql
                     {
                         //functionNeedsColumnListDefinition = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionReturn("record");
                         functionNeedsColumnListDefinition = Parameters.Count != 0 && !CheckFunctionHasOutParameters() && CheckFunctionNeedsColumnDefinitionList();
-                        
-                        functionReturnsRefcursor = CheckFunctionReturn("refcursor");
 
                         // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
                         switch(result[result.Length - 1])
@@ -949,12 +960,6 @@ namespace Npgsql
             {
                 if (addProcedureParenthesis)
                     result.Append("()");
-
-                // If function returns ref cursor just process refcursor-result function call
-                // and return command which will be used to return data from refcursor.
-
-                if (functionReturnsRefcursor)
-                    return ProcessRefcursorFunctionReturn(result.ToString());
 
                 if (functionNeedsColumnListDefinition)
                     AddFunctionColumnListSupport(result);
@@ -1039,14 +1044,6 @@ namespace Npgsql
             if (functionNeedsColumnListDefinition)
             {
                 AddFunctionColumnListSupport(result);
-            }
-
-            // If function returns ref cursor just process refcursor-result function call
-            // and return command which will be used to return data from refcursor.
-
-            if (functionReturnsRefcursor)
-            {
-                return ProcessRefcursorFunctionReturn(result.ToString());
             }
 
             return result;
@@ -1149,85 +1146,6 @@ namespace Npgsql
             return ret;
         }
 
-        private Boolean CheckFunctionReturn(String ReturnType)
-        {
-            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
-            // when the schema or procedure name do not contain a quote.
-            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
-
-            String returnRecordQuery;
-
-            StringBuilder parameterTypes = new StringBuilder("");
-
-
-            // Process parameters
-
-            foreach (NpgsqlParameter p in Parameters)
-            {
-                if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
-                {
-                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
-                }
-            }
-
-
-            // Process schema name.
-
-            String schemaName = String.Empty;
-            String procedureName = String.Empty;
-
-
-            String[] fullName = CommandText.Split('.');
-
-            if (fullName.Length == 2)
-            {
-                returnRecordQuery =
-                    "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname and n.nspname=:nspname";
-
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
-            }
-            else
-            {
-                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
-                //schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
-                returnRecordQuery =
-                    "select count(*) > 0 from pg_proc p where prorettype = ( select oid from pg_type where typname = :typename ) and proargtypes=:proargtypes and proname=:proname";
-
-                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
-            }
-
-
-            bool ret;
-
-            using (NpgsqlCommand c = new NpgsqlCommand(returnRecordQuery, Connection))
-            {
-                c.Parameters.Add(new NpgsqlParameter("typename", NpgsqlDbType.Name));
-                c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Name));
-
-                c.Parameters[0].Value = ReturnType;
-                c.Parameters[1].Value = parameterTypes.ToString();
-                c.Parameters[2].Value = procedureName;
-
-                if (schemaName != null && schemaName.Length > 0)
-                {
-                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Name));
-                    c.Parameters[3].Value = schemaName;
-                }
-
-
-                ret = (Boolean)c.ExecuteScalar();
-            }
-
-            // reset any responses just before getting new ones
-            m_Connector.Mediator.ResetResponses();
-
-            // Set command timeout.
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
-
-            return ret;
-        }
 
         private Boolean CheckFunctionNeedsColumnDefinitionList()
         {
@@ -1326,38 +1244,6 @@ namespace Npgsql
                         break;
                 }
             sb[sb.Length - 1] = ')';
-        }
-
-        ///<summary>
-        /// This methods takes a string with a function call witch returns a refcursor or a set of
-        /// refcursor. It will return the names of the open cursors/portals which will hold
-        /// results. In turn, it returns the string which is needed to get the data of this cursors
-        /// in form of one resultset for each cursor open. This way, clients don't need to do anything
-        /// else besides calling function normally to get results in this way.
-        ///</summary>
-        private StringBuilder ProcessRefcursorFunctionReturn(String FunctionCall)
-        {
-            StringBuilder sb = new StringBuilder();
-            using (NpgsqlCommand c = new NpgsqlCommand(FunctionCall, Connection))
-            {
-                using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
-                {
-                    while (dr.Read())
-                    {
-                        sb.Append("fetch all from \"").Append(dr.GetString(0)).Append("\";");
-                    }
-                }
-            }
-
-            sb.Append(";"); // Just in case there is no response from refcursor function return.
-
-            // reset any responses just before getting new ones
-            m_Connector.Mediator.ResetResponses();
-
-            // Set command timeout.
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
-
-            return sb;
         }
 
 
