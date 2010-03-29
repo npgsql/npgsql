@@ -729,6 +729,24 @@ namespace Npgsql
                 commandSearchPath.ExecuteBlind();
             }
 
+            /*
+             * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
+             * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
+             * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
+             * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
+             * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
+             */
+
+            try
+            {
+                NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
+                commandSslrenegotiation.ExecuteBlind();
+
+            }
+            catch {}
+
+
+
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
             // mapping that will not be valid to another connector, even
