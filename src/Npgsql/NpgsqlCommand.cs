@@ -840,7 +840,12 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            return string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
+            StringBuilder ret = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
+            // In constructing the command text, we potentially called internal
+            // queries.  Reset command timeout and SQL sent.
+            m_Connector.Mediator.ResetResponses();
+            m_Connector.Mediator.CommandTimeout = CommandTimeout;
+            return ret;
 
         }
 
