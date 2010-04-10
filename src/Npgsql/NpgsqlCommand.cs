@@ -86,6 +86,8 @@ namespace Npgsql
 
         private Boolean commandTimeoutSet = false;
 
+        private UpdateRowSource updateRowSource = UpdateRowSource.Both;
+
 
         // Constructors
 
@@ -376,10 +378,16 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "UpdatedRowSource");
 
-                return UpdateRowSource.Both;
+                return updateRowSource;
             }
 
-            set { }
+            set 
+            {
+                if (value is UpdateRowSource)
+                    updateRowSource = value;
+                else
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         /// <summary>
