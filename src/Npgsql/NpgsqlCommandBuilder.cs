@@ -168,32 +168,44 @@ namespace Npgsql
 
 		public new NpgsqlCommand GetInsertCommand()
 		{
-			return (NpgsqlCommand) base.GetInsertCommand();
+            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand();
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
 		{
-			return (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		public new NpgsqlCommand GetUpdateCommand()
 		{
-			return (NpgsqlCommand) base.GetUpdateCommand();
+            NpgsqlCommand cmd = (NpgsqlCommand) base.GetUpdateCommand();
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
 		{
-			return (NpgsqlCommand) base.GetUpdateCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		public new NpgsqlCommand GetDeleteCommand()
 		{
-			return (NpgsqlCommand) base.GetDeleteCommand();
+            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand();
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
 		{
-			return (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            cmd.UpdatedRowSource = UpdateRowSource.None;
+            return cmd;
 		}
 
 		//never used
