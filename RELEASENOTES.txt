@@ -1,4 +1,54 @@
-﻿
+
+2010-04-xx
+
+    Npgsql 2.0.9
+    
+    This release had a lot of changes and all users are encouraged to update to this version.
+    
+    
+    Fixed problems with socket run buffer out of memory when reading large chuncks of data of Large Object. 
+IOException with an error code of 10055 (WSAENOBUFS). 
+
+    [#1010746] NpgsqlDate.AddMonths(m): IndexOutOfRangeException. Thanks Gildas (prime.gildas @nospam@ gmail.com) for patch 
+and testcase. Also thanks Sibylle Koczian (nulla.epistola@nospam@ web.de) for patch reviewing and testing.
+
+    Added a fix for caseinsensitive parameter names in query strings. Thanks Antonio Leiva for the patch!
+    
+    Added a fix for 64 bits windows.The type of the SecHandle structure was hardcoded to int 32 bit int values which was giving
+problems on 64 bits windows. Now uses an architecture independente pointer type. Thanks Brar Piening for patch and heads up.
+
+    Fixed another commandtimeout problem. This time, creating an internal Npgsqlcommand was reseting it. See http://pgfoundry.org/forum/message.php?msg_id=1005814 for more info. 
+    
+Thanks David Leaver (dave @nospam@ smartrak.co.nz) for heads up and test case.
+
+    Readded ability to log the string being written to server. It was removed in the last optimization by mistake.
+    
+    Added an small performance improvement by creating a shared buffer for Int32 and Int16 reading. This way, buffers don't need  to be recreated all the time.
+    
+    [#1010779] Respect CommandTimeout in first function call w/ string parameter. Patch applied. Thanks Noah Misch (noah.misch	  @nospam@ channeladvisor.com) for tests and patch.
+    
+    [#1010788] NpgsqlCommand and UpdatedRowSource property.  Now NpgsqlCommands created through NpgsqlCommandBuilder will have by default UpdatedRowSource property as UpdateRowSource.None.
+
+
+    
+    
+    New Features:
+    
+    Added FxCop, Gendarme and NAnt libraries. Now it is much easier to build Npgsql from command line. Just run build.sh or build.bat from inside Npgsql/src folder.
+    Added a lot of functionality and fixes to Npgsql.build based on Daniel Nauck AspSQLProvider.build. Thanks Daniel for heads up.
+    
+    [#1010764] Support for abstime (used with postgres time traver). Thanks Tapio Haapala (tapio.haapala @nospam@f-solutions.fi) for patch.
+    [#1010777] String syntax for function call parameters. Thanks Noah Misch (noah.misch @nospam@ channeladvisor.com) for patch.
+   
+    Added VS.Net 2010 project file.
+    
+    [#1010780] Reduce use of utility queries for function calls (CommandType.StoredProcedure) Thanks Noah Mishc (noah.misch @nospam@ channeladvisor.com) for patches
+  
+    SSL Renegotiation: Try to set SSL negotiation to 0. See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information. Thanks Albe Laurenz for heads up and patch.
+	
+	New build system. Npgsql now generates automatically the AssemblyInfo.cs file based on version number passed as parameter in build process.
+In order to do that, just run the following: ./build.sh -D:CCNetLabel=2.0.9.0 ( if using windows, the command is build.bat) and it will be generated an Npgsql assembly with the version specified. This is a working in progress and all feedback is welcome.
+
 
 2009-12-28
 
