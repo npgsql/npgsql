@@ -1,3 +1,422 @@
+2010-04-13 20:11  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated AssemblyInfo file with generated information.
+
+2010-04-10 14:39  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+
+	  [#1010788] NpgsqlCommand and UpdatedRowSource property.  Now
+	  NpgsqlCommands created through NpgsqlCommandBuilder will have by
+	  default UpdatedRowSource property as UpdateRowSource.None.
+
+2010-04-10 14:29  fxjr
+
+	* src/Npgsql/NpgsqlCommandBuilder.cs:
+	  [ npgsql-Bugs-1010788 ] NpgsqlCommand and UpdatedRowSource
+	  property. Now NpgsqlCommands created through NpgsqlCommandBuilder
+	  will have by default UpdatedRowSource property as
+	  UpdateRowSource.None.
+
+2010-04-06 01:02  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  [#1010779] Respect CommandTimeout in first function call w/
+	  string parameter. Patch applied. Thanks Noah Misch (noah.misch
+	  @nospam@ channeladvisor.com) for tests and patch.
+
+2010-03-29 10:46  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+
+	      Try to set SSL negotiation to 0. As of 2010-03-29, recent
+	  problems in SSL library implementations made postgresql to add a
+	  parameter to set a value when to do this renegotiation or 0 to
+	  disable it.
+	      Currently, Npgsql has a problem with renegotiation so, we are
+	  trying to disable it here. This only works on postgresql servers
+	  where the ssl renegotiation settings is supported of course. See
+	  http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html
+	  for more information.
+	      Thanks Albe Laurenz for heads up and patch.
+
+2010-03-29 10:07  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Fixed line endings to CRLF.
+
+2010-03-21 23:43  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs,
+	  testsuite/noninteractive/add_functions.sql,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  [#1010780] Reduce use of utility queries for function calls
+	  (CommandType.StoredProcedure). Thanks Noah Misch for tests. Patch
+	  (2 of 2):
+
+	  2010-03-18  Noah Misch  <noah.misch @nospam@ channeladvisor.com>
+
+	      * src/Npgsql/NpgsqlCommand.cs (GetClearCommandText): Do not
+	  call
+	      `CheckFunctionHasOutParameters'.
+	      (CheckFunctionNeedsColumnDefinitionList): Check return type
+	  and presence
+	      of OUT, INOUT, and TABLE arguments.
+	      (CheckFunctionHasOutParameters): Delete method.
+	      * testsuite/noninteractive/NUnit20/CommandTests.cs
+	      (StatementOutputParameters): Test a multi-row result set.
+	      (ReturnSetofRecord): New method.
+
+	  [#1010779] Respect CommandTimeout in first function call w/
+	  string parameter. Added test cases. Thanks Noah Misch for tests.
+
+2010-03-21 23:23  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  [#1010780] Reduce use of utility queries for function calls
+	  (CommandType.StoredProcedure) Thanks Noah Mishc for patches (1 of
+	  2):
+
+	  2010-03-18  Noah Misch  <noah.misch @nospam@ channeladvisor.com>
+
+	      * src/Npgsql/NpgsqlCommand.cs (functionReturnsRefCursor):
+	  Delete
+	      property.
+	      (GetReader): When a function returns a single refcursor
+	  column,
+	      immediately fetch from all those cursors and return that
+	  data.
+	      (GetClearCommandText): Do not call `CheckFunctionReturn' or
+	      `ProcessRefcursorFunctionReturn'.
+	      (CheckFunctionReturn, ProcessRefcursorFunctionReturn): Delete
+	  methods.
+
+2010-03-15 22:45  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+
+	  [#1010777] String syntax for function call parameters. Thanks
+	  Noah Misch (noah.misch @nospam@ channeladvisor.com) for patch.
+
+2010-03-13 17:16  fxjr
+
+	* src/Npgsql.build:
+
+	  Removed temporarily the runCodeMetrics target from ccnet target
+	  dependencies. Build server is having problems with the metrics
+	  software.
+
+2010-03-02 10:33  fxjr
+
+	* src/Npgsql/PGUtil.cs:
+	  Added an small performance improvement by creating a shared
+	  buffer for Int32 and Int16 reading. This way, buffers don't need
+	  to be recreated all the time.
+
+2010-03-01 00:25  fxjr
+
+	* src/Npgsql/: NpgsqlQuery.cs, PGUtil.cs:
+
+	  Readded ability to log the string being written to server. It was
+	  removed in the last optimization (version 1.5) by mistake.
+
+2010-02-19 15:49  fxjr
+
+	* Tools/Gendarme/: Gendarme.Framework.dll,
+	  Gendarme.Rules.BadPractice.dll, Gendarme.Rules.Concurrency.dll,
+	  Gendarme.Rules.Correctness.dll,
+	  Gendarme.Rules.Design.Generic.dll,
+	  Gendarme.Rules.Design.Linq.dll, Gendarme.Rules.Design.dll,
+	  Gendarme.Rules.Exceptions.dll,
+	  Gendarme.Rules.Interoperability.dll,
+	  Gendarme.Rules.Maintainability.dll, Gendarme.Rules.Naming.dll,
+	  Gendarme.Rules.Performance.dll, Gendarme.Rules.Portability.dll,
+	  Gendarme.Rules.Security.Cas.dll, Gendarme.Rules.Security.dll,
+	  Gendarme.Rules.Serialization.dll, Gendarme.Rules.Smells.dll,
+	  Gendarme.Rules.Ui.dll, ICSharpCode.SharpZipLib.dll,
+	  Mono.Cecil.Mdb.dll, Mono.Cecil.Pdb.dll, Mono.Cecil.dll, NEWS,
+	  gendarme-wizard.exe, gendarme.1, gendarme.exe:
+	  Reuploaded version from ASPNetProvider.
+
+2010-02-17 23:23  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Added missing comments.
+
+2010-02-17 21:47  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs,
+	  testsuite/noninteractive/add_functions.sql,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed a bug where a function which has a return type of record
+	  but already has the columnlist defined inside itself ( i.e.:
+	  functions with returns table clauses, see
+	  testreturnrecordresultset in the testcases) were being
+	  misinterpreted as needing a column list. Thanks Jan Waiz for
+	  heads up and test case. Added nunit test case to catch this
+	  problem.
+
+2010-02-17 19:23  fxjr
+
+	* src/Npgsql2010.csproj:
+
+	  Added VS.Net 2010 project file generated from vs.net 2008 project
+	  file.
+
+2010-02-15 23:39  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Fixed another commandtimeout problem. This time, creating an
+	  internal Npgsqlcommand was reseting it. See
+	  http://pgfoundry.org/forum/message.php?msg_id=1005814 for more
+	  info. Thanks David Leaver (dave @nospam@ smartrak.co.nz) for
+	  heads up and test case.
+
+2010-02-15 23:33  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  Normalized line endings.
+
+2010-02-15 19:08  fxjr
+
+	* src/NpgsqlTypes/: NpgsqlDbType.cs, NpgsqlTypesHelper.cs:
+	  Applied patch: [#1010764] Support for abstime (used with postgres
+	  time traver). Thanks Tapio Haapala (tapio.haapala @nospam@
+	  f-solutions.fi) for patch.
+
+2010-02-15 18:34  fxjr
+
+	* Tools/Gendarme/: Gendarme.Framework.dll,
+	  Gendarme.Rules.BadPractice.dll, Gendarme.Rules.Concurrency.dll,
+	  Gendarme.Rules.Correctness.dll,
+	  Gendarme.Rules.Design.Generic.dll,
+	  Gendarme.Rules.Design.Linq.dll, Gendarme.Rules.Design.dll,
+	  Gendarme.Rules.Exceptions.dll,
+	  Gendarme.Rules.Interoperability.dll,
+	  Gendarme.Rules.Maintainability.dll, Gendarme.Rules.Naming.dll,
+	  Gendarme.Rules.Performance.dll, Gendarme.Rules.Portability.dll,
+	  Gendarme.Rules.Security.Cas.dll, Gendarme.Rules.Security.dll,
+	  Gendarme.Rules.Serialization.dll, Gendarme.Rules.Smells.dll,
+	  Gendarme.Rules.Ui.dll, ICSharpCode.SharpZipLib.dll,
+	  Mono.Cecil.Mdb.dll, Mono.Cecil.Pdb.dll, Mono.Cecil.dll, NEWS,
+	  gendarme-wizard.exe, gendarme.1, gendarme.exe:
+	  Updated Gendarme toolset. It seems the previous version was
+	  corrupted.
+
+2010-02-15 18:20  fxjr
+
+	* src/Npgsql.build:
+	  Fixed build target dependency to include createAssemblyInfo
+	  target. Now, when running build it generates the assemblyinfo.cs
+	  file correctly. Thanks Daniel Nauck for heads up.
+
+2010-02-14 01:14  fxjr
+
+	* src/Npgsql.build:
+	  Added a lot of targets to package Npgsql source and binary
+	  distribution.  Added target to ccnet.
+
+	  Added ability to generate AssemblyInfo.cs automatically. In order
+	  to do that, run build.sh (build.bat) -D:CCNetLabel=2.0.9.0 so the
+	  assembly value is set to this label value.
+
+	  Thanks Daniel Nauck for support and .build sample file.
+
+2010-02-03 19:00  fxjr
+
+	* src/: Npgsql.FxCop, Npgsql.build, gendarme.assemblies.txt:
+	  Added configuration files for Gendarme and FxCop. Updated
+	  Npgsql.build files to add the corresponding build targets.
+
+2010-02-03 18:43  fxjr
+
+	* Tools/: FxCop/CustomDictionary.xml, FxCop/FxCop.exe,
+	  FxCop/FxCop.exe.config, FxCop/FxCopCmd.exe,
+	  FxCop/FxCopCmd.exe.config, FxCop/FxCopCommon.dll,
+	  FxCop/FxCopSdk.dll, FxCop/FxCopUI.dll, FxCop/MSSp3en.lex,
+	  FxCop/MSSp3ena.lex, FxCop/MSSpell3.dll, FxCop/Microsoft.Cci.dll,
+	  FxCop/Engines/IntrospectionAnalysisEngine.dll,
+	  FxCop/Engines/IntrospectionForms.dll,
+	  FxCop/Repository/system32.bin,
+	  FxCop/Repository/Compatibility/Desktop2.0.xml,
+	  FxCop/Repository/Compatibility/Desktop2.0SP1.xml,
+	  FxCop/Repository/Compatibility/Desktop2.0SP2.xml,
+	  FxCop/Repository/Compatibility/Desktop3.0.xml,
+	  FxCop/Repository/Compatibility/Desktop3.0SP1.xml,
+	  FxCop/Repository/Compatibility/Desktop3.0SP2.xml,
+	  FxCop/Repository/Compatibility/Desktop3.5.xml,
+	  FxCop/Repository/Compatibility/Desktop3.5SP1.xml,
+	  FxCop/Rules/DesignRules.dll, FxCop/Rules/GlobalizationRules.dll,
+	  FxCop/Rules/InteroperabilityRules.dll,
+	  FxCop/Rules/MobilityRules.dll, FxCop/Rules/NamingRules.dll,
+	  FxCop/Rules/PerformanceRules.dll,
+	  FxCop/Rules/PortabilityRules.dll, FxCop/Rules/SecurityRules.dll,
+	  FxCop/Rules/UsageRules.dll, FxCop/Xml/CodeAnalysisReport.xsl,
+	  FxCop/Xml/FxCopReport.xsd, FxCop/Xml/FxCopReport.xsl,
+	  FxCop/Xml/FxCopReportExcludes.xsl,
+	  FxCop/Xml/FxCopRichConsoleOutput.xsl,
+	  FxCop/Xml/VSConsoleOutput.xsl, Gendarme/AUTHORS,
+	  Gendarme/Gendarme.Framework.dll,
+	  Gendarme/Gendarme.Rules.BadPractice.dll,
+	  Gendarme/Gendarme.Rules.Concurrency.dll,
+	  Gendarme/Gendarme.Rules.Correctness.dll,
+	  Gendarme/Gendarme.Rules.Design.Generic.dll,
+	  Gendarme/Gendarme.Rules.Design.Linq.dll,
+	  Gendarme/Gendarme.Rules.Design.dll,
+	  Gendarme/Gendarme.Rules.Exceptions.dll,
+	  Gendarme/Gendarme.Rules.Interoperability.dll,
+	  Gendarme/Gendarme.Rules.Maintainability.dll,
+	  Gendarme/Gendarme.Rules.Naming.dll,
+	  Gendarme/Gendarme.Rules.Performance.dll,
+	  Gendarme/Gendarme.Rules.Portability.dll,
+	  Gendarme/Gendarme.Rules.Security.Cas.dll,
+	  Gendarme/Gendarme.Rules.Security.dll,
+	  Gendarme/Gendarme.Rules.Serialization.dll,
+	  Gendarme/Gendarme.Rules.Smells.dll,
+	  Gendarme/Gendarme.Rules.Ui.dll,
+	  Gendarme/ICSharpCode.SharpZipLib.dll, Gendarme/MIT.X11,
+	  Gendarme/Mono.Cecil.Mdb.dll, Gendarme/Mono.Cecil.Pdb.dll,
+	  Gendarme/Mono.Cecil.dll, Gendarme/NEWS, Gendarme/README,
+	  Gendarme/gendarme-wizard.exe, Gendarme/gendarme.1,
+	  Gendarme/gendarme.exe, Gendarme/rules.xml: Fixed corrupted files
+	  uploaded first time.
+
+2010-02-01 11:54  fxjr
+
+	* src/Npgsql.build:
+
+	  Added a lot of functionality and fixes to Npgsql.build based on
+	  Daniel Nauck AspSQLProvider.build. Thanks Daniel for heads up.
+
+2010-01-31 13:48  fxjr
+
+	* src/build.bat:
+	  Fixed backslash for windows .bat :)
+
+2010-01-31 13:40  fxjr
+
+	* src/: build.bat, build.sh:
+	  Created helper scripts to build Npgsql with Nant from
+	  commandline. Just call build.sh or build.bat.
+
+2010-01-29 01:10  fxjr
+
+	* Tools/Gendarme/: AUTHORS, Gendarme.Framework.dll,
+	  Gendarme.Rules.BadPractice.dll, Gendarme.Rules.Concurrency.dll,
+	  Gendarme.Rules.Correctness.dll,
+	  Gendarme.Rules.Design.Generic.dll,
+	  Gendarme.Rules.Design.Linq.dll, Gendarme.Rules.Design.dll,
+	  Gendarme.Rules.Exceptions.dll,
+	  Gendarme.Rules.Interoperability.dll,
+	  Gendarme.Rules.Maintainability.dll, Gendarme.Rules.Naming.dll,
+	  Gendarme.Rules.Performance.dll, Gendarme.Rules.Portability.dll,
+	  Gendarme.Rules.Security.Cas.dll, Gendarme.Rules.Security.dll,
+	  Gendarme.Rules.Serialization.dll, Gendarme.Rules.Smells.dll,
+	  Gendarme.Rules.Ui.dll, ICSharpCode.SharpZipLib.dll, MIT.X11,
+	  Mono.Cecil.Mdb.dll, Mono.Cecil.Pdb.dll, Mono.Cecil.dll, NEWS,
+	  README, gendarme-wizard.exe, gendarme.1, gendarme.exe, rules.xml:
+
+	  Added Tools/Gendarme to Npgsql2
+
+2010-01-29 00:55  fxjr
+
+	* Tools/FxCop/: CustomDictionary.xml, FxCop.exe, FxCop.exe.config,
+	  FxCopCmd.exe, FxCopCmd.exe.config, FxCopCommon.dll, FxCopSdk.dll,
+	  FxCopUI.dll, MSSp3en.lex, MSSp3ena.lex, MSSpell3.dll,
+	  Microsoft.Cci.dll, Engines/IntrospectionAnalysisEngine.dll,
+	  Engines/IntrospectionForms.dll, Repository/system32.bin,
+	  Repository/Compatibility/Desktop2.0.xml,
+	  Repository/Compatibility/Desktop2.0SP1.xml,
+	  Repository/Compatibility/Desktop2.0SP2.xml,
+	  Repository/Compatibility/Desktop3.0.xml,
+	  Repository/Compatibility/Desktop3.0SP1.xml,
+	  Repository/Compatibility/Desktop3.0SP2.xml,
+	  Repository/Compatibility/Desktop3.5.xml,
+	  Repository/Compatibility/Desktop3.5SP1.xml,
+	  Rules/DesignRules.dll, Rules/GlobalizationRules.dll,
+	  Rules/InteroperabilityRules.dll, Rules/MobilityRules.dll,
+	  Rules/NamingRules.dll, Rules/PerformanceRules.dll,
+	  Rules/PortabilityRules.dll, Rules/SecurityRules.dll,
+	  Rules/UsageRules.dll, Xml/CodeAnalysisReport.xsl,
+	  Xml/FxCopReport.xsd, Xml/FxCopReport.xsl,
+	  Xml/FxCopReportExcludes.xsl, Xml/FxCopRichConsoleOutput.xsl,
+	  Xml/VSConsoleOutput.xsl:
+
+	  Added Tools/FxCop to Npgsql2
+
+2010-01-26 19:34  fxjr
+
+	* RELEASENOTES.txt: [no log message]
+
+2010-01-18 00:14  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Changed NpgsqlInet test method name to better explain it.
+
+	  Added NpgsqlTimeStamp test.
+
+2010-01-18 00:06  fxjr
+
+	* src/Npgsql/SSPIHandler.cs:
+	  Added a fix for 64 bits windows. The type of the SecHandle
+	  structure was hardcoded to int 32 bit int values which was giving
+	  problems on 64 bits windows. Now uses an architecture
+	  independente pointer type. Thanks Brar Piening for patch and
+	  heads up.
+
+2010-01-16 13:05  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added a test for Europe/Amsterdam timezone with dates before
+	  1937. Those timezones had minuts and seconds on it. Check
+	  http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-January/001054.html
+	  for more information. Thanks Christ Akkermans for heads up and
+	  test.
+
+2010-01-10 23:58  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added a fix for caseinsensitive parameter names in query strings.
+	  Thanks Antonio Leiva for the patch!
+
+	  Added test case for this bug.
+
+	  Also added a pending testcase for NpgsqlInet types returned from
+	  NpgsqlDataReader.GetValue(). This test is not working yet because
+	  of pending fixes in Npgsql. But the test is ok.
+
+2010-01-08 00:32  fxjr
+
+	* src/NpgsqlTypes/DateDatatypes.cs,
+	  testsuite/noninteractive/NUnit20/TypesTests.cs:
+	  [#1010746] NpgsqlDate.AddMonths(m): IndexOutOfRangeException, if
+	  new date in following year. Applied patches: [#1010747]
+	  Correction of NpgsqlDate.AddMonths(m), if new date in following
+	  year. Thanks Gildas (prime.gildas @nospam@ gmail.com) for patch
+	  and testcase. Also thanks Sibylle Koczian (nulla.epistola
+	  @nospam@ web.de) for patch reviewing and testing.
+
+2009-12-28 18:23  jbcooley
+
+	* src/Npgsql/PGUtil.cs: need to read in chunks so the socket
+	  doesn't run out of memory in recv the network stream doesn't
+	  prevent this and downloading a large bytea will throw an
+	  IOException with an error code of 10055 (WSAENOBUFS) This is a
+	  fix for bug reported in 1005719.
+
+2009-12-28 01:35  fxjr
+
+	* RELEASENOTES.txt:
+	  Added release notes for 2.0.8 release.
+
+2009-12-28 01:11  fxjr
+
+	* ChangeLog:
+	  Updated for Npgsql 2.0.8 release
+
 2009-12-28 00:41  jbcooley
 
 	* src/: Npgsql/AssemblyInfo.cs, policy.2.0.Npgsql.config: Updated
