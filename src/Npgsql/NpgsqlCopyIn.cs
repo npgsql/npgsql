@@ -166,7 +166,12 @@ namespace Npgsql
 				{
 					if (IsActive)
 					{
-						_context.CurrentState.SendCopyDone(_context);
+                        // Stop Notification thread so we can process this message.
+                        // See bug 1010796
+                        using (_context.BlockNotificationThread())
+                        {
+                            _context.CurrentState.SendCopyDone(_context);
+                        }
 					}
 				}
 				finally
@@ -195,7 +200,12 @@ namespace Npgsql
 				{
 					if (IsActive)
 					{
-						_context.CurrentState.SendCopyFail(_context, message);
+                        // Stop Notification thread so we can process this message.
+                        // See bug 1010796
+                        using (_context.BlockNotificationThread())
+                        {
+                            _context.CurrentState.SendCopyFail(_context, message);
+                        }
 					}
 				}
 				finally
