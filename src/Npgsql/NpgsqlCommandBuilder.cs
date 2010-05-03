@@ -234,7 +234,7 @@ namespace Npgsql
 		protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
 		{
 			NpgsqlParameter parameter = (NpgsqlParameter) p;
-			parameter.DbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type) row[SchemaTableColumn.DataType]).DbType;
+            parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type) row[SchemaTableColumn.DataType]).NpgsqlDbType;
 		}
 
 		protected override string GetParameterName(int parameterOrdinal)
