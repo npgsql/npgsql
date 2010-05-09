@@ -611,7 +611,7 @@ namespace NpgsqlTypes
         private static StringBuilder ZeroPad(StringBuilder str, int padTo)
         {
             int padBy = padTo - str.Length;
-            while(padBy > 0)
+            while(padBy-- > 0)
                 str.Insert(0, '0');
             return str;
         }
