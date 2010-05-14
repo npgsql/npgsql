@@ -3184,6 +3184,43 @@ connection.Open();*/
         }
         
         [Test]
+        public void DoubleArrayHandling()
+        {
+            
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = new Double[] {1.2d, 1.3d};
+                cmd.Parameters.Add(parameter);
+ 
+                cmd.ExecuteNonQuery();
+            }
+            
+            
+        }
+        
+        //[Test]
+        public void DoubleArrayHandlingPrepared()
+        {
+            
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = new Double[] {1.2d, 1.3d};
+                cmd.Parameters.Add(parameter);
+                
+                cmd.Prepare();
+ 
+                cmd.ExecuteNonQuery();
+            }
+            
+            
+        }
+
+        
+        [Test]
         public void Bug1010521NpgsqlIntervalShouldBeQuoted()
         {
             
@@ -3611,6 +3648,35 @@ connection.Open();*/
                 conn.Close();
             }
         }    
+        
+        [Test]
+        public void Bug1010788UpdateRowSource()
+        {
+
+            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            conn.Open();
+
+            NpgsqlCommand command = new NpgsqlCommand("", conn);
+
+            Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
+
+            NpgsqlCommandBuilder cmdBuilder = new NpgsqlCommandBuilder();
+
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter(command);
+
+            cmdBuilder.DataAdapter = da;
+
+            Assert.IsNotNull(da.SelectCommand);
+
+            Assert.IsNotNull(cmdBuilder.DataAdapter);
+            
+            NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
+
+            Assert.AreEqual(UpdateRowSource.None, command.UpdatedRowSource);
+
+
+            
+        }
         
 
     }
