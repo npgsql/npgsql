@@ -80,11 +80,6 @@ namespace Npgsql
 
 
 
-        // Those two buffers are for the ReadInt32 and ReadInt16 methods, so they don't need to create the 
-        // array whenever they are called.
-        private static byte[] fourbytesbuffer = new byte[4];
-        private static byte[] twobytesbuffer = new byte[2];
-
 		///<summary>
 		/// This method takes a ProtocolVersion and returns an integer
 		/// version number that the Postgres backend will recognize in a
@@ -498,9 +493,9 @@ namespace Npgsql
 		/// </summary>
 		public static Int32 ReadInt32(Stream stream)
 		{
-			//byte[] buffer = new byte[4];
-			CheckedStreamRead(stream, fourbytesbuffer, 0, 4);
-			return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(fourbytesbuffer, 0));
+			byte[] buffer = new byte[4];
+			CheckedStreamRead(stream, buffer, 0, 4);
+			return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
 		}
 
 		/// <summary>
@@ -516,9 +511,9 @@ namespace Npgsql
 		/// </summary>
 		public static Int16 ReadInt16(Stream stream)
 		{
-			//byte[] buffer = new byte[2];
-			CheckedStreamRead(stream, twobytesbuffer, 0, 2);
-			return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(twobytesbuffer, 0));
+			byte[] buffer = new byte[2];
+			CheckedStreamRead(stream, buffer, 0, 2);
+			return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
 		}
 
 		public static int RotateShift(int val, int shift)
