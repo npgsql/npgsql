@@ -698,6 +698,12 @@ namespace Npgsql.SqlGenerators
             _variableSubstitution = variableSubstitution;
         }
 
+        internal VariableReferenceExpression(VariableReferenceExpression expression)
+        {
+            _name = expression._name;
+            _variableSubstitution = expression._variableSubstitution;
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
             if (_variableSubstitution.ContainsKey(_name))
@@ -755,6 +761,12 @@ namespace Npgsql.SqlGenerators
         {
             _variable = variable;
             _property = property;
+        }
+
+        public PropertyExpression(PropertyExpression expression)
+        {
+            _variable = new VariableReferenceExpression(expression._variable);
+            _property = expression._property;
         }
 
         // used for inserts or updates where the column is not qualified
