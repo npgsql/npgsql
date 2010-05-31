@@ -471,6 +471,20 @@ namespace NpgsqlTests
                 Console.Out.WriteLine(dr["dauer"]);
             }
         }
+
+        [Test]
+        public void DbDataAdapterCommandAccess()
+        {
+
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
+            command.Connection = TheConnection;
+            NpgsqlDataAdapter da = new NpgsqlDataAdapter();
+            da.SelectCommand = command;
+            System.Data.Common.DbDataAdapter common = da;
+            Assert.IsNotNull(common.SelectCommand);
+        }
     }
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
