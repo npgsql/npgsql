@@ -132,7 +132,7 @@ namespace Npgsql
 			{
 				throw new IndexOutOfRangeException();
 			}
-			if (allowCurrent && _reader.CurrentlyStreaming ? index < _lastIndex : index <= _lastIndex)
+			if ((!allowCurrent || _reader.CurrentlyStreaming) ? index <= _lastIndex : index < _lastIndex)
 			{
 				throw new InvalidOperationException(
 					string.Format(resman.GetString("Row_Sequential_Field_Error"), index, _lastIndex + 1));

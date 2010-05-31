@@ -644,6 +644,28 @@ namespace NpgsqlTests
             
             Assert.AreEqual(1, i);
         }
+
+        [Test]
+        public void SingleRowForwardOnlyCommandBehaviorSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select * from tablea", TheConnection);
+            Int32 i = 0;
+
+            using (NpgsqlDataReader dr = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess))
+            {
+
+                while (dr.Read())
+                {
+                    if (!dr.IsDBNull(0))
+                        dr.GetValue(0);
+                    if (!dr.IsDBNull(1))
+                        dr.GetValue(1);
+                    i++;
+                }
+            }
+
+            Assert.AreEqual(1, i);
+        }
         
         
         [Test]
