@@ -377,16 +377,22 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "UpdatedRowSource");
-
                 return updateRowSource;
             }
-
             set 
             {
-                if (value is UpdateRowSource)
-                    updateRowSource = value;
-                else
-                    throw new ArgumentOutOfRangeException();
+                switch (value)
+                {
+                        // validate value (required based on base type contract)
+                    case UpdateRowSource.None:
+                    case UpdateRowSource.OutputParameters:
+                    case UpdateRowSource.FirstReturnedRecord:
+                    case UpdateRowSource.Both:
+                        updateRowSource = value;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
         }
 
