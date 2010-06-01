@@ -80,7 +80,7 @@ namespace NpgsqlTypes
             // Even an string being an IEnumerable, it shouldn't be processed. It will be processed on the last else.
             // See http://pgfoundry.org/tracker/?func=detail&atid=592&aid=1010514&group_id=1000140 for more info.
 
-            if(NpgsqlTypesHelper.DefinedType(item))
+            if(item == null || NpgsqlTypesHelper.DefinedType(item))
             {
                 sb.Append(_elementConverter.ConvertToBackend(item, false));
                 return true;
