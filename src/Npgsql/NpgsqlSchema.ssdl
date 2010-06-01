@@ -57,7 +57,7 @@
         end as is_identity,
         false as is_generated,
 -- default value column
-        null as default_value
+        ad.adsrc as default_value
         from pg_attribute a
           join pg_class c
           on a.attrelid = c.oid
@@ -178,7 +178,7 @@
         end as is_identity,
         false as is_generated,
 -- default value column
-        null as default_value
+        ad.adsrc as default_value
         from pg_attribute a
           join pg_class c
           on a.attrelid = c.oid
