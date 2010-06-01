@@ -152,16 +152,21 @@ namespace Npgsql
 				command.Parameters.Clear();
 				for (Int32 i = 0; i < types.Length; i++)
 				{
-					NpgsqlBackendTypeInfo typeInfo = null;
-					if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
-					{
-						command.Parameters.Clear();
-						throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
-					}
-					if (names != null && i < names.Length)
-						command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
-					else
-						command.Parameters.Add(new NpgsqlParameter("parameter" + i + 1, typeInfo.NpgsqlDbType));
+                    // skip parameter if type string is empty
+                    // empty parameter lists can cause this
+                    if (!string.IsNullOrEmpty(types[i]))
+                    {
+                        NpgsqlBackendTypeInfo typeInfo = null;
+                        if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
+                        {
+                            command.Parameters.Clear();
+                            throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
+                        }
+                        if (names != null && i < names.Length)
+                            command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
+                        else
+                            command.Parameters.Add(new NpgsqlParameter("parameter" + i + 1, typeInfo.NpgsqlDbType));
+                    }
 				}
 			}
 		}
