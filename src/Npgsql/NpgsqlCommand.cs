@@ -673,9 +673,23 @@ namespace Npgsql
                 bind.ParameterFormatCodes = parameterFormatCodes;
             }
 
-            Connector.Bind(bind);
+            try
+            {
+                // In case of error when binding parameters, the ReadyForQuery isn't returned.
+                // According to docs: "[...] The response is either BindComplete or ErrorResponse."
 
-            Connector.Flush();
+                Connector.RequireReadyForQuery = false;
+
+                Connector.Bind(bind);
+
+                Connector.Flush();
+            }
+            catch
+            {
+                // Check catch{} of Preapre method for discussion about that.
+                Connector.Sync();
+                throw;
+            }
         }
 
         /// <summary>
@@ -792,7 +806,12 @@ namespace Npgsql
                     }
                     catch
                     {
-                        // See ExecuteCommand method for a discussion of this.
+                        // As per documentation:
+                        // "[...] When an error is detected while processing any extended-query message,
+                        // the backend issues ErrorResponse, then reads and discards messages until a
+                        // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
+                        // So, send a sync command if we get any problems.
+
                         m_Connector.Sync();
 
                         throw;
