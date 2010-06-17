@@ -377,6 +377,7 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "UpdatedRowSource");
+
                 return updateRowSource;
             }
             set 
@@ -395,6 +396,7 @@ namespace Npgsql
                 }
             }
         }
+
 
         /// <summary>
         /// Returns oid of inserted row. This is only updated when using executenonQuery and when command inserts just a single row. If table is created without oids, this will always be 0.
@@ -806,11 +808,18 @@ namespace Npgsql
                     }
                     catch
                     {
+
                         // As per documentation:
+
                         // "[...] When an error is detected while processing any extended-query message,
+
                         // the backend issues ErrorResponse, then reads and discards messages until a
+
                         // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
+
                         // So, send a sync command if we get any problems.
+
+
 
                         m_Connector.Sync();
 
