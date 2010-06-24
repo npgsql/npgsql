@@ -700,7 +700,7 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 	/// <summary>
 	/// Delegate called to convert the given native data to its backand representation.
 	/// </summary>
-	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData);
+	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQeury);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
 
@@ -1018,7 +1018,7 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 			if (_ConvertNativeToBackend != null)
 			{
 				return
-					(this.Quote ? QuoteString(_ConvertNativeToBackend(this, NativeData)) : _ConvertNativeToBackend(this, NativeData));
+					(this.Quote ? QuoteString(_ConvertNativeToBackend(this, NativeData, false)) : _ConvertNativeToBackend(this, NativeData, false));
 			}
 			else
 			{
@@ -1057,7 +1057,7 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 
 			if (_ConvertNativeToBackend != null)
 			{
-				return _ConvertNativeToBackend(this, NativeData);
+				return _ConvertNativeToBackend(this, NativeData, true);
 			}
 			else
 			{

@@ -3222,7 +3222,7 @@ connection.Open();*/
             
         }
         
-        //[Test]
+        [Test]
         public void DoubleArrayHandlingPrepared()
         {
             

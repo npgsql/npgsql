@@ -56,21 +56,40 @@ namespace NpgsqlTypes
         /// <summary>
         /// Serialise the enumeration or array.
         /// </summary>
-        public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData)
+        public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean ForExtendedQuery)
         {
-//just prepend "array" and then pass to WriteItem.
-            StringBuilder sb = new StringBuilder("array");
-            if (WriteItem(TypeInfo, NativeData, sb))
+
+            if (ForExtendedQuery)
             {
+                StringBuilder sb = new StringBuilder("{");
+                //return sb.ToString();
+
+                WriteItem(TypeInfo, NativeData, sb, ForExtendedQuery);
+
+                sb.Append("}");
+                
                 return sb.ToString();
+                
+
+
             }
             else
             {
-                return "'{}'";
+
+                //just prepend "array" and then pass to WriteItem.
+                StringBuilder sb = new StringBuilder("array");
+                if (WriteItem(TypeInfo, NativeData, sb, ForExtendedQuery))
+                {
+                    return sb.ToString();
+                }
+                else
+                {
+                    return "'{}'";
+                }
             }
         }
 
-        private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb)
+        private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb, Boolean ForExtendedQuery)
         {
             //item could be:
             //an Ienumerable - in which case we call WriteEnumeration
@@ -82,26 +101,26 @@ namespace NpgsqlTypes
 
             if(item == null || NpgsqlTypesHelper.DefinedType(item))
             {
-                sb.Append(_elementConverter.ConvertToBackend(item, false));
+                sb.Append(_elementConverter.ConvertToBackend(item, ForExtendedQuery));
                 return true;
             }
             else if (item is Array)
             {
-                return WriteArray(TypeInfo, item as Array, sb);
+                return WriteArray(TypeInfo, item as Array, sb, ForExtendedQuery);
             }
             else if (item is IEnumerable)
             {
-                return WriteEnumeration(TypeInfo, item as IEnumerable, sb);
+                return WriteEnumeration(TypeInfo, item as IEnumerable, sb, ForExtendedQuery);
             }
             else
             {//This shouldn't really be reachable.
-                sb.Append(_elementConverter.ConvertToBackend(item, false));
+                sb.Append(_elementConverter.ConvertToBackend(item, ForExtendedQuery));
                 return true;
             }
             
         }
 
-        private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb)
+        private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb, Boolean ForExtendedQuery)
         {
             bool writtenSomething = false;
             //we need to know the size of each dimension.
@@ -117,6 +136,16 @@ namespace NpgsqlTypes
 
             foreach (object item in ar)
             {
+
+                // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
+                // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
+
+                Char openElement = ForExtendedQuery ? '{' : '[';
+                Char closeElement = ForExtendedQuery ? '}' : ']';
+
+
+
+
                 //to work out how many [ characters we need we need to work where we are compared to the dimensions.
                 //Say we are at position 24 in a 3 * 4 * 5 array.
                 //We're at the end of a row as 24 % 3 == 0 so write one [ for that.
@@ -127,7 +156,9 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        sb.Append('[');
+                        //sb.Append('[');
+                        sb.Append(openElement);
+                        
                     }
                     else
                     {
@@ -136,7 +167,7 @@ namespace NpgsqlTypes
                 }
 
                 //Write whatever the element is.
-                writtenSomething |= WriteItem(TypeInfo, item, sb);
+                writtenSomething |= WriteItem(TypeInfo, item, sb, ForExtendedQuery);
                 ++c; //up our counter for knowing when to write [ and ]
 
                 //same logic as above for writing [ this time writing ]
@@ -145,7 +176,8 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        sb.Append(']');
+                        //sb.Append(']');
+                        sb.Append(closeElement);
                     }
                     else
                     {
@@ -164,20 +196,32 @@ namespace NpgsqlTypes
             return writtenSomething;
         }
 
-        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb)
+        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb, Boolean ForExtendedQuery)
         {
+            // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
+            // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
+
+            Char openElement = ForExtendedQuery ? '{' : '[';
+            Char closeElement = ForExtendedQuery ? '}' : ']';
+
+
             bool writtenSomething = false;
-            sb.Append('[');
+            //sb.Append('[');
+            sb.Append(openElement);
+
             //write each item with a comma between them.
             foreach (object item in col)
             {
-                writtenSomething |= WriteItem(TypeInfo, item, sb);
+                writtenSomething |= WriteItem(TypeInfo, item, sb, ForExtendedQuery);
                 sb.Append(',');
             }
             if (writtenSomething)
             {
                 //last comma was one too many. Replace it with the final }
-                sb[sb.Length - 1] = ']';
+
+                //sb[sb.Length - 1] = ']';
+                sb[sb.Length - 1] = closeElement;
+                
             }
             return writtenSomething;
         }
