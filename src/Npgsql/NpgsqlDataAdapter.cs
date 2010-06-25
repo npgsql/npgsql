@@ -52,13 +52,8 @@ namespace Npgsql
 	/// <summary>
 	/// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
 	/// </summary>
-	public sealed class NpgsqlDataAdapter : DbDataAdapter, IDbDataAdapter
+	public sealed class NpgsqlDataAdapter : DbDataAdapter
 	{
-		private NpgsqlCommand _selectCommand;
-		private NpgsqlCommand _updateCommand;
-		private NpgsqlCommand _deleteCommand;
-		private NpgsqlCommand _insertCommand;
-
 		// Log support
 		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
@@ -73,7 +68,7 @@ namespace Npgsql
 		public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-			_selectCommand = selectCommand;
+            SelectCommand = selectCommand;
 		}
 
 		public NpgsqlDataAdapter(String selectCommandText, NpgsqlConnection selectConnection)
@@ -122,81 +117,49 @@ namespace Npgsql
 			}
 		}
 
-		ITableMappingCollection IDataAdapter.TableMappings
-		{
-			get { return TableMappings; }
-		}
-
-		IDbCommand IDbDataAdapter.DeleteCommand
-		{
-			get
-			{
-				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.DeleteCommand");
-				return DeleteCommand;
-			}
-
-			set { DeleteCommand = (NpgsqlCommand) value; }
-		}
-
-
 		public new NpgsqlCommand DeleteCommand
 		{
-			get { return _deleteCommand; }
+			get
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.DeleteCommand");
+                return (NpgsqlCommand)base.DeleteCommand;
+            }
 
-			set { _deleteCommand = value; }
+			set { base.DeleteCommand = value; }
 		}
-
-		IDbCommand IDbDataAdapter.SelectCommand
-		{
-			get { return SelectCommand; }
-
-			set { SelectCommand = (NpgsqlCommand) value; }
-		}
-
 
 		public new NpgsqlCommand SelectCommand
 		{
-			get { return _selectCommand; }
-
-			set { _selectCommand = value; }
-		}
-
-		IDbCommand IDbDataAdapter.UpdateCommand
-		{
 			get
-			{
-				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IDbDataAdapter.UpdateCommand");
-				return UpdateCommand;
-			}
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.SelectCommand");
+                return (NpgsqlCommand)base.SelectCommand;
+            }
 
-			set { UpdateCommand = (NpgsqlCommand) value; }
+			set { base.SelectCommand = value; }
 		}
 
 
 		public new NpgsqlCommand UpdateCommand
 		{
-			get { return _updateCommand; }
+			get
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.UpdateCommand");
+                return (NpgsqlCommand)base.UpdateCommand;
+            }
 
-			set { _updateCommand = value; }
+			set { base.UpdateCommand = value; }
 		}
-
-		IDbCommand IDbDataAdapter.InsertCommand
-		{
-			get { return InsertCommand; }
-
-			set { InsertCommand = (NpgsqlCommand) value; }
-		}
-
 
 		public new NpgsqlCommand InsertCommand
 		{
 			get
-			{
-				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "InsertCommand");
-				return _insertCommand;
-			}
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.InsertCommand");
+                return (NpgsqlCommand)base.InsertCommand;
+            }
 
-			set { _insertCommand = value; }
+			set { base.InsertCommand = value; }
 		}
 	}
 }
