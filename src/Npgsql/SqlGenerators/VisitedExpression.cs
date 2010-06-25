@@ -373,14 +373,31 @@ namespace Npgsql.SqlGenerators
     {
         private VisitedExpression _column;
         private string _columnName;
+        private TypeUsage _columnType;
 
-        public ColumnExpression(VisitedExpression column, string columnName)
+        public ColumnExpression(VisitedExpression column, string columnName, TypeUsage columnType)
         {
             _column = column;
             _columnName = columnName;
+            _columnType = columnType;
         }
 
         public string Name { get { return _columnName; } }
+        internal TypeUsage ColumnType { get { return _columnType; ;} }
+
+        public Type CLRType
+        {
+            get
+            {
+                if (_columnType == null)
+                    return null;
+                PrimitiveType pt = _columnType.EdmType as PrimitiveType;
+                if (pt != null)
+                    return pt.ClrEquivalentType;
+                else
+                    return null;
+            }
+        }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
@@ -426,7 +443,7 @@ namespace Npgsql.SqlGenerators
             {
                 foreach (var property in _target.ElementType.Members.OfType<EdmProperty>())
                 {
-                    _projectedColumns.Add(new ColumnExpression(new PropertyExpression(property), property.Name));
+                    _projectedColumns.Add(new ColumnExpression(new PropertyExpression(property), property.Name, property.TypeUsage));
                 }
             }
             return _projectedColumns;
@@ -551,7 +568,7 @@ namespace Npgsql.SqlGenerators
                 ScanExpression scan = (ScanExpression)_from;
                 foreach (var property in scan.Target.ElementType.Members.OfType<EdmProperty>())
                 {
-                    yield return new ColumnExpression(new PropertyExpression(new VariableReferenceExpression(Name, emptySubstitution), property), property.Name);
+                    yield return new ColumnExpression(new PropertyExpression(new VariableReferenceExpression(Name, emptySubstitution), property), property.Name, property.TypeUsage);
                 }
             }
             else
@@ -559,7 +576,7 @@ namespace Npgsql.SqlGenerators
                 foreach (var column in _from.GetProjectedColumns())
                 {
                     string columnRef = string.Format("{0}.{1}", SqlBaseGenerator.QuoteIdentifier(Name), column.Name);
-                    yield return new ColumnExpression(new LiteralExpression(columnRef), column.Name);
+                    yield return new ColumnExpression(new LiteralExpression(columnRef), column.Name, column.ColumnType);
                 }
             }
         }
@@ -777,6 +794,8 @@ namespace Npgsql.SqlGenerators
         }
 
         public string Name { get { return _property.Name; } }
+
+        public TypeUsage PropertyType { get { return _property.TypeUsage; } }
 
         internal override void WriteSql(StringBuilder sqlText)
         {

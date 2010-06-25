@@ -57,6 +57,21 @@
         <Precision DefaultValue="0" Constant="true"/>
       </FacetDescriptions>
     </Type>
+    <Type Name="interval" PrimitiveTypeKind="Time">
+      <FacetDescriptions>
+        <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
+      </FacetDescriptions>
+    </Type>
+    <Type Name="time" PrimitiveTypeKind="Time">
+      <FacetDescriptions>
+        <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
+      </FacetDescriptions>
+    </Type>
+    <Type Name="timestamptz" PrimitiveTypeKind="DateTimeOffset">
+      <FacetDescriptions>
+        <Precision Minimum="0" Maximum="10" DefaultValue="7" Constant="false"/>
+      </FacetDescriptions>
+    </Type>
     <Type Name="bytea" PrimitiveTypeKind="Binary">
       <FacetDescriptions>
         <FixedLength DefaultValue="false" Constant="true" />

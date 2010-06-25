@@ -298,6 +298,8 @@ namespace Npgsql
             }
         }
 
+        internal Type[] ExpectedTypes { get; set; }
+
         protected override DbParameterCollection DbParameterCollection
         {
             get { return Parameters; }
@@ -455,6 +457,10 @@ namespace Npgsql
             clone.CommandTimeout = CommandTimeout;
             clone.CommandType = CommandType;
             clone.DesignTimeVisible = DesignTimeVisible;
+            if (ExpectedTypes != null)
+            {
+                clone.ExpectedTypes = (Type[])ExpectedTypes.Clone();
+            }
             foreach (NpgsqlParameter parameter in Parameters)
             {
                 clone.Parameters.Add(parameter.Clone());

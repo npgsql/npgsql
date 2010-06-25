@@ -1396,7 +1396,11 @@ namespace Npgsql
         {
             object providerValue = GetProviderSpecificValue(Index);
             NpgsqlBackendTypeInfo backendTypeInfo;
-            if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
+            {
+                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
+            }                       
+            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
                 return backendTypeInfo.ConvertToFrameworkType(providerValue);
             return providerValue;
         }

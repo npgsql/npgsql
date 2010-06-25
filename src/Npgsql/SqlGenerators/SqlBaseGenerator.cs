@@ -307,7 +307,8 @@ namespace Npgsql.SqlGenerators
                 _projectExpressions.Push(visitedExpression);
                 for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
                 {
-                    visitedExpression.AppendColumn(new ColumnExpression(expression.Arguments[i].Accept(this), rowType.Properties[i].Name));
+                    var prop = rowType.Properties[i];
+                    visitedExpression.AppendColumn(new ColumnExpression(expression.Arguments[i].Accept(this), prop.Name, prop.TypeUsage));
                 }
 
                 return visitedExpression;
@@ -322,7 +323,7 @@ namespace Npgsql.SqlGenerators
                     ProjectionExpression visitedExpression = new ProjectionExpression();
                     var visitedColumn = arg.Accept(this);
                     if (!(visitedColumn is ColumnExpression))
-                        visitedColumn = new ColumnExpression(visitedColumn, "C");
+                        visitedColumn = new ColumnExpression(visitedColumn, "C", arg.ResultType);
                     visitedExpression.AppendColumn((ColumnExpression)visitedColumn);
                     if (previousExpression != null)
                     {
@@ -470,7 +471,8 @@ namespace Npgsql.SqlGenerators
             foreach (var key in expression.Keys)
             {
                 VisitedExpression keyColumnExpression = key.Accept(this);
-                projectExpression.AppendColumn(new ColumnExpression(keyColumnExpression, rowType.Properties[columnIndex].Name));
+                var prop = rowType.Properties[columnIndex];
+                projectExpression.AppendColumn(new ColumnExpression(keyColumnExpression, prop.Name, prop.TypeUsage));
                 groupByExpression.AppendGroupingKey(keyColumnExpression);
                 ++columnIndex;
             }
@@ -480,7 +482,8 @@ namespace Npgsql.SqlGenerators
                 if (function == null)
                     throw new NotSupportedException();
                 VisitedExpression functionExpression = VisitFunction(function);
-                projectExpression.AppendColumn(new ColumnExpression(functionExpression, rowType.Properties[columnIndex].Name));
+                var prop = rowType.Properties[columnIndex];
+                projectExpression.AppendColumn(new ColumnExpression(functionExpression, prop.Name, prop.TypeUsage));
                 ++columnIndex;
             }
             PushProjectVar(expression.Input.GroupVariableName);
@@ -655,7 +658,7 @@ namespace Npgsql.SqlGenerators
                     string column = propParts.Last();
                     // strip off quotes.
                     column = column.Substring(1, column.Length - 2);
-                    yield return new ColumnExpression(new PropertyExpression(prop), column);
+                    yield return new ColumnExpression(new PropertyExpression(prop), column, prop.PropertyType);
                 }
             }
         }
@@ -685,7 +688,7 @@ namespace Npgsql.SqlGenerators
         {
             return new ColumnExpression(new LiteralExpression(
                 QuoteIdentifier(_projectVarName.Peek()) + "." + QuoteIdentifier(reassociatedColumn.Name)),
-                reassociatedColumn.Name);
+                reassociatedColumn.Name, reassociatedColumn.ColumnType);
         }
 
         /// <summary>

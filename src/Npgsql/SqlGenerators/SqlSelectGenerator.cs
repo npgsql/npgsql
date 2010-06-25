@@ -39,9 +39,18 @@ namespace Npgsql.SqlGenerators
 
         public override void BuildCommand(DbCommand command)
         {
+            System.Diagnostics.Debug.Assert(command is NpgsqlCommand);
             System.Diagnostics.Debug.Assert(_commandTree.Query is DbProjectExpression);
             VisitedExpression ve = _commandTree.Query.Accept(this);
-            command.CommandText = ve.ToString();
+            System.Diagnostics.Debug.Assert(ve is ProjectionExpression);
+            ProjectionExpression pe = (ProjectionExpression)ve;
+            command.CommandText = pe.ToString();
+            List<Type> expectedTypes = new List<Type>();
+            foreach (var column in pe.Columns)
+            {
+                expectedTypes.Add(column.CLRType);
+            }
+            ((NpgsqlCommand)command).ExpectedTypes = expectedTypes.ToArray();
         }
 	}
 }
