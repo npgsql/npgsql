@@ -268,7 +268,7 @@ namespace Npgsql
             {
                 
                 // Prevents casts to be added for null values when they aren't needed.
-                if (!useCast && value == DBNull.Value)
+                if (!useCast && (value == DBNull.Value || value == null))
                     return false;
                 //return useCast; //&& (value != DBNull.Value);
                 // This check for Datetime.minvalue and maxvalue is needed in order to
@@ -568,8 +568,8 @@ namespace Npgsql
                 {
                     // don't really know what to do - leave default and do further exploration
                     // Default type for null values is String.
-                    this.value = DBNull.Value;
-                    this.npgsqlValue = DBNull.Value;
+                    this.value = value;
+                    this.npgsqlValue = value;
                     if (type_info == null)
                     {
                         type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
@@ -627,7 +627,9 @@ namespace Npgsql
 
         public override void ResetDbType()
         {
-            type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+            //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+            type_info = null;
+            this.Value = Value;
         }
 
         public override bool SourceColumnNullMapping
