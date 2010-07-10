@@ -101,7 +101,7 @@ namespace NpgsqlTests
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
 #if NET_2_0
 			// FIXME
-			//Assert.AreEqual (new SqlDateTime (value), p.SqlValue, "B:SqlValue");
+			//Assert.AreEqual (new SqlDateTime (value), p.NpgsqlValue, "B:NpgsqlValue");
 #endif
             Assert.AreEqual(value, p.Value, "B:Value");
 #if NET_2_0
@@ -133,7 +133,7 @@ namespace NpgsqlTests
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "B:NpgsqlDbType");
 #if NET_2_0
 			// FIXME
-			//Assert.AreEqual (SqlString.Null, p.SqlValue, "B:SqlValue");
+			//Assert.AreEqual (SqlString.Null, p.NpgsqlValue, "B:NpgsqlValue");
 #endif
             Assert.AreEqual(DBNull.Value, p.Value, "B:Value");
 #if NET_2_0
@@ -193,7 +193,7 @@ namespace NpgsqlTests
 			Assert.AreEqual (false, p1.SourceColumnNullMapping, "SourceColumnNullMapping");
 			Assert.AreEqual (DataRowVersion.Original, p1.SourceVersion, "SourceVersion");
             Assert.AreEqual(NpgsqlDbType.Varchar, p1.NpgsqlDbType, "NpgsqlDbType");
-			//Assert.AreEqual (3210, p1.SqlValue, "#");
+			//Assert.AreEqual (3210, p1.NpgsqlValue, "#");
 			Assert.AreEqual ("foo", p1.Value, "Value");
             //Assert.AreEqual ("database", p1.XmlSchemaCollectionDatabase, "XmlSchemaCollectionDatabase");
             //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
@@ -248,14 +248,14 @@ namespace NpgsqlTests
 
 			NpgsqlParameter p = new NpgsqlParameter ();
 			p.Value = value;
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#A:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
 			Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
 			Assert.AreEqual (string_value, p.Value, "#A:Value");
 
 			p = new NpgsqlParameter ();
 			p.Value = value;
 			Assert.AreEqual (value, p.Value, "#B:Value1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#B:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#B:Value2");
 
 			p = new NpgsqlParameter ();
@@ -267,19 +267,19 @@ namespace NpgsqlTests
 			p = new NpgsqlParameter ("name", value);
 			Assert.AreEqual (value, p.Value, "#D:Value1");
 			Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#D:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#D:Value2");
 
 			p = new NpgsqlParameter ("name", 5);
 			p.Value = value;
 			Assert.AreEqual (value, p.Value, "#E:Value1");
 			Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#E:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#E:Value2");
 
-			p = new NpgsqlParameter ("name", SqlDbType.NVarChar);
+			p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
 			p.Value = value;
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#F:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
 			Assert.AreEqual (value, p.Value, "#F:Value");
 #else
             NpgsqlParameter p = new NpgsqlParameter();
@@ -313,14 +313,14 @@ namespace NpgsqlTests
 			NpgsqlParameter p = new NpgsqlParameter ();
 			p.Value = value;
 			Assert.AreEqual (value, p.Value, "#A:Value1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#A:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
 			Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
 			Assert.AreEqual (string_value, p.Value, "#A:Value2");
 
 			p = new NpgsqlParameter ();
 			p.Value = value;
 			Assert.AreEqual (value, p.Value, "#B:Value1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#B:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#B:Value2");
 
 			p = new NpgsqlParameter ();
@@ -332,19 +332,19 @@ namespace NpgsqlTests
 			p = new NpgsqlParameter ("name", value);
 			Assert.AreEqual (value, p.Value, "#D:Value1");
 			Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#D:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#D:Value2");
 
 			p = new NpgsqlParameter ("name", 5);
 			p.Value = value;
 			Assert.AreEqual (value, p.Value, "#E:Value1");
 			Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#E:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
 			Assert.AreEqual (string_value, p.Value, "#E:Value2");
 
-			p = new NpgsqlParameter ("name", SqlDbType.NVarChar);
+			p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
 			p.Value = value;
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#F:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
 			Assert.AreEqual (value, p.Value, "#F:Value");
 #else
             NpgsqlParameter p = new NpgsqlParameter();
@@ -369,6 +369,8 @@ namespace NpgsqlTests
 #endif
         }
 
+#endif
+
         [Test]
         public void InferType_DateTime()
         {
@@ -378,19 +380,19 @@ namespace NpgsqlTests
             value = DateTime.Now;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.DateTime, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.DateTime, param.DbType, "#A2");
 
             value = DateTime.Now;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.DateTime, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.DateTime, param.DbType, "#B2");
 
             value = new DateTime(1973, 8, 13);
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.DateTime, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.DateTime, param.DbType, "#C2");
         }
 
@@ -403,19 +405,19 @@ namespace NpgsqlTests
             value = Decimal.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Decimal, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Decimal, param.DbType, "#A2");
 
             value = Decimal.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Decimal, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Decimal, param.DbType, "#B2");
 
             value = 214748.364m;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Decimal, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Decimal, param.DbType, "#C2");
         }
 
@@ -428,19 +430,19 @@ namespace NpgsqlTests
             value = Double.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Float, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Double, param.DbType, "#A2");
 
             value = Double.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Float, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Double, param.DbType, "#B2");
 
             value = 0d;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Float, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Double, param.DbType, "#C2");
         }
 
@@ -448,15 +450,17 @@ namespace NpgsqlTests
         public void InferType_Enum()
         {
             NpgsqlParameter param;
-
+            
+#if NeedsPorting
             param = new NpgsqlParameter();
             param.Value = ByteEnum.A;
-            Assert.AreEqual(SqlDbType.TinyInt, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.TinyInt, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Byte, param.DbType, "#A2");
+#endif
 
             param = new NpgsqlParameter();
             param.Value = Int64Enum.A;
-            Assert.AreEqual(SqlDbType.BigInt, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Bigint, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Int64, param.DbType, "#B2");
         }
 
@@ -467,7 +471,7 @@ namespace NpgsqlTests
 
             NpgsqlParameter param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.UniqueIdentifier, param.SqlDbType, "#1");
+            Assert.AreEqual(NpgsqlDbType.Uuid, param.NpgsqlDbType, "#1");
             Assert.AreEqual(DbType.Guid, param.DbType, "#2");
         }
 
@@ -480,19 +484,19 @@ namespace NpgsqlTests
             value = Int16.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.SmallInt, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Smallint, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Int16, param.DbType, "#A2");
 
             value = Int16.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.SmallInt, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Smallint, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Int16, param.DbType, "#B2");
 
             value = (Int16)0;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.SmallInt, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Smallint, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Int16, param.DbType, "#C2");
         }
 
@@ -505,19 +509,19 @@ namespace NpgsqlTests
             value = Int32.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Int, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Integer, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Int32, param.DbType, "#A2");
 
             value = Int32.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Int, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Integer, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Int32, param.DbType, "#B2");
 
             value = 0;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Int, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Integer, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Int32, param.DbType, "#C2");
         }
 
@@ -530,19 +534,19 @@ namespace NpgsqlTests
             value = Int64.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.BigInt, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Bigint, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Int64, param.DbType, "#A2");
 
             value = Int64.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.BigInt, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Bigint, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Int64, param.DbType, "#B2");
 
             value = 0L;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.BigInt, param.SqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Bigint, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Int64, param.DbType, "#C2");
         }
 
@@ -567,7 +571,7 @@ namespace NpgsqlTests
 #if NET_2_0
 				param.Value = notsupported [i];
 				try {
-					SqlDbType type = param.SqlDbType;
+					NpgsqlDbType type = param.NpgsqlDbType;
 					Assert.Fail ("#A1:" + i + " (" + type + ")");
 				} catch (ArgumentException ex) {
 					// The parameter data type of ... is invalid
@@ -610,6 +614,7 @@ namespace NpgsqlTests
             }
         }
 
+#if NeedsPorting
         [Test]
         public void InferType_Object()
         {
@@ -617,9 +622,10 @@ namespace NpgsqlTests
 
             NpgsqlParameter param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Variant, param.SqlDbType, "#1");
+            Assert.AreEqual(NpgsqlDbType.Variant, param.NpgsqlDbType, "#1");
             Assert.AreEqual(DbType.Object, param.DbType, "#2");
         }
+#endif
 
         [Test]
         public void InferType_Single()
@@ -628,7 +634,7 @@ namespace NpgsqlTests
 
             NpgsqlParameter param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Real, param.SqlDbType, "#1");
+            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#1");
             Assert.AreEqual(DbType.Single, param.DbType, "#2");
         }
 
@@ -639,7 +645,7 @@ namespace NpgsqlTests
 
             NpgsqlParameter param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.NVarChar, param.SqlDbType, "#1");
+            Assert.AreEqual(NpgsqlDbType.Text, param.NpgsqlDbType, "#1");
             Assert.AreEqual(DbType.String, param.DbType, "#2");
         }
 
@@ -654,7 +660,7 @@ namespace NpgsqlTests
             NpgsqlParameter param = new NpgsqlParameter();
 #if NET_2_0
 			param.Value = value;
-			Assert.AreEqual (SqlDbType.Time, param.SqlDbType, "#1");
+			Assert.AreEqual (NpgsqlDbType.Time, param.NpgsqlDbType, "#1");
 			Assert.AreEqual (DbType.Time, param.DbType, "#2");
 #else
             try
@@ -677,6 +683,7 @@ namespace NpgsqlTests
 #endif
         }
 
+#if NeedsPorting
 #if NET_2_0
 		[Test]
 		public void LocaleId ()
@@ -687,16 +694,17 @@ namespace NpgsqlTests
 			Assert.AreEqual(15, parameter.LocaleId, "#2");
 		}
 #endif
+#endif
 
         [Test] // bug #320196
         public void ParameterNullTest()
         {
-            NpgsqlParameter param = new NpgsqlParameter("param", SqlDbType.Decimal);
+            NpgsqlParameter param = new NpgsqlParameter("param", NpgsqlDbType.Numeric);
             Assert.AreEqual(0, param.Scale, "#A1");
             param.Value = DBNull.Value;
             Assert.AreEqual(0, param.Scale, "#A2");
 
-            param = new NpgsqlParameter("param", SqlDbType.Int);
+            param = new NpgsqlParameter("param", NpgsqlDbType.Integer);
             Assert.AreEqual(0, param.Scale, "#B1");
             param.Value = DBNull.Value;
             Assert.AreEqual(0, param.Scale, "#B2");
@@ -709,70 +717,70 @@ namespace NpgsqlTests
 
             // If Type is not set, then type is inferred from the value
             // assigned. The Type should be inferred everytime Value is assigned
-            // If value is null or DBNull, then the current Type should be reset to NVarChar.
+            // If value is null or DBNull, then the current Type should be reset to Text.
             p = new NpgsqlParameter();
             Assert.AreEqual(DbType.String, p.DbType, "#A1");
-            Assert.AreEqual(SqlDbType.NVarChar, p.SqlDbType, "#A2");
+            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#A2");
             p.Value = DBNull.Value;
             Assert.AreEqual(DbType.String, p.DbType, "#B1");
-            Assert.AreEqual(SqlDbType.NVarChar, p.SqlDbType, "#B2");
+            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#B2");
             p.Value = 1;
             Assert.AreEqual(DbType.Int32, p.DbType, "#C1");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#C2");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#C2");
             p.Value = DBNull.Value;
 #if NET_2_0
 			Assert.AreEqual (DbType.String, p.DbType, "#D1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#D2");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D2");
 #else
             Assert.AreEqual(DbType.Int32, p.DbType, "#D1");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#D2");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#D2");
 #endif
             p.Value = new byte[] { 0x0a };
             Assert.AreEqual(DbType.Binary, p.DbType, "#E1");
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#E2");
+            Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#E2");
             p.Value = null;
 #if NET_2_0
 			Assert.AreEqual (DbType.String, p.DbType, "#F1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#F2");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F2");
 #else
             Assert.AreEqual(DbType.Binary, p.DbType, "#F1");
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#F2");
+            Assert.AreEqual(NpgsqlDbType.VarBinary, p.NpgsqlDbType, "#F2");
 #endif
             p.Value = DateTime.Now;
             Assert.AreEqual(DbType.DateTime, p.DbType, "#G1");
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#G2");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#G2");
             p.Value = null;
 #if NET_2_0
 			Assert.AreEqual (DbType.String, p.DbType, "#H1");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#H2");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#H2");
 #else
             Assert.AreEqual(DbType.DateTime, p.DbType, "#H1");
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#H2");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#H2");
 #endif
 
-            // If DbType is set, then the SqlDbType should not be
+            // If DbType is set, then the NpgsqlDbType should not be
             // inferred from the value assigned.
             p = new NpgsqlParameter();
             p.DbType = DbType.DateTime;
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#I1");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I1");
             p.Value = 1;
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#I2");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I2");
             p.Value = null;
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#I3");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I3");
             p.Value = DBNull.Value;
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#I4");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#I4");
 
-            // If SqlDbType is set, then the DbType should not be
+            // If NpgsqlDbType is set, then the DbType should not be
             // inferred from the value assigned.
             p = new NpgsqlParameter();
-            p.SqlDbType = SqlDbType.VarBinary;
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#J1");
+            p.NpgsqlDbType = NpgsqlDbType.Bytea;
+            Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J1");
             p.Value = 1;
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#J2");
+            Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J2");
             p.Value = null;
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#J3");
+            Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J3");
             p.Value = DBNull.Value;
-            Assert.AreEqual(SqlDbType.VarBinary, p.SqlDbType, "#J4");
+            Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#J4");
         }
 
         [Test]
@@ -784,13 +792,13 @@ namespace NpgsqlTests
             value = false;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Bit, param.SqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Bit, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Boolean, param.DbType, "#A2");
 
             value = true;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(SqlDbType.Bit, param.SqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Bit, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Boolean, param.DbType, "#B2");
         }
 
@@ -829,99 +837,101 @@ namespace NpgsqlTests
 			p = new NpgsqlParameter ("foo", 42);
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.Int32, p.DbType, "#A:DbType");
-			Assert.AreEqual (SqlDbType.Int, p.SqlDbType, "#A:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
 			Assert.AreEqual (42, p.Value, "#A:Value");
 
 			p.DbType = DbType.DateTime; //assigning a DbType
 			Assert.AreEqual (DbType.DateTime, p.DbType, "#B:DbType1");
-			Assert.AreEqual (SqlDbType.DateTime, p.SqlDbType, "#B:SqlDbType1");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#B:SqlDbType1");
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.Int32, p.DbType, "#B:DbType2");
-			Assert.AreEqual (SqlDbType.Int, p.SqlDbType, "#B:SqlDbtype2");
+			Assert.AreEqual (NpgsqlDbType.Integer, p.NpgsqlDbType, "#B:SqlDbtype2");
 
-			//Parameter with an assigned SqlDbType but no specified value
-			p = new NpgsqlParameter ("foo", SqlDbType.Int);
+			//Parameter with an assigned NpgsqlDbType but no specified value
+			p = new NpgsqlParameter ("foo", NpgsqlDbType.Integer);
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#C:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#C:NpgsqlDbType");
 
-			p.DbType = DbType.DateTime; //assigning a SqlDbType
+			p.DbType = DbType.DateTime; //assigning a NpgsqlDbType
 			Assert.AreEqual (DbType.DateTime, p.DbType, "#D:DbType1");
-			Assert.AreEqual (SqlDbType.DateTime, p.SqlDbType, "#D:SqlDbType1");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#D:SqlDbType1");
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.String, p.DbType, "#D:DbType2");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#D:SqlDbType2");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:SqlDbType2");
 
 			p = new NpgsqlParameter ();
 			p.Value = DateTime.MaxValue;
 			Assert.AreEqual (DbType.DateTime, p.DbType, "#E:DbType1");
-			Assert.AreEqual (SqlDbType.DateTime, p.SqlDbType, "#E:SqlDbType1");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#E:SqlDbType1");
 			p.Value = null;
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.String, p.DbType, "#E:DbType2");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#E:SqlDbType2");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:SqlDbType2");
 
-			p = new NpgsqlParameter ("foo", SqlDbType.VarChar);
+			p = new NpgsqlParameter ("foo", NpgsqlDbType.Varchar);
 			p.Value = DateTime.MaxValue;
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.DateTime, p.DbType, "#F:DbType");
-			Assert.AreEqual (SqlDbType.DateTime, p.SqlDbType, "#F:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#F:NpgsqlDbType");
 			Assert.AreEqual (DateTime.MaxValue, p.Value, "#F:Value");
 
-			p = new NpgsqlParameter ("foo", SqlDbType.VarChar);
+            p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
 			p.Value = DBNull.Value;
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.String, p.DbType, "#G:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#G:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#G:NpgsqlDbType");
 			Assert.AreEqual (DBNull.Value, p.Value, "#G:Value");
 
-			p = new NpgsqlParameter ("foo", SqlDbType.VarChar);
+            p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
 			p.Value = null;
 			p.ResetDbType ();
 			Assert.AreEqual (DbType.String, p.DbType, "#G:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#G:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#G:NpgsqlDbType");
 			Assert.IsNull (p.Value, "#G:Value");
 		}
 
+#if NeedsPorting
 		[Test]
 		public void ResetSqlDbType ()
 		{
-			//Parameter with an assigned value but no SqlDbType specified
+			//Parameter with an assigned value but no NpgsqlDbType specified
 			NpgsqlParameter p1 = new NpgsqlParameter ("foo", 42);
 			Assert.AreEqual (42, p1.Value, "#1");
 			Assert.AreEqual (DbType.Int32, p1.DbType, "#2");
-			Assert.AreEqual (SqlDbType.Int, p1.SqlDbType, "#3");
+			Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#3");
 
 			p1.ResetSqlDbType ();
 			Assert.AreEqual (DbType.Int32, p1.DbType, "#4 The parameter with value 42 must have DbType as Int32");
-			Assert.AreEqual (SqlDbType.Int, p1.SqlDbType, "#5 The parameter with value 42 must have SqlDbType as Int");
+			Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#5 The parameter with value 42 must have NpgsqlDbType as Int");
 
-			p1.SqlDbType = SqlDbType.DateTime; //assigning a SqlDbType
+			p1.NpgsqlDbType = NpgsqlDbType.Timestamp; //assigning a NpgsqlDbType
 			Assert.AreEqual (DbType.DateTime, p1.DbType, "#6");
-			Assert.AreEqual (SqlDbType.DateTime, p1.SqlDbType, "#7");
-			p1.ResetSqlDbType (); //Resetting SqlDbType
-			Assert.AreEqual (DbType.Int32, p1.DbType, "#8 Resetting SqlDbType must infer the type from the value");
-			Assert.AreEqual (SqlDbType.Int, p1.SqlDbType, "#9 Resetting SqlDbType must infer the type from the value");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p1.NpgsqlDbType, "#7");
+			p1.ResetSqlDbType (); //Resetting NpgsqlDbType
+			Assert.AreEqual (DbType.Int32, p1.DbType, "#8 Resetting NpgsqlDbType must infer the type from the value");
+			Assert.AreEqual (NpgsqlDbType.Integer, p1.NpgsqlDbType, "#9 Resetting NpgsqlDbType must infer the type from the value");
 
-			//Parameter with an assigned SqlDbType but no specified value
-			NpgsqlParameter p2 = new NpgsqlParameter ("foo", SqlDbType.Int);
+			//Parameter with an assigned NpgsqlDbType but no specified value
+			NpgsqlParameter p2 = new NpgsqlParameter ("foo", NpgsqlDbType.Integer);
 			Assert.AreEqual (null, p2.Value, "#10");
 			Assert.AreEqual (DbType.Int32, p2.DbType, "#11");
-			Assert.AreEqual (SqlDbType.Int, p2.SqlDbType, "#12");
+			Assert.AreEqual (NpgsqlDbType.Integer, p2.NpgsqlDbType, "#12");
 
-			//Although a SqlDbType is specified, calling ResetSqlDbType resets 
-			//the SqlDbType and DbType properties to default values
+			//Although a NpgsqlDbType is specified, calling ResetSqlDbType resets 
+			//the NpgsqlDbType and DbType properties to default values
 			p2.ResetSqlDbType ();
-			Assert.AreEqual (DbType.String, p2.DbType, "#13 Resetting SqlDbType must infer the type from the value");
-			Assert.AreEqual (SqlDbType.NVarChar, p2.SqlDbType, "#14 Resetting SqlDbType must infer the type from the value");
+			Assert.AreEqual (DbType.String, p2.DbType, "#13 Resetting NpgsqlDbType must infer the type from the value");
+			Assert.AreEqual (NpgsqlDbType.Text, p2.NpgsqlDbType, "#14 Resetting NpgsqlDbType must infer the type from the value");
 
-			p2.SqlDbType = SqlDbType.DateTime; //assigning a SqlDbType
+			p2.NpgsqlDbType = NpgsqlDbType.Timestamp; //assigning a NpgsqlDbType
 			Assert.AreEqual (DbType.DateTime, p2.DbType, "#15");
-			Assert.AreEqual (SqlDbType.DateTime, p2.SqlDbType, "#16");
-			p2.ResetSqlDbType (); //Resetting SqlDbType
-			Assert.AreEqual (DbType.String, p2.DbType, "#17 Resetting SqlDbType must infer the type from the value");
-			Assert.AreEqual (SqlDbType.NVarChar, p2.SqlDbType, "#18 Resetting SqlDbType must infer the type from the value");
+			Assert.AreEqual (NpgsqlDbType.Timestamp, p2.NpgsqlDbType, "#16");
+			p2.ResetSqlDbType (); //Resetting NpgsqlDbType
+			Assert.AreEqual (DbType.String, p2.DbType, "#17 Resetting NpgsqlDbType must infer the type from the value");
+			Assert.AreEqual (NpgsqlDbType.Text, p2.NpgsqlDbType, "#18 Resetting NpgsqlDbType must infer the type from the value");
 		}
+#endif
 #endif
 
         [Test]
@@ -963,38 +973,38 @@ namespace NpgsqlTests
 #endif
 
         [Test]
-        public void SqlDbTypeTest()
+        public void NpgsqlDbTypeTest()
         {
             NpgsqlParameter p = new NpgsqlParameter("zipcode", 3510);
-            p.SqlDbType = SqlDbType.DateTime;
+            p.NpgsqlDbType = NpgsqlDbType.Timestamp;
             Assert.AreEqual(DbType.DateTime, p.DbType, "#A:DbType");
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#A:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#A:NpgsqlDbType");
             Assert.AreEqual(3510, p.Value, "#A:Value");
-            p.SqlDbType = SqlDbType.VarChar;
+            p.NpgsqlDbType = NpgsqlDbType.Varchar;
             Assert.AreEqual(DbType.AnsiString, p.DbType, "#B:DbType");
-            Assert.AreEqual(SqlDbType.VarChar, p.SqlDbType, "#B:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Varchar, p.NpgsqlDbType, "#B:NpgsqlDbType");
             Assert.AreEqual(3510, p.Value, "#B:Value");
         }
 
         [Test]
-        public void SqlDbTypeTest_Value_Invalid()
+        public void NpgsqlDbTypeTest_Value_Invalid()
         {
             NpgsqlParameter p = new NpgsqlParameter("zipcode", 3510);
             try
             {
-                p.SqlDbType = (SqlDbType)666;
+                p.NpgsqlDbType = (NpgsqlDbType)666;
                 Assert.Fail("#1");
             }
             catch (ArgumentOutOfRangeException ex)
             {
 #if NET_2_0
-				// The SqlDbType enumeration value, 666, is
+				// The NpgsqlDbType enumeration value, 666, is
 				// invalid
 				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
 				Assert.IsTrue (ex.Message.IndexOf ("666") != -1, "#5:" + ex.Message);
-				Assert.AreEqual ("SqlDbType", ex.ParamName, "#6");
+				Assert.AreEqual ("NpgsqlDbType", ex.ParamName, "#6");
 #else
                 // Specified argument was out of the range of
                 // valid values
@@ -1008,129 +1018,134 @@ namespace NpgsqlTests
 
 #if NET_2_0
 		[Test]
-		public void SqlValue ()
+		public void NpgsqlValue ()
 		{
 			NpgsqlParameter parameter = new NpgsqlParameter ();
-			Assert.IsNull (parameter.SqlValue, "#A1");
+			Assert.IsNull (parameter.NpgsqlValue, "#A1");
 
 			object value;
 
+#if NeedsPorting
 			value = "Char";
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "String:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "String:SqlValue1");
-			Assert.AreEqual (typeof (SqlString), parameter.SqlValue.GetType (), "String:SqlValue2");
-			Assert.AreEqual (value, ((SqlString) parameter.SqlValue).Value, "String:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "String:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "String:SqlValue1");
+			Assert.AreEqual (typeof (SqlString), parameter.NpgsqlValue.GetType (), "String:SqlValue2");
+			Assert.AreEqual (value, ((SqlString) parameter.NpgsqlValue).Value, "String:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "String:Value");
 
 			value = true;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Bit, parameter.SqlDbType, "Boolean:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Boolean:SqlValue1");
-			Assert.AreEqual (typeof (SqlBoolean), parameter.SqlValue.GetType (), "Boolean:SqlValue2");
-			Assert.AreEqual (value, ((SqlBoolean) parameter.SqlValue).Value, "Boolean:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Bit, parameter.NpgsqlDbType, "Boolean:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Boolean:SqlValue1");
+			Assert.AreEqual (typeof (SqlBoolean), parameter.NpgsqlValue.GetType (), "Boolean:SqlValue2");
+			Assert.AreEqual (value, ((SqlBoolean) parameter.NpgsqlValue).Value, "Boolean:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Boolean:Value");
 
 			value = (byte) 0x0a;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.TinyInt, parameter.SqlDbType, "Boolean:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Boolean:SqlValue1");
-			Assert.AreEqual (typeof (SqlByte), parameter.SqlValue.GetType (), "Boolean:SqlValue2");
-			Assert.AreEqual (value, ((SqlByte) parameter.SqlValue).Value, "Boolean:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.TinyInt, parameter.NpgsqlDbType, "Boolean:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Boolean:SqlValue1");
+			Assert.AreEqual (typeof (SqlByte), parameter.NpgsqlValue.GetType (), "Boolean:SqlValue2");
+			Assert.AreEqual (value, ((SqlByte) parameter.NpgsqlValue).Value, "Boolean:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Boolean:Value");
+#endif
 
 			value = new DateTime (2008, 6, 4);
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.DateTime, parameter.SqlDbType, "DateTime:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "DateTime:SqlValue1");
-			Assert.AreEqual (typeof (SqlDateTime), parameter.SqlValue.GetType (), "DateTime:SqlValue2");
-			Assert.AreEqual (value, ((SqlDateTime) parameter.SqlValue).Value, "DateTime:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Timestamp, parameter.NpgsqlDbType, "DateTime:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "DateTime:SqlValue1");
+			Assert.AreEqual (typeof (NpgsqlTimeStamp), parameter.NpgsqlValue.GetType (), "DateTime:SqlValue2");
+            Assert.AreEqual(value, (DateTime)((NpgsqlTimeStamp)parameter.NpgsqlValue), "DateTime:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "DateTime:Value");
 
+#if NeedsPorting
 			value = Guid.NewGuid ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.UniqueIdentifier, parameter.SqlDbType, "Guid:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Guid:SqlValue1");
-			Assert.AreEqual (typeof (SqlGuid), parameter.SqlValue.GetType (), "Guid:SqlValue2");
-			Assert.AreEqual (value, ((SqlGuid) parameter.SqlValue).Value, "Guid:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.UniqueIdentifier, parameter.NpgsqlDbType, "Guid:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Guid:SqlValue1");
+			Assert.AreEqual (typeof (SqlGuid), parameter.NpgsqlValue.GetType (), "Guid:SqlValue2");
+			Assert.AreEqual (value, ((SqlGuid) parameter.NpgsqlValue).Value, "Guid:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Guid:Value");
 
 			value = (short) 5;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.SmallInt, parameter.SqlDbType, "Int16:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Int16:SqlValue1");
-			Assert.AreEqual (typeof (SqlInt16), parameter.SqlValue.GetType (), "Int16:SqlValue2");
-			Assert.AreEqual (value, ((SqlInt16) parameter.SqlValue).Value, "Int16:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.SmallInt, parameter.NpgsqlDbType, "Int16:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Int16:SqlValue1");
+			Assert.AreEqual (typeof (SqlInt16), parameter.NpgsqlValue.GetType (), "Int16:SqlValue2");
+			Assert.AreEqual (value, ((SqlInt16) parameter.NpgsqlValue).Value, "Int16:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Int16:Value");
 
 			value = 10;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Int, parameter.SqlDbType, "Int32:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Int32:SqlValue1");
-			Assert.AreEqual (typeof (SqlInt32), parameter.SqlValue.GetType (), "Int32:SqlValue2");
-			Assert.AreEqual (value, ((SqlInt32) parameter.SqlValue).Value, "Int32:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Integer, parameter.NpgsqlDbType, "Int32:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Int32:SqlValue1");
+			Assert.AreEqual (typeof (SqlInt32), parameter.NpgsqlValue.GetType (), "Int32:SqlValue2");
+			Assert.AreEqual (value, ((SqlInt32) parameter.NpgsqlValue).Value, "Int32:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Int32:Value");
 
 			value = 56L;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.BigInt, parameter.SqlDbType, "Int64:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Int64:SqlValue1");
-			Assert.AreEqual (typeof (SqlInt64), parameter.SqlValue.GetType (), "Int64:SqlValue2");
-			Assert.AreEqual (value, ((SqlInt64) parameter.SqlValue).Value, "Int64:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Bigint, parameter.NpgsqlDbType, "Int64:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Int64:SqlValue1");
+			Assert.AreEqual (typeof (SqlInt64), parameter.NpgsqlValue.GetType (), "Int64:SqlValue2");
+			Assert.AreEqual (value, ((SqlInt64) parameter.NpgsqlValue).Value, "Int64:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Int64:Value");
 
-			parameter.SqlValue = 45.5D;
-			Assert.AreEqual (SqlDbType.Float, parameter.SqlDbType, "Double:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Double:SqlValue1");
-			Assert.AreEqual (typeof (SqlDouble), parameter.SqlValue.GetType (), "Double:SqlValue2");
-			Assert.AreEqual (45.5D, ((SqlDouble) parameter.SqlValue).Value, "Double:SqlValue3");
+			parameter.NpgsqlValue = 45.5D;
+			Assert.AreEqual (NpgsqlDbType.Float, parameter.NpgsqlDbType, "Double:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Double:SqlValue1");
+			Assert.AreEqual (typeof (SqlDouble), parameter.NpgsqlValue.GetType (), "Double:SqlValue2");
+			Assert.AreEqual (45.5D, ((SqlDouble) parameter.NpgsqlValue).Value, "Double:SqlValue3");
 			Assert.AreEqual (45.5D, parameter.Value, "Double:Value");
 
 			value = 45m;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Decimal, parameter.SqlDbType, "Decimal:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Decimal:SqlValue1");
-			Assert.AreEqual (typeof (SqlDecimal), parameter.SqlValue.GetType (), "Decimal:SqlValue2");
-			Assert.AreEqual (value, ((SqlDecimal) parameter.SqlValue).Value, "Decimal:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Decimal, parameter.NpgsqlDbType, "Decimal:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Decimal:SqlValue1");
+			Assert.AreEqual (typeof (SqlDecimal), parameter.NpgsqlValue.GetType (), "Decimal:SqlValue2");
+			Assert.AreEqual (value, ((SqlDecimal) parameter.NpgsqlValue).Value, "Decimal:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Decimal:Value");
 
 			value = 45f;
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Real, parameter.SqlDbType, "Decimal:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Decimal:SqlValue1");
-			Assert.AreEqual (typeof (SqlSingle), parameter.SqlValue.GetType (), "Decimal:SqlValue2");
-			Assert.AreEqual (value, ((SqlSingle) parameter.SqlValue).Value, "Decimal:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Real, parameter.NpgsqlDbType, "Decimal:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Decimal:SqlValue1");
+			Assert.AreEqual (typeof (SqlSingle), parameter.NpgsqlValue.GetType (), "Decimal:SqlValue2");
+			Assert.AreEqual (value, ((SqlSingle) parameter.NpgsqlValue).Value, "Decimal:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Decimal:Value");
 
 			value = new byte [] { 0x0d, 0x0a };
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "Bytes:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Bytes:SqlValue1");
-			Assert.AreEqual (typeof (SqlBinary), parameter.SqlValue.GetType (), "Bytes:SqlValue2");
-			Assert.AreEqual (value, ((SqlBinary) parameter.SqlValue).Value, "Bytes:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "Bytes:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Bytes:SqlValue1");
+			Assert.AreEqual (typeof (SqlBinary), parameter.NpgsqlValue.GetType (), "Bytes:SqlValue2");
+			Assert.AreEqual (value, ((SqlBinary) parameter.NpgsqlValue).Value, "Bytes:SqlValue3");
 			Assert.AreEqual (value, parameter.Value, "Bytes:Value");
 
 			parameter = new NpgsqlParameter ();
 			value = 'X';
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "Chars:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Chars:SqlValue1");
-			Assert.AreEqual (typeof (SqlString), parameter.SqlValue.GetType (), "Chars:SqlValue2");
-			Assert.AreEqual ("X", ((SqlString) parameter.SqlValue).Value, "Chars:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "Chars:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Chars:SqlValue1");
+			Assert.AreEqual (typeof (SqlString), parameter.NpgsqlValue.GetType (), "Chars:SqlValue2");
+			Assert.AreEqual ("X", ((SqlString) parameter.NpgsqlValue).Value, "Chars:SqlValue3");
 			// FIXME bug #525321
 			//Assert.AreEqual ("X", parameter.Value, "Chars:Value");
 
 			value = new char [] { 'X', 'A' };
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "Chars:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "Chars:SqlValue1");
-			Assert.AreEqual (typeof (SqlString), parameter.SqlValue.GetType (), "Chars:SqlValue2");
-			Assert.AreEqual ("XA", ((SqlString) parameter.SqlValue).Value, "Chars:SqlValue3");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "Chars:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "Chars:SqlValue1");
+			Assert.AreEqual (typeof (SqlString), parameter.NpgsqlValue.GetType (), "Chars:SqlValue2");
+			Assert.AreEqual ("XA", ((SqlString) parameter.NpgsqlValue).Value, "Chars:SqlValue3");
 			// FIXME bug #525321
 			//Assert.AreEqual ("XA", parameter.Value, "Chars:Value");
-		}
+#endif
+        }
 #endif
 
+#if NeedsPorting
         [Test]
         public void SqlTypes_SqlBinary()
         {
@@ -1139,23 +1154,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlBinary.Null;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlBinary.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlBinary.Null;
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlBinary.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlBinary.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.VarBinary, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1168,27 +1183,28 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Bit, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Bit, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlBoolean.Null;
-			Assert.AreEqual (SqlDbType.Bit, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlBoolean.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlBoolean.Null;
+			Assert.AreEqual (NpgsqlDbType.Bit, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlBoolean.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlBoolean.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Bit, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Bit, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
 
+#if NeedsPorting
         [Test]
         public void SqlTypes_SqlByte()
         {
@@ -1197,23 +1213,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.TinyInt, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.TinyInt, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlByte.Null;
-			Assert.AreEqual (SqlDbType.TinyInt, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlByte.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlByte.Null;
+			Assert.AreEqual (NpgsqlDbType.TinyInt, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlByte.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlByte.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.TinyInt, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.TinyInt, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1228,25 +1244,25 @@ namespace NpgsqlTests
 			SqlBytes value = new SqlBytes (new byte [] { 0x0d, 0x0a });
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreSame (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreSame (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreSame (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlBytes.Null;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "#B:SqlValue1");
-			Assert.AreEqual (typeof (SqlBytes), parameter.SqlValue.GetType (), "#B:SqlValue2");
-			Assert.IsTrue (((SqlBytes) parameter.SqlValue).IsNull, "#B:SqlValue3");
+			parameter.NpgsqlValue = SqlBytes.Null;
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "#B:SqlValue1");
+			Assert.AreEqual (typeof (SqlBytes), parameter.NpgsqlValue.GetType (), "#B:SqlValue2");
+			Assert.IsTrue (((SqlBytes) parameter.NpgsqlValue).IsNull, "#B:SqlValue3");
 			Assert.IsNotNull (parameter.Value, "#B:Value1");
 			Assert.AreEqual (typeof (SqlBytes), parameter.Value.GetType (), "#B:Value2");
 			Assert.IsTrue (((SqlBytes) parameter.Value).IsNull, "#B:Value3");
 
 			parameter = new NpgsqlParameter ();
 			parameter.Value = value;
-			Assert.AreEqual (SqlDbType.VarBinary, parameter.SqlDbType, "#C:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (NpgsqlDbType.VarBinary, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#C:Value");
 		}
 
@@ -1259,58 +1275,63 @@ namespace NpgsqlTests
 			SqlChars value = new SqlChars (new char [] { 'X', 'A' });
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreSame (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreSame (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreSame (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlChars.Null;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "#B:SqlValue1");
-			Assert.AreEqual (typeof (SqlChars), parameter.SqlValue.GetType (), "#B:SqlValue2");
-			Assert.IsTrue (((SqlChars) parameter.SqlValue).IsNull, "#B:SqlValue3");
+			parameter.NpgsqlValue = SqlChars.Null;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "#B:SqlValue1");
+			Assert.AreEqual (typeof (SqlChars), parameter.NpgsqlValue.GetType (), "#B:SqlValue2");
+			Assert.IsTrue (((SqlChars) parameter.NpgsqlValue).IsNull, "#B:SqlValue3");
 			Assert.IsNotNull (parameter.Value, "#B:Value1");
 			Assert.AreEqual (typeof (SqlChars), parameter.Value.GetType (), "#B:Value2");
 			Assert.IsTrue (((SqlChars) parameter.Value).IsNull, "#B:Value3");
 
 			parameter = new NpgsqlParameter ();
 			parameter.Value = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "#C:SqlDbType");
-			Assert.AreSame (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
+			Assert.AreSame (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 			Assert.AreSame (value, parameter.Value, "#C:Value");
 		}
 #endif
+#endif
+#endif
 
         [Test]
-        public void SqlTypes_SqlDateTime()
+        public void NpgsqlTypes_NpgsqlTimeStamp()
         {
             NpgsqlParameter parameter;
-            SqlDateTime value = new SqlDateTime(DateTime.Now);
+            NpgsqlTimeStamp value = DateTime.Now;
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.DateTime, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Timestamp, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
+#if NeedsPorting
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlDateTime.Null;
-			Assert.AreEqual (SqlDbType.DateTime, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlDateTime.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlDateTime.Null;
+			Assert.AreEqual (NpgsqlDbType.Timestamp, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlDateTime.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlDateTime.Null, parameter.Value, "#B:Value");
+#endif
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.DateTime, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
-
+        
+#if NeedsPorting
         [Test]
         public void SqlTypes_SqlDecimal()
         {
@@ -1319,23 +1340,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Decimal, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Decimal, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlDecimal.Null;
-			Assert.AreEqual (SqlDbType.Decimal, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlDecimal.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlDecimal.Null;
+			Assert.AreEqual (NpgsqlDbType.Decimal, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlDecimal.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlDecimal.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Decimal, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Decimal, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1348,23 +1369,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Float, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Float, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlDouble.Null;
-			Assert.AreEqual (SqlDbType.Float, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlDouble.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlDouble.Null;
+			Assert.AreEqual (NpgsqlDbType.Float, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlDouble.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlDouble.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Float, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Float, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1377,23 +1398,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.UniqueIdentifier, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.UniqueIdentifier, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlGuid.Null;
-			Assert.AreEqual (SqlDbType.UniqueIdentifier, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlGuid.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlGuid.Null;
+			Assert.AreEqual (NpgsqlDbType.UniqueIdentifier, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlGuid.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlGuid.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.UniqueIdentifier, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.UniqueIdentifier, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1406,23 +1427,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.SmallInt, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.SmallInt, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlInt16.Null;
-			Assert.AreEqual (SqlDbType.SmallInt, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlInt16.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlInt16.Null;
+			Assert.AreEqual (NpgsqlDbType.SmallInt, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlInt16.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlInt16.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.SmallInt, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.SmallInt, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1435,23 +1456,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Int, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Integer, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlInt32.Null;
-			Assert.AreEqual (SqlDbType.Int, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlInt32.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlInt32.Null;
+			Assert.AreEqual (NpgsqlDbType.Integer, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlInt32.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlInt32.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Int, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1464,23 +1485,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.BigInt, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Bigint, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlInt64.Null;
-			Assert.AreEqual (SqlDbType.BigInt, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlInt64.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlInt64.Null;
+			Assert.AreEqual (NpgsqlDbType.Bigint, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlInt64.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlInt64.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.BigInt, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Bigint, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1493,23 +1514,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Money, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Money, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlMoney.Null;
-			Assert.AreEqual (SqlDbType.Money, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlMoney.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlMoney.Null;
+			Assert.AreEqual (NpgsqlDbType.Money, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlMoney.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlMoney.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Money, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Money, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1522,23 +1543,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Real, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Real, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlSingle.Null;
-			Assert.AreEqual (SqlDbType.Real, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlSingle.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlSingle.Null;
+			Assert.AreEqual (NpgsqlDbType.Real, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlSingle.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlSingle.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.Real, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Real, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1551,23 +1572,23 @@ namespace NpgsqlTests
 
 #if NET_2_0
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreEqual (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreEqual (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlString.Null;
-			Assert.AreEqual (SqlDbType.NVarChar, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.AreEqual (SqlString.Null, parameter.SqlValue, "#B:SqlValue");
+			parameter.NpgsqlValue = SqlString.Null;
+			Assert.AreEqual (NpgsqlDbType.Text, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.AreEqual (SqlString.Null, parameter.NpgsqlValue, "#B:NpgsqlValue");
 			Assert.AreEqual (SqlString.Null, parameter.Value, "#B:Value");
 #endif
 
             parameter = new NpgsqlParameter();
             parameter.Value = value;
-            Assert.AreEqual(SqlDbType.NVarChar, parameter.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Text, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
 #if NET_2_0
-			Assert.AreEqual (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 #endif
             Assert.AreEqual(value, parameter.Value, "#C:Value");
         }
@@ -1580,27 +1601,28 @@ namespace NpgsqlTests
 			SqlXml value = new SqlXml (new XmlTextReader (new StringReader ("<test>Mono</test>")));
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = value;
-			Assert.AreEqual (SqlDbType.Xml, parameter.SqlDbType, "#A:SqlDbType");
-			Assert.AreSame (value, parameter.SqlValue, "#A:SqlValue");
+			parameter.NpgsqlValue = value;
+			Assert.AreEqual (NpgsqlDbType.Xml, parameter.NpgsqlDbType, "#A:NpgsqlDbType");
+			Assert.AreSame (value, parameter.NpgsqlValue, "#A:NpgsqlValue");
 			Assert.AreSame (value, parameter.Value, "#A:Value");
 
 			parameter = new NpgsqlParameter ();
-			parameter.SqlValue = SqlXml.Null;
-			Assert.AreEqual (SqlDbType.Xml, parameter.SqlDbType, "#B:SqlDbType");
-			Assert.IsNotNull (parameter.SqlValue, "#B:SqlValue1");
-			Assert.AreEqual (typeof (SqlXml), parameter.SqlValue.GetType (), "#B:SqlValue2");
-			Assert.IsTrue (((SqlXml) parameter.SqlValue).IsNull, "#B:SqlValue3");
+			parameter.NpgsqlValue = SqlXml.Null;
+			Assert.AreEqual (NpgsqlDbType.Xml, parameter.NpgsqlDbType, "#B:NpgsqlDbType");
+			Assert.IsNotNull (parameter.NpgsqlValue, "#B:SqlValue1");
+			Assert.AreEqual (typeof (SqlXml), parameter.NpgsqlValue.GetType (), "#B:SqlValue2");
+			Assert.IsTrue (((SqlXml) parameter.NpgsqlValue).IsNull, "#B:SqlValue3");
 			Assert.IsNotNull (parameter.Value, "#B:Value1");
 			Assert.AreEqual (typeof (SqlXml), parameter.Value.GetType (), "#B:Value2");
 			Assert.IsTrue (((SqlXml) parameter.Value).IsNull, "#B:Value3");
 
 			parameter = new NpgsqlParameter ();
 			parameter.Value = value;
-			Assert.AreEqual (SqlDbType.Xml, parameter.SqlDbType, "#C:SqlDbType");
-			Assert.AreSame (value, parameter.SqlValue, "#C:SqlValue");
+			Assert.AreEqual (NpgsqlDbType.Xml, parameter.NpgsqlDbType, "#C:NpgsqlDbType");
+			Assert.AreSame (value, parameter.NpgsqlValue, "#C:NpgsqlValue");
 			Assert.AreSame (value, parameter.Value, "#C:Value");
 		}
+#endif
 #endif
 
         [Test]
@@ -1611,52 +1633,53 @@ namespace NpgsqlTests
             p = new NpgsqlParameter("name", (Object)null);
             p.Value = 42;
             Assert.AreEqual(DbType.Int32, p.DbType, "#A:DbType");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#A:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
             Assert.AreEqual(42, p.Value, "#A:Value");
 
             p.Value = DBNull.Value;
 #if NET_2_0
 			Assert.AreEqual (DbType.String, p.DbType, "#B:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#B:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
 #else
             Assert.AreEqual(DbType.Int32, p.DbType, "#B:DbType");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#B:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#B:NpgsqlDbType");
 #endif
             Assert.AreEqual(DBNull.Value, p.Value, "#B:Value");
 
             p.Value = DateTime.MaxValue;
             Assert.AreEqual(DbType.DateTime, p.DbType, "#C:DbType");
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#C:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#C:NpgsqlDbType");
             Assert.AreEqual(DateTime.MaxValue, p.Value, "#C:Value");
 
             p.Value = null;
 #if NET_2_0
 			Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-			Assert.AreEqual (SqlDbType.NVarChar, p.SqlDbType, "#D:SqlDbType");
+			Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
 #else
             Assert.AreEqual(DbType.DateTime, p.DbType, "#D:DbType");
-            Assert.AreEqual(SqlDbType.DateTime, p.SqlDbType, "#D:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#D:NpgsqlDbType");
 #endif
             Assert.IsNull(p.Value, "#D:Value");
 
-            p = new NpgsqlParameter("zipcode", SqlDbType.Int);
+            p = new NpgsqlParameter("zipcode", NpgsqlDbType.Integer);
             p.Value = DateTime.MaxValue;
             Assert.AreEqual(DbType.Int32, p.DbType, "#E:DbType");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#E:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#E:NpgsqlDbType");
             Assert.AreEqual(DateTime.MaxValue, p.Value, "#E:Value");
 
             p.Value = null;
             Assert.AreEqual(DbType.Int32, p.DbType, "#F:DbType");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#F:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#F:NpgsqlDbType");
             Assert.IsNull(p.Value, "#F:Value");
 
             p.Value = DBNull.Value;
             Assert.AreEqual(DbType.Int32, p.DbType, "#G:DbType");
-            Assert.AreEqual(SqlDbType.Int, p.SqlDbType, "#G:SqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#G:NpgsqlDbType");
             Assert.AreEqual(DBNull.Value, p.Value, "#G:Value");
         }
 
 #if NET_2_0
+#if NeedsPorting
 		[Test]
 		public void XmlSchemaTest ()
 		{
