@@ -68,8 +68,8 @@ namespace Npgsql
         private String m_Name = String.Empty;
         private String source_column = String.Empty;
         private DataRowVersion source_version = DataRowVersion.Current;
-        private Object value = DBNull.Value;
-        private Object npgsqlValue = DBNull.Value;
+        private Object value = null;
+        private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
