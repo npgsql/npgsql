@@ -62,12 +62,14 @@ namespace Npgsql
         //private NpgsqlDbType                    npgsqldb_type = NpgsqlDbType.Text;
         //private DbType                    db_type = DbType.String;
         private NpgsqlNativeTypeInfo type_info;
+        private NpgsqlBackendTypeInfo backendTypeInfo;
         private ParameterDirection direction = ParameterDirection.Input;
         private Boolean is_nullable = false;
         private String m_Name = String.Empty;
         private String source_column = String.Empty;
         private DataRowVersion source_version = DataRowVersion.Current;
         private Object value = DBNull.Value;
+        private Object npgsqlValue = DBNull.Value;
         private Boolean sourceColumnNullMapping;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -101,9 +103,9 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, value);
 
             this.ParameterName = parameterName;
-            this.value = value;
+            this.Value = value;
 
-            if ((this.value == null) || (this.value == DBNull.Value))
+            /*if ((this.value == null) || (this.value == DBNull.Value))
             {
                 // don't really know what to do - leave default and do further exploration
                 // Default type for null values is String.
@@ -113,7 +115,8 @@ namespace Npgsql
             else if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
             {
                 throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-            }
+            }*/
+
         }
 
         /// <summary>
@@ -536,28 +539,89 @@ namespace Npgsql
         {
             get
             {
+
+                return this.value;
+
+                /*
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "Value");
-                return value;
+                //return value;
+
+                
+                NpgsqlBackendTypeInfo backendTypeInfo;
+                
+                if (NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
+                {
+                    return backendTypeInfo.ConvertToFrameworkType(NpgsqlValue);
+                }
+                
+                throw new NotSupportedException();
+                */
+
+
+
             } // [TODO] Check and validate data type.
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Value", value);
 
-                this.value = value;
-                if ((this.value == null) || (this.value == DBNull.Value))
+                if ((value == null) || (value == DBNull.Value))
                 {
                     // don't really know what to do - leave default and do further exploration
                     // Default type for null values is String.
                     this.value = DBNull.Value;
+                    this.npgsqlValue = DBNull.Value;
                     if (type_info == null)
                     {
                         type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
                     }
+                    return;
                 }
-                else if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+                
+                if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
                 {
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
                 }
+
+                if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
+                {
+                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+
+                }
+                else
+                {
+                    this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
+                    this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+                }
+
+               
+                
+
+
+                
+
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the value of the parameter.
+        /// </summary>
+        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
+        /// The default value is null.</value>
+        [TypeConverter(typeof(StringConverter)), Category("Data")]
+        public Object NpgsqlValue
+        {
+            get
+            {                
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "NpgsqlValue");
+                return npgsqlValue;
+            } 
+
+            set
+            {
+                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlValue", value);
+
+                Value = value;
+                
             }
         }
 
