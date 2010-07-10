@@ -1488,7 +1488,11 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
                 }
                 else
                 {
+#if NET40
                     return TimeSpan.Parse(value.ToString(), CultureInfo.InvariantCulture);
+#else
+                    return TimeSpan.Parse(value.ToString());
+#endif
                 }
             }
             else if (expectedType == typeof(string))
