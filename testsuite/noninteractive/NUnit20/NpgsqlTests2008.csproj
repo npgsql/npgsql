@@ -77,6 +77,7 @@
     <Compile Include="ConnectionTests.cs" />
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="DataReaderTests.cs" />
+    <Compile Include="NpgsqlParameterTests.cs" />
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
     <Compile Include="TypesTests.cs" />
