@@ -430,19 +430,19 @@ namespace NpgsqlTests
             value = Double.MaxValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Double, param.DbType, "#A2");
 
             value = Double.MinValue;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Double, param.DbType, "#B2");
 
             value = 0d;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Real, param.NpgsqlDbType, "#C1");
+            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#C1");
             Assert.AreEqual(DbType.Double, param.DbType, "#C2");
         }
 
@@ -792,13 +792,13 @@ namespace NpgsqlTests
             value = false;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Bit, param.NpgsqlDbType, "#A1");
+            Assert.AreEqual(NpgsqlDbType.Boolean, param.NpgsqlDbType, "#A1");
             Assert.AreEqual(DbType.Boolean, param.DbType, "#A2");
 
             value = true;
             param = new NpgsqlParameter();
             param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Bit, param.NpgsqlDbType, "#B1");
+            Assert.AreEqual(NpgsqlDbType.Boolean, param.NpgsqlDbType, "#B1");
             Assert.AreEqual(DbType.Boolean, param.DbType, "#B2");
         }
 
@@ -981,7 +981,7 @@ namespace NpgsqlTests
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#A:NpgsqlDbType");
             Assert.AreEqual(3510, p.Value, "#A:Value");
             p.NpgsqlDbType = NpgsqlDbType.Varchar;
-            Assert.AreEqual(DbType.AnsiString, p.DbType, "#B:DbType");
+            Assert.AreEqual(DbType.String, p.DbType, "#B:DbType");
             Assert.AreEqual(NpgsqlDbType.Varchar, p.NpgsqlDbType, "#B:NpgsqlDbType");
             Assert.AreEqual(3510, p.Value, "#B:Value");
         }
