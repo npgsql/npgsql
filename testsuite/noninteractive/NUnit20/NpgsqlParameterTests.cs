@@ -660,7 +660,7 @@ namespace NpgsqlTests
             NpgsqlParameter param = new NpgsqlParameter();
 #if NET_2_0
 			param.Value = value;
-			Assert.AreEqual (NpgsqlDbType.Time, param.NpgsqlDbType, "#1");
+			Assert.AreEqual (NpgsqlDbType.Interval, param.NpgsqlDbType, "#1");
 			Assert.AreEqual (DbType.Time, param.DbType, "#2");
 #else
             try
