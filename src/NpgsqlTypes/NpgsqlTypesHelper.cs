@@ -328,7 +328,9 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false, BasicNativeToBackendTypeConverter.ToBasicType<short>);
 
-			nativeTypeMapping.AddTypeAlias("int2", typeof (Int16));
+            nativeTypeMapping.AddTypeAlias("int2", typeof (UInt16));
+            
+		    nativeTypeMapping.AddTypeAlias("int2", typeof (Int16));
 
 			nativeTypeMapping.AddDbTypeAlias("int2", DbType.Byte);
 
