@@ -40,7 +40,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug4\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug4\Npgsql.XML</DocumentationFile>
@@ -50,7 +50,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release4\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release4\Npgsql.XML</DocumentationFile>
