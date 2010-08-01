@@ -19,7 +19,7 @@ using System.Resources;
 [assembly: AssemblyProductAttribute("Npgsql")]
 [assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2010 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
-[assembly: AssemblyVersionAttribute("2.0.9.0")]
-[assembly: AssemblyFileVersionAttribute("2.0.9.0")]
+[assembly: AssemblyVersionAttribute("2.0.10.0")]
+[assembly: AssemblyFileVersionAttribute("2.0.10.0")]
 [assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 
