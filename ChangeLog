@@ -1,3 +1,222 @@
+2010-08-01 17:47  fxjr
+
+	* RELEASENOTES.txt:
+	  Added release notes for 2.0.10 release.
+
+2010-08-01 17:41  jbcooley
+
+	* src/policy.2.0.Npgsql.config: target policy file for redirect to
+	  2.0.10.
+
+2010-08-01 17:41  jbcooley
+
+	* src/Npgsql2010.csproj: Added NET40 define so the .NET 4.0 code
+	  gets compiled in.
+
+2010-08-01 17:24  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated AssemblyInfo generated info for 2.0.10.0
+
+2010-07-18 20:51  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs:
+	  Added UInt16 type mapping.
+
+2010-07-10 00:42  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fixed more bugs about ResetDbType() and null values. Now, Npgsql
+	  is a little bit more conformant to sqlclient.
+
+2010-07-10 00:17  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fixed bug where Npgsql was returning DBNull for a fresh
+	  NpgsqlParameter. According to tests based on sqlclient, Npgsql
+	  should return null.
+
+2010-07-10 00:01  jbcooley
+
+	* testsuite/noninteractive/NUnit20/NpgsqlParameterTests.cs: Fix an
+	  additional broken tests
+
+2010-07-09 23:52  jbcooley
+
+	* testsuite/noninteractive/NUnit20/NpgsqlParameterTests.cs: Fix
+	  some of the broken tests
+
+2010-07-09 23:47  jbcooley
+
+	* testsuite/noninteractive/NUnit20/NpgsqlParameterTests.cs: Ported
+	  more tests.  Test validation still needs to be done.
+
+2010-07-09 23:13  jbcooley
+
+	* testsuite/noninteractive/NUnit20/: NpgsqlParameterTests.cs,
+	  NpgsqlTests2008.csproj, NpgsqlTests2010.csproj: Update and
+	  include tests for NpgsqlValue in NpgsqlParameter
+
+2010-07-09 22:46  jbcooley
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs: Fix build for .NET 2.0
+
+2010-07-09 22:34  fxjr
+
+	* src/: Npgsql/NpgsqlParameter.cs,
+	  NpgsqlTypes/NpgsqlTypesHelper.cs:
+	  [#1010798] Cast-Exception with NpgsqlTimeStamp to
+	  System.DateTime. Fixed.  Also fixed another problem where Npgsql
+	  was mapping DbType.DateTime to NpgsqlDbType.TimestampTZ.
+
+2010-06-24 22:38  jbcooley
+
+	* src/: Npgsql/NpgsqlCommand.cs, Npgsql/NpgsqlDataReader.cs,
+	  Npgsql/NpgsqlProviderManifest.Manifest.xml,
+	  Npgsql/NpgsqlProviderManifest.cs,
+	  Npgsql/SqlGenerators/SqlBaseGenerator.cs,
+	  Npgsql/SqlGenerators/SqlSelectGenerator.cs,
+	  Npgsql/SqlGenerators/VisitedExpression.cs,
+	  NpgsqlTypes/NpgsqlTypesHelper.cs: Support for Time types and
+	  DateTimeOffset types in Entity Framework
+
+2010-06-24 22:27  jbcooley
+
+	* src/Npgsql/NpgsqlDataAdapter.cs: changes to be compatible with
+	  various versions of mono's implementation of DbDataAdapter.
+
+2010-06-24 02:00  fxjr
+
+	* src/NpgsqlTypes/ArrayHandling.cs,
+	  src/NpgsqlTypes/NpgsqlTypeConverters.cs,
+	  src/NpgsqlTypes/NpgsqlTypesHelper.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  [#1010787] Inserting an array does not work in a prepared
+	  statement. Fixed. Changed delegator definition responsible to
+	  handle conversion from CLR type to server to take a
+	  ForExtendedQuery parameter so the function can handle correctly
+	  when to return a plain query representation or when return a
+	  representation used for extended query. Until now, the types were
+	  simple and representation was the same. This changes with array
+	  handling where the representation is different for each case.
+	  Added testcase too. More testcases needed.
+
+2010-06-16 22:50  jbcooley
+
+	* src/Npgsql/NpgsqlCommand.cs: Cleanup extra lines and newline
+	  format.
+
+2010-06-13 17:09  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+
+	  [#1010776] for a prepared command, ExecuteNonQuery() does not
+	  return. Npgsql wasn't handling correctly errors while in extended
+	  query processing. Now it returned correctly and throws
+	  exceptions.
+
+2010-05-31 23:02  jbcooley
+
+	* src/Npgsql/NpgsqlCommand.cs: cleaned up UpdatedRowSource code and
+	  added value validation rather than type validation.
+
+2010-05-31 22:59  jbcooley
+
+	* src/Npgsql/NpgsqlSchema.ssdl: provide default value during model
+	  generation
+
+2010-05-31 21:30  jbcooley
+
+	* src/NpgsqlTypes/ArrayHandling.cs: support null items in arrays
+
+2010-05-31 21:27  jbcooley
+
+	* src/Npgsql/NpgsqlCommandBuilder.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs: bug #1010825 -
+	  support derive parameters for parameterless functions
+
+2010-05-31 18:27  jbcooley
+
+	* testsuite/noninteractive/NUnit20/DataAdapterTests.cs: bug
+	  #1010768 - test for Mono regression
+
+2010-05-31 18:00  jbcooley
+
+	* src/Npgsql/NpgsqlRow.cs,
+	  testsuite/noninteractive/NUnit20/DataReaderTests.cs: bug #1010829
+	  - Fix support for CommandBehavior.SequentialAccess with multiple
+	  columns.
+
+2010-05-30 11:28  jbcooley
+
+	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
+	  VisitedExpression.cs: Fix multi-level join generated sql
+
+2010-05-29 12:36  jbcooley
+
+	* testsuite/noninteractive/NUnit20/NpgsqlParameterTests.cs: Mono
+	  unit tests for SqlClient partially ported to Npgsql.
+
+2010-05-23 15:13  fxjr
+
+	* src/Npgsql/PGUtil.cs:
+	  Reverted back previous optimization with Int32 and Int16
+	  readbuffers. They were having concurrency problems. Thanks
+	  Matthew Gabeler-Lee for heads up and testing.
+
+2010-05-14 11:18  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added missing tests for bug 1010788 and array handling of
+	  doubles. Prepared statements with array of doubles still hang.
+	  Needs fixing.
+
+2010-05-10 22:42  fxjr
+
+	* src/NpgsqlTypes/DateDatatypes.cs:
+	  Changed line endings to Windows Format.
+
+2010-05-09 20:53  fxjr
+
+	* src/NpgsqlTypes/BitString.cs:
+	  [#1010804] Endless loop in BitString? Thanks Gildas for testing
+	  and fix.
+
+2010-05-02 23:38  jbcooley
+
+	* src/Npgsql/NpgsqlCommandBuilder.cs: Support full Npgsql parameter
+	  types when building parameters (this specifically fixed arrays).
+	  help msg 1006026.
+
+2010-05-02 12:31  fxjr
+
+	* src/Npgsql/NpgsqlCopyIn.cs:
+	  [#1010796] Notification thread not released after copy from
+	  stdin. Thanks Stelian Dumitrascu (stelian @nospam@
+	  geocentral.net) for patch and Gildas (prime.gildas @nospam@
+	  gmail.com) for testing. I also added this patch to Cancel method
+	  which may suffer from the same problem.
+
+2010-04-15 00:16  jbcooley
+
+	* src/Npgsql2010.csproj, src/Npgsql2010.sln,
+	  testsuite/noninteractive/NUnit20/NpgsqlTests2010.csproj: vs 2010
+	  rtm
+
+2010-04-15 00:13  jbcooley
+
+	* src/policy.2.0.Npgsql.config: updated for build 2.0.9
+
+2010-04-13 20:18  fxjr
+
+	* RELEASENOTES.txt:
+	  Updated to 2.0.9 release
+
+2010-04-13 20:17  fxjr
+
+	* ChangeLog:
+	  Update to 2.0.9 release
+
 2010-04-13 20:11  fxjr
 
 	* src/Npgsql/AssemblyInfo.cs:
@@ -300,6 +519,52 @@
 	* src/: build.bat, build.sh:
 	  Created helper scripts to build Npgsql with Nant from
 	  commandline. Just call build.sh or build.bat.
+
+2010-01-29 17:46  fxjr
+
+	* Tools/NAnt/: CCNetListener.dll, COPYING.txt,
+	  NAnt.CompressionTasks.dll, NAnt.Core.dll, NAnt.DotNetTasks.dll,
+	  NAnt.MSNetTasks.dll, NAnt.NUnit.dll, NAnt.NUnit1Tasks.dll,
+	  NAnt.NUnit2Tasks.dll, NAnt.SourceControlTasks.dll,
+	  NAnt.VSNetTasks.dll, NAnt.VisualCppTasks.dll,
+	  NAnt.Win32Tasks.dll, NAnt.exe, NAnt.exe.config,
+	  NDoc.Documenter.NAnt.dll, NauckIT.NAnt.dll, log4net.dll,
+	  scvs.exe, extensions/common/2.0/NAnt.MSBuild.dll,
+	  extensions/common/2.0/NAnt.MSBuild.xml,
+	  lib/common/1.1/nunit-console-runner.dll,
+	  lib/common/1.1/nunit-console.exe, lib/common/1.1/nunit.core.dll,
+	  lib/common/1.1/nunit.framework.dll,
+	  lib/common/1.1/nunit.util.dll,
+	  lib/common/2.0/nunit-console-runner.dll,
+	  lib/common/2.0/nunit-console.exe, lib/common/2.0/nunit.core.dll,
+	  lib/common/2.0/nunit.framework.dll,
+	  lib/common/2.0/nunit.util.dll,
+	  lib/common/neutral/ICSharpCode.SharpCvsLib.Console.dll,
+	  lib/common/neutral/ICSharpCode.SharpCvsLib.dll,
+	  lib/common/neutral/ICSharpCode.SharpZipLib.dll,
+	  lib/common/neutral/NDoc.Core.dll,
+	  lib/common/neutral/NDoc.Documenter.Msdn.dll,
+	  lib/common/neutral/NDoc.ExtendedUI.dll,
+	  lib/common/neutral/NUnitCore.dll, lib/mono/1.0/NDoc.Core.dll,
+	  lib/mono/1.0/NDoc.Documenter.Msdn.dll,
+	  lib/mono/1.0/NDoc.ExtendedUI.dll, lib/mono/1.0/nunit.core.dll,
+	  lib/mono/1.0/nunit.framework.dll, lib/mono/1.0/nunit.util.dll,
+	  lib/mono/2.0/NDoc.Core.dll,
+	  lib/mono/2.0/NDoc.Documenter.Msdn.dll,
+	  lib/mono/2.0/NDoc.ExtendedUI.dll, lib/mono/2.0/nunit.core.dll,
+	  lib/mono/2.0/nunit.framework.dll, lib/mono/2.0/nunit.util.dll,
+	  lib/net/1.0/NDoc.Core.dll, lib/net/1.0/NDoc.Documenter.Msdn.dll,
+	  lib/net/1.0/NDoc.ExtendedUI.dll,
+	  lib/net/1.0/nunit-console-runner.dll,
+	  lib/net/1.0/nunit-console.exe, lib/net/1.0/nunit.core.dll,
+	  lib/net/1.0/nunit.framework.dll, lib/net/1.0/nunit.util.dll,
+	  lib/net/1.1/NDoc.Core.dll, lib/net/1.1/NDoc.Documenter.Msdn.dll,
+	  lib/net/1.1/NDoc.ExtendedUI.dll, lib/net/1.1/nunit.core.dll,
+	  lib/net/1.1/nunit.framework.dll, lib/net/1.1/nunit.util.dll,
+	  lib/net/2.0/NDoc.Core.dll, lib/net/2.0/NDoc.Documenter.Msdn.dll,
+	  lib/net/2.0/NDoc.ExtendedUI.dll, lib/net/2.0/nunit.core.dll,
+	  lib/net/2.0/nunit.framework.dll, lib/net/2.0/nunit.util.dll:
+	  Added Tools/NAnt to Npgsql2
 
 2010-01-29 01:10  fxjr
 
@@ -837,10 +1102,12 @@
 
 	* src/Npgsql2008.sln: Added DDEX solution
 
-2009-05-22 23:38  jbcooley
+2009-05-22 23:37  jbcooley
 
-	* src/Npgsql.VisualStudio2008.csproj: incremental changes towards
-	  DDEX support
+	* src/: VisualStudio/NpgsqlDataObjects.xml,
+	  VisualStudio/NpgsqlObjectSelector.cs,
+	  Npgsql.VisualStudio2008.csproj: incremental changes towards DDEX
+	  support
 
 2009-05-06 01:04  fxjr
 
@@ -1057,10 +1324,12 @@
 	  VisitedExpression.cs: Fixed bug in skip.  Thanks to gavin w for
 	  reporting the bug.
 
-2009-02-05 01:26  jbcooley
+2009-02-05 01:25  jbcooley
 
-	* src/: Npgsql.VisualStudio2008.csproj, Npgsql2008.sln: Starting
-	  DDEX support for Npgsql
+	* src/: VisualStudio/AssemblyInfo.cs,
+	  VisualStudio/NpgsqlDataObjects.xml,
+	  VisualStudio/NpgsqlDataViews.xml, Npgsql.VisualStudio2008.csproj,
+	  Npgsql2008.sln: Starting DDEX support for Npgsql
 
 2009-02-05 01:24  jbcooley
 
