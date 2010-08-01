@@ -1,5 +1,41 @@
 
-2010-04-xx
+2010-08-01
+
+    Npgsql 2.0.10
+    
+    
+    Important Notice:
+    
+        Possible breaking change: This release adds support for NpgsqlParameter.NpgsqlValue. This means that Npgsql specific types will be returned by this property. NpgsqlParameter.Value will return *only* CLR types. So, if you are expecting to work with Npgsql specific types, please use NpgsqlParameter.NpgsqlValue property. Sorry for this problem. This change will help Npgsql to conform better with ADO.NET DataSet and other helper classes.
+        
+        This version fixes a multithread problem where even using a different connection for each thread it was possible to corrupt data received by Npgsql. This bug was introduced in 2.0.9 and it is now fixed. If you are getting "The backend sent an unrecognized response" exceptions, there is a high probability that this bug is causing it. Please, upgrade.
+        
+        
+    Fixed bugs:
+    
+        [#1010796] Notification thread not released after copy from stdin.
+        Fixed problems when updating data with DataTable. See http://pgfoundry.org/forum/message.php?msg_id=1005598
+        [#1010804] Endless loop in BitString? 
+        Fix multi-level join generated sql
+        [#1010829] Fix support for CommandBehavior.SequentialAccess with multiple columns.
+        [#1010825] support derive parameters for parameterless functions
+        support null items in arrays
+        NpgsqlSchema.ssdl: provide default value during model generation
+        [#1010776] for a prepared command, ExecuteNonQuery() does not return.
+        [#1010787] Inserting an array does not work in a prepared statement.
+        [#1010798] Cast-Exception with NpgsqlTimeStamp to System.DateTime.
+        
+    
+    New Features:
+    
+        Added VS2010 project file
+        Support for Time types and DateTimeOffset types in Entity Framework
+        Josh Cooley ported a lot of Mono tests so we may expect to have more conformance versions of Npgsql on next releases.
+        This version adds NpgsqlParameter.NpgsqlValue property. Now, developers who want to work with Npgsql specific types can use this property. See Important Notice about possible breaking change this might cause.
+        
+
+
+2010-04-13
 
     Npgsql 2.0.9
     
