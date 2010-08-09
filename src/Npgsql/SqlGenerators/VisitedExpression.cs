@@ -913,9 +913,14 @@ namespace Npgsql.SqlGenerators
 
     internal class GroupByExpression : VisitedExpression
     {
+        private bool _requiresGroupSeperator;
+
         public void AppendGroupingKey(VisitedExpression key)
         {
+            if (_requiresGroupSeperator)
+                Append(",");
             Append(key);
+            _requiresGroupSeperator = true;
         }
 
         internal override void WriteSql(StringBuilder sqlText)

@@ -473,7 +473,12 @@ namespace Npgsql.SqlGenerators
                 VisitedExpression keyColumnExpression = key.Accept(this);
                 var prop = rowType.Properties[columnIndex];
                 projectExpression.AppendColumn(new ColumnExpression(keyColumnExpression, prop.Name, prop.TypeUsage));
-                groupByExpression.AppendGroupingKey(keyColumnExpression);
+                // have no idea why EF is generating a group by with a constant expression,
+                // but postgresql doesn't need it.
+                if (!(key is DbConstantExpression))
+                {
+                    groupByExpression.AppendGroupingKey(keyColumnExpression);
+                }
                 ++columnIndex;
             }
             foreach (var ag in expression.Aggregates)
@@ -632,21 +637,8 @@ namespace Npgsql.SqlGenerators
         private IEnumerable<ColumnExpression> GetColumnsForJoin(JoinExpression join, ProjectionExpression projectionExpression, VisitedExpression joinCondition)
         {
             List<string> fromNames = new List<string>();
+            Dictionary<string, ColumnExpression> joinColumns = new Dictionary<string, ColumnExpression>();
             GetFromNames(join, fromNames);
-            foreach (var column in projectionExpression.Columns.OfType<ColumnExpression>())
-            {
-                foreach (var prop in column.GetAccessedProperties())
-                {
-                    System.Text.StringBuilder propName = new System.Text.StringBuilder();
-                    prop.WriteSql(propName);
-                    string table = propName.ToString().Split('.')[0];
-                    if (fromNames.Contains(table))
-                    {
-                        yield return column;
-                        break;
-                    }
-                }
-            }
             foreach (var prop in joinCondition.GetAccessedProperties())
             {
                 System.Text.StringBuilder propName = new System.Text.StringBuilder();
@@ -658,8 +650,34 @@ namespace Npgsql.SqlGenerators
                     string column = propParts.Last();
                     // strip off quotes.
                     column = column.Substring(1, column.Length - 2);
-                    yield return new ColumnExpression(new PropertyExpression(prop), column, prop.PropertyType);
+                    joinColumns.Add(propName.ToString(), new ColumnExpression(new PropertyExpression(prop), column, prop.PropertyType));
                 }
+            }
+            foreach (var column in projectionExpression.Columns.OfType<ColumnExpression>())
+            {
+                var accessedProperties = column.GetAccessedProperties().ToArray();
+                foreach (var prop in accessedProperties)
+                {
+                    System.Text.StringBuilder propName = new System.Text.StringBuilder();
+                    prop.WriteSql(propName);
+                    string table = propName.ToString().Split('.')[0];
+                    if (fromNames.Contains(table))
+                    {
+                        // save off columns that are projections of a single property
+                        // for testing against join properties
+                        if (accessedProperties.Length == 1 && joinColumns.Count != 0)
+                        {
+                            // remove (if exists) the column from the join columns being returned
+                            joinColumns.Remove(propName.ToString());
+                        }
+                        yield return column;
+                        break;
+                    }
+                }
+            }
+            foreach (var joinColumn in joinColumns.Values)
+            {
+                yield return joinColumn;
             }
         }
 
