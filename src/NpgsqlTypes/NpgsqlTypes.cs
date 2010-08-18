@@ -647,13 +647,19 @@ namespace NpgsqlTypes
             
         }
 
-        public static implicit operator IPAddress(NpgsqlInet x)
+        public static explicit operator IPAddress(NpgsqlInet x)
         {
             if (x.mask != 32)
             {
                 throw new InvalidCastException("Cannot cast CIDR network to address");
             }
                 return x.addr;
+            
+        }
+        
+        public static implicit operator NpgsqlInet(IPAddress ipaddress)
+        {
+            return new NpgsqlInet(ipaddress);
             
         }
 

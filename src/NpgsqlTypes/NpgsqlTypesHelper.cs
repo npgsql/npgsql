@@ -489,7 +489,10 @@ namespace NpgsqlTypes
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof (NpgsqlInet),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet));
+				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet),
+                                          typeof(IPAddress),
+                                          ipaddress => (IPAddress)(NpgsqlInet)ipaddress, 
+                                          npgsqlinet => (npgsqlinet is IPAddress ? (NpgsqlInet)(IPAddress) npgsqlinet : npgsqlinet));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof (Decimal),
