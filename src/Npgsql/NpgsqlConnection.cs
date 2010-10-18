@@ -979,6 +979,10 @@ namespace Npgsql
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetViews(restrictions);
 				case "Users":
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetUsers(restrictions);
+                case "Indexes":
+                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexes(restrictions);
+                case "IndexColumns":
+                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexColumns(restrictions);
 				default:
 					throw new NotSupportedException();
 			}

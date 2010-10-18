@@ -53,26 +53,13 @@ namespace Npgsql
 		/// </summary>
 		/// <returns>The MetaDataCollections</returns>
 		internal static DataTable GetMetaDataCollections()
-		{
-			DataTable metaDataCollections = new DataTable("MetaDataCollections");
-
-			metaDataCollections.Columns.AddRange(
-				new DataColumn[]
-					{
-						new DataColumn("CollectionName"), new DataColumn("NumberOfRestrictions", typeof (int)),
-						new DataColumn("NumberOfIdentifierParts", typeof (int))
-					});
-
-			// Add(object[] { CollectionName, NumberOfRestrictions, NumberOfIdentifierParts })
-			metaDataCollections.Rows.Add(new object[] {"MetaDataCollections", 0, 0});
-			metaDataCollections.Rows.Add(new object[] {"Restrictions", 0, 0});
-			metaDataCollections.Rows.Add(new object[] {"Databases", 1, 1});
-			metaDataCollections.Rows.Add(new object[] {"Tables", 4, 3});
-			metaDataCollections.Rows.Add(new object[] {"Columns", 4, 4});
-			metaDataCollections.Rows.Add(new object[] {"Views", 3, 3});
-			metaDataCollections.Rows.Add(new object[] {"Users", 1, 1});
-
-			return metaDataCollections;
+        {
+            DataSet ds = new DataSet();
+            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+            {
+                ds.ReadXml(xmlStream);
+            }
+            return ds.Tables["MetaDataCollections"].Copy();
 		}
 
 		/// <summary>
@@ -80,39 +67,26 @@ namespace Npgsql
 		/// </summary>
 		/// <returns>The Restrictions</returns>
 		internal static DataTable GetRestrictions()
-		{
-			DataTable restrictions = new DataTable("Restrictions");
-
-			restrictions.Columns.AddRange(
-				new DataColumn[]
-					{
-						new DataColumn("CollectionName"), new DataColumn("RestrictionName"), new DataColumn("RestrictionDefault"),
-						new DataColumn("RestrictionNumber", typeof (int))
-					});
-
-			restrictions.Rows.Add(new object[] {"Databases", "Name", "Name", 1});
-			restrictions.Rows.Add(new object[] {"Tables", "Catalog", "table_catalog", 1});
-			restrictions.Rows.Add(new object[] {"Tables", "Schema", "table_schema", 2});
-			restrictions.Rows.Add(new object[] {"Tables", "Table", "table_name", 3});
-			restrictions.Rows.Add(new object[] {"Tables", "TableType", "table_type", 4});
-			restrictions.Rows.Add(new object[] {"Columns", "Catalog", "table_catalog", 1});
-			restrictions.Rows.Add(new object[] {"Columns", "Schema", "table_schema", 2});
-			restrictions.Rows.Add(new object[] {"Columns", "Table", "table_name", 3});
-			restrictions.Rows.Add(new object[] {"Columns", "Column", "column_name", 4});
-			restrictions.Rows.Add(new object[] {"Views", "Catalog", "table_catalog", 1});
-			restrictions.Rows.Add(new object[] {"Views", "Schema", "table_schema", 2});
-			restrictions.Rows.Add(new object[] {"Views", "Table", "table_name", 3});
-
-			return restrictions;
+        {
+            DataSet ds = new DataSet();
+            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+            {
+                ds.ReadXml(xmlStream);
+            }
+            return ds.Tables["Restrictions"].Copy();
 		}
 
-		private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, params string[] names)
+        private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, params string[] names)
+        {
+            return BuildCommand(query, restrictions, true, names);
+        }
+
+		private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, bool addWhere, params string[] names)
 		{
 			NpgsqlCommand command = new NpgsqlCommand();
 
 			if (restrictions != null && names != null)
 			{
-				bool addWhere = true;
 				for (int i = 0; i < restrictions.Length && i < names.Length; ++i)
 				{
 					if (restrictions[i] != null && restrictions[i].Length != 0)
@@ -296,6 +270,96 @@ namespace Npgsql
 
 			return users;
 		}
+
+        internal DataTable GetIndexes(string[] restrictions)
+        {
+            DataTable indexes = new DataTable("Indexes");
+
+            indexes.Columns.AddRange(
+                new DataColumn[]
+					{
+						new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
+						new DataColumn("index_name")
+					});
+
+            StringBuilder getIndexes = new StringBuilder();
+
+            getIndexes.Append(
+@"select current_database() as table_catalog,
+    n.nspname as table_schema,
+    t.relname as table_name,
+    i.relname as index_name
+from
+    pg_catalog.pg_class i join
+    pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
+    pg_catalog.pg_class t ON ix.indrelid = t.oid join
+    pg_attribute a on t.oid = a.attrelid left join
+    pg_catalog.pg_user u ON u.usesysid = i.relowner left join
+    pg_catalog.pg_namespace n ON n.oid = i.relnamespace
+where
+    i.relkind = 'i'
+    and n.nspname not in ('pg_catalog', 'pg_toast')
+    and pg_catalog.pg_table_is_visible(i.oid)
+    and a.attnum = ANY(ix.indkey)
+    and t.relkind = 'r'");
+
+            using (
+                NpgsqlCommand command =
+                    BuildCommand(getIndexes, restrictions, false, "table_catalog", "table_schema", "table_name", "index_name"))
+            {
+                using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                {
+                    adapter.Fill(indexes);
+                }
+            }
+
+            return indexes;
+        }
+
+        internal DataTable GetIndexColumns(string[] restrictions)
+        {
+            DataTable indexColumns = new DataTable("IndexColumns");
+
+            indexColumns.Columns.AddRange(
+                new DataColumn[]
+					{
+						new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
+						new DataColumn("index_name"), new DataColumn("column_name")
+					});
+
+            StringBuilder getIndexColumns = new StringBuilder();
+
+            getIndexColumns.Append(
+@"select current_database() as table_catalog,
+    n.nspname as table_schema,
+    t.relname as table_name,
+    i.relname as index_name,
+    a.attname as column_name
+from
+    pg_class t join
+    pg_index ix on t.oid = ix.indrelid join
+    pg_class i on ix.indexrelid = i.oid join
+    pg_attribute a on t.oid = a.attrelid left join
+    pg_namespace n on i.relnamespace = n.oid
+where
+    i.relkind = 'i'
+    and n.nspname not in ('pg_catalog', 'pg_toast')
+    and pg_catalog.pg_table_is_visible(i.oid)
+    and a.attnum = ANY(ix.indkey)
+    and t.relkind = 'r'");
+
+            using (
+                NpgsqlCommand command =
+                    BuildCommand(getIndexColumns, restrictions, false, "table_catalog", "table_schema", "table_name", "index_name", "column_name"))
+            {
+                using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+                {
+                    adapter.Fill(indexColumns);
+                }
+            }
+
+            return indexColumns;
+        }
 
 		internal static DataTable GetDataSourceInformation()
 		{
