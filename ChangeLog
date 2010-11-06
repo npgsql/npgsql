@@ -1,3 +1,50 @@
+2010-11-05 22:33  fxjr
+
+	* RELEASENOTES.txt:
+	  Updated release notes for 2.0.11 release.
+
+2010-11-05 22:26  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated AssemblyInfo for 2.0.11.0 release.
+
+2010-11-05 22:25  jbcooley
+
+	* src/policy.2.0.Npgsql.config: Updating for new release
+
+2010-10-24 17:32  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs:
+	  [#1010921] Data corrupted transferring bytea data from PostgreSQL
+	  9 server. Thanks Mathieu Fenniak for patch. See
+	  http://pgfoundry.org/pipermail/npgsql-devel/2010-January/001057.html
+
+2010-10-18 00:47  jbcooley
+
+	* src/Npgsql/: NpgsqlConnection.cs, NpgsqlMetaData.xml,
+	  NpgsqlSchema.cs: Bug #1010650 - support metadata for indexes.
+
+2010-08-18 00:19  fxjr
+
+	* src/NpgsqlTypes/: NpgsqlTypes.cs, NpgsqlTypesHelper.cs:
+	  Added fix to return CLR type when working with NpgsqlInet and
+	  IPAddress types in NpgsqlDataReader.GetValue(). See
+	  http://pgfoundry.org/forum/message.php?msg_id=1006360 for more
+	  info about that.  Also, changed implicit operator to explicit
+	  operator because it throws exceptiomn. Documentation says
+	  implicit operators shouldn't throw exceptions.
+
+2010-08-08 23:22  jbcooley
+
+	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
+	  VisitedExpression.cs: Fixes for SQL generation bugs reported in
+	  #1010863 and #1010860
+
+2010-08-01 17:52  fxjr
+
+	* ChangeLog:
+	  Updated Changelog to 2.0.10 release.
+
 2010-08-01 17:47  fxjr
 
 	* RELEASENOTES.txt:
