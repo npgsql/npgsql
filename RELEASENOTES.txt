@@ -1,4 +1,18 @@
 
+2010-11-05
+
+    Npgsql 2.0.11
+    
+    Fixed bugs:
+    
+        [#1010863] GroupBy Expression with two or more parameters creates a sql error
+        [#1010860] [EF, 2.0.10.0] Invalid query is generated
+        Added fix to return CLR type when working with NpgsqlInet and IPAddress types in NpgsqlDataReader.GetValue(). See http://pgfoundry.org/forum/message.php?msg_id=1006360 for more info about that.
+        [#1010921] Data corrupted transferring bytea data from PostgreSQL 9 server. Thanks Mathieu Fenniak for patch. See http://pgfoundry.org/pipermail/npgsql-devel/2010-January/001057.html. This patch should have been applied a long time ago. It was my fault (Francisco) Sorry for that :(
+        
+    New Features:
+        [#1010650] DbConnection.GetSchema: Metadata for Indexes
+
 2010-08-01
 
     Npgsql 2.0.10
