@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security;
 using System.Reflection;
 using System.Resources;
 
@@ -13,13 +14,14 @@ using System.Resources;
 // ------------------------------------------------------------------------------
 
 [assembly: CLSCompliantAttribute(true)]
+[assembly: AllowPartiallyTrustedCallersAttribute()]
 [assembly: AssemblyTitleAttribute("Npgsql - .Net Data Provider for PostgreSQL")]
 [assembly: AssemblyDescriptionAttribute(".Net Data Provider for PostgreSQL")]
 [assembly: AssemblyCompanyAttribute("Npgsql Development Team")]
 [assembly: AssemblyProductAttribute("Npgsql")]
 [assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2010 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
-[assembly: AssemblyVersionAttribute("2.0.11.0")]
-[assembly: AssemblyFileVersionAttribute("2.0.11.0")]
+[assembly: AssemblyVersionAttribute("2.0.12.0")]
+[assembly: AssemblyFileVersionAttribute("2.0.12.0")]
 [assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 

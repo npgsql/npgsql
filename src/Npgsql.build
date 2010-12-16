@@ -103,11 +103,13 @@
      		<asminfo language="CSharp" output="${path::combine(src.dir, 'Npgsql/AssemblyInfo.cs')}" verbose="${nant.verbosity}">
                 <imports>
                     <import namespace="System" />
+                    <import namespace="System.Security" />
                     <import namespace="System.Reflection" />
                     <import namespace="System.Resources" />
                 </imports>
                 <attributes>
                     <attribute type="CLSCompliantAttribute" value="true" />
+                    <attribute type="AllowPartiallyTrustedCallersAttribute" asis="true" />
                     <attribute type="AssemblyTitleAttribute" value="${assembly.title}" />
                     <attribute type="AssemblyDescriptionAttribute" value="${assembly.description}" />
                     <attribute type="AssemblyCompanyAttribute" value="${assembly.company}" />
