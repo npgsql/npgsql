@@ -173,9 +173,7 @@ namespace Npgsql
 
 		public new NpgsqlCommand GetInsertCommand()
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand();
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+            return GetInsertCommand(false);
 		}
 
 		public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
@@ -187,9 +185,7 @@ namespace Npgsql
 
 		public new NpgsqlCommand GetUpdateCommand()
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetUpdateCommand();
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+            return GetUpdateCommand(false);
 		}
 
 		public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
@@ -201,9 +197,7 @@ namespace Npgsql
 
 		public new NpgsqlCommand GetDeleteCommand()
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand();
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+            return GetDeleteCommand(false);
 		}
 
 		public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
@@ -238,8 +232,25 @@ namespace Npgsql
 
 		protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
 		{
+            
 			NpgsqlParameter parameter = (NpgsqlParameter) p;
-            parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type) row[SchemaTableColumn.DataType]).NpgsqlDbType;
+
+            /* TODO: Check if this is the right thing to do.
+             * ADO.Net seems to set this property to true when creating the parameter for the following query:
+             * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR 
+                  (FieldName = @Original_FieldName))
+             * This parameter: @IsNull_FieldName was having its sourcecolumn set to the same name of FieldName.
+             * This was causing ADO.Net to try to set a value of different type of Int32. 
+             * See bug 1010973 for more info.
+             */
+            if (parameter.SourceColumnNullMapping)
+            {
+                parameter.SourceColumn = "";
+            }
+            else
+
+                parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
+            
 		}
 
 		protected override string GetParameterName(int parameterOrdinal)
@@ -259,7 +270,15 @@ namespace Npgsql
 
 		protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 		{
-			if (!(adapter is NpgsqlDataAdapter))
+			
+            /* Disabling this handler makes the ado.net updating code works.
+             * Check if this code is really necessary or how to implement it correctly.
+             * By having this handler specified, ADO.Net was reusing strangely NpgsqlParameters when updating datasets.
+             * See bug 1010973 for more info.
+             */
+
+            /*
+            if (!(adapter is NpgsqlDataAdapter))
 			{
 				throw new InvalidOperationException("adapter needs to be a NpgsqlDataAdapter");
 			}
@@ -268,6 +287,8 @@ namespace Npgsql
 			this.rowUpdatingHandler = new NpgsqlRowUpdatingEventHandler(this.RowUpdatingHandler);
 
 			((NpgsqlDataAdapter) adapter).RowUpdating += this.rowUpdatingHandler;
+             */
+
 		}
 
 
