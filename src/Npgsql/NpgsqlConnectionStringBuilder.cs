@@ -707,6 +707,7 @@ namespace Npgsql
 		{
 		    switch(keyword)
 		    {
+                
                 case Keywords.Host:
                     return "HOST";
                 case Keywords.Port:
