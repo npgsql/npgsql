@@ -707,12 +707,54 @@ namespace Npgsql
 		{
 		    switch(keyword)
 		    {
-		        case Keywords.UserName:
-    				return "USER ID";
+                case Keywords.Host:
+                    return "HOST";
+                case Keywords.Port:
+                    return "PORT";
+                case Keywords.Protocol:
+                    return "PROTOCOL";
+                case Keywords.Database:
+                    return "DATABASE";
+                case Keywords.UserName:
+                   return "USER ID";
+                case Keywords.Password:
+                    return "PASSWORD";
+                case Keywords.SSL:
+                    return "SSL";
+                case Keywords.SslMode:
+                    return "SSLMODE";
+                case Keywords.Encoding:
+                    return "ENCODING";
+                case Keywords.Timeout:
+                     return "TIMEOUT";
+                case Keywords.SearchPath:
+                    return "SEARCHPATH";
+                case Keywords.Pooling:
+                    return "POOLING";
+                case Keywords.ConnectionLifeTime:
+                    return "CONNECTIONLIFETIME";
+                case Keywords.MinPoolSize:
+                    return "MINPOOLSIZE";
+                case Keywords.MaxPoolSize:
+                    return "MAXPOOLSIZE";
+                case Keywords.SyncNotification:
+                    return "SYNCNOTIFICATION";
+                case Keywords.CommandTimeout:
+                    return "COMMANDTIMEOUT";
+                case Keywords.Enlist:
+                    return "ENLIST";
+                case Keywords.PreloadReader:
+                    return "PRELOADREADER";
+                case Keywords.UseExtendedTypes:
+                    return "USEEXTENDEDTYPES";
                 case Keywords.IntegratedSecurity:
-    				return "INTEGRATED SECURITY";
+                    return "INTEGRATED SECURITY";
+                case Keywords.Compatible:
+                    return "COMPATIBLE";
                 default:
-    				return keyword.ToString().ToUpperInvariant();
+                    return keyword.ToString().ToUpperInvariant();
+                
+            
 		    }
 		}
 
