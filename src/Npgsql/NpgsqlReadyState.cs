@@ -136,12 +136,19 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
 			Stream stream = context.Stream;
-			stream.WriteByte((byte) FrontEndMessageCode.Termination);
-			if (context.BackendProtocolVersion >= ProtocolVersion.Version3)
+			try
 			{
-				PGUtil.WriteInt32(stream, 4);
+				stream.WriteByte((byte) FrontEndMessageCode.Termination);
+				if (context.BackendProtocolVersion >= ProtocolVersion.Version3)
+				{
+					PGUtil.WriteInt32(stream, 4);
+				}
+				stream.Flush();
 			}
-			stream.Flush();
+			catch
+			{
+				//Error writting termination message to stream, nothing we can do.
+			}
 
 			try
 			{
