@@ -783,16 +783,22 @@ namespace Npgsql
 
         internal void CancelRequest()
         {
-            NpgsqlConnector CancelConnector = new NpgsqlConnector(settings, false, false);
+            NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
 
-            CancelConnector._backend_keydata = BackEndKeyData;
+            cancelConnector._backend_keydata = BackEndKeyData;
 
+            try
+            {
+                // Get a raw connection, possibly SSL...
+                cancelConnector.CurrentState.Open(cancelConnector);
 
-            // Get a raw connection, possibly SSL...
-            CancelConnector.CurrentState.Open(CancelConnector);
-
-            // Cancel current request.
-            CancelConnector.CurrentState.CancelRequest(CancelConnector);
+                // Cancel current request.
+                cancelConnector.CurrentState.CancelRequest(cancelConnector);
+            }
+            finally
+            {
+                cancelConnector.CurrentState.Close(cancelConnector);
+            }
         }
 
 
