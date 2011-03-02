@@ -1397,7 +1397,24 @@ namespace NpgsqlTests
             
             Assert.AreEqual(1, rows);
         }
+  
+        [Test]
+        public void DoubleValueSupport()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select :field_float8", TheConnection);
+            command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
+   
+            double value = 0.1234567890123458D;
+            
+            command.Parameters[0].Value = value;
+            
+            
+            Object valueReturned = command.ExecuteScalar();
 
+            
+            Assert.AreEqual(value, valueReturned);
+        }
+        
         [Test]
         public void InsertDoubleValue()
         {
@@ -1804,35 +1821,38 @@ namespace NpgsqlTests
         [Test]
         public void AmbiguousFunctionParameterTypePrepared()
         {
-            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            
+            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString))
+            {
 
 
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
-            command.CommandType = CommandType.StoredProcedure;
-            NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("b", DbType.Int32);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("c", DbType.Int64);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("d", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("e", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("f", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
-
-
-            command.Connection.Open();
-            command.Prepare();
-            command.ExecuteScalar();
-            command.Connection.Close();
+                NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("b", DbType.Int32);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("c", DbType.Int64);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("d", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("e", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("f", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
+    
+    
+                command.Connection.Open();
+                command.Prepare();
+                command.ExecuteScalar();
+                //command.Connection.Close();
+            }
         }
 
 
@@ -2271,16 +2291,18 @@ namespace NpgsqlTests
         {
             String sql = "select 1 as test";
             
-            NpgsqlConnection c = new NpgsqlConnection(TheConnectionString);
+            using(NpgsqlConnection c = new NpgsqlConnection(TheConnectionString))
+            {
             
-            c.Open();
-            
-            NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.ReadUncommitted);
-            Assert.IsNotNull(t);
-            
-            NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
+                c.Open();
                 
-            command.ExecuteReader().Close();
+                NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.ReadUncommitted);
+                Assert.IsNotNull(t);
+                
+                NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
+                    
+                command.ExecuteReader().Close();
+            }
             
         }
         
@@ -2289,18 +2311,20 @@ namespace NpgsqlTests
         {
             String sql = "select 1 as test";
             
-            NpgsqlConnection c = new NpgsqlConnection(TheConnectionString);
+            using (NpgsqlConnection c = new NpgsqlConnection(TheConnectionString))
+            {
             
-            c.Open();
-            
-            NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.RepeatableRead);
-            Assert.IsNotNull(t);
-            
-            NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
+                c.Open();
                 
-            command.ExecuteReader().Close();
-            
-            c.Close();
+                NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.RepeatableRead);
+                Assert.IsNotNull(t);
+                
+                NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
+                    
+                command.ExecuteReader().Close();
+                
+                c.Close();
+            }
             
         }
         
@@ -2309,20 +2333,23 @@ namespace NpgsqlTests
         {
             String sql = "show transaction_isolation;";
             
-            NpgsqlConnection c = new NpgsqlConnection(TheConnectionString);
-            
-            c.Open();
-            
-            NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.Serializable);
-            Assert.IsNotNull(t);
-            
-            NpgsqlCommand command = new NpgsqlCommand(sql, c);
-            
-            String isolation = (String)command.ExecuteScalar();
-            
-            c.Close();
+            using (NpgsqlConnection c = new NpgsqlConnection(TheConnectionString))
+            {
                 
-            Assert.AreEqual("serializable", isolation);
+            
+                c.Open();
+                
+                NpgsqlTransaction t = c.BeginTransaction(IsolationLevel.Serializable);
+                Assert.IsNotNull(t);
+                
+                NpgsqlCommand command = new NpgsqlCommand(sql, c);
+                
+                String isolation = (String)command.ExecuteScalar();
+                
+                c.Close();
+                    
+                Assert.AreEqual("serializable", isolation);
+            }
         }
         
         
@@ -2572,7 +2599,7 @@ namespace NpgsqlTests
             
             Object result = command.ExecuteScalar();
             
-            Assert.AreEqual(new NpgsqlInet("127.0.0.1"), result);
+            Assert.AreEqual((IPAddress)new NpgsqlInet("127.0.0.1"), (IPAddress)result);
         }
 
         [Test]
@@ -2593,7 +2620,7 @@ namespace NpgsqlTests
             
             Object result = command.ExecuteScalar();
             
-            Assert.AreEqual(new NpgsqlInet("127.0.0.1"), result);
+            Assert.AreEqual(IPAddress.Parse("127.0.0.1"), result);
         }
 
         [Test]
@@ -2852,13 +2879,14 @@ CommandTimeout=180");
 NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", connection);
 connection.Open();*/
 
-        NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180");
-        NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", conn);
-        conn.Open();
-        
-        Assert.AreEqual(180, command.CommandTimeout);
-            
-
+            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
+            {
+                
+                NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", conn);
+                conn.Open();
+                
+                Assert.AreEqual(180, command.CommandTimeout);
+            }
             
             
         }
@@ -3675,27 +3703,29 @@ connection.Open();*/
         public void Bug1010788UpdateRowSource()
         {
 
-            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
-            conn.Open();
-
-            NpgsqlCommand command = new NpgsqlCommand("", conn);
-
-            Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
-
-            NpgsqlCommandBuilder cmdBuilder = new NpgsqlCommandBuilder();
-
-            NpgsqlDataAdapter da = new NpgsqlDataAdapter(command);
-
-            cmdBuilder.DataAdapter = da;
-
-            Assert.IsNotNull(da.SelectCommand);
-
-            Assert.IsNotNull(cmdBuilder.DataAdapter);
-            
-            NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
-
-            Assert.AreEqual(UpdateRowSource.None, command.UpdatedRowSource);
-
+            using(NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString))
+            {
+                conn.Open();
+    
+                NpgsqlCommand command = new NpgsqlCommand("", conn);
+    
+                Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
+    
+                NpgsqlCommandBuilder cmdBuilder = new NpgsqlCommandBuilder();
+    
+                NpgsqlDataAdapter da = new NpgsqlDataAdapter(command);
+    
+                cmdBuilder.DataAdapter = da;
+    
+                Assert.IsNotNull(da.SelectCommand);
+    
+                Assert.IsNotNull(cmdBuilder.DataAdapter);
+                
+                NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
+    
+                Assert.AreEqual(UpdateRowSource.None, command.UpdatedRowSource);
+    
+            }
 
             
         }
