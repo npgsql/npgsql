@@ -665,7 +665,7 @@ namespace Npgsql
 					if (FullState != ConnectionState.Closed)
 					{
 						NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
-						NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
+                        NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
 					}
 				}
 
@@ -759,7 +759,7 @@ namespace Npgsql
 		/// <summary>
 		/// Password.
 		/// </summary>
-		internal String Password
+		internal byte[] Password
 		{
 			get { return settings.Password; }
 		}

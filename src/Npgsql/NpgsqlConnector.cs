@@ -149,6 +149,8 @@ namespace Npgsql
 
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+        
+        
 
 #if WINDOWS && UNMANAGED
 
@@ -211,7 +213,7 @@ namespace Npgsql
             get { return settings.UserName; }
         }
 
-        internal String Password
+        internal byte[] Password
         {
             get { return settings.Password; }
         }
@@ -294,7 +296,7 @@ namespace Npgsql
             return CurrentState.QueryEnum(this, queryCommand);
         }
 
-        internal void Authenticate(string password)
+        internal void Authenticate(byte[] password)
         {
             CurrentState.Authenticate(this, password);
         }
@@ -352,6 +354,8 @@ namespace Npgsql
                 
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
                 new NpgsqlCommand("select 1", this).ExecuteScalar();
+
+                
                 // Clear mediator.
                 Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
@@ -605,6 +609,7 @@ namespace Npgsql
             set { _supportsSavepoint = value; } 
           
         }
+        
 
         /// <summary>
         /// This method is required to set all the version dependent features flags.
@@ -783,6 +788,7 @@ namespace Npgsql
 
         internal void CancelRequest()
         {
+            
             NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
 
             cancelConnector._backend_keydata = BackEndKeyData;
@@ -799,6 +805,7 @@ namespace Npgsql
             {
                 cancelConnector.CurrentState.Close(cancelConnector);
             }
+            
         }
 
 

@@ -353,6 +353,18 @@ namespace Npgsql
 			network_stream.Write(bytes, 0, bytes.Length);
 		}
 
+        /// <summary>
+        /// This method writes a set of bytes to the stream. It also enables logging of them.
+        /// </summary>
+        public static void WriteBytes(byte[] the_bytes, Stream network_stream)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
+            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
+
+            network_stream.Write(the_bytes, 0, the_bytes.Length);
+            network_stream.Write(new byte[1], 0, 1);
+        }
+
 		///<summary>
 		/// This method writes a C NULL terminated string limited in length to the
 		/// backend server.

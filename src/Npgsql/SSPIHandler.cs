@@ -145,7 +145,7 @@ namespace Npgsql
             }
         }
 
-        public string Continue(byte[] authData)
+        public byte[] Continue(byte[] authData)
         {
             if (authData == null && sspictx_set)
                 throw new InvalidOperationException("The authData parameter con only be null at the first call to continue!");
@@ -256,14 +256,14 @@ namespace Npgsql
                         Marshal.Copy(OutBuffer.pvBuffer, buffer, 0, buffer.Length);
                         // The SSPI authentication data must be sent as password message
 
-                        return System.Text.Encoding.ASCII.GetString(buffer);
+                        return buffer;
                         //stream.WriteByte((byte)'p');
                         //PGUtil.WriteInt32(stream, buffer.Length + 5);
                         //stream.Write(buffer, 0, buffer.Length);
                         //stream.Flush();
                     }
                 }
-                return String.Empty;
+                return new byte[0];
             }
             finally
             {

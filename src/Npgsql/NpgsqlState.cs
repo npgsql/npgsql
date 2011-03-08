@@ -64,7 +64,7 @@ namespace Npgsql
             throw new InvalidOperationException("Internal Error! " + this);
         }
 
-        public virtual void Authenticate(NpgsqlConnector context, string password)
+        public virtual void Authenticate(NpgsqlConnector context, byte[] password)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
@@ -475,7 +475,7 @@ namespace Npgsql
 
 
                                     // 1.
-                                    byte[] passwd = ENCODING_UTF8.GetBytes(context.Password);
+                                    byte[] passwd = context.Password;
                                     byte[] saltUserName = ENCODING_UTF8.GetBytes(context.UserName);
 
                                     byte[] crypt_buf = new byte[passwd.Length + saltUserName.Length];
@@ -516,7 +516,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(sb.ToString());
+                                    context.Authenticate(ENCODING_UTF8.GetBytes(sb.ToString()));
 
                                     break;
                                 default:
@@ -721,7 +721,7 @@ namespace Npgsql
 
 
                                     // 1.
-                                    byte[] passwd = ENCODING_UTF8.GetBytes(context.Password);
+                                    byte[] passwd = context.Password;
                                     byte[] saltUserName = ENCODING_UTF8.GetBytes(context.UserName);
 
                                     byte[] crypt_buf = new byte[passwd.Length + saltUserName.Length];
@@ -759,7 +759,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(sb.ToString());
+                                    context.Authenticate(ENCODING_UTF8.GetBytes(sb.ToString()));
 
                                     break;
 #if WINDOWS && UNMANAGED
@@ -787,7 +787,11 @@ namespace Npgsql
                                     {
                                         byte[] authData = new byte[authDataLength];
                                         PGUtil.CheckedStreamRead(stream, authData, 0, authDataLength);
-                                        context.Authenticate(context.SSPI.Continue(authData));
+                                        byte[] passwd_read = context.SSPI.Continue(authData);
+                                        if (passwd_read.Length != 0)
+                                        {
+                                            context.Authenticate(passwd_read);
+                                        }
                                         break;
                                     }
 
