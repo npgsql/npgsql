@@ -150,6 +150,12 @@ namespace Npgsql
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
         
+        // For IsValid test
+        private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+        
+        // Did we already called cancelRequest?
+        private Boolean _cancelRequestCalled = false;
+
         
 
 #if WINDOWS && UNMANAGED
@@ -352,10 +358,17 @@ namespace Npgsql
             {
                 // Here we use a fake NpgsqlCommand, just to send the test query string.
                 
-                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
-                new NpgsqlCommand("select 1", this).ExecuteScalar();
-
+                // Get random test value.
+                Byte[] testBytes = new Byte[2];
+                rng.GetNonZeroBytes(testBytes);
+                String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
                 
+                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
+                String compareValue = (String) new NpgsqlCommand("select '" + testValue + "'", this).ExecuteScalar();
+                
+                if (compareValue != testValue)
+                    return false;
+
                 // Clear mediator.
                 Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
@@ -610,6 +623,11 @@ namespace Npgsql
           
         }
         
+        public Boolean CancelRequestCalled  {
+            get { return _cancelRequestCalled; }
+        }
+
+        
 
         /// <summary>
         /// This method is required to set all the version dependent features flags.
@@ -804,6 +822,8 @@ namespace Npgsql
             finally
             {
                 cancelConnector.CurrentState.Close(cancelConnector);
+                
+                _cancelRequestCalled = true;
             }
             
         }

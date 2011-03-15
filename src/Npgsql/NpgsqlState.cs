@@ -358,7 +358,7 @@ namespace Npgsql
             {
                 // If timeout occurs when establishing the session with server then
                 // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
-                if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState)))
+                if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState || context.CancelRequestCalled)))
                 {
                     try
                     {
