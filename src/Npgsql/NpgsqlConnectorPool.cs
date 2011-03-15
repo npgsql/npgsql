@@ -68,61 +68,71 @@ namespace Npgsql
 		{
 			PooledConnectors = new Dictionary<string, ConnectorQueue>();
 			Timer = new Timer(1000);
-			Timer.AutoReset = true;
+			Timer.AutoReset = false;
 			Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
 			Timer.Start();
+            
 		}
-
-
+        
 		~NpgsqlConnectorPool()
 		{
 			Timer.Stop();
+            
 		}
 
 		private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
 		{
 			NpgsqlConnector Connector;
-			lock (this)
-			{
-				foreach (ConnectorQueue Queue in PooledConnectors.Values)
-				{
-					if (Queue.Available.Count > 0)
-					{
-						if (Queue.Available.Count + Queue.Busy.Count > Queue.MinPoolSize)
-						{
-							if (Queue.InactiveTime >= Queue.ConnectionLifeTime)
-							{
-								Int32 diff = Queue.Available.Count + Queue.Busy.Count - Queue.MinPoolSize;
-								Int32 toBeClosed = (diff + 1) / 2;
-								toBeClosed = Math.Min(toBeClosed, Queue.Available.Count);
-
-								if (diff < 2)
-								{
-									diff = 2;
-								}
-								Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
-								for (Int32 i = 0; i < toBeClosed; ++i)
-								{
-									Connector = Queue.Available.Dequeue();
-									Connector.Close();
-								}
-							}
-							else
-							{
-								Queue.InactiveTime++;
-							}
-						}
-						else
-						{
-							Queue.InactiveTime = 0;
-						}
-					}
-					else
-					{
-						Queue.InactiveTime = 0;
-					}
-				}
-			}
+            
+            try
+            {
+                lock (this)
+    		    {
+    				foreach (ConnectorQueue Queue in PooledConnectors.Values)
+    				{
+        				if (Queue.Available.Count > 0)
+    					{
+    						if (Queue.Available.Count + Queue.Busy.Count > Queue.MinPoolSize)
+    						{
+    							if (Queue.InactiveTime >= Queue.ConnectionLifeTime)
+    							{
+    								Int32 diff = Queue.Available.Count + Queue.Busy.Count - Queue.MinPoolSize;
+    								Int32 toBeClosed = (diff + 1) / 2;
+    								toBeClosed = Math.Min(toBeClosed, Queue.Available.Count);
+    
+    								if (diff < 2)
+    								{
+    									diff = 2;
+    								}
+    								Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
+    								for (Int32 i = 0; i < toBeClosed; ++i)
+    								{
+                                        Connector = Queue.Available.Dequeue();
+    									Connector.Close();
+    								}
+    							}
+    							else
+    							{
+    								Queue.InactiveTime++;
+    							}
+    						}
+    						else
+    						{
+    							Queue.InactiveTime = 0;
+    						}
+    					}
+    					else
+    					{
+    						Queue.InactiveTime = 0;
+    					}
+    				}
+    			}
+            }
+            finally
+            {
+                Timer.Start();
+                
+            }
 		}
 
 
