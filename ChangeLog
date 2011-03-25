@@ -1,3 +1,111 @@
+2011-03-25	jbcooley
+	* src/Npgsql/NpgsqlConnectorPool.cs 1.17:
+		Changed from HashSet to Dictionary so we can build a .NET 2.0 
+		profile version.
+
+	* src/Npgsql.csproj 1.13:
+	* src/Npgsql.sln 1.6:
+		Removed 2005 project and solution as no longer supported
+
+2011-03-25	fxjr
+	* src/Npgsql/AssemblyInfo.cs 1.31:
+		
+		Changed assembly version info to indicate a beta1 version of 2.0.12 (2.0.11.91)
+		Added a fix to AllowPartiallyTrustedCallersAttribute when using .net 4.0 framework. See http://weblogs.asp.net/peterblum/archive/2009/11/06/typeloadexception-based-on-security-transparent-code-level-2.aspx for more information.
+
+	* src/Npgsql/AssemblyInfo.cs 1.30:
+		
+		Updated copyright year
+
+2011-03-15	fxjr
+	* src/Npgsql/NpgsqlConnector.cs 1.33:
+	* src/Npgsql/NpgsqlState.cs 1.23:
+		
+		[#1010986] Endless recursion on hanging connection in ProcessBackendResponsesEnum. Thanks Gildas for feedback and tests.
+		
+		Also added a better check in NpgsqlConnector.IsValid(). Now it generates a random number and checks the select return value to see if everything is ok. Should fix problems where Npgsql was returning connectors in wrong state.
+
+	* src/Npgsql/NpgsqlConnectorPool.cs 1.16:
+		
+		[#1010997] Consider using System.Threading.Timer instead of System.Timers.Timer
+		Thanks Alex A Ermoshenko for feedback, patch and tests.
+
+2011-03-08	fxjr
+	* src/Npgsql/NpgsqlConnection.cs 1.31:
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.14:
+	* src/Npgsql/NpgsqlConnector.cs 1.32:
+	* src/Npgsql/NpgsqlPasswordPacket.cs 1.6:
+	* src/Npgsql/NpgsqlStartupState.cs 1.6:
+	* src/Npgsql/NpgsqlState.cs 1.22:
+	* src/Npgsql/PGUtil.cs 1.15:
+	* src/Npgsql/SSPIHandler.cs 1.3:
+		
+		Fixed problems with SSPI authentication when the password had some non ascii characteres.
+		Also, Npgsql supports to authenticate with an user name other than the current logged one.
+		Thanks Ahmed Shinwari for tests and patch.
+		See http://postgresql.1045698.n5.nabble.com/quot-could-not-accept-SSPI-security-context-quot-td3275102.html and http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001116.html for more info.
+
+2011-03-02	fxjr
+	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.43:
+		
+		Added patches for connection leaks in tests. Thanks David Leaer.
+		
+		Added test for double value support.
+
+2011-03-01	fxjr
+	* src/Npgsql/NpgsqlConnectorPool.cs 1.15:
+		
+		In Multi-threaded applications there is a race condition that can occur which will result in a broken connection being re-added to the pool. Thanks David Leaver for patches.
+		
+		More information here: http://pgfoundry.org/forum/forum.php?thread_id=10067&forum_id=519
+
+2011-02-22	fxjr
+	* src/Npgsql/NpgsqlReadyState.cs 1.6:
+		
+		Exception when closing connection. If your connection is in the Ready state and the stream is actually broken NpgsqlReadyState.Close will throw an exception when trying to write to the stream. More info can be found at: http://pgfoundry.org/forum/forum.php?thread_id=10066&forum_id=519
+		Thanks David Leaver for the patch.
+
+	* src/Npgsql/NpgsqlConnector.cs 1.31:
+		
+		NpgsqlConnector.CancelRequest leaks Connector. NpgsqlConnector.CancelRequest creates a connector to cancel the running request, but does not close it. More info at: http://pgfoundry.org/forum/forum.php?thread_id=10059&forum_id=519 Thanks David Leaver for patch.
+
+2011-02-06	fxjr
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.13:
+		
+		Forget to add mail reference for last commit:
+		http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001117.html
+
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.12:
+		
+		Added performance patch to GetKeyName method. Thanks Dan Smith for patch.
+
+2011-01-28	fxjr
+	* src/Npgsql/NpgsqlCommandBuilder.cs 1.19:
+		
+		[#1010973] specified cast is invalid - datetime fields. In order to fix this bug I had to disable some code in NpgsqlCommandBuilder. Watch out for possible side effects.
+		
+		Also changed Get***Command to reuse the version which takes a parameter.
+
+2010-12-16	fxjr
+	* src/Npgsql.build 1.22:
+	* src/Npgsql/AssemblyInfo.cs 1.29:
+		
+		Fixed: [#1010951] AllowPartiallyTrustedCallers for npgsql assemblies.
+		Updated AssemblyInfo.cs to include the fix above and to update assembly version.
+
+2010-11-06	jbcooley
+	* src/policy.2.0.Npgsql.config 1.8:
+		Updating for new release
+
+2010-11-06	fxjr
+	* src/Npgsql/AssemblyInfo.cs 1.28:
+		
+		Updated AssemblyInfo for 2.0.11.0 release.
+
+	* RELEASENOTES.txt 1.23:
+		
+		Updated release notes for 2.0.11 release.
+
 2010-11-05 22:33  fxjr
 
 	* RELEASENOTES.txt:
