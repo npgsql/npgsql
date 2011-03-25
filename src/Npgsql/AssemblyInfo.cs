@@ -19,7 +19,7 @@ using System.Resources;
 [assembly: AssemblyDescriptionAttribute(".Net Data Provider for PostgreSQL")]
 [assembly: AssemblyCompanyAttribute("Npgsql Development Team")]
 [assembly: AssemblyProductAttribute("Npgsql")]
-[assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2010 Npgsql Development Team")]
+[assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2011 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
 [assembly: AssemblyVersionAttribute("2.0.12.0")]
 [assembly: AssemblyFileVersionAttribute("2.0.12.0")]
