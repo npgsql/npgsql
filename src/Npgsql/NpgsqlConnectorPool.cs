@@ -53,7 +53,7 @@ namespace Npgsql
 			/// <summary>
 			/// Connections currently in use
 			/// </summary>
-			public HashSet<NpgsqlConnector> Busy = new HashSet<NpgsqlConnector>();
+			public Dictionary<NpgsqlConnector, object> Busy = new Dictionary<NpgsqlConnector, object>();
 
 			public Int32 ConnectionLifeTime;
 			public Int32 InactiveTime = 0;
@@ -367,7 +367,7 @@ namespace Npgsql
 					
 					return GetPooledConnector(Connection); //Try again
 				}
-				Queue.Busy.Add(Connector);
+				Queue.Busy.Add(Connector, null);
 			}
 			else if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
 			{
@@ -390,7 +390,7 @@ namespace Npgsql
 				}
 
 
-				Queue.Busy.Add(Connector);
+				Queue.Busy.Add(Connector, null);
 			}
 
 			// Meet the MinPoolSize requirement if needed.
@@ -499,7 +499,7 @@ namespace Npgsql
 			Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
 			Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
 
-			bool inQueue = queue.Busy.Contains(Connector);
+			bool inQueue = queue.Busy.ContainsKey(Connector);
 			queue.Busy.Remove(Connector);
 
 			if (!Connector.IsInitialized)
