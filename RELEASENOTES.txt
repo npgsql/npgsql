@@ -1,4 +1,33 @@
 
+
+2011-03-24
+
+    Npgsql 2.0.11.91 (beta1)
+    
+    
+    Important Notice:
+    
+        This is a beta release intended to test some critical fixes added since last stable release.
+        Special attention should be given to connection pool interactions. We improved connection pool of Npgsql. Previous implementation was letting connections to be leaked. Now this implementation keeps a reference to all the connections and keeps better track of them. We also improved connection validation from pool before delivering it to the user. This may fix problems where users were reporting strange data from new connections.
+        Another attention should be paid to Dataset and DataAdapter operations. We changed some internals of NpgsqlCommandBuilder which may cause problems. We'd like you to check if you get problems. For more information check this thread: http://pgfoundry.org/tracker/?func=detail&atid=590&aid=1010973&group_id=1000140
+        
+    
+    Fixed bugs:
+    
+        [#1010951] AllowPartiallyTrustedCallers for npgsql assemblies.
+        [#1010973] specified cast is invalid - datetime fields. In order to fix this bug I had to disable some code in NpgsqlCommandBuilder. Watch out for possible side effects.
+        Fixed problems with SSPI authentication when the password had some non ascii characteres. Also, Npgsql supports to authenticate with an user name other than the current logged one. Thanks Ahmed Shinwari for tests and patch.
+        [#1010997] Consider using System.Threading.Timer instead of System.Timers.Timer. Thanks Alex A Ermoshenko for feedback, patch and tests.
+        NpgsqlConnector.CancelRequest leaks Connector. NpgsqlConnector.CancelRequest creates a connector to cancel the running request, but does not close it. More info at: http://pgfoundry.org/forum/forum.php?thread_id=10059&forum_id=519 Thanks David Leaver for patch.
+        Exception when closing connection. If your connection is in the Ready state and the stream is actually broken NpgsqlReadyState.Close will throw an exception when trying to write to the stream. More info can be found at: http://pgfoundry.org/forum/forum.php?thread_id=10066&forum_id=519 Thanks David Leaver for the patch.
+		In Multi-threaded applications there is a race condition that can occur which will result in a broken connection being re-added to the pool. Thanks David Leaver for patches. More information here: http://pgfoundry.org/forum/forum.php?thread_id=10067&forum_id=519
+		[#1010986] Endless recursion on hanging connection in ProcessBackendResponsesEnum. Thanks Gildas for feedback and tests.
+		
+	Enhancements:
+	   
+	   Added performance patch to GetKeyName method. Thanks Dan Smith for patch. http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001117.html
+	   
+
 2010-11-05
 
     Npgsql 2.0.11
