@@ -607,6 +607,11 @@ namespace Npgsql
             set { _transaction = value; }
         }
 
+        internal Boolean SupportsApplicationName
+        {
+            get { return ServerVersion >= new Version(9, 0, 0); }
+        }
+
         /// <summary>
         /// Report whether the current connection can support prepare functionality.
         /// </summary>
@@ -751,6 +756,24 @@ namespace Npgsql
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
                 commandSearchPath.ExecuteBlind();
             }
+            
+            if (!string.IsNullOrEmpty(settings.ApplicationName))
+             {
+                 if (!SupportsApplicationName)
+                 {
+                     //TODO
+                     //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
+                     throw new InvalidOperationException("ApplicationName not supported.");
+                 }
+ 
+                 if (settings.ApplicationName.Contains(";"))
+                 {
+                     throw new InvalidOperationException();
+                 }
+ 
+                 NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
+                 commandApplicationName.ExecuteBlind();
+             }
 
             /*
              * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made

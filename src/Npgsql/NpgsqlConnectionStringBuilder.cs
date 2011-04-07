@@ -125,6 +125,8 @@ namespace Npgsql
             defaults.Add(Keywords.IntegratedSecurity, false);
             
             defaults.Add(Keywords.Compatible, THIS_VERSION);
+            
+            defaults.Add(Keywords.ApplicationName, string.Empty);
 		}
 
 
@@ -588,6 +590,16 @@ namespace Npgsql
             }
         }
 
+
+        private string _application_name;
+
+        public string ApplicationName
+        {
+            get { return _application_name; }
+
+            set { SetValue(GetKeyName(Keywords.ApplicationName), value); }
+        }
+
 		#endregion
 
 		private static Keywords GetKey(string key)
@@ -697,6 +709,10 @@ namespace Npgsql
                     return Keywords.IntegratedSecurity;
                 case "COMPATIBLE":
                     return Keywords.Compatible;
+
+                case "APPLICATIONNAME":
+                    return Keywords.ApplicationName;
+
 				default:
 
 					throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
@@ -991,6 +1007,10 @@ namespace Npgsql
                             throw new ArgumentException("Attempt to set compatibility with version " + value + " when using version " + THIS_VERSION);
                         _compatible = ver;
                         break;
+
+                    case Keywords.ApplicationName:
+                        this._application_name = Convert.ToString(value);
+                        break;
 				}
 			}
 
@@ -1114,7 +1134,9 @@ namespace Npgsql
 
 		UseExtendedTypes,
         IntegratedSecurity,
-        Compatible
+        Compatible,
+
+        ApplicationName
 	}
 
 
