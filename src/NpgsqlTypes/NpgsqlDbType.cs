@@ -59,7 +59,7 @@ namespace NpgsqlTypes
 		Timestamp,
 		Varchar,
 		Refcursor,
-		Inet,
+        Inet,
 		Bit,
 		TimestampTZ,
 		Uuid,
@@ -68,6 +68,7 @@ namespace NpgsqlTypes
 		Interval,
 		TimeTZ,
         Name,
-        Abstime
+        Abstime,
+        MacAddr
 	}
 }

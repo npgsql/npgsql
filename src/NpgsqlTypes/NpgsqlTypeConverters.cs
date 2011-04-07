@@ -507,6 +507,14 @@ namespace NpgsqlTypes
 		{
 			return new NpgsqlInet(BackendData);
 		}
+
+        /// <summary>
+        /// MAC Address.
+        /// </summary>
+        internal static Object ToMacAddress(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            return new NpgsqlMacAddress(BackendData);
+        }
 		
         internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
@@ -645,7 +653,19 @@ namespace NpgsqlTypes
 
 			return String.Format("({0})", B);
 		}
-
+  
+        /// <summary>
+        /// Convert to a postgres MAC Address.
+        /// </summary>
+        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
+        {
+            if (NativeData is NpgsqlMacAddress)
+            {
+                return ((NpgsqlMacAddress)NativeData).ToString();
+            }
+            return NativeData.ToString();
+        }
+        
 		/// <summary>
 		/// Circle.
 		/// </summary>

@@ -608,5 +608,17 @@ namespace NpgsqlTests
             Assert.AreEqual(1, timetz.LocalTime.Milliseconds);
 
         }
+        
+        [Test]
+        public void NpgsqlMacAddress()
+        {
+            System.Net.NetworkInformation.PhysicalAddress local = System.Net.NetworkInformation.PhysicalAddress.Parse("012345ABCDEF");
+            NpgsqlMacAddress mac = new NpgsqlMacAddress(local);
+
+            NpgsqlMacAddress mac2 = new NpgsqlMacAddress("01:23-45-aB,cD.eF");
+
+            Assert.AreEqual(mac, mac2);
+            Assert.AreEqual(mac.ToString(), mac2.ToString());
+        }
 	}
 }

@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Resources;
 using System.Text;
@@ -426,6 +427,12 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddTypeAlias("inet", typeof (IPAddress));
 			nativeTypeMapping.AddTypeAlias("inet", typeof (NpgsqlInet));
 
+            nativeTypeMapping.AddType("macaddr", NpgsqlDbType.MacAddr, DbType.Object, true,
+                                      new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToMacAddress));
+
+            nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
+            nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
+
 			nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true, null);
 			nativeTypeMapping.AddTypeAlias("uuid", typeof (Guid));
 
@@ -493,6 +500,12 @@ namespace NpgsqlTypes
                                           typeof(IPAddress),
                                           ipaddress => (IPAddress)(NpgsqlInet)ipaddress, 
                                           npgsqlinet => (npgsqlinet is IPAddress ? (NpgsqlInet)(IPAddress) npgsqlinet : npgsqlinet));
+            yield return
+                new NpgsqlBackendTypeInfo(0, "macaddr", NpgsqlDbType.MacAddr, DbType.Object, typeof(NpgsqlMacAddress),
+                                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToMacAddress),
+                                          typeof(PhysicalAddress),
+                                          macAddress => (PhysicalAddress)(NpgsqlMacAddress)macAddress,
+                                          npgsqlmacaddr => (npgsqlmacaddr is PhysicalAddress ? (NpgsqlMacAddress)(PhysicalAddress)npgsqlmacaddr : npgsqlmacaddr));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof (Decimal),
