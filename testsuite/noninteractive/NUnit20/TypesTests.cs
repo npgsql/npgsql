@@ -28,6 +28,7 @@ using System.Data;
 
 using NpgsqlTypes;
 using NUnit.Framework;
+using Npgsql;
 
 namespace NpgsqlTests
 {
@@ -620,5 +621,21 @@ namespace NpgsqlTests
             Assert.AreEqual(mac, mac2);
             Assert.AreEqual(mac.ToString(), mac2.ToString());
         }
+        
+        [Test]
+        public void Bug1011018()
+        {
+            
+            NpgsqlParameter p = new NpgsqlParameter();
+            p.NpgsqlDbType = NpgsqlDbType.Time;
+            p.Value = DateTime.Now;
+            
+            Object o = p.Value;
+            
+            
+            
+        }
+        
+        
 	}
 }
