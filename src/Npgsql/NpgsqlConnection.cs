@@ -966,8 +966,9 @@ namespace Npgsql
 				case "DataSourceInformation":
 					return NpgsqlSchema.GetDataSourceInformation();
 				case "DataTypes":
-				case "ReservedWords":
-					throw new NotSupportedException();
+                    throw new NotSupportedException();
+                case "ReservedWords":
+			        return NpgsqlSchema.GetReservedWords();
 				// custom collections for npgsql
 				case "Databases":
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetDatabases(restrictions);

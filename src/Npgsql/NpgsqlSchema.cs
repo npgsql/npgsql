@@ -25,6 +25,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
+using System;
 using System.Data;
 using System.IO;
 using System.Reflection;
@@ -370,5 +371,118 @@ where
 			}
 			return ds.Tables["DataSourceInformation"].Copy();
 		}
+
+	    public static DataTable GetReservedWords()
+	    {
+	        DataTable table = new DataTable("ReservedWords");
+	        table.Columns.Add("ReservedWord", typeof (string));
+            // List of keywords taken from PostgreSQL 9.0 reserved words documentation.
+	        string[] keywords = new[]
+	        {
+                "ALL",
+                "ANALYSE",
+                "ANALYZE",
+                "AND",
+                "ANY",
+                "ARRAY",
+                "AS",
+                "ASC",
+                "ASYMMETRIC",
+                "AUTHORIZATION",
+                "BINARY",
+                "BOTH",
+                "CASE",
+                "CAST",
+                "CHECK",
+                "COLLATE",
+                "COLUMN",
+                "CONCURRENTLY",
+                "CONSTRAINT",
+                "CREATE",
+                "CROSS",
+                "CURRENT_CATALOG",
+                "CURRENT_DATE",
+                "CURRENT_ROLE",
+                "CURRENT_SCHEMA",
+                "CURRENT_TIME",
+                "CURRENT_TIMESTAMP",
+                "CURRENT_USER",
+                "DEFAULT",
+                "DEFERRABLE",
+                "DESC",
+                "DISTINCT",
+                "DO",
+                "ELSE",
+                "END",
+                "EXCEPT",
+                "FALSE",
+                "FETCH",
+                "FOR",
+                "FOREIGN",
+                "FREEZE",
+                "FROM",
+                "FULL",
+                "GRANT",
+                "GROUP",
+                "HAVING",
+                "ILIKE",
+                "IN",
+                "INITIALLY",
+                "INNER",
+                "INTERSECT",
+                "INTO",
+                "IS",
+                "ISNULL",
+                "JOIN",
+                "LEADING",
+                "LEFT",
+                "LIKE",
+                "LIMIT",
+                "LOCALTIME",
+                "LOCALTIMESTAMP",
+                "NATURAL",
+                "NOT",
+                "NOTNULL",
+                "NULL",
+                "OFFSET",
+                "ON",
+                "ONLY",
+                "OR",
+                "ORDER",
+                "OUTER",
+                "OVER",
+                "OVERLAPS",
+                "PLACING",
+                "PRIMARY",
+                "REFERENCES",
+                "RETURNING",
+                "RIGHT",
+                "SELECT",
+                "SESSION_USER",
+                "SIMILAR",
+                "SOME",
+                "SYMMETRIC",
+                "TABLE",
+                "THEN",
+                "TO",
+                "TRAILING",
+                "TRUE",
+                "UNION",
+                "UNIQUE",
+                "USER",
+                "USING",
+                "VARIADIC",
+                "VERBOSE",
+                "WHEN",
+                "WHERE",
+                "WINDOW",
+                "WITH"
+            };
+            foreach (string keyword in keywords)
+            {
+                table.Rows.Add(keyword);
+            }
+	        return table;
+	    }
 	}
 }
