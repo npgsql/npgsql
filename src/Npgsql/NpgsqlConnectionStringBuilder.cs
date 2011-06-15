@@ -408,13 +408,18 @@ namespace Npgsql
 		private byte[] _password;
 
 
-		public byte[] Password
+		public byte[] PasswordAsByteArray
 
 		{
 			get { return _password; }
 
-			set { SetValue(GetKeyName(Keywords.Password), value); }
+			set { _password = value; }
 		}
+
+        public string Password
+        {
+            set { SetValue(GetKeyName(Keywords.Password), value); }
+        }
 
 		private bool _ssl;
 

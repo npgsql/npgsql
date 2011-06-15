@@ -761,7 +761,7 @@ namespace Npgsql
 		/// </summary>
 		internal byte[] Password
 		{
-			get { return settings.Password; }
+			get { return settings.PasswordAsByteArray; }
 		}
 
 		/// <summary>
