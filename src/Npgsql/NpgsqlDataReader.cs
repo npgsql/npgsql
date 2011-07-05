@@ -332,6 +332,16 @@ namespace Npgsql
 		{
 			return (Decimal) GetValue(i);
 		}
+        
+        /// <summary>
+        /// Gets the value of a column as TimeSpan.
+        /// </summary>
+        public TimeSpan GetTimeSpan(Int32 i)
+        {
+            return (TimeSpan) GetValue(i);
+        }
+        
+        
 
 		/// <summary>
 		/// Gets a value indicating the depth of nesting for the current row.  Always returns zero.

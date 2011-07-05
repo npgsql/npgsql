@@ -1075,6 +1075,25 @@ namespace NpgsqlTests
                 Assert.AreEqual(1, dr.GetValue(0));
             }
         }
+        
+        
+        [Test]
+        public void IntervalAsTimeSpan()
+        {
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
+            command.Connection = TheConnection;
+            
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                Assert.IsTrue(dr.HasRows);
+                Assert.IsTrue(dr.Read());
+                TimeSpan ts = dr.GetTimeSpan(0);
+            }
+        }
+
+        
     }
     [TestFixture]
     public class DataReaderTestsV2 : DataReaderTests
