@@ -984,6 +984,8 @@ namespace Npgsql
                     return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexes(restrictions);
                 case "IndexColumns":
                     return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexColumns(restrictions);
+                case "ForeignKeys":
+                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetForeignKeys(restrictions);
 				default:
 					throw new NotSupportedException();
 			}
