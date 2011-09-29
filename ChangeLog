@@ -1,3 +1,80 @@
+2011-09-29	jbcooley
+	* src/Npgsql/AssemblyInfo.cs 1.32:
+	* src/policy.2.0.Npgsql.config 1.10:
+		Updated for build 2.0.11.92
+
+2011-09-25	jbcooley
+	* testsuite/noninteractive/NUnit20/App.config 1.4:
+	* testsuite/noninteractive/NUnit20/NpgsqlTests2010.csproj 1.3:
+	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.ObjectLayer.cs 1.1:
+	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.Views.cs 1.1:
+	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.csdl 1.1:
+	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.msl 1.1:
+	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.ssdl 1.1:
+		Added XmlTest entity model
+
+2011-07-11	fxjr
+	* src/Npgsql/NpgsqlConnection.cs 1.34:
+	* src/Npgsql/NpgsqlSchema.cs 1.8:
+		
+		Added patch from Patrick Earl. Thanks, Patrick! http://pgfoundry.org/forum/message.php?msg_id=1014749
+		
+		This was implemented to support more of the NHibernate test suite. Here is what it does and does not do:
+		
+		1. It adds support for the "ForeignKeys" collection that uses almost the same format that SqlConnection Server does. The only difference is the deferrable bool columns are actually bools instead of strings.
+		
+		2. It fixes the restrictions for index and index column schema retrieval.
+		
+		3. It does not change the index column code to provide the capability of getting the foreign key columns (assuming it doesn't do it already). I didn't have a failing test depending on this, so I didn't check or implement anything here.
+		
+		http://patearl.net/files/Npgsql2.patch
+
+2011-07-05	fxjr
+	* src/Npgsql/NpgsqlDataReader.cs 1.24:
+	* testsuite/noninteractive/NUnit20/DataReaderTests.cs 1.15:
+		
+		[#1011044]. Fixed missing NpgsqlDataReader.GetTimeSpan() method.
+		Added unit test case to cover this method.
+
+2011-06-15	fxjr
+	* src/Npgsql/NpgsqlConnection.cs 1.33:
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.16:
+	* src/Npgsql/NpgsqlConnector.cs 1.35:
+		
+		Fixed problem with last update about Password as byte[]. Reverted type of Password property of NpgsqlConnectionStringBuilder to String again. It was changed from String to byte[] which was causing problems with previous client code. There is a new property called PasswordAsByteArray for those willing to use the byte[] property. Thanks Dan Shoubridge for heads up.
+
+2011-04-27	fxjr
+	* src/Npgsql/NpgsqlConnection.cs 1.32:
+	* src/Npgsql/NpgsqlSchema.cs 1.7:
+		
+		New: [#1011021] Support DbMetaDataCollectionNames.ReservedWords. Thanks Patrick Earl for patch.
+
+2011-04-25	fxjr
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.39:
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.11:
+		
+		[ npgsql-Bugs-1011018 ] Invalid Cast with DbType.Time Parameter. Thanks Patrick Earl for patch.
+		Also added test case to reproduce the problem.
+
+2011-04-07	fxjr
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.15:
+	* src/Npgsql/NpgsqlConnector.cs 1.34:
+		
+		[#1010977] Add application_name support to connection string. Thanks Chris Coleman for patch.
+
+	* src/NpgsqlTypes/NpgsqlDbType.cs 1.16:
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.22:
+	* src/NpgsqlTypes/NpgsqlTypes.cs 1.15:
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.38:
+	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.10:
+		
+		[#1011008] Add PhysicalAddress (MAC Address) support to Npgsql. Thanks Gildas for patche and test case.
+
+2011-04-05	fxjr
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.21:
+		
+		[npgsql-Patches-1011012 ] Australian Date and Time Formats. Thanks Hans Peter for patch.
+
 2011-03-25	jbcooley
 	* src/Npgsql/NpgsqlConnectorPool.cs 1.17:
 		Changed from HashSet to Dictionary so we can build a .NET 2.0 
