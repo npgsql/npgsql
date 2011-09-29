@@ -1,5 +1,40 @@
 
 
+2011-09-28 
+
+    Npgsql 2.0.11.92 (beta2)
+    
+    
+    Fixed bugs:
+    
+        [#1011008] Add PhysicalAddress (MAC Address) support to Npgsql. Thanks Gildas for patche and test case.    
+        
+        [#1010977] Add application_name support to connection string. Thanks Chris Coleman for patch.
+        
+        [ npgsql-Bugs-1011018 ] Invalid Cast with DbType.Time Parameter. Thanks Patrick Earl for patch.  
+        Also added test case to reproduce the problem.
+        
+        [#1011021] Support DbMetaDataCollectionNames.ReservedWords. Thanks Patrick Earl for patch.
+        
+        Fixed problem with last update about Password as byte[]. Reverted type of Password property of 
+        NpgsqlConnectionStringBuilder to String again. It was changed from String to byte[] which was
+        causing problems with previous client code. There is a new
+        property called PasswordAsByteArray for those willing to use the
+        byte[] property. Thanks Dan Shoubridge for heads up.
+
+        [#1011044]. Fixed missing NpgsqlDataReader.GetTimeSpan() method.
+        Added unit test case to cover this method.
+
+        Added patch from Patrick Earl. Thanks, Patrick!
+        http://pgfoundry.org/forum/message.php?msg_id=1014749
+        This was implemented to support more of the NHibernate test suite.
+
+        src/NpgsqlTypes/NpgsqlTypeConverters.cs:
+        [npgsql-Patches-1011012 ] Australian Date and Time Formats. Thanks Hans Peter for patch
+
+        Fixes to VS.Net project properties. Thanks Philippe Le Grand for heads up.
+      
+
 2011-03-24
 
     Npgsql 2.0.11.91 (beta1)
