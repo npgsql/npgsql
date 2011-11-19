@@ -2879,8 +2879,8 @@ NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", connection);
 connection.Open();*/
 
 	
-	    Assert.AreEqual (TheConnectionString + "CommandTimeout=180", TheConnectionString + "aaa");
-            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
+			
+	        using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
             {
                 
                 
@@ -2901,7 +2901,7 @@ connection.Open();*/
             
             using(NpgsqlCommand cmd = new NpgsqlCommand("select a, max(b) from (select :param as a, 1 as b) x group by a", TheConnection))
             {
-                cmd.Parameters.Add("param", param);
+                cmd.Parameters.AddWithValue("param", param);
                 cmd.Parameters[0].DbType = DbType.Int32;
                 
                 using(IDataReader rdr = cmd.ExecuteReader(CommandBehavior.SingleRow))
