@@ -1,9 +1,8 @@
 // CommandTests.cs created with MonoDevelop
-// User: fxjr at 11:40 PM 4/9/2008
+// User: fxjr at 11:40 PM 4/9/2008
 //
 // To change standard headers go to Edit->Preferences->Coding->Standard Headers
 //
-
 // created on 30/11/2002 at 22:35
 //
 // Author:
