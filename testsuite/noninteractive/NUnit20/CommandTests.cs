@@ -1399,20 +1399,20 @@ namespace NpgsqlTests
         }
   
         [Test]
-        public void DoubleValueSupport()
+        public void Bug1010992DoubleValueSupport()
         {
             NpgsqlCommand command = new NpgsqlCommand("select :field_float8", TheConnection);
             command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
-   
-            double value = 0.1234567890123458D;
+
+            double x = 1d / 7d;
+            //double value = 0.12345678901234561D;
             
-            command.Parameters[0].Value = value;
-            
+            command.Parameters[0].Value = x;
             
             Object valueReturned = command.ExecuteScalar();
 
             
-            Assert.AreEqual(value, valueReturned);
+            Assert.AreEqual(x, valueReturned);
         }
         
         [Test]
@@ -2879,10 +2879,13 @@ CommandTimeout=180");
 NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", connection);
 connection.Open();*/
 
+	
+	    Assert.AreEqual (TheConnectionString + "CommandTimeout=180", TheConnectionString + "aaa");
             using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
             {
                 
-                NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", conn);
+                
+		NpgsqlCommand command = new NpgsqlCommand("\"Foo\"", conn);
                 conn.Open();
                 
                 Assert.AreEqual(180, command.CommandTimeout);
@@ -3720,6 +3723,7 @@ connection.Open();*/
                 Assert.IsNotNull(da.SelectCommand);
     
                 Assert.IsNotNull(cmdBuilder.DataAdapter);
+                
                 
                 NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
     

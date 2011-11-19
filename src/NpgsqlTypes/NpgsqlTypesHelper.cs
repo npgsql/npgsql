@@ -345,12 +345,13 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("int8", typeof (Int64));
 
-			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, BasicNativeToBackendTypeConverter.ToBasicType<float>);
+			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
 
 			nativeTypeMapping.AddTypeAlias("float4", typeof (Single));
 
-			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, BasicNativeToBackendTypeConverter.ToBasicType<double>);
-
+			//nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, BasicNativeToBackendTypeConverter.ToBasicType<double>);
+			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
+			
 			nativeTypeMapping.AddTypeAlias("float8", typeof (Double));
 
 			nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true, BasicNativeToBackendTypeConverter.ToBasicType<decimal>);

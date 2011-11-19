@@ -342,6 +342,20 @@ namespace NpgsqlTypes
 		    //to happen.
 			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
 		}
+		
+		
+		/// <summary>
+		/// Convert to a postgres double with maximum precision.
+		/// </summary>
+        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
+		{
+		    //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
+		    //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
+		    //to happen.
+			return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
+		}
+		
+		
 
 
         internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean ForExtendedQuery)
