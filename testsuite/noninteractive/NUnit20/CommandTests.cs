@@ -3709,7 +3709,7 @@ connection.Open();*/
             {
                 conn.Open();
     
-                NpgsqlCommand command = new NpgsqlCommand("", conn);
+                NpgsqlCommand command = new NpgsqlCommand("select * from tableB", conn);
     
                 Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
     
@@ -3726,7 +3726,7 @@ connection.Open();*/
                 
                 NpgsqlCommand updateCommand = cmdBuilder.GetUpdateCommand();
     
-                Assert.AreEqual(UpdateRowSource.None, command.UpdatedRowSource);
+                Assert.AreEqual(UpdateRowSource.None, updateCommand.UpdatedRowSource);
     
             }
 
