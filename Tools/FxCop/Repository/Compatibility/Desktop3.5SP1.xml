@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CompatibilityEntry Name=".NET Framework 3.5 Service Pack 1"
+                    Platform="Desktop" 
+                    Version="3.5.1" 
+                    Priority="3510">
+
+  <Assembly>Microsoft.Data.Entity.Build.Tasks, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>Sentinel.v3.5Client, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>System.ComponentModel.DataAnnotations, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Data.Entity.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.Entity, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.Services.Client, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.Services.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.Services, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Web.Abstractions, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Web.DynamicData.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Web.DynamicData, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Web.Entity.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Web.Entity, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Web.Routing, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffYear(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffYear(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMonth(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMonth(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffDay(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffDay(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffHour(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffHour(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMinute(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMinute(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffSecond(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffSecond(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMillisecond(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMillisecond(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMicrosecond(System.DateTime,System.DateTime)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMicrosecond(System.Nullable`1&lt;System.DateTime&gt;,System.Nullable`1&lt;System.DateTime&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMicrosecond(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffMicrosecond(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffNanosecond(System.DateTime,System.DateTime)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffNanosecond(System.Nullable`1&lt;System.DateTime&gt;,System.Nullable`1&lt;System.DateTime&gt;)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffNanosecond(System.DateTimeOffset,System.DateTimeOffset)</Member>
+  <Member>System.Data.Linq.SqlClient.SqlMethods.#DateDiffNanosecond(System.Nullable`1&lt;System.DateTimeOffset&gt;,System.Nullable`1&lt;System.DateTimeOffset&gt;)</Member>
+  <Type>System.Data.Linq.SqlClient.Sql2008Provider</Type>
+  <Member>System.ServiceModel.Description.WebHttpBehavior.#ValidateBinding(System.ServiceModel.Description.ServiceEndpoint)</Member>
+  <Type>System.ServiceModel.Syndication.ServiceDocument</Type>
+  <Type>System.ServiceModel.Syndication.Workspace</Type>
+  <Type>System.ServiceModel.Syndication.ResourceCollectionInfo</Type>
+  <Type>System.ServiceModel.Syndication.CategoriesDocument</Type>
+  <Type>System.ServiceModel.Syndication.InlineCategoriesDocument</Type>
+  <Type>System.ServiceModel.Syndication.ReferencedCategoriesDocument</Type>
+  <Type>System.ServiceModel.Syndication.ServiceDocumentFormatter</Type>
+  <Type>System.ServiceModel.Syndication.AtomPub10ServiceDocumentFormatter</Type>
+  <Type>System.ServiceModel.Syndication.AtomPub10ServiceDocumentFormatter`1</Type>
+  <Type>System.ServiceModel.Syndication.CategoriesDocumentFormatter</Type>
+  <Type>System.ServiceModel.Syndication.AtomPub10CategoriesDocumentFormatter</Type>
+  <Member>System.UriTemplate.#.ctor(System.String,System.Boolean)</Member>
+  <Member>System.UriTemplate.#.ctor(System.String,System.Collections.Generic.IDictionary`2&lt;System.String,System.String&gt;)</Member>
+  <Member>System.UriTemplate.#.ctor(System.String,System.Boolean,System.Collections.Generic.IDictionary`2&lt;System.String,System.String&gt;)</Member>
+  <Member>System.UriTemplate.#get_Defaults()</Member>
+  <Member>System.UriTemplate.#get_IgnoreTrailingSlash()</Member>
+  <Member>System.UriTemplate.#BindByName(System.Uri,System.Collections.Generic.IDictionary`2&lt;System.String,System.String&gt;)</Member>
+  <Member>System.UriTemplate.#BindByName(System.Uri,System.Collections.Generic.IDictionary`2&lt;System.String,System.String&gt;,System.Boolean)</Member>
+  <Member>System.UriTemplate.#BindByName(System.Uri,System.Collections.Specialized.NameValueCollection,System.Boolean)</Member>
+  <Member>System.Web.ClientServices.ClientFormsIdentity.#Dispose(System.Boolean)</Member>
+  <Type>System.Web.DynamicData.IDynamicDataSource</Type>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#get_EnableObjectTracking()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#set_EnableObjectTracking(System.Boolean)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#CreateView()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.get_ContextType()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.set_ContextType(System.Type)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.get_EntitySetName()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.set_EntitySetName(System.String)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.add_Exception(System.EventHandler`1&lt;System.Web.DynamicData.DynamicValidatorEventArgs&gt;)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSource.#System.Web.DynamicData.IDynamicDataSource.remove_Exception(System.EventHandler`1&lt;System.Web.DynamicData.DynamicValidatorEventArgs&gt;)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceContextEventArgs.#.ctor(System.Web.UI.DataSourceOperation)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceContextEventArgs.#get_Operation()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceStatusEventArgs.#.ctor(System.Object,System.Int32)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceStatusEventArgs.#get_TotalRowCount()</Member>
+  <Type>System.Web.DynamicData.IDynamicValidatorException</Type>
+  <Member>System.Web.UI.WebControls.LinqDataSourceView.#get_EnableObjectTracking()</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceView.#set_EnableObjectTracking(System.Boolean)</Member>
+  <Member>System.Web.UI.WebControls.LinqDataSourceView.#OnException(System.Web.DynamicData.DynamicValidatorEventArgs)</Member>
+  <Member>System.Web.UI.WebControls.ListView.#get_EnableModelValidation()</Member>
+  <Member>System.Web.UI.WebControls.ListView.#set_EnableModelValidation(System.Boolean)</Member>
+  <Member>System.Web.UI.WebControls.ListView.#get_SelectedPersistedDataKey()</Member>
+  <Member>System.Web.UI.WebControls.ListView.#set_SelectedPersistedDataKey(System.Web.UI.WebControls.DataKey)</Member>
+  <Member>System.Web.UI.WebControls.ListView.#System.Web.UI.WebControls.IPersistedSelector.get_DataKey()</Member>
+  <Member>System.Web.UI.WebControls.ListView.#System.Web.UI.WebControls.IPersistedSelector.set_DataKey(System.Web.UI.WebControls.DataKey)</Member>
+  <Type>System.Web.DynamicData.DynamicDataSourceOperation</Type>
+  <Type>System.Web.DynamicData.DynamicValidatorEventArgs</Type>
+  <Type>System.Web.UI.ScriptReferenceBase</Type>
+  <Type>System.Web.UI.CompositeScriptReference</Type>
+  <Type>System.Web.UI.CompositeScriptReferenceEventArgs</Type>
+  <Type>System.Web.UI.HistoryEventArgs</Type>
+  <Member>System.Web.UI.ScriptManager.#get_ClientNavigateHandler()</Member>
+  <Member>System.Web.UI.ScriptManager.#set_ClientNavigateHandler(System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#get_CompositeScript()</Member>
+  <Member>System.Web.UI.ScriptManager.#get_EmptyPageUrl()</Member>
+  <Member>System.Web.UI.ScriptManager.#set_EmptyPageUrl(System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#get_EnableHistory()</Member>
+  <Member>System.Web.UI.ScriptManager.#set_EnableHistory(System.Boolean)</Member>
+  <Member>System.Web.UI.ScriptManager.#get_EnableSecureHistoryState()</Member>
+  <Member>System.Web.UI.ScriptManager.#set_EnableSecureHistoryState(System.Boolean)</Member>
+  <Member>System.Web.UI.ScriptManager.#get_IsNavigating()</Member>
+  <Member>System.Web.UI.ScriptManager.#add_Navigate(System.EventHandler`1&lt;System.Web.UI.HistoryEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManager.#remove_Navigate(System.EventHandler`1&lt;System.Web.UI.HistoryEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManager.#add_ResolveCompositeScriptReference(System.EventHandler`1&lt;System.Web.UI.CompositeScriptReferenceEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManager.#remove_ResolveCompositeScriptReference(System.EventHandler`1&lt;System.Web.UI.CompositeScriptReferenceEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManager.#AddHistoryPoint(System.String,System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#AddHistoryPoint(System.String,System.String,System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#AddHistoryPoint(System.Collections.Specialized.NameValueCollection,System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#GetStateString()</Member>
+  <Member>System.Web.UI.ScriptManager.#OnResolveCompositeScriptReference(System.Web.UI.CompositeScriptReferenceEventArgs)</Member>
+  <Member>System.Web.UI.ScriptManager.#RaisePostBackEvent(System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#System.Web.UI.IPostBackEventHandler.RaisePostBackEvent(System.String)</Member>
+  <Member>System.Web.UI.ScriptManager.#System.Web.UI.IClientUrlResolver.get_AppRelativeTemplateSourceDirectory()</Member>
+  <Member>System.Web.UI.ScriptManagerProxy.#get_CompositeScript()</Member>
+  <Member>System.Web.UI.ScriptManagerProxy.#add_Navigate(System.EventHandler`1&lt;System.Web.UI.HistoryEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManagerProxy.#remove_Navigate(System.EventHandler`1&lt;System.Web.UI.HistoryEventArgs&gt;)</Member>
+  <Member>System.Web.UI.ScriptManagerProxy.#System.Web.UI.IClientUrlResolver.get_AppRelativeTemplateSourceDirectory()</Member>
+  <Member>System.Web.UI.ScriptReference.#GetUrl(System.Web.UI.ScriptManager,System.Boolean)</Member>
+  <Member>System.Web.UI.ScriptReference.#IsFromSystemWebExtensions()</Member>
+  <Member>System.Web.UI.UpdateProgress.#get_Controls()</Member>
+  <Member>System.Web.UI.UpdateProgress.#CreateChildControls()</Member>
+  <Member>System.Web.UI.UpdateProgress.#DataBind()</Member>
+  <Type>System.Windows.Threading.DispatcherExtensions</Type>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#get_TargetFrameworkSubsets()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#set_TargetFrameworkSubsets(System.String[])</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#get_InstalledAssemblySubsetTables()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#set_InstalledAssemblySubsetTables(Microsoft.Build.Framework.ITaskItem[])</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#get_IgnoreDefaultInstalledAssemblySubsetTables()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#set_IgnoreDefaultInstalledAssemblySubsetTables(System.Boolean)</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#get_FullTargetFrameworkSubsetNames()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveAssemblyReference.#set_FullTargetFrameworkSubsetNames(System.String[])</Member>
+  <Member>Microsoft.Build.Tasks.GenerateManifestBase.#get_TargetFrameworkVersion()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateManifestBase.#set_TargetFrameworkVersion(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateManifestBase.#ConvertFrameworkVersionToString(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateManifestBase.#CompareFrameworkVersions(System.String,System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#get_ErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#set_ErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#get_FileAssociations()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#set_FileAssociations(Microsoft.Build.Framework.ITaskItem[])</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#get_RequiresMinimumFramework35SP1()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#set_RequiresMinimumFramework35SP1(System.Boolean)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#get_SuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#set_SuiteName(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#get_TargetFrameworkSubset()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateApplicationManifest.#set_TargetFrameworkSubset(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#get_CreateDesktopShortcut()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#set_CreateDesktopShortcut(System.Boolean)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#get_ErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#set_ErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#get_SuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.GenerateDeploymentManifest.#set_SuiteName(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_ErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#set_ErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_FileAssociations()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_SuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#set_SuiteName(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_XmlErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#set_XmlErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_XmlFileAssociations()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#set_XmlFileAssociations(Microsoft.Build.Tasks.Deployment.ManifestUtilities.FileAssociation[])</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#get_XmlSuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.ApplicationManifest.#set_XmlSuiteName(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_CreateDesktopShortcut()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_CreateDesktopShortcut(System.Boolean)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_ErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_ErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_SuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_SuiteName(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_XmlCreateDesktopShortcut()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_XmlCreateDesktopShortcut(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_XmlErrorReportUrl()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_XmlErrorReportUrl(System.String)</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#get_XmlSuiteName()</Member>
+  <Member>Microsoft.Build.Tasks.Deployment.ManifestUtilities.DeployManifest.#set_XmlSuiteName(System.String)</Member>
+  <Type>Microsoft.Build.Tasks.Deployment.ManifestUtilities.FileAssociation</Type>
+  <Type>Microsoft.Build.Tasks.Deployment.ManifestUtilities.FileAssociationCollection</Type>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#get_DeploymentManifestEntryPoint()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#set_DeploymentManifestEntryPoint(Microsoft.Build.Framework.ITaskItem)</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#get_OutputDeploymentManifestEntryPoint()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#set_OutputDeploymentManifestEntryPoint(Microsoft.Build.Framework.ITaskItem)</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#get_OutputEntryPoint()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#set_OutputEntryPoint(Microsoft.Build.Framework.ITaskItem)</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#get_SigningManifests()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#set_SigningManifests(System.Boolean)</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#get_TargetFrameworkVersion()</Member>
+  <Member>Microsoft.Build.Tasks.ResolveManifestFiles.#set_TargetFrameworkVersion(System.String)</Member>
+  <Type>Microsoft.Build.Tasks.RequiresFramework35SP1Assembly</Type>
+</CompatibilityEntry>

@@ -1,0 +1,24 @@
+This document explains how to write noninteractive tests for Npgsql.
+
+
+
+To add a test case in the noninteractive suite, the following guidelines must be followed:
+
+ - Name your test files "test_xxx.cs" where xxx could be anything you like. 
+ - Add a file named "expected_yyy" where yyy should be equal to xxx used for the test file.
+ - Use the NpgsqlTests.getConnectionString() function to retrieve the connection string used to connect to the test database. Include the Npgsql.NpgsqlTests namespace for that.
+ - Should you need special database support for your test case, i.e. certain tables, views, functions, or data, add them in the appropriate add_zzz.sql file where zzz in <tables,views,functions,data>.
+ - Make sure you do not commit test files that have debug logging enabled and printable.
+
+That's it. Look at test_1.cs for an example.
+
+
+
+
+To run the noninteractive suite, run:
+
+$ make
+
+To clean up the mess the noninteractive suite creates, run:
+
+$ make clean

@@ -1,0 +1,17 @@
+<Combine name="NpgsqlTests" fileversion="2.0">
+  <Configurations active="Debug">
+    <Configuration name="Debug" ctype="CombineConfiguration">
+      <Entry build="True" name="NpgsqlTests" configuration="Debug" />
+    </Configuration>
+    <Configuration name="Release" ctype="CombineConfiguration">
+      <Entry build="True" name="NpgsqlTests" configuration="Release" />
+    </Configuration>
+  </Configurations>
+  <DeployTargets />
+  <StartMode startupentry="NpgsqlTests" single="True">
+    <Execute type="None" entry="NpgsqlTests" />
+  </StartMode>
+  <Entries>
+    <Entry filename="./NpgsqlTests.mdp" />
+  </Entries>
+</Combine>

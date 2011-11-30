@@ -1,0 +1,101 @@
+<html><head>
+
+<title>Npgsql: Connector Class</title>
+
+<meta http-equiv="content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="content-Style-Type" content="text/css">
+<meta http-equiv="expires" content="">
+<meta name="category" content="IT/Database/PostgreSQL/Npgsql/Docs/Internal">
+<meta name="filename" content="class-connector.htm">
+<meta name="date" content="2002-06-17">
+<meta name="author" content="Ulrich Sprick">
+<meta name="robots" content="nofollow">
+<meta name="keywords" content="IT; Database; PostgreSQL; Npgsql; Communication; Documentation; Class; Connector;">
+<meta name="description" content="This document describes the connector class">
+
+<link rel="stylesheet" href="global.css">
+<script language="JavaScript" src="global.js"></script>
+
+
+</head><body>
+
+<h1 align=center>Npgsql: Connector Class</h1><hr>
+
+<table width=100%>
+<tr>
+<td width=40% align=left>&larr; <a href="class-connpool.htm">Connector Pool </a></td>
+<td width=20% align=center><a href="index.htm">Up</a></td>
+<td width=40% align=right><a href="">???</a> &rarr;</td>
+</tr>
+</table><hr>
+
+<p> </p>
+
+<p class=pgstats>Last update: 2002-06-21 19:00:00 by usp &bull;
+Category: Internal documentation &bull;
+Intended Audience: Npgsql Developers</p>
+
+<p>This document describes the Npgsql Connector class.</p>
+
+<p>The connector class is used internally in Npgsql to provide access to the physical connection to the PostgreSQL server.  </p>
+
+<h2>Interface</h2>
+
+<h3>Properties</h3>
+<dl>
+<dt>Pooled</dt>
+<dd>Controls the pooling of the physical connection: If false, then the physical connection is closed and the associcated connector destroyed in the Release() method. If true, the pyhical connection is held open and the connector is pooled. </dd>
+
+<dt>Shared</dt>
+<dd>Indicates that the physical connector may be shared by multiple connection objects. Set in the RequestConnector() method of the connector pool manager, read in the connector's Release() method. Do not modify elsewhere!</dd>
+
+<dt>ConnectString</dt>
+<dd>The connection string is used to open a physical connection to the database server. The connector pool manager looks at the connection string to determine if a connector is suitable to be returned to the requesting connection object.</dd>
+</dl>
+
+
+<h3>Methods</h3>
+<dl>
+<dt>Release()</dt>
+<dd>Called from Connection.Close(). If the Pooled property is false, the pyhsical connection is closed and the connector object then subject to the garbage collection. If the Pooled property is true, the physical connection is held open and the connector object is inserted into the pool manager's pooled connections list, in order to subsequently get recycled. </dd>
+</dl>
+
+
+<h3>Events</h3>
+<p>There are currently no events.</p>
+
+
+
+<p><b>Note</b> Clearing the Pooled property of a shared connection has no effect (to be precice: it is rejected): As there might be a lot of connection objects spread over the whole application working with a single shared connection, it might be difficult to determine which Release() call will have the physical connection closed. In order not to introduce trouble in application programming, the described behaviour is choosen for shared connections.</p>
+
+<p><b>Note</b> Be careful using database transactions in conjunction with shared connectors: As transactions are coordinated on a connection basis, this might lead to unexpected, although correct behaviour. Some rules for working with shared connectors can be found <a href="dev-connpool-ovw.htm#sharingrules">here</a></p>
+
+
+<h2>Under the Hood</h2>
+
+<h3>Releasing a Connector</h3>
+
+<table>
+<tr style="vertical-align:top;">
+<td><img style="float=right;" src="connection-pooling-4.png">
+<p>Releasing a connection requires the following steps, described in the following sections.</p>
+<p>At first there is a distinction between shared and nonshared connections: Shared connections ignore the Pooled property setting: They are always returned to the pooled connections list for recycling.</p>
+<p>The first step is to determine if the connector is still used by other connection objects. This is done by decrementing the connector's share counter. If it is non-zero, the connection is still in use and thereby should be left alone.</p>
+<p>In the counter reaches zero, the it is safe to remove the connector from the shared connectors list and insert it in the pooled connectors list for later recycling.</p>
+<p>Non-shared connectors are treated different: Their Pooled property determines whether the connector will be returned the the pooled connectors list or if the physical connection gets closed. </p>
+<p>After this the connection pool manager does not hold any reference to the connector, so it is up to the connection object to clear it's reference to the connector, too. This will make the connector subject to the garbage collection, since the last reference to it is remove and thus the object is not reachable from the application any more.</p>
+
+</td></tr></table>
+
+
+
+
+<h3>The Code</h3>
+
+<p>Have a look <a href="javascript:popUp('../src/npgsql/NpgsqlConnector.cs')">here</a></p>
+
+
+
+
+</body>
+</html>

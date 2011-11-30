@@ -1,0 +1,355 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mapping xmlns:cs="urn:schemas-microsoft-com:windows:storage:mapping:CS" Space="C-S" xmlns="urn:schemas-microsoft-com:windows:storage:mapping:CS">
+  <cs:EntityContainerMapping StorageEntityContainer="NpgsqlSchema" CdmEntityContainer="SchemaInformation">
+    <cs:EntitySetMapping Name="Tables" StoreEntitySet="PgTables" TypeName="Store.Table">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="CatalogName" ColumnName="catalog_name"/>
+      <cs:ScalarProperty Name="SchemaName" ColumnName="schema_name"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="TableColumns" StoreEntitySet="PgTableColumns" TypeName="Store.Column">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+      <cs:ScalarProperty Name="IsNullable" ColumnName="is_nullable"/>
+      <cs:ComplexProperty Name="ColumnType">
+        <cs:ScalarProperty Name="TypeName" ColumnName="type_name"/>
+        <cs:ScalarProperty Name="MaxLength" ColumnName="max_length"/>
+        <cs:ScalarProperty Name="Precision" ColumnName="precision"/>
+        <cs:ScalarProperty Name="DateTimePrecision" ColumnName="datetime_precision"/>
+        <cs:ScalarProperty Name="Scale" ColumnName="scale"/>
+        <cs:ComplexProperty Name="Collation">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="collation_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="collation_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="collation_name"/>
+        </cs:ComplexProperty>
+        <cs:ComplexProperty Name="CharacterSet">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="char_set_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="char_set_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="char_set_name"/>
+        </cs:ComplexProperty>
+        <cs:ScalarProperty Name="IsMultiSet" ColumnName="is_multiset"/>
+      </cs:ComplexProperty>
+      <cs:ScalarProperty Name="IsIdentity" ColumnName="is_identity"/>
+      <cs:ScalarProperty Name="IsStoreGenerated" ColumnName="is_generated"/>
+      <cs:ScalarProperty Name="Default" ColumnName="default_value"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="TableConstraints">
+      <cs:EntityTypeMapping TypeName="IsTypeOf(Store.Constraint)">
+        <cs:MappingFragment StoreEntitySet="PgConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="Name" ColumnName="name"/>
+          <cs:ScalarProperty Name="IsDeferrable" ColumnName="is_deferrable"/>
+          <cs:ScalarProperty Name="IsInitiallyDeferred" ColumnName="is_initially_deferred"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.CheckConstraint">
+        <cs:MappingFragment StoreEntitySet="PgConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="Expression" ColumnName="expression"/>
+          <cs:Condition ColumnName="constraint_type" Value="c"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.PrimaryKeyConstraint">
+        <cs:MappingFragment StoreEntitySet="PgConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:Condition ColumnName="constraint_type" Value="p"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.UniqueConstraint">
+        <cs:MappingFragment StoreEntitySet="PgConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:Condition ColumnName="constraint_type" Value="u"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.ForeignKeyConstraint">
+        <cs:MappingFragment StoreEntitySet="PgConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="UpdateRule" ColumnName="update_rule"/>
+          <cs:ScalarProperty Name="DeleteRule" ColumnName="delete_rule"/>
+          <cs:Condition ColumnName="constraint_type" Value="f"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="TableForeignKeys" StoreEntitySet="PgForeignKeyColumns" TypeName="Store.ForeignKey">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+    </cs:EntitySetMapping>
+    
+    <cs:EntitySetMapping Name="Views" StoreEntitySet="PgViews" TypeName="Store.View">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ScalarProperty Name="CatalogName" ColumnName="catalog_name"/>
+      <cs:ScalarProperty Name="SchemaName" ColumnName="schema_name"/>
+      <cs:ScalarProperty Name="IsUpdatable" ColumnName="is_updatable"/>
+      <cs:ScalarProperty Name="ViewDefinition" ColumnName="definition"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="ViewColumns" StoreEntitySet="PgViewColumns" TypeName="Store.Column">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+      <cs:ScalarProperty Name="IsNullable" ColumnName="is_nullable"/>
+      <cs:ComplexProperty Name="ColumnType">
+        <cs:ScalarProperty Name="TypeName" ColumnName="type_name"/>
+        <cs:ScalarProperty Name="MaxLength" ColumnName="max_length"/>
+        <cs:ScalarProperty Name="Precision" ColumnName="precision"/>
+        <cs:ScalarProperty Name="DateTimePrecision" ColumnName="datetime_precision"/>
+        <cs:ScalarProperty Name="Scale" ColumnName="scale"/>
+        <cs:ComplexProperty Name="Collation">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="collation_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="collation_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="collation_name"/>
+        </cs:ComplexProperty>
+        <cs:ComplexProperty Name="CharacterSet">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="char_set_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="char_set_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="char_set_name"/>
+        </cs:ComplexProperty>
+        <cs:ScalarProperty Name="IsMultiSet" ColumnName="is_multiset"/>
+      </cs:ComplexProperty>
+      <cs:ScalarProperty Name="IsIdentity" ColumnName="is_identity"/>
+      <cs:ScalarProperty Name="IsStoreGenerated" ColumnName="is_generated"/>
+      <cs:ScalarProperty Name="Default" ColumnName="default_value"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="ViewConstraints">
+      <cs:EntityTypeMapping TypeName="IsTypeOf(Store.Constraint)">
+        <cs:MappingFragment StoreEntitySet="PgViewConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="Name" ColumnName="name"/>
+          <cs:ScalarProperty Name="IsDeferrable" ColumnName="is_deferrable"/>
+          <cs:ScalarProperty Name="IsInitiallyDeferred" ColumnName="is_initially_deferred"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.CheckConstraint">
+        <cs:MappingFragment StoreEntitySet="PgViewConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="Expression" ColumnName="expression"/>
+          <cs:Condition ColumnName="constraint_type" Value="c"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.PrimaryKeyConstraint">
+        <cs:MappingFragment StoreEntitySet="PgViewConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:Condition ColumnName="constraint_type" Value="p"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.UniqueConstraint">
+        <cs:MappingFragment StoreEntitySet="PgViewConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:Condition ColumnName="constraint_type" Value="u"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+      <cs:EntityTypeMapping TypeName="Store.ForeignKeyConstraint">
+        <cs:MappingFragment StoreEntitySet="PgViewConstraints">
+          <cs:ScalarProperty Name="Id" ColumnName="id"/>
+          <cs:ScalarProperty Name="UpdateRule" ColumnName="update_rule"/>
+          <cs:ScalarProperty Name="DeleteRule" ColumnName="delete_rule"/>
+          <cs:Condition ColumnName="constraint_type" Value="f"/>
+        </cs:MappingFragment>
+      </cs:EntityTypeMapping>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="ViewForeignKeys" StoreEntitySet="PgViewForeignKeys" TypeName="Store.ForeignKey">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+    </cs:EntitySetMapping>
+    
+    <cs:EntitySetMapping Name="Functions" StoreEntitySet="PgFunctions" TypeName="Store.ScalarFunction">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="CatalogName" ColumnName="catalog_name"/>
+      <cs:ScalarProperty Name="SchemaName" ColumnName="schema_name"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ComplexProperty Name="ReturnType">
+          <cs:ScalarProperty Name="TypeName" ColumnName="returntype"/>
+          <cs:ScalarProperty Name="MaxLength" ColumnName="max_length"/>
+          <cs:ScalarProperty Name="Precision" ColumnName="precision"/>
+          <cs:ScalarProperty Name="DateTimePrecision" ColumnName="datetime_precision"/>
+          <cs:ScalarProperty Name="Scale" ColumnName="scale"/>
+          <cs:ComplexProperty Name="Collation">
+            <cs:ScalarProperty Name="CatalogName" ColumnName="collation_catalog_name"/>
+            <cs:ScalarProperty Name="SchemaName" ColumnName="collation_schema_name"/>
+            <cs:ScalarProperty Name="Name" ColumnName="collation_name"/>
+          </cs:ComplexProperty>
+          <cs:ComplexProperty Name="CharacterSet">
+            <cs:ScalarProperty Name="CatalogName" ColumnName="char_set_catalog_name"/>
+            <cs:ScalarProperty Name="SchemaName" ColumnName="char_set_schema_name"/>
+            <cs:ScalarProperty Name="Name" ColumnName="char_set_name"/>
+          </cs:ComplexProperty>
+          <cs:ScalarProperty Name="IsMultiSet" ColumnName="is_multiset"/>
+      </cs:ComplexProperty>
+      <cs:ScalarProperty Name="IsAggregate" ColumnName="is_aggregate"/>
+      <cs:ScalarProperty Name="IsBuiltIn" ColumnName="is_builtin"/>
+      <cs:ScalarProperty Name="IsNiladic" ColumnName="is_niladic"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="Procedures" StoreEntitySet="PgProcedures" TypeName="Store.Procedure">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="CatalogName" ColumnName="catalog_name"/>
+      <cs:ScalarProperty Name="SchemaName" ColumnName="schema_name"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="FunctionParameters" StoreEntitySet="PgFunctionParameters" TypeName="Store.Parameter">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+      <cs:ComplexProperty Name="ParameterType">
+        <cs:ScalarProperty Name="TypeName" ColumnName="type_name"/>
+        <cs:ScalarProperty Name="MaxLength" ColumnName="max_length"/>
+        <cs:ScalarProperty Name="Precision" ColumnName="precision"/>
+        <cs:ScalarProperty Name="DateTimePrecision" ColumnName="datetime_precision"/>
+        <cs:ScalarProperty Name="Scale" ColumnName="scale"/>
+        <cs:ComplexProperty Name="Collation">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="collation_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="collation_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="collation_name"/>
+        </cs:ComplexProperty>
+        <cs:ComplexProperty Name="CharacterSet">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="char_set_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="char_set_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="char_set_name"/>
+        </cs:ComplexProperty>
+        <cs:ScalarProperty Name="IsMultiSet" ColumnName="is_multiset"/>
+      </cs:ComplexProperty>
+      <cs:ScalarProperty Name="Mode" ColumnName="mode"/>
+      <cs:ScalarProperty Name="Default" ColumnName="default"/>
+    </cs:EntitySetMapping>
+    <cs:EntitySetMapping Name="ProcedureParameters" StoreEntitySet="PgProcedureParameters" TypeName="Store.Parameter">
+      <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      <cs:ScalarProperty Name="Name" ColumnName="name"/>
+      <cs:ScalarProperty Name="Ordinal" ColumnName="ordinal"/>
+      <cs:ComplexProperty Name="ParameterType">
+        <cs:ScalarProperty Name="TypeName" ColumnName="type_name"/>
+        <cs:ScalarProperty Name="MaxLength" ColumnName="max_length"/>
+        <cs:ScalarProperty Name="Precision" ColumnName="precision"/>
+        <cs:ScalarProperty Name="DateTimePrecision" ColumnName="datetime_precision"/>
+        <cs:ScalarProperty Name="Scale" ColumnName="scale"/>
+        <cs:ComplexProperty Name="Collation">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="collation_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="collation_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="collation_name"/>
+        </cs:ComplexProperty>
+        <cs:ComplexProperty Name="CharacterSet">
+          <cs:ScalarProperty Name="CatalogName" ColumnName="char_set_catalog_name"/>
+          <cs:ScalarProperty Name="SchemaName" ColumnName="char_set_schema_name"/>
+          <cs:ScalarProperty Name="Name" ColumnName="char_set_name"/>
+        </cs:ComplexProperty>
+        <cs:ScalarProperty Name="IsMultiSet" ColumnName="is_multiset"/>
+      </cs:ComplexProperty>
+      <cs:ScalarProperty Name="Mode" ColumnName="mode"/>
+      <cs:ScalarProperty Name="Default" ColumnName="default"/>
+    </cs:EntitySetMapping>
+    
+    <cs:AssociationSetMapping Name="TableTableColumns" StoreEntitySet="PgTableColumns" TypeName="Store.TableOrViewColumn">
+      <cs:EndProperty Name="Parent">
+        <cs:ScalarProperty Name="Id" ColumnName="table_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="TableTableConstraints" StoreEntitySet="PgConstraints" TypeName="Store.TableOrViewConstraint">
+      <cs:EndProperty Name="Parent">
+        <cs:ScalarProperty Name="Id" ColumnName="table_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="TableConstraintColumns" StoreEntitySet="PgConstraintColumns" TypeName="Store.TableOrViewConstraintColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="column_id"/>
+      </cs:EndProperty>
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="constraint_id"/>
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="TableConstraintForeignKeys" StoreEntitySet="PgForeignKeyColumns" TypeName="Store.ConstraintForeignKey">
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="constraint_id"/>
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="FromTableForeignKeyColumns" StoreEntitySet="PgForeignKeyColumns" TypeName="Store.FromForeignKeyColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="from_columnid" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ToTableForeignKeyColumns" StoreEntitySet="PgForeignKeyColumns" TypeName="Store.ToForeignKeyColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="to_columnid" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    
+    <cs:AssociationSetMapping Name="ViewViewColumns" StoreEntitySet="PgViewColumns" TypeName="Store.TableOrViewColumn">
+      <cs:EndProperty Name="Parent">
+        <cs:ScalarProperty Name="Id" ColumnName="view_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ViewViewConstraints" StoreEntitySet="PgViewConstraints" TypeName="Store.TableOrViewConstraint">
+      <cs:EndProperty Name="Parent">
+        <cs:ScalarProperty Name="Id" ColumnName="view_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ViewConstraintColumns" StoreEntitySet="PgViewConstraintColumns" TypeName="Store.TableOrViewConstraintColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="constraint_id"/>
+      </cs:EndProperty>
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="column_id"/>
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ViewConstraintForeignKeys" StoreEntitySet="PgViewForeignKeyColumns" TypeName="Store.ConstraintForeignKey">
+      <cs:EndProperty Name="Constraint">
+        <cs:ScalarProperty Name="Id" ColumnName="constraint_id"/>
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id"/>
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="FromViewForeignKeyColumns" StoreEntitySet="PgViewForeignKeyColumns" TypeName="Store.FromForeignKeyColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="from_columnid" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ToViewForeignKeyColumns" StoreEntitySet="PgViewForeignKeyColumns" TypeName="Store.ToForeignKeyColumn">
+      <cs:EndProperty Name="Column">
+        <cs:ScalarProperty Name="Id" ColumnName="to_columnid" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="ForeignKey">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    
+    <cs:AssociationSetMapping Name="FunctionFunctionParameters" StoreEntitySet="PgFunctionParameters" TypeName="Store.RoutineParameter">
+      <cs:EndProperty Name="Routine">
+        <cs:ScalarProperty Name="Id" ColumnName="function_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Parameter">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+    <cs:AssociationSetMapping Name="ProcedureProcedureParameters" StoreEntitySet="PgProcedureParameters" TypeName="Store.RoutineParameter">
+      <cs:EndProperty Name="Routine">
+        <cs:ScalarProperty Name="Id" ColumnName="procedure_id" />
+      </cs:EndProperty>
+      <cs:EndProperty Name="Parameter">
+        <cs:ScalarProperty Name="Id" ColumnName="id" />
+      </cs:EndProperty>
+    </cs:AssociationSetMapping>
+  </cs:EntityContainerMapping>
+</Mapping>

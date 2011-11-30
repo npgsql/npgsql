@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CompatibilityEntry Name=".NET Framework 2.0"
+                    Platform="Desktop" 
+                    Version="2.0" 
+                    Priority="2000">
+  
+</CompatibilityEntry>

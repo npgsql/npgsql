@@ -1,0 +1,23 @@
+Connection completed
+<NewDataSet>
+  <Table>
+    <field_serial>1</field_serial>
+    <field_text>Random text</field_text>
+  </Table>
+  <Table>
+    <field_serial>2</field_serial>
+    <field_int4>4</field_int4>
+  </Table>
+  <Table>
+    <field_serial>3</field_serial>
+    <field_int8>8</field_int8>
+  </Table>
+  <Table>
+    <field_serial>4</field_serial>
+    <field_bool>true</field_bool>
+  </Table>
+  <Table>
+    <field_serial>5</field_serial>
+    <field_text>Text with ' single quote</field_text>
+  </Table>
+</NewDataSet>

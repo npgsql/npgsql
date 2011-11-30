@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CompatibilityEntry Name=".NET Framework 3.5"
+                    Platform="Desktop" 
+                    Version="3.5" 
+                    Priority="3500">
+
+  <Assembly>Microsoft.Build.Conversion.v3.5, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>Microsoft.Build.Engine, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>Microsoft.Build.Framework, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>Microsoft.Build.Utilities.v3.5, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>Microsoft.VisualC.STLCLR, Version=1.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>System.AddIn.Contract, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>System.AddIn, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Core, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.DataSetExtensions, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Data.Linq, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.DirectoryServices.AccountManagement, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Management.Instrumentation, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.Net, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+  <Assembly>System.ServiceModel.Web, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Web.Extensions.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Web.Extensions, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Windows.Presentation, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>System.WorkflowServices, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35</Assembly>
+  <Assembly>System.Xml.Linq, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</Assembly>
+  <Assembly>Microsoft.ServiceModel.Channels.Mail, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35</Assembly>
+  <Assembly>Microsoft.ServiceModel.Channels.Mail.ExchangeWebService, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35</Assembly>
+
+</CompatibilityEntry>

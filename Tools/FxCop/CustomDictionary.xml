@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Dictionary>
+  <Words>
+    <!-- 
+      This is a list of case-insensitive words that exist in the dictionary
+      but you do not want to be recognized by IdentifiersShouldBeSpelledCorrectly.
+      Do not add deprecated terms to this list, instead add these to the 
+      <Deprecated> section below.
+    -->
+    <Unrecognized>
+      <Word>cb</Word>
+      <Word>ch</Word>
+      <Word>csc</Word>
+      <Word>elem</Word>
+      <Word>gt</Word>
+      <Word>idx</Word>
+      <Word>img</Word>
+      <Word>lg</Word>
+      <Word>multi</Word>
+      <Word>num</Word>
+      <Word>ps</Word>
+      <Word>pw</Word>
+      <Word>scp</Word>
+      <Word>si</Word>
+      <Word>sig</Word>
+      <Word>tk</Word>
+      <Word>tw</Word>
+      <Word>val</Word>      
+    </Unrecognized>
+    <!--
+      This is a list of case-insensitive words that do not exist in the dictionary
+      but you still want to be considered as recognized by 
+      IdentifiersShouldBeSpelledCorrectly. Do not add compound words (e.g. 'FileName') 
+      to this list as this will cause CompoundWordsShouldBeBeCasedCorrectly to fire on 
+      usages of the compound word stating that they should be changed to their discrete equivalent 
+      (for example 'FileName' -> 'Filename').
+    -->
+    <Recognized>
+      <Word>accessor</Word>
+      <Word>accessors</Word>
+      <Word>acos</Word>
+      <Word>aes</Word>
+      <Word>aptca</Word>
+      <Word>arg</Word>
+      <Word>args</Word>
+      <Word>asin</Word>
+      <Word>asm</Word>
+      <Word>aspx</Word>
+      <Word>async</Word>
+      <Word>atan</Word>
+      <Word>baml</Word>
+      <Word>bcl</Word>
+      <Word>bindable</Word>
+      <Word>bitrate</Word>
+      <Word>blittable</Word>
+      <Word>blog</Word>
+      <Word>bool</Word>
+      <Word>bootstrapper</Word>
+      <Word>bootstrappers</Word>
+      <Word>browsable</Word>
+      <Word>cacheability</Word>
+      <Word>callee</Word>
+      <Word>callees</Word>
+      <Word>canonicalize</Word>
+      <Word>cdecl</Word>
+      <Word>cdo</Word>
+      <Word>chtml</Word>
+      <Word>cim</Word>
+      <Word>cloneable</Word>
+      <Word>clr</Word>
+      <Word>clr's</Word>
+      <Word>cls</Word>
+      <Word>clsid</Word>
+      <Word>clsids</Word>
+      <Word>cmd</Word>
+      <Word>cmdlet</Word>
+      <Word>cmdlets</Word>
+      <Word>comparand</Word>
+      <Word>concat</Word>
+      <Word>config</Word>
+      <Word>contravariant</Word>
+      <Word>cookieless</Word>
+      <Word>cos</Word>
+      <Word>crm</Word>
+      <Word>css</Word>
+      <Word>cyclomatic</Word>
+      <Word>debuggable</Word>
+      <Word>decommission</Word>
+      <Word>deformatter</Word>
+      <Word>delegator</Word>
+      <Word>dequeue</Word>
+      <Word>dereferenced</Word>
+      <Word>des</Word>
+      <Word>deserialization</Word>
+      <Word>deserialize</Word>
+      <Word>deserialized</Word>
+      <Word>deserializing</Word>
+      <Word>dhcp</Word>
+      <Word>discardable</Word>
+      <Word>dll</Word>
+      <Word>dns</Word>
+      <Word>documentable</Word>
+      <Word>dsig</Word>
+      <Word>dtd</Word>
+      <Word>em</Word>
+      <Word>email</Word>
+      <Word>emails</Word>
+      <Word>emf</Word>
+      <Word>encodable</Word>
+      <Word>endian</Word>
+      <Word>enqueue</Word>
+      <Word>enum</Word>
+      <Word>enums</Word>
+      <Word>expando</Word>
+      <Word>finalizer</Word>
+      <Word>finalizers</Word>
+      <Word>fixup</Word>
+      <Word>fixups</Word>
+      <Word>formattable</Word>
+      <Word>func</Word>
+      <Word>guid</Word>
+      <Word>guids</Word>
+      <Word>hashtable</Word>
+      <Word>hashtables</Word>
+      <Word>hashtable's</Word>
+      <Word>hdc</Word>
+      <Word>hijri</Word>
+      <Word>href</Word>
+      <Word>iis</Word>
+      <Word>il</Word>
+      <Word>ime</Word>
+      <Word>initializer</Word>
+      <Word>initializers</Word>
+      <Word>int</Word>
+      <Word>interop</Word>
+      <Word>intrinsics</Word>
+      <Word>ipv</Word>
+      <Word>iterator</Word>
+      <Word>iterators</Word>
+      <Word>jit</Word>
+      <Word>ldap</Word>
+      <Word>linq</Word>
+      <Word>localhost</Word>
+      <Word>loopback</Word>
+      <Word>loopbacks</Word>
+      <Word>mapper</Word>
+      <Word>mappers</Word>
+      <Word>marshaler</Word>
+      <Word>marshalers</Word>
+      <Word>mdi</Word>
+      <Word>mergable</Word>
+      <Word>misc</Word>
+      <Word>miscased</Word>
+      <Word>monitorable</Word>
+      <Word>oks</Word>
+      <Word>mscoree</Word>
+      <Word>mscorlib</Word>
+      <Word>msh</Word>
+      <Word>multiline</Word>
+      <Word>multipanel</Word>
+      <Word>multipanels</Word>
+      <Word>multiview</Word>
+      <Word>multiviews</Word>
+      <Word>mutator</Word>
+      <Word>mutators</Word>
+      <Word>mutex</Word>
+      <Word>mutexes</Word>
+      <Word>ndpsec</Word>
+      <Word>nls</Word>
+      <Word>nop</Word>
+      <Word>ntfs</Word>
+      <Word>ntlm</Word>
+      <Word>nullable</Word>
+      <Word>obj</Word>
+      <Word>odbc</Word>
+      <Word>overridable</Word>
+      <Word>pageable</Word>
+      <Word>parameterless</Word>
+      <Word>pdb</Word>
+      <Word>persistable</Word>
+      <Word>playlist</Word>
+      <Word>pragma</Word>
+      <Word>prepend</Word>
+      <Word>prog</Word>
+      <Word>ptr</Word>
+      <Word>queryable</Word>
+      <Word>ras</Word>
+      <Word>rect</Word>
+      <Word>rects</Word>
+      <Word>recurse</Word>
+      <Word>refactor</Word>
+      <Word>reg</Word>
+      <Word>regex</Word>
+      <Word>remoted</Word>
+      <Word>remoting</Word>
+      <Word>representable</Word>
+      <Word>res</Word>
+      <Word>resolver</Word>
+      <Word>resolvers</Word>
+      <Word>rethrow</Word>
+      <Word>rethrows</Word>
+      <Word>rijndael</Word>
+      <Word>rpc</Word>
+      <Word>rtc</Word>
+      <Word>rva</Word>
+      <Word>sdl</Word>
+      <Word>searchspace</Word>
+      <Word>searchspaces</Word>
+      <Word>seekable</Word>
+      <Word>seq</Word>
+      <Word>serializable</Word>
+      <Word>serializer</Word>
+      <Word>serializers</Word>
+      <Word>silverlight</Word>
+      <Word>smtp</Word>
+      <Word>specifier</Word>
+      <Word>specifiers</Word>
+      <Word>spline</Word>
+      <Word>sql</Word>
+      <Word>ssl</Word>
+      <Word>sta</Word>
+      <Word>stickies</Word>
+      <Word>struct</Word>
+      <Word>structs</Word>
+      <Word>subaddress</Word>
+      <Word>subaddresses</Word>
+      <Word>subclass</Word>
+      <Word>subclasses</Word>
+      <Word>subdirectories</Word>
+      <Word>subdirectory</Word>
+      <Word>subexpression</Word>
+      <Word>subexpressions</Word>
+      <Word>subitem</Word>
+      <Word>subitems</Word>
+      <Word>subkey</Word>
+      <Word>subkeys</Word>
+      <Word>submenu</Word>
+      <Word>submenus</Word>
+      <Word>subpath</Word>
+      <Word>subpaths</Word>
+      <Word>subsegment</Word>
+      <Word>subsegments</Word>
+      <Word>subtree</Word>
+      <Word>subtrees</Word>
+      <Word>tcp</Word>
+      <Word>templated</Word>
+      <Word>thunk</Word>
+      <Word>thunks</Word>
+      <Word>tlb</Word>
+      <Word>tuple</Word>
+      <Word>tuples</Word>
+      <Word>udp</Word>
+      <Word>udt</Word>
+      <Word>unboxing</Word>
+      <Word>uncategorize</Word>
+      <Word>unindent</Word>
+      <Word>uninitialize</Word>
+      <Word>uninitialized</Word>
+      <Word>uninstantiated</Word>
+      <Word>unmaintainable</Word>
+      <Word>unmarshal</Word>
+      <Word>unregister</Word>
+      <Word>unregistering</Word>
+      <Word>unregisters</Word>
+      <Word>unregistration</Word>
+      <Word>unrepresentable</Word>
+      <Word>unterminated</Word>
+      <Word>untrusted</Word>
+      <Word>uri</Word>
+      <Word>uris</Word>
+      <Word>url</Word>
+      <Word>urls</Word>
+      <Word>utc</Word>
+      <Word>utf</Word>
+      <Word>validator</Word>
+      <Word>vsa</Word>
+      <Word>weblog</Word>
+      <Word>wiki</Word>
+      <Word>wcf</Word>
+      <Word>wmf</Word>
+      <Word>wmi</Word>
+      <Word>wml</Word>
+      <Word>wpf</Word>
+      <Word>wql</Word>
+      <Word>wsdl</Word>
+      <Word>xaml</Word>
+      <Word>xhtml</Word>
+      <Word>xmlns</Word>
+      <Word>xor</Word>
+      <Word>xrml</Word>
+      <Word>xsd</Word>
+      <Word>xsi</Word>
+      <Word>xsl</Word>
+      <Word>xslt</Word>
+    </Recognized>
+    <Deprecated>
+      <!-- 
+        This is a list of deprecated terms with their preferred alternates and is 
+        used by UsePreferredTerms. The deprecated terms are case-insensitive, 
+        however, make sure to pascal-case the preferred alternates. If a word 
+        does not have a preferred alternate, simply leave it blank.                                           
+      -->
+      <Term PreferredAlternate="EnterpriseServices">complus</Term>
+      <Term PreferredAlternate="Canceled">cancelled</Term>
+      <Term PreferredAlternate="Indexes">indices</Term>
+      <Term PreferredAlternate="LogOn">login</Term>
+      <Term PreferredAlternate="LogOff">logout</Term>
+      <Term PreferredAlternate="SignIn">signon</Term>
+      <Term PreferredAlternate="SignOut">signoff</Term>
+      <Term PreferredAlternate="Writable">writeable</Term>
+      <Term PreferredAlternate="Cannot">cant</Term>
+      <Term PreferredAlternate="AreNot">arent</Term>
+      <Term PreferredAlternate="DoNot">dont</Term>
+      <Term PreferredAlternate="DoesNot">doesnt</Term>
+      <Term PreferredAlternate="DidNot">didnt</Term>
+      <Term PreferredAlternate="CouldNot">couldnt</Term>
+      <Term PreferredAlternate="WouldNot">wouldnt</Term>
+      <Term PreferredAlternate="ShouldNot">shouldnt</Term>
+      <Term PreferredAlternate="WillNot">wont</Term>
+      <Term PreferredAlternate="HaveNot">havent</Term>
+      <Term PreferredAlternate="HasNot">hasnt</Term>
+      <Term PreferredAlternate="HadNot">hadnt</Term>
+      <Term PreferredAlternate="IsNot">isnt</Term>
+      <Term PreferredAlternate="WasNot">wasnt</Term>
+      <Term PreferredAlternate="WereNot">werent</Term>
+      <Term PreferredAlternate="">flag</Term>
+      <Term PreferredAlternate="">flags</Term>
+    </Deprecated>
+    <Compound>
+      <!-- 
+        This is a list of discrete terms with their compound alternates and is used by 
+        CompoundWordsShouldBeCasedCorrectly. These are words that exist in the 
+        dictionary as discrete terms, however, should actually be cased as compound words. 
+        For example, 'Filename' exists in the dictionary and hence the spelling rules will 
+        not see it as unrecognized but its actual preferred usage is 'FileName'; adding it
+        below causes CompoundWordsShouldBeCasedCorrectly to fire. The discrete terms are 
+        case-insensitive, however, be sure to pascal-case the compound alternates.
+        Any discrete terms added below automatically get added to the list of discrete
+        exceptions to prevent CompoundWordsShouldBeCasedCorrectly from firing both on the
+        compound word (for example 'WhiteSpace') and its discrete alternate (for example 
+        'Whitespace').
+      -->
+      <Term CompoundAlternate="DataStore">datastore</Term>
+      <Term CompoundAlternate="DataStores">datastores</Term>
+      <Term CompoundAlternate="DataSet">dataset</Term>
+      <Term CompoundAlternate="DataSets">datasets</Term>
+      <Term CompoundAlternate="TextBox">textbox</Term>
+      <Term CompoundAlternate="TextBoxes">textboxes</Term>
+      <Term CompoundAlternate="CodePage">codepage</Term>
+      <Term CompoundAlternate="CodePages">codepages</Term>
+      <Term CompoundAlternate="CheckBox">checkbox</Term>
+      <Term CompoundAlternate="CheckBoxes">checkboxes</Term>
+      <Term CompoundAlternate="PushButton">pushbutton</Term>
+      <Term CompoundAlternate="PushButtons">pushbuttons</Term>
+      <Term CompoundAlternate="DropDown">dropdown</Term>
+      <Term CompoundAlternate="DropDowns">dropdowns</Term>
+      <Term CompoundAlternate="ToolBar">toolbar</Term>
+      <Term CompoundAlternate="ToolBars">toolbars</Term>
+      <Term CompoundAlternate="ScrollBar">scrollbar</Term>
+      <Term CompoundAlternate="ScrollBars">scrollbars</Term>
+      <Term CompoundAlternate="BitFlag">bitflag</Term>
+      <Term CompoundAlternate="BitFlags">bitflags</Term>
+      <Term CompoundAlternate="FileName">filename</Term>
+      <Term CompoundAlternate="FileNames">filenames</Term>
+      <Term CompoundAlternate="FileServer">fileserver</Term>
+      <Term CompoundAlternate="FileServers">fileservers</Term>
+      <Term CompoundAlternate="UserName">username</Term>
+      <Term CompoundAlternate="UserNames">usernames</Term>
+      <Term CompoundAlternate="HostName">hostname</Term>
+      <Term CompoundAlternate="HostNames">hostnames</Term>
+      <Term CompoundAlternate="FieldName">fieldname</Term>
+      <Term CompoundAlternate="FieldNames">fieldnames</Term>
+      <Term CompoundAlternate="PathName">pathname</Term>
+      <Term CompoundAlternate="PathNames">pathnames</Term>
+      <Term CompoundAlternate="WhiteSpace">whitespace</Term>
+      <Term CompoundAlternate="WhiteSpaces">whitespaces</Term>
+      <Term CompoundAlternate="LogOn">logon</Term>
+      <Term CompoundAlternate="LogOns">logons</Term>
+      <Term CompoundAlternate="LogOff">logoff</Term>
+      <Term CompoundAlternate="LogOffs">logoffs</Term>
+      <Term CompoundAlternate="SignIn">signin</Term>
+      <Term CompoundAlternate="SignIns">signins</Term>
+      <Term CompoundAlternate="SignOut">signout</Term>
+      <Term CompoundAlternate="SignOuts">signouts</Term>
+      <Term CompoundAlternate="FrontEnd">frontend</Term>
+      <Term CompoundAlternate="FrontEnds">frontends</Term>
+      <Term CompoundAlternate="BackEnd">backend</Term>
+      <Term CompoundAlternate="BackEnds">backends</Term>
+      <Term CompoundAlternate="SiteMap">sitemap</Term>
+      <Term CompoundAlternate="SiteMaps">sitemaps</Term>
+      <Term CompoundAlternate="DataType">datatype</Term>
+      <Term CompoundAlternate="DataTypes">datatypes</Term>
+      <Term CompoundAlternate="DesignTime">designtime</Term>
+      <Term CompoundAlternate="DesignTimes">designtimes</Term>
+      <Term CompoundAlternate="ReadOnly">readonly</Term>
+      <Term CompoundAlternate="TrueType">truetype</Term>
+      <Term CompoundAlternate="NetBios">netbios</Term>
+      <Term CompoundAlternate="AutoDetect">autodetect</Term>
+      <Term CompoundAlternate="AutoDetects">autodetects</Term>
+      <Term CompoundAlternate="AutoScroll">autoscroll</Term>
+      <Term CompoundAlternate="AutoScrolls">autoscrolls</Term>
+      <Term CompoundAlternate="AutoComplete">autocomplete</Term>
+      <Term CompoundAlternate="AutoCompletes">autocompletes</Term>
+      <Term CompoundAlternate="AutoSave">autosave</Term>
+      <Term CompoundAlternate="AutoSaves">autosaves</Term>
+      <Term CompoundAlternate="JavaScript">javascript</Term>
+      <Term CompoundAlternate="JScript">jscript</Term>
+      <Term CompoundAlternate="VoiceView">voiceview</Term>
+      <Term CompoundAlternate="AppleTalk">appletalk</Term>
+      <Term CompoundAlternate="MapInfo">mapinfo</Term>
+      <Term CompoundAlternate="NewLine">newline</Term>
+      <Term CompoundAlternate="NewLines">newlines</Term>
+      <Term CompoundAlternate="QWord">qword</Term>
+      <Term CompoundAlternate="QWords">qwords</Term>
+      <Term CompoundAlternate="KeySet">keyset</Term>
+      <Term CompoundAlternate="KeySets">keysets</Term>
+    </Compound>
+    <DiscreteExceptions>
+      <!--
+        This is a list of case-insensitive exceptions to the CompoundWordsShouldBeCasedCorrectly 
+        discrete term check. As this check works solely on the basis of whether two consecutive
+        tokens exists in the dictionary, it can have a high false positive rate. For example, 
+        'onset' exists in the dictionary but the user probably intended it to be 'OnSet'. 
+        Adding this word below prevents this rule from firing telling the user to change 'OnSet' 
+        to 'Onset'.
+      -->         
+      <Term>onset</Term>
+      <Term>inset</Term>
+      <Term>byname</Term>
+      <Term>setout</Term>
+      <Term>countertype</Term>
+      <Term>editor</Term>
+      <Term>longtime</Term>
+      <Term>drawstring</Term>
+      <Term>hookup</Term>
+      <Term>cleanup</Term>
+      <Term>breakout</Term>
+      <Term>setline</Term>
+      <Term>maybe</Term>
+      <Term>nods</Term>
+      <Term>classis</Term>
+      <Term>gettable</Term>
+      <Term>inform</Term>
+      <Term>beset</Term>
+      <Term>settable</Term>
+      <Term>standalone</Term>
+      <Term>threadlike</Term>
+      <Term>infield</Term>
+      <Term>infields</Term>
+      <Term>meantime</Term>
+      <Term>mackey</Term>
+      <Term>jscript</Term>
+      <Term>ipv</Term>        <!-- IPv4, IPv6 -->
+      <Term>tooltip</Term>
+      <Term>tooltips</Term>
+      <Term>indispose</Term>
+    </DiscreteExceptions>
+  </Words>
+  <Acronyms>
+    <CasingExceptions>
+      <Acronym>Pi</Acronym>
+      <Acronym>Na</Acronym>   <!-- NaN -->
+      <Acronym>NESW</Acronym> <!-- North East South West -->
+      <Acronym>NWSE</Acronym> <!-- North West South East -->
+    </CasingExceptions>
+  </Acronyms>
+</Dictionary>

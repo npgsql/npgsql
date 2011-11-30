@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql2010", "Npgsql2010.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlTests2010", "..\testsuite\noninteractive\NUnit20\NpgsqlTests2010.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9D13B739-62B1-4190-B386-7A9547304EB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D13B739-62B1-4190-B386-7A9547304EB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

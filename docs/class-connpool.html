@@ -1,0 +1,97 @@
+<html><head>
+
+<title>Npgsql: Connector Pool Class</title>
+
+<meta http-equiv="content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="content-Style-Type" content="text/css">
+<meta http-equiv="expires" content="">
+<meta name="category" content="IT/Database/PostgreSQL/Npgsql/Docs/Internal">
+<meta name="filename" content="class-connpool.htm">
+<meta name="date" content="2002-06-17">
+<meta name="author" content="Ulrich Sprick">
+<meta name="robots" content="nofollow">
+<meta name="keywords" content="IT; Database; PostgreSQL; Npgsql; Communication; Documentation; Class; Connector Pool;">
+<meta name="description" content="This document describes the connector pool class">
+
+<link rel="stylesheet" href="global.css">
+<script language="JavaScript" src="global.js"></script>
+
+<!-- Table Layout Stylesheet -->
+
+</style>
+
+</head><body>
+
+<h1 align=center>Npgsql: Connector Class</h1><hr>
+
+<table width=100%>
+<tr>
+<td width=40% align=left>&larr; <a href="dev-connpool-ovw.htm">Connector Pooling Overview</a></td>
+<td width=20% align=center><a href="index.htm">Up</a></td>
+<td width=40% align=right><a href="class-connector.htm">Connector</a> &rarr;</td>
+</tr>
+</table><hr>
+
+<p> </p>
+
+<p class=pgstats>Last update: 2002-06-21 19:00:00 by usp &bull;
+Category: Internal documentation &bull;
+Intended Audience: Npgsql Developers</p>
+
+<p>This document describes the Npgsql Connector Pool class.</p>
+
+<p>The connector pool manager is a unique, static instance of the Npgsql.ConnectionPool class named <em>ConnectionPoolMgr</em>. It controls requesting and release of connector objects and maintains internal lists of shared and pooled connectors.</p>
+
+
+<h2>Interface</h2>
+
+<p>The ConnectionPool class interface consist of the following method:</p>
+
+<dl>
+<dt><b>RequestConnection()</b></dt>
+<dd>Returns a Connector object with an open physical connection and the Pooled property set.
+<br />Parameters: Connection string, Shared flag.
+</dd>
+</dl>
+
+
+<h2>Internal Structure</h2>
+
+<p>There is not much to tell about the internal structure. The connector pool consist primarily of 2 lists: The pooled connectors, currently not in use by the application, and the shared connectors. Note that connectors in the shared connectors list are in use, referenced by one or more Connection objects and thus are not avaliable for requests <em>other than shared</em>. </p>
+
+<img src="connection-pooling-1.png">
+
+
+
+<h2>Under the Hood</h2>
+
+<h3>Requesting a Connector</h3>
+
+<table>
+<tr style="vertical-align:top;">
+<td></td>
+<td><img style="float:right;" src="connection-pooling-3.png">
+<p>The algorithm for requesting a connector is quit simple.</p>
+<p>If a shared connector is requested the pool manager starts with searching the SharedConnectors list for a connector with a matching connect string.</p>
+<p>If a suitable connector is found, its ShareCounter gets incremented to reflect the number of Connections working on this connector. Then the connector object is returned to the calling connection object.</p>
+
+<p>If a non-shared connector is requested or a shared connector was not found, the pooled connectors are beeing searched for a suitable connector. If a connector was found, it is removed from the pooled connectors list.</p>
+
+<p>If the search fails, then an new connector is created and the physical connection is opened instead.</p>
+
+<p>For a non-shared connector the work is done now. A shared connector request is treated different at this point: It's Shared property is set, and the connector is inserted in the shared connectors list, before it is returned to the calling connection object.</p>
+
+</td></tr></table>
+
+
+
+<h3>See also</h3>
+
+<p>Further insight into a connector object and its interaction with the connector pool manager gives the <a href="class-connector.htm">Connector</a> class documentation.</p>
+
+<h3>The Code</h3>
+
+<p>... can be inspected <a href="javascript:popUp('../src/npgsql/NpgsqlConnectorPool.cs')">here</a></p>
+
+</body>
+</html>

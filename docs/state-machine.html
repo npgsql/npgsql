@@ -1,0 +1,577 @@
+<html><head>
+
+<title>Npgsql: Communication State Machine</title>
+
+<meta http-equiv="content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="content-Style-Type" content="text/css">
+<meta http-equiv="expires" content="">
+<meta name="category" content="IT/Database/PostgreSQL/Npgsql/Docs/Internal">
+<meta name="filename" content="state-machine.htm">
+<meta name="date" content="2002-06-11">
+<meta name="author" content="Ulrich Sprick">
+<meta name="robots" content="nofollow">
+<meta name="keywords" content="IT; Database; PostgreSQL; Npgsql; Communication; State Machine; Documentation;">
+<meta name="description" content="This document describes the connection state machine.">
+
+<link rel="stylesheet" href="global.css">
+<script language="JavaScript" src="global.js"></script>
+
+<!-- Table Layout Stylesheet -->
+
+<style>
+table.std {
+    border-bottom: 2 solid silver;
+    border-right: 2 solid silver;
+    line-height: 140%;
+    }
+tr.tableheader {
+    background-color: PowderBlue;
+    color: darkblue;
+    text-align: center;
+    font-weight: bold;
+    font-size: larger;
+    height: 40;
+    }
+tr.stateheader {
+    background-color: AliceBlue;
+    color: darkblue;
+    text-align: center;
+    font-weight: bold;
+    padding-top: 8;
+    padding-bottom: 8;
+    height: 40;
+    }
+tr.columnheader {
+    text-align: center;
+    font-weight: normal;
+    height-
+    }
+tr.std {
+    text-align: left;
+    vertical-align: top;
+    }
+td.std {
+    border-top: 2 solid silver;
+    border-left: 2 solid silver;
+    padding-right: 5;
+    padding-left: 5;
+    padding-top: 5;
+    padding-bottom: 5;
+    }
+
+p.headnotes {
+    font-size:smaller;
+    margin-top: 0;
+    margin-bottom: 0;
+    }
+</style>
+
+</head><body>
+
+<h1 align=center>Npgsql: Communication State Machine</h1><hr>
+
+<table width=100%>
+<tr>
+<td width=33% align=left>&larr; <a href="suggestedreadings.htm">Suggested Readings</a></td>
+<td width=33% align=center><a href="index.htm">Up</a></td>
+<td width=33% align=right><a href="">Next Topic</a> &rarr;</td>
+</tr>
+</table><hr>
+
+<p> </p>
+
+<p class=headnotes>Last update: 2002-06-12 00:35:00 by usp</p>
+<p class=headnotes>Category: Internal documentation</p>
+<p class=headnotes>Intended Audience: Npgsql Developers</p>
+
+<p>This document describes the behaviour of the connection object. This is done in form of a state/event/transition table: For each specific state of a connection object all possible events are listed, together with a short description of the reactions, and a state the connection will be in after performing the actions.</p>
+
+<p>The first column <I>type</I> identifies the kind of event. We distinguish between 3 types:</p>
+
+<ul>
+<li><I>Messages</I> from the backend,</li>
+<li><I>Function calls</I> done by the application, and</li>
+<li><I>asynchronous Events</I> like timeouts.</li>
+</ul>
+
+<p>The second column denotes the event. I have chosen the names similar to their corresponding message names, as defined in the PostgreSQL 7.2.1 Documentation, Chapter 4.4, Message Formats. However, with respect to the somewhat limited space, I have shortened them where possible in an unambiguous way. Additionally the full length message names are mentioned in the description parts, in most cases hyperlinked to their definitons.</p>
+
+<p>The third column contains the state the connection will receive after carrying out the actions, described in the fourth column. The state names may be abbreviated, too.</p>
+
+<p>The fourth column contains a general description of the situation an the actions to be taken, often in conjunction with hyperlinks to the corresponding message definitions.</p>
+
+<p>And here comes the description:</p>
+
+<table class=std cellspacing=0 width=100%>
+<tr class=tableheader>
+<td class=std colspan=4>Communication State Table</td>
+
+</tr><tr class=columnheader>
+<td class=std width=30>Type</td>
+<td class=std width=80>Event/Action</td>
+<td class=std width=80>Next State</td>
+<td class=std>Description</td>
+
+<!------- Ground Zero ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Ground Zero</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>This state is active right after instantiation of a new connection object. There is no open connection.</td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>OpenConn()</td>
+<td class=std>Connected</td>
+<td class=std>This method is called to open a communication channel to the backend. The connection parameters are retrieved from the connection string. A successul OpenConn() causes a state transition to <I>Connected</I>, otherwise an errormessage should be displayed.</td>
+
+<!------- Connected ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Connected</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>In this state the communication with the backend is initiated. A communication channel has already been successfully opened. The frontend may choose an SSL connection by calling SSLReq() instead of Startup() or CancelReq().</td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>Startup()</td>
+<td class=std>Startup</td>
+<td class=std>This method call occurs in order to establish a regular unsecure connection to the backend. The frontend send a <A href="#GlossarStartupPacket">Startup Packet</A> to the backend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>CancelReq()</td>
+<td class=std>Ground Zero</td>
+<td class=std>The <A href="#GlossarCancelReqMsg">Cancel Request Message</A> is sent asynchronously through an unsecure connection. It contains the <A href="#GlossarPID">PID</A> and <A href="#GlossarSecretKey">Secret Key</A> previously obtained in the authentication state of another startup sequence. After processing this message the backend immediately closes the connection. The frontend also closes the connection an makes a transition to Ground Zero.</td>
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>SSLRequest()</td>
+<td class=std>SSLStartup</td>
+<td class=std>To initiate an SSL-encrypted connection, the frontend initially sends an <A href="#GlossarSSLRequestMsg">SSLRequest</A> message rather than a StartupPacket or Cancel Request Message. The state will transit to SSLRequest.</td>
+
+<!------- SSLStartup ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>SSL Startup</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>In this state the frontend awaits the SSL Request response from the server. This is a single byte containing 'Y' or 'N', indicating that it is willing or unwilling to perform SSL, respectively.
+<br />While the protocol itself does not provide a way for the server to force SSL encryption, the administrator may configure the server to reject unencrypted sessions as a byproduct of authentication checking. </td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Y-Response</td>
+<td class=std>SSLHandshake</td>
+<td class=std>The server indicates that it is willing to accept a SSL connection by transmitting a single byte 'Y'. The frontend will perform an <A href="#GlossarSSLStartupHandshake">SSL Startup Handshake</A> with the Server. If successful, the Startup Package is sent to the Server, and </td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>N-Response</td>
+<td class=std>Ground Zero</td>
+<td class=std>The Server is not willing to accept a SSL connection. Close the connection and return to Ground Zero.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Ground Zero</td>
+<td class=std>This should really not happen in this state. Close the connection and return to Ground Zero.</td>
+
+</tr><tr class=std>
+<td class=std align=center>E</td>
+<td class=std>Timeout</td>
+<td class=std>Ground Zero</td>
+<td class=std>In case of a backend response timeout the frontend closes the connection and goes back to Ground Zero.</td>
+
+<!------- SSLHandshake ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>SSL Handshake</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>In this state the frontend and backend perform the
+SSL startup handshake (not described here, part of the SSL specification). If this is successful, the frontend sends the usual StartupPacket to the backend. In this case the StartupPacket and all subsequent data will be SSL-encrypted.
+<br />An initial SSLRequest may also be used in a connection that is being opened to send a CancelRequest message.
+<br />While the protocol itself does not provide a way for the server to force SSL encryption, the administrator may configure the server to reject unencrypted sessions as a byproduct of authentication checking. </td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>SSLSuccess</td>
+<td class=std>SSLConnected</td>
+<td class=std>Send the regular <A href="#GlossarStartupPackage">Startup Package</A> to the backend and switch to the SSL Connected State.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>SSLFailed</td>
+<td class=std>Ground Zero</td>
+<td class=std>Close the current connection and return to Ground Zero. The caller might then choose to open a connection without SSL encryption.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Ground Zero</td>
+<td class=std>This would only occur if the server predates the addition of SSL support to PostgreSQL. The current connection is closed and state is returned to Ground Zero. The caller might then choose to open a connection without SSL encryption.</td>
+
+<!------- SSL Connected ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>SSL Connected</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>This state is entered after successfully establishing a Secure Socket Layer Connection. Communications at this point are already encrypted. This states corresponds to the unsecured Connected state: The Caller may now choose to issue a Startup Package or a Cancel Reques Message. </td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>Startup()</td>
+<td class=std>Startup</td>
+<td class=std>The frontend sends a regular <A href="#GlossarStartupPackage">Startup Package</A>. This will install a regular secured connection to the backend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>CancelReq()</td>
+<td class=std>Ground Zero</td>
+<td class=std>The frontend sends a Cancel Request Message. It contains the <A href="#GlossarPID">PID</A> and <A href="#GlossarSecretKey">Secret Key</A> which have been previously received in a different startup sequence. After processing this message the backend will close the connection immediately. So should the frontend do, an then return to Ground Zero.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Ground Zero</td>
+<td class=std>This message should not occur in this state, as the backend is awaiting a message from the frontend. The frontend issues a Terminate Message, Closes the Connection and returns to Ground Zero.</td>
+
+<!------- Startup ------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Startup</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>In this phase the authentication takes place. The course of the previous startup sequence determines if the connection is secured or not.
+<br />The backend decides the authentication method by the information sent in the Startup Package and the contents of its <A href="#GlossarPg_HbaConf">pg_hba.conf</A> file. If the frontend does not support the requested authentication method, then it should immediately close the connection and return to Ground Zero.</td>
+
+<!---------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthKer4</td>
+<td class=std>Startup</td>
+<td class=std>The backend demands a Kerberos V4 authentication dialog (not described here, part of the Kerberos specification). Not shure what to be done here.<br />Currently not supported.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthKer5</td>
+<td class=std>Startup</td>
+<td class=std>The backend demands a Kerberos V5 authentication dialog (not described here, part of the Kerberos specification). Not shure what to be done here.<br />Currently not supported.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthClearTxt</td>
+<td class=std>Startup</td>
+<td class=std>The frontend must then send a <A href="#GlossarPasswordPacket">PasswordPacket</A> containing the password in clear-text form. </td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthCrypt</td>
+<td class=std>Startup</td>
+<td class=std>The frontend must then send a PasswordPacket containing the password encrypted via crypt(3), using the 2-character salt specified in the AuthenticationCryptPassword packet.
+<br />Currently not supported.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthMD5</td>
+<td class=std>Startup</td>
+<td class=std>The frontend must then send a PasswordPacket containing the password encrypted via MD5, using the 4-character salt specified in the AuthenticationMD5Password packet.<br />Currently not supported.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthCred</td>
+<td class=std>Startup</td>
+<td class=std>This method is only possible for local Unix-domain connections on platforms that support SCM credential messages. The frontend must issue an SCM credential message and then send a single data byte. (The contents of the data byte are uninteresting; it's only used to ensure that the server waits long enough to receive the credential message.) <br />Currently not supported.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AuthOK</td>
+<td class=std>Authenticated</td>
+<td class=std>The authentication exchange is successfully completed. The "Authenticated" state is entered then.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Ground Zero</td>
+<td class=std>The authentication exchange failed. After sending this message the server immediately closes the connection. The frontend also closes the connection and returns to Ground Zero.</td>
+
+<!---------- Authenticated ------------------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Authenticated</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>After having received the AuthenticationOk, the server should send the <A href="#GlossarBackendKeyDataMsg">BackendKeyData Message</A> and then a <A href="#GlossarReadyForQuery Msg">ReadyForQuery Message</A>. This will conclude the startup/authentication sequence and the connetion will enter its normal operational mode.</td>
+
+<!-------------------------------------------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>BackendKey</td>
+<td class=std>? <p class=headnotes> I(fxjr) think it should be in the same state Authenticated. </p></td>
+<td class=std>The <A href="#GlossarBackendKeyDataMsg">BackendKeyData Message</A> provides the PID and the secret-key data that the frontend must save if it wants to be able to issue cancel requests later. The frontend should not respond to this message, but should continue listening for a ReadyForQuery message.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>ReadyForQuery</td>
+<td class=std>Ready</td>
+<td class=std>The <A href="#GlossarReadyForQueryMsg">ReadyForQuery</A> message concludes the startup sequence. The frontend enters the <A href="#StateReadyForQuery">ReadyForQuery State</A> and may then issue query or function call messages.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>?</td>
+<td class=std>Start-up failed for some reason. The frontend closes the socket connection and returns to Ground Zero.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notice</td>
+<td class=std>Startup <br /> <p class=headnotes> I(fxjr) think it should be in the same state Authenticated. Of course it can change also depending on what this Notice message is saying. :)</p></td>
+<td class=std>A warning message is sent to the frontend in a <A href="#GlossarNoticeResponseMsg">NoticeResponse</A> Message. The frontend should display the message but continue listening for ReadyForQuery or Error.</td>
+
+<!---------- Ready for Query ---------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Ready for Query (Ready)</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>This state indicates the backend is ready to accept Query or Function Call Messages. </td>
+
+<!-------------------------------------------->
+
+</tr><tr class=std>
+<td class=std align=center>A</td>
+<td class=std>Query()</td>
+<td class=std>Query</td>
+<td class=std>A Query Cycle is initiated by the frontend sending a <A href="#GlossarQueryMsg">Query</A> Message to the backend. A state transition to <A href="#StateQuery">Query</A> is done.</td>
+
+</tr><tr class=std>
+<td class=std align=center>A</td>
+<td class=std>FunctionCall()</td>
+<td class=std>? <p class=headnotes> State Function Call as defined below?? :) </p></td>
+<td class=std>This method generates a <A href="#GlossarFunctionCallMsg">Function Call</A> Message. A state transition to <A href="#StateFuncionCall">FunctionCall</A> is done.</td>
+
+</tr><tr class=std>
+<td class=std align=center>A</td>
+<td class=std>Listen()</td>
+<td class=std>Ready</td>
+<td class=std>After sending a <A href="#GlossarListenCommand">Listen Command</A> the frontend is enabled to receive notification messages. If a <A href="#GlossarNotificationCmd">Notify Command</A> is executed for the same notification name. State is not affected.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notice</td>
+<td class=std>Ready</td>
+<td class=std>A warning message has been issued. The warning should be displayed. Not to be confused with Notification Messages.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notification</td>
+<td class=std>Ready</td>
+<td class=std>A Notify command has been executed for a name for which a previous <A href="#GlossarListenCmd">Listen command</A> was executed. <A href="#GlossarNotificationResponseMsg">Notification Response</A> Messages may be sent at any time. State is not affected.</td>
+
+<!---------- Query Processing ---------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Query Processing (Query)</td>
+
+</tr><tr>
+<td class=std colspan=4>A Query cycle is initiated by the frontend sending a <A href="#GlossarQueryMsg">Query message</A> to the backend. The backend then sends one or more response messages depending on the contents of the query command string, and finally a ReadyForQuery response message.
+<br />Since a query string could contain several queries (separated by semicolons), there might be several such response sequences before the backend finishes processing the query string. <A href="#GlossarReadyForQueryMsg">ReadyForQuery</A> is issued when the entire string has been processed and the backend is ready to accept a new query string.
+<br />In the event of an error, an <A href="#GlossarErrorResponse">Error Message</A> is issued followed by ReadyForQuery. All further processing of the query string is aborted by Error Response (even if more queries remained in it). Note that this may occur partway through the sequence of messages generated by an individual query.</td>
+
+<!----------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Completed</td>
+<td class=std>Query</td>
+<td class=std>The <A href="#GlossarCompletedResponseMsg">Completed Response Message</A> Informs the FE that an SQL command completed normally. This message is sent for each separate statement in the query string.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyIn</td>
+<td class=std>Copy In</td>
+<td class=std>The <A href="#GlossarCopyInResponseMsg">Copy In Response Message</A> tells the backend is ready to copy data from the frontend to a table. The frontend should then send <A href="#GlossarCopyDataMsg">CopyData messages</A> followed by a <A href="#GlossarCopyDoneMsg">CopyDone</A> or <A href="#GlossarCopyFailMsg">CopyFail</A> message. The backend will then respond with a CompletedResponse message with a tag of COPY.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyOut</td>
+<td class=std>Copy Out</td>
+<td class=std>The backend is ready to copy data from a table to the frontend. This is signaled by the <A href="#GlossarCopyOutResponseMsg">Copy Out Response Message</A>. It then sends <A href="#GlossarCopyDataMsg">CopyData messages</A> followed by a <A href="#GlossarCopyDoneMsg">CopyDone message</A>, and then a CompletedResponse message with a tag of COPY.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyData</td>
+<td class=std>Copy Out</td>
+<td class=std>The backend sends data in a <A href="#GlossarCopyDataMsg">CopyData Message</A> to the frontend. Each message contains one record of data; format can be text, CSV or binary as specified in <a href="http://www.postgresql.org/docs/8.2/interactive/sql-copy.html">PostgreSQL COPY documentation</a>.</td>
+
+</tr><tr class=std>
+<td class=std align=center>F</td>
+<td class=std>SendCopyData()</td>
+<td class=std>Copy In</td>
+<td class=std>The frontend sends data in a <A href="#GlossarCopyDataMsg">CopyData Message</A> to the backend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyDone</td>
+<td class=std>Copy In/Out</td>
+<td class=std>Tells the other end of database connection that we are done sending CopyData packets. Should be followed by CommandComplete from server.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>CopyFail</td>
+<td class=std>Copy In</td>
+<td class=std>Tells the other end of database connection that we are done sending CopyData packets. Should be followed by Error from server.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Cursor</td>
+<td class=std>Query</td>
+<td class=std>The <A href="#GlossarCursorResponseMsg">Cursor Response Message</A> indicates the beginning of the response to a SELECT, FETCH, INSERT, UPDATE, or DELETE query. In the FETCH case the name of the cursor being fetched from is included in the message. Otherwise the message always mentions the "blank" cursor.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>RowDescription</td>
+<td class=std>Query</td>
+<td class=std>The <A href="#GlossarRowDescriptionMsg">Row Description</A> message indicates that rows are about to be returned in response to a SELECT or FETCH query. The message contents describe the layout of the rows. This will be followed by an AsciiRow or BinaryRow message (depending on whether a binary cursor was specified) for each row being returned to the frontend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>AsciiRow</td>
+<td class=std>Query</td>
+<td class=std>Identifies the message as an ASCII data row. A prior RowDescription message defines the number of fields in the row and their data types.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>BinaryRow</td>
+<td class=std>Query</td>
+<td class=std>Identifies the message as an binary data row. A prior RowDescription message defines the number of fields in the row and their data types.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>EmptyQuery</td>
+<td class=std>Query</td>
+<td class=std>The <A href="#GlossarEmptyQueryResponseMsg">Empty Query Response</A> Message indicates an empty query string was recognized.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Query</td>
+<td class=std>An error has occured. This will normally be followed by a ReadyForQuery Message.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>ReadyForQuery</td>
+<td class=std>Ready</td>
+<td class=std>Processing of the query string is complete. ReadyForQuery will always be sent, whether processing terminates successfully or with an error. A transition is done to the <A href="#StateReady">Ready for Query</A> state.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notice</td>
+<td class=std>Query</td>
+<td class=std>A warning message has been issued in relation to the query. Notices are in addition to other responses, i.e., the backend will continue processing the command.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notification</td>
+<td class=std>Query</td>
+<td class=std>A <A href="#GlossarNotifyCmd">Notify Command</A> has been executed for a name for which a previous <A href="#GlossarListenCmd">Listen Command</A> has been executed. Notifications may be sent at any time, but not within a message.</td>
+
+<!---------- Function Call ---------->
+
+</tr><tr class=stateheader>
+<td class=std colspan=4>Function Call (Function)</td>
+
+</tr><tr class=std>
+<td class=std colspan=4>A transition to the Funcktion Call State is initiated by the frontend by sending a <A href="#GlossarFunctionCallMsg">Function Call Message</A> to the backend. The backend then sends one or more response messages depending on the results of the function call, and finally a ReadyForQuery Response Message, which results in a transition to the <A href="#StateReadyForQuery">Ready For Query</A> state. </td>
+
+<!-------------------------------------------->
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Error</td>
+<td class=std>Function</td>
+<td class=std>An Error has occured. The frontend should display a message.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>FunctionResult</td>
+<td class=std>Function</td>
+<td class=std>The <A href="#GlossarFunctionResultResponseMsg">Function Result Response</A> Messages indicates a successful function call processing and returns a result to the frontend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>FunctionVoid</td>
+<td class=std>Function</td>
+<td class=std>The <A href="#GlossarFunctionVoidResponseMsg">Function Void Response</A> Messages indicates a successful function call processing, it does <I>not</I> return a result to the frontend.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>ReadyForQuery</td>
+<td class=std>Ready</td>
+<td class=std>Processing of the function call is complete. Results in a transition to the <A href="#StateReadyForQuery">Ready For Query</A> state. ReadyForQuery will always be sent, whether processing terminates successfully or with an error.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notice</td>
+<td class=std>Function</td>
+<td class=std>A warning message has been issued in relation to the function call. Notices are in addition to other responses, i.e., the backend will continue processing the command.</td>
+
+</tr><tr class=std>
+<td class=std align=center>M</td>
+<td class=std>Notification</td>
+<td class=std>Function</td>
+<td class=std>A <A href="#GlossarNotifyCmd">Notify Command</A> has been executed for a name for which a previous <A href="#GlossarListenCmd">Listen Command</A> was executed. Notifications may be sent at any time.</td>
+
+</table> <!-------------------------------------------->
+
+<h2>State Diagram</h2>
+<hr />
+<center>
+<p><img src="NpgsqlConnectionStateMachine.png"></p>
+<p>NpgsqlConnection StateMachine </p>
+</center>
+
+<h2>Methods</h2><hr>
+
+<h3>Terminate()</h3>
+<p>The frontend sends a <A href="#GlossarTerminateMsg">Terminate</A> message and immedialtely closes the connection. The connection state will transit to Ground Zero.</p>
+<p>This method is available in all states except Ground Zero. </p>
+
+<h3>Listen()</h3>
+<p>The Listen Command enables the client to receive notification messages regarding a specific topic.</p>
+<p>The Listen() Method is not available in the following states:</p>
+<ul>
+<li>Ground Zero</li>
+<li>Connected</li>
+<li>SSLStartup</li>
+<li>SSLHandshake</li>
+<li>SSLConnected</li>
+<li>Startup</li>
+</ul>
+
+<h3>Notify()</h3>
+<p>A Notification Command Message is sent to the backend. The backend will respond by sending notification messages to all frontends which previously have subscribed with a Listen Command Message to the same topic.</p>
+
+
+<h2>Message Definitions</h2><hr>
+
+<p> Message Definitions are specified in the <a href="http://developer.postgresql.org/docs/postgres/protocol.html">PostgreSQL Frontend/Backend Protocol</a>
+
+</body>
+</html>

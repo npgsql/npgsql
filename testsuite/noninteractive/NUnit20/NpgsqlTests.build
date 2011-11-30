@@ -1,0 +1,40 @@
+<project name="NpgsqlTests" default="build" basedir=".">
+
+    <property name="nunit.files" dynamic="true"
+value="${nant::get-base-directory() + '/lib/' +
+framework::get-family(framework::get-target-framework()) + '/' +
+int::to-string(version::get-major(framework::get-version(framework::get-target-framework()))) + '.' +
+int::to-string(version::get-minor(framework::get-version(framework::get-target-framework()))) + '/nunit.*'}" />
+
+    <property name="assemblyname" value="NpgsqlTests" />
+    
+    <target name="clean" description="cleans the build directory">
+        <delete dir="${nunit2tests.build.dir}" verbose="true" failonerror="true"/>
+    </target>
+    
+    <target name="init">
+      <mkdir dir="${nunit2tests.build.dir}" />
+    </target>
+
+    <echo message="${ms.build.dir}" />
+    
+    <target name="build" depends="init">
+      <csc target="library" output="${nunit2tests.build.dir}/${assemblyname}.dll" debug="${debug}" >
+        <sources>
+          <include name="*.cs" />
+        </sources>
+        <references>
+
+	  <include name="${nunit.files}" />
+          <include name="${ms.build.dir}/Npgsql.dll" />
+	  <include name="System.Data.dll" />
+	  <include name="System.Transactions.dll" />
+	  <include name="System.Web.dll" />
+	  <include name="System.Configuration.dll" />
+        </references>
+      </csc>
+    </target>    
+            
+    
+</project>
+

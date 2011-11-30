@@ -1,0 +1,98 @@
+<Project name="Npgsql" fileversion="2.0" language="C#" clr-version="Net_2_0" ctype="DotNetProject">
+  <Configurations active="Debug">
+    <Configuration name="Debug" ctype="DotNetProjectConfiguration">
+      <Output directory="build/ms" signAssembly="True" assemblyKeyFile="Npgsql/Npgsql.snk" assembly="Npgsql" />
+      <Build debugmode="True" target="Library" />
+      <Execution runwithwarnings="True" consolepause="False" runtime="MsNet" clr-version="Net_2_0" />
+      <CodeGeneration compiler="Csc" warninglevel="4" optimize="True" unsafecodeallowed="False" generateoverflowchecks="True" generatexmldocumentation="False" ctype="CSharpCompilerParameters" />
+    </Configuration>
+    <Configuration name="Release" ctype="DotNetProjectConfiguration">
+      <Output directory="build/ms" signAssembly="True" assemblyKeyFile="Npgsql/Npgsql.snk" assembly="Npgsql" />
+      <Build debugmode="False" target="Library" />
+      <Execution runwithwarnings="True" consolepause="False" runtime="MsNet" clr-version="Net_2_0" />
+      <CodeGeneration compiler="Csc" warninglevel="4" optimize="True" unsafecodeallowed="False" generateoverflowchecks="True" generatexmldocumentation="False" ctype="CSharpCompilerParameters" />
+    </Configuration>
+  </Configurations>
+  <Contents>
+    <File name="Npgsql/AssemblyInfo.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/HashAlgorithm.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/MD5.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/MD5CryptoServiceProvider.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlAsciiRow.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlBackEndKeyData.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlBind.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCancelRequest.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlClosedState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCommand.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCommandBuilder.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlConnectedState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlConnection.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlConnector.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlConnectorPool.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlDataAdapter.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlDataReader.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlDescribe.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlError.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlEventLog.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlException.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlExecute.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlFactory.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlFlush.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlMediator.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlMessageTypes.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlNotificationEventArgs.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlParameter.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlParameterCollection.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlParameterStatus.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlParse.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlPasswordPacket.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlQuery.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlReadyState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlRow.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlRowDescription.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlSchema.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlStartupPacket.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlStartupState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlSync.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlTransaction.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/PGUtil.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/Web/NpgsqlMembershipProvider.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/Web/NpgsqlProfileProvider.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/Web/NpgsqlRoleProvider.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/FastPath.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/FastPathArg.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/LargeObject.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/LargeObjectManager.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/NpgsqlDbType.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/NpgsqlTypeConverters.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/NpgsqlTypes.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/NpgsqlTypesHelper.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyIn.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyInState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyInStream.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyOut.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyOutState.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyOutStream.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlPromotableSinglePhaseNotification.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlTransactionCallbacks.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlResourceManager.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlCopyFormat.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlConnectionStringBuilder.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/Cache.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlServices.cs" subtype="Code" buildaction="Compile" />
+    <File name="Npgsql/NpgsqlProviderManifest.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/ArrayHandling.cs" subtype="Code" buildaction="Compile" />
+    <File name="NpgsqlTypes/DateDatatypes.cs" subtype="Code" buildaction="Compile" />
+  </Contents>
+  <References>
+    <ProjectReference type="Gac" localcopy="True" refto="System, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Data, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Configuration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Transactions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Xml, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+    <ProjectReference type="Gac" localcopy="True" refto="System.Web, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <ProjectReference type="Gac" localcopy="True" refto="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756" />
+  </References>
+  <DeployTargets />
+</Project>

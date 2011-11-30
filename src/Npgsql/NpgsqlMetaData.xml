@@ -1,0 +1,247 @@
+<?xml version="1.0" standalone="yes"?>
+<DataSet>
+  <xs:schema id="DataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xs:element name="DataSet" msdata:IsDataSet="true" msdata:UseCurrentLocale="true">
+      <xs:complexType>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element name="DataSourceInformation" msdata:MinimumCapacity="18">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="CompositeIdentifierSeparatorPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="DataSourceProductName" type="xs:string" minOccurs="0" />
+                <xs:element name="DataSourceProductVersion" type="xs:string" minOccurs="0" />
+                <xs:element name="DataSourceProductVersionNormalized" type="xs:string" minOccurs="0" />
+                <xs:element name="GroupByBehavior" msdata:DataType="System.Data.Common.GroupByBehavior, System.Data, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:string" minOccurs="0" />
+                <xs:element name="IdentifierPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="IdentifierCase" msdata:DataType="System.Data.Common.IdentifierCase, System.Data, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:string" minOccurs="0" />
+                <xs:element name="OrderByColumnsInSelect" type="xs:boolean" minOccurs="0" />
+                <xs:element name="ParameterMarkerFormat" type="xs:string" minOccurs="0" />
+                <xs:element name="ParameterMarkerPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="ParameterNameMaxLength" type="xs:int" minOccurs="0" />
+                <xs:element name="ParameterNamePattern" type="xs:string" minOccurs="0" />
+                <xs:element name="QuotedIdentifierPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="QuotedIdentifierCase" msdata:DataType="System.Data.Common.IdentifierCase, System.Data, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:string" minOccurs="0" />
+                <xs:element name="StatementSeparatorPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="StringLiteralPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="SupportedJoinOperators" msdata:DataType="System.Data.Common.SupportedJoinOperators, System.Data, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" type="xs:string" minOccurs="0" />
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="MetaDataCollections">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="CollectionName" type="xs:string" minOccurs="0" />
+                <xs:element name="NumberOfRestrictions" type="xs:int" minOccurs="0" />
+                <xs:element name="NumberOfIdentifierParts" type="xs:int" minOccurs="0" />
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="Restrictions">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="CollectionName" type="xs:string" minOccurs="0" />
+                <xs:element name="RestrictionName" type="xs:string" minOccurs="0" />
+                <xs:element name="RestrictionDefault" type="xs:string" minOccurs="0" />
+                <xs:element name="RestrictionNumber" type="xs:int" minOccurs="0" />
+              </xs:sequence>
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
+  <DataSourceInformation>
+    <CompositeIdentifierSeparatorPattern>.</CompositeIdentifierSeparatorPattern>
+    <DataSourceProductName>Npgsql</DataSourceProductName>
+    <GroupByBehavior>2</GroupByBehavior>
+    <IdentifierPattern>(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\"[^\"\0]|\"\"+\"$)</IdentifierPattern>
+    <IdentifierCase>1</IdentifierCase>
+    <OrderByColumnsInSelect>false</OrderByColumnsInSelect>
+    <ParameterMarkerFormat>{0}</ParameterMarkerFormat>
+    <ParameterMarkerPattern>@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterMarkerPattern>
+    <ParameterNameMaxLength>128</ParameterNameMaxLength>
+    <ParameterNamePattern>^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterNamePattern>
+    <QuotedIdentifierPattern>"^(([^"]|"")*)$"</QuotedIdentifierPattern>
+    <QuotedIdentifierCase>2</QuotedIdentifierCase>
+    <StatementSeparatorPattern>;</StatementSeparatorPattern>
+    <StringLiteralPattern>'(([^']|'')*)'</StringLiteralPattern>
+    <SupportedJoinOperators>15</SupportedJoinOperators>
+  </DataSourceInformation>
+  <MetaDataCollections>
+    <CollectionName>MetaDataCollections</CollectionName>
+    <NumberOfRestrictions>0</NumberOfRestrictions>
+    <NumberOfIdentifierParts>0</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Restrictions</CollectionName>
+    <NumberOfRestrictions>0</NumberOfRestrictions>
+    <NumberOfIdentifierParts>0</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Databases</CollectionName>
+    <NumberOfRestrictions>1</NumberOfRestrictions>
+    <NumberOfIdentifierParts>1</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Tables</CollectionName>
+    <NumberOfRestrictions>4</NumberOfRestrictions>
+    <NumberOfIdentifierParts>3</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Columns</CollectionName>
+    <NumberOfRestrictions>4</NumberOfRestrictions>
+    <NumberOfIdentifierParts>4</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Views</CollectionName>
+    <NumberOfRestrictions>3</NumberOfRestrictions>
+    <NumberOfIdentifierParts>3</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Users</CollectionName>
+    <NumberOfRestrictions>1</NumberOfRestrictions>
+    <NumberOfIdentifierParts>1</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>Indexes</CollectionName>
+    <NumberOfRestrictions>4</NumberOfRestrictions>
+    <NumberOfIdentifierParts>4</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <MetaDataCollections>
+    <CollectionName>IndexColumns</CollectionName>
+    <NumberOfRestrictions>5</NumberOfRestrictions>
+    <NumberOfIdentifierParts>5</NumberOfIdentifierParts>
+  </MetaDataCollections>
+  <Restrictions>
+    <CollectionName>Databases</CollectionName>
+    <RestrictionName>Name</RestrictionName>
+    <RestrictionDefault>Name</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Tables</CollectionName>
+    <RestrictionName>Catalog</RestrictionName>
+    <RestrictionDefault>table_catalog</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Tables</CollectionName>
+    <RestrictionName>Schema</RestrictionName>
+    <RestrictionDefault>table_schema</RestrictionDefault>
+    <RestrictionNumber>2</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Tables</CollectionName>
+    <RestrictionName>Table</RestrictionName>
+    <RestrictionDefault>table_name</RestrictionDefault>
+    <RestrictionNumber>3</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Tables</CollectionName>
+    <RestrictionName>TableType</RestrictionName>
+    <RestrictionDefault>table_type</RestrictionDefault>
+    <RestrictionNumber>4</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Columns</CollectionName>
+    <RestrictionName>Catalog</RestrictionName>
+    <RestrictionDefault>table_catalog</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Columns</CollectionName>
+    <RestrictionName>Schema</RestrictionName>
+    <RestrictionDefault>table_schema</RestrictionDefault>
+    <RestrictionNumber>2</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Columns</CollectionName>
+    <RestrictionName>Table</RestrictionName>
+    <RestrictionDefault>table_name</RestrictionDefault>
+    <RestrictionNumber>3</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Columns</CollectionName>
+    <RestrictionName>Column</RestrictionName>
+    <RestrictionDefault>column_name</RestrictionDefault>
+    <RestrictionNumber>4</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Views</CollectionName>
+    <RestrictionName>Catalog</RestrictionName>
+    <RestrictionDefault>table_catalog</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Views</CollectionName>
+    <RestrictionName>Schema</RestrictionName>
+    <RestrictionDefault>table_schema</RestrictionDefault>
+    <RestrictionNumber>2</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Views</CollectionName>
+    <RestrictionName>Table</RestrictionName>
+    <RestrictionDefault>table_name</RestrictionDefault>
+    <RestrictionNumber>3</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Users</CollectionName>
+    <RestrictionName>User</RestrictionName>
+    <RestrictionDefault>user_name</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Indexes</CollectionName>
+    <RestrictionName>Catalog</RestrictionName>
+    <RestrictionDefault>table_catalog</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Indexes</CollectionName>
+    <RestrictionName>Schema</RestrictionName>
+    <RestrictionDefault>table_schema</RestrictionDefault>
+    <RestrictionNumber>2</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Indexes</CollectionName>
+    <RestrictionName>Table</RestrictionName>
+    <RestrictionDefault>table_name</RestrictionDefault>
+    <RestrictionNumber>3</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>Indexes</CollectionName>
+    <RestrictionName>Index</RestrictionName>
+    <RestrictionDefault>index_name</RestrictionDefault>
+    <RestrictionNumber>4</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>IndexColumns</CollectionName>
+    <RestrictionName>Catalog</RestrictionName>
+    <RestrictionDefault>table_catalog</RestrictionDefault>
+    <RestrictionNumber>1</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>IndexColumns</CollectionName>
+    <RestrictionName>Schema</RestrictionName>
+    <RestrictionDefault>table_schema</RestrictionDefault>
+    <RestrictionNumber>2</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>IndexColumns</CollectionName>
+    <RestrictionName>Table</RestrictionName>
+    <RestrictionDefault>table_name</RestrictionDefault>
+    <RestrictionNumber>3</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>IndexColumns</CollectionName>
+    <RestrictionName>Index</RestrictionName>
+    <RestrictionDefault>index_name</RestrictionDefault>
+    <RestrictionNumber>4</RestrictionNumber>
+  </Restrictions>
+  <Restrictions>
+    <CollectionName>IndexColumns</CollectionName>
+    <RestrictionName>Column</RestrictionName>
+    <RestrictionDefault>column_name</RestrictionDefault>
+    <RestrictionNumber>5</RestrictionNumber>
+  </Restrictions>
+</DataSet>

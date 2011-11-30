@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <!-- Main report definition -->
+    <xs:element name="FxCopReport">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="Namespaces" minOccurs="0" maxOccurs="1" />
+                <xs:element ref="Targets" minOccurs="0" maxOccurs="1" />
+                <xs:element ref="Notes" minOccurs="0" maxOccurs="1" />
+                <xs:element ref="Rules" minOccurs="0" maxOccurs="1" />
+            </xs:all>
+            <xs:attribute name="Version" type="xs:double" use="required" />
+            <xs:attribute name="LastAnalysis" type="xs:string" use="optional" />
+        </xs:complexType>
+    </xs:element>
+    <!-- Message & Note element type definitions -->
+    <xs:simpleType name="MessageLevel">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="CriticalError" />
+            <xs:enumeration value="Error" />
+            <xs:enumeration value="CriticalWarning" />
+            <xs:enumeration value="Warning" />
+            <xs:enumeration value="Information" />
+            
+            <xs:enumeration value="CriticalError, Error" />
+            <xs:enumeration value="CriticalError, Error, CriticalWarning" />
+            <xs:enumeration value="CriticalError, Error, CriticalWarning, Warning" />
+            <xs:enumeration value="CriticalError, Error, CriticalWarning, Warning, Information" />
+			<xs:enumeration value="CriticalError, Error, CriticalWarning, Information" />                       
+            <xs:enumeration value="CriticalError, Error, Warning" />
+            <xs:enumeration value="CriticalError, Error, Warning, Information" />
+            <xs:enumeration value="CriticalError, Error, Information" />
+            
+            <xs:enumeration value="Error, CriticalWarning" />
+            <xs:enumeration value="Error, CriticalWarning, Warning" />
+            <xs:enumeration value="Error, CriticalWarning, Warning, Information" />
+			<xs:enumeration value="Error, CriticalWarning, Information" />                       
+            <xs:enumeration value="Error, Warning" />
+            <xs:enumeration value="Error, Warning, Information" />
+            <xs:enumeration value="Error, Information" />
+            
+            <xs:enumeration value="CriticalWarning, Warning" />
+            <xs:enumeration value="CriticalWarning, Warning, Information" />
+			<xs:enumeration value="CriticalWarning, Information" />                       
+            <xs:enumeration value="Warning, Information" />
+            
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="Certainty">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0" />
+            <xs:maxInclusive value="100" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="MessageStatus">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Active" />
+            <xs:enumeration value="Excluded" />
+            <xs:enumeration value="Absent" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="FixCategory">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Breaking" />
+            <xs:enumeration value="NonBreaking" />
+            <xs:enumeration value="DependsOnFix" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="TypeKind">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Class" />
+            <xs:enumeration value="Delegate" />
+            <xs:enumeration value="Enum" />
+            <xs:enumeration value="Interface" />
+            <xs:enumeration value="Struct" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="MemberKind">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Constructor" />
+            <xs:enumeration value="Event" />
+            <xs:enumeration value="Field" />
+            <xs:enumeration value="Method" />
+            <xs:enumeration value="Property" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="Accessibility">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Public" />
+            <xs:enumeration value="Family" />
+            <xs:enumeration value="FamilyOrAssembly" />
+            <xs:enumeration value="FamilyAndAssembly" />
+            <xs:enumeration value="Assembly" />
+            <xs:enumeration value="Private" />
+        </xs:restriction>
+    </xs:simpleType>    
+    <xs:simpleType name="PascalBoolean">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="True" />
+            <xs:enumeration value="False" />
+        </xs:restriction>
+    </xs:simpleType>    
+    <xs:complexType name="NoteIdentifier">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="Id" type="xs:nonNegativeInteger" use="required" />
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+    <xs:complexType name="NoteIdentifiers">
+        <xs:sequence>
+            <xs:element name="Note" type="NoteIdentifier" minOccurs="0" maxOccurs="unbounded" />
+        </xs:sequence>
+    </xs:complexType>
+    <!-- Message & Issue definitions -->
+    <xs:element name="Issue">
+        <xs:complexType>
+			<xs:attribute name="Certainty" type="Certainty" use="required" />
+			<xs:attribute name="Path" type="xs:string" use="required" />
+			<xs:attribute name="File" type="xs:string" use="required" />
+			<xs:attribute name="Line" type="xs:integer" use="required" />
+			<xs:attribute name="Level" type="MessageLevel" use="required" />
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Message">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="Issue" minOccurs="0" maxOccurs="unbounded" />
+                <xs:element name="Notes" type="NoteIdentifiers" minOccurs="0" maxOccurs="1" />
+            </xs:sequence>
+            <xs:attribute name="Status" type="MessageStatus" use="required" />
+            <xs:attribute name="Created" type="xs:string" use="required" />
+            <xs:attribute name="LastSeen" type="xs:string" use="optional" />
+            <xs:attribute name="Id" type="xs:string" use="optional" />
+            <xs:attribute name="FixCategory" type="FixCategory" use="required" />
+            <xs:attribute name="TypeName" type="xs:string" use="required" />
+            <xs:attribute name="CheckId" type="xs:string" use="required" />
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Messages">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="Message" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <!-- Note definition -->
+    <xs:element name="Note">
+        <xs:complexType>
+            <xs:simpleContent>
+                <xs:extension base="NoteIdentifier">
+                    <xs:attribute name="Modified" type="xs:string" use="required" />
+                    <xs:attribute name="UserName" type="xs:string" use="required" />
+                </xs:extension>
+            </xs:simpleContent>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Notes">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="Note" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <!-- Rule description element definitions -->
+    <xs:simpleType name="RuleCertainty">
+        <xs:restriction base="xs:string">
+            <!-- regular expression allows either an integer -->
+            <!-- or 2 integers separated by a dash -->
+            <xs:pattern value="[0-9]+(-[0-9]+)?" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:complexType name="RuleMessageLevel">
+        <xs:simpleContent>
+            <xs:extension base="MessageLevel">
+                <xs:attribute name="Certainty" type="RuleCertainty" use="required" />
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+    <xs:complexType name="RuleFile">
+        <xs:attribute name="Name" type="xs:string" use="required" />
+        <xs:attribute name="Version" type="xs:string" use="required" />
+    </xs:complexType>
+    <xs:complexType name="RuleIdentifier">
+        <xs:attribute name="TypeName" type="xs:string" use="required" />
+    </xs:complexType>
+    <!-- Rule definition -->
+    <xs:element name="Rule">
+        <xs:complexType>
+            <xs:complexContent>
+                <xs:extension base="RuleIdentifier">
+                    <xs:sequence>
+                        <xs:element name="Name" type="xs:string" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="Description" type="xs:string" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="Owner" type="xs:string" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="Url" type="xs:anyURI" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="Email" type="xs:string" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="MessageLevel" type="RuleMessageLevel" minOccurs="1" maxOccurs="1" />
+                        <xs:element name="File" type="RuleFile" minOccurs="1" maxOccurs="1" />
+                    </xs:sequence>
+                </xs:extension>
+            </xs:complexContent>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Rules">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="Rule" minOccurs="0" maxOccurs="unbounded"></xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <!-- Target tree element definitions -->
+    <!-- Singular target definitions -->
+    <!-- Target members -->
+    <xs:complexType name="Member">
+		<xs:all>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+			<xs:element name="Accessors" type="Accessors" minOccurs="0" maxOccurs="1" />
+		</xs:all>
+		<xs:attribute name="Name" type="xs:string" use="required" />
+		<xs:attribute name="Kind" type="MemberKind" use="optional" default="Method" />
+		<xs:attribute name="Static" type="PascalBoolean" use="optional" default="False" />		
+		<xs:attribute name="ExternallyVisible" type="PascalBoolean" use="optional" default="True" />
+		<xs:attribute name="Accessibility" type="Accessibility" use="optional" default="Public" />
+    </xs:complexType>
+    <xs:complexType name="Accessors">
+		<xs:sequence>
+			<xs:element name="Accessor" type="Member" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+    </xs:complexType>
+    <!-- Target types -->
+    <xs:complexType name="Type">
+		<xs:all>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+			<xs:element ref="Members" minOccurs="0" maxOccurs="1" />		
+		</xs:all>
+        <xs:attribute name="Name" type="xs:string" use="required" />
+		<xs:attribute name="Kind" type="TypeKind" use="optional" default="Class" />
+		<xs:attribute name="ExternallyVisible" type="PascalBoolean" use="optional" default="True" />
+		<xs:attribute name="Accessibility" type="Accessibility" use="optional" default="Public" />		
+    </xs:complexType>
+    <!-- Type containers -->
+    <xs:complexType name="Namespace">
+		<xs:sequence>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+			<xs:element ref="Types" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+        <xs:attribute name="Name" type="xs:string" use="required" />
+    </xs:complexType>
+    <xs:complexType name="Module">
+		<xs:sequence>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+			<xs:element ref="Namespaces" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+        <xs:attribute name="Name" type="xs:string" use="required" />
+    </xs:complexType>
+    <!-- Resources -->
+    <xs:complexType name="Resource">
+		<xs:sequence>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+        <xs:attribute name="Name" type="xs:string" use="required" />
+    </xs:complexType>
+    <!-- Top-level target definition -->
+    <xs:complexType name="Target">
+		<xs:sequence>
+			<xs:element ref="Messages" minOccurs="0" maxOccurs="1" />
+			<xs:element ref="Modules" minOccurs="0" maxOccurs="1" />
+			<xs:element ref="Resources" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+        <xs:attribute name="Name" type="xs:string" use="required" />
+    </xs:complexType>
+    <!-- Plural target groups -->
+	<xs:complexType name="Members">
+		<xs:sequence>
+			<xs:element name="Member" type="Member" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>    
+    <xs:element name="Members" type="Members">
+    </xs:element>
+    <xs:element name="Types">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Type" type="Type" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Namespaces">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Namespace" type="Namespace" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Modules">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Module" type="Module" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Resources">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Resource" type="Resource" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="Targets">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Target" type="Target" minOccurs="0" maxOccurs="unbounded" />
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

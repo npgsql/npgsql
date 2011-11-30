@@ -1,0 +1,10 @@
+Copy from stream ok
+Copy from writing ok
+Lengths of text written to and read in single pass from database differ by 0
+Sums of characters written to and read in single pass from database differ by 0
+Lengths of text written to and read via stream from database differ by 0
+Sums of characters written to and read via stream from database differ by 0
+Copy from stream failed as requested.
+Copy from writing failed as requested.
+Copy to stream failed as requested.
+Copy to reading failed as requested.

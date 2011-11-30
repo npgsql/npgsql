@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+    This is the build file of testsuite
+-->
+
+<project name="testsuite" default="build" basedir=".">
+    <target name="build" depends="resources">
+        <csc target="exe" output="testsuite.exe">
+            <references>
+                <include name="System.Windows.Forms.dll" />
+                <include name="System.Drawing.dll" />
+                <include name="System.Data.dll" />
+                <include name="Npgsql.dll" />
+            </references>
+            <resources>
+                <include name="frmMain.resources"/>
+                <include name="testsuite.ico"/>
+            </resources>
+            <sources>
+                <include name="AssemblyInfo.cs"/>
+                <include name="frmMain.cs"/>
+            </sources>
+        </csc>
+    </target>
+    <target name="resources" >
+        <resgen todir=".">
+            <resources>
+                <include name="frmMain.resx"/>
+            </resources>
+        </resgen>
+    </target>
+    <target name="clean" description="cleans the build files">
+        <delete file="testsuite.exe" verbose="true" failonerror="true"/>
+        <delete file="frmMain.resources" verbose="true" failonerror="true"/>
+        <delete file="testsuite.log" verbose="true" failonerror="true"/>
+    </target>
+</project>

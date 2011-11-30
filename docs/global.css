@@ -1,0 +1,199 @@
+<!-- 0.00.0002  2002-06-18  ulrich sprick -->
+
+UNKNOWN     {
+            Color: #000000
+            }
+
+A           {
+            Font-Weight: Normal
+            }
+
+A.light     {
+            Font-weight: Normal
+            }
+
+A:vlink     {
+            }
+
+A:hover     {
+            Color: Orangered
+            }
+
+
+BODY        {
+            Font-Family: Verdana, sans-serif, Arial, Helvetica;
+            Font-Size: 80%;
+            Line-Height: 150%
+            }
+
+DIV.BOX     {
+            border-style: solid;
+            border-width: thin;
+            border-color: gray;
+            background-color: white;
+            margin-left: 20;
+            margin-right: 20;
+            text-align: center;
+            padding-left:5;
+            padding-right:5;
+            }
+
+DIV.Indent  {
+            margin-left: 15;
+            }
+
+Div.Note    {
+            border-left: solid thin gray;
+            margin-left: 10;
+            margin-right: 5;
+            padding-left: 20;
+            padding-right: 10;
+            }
+
+
+H1          {
+            Color: orangered;
+            Font-Family: Times, serif;
+            Line-height:120%
+            }
+
+H1.PgTitle  {
+            text-align:center;
+            }
+
+H2          {
+            Color: navy;
+            Font-Family: Arial, Helvetica, sans-serif;
+            Margin-top: 40;
+            Line-height:120%
+            }
+
+H3          {
+            Color: navy;
+            Font-Family: Arial, Helvetica, sans-serif;
+            Margin-top: 40;
+            Line-height:120%
+            }
+
+H4          {
+            Color: navy;
+            Font-Family: Arial, Helvetica, sans-serif;
+            Margin-top: 30
+            }
+
+H5          {
+            Color: navy;
+            Font-Family: Arial, Helvetica, sans-serif;
+            Margin-top: 30
+            }
+
+H6          {
+            Color: navy;
+            Font-Family: Arial, Helvetica, sans-serif;
+            Margin-top: 30
+            }
+
+
+p.LinkBar   {
+            margin:0;
+            text-align:center;
+            line-height:100%;
+            color:darkblue;
+            }
+P.PgStats   {
+            text-align: center;
+            font-size:smaller;
+            color: gray;
+            margin-top: 0;
+            margin-bottom: 0;
+            }
+
+PRE         {
+            Color: darkblue;
+            Font-Family: Courier New, Courier, monospace;
+            Padding-Left: 25px;
+            line-height: 140%
+            }
+
+.CodeBox {
+            color: darkblue;
+            background-color:WhiteSmoke;
+            border: solid thin lightgrey;
+            margin-left: 5;
+            margin-right: 5;
+            padding-top: 10;
+            padding-left: 20;
+            padding-right: 10;
+            padding-bottom: 10;
+            }
+            
+code{
+    Font-Family: Courier New, Courier, monospace;
+}
+TABLE       {
+            Font-Size: 100%
+            }
+
+TABLE.Std   {
+            border-bottom: 2 solid silver;
+            border-right: 2 solid silver;
+            line-height: 140%;
+            }
+
+TD.Plain    {
+            padding-left: 5;
+            }
+
+TD.Std      {
+            border-top: 2 solid silver;
+            border-left: 2 solid silver;
+            padding-right: 5;
+            padding-left: 5;
+            padding-top: 5;
+            padding-bottom: 5;
+            }
+
+TR.H1       {
+            background-color: PowderBlue;
+            color: darkblue;
+            text-align: center;
+            font-weight: bold;
+            font-size: larger;
+            height: 40;
+            }
+
+TR.H2       {
+            background-color: AliceBlue;
+            color: darkblue;
+            text-align: center;
+            font-weight: bold;
+            padding-top: 8;
+            padding-bottom: 8;
+            height: 40;
+            }
+
+TR.H6       {
+            text-align: center;
+            font-weight: normal;
+            height-
+            }
+
+TR.PlainH1  {
+            background-color: lightskyblue;
+            }
+
+TR.PlainStd {
+            background-color: gainsboro;
+            padding-left: 5;
+            }
+
+TR.Std      {
+            text-align: left;
+            vertical-align: top;
+            }
+
+UL.NoDot    {
+            list-style-type: none;
+            }
+
+        
