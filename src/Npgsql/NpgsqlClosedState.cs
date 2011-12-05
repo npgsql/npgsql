@@ -37,6 +37,34 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Npgsql
 {
+
+    internal class NpgsqlNetworkStream : NetworkStream
+    {
+        NpgsqlConnector mContext = null;
+
+        
+        public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
+            : base(socket, owner)
+        {
+            mContext = context;
+        }
+
+        
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposing)
+            {
+                mContext.Close();
+                mContext = null;
+            }
+
+            base.Dispose(disposing);
+
+        }
+
+    }
+
 	internal sealed class NpgsqlClosedState : NpgsqlState
 	{
 		private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
@@ -143,8 +171,8 @@ namespace Npgsql
 					throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host));
 				}
 
-				Stream stream = new NetworkStream(socket, true);
-
+				//Stream stream = new NetworkStream(socket, true);
+                Stream stream = new NpgsqlNetworkStream(context, socket, true);
 
 				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
 				if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
