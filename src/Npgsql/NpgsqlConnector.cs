@@ -193,10 +193,11 @@ namespace Npgsql
 
         //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
         //case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
-        ~NpgsqlConnector()
-        {
-            Close();
-        }
+        
+        //~NpgsqlConnector()
+        //{
+        //    Close();
+        //}
 
 
         internal String Host
