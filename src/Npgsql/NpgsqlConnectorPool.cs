@@ -77,7 +77,7 @@ namespace Npgsql
 		~NpgsqlConnectorPool()
 		{
 			Timer.Stop();
-            
+
 		}
 
 		private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
