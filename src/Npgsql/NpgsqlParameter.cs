@@ -75,6 +75,8 @@ namespace Npgsql
 
         private Boolean useCast = false;
 
+        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
@@ -260,13 +262,13 @@ namespace Npgsql
                 precision = value;
             }
         }
-        
-        
+
+
         public Boolean UseCast
         {
             get
             {
-                
+
                 // Prevents casts to be added for null values when they aren't needed.
                 if (!useCast && (value == DBNull.Value || value == null))
                     return false;
@@ -277,7 +279,7 @@ namespace Npgsql
                 // http://archives.postgresql.org/pgsql-general/2008-10/msg00535.php
                 // Josh's solution to add cast is documented here:
                 // http://pgfoundry.org/forum/message.php?msg_id=1004118
-                
+
                 return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
             }
         }
@@ -335,15 +337,19 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "DbType");
-                return TypeInfo.DbType;
+
+                if (type_info == null)
+                    return defaultTypeInfo.DbType;
+                else
+                    return TypeInfo.DbType;
             } // [TODO] Validate data type.
             set
             {
-                
+
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
-                
+
                 useCast = value != DbType.Object;
-                
+
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
@@ -362,7 +368,10 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgsqlDbType");
 
-                return TypeInfo.NpgsqlDbType;
+                if (type_info == null)
+                    return defaultTypeInfo.NpgsqlDbType;
+                else
+                    return TypeInfo.NpgsqlDbType;
             } // [TODO] Validate data type.
             set
             {
@@ -386,7 +395,8 @@ namespace Npgsql
             {
                 if (type_info == null)
                 {
-                    type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+                    //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+                    return defaultTypeInfo;
                 }
                 return type_info;
             }
@@ -564,19 +574,23 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Value", value);
 
+                
                 if ((value == null) || (value == DBNull.Value))
                 {
                     // don't really know what to do - leave default and do further exploration
                     // Default type for null values is String.
                     this.value = value;
                     this.npgsqlValue = value;
-                    if (type_info == null)
-                    {
-                        type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-                    }
+
+                    //if (type_info == null)
+                    //{
+                    //    type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+                    //}
                     return;
                 }
-                
+
+
+
                 if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
                 {
                     throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
@@ -593,11 +607,11 @@ namespace Npgsql
                     this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
                 }
 
-               
-                
 
 
-                
+
+
+
 
             }
         }
@@ -611,17 +625,17 @@ namespace Npgsql
         public Object NpgsqlValue
         {
             get
-            {                
+            {
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "NpgsqlValue");
                 return npgsqlValue;
-            } 
+            }
 
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlValue", value);
 
                 Value = value;
-                
+
             }
         }
 
