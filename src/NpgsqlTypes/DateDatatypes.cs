@@ -3418,6 +3418,46 @@ namespace NpgsqlTypes
 			}
 		}
 
+
+        public static implicit operator NpgsqlTimeStampTZ(DateTimeOffset datetimeoffset)
+        {
+            if (datetimeoffset == DateTimeOffset.MaxValue)
+            {
+                return Infinity;
+            }
+            else if (datetimeoffset == DateTimeOffset.MinValue)
+            {
+                return MinusInfinity;
+            }
+            else
+            {
+                NpgsqlDate newDate = new NpgsqlDate(datetimeoffset.Year,
+                    datetimeoffset.Month, datetimeoffset.Day);
+                return
+                    new NpgsqlTimeStampTZ(newDate, new NpgsqlTimeTZ(datetimeoffset.TimeOfDay,
+                        new NpgsqlTimeZone(datetimeoffset.Offset)));
+            }
+        }
+        public static explicit operator DateTimeOffset(NpgsqlTimeStampTZ timestamp)
+        {
+            switch (timestamp._type)
+            {
+                case TimeType.Infinity:
+                    return DateTimeOffset.MaxValue;
+                case TimeType.MinusInfinity:
+                    return DateTimeOffset.MinValue;
+                default:
+                    try
+                    {
+                        return new DateTimeOffset(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp.Time.Ticks, timestamp.TimeZone);
+                    }
+                    catch
+                    {
+                        throw new InvalidCastException();
+                    }
+            }
+        }
+
 		public static NpgsqlTimeStampTZ operator +(NpgsqlTimeStampTZ timestamp, NpgsqlInterval interval)
 		{
 			return timestamp.Add(interval);

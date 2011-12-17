@@ -381,6 +381,11 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("timestamptz", typeof(NpgsqlTimeStampTZ));
 
+            nativeTypeMapping.AddDbTypeAlias("timestamptz", DbType.DateTimeOffset);
+
+            nativeTypeMapping.AddTypeAlias("timestamptz", typeof(DateTimeOffset));
+
+
             nativeTypeMapping.AddType("abstime", NpgsqlDbType.Abstime, DbType.DateTime, true,
                                       new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
@@ -614,7 +619,8 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 				yield return
 					new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof (NpgsqlTimeStampTZ),
                                               new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
-                                              typeof(DateTime), timestamptz => ((DateTime)(NpgsqlTimeStampTZ)timestamptz).ToLocalTime(), npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime) npgsqlTimestampTZ : npgsqlTimestampTZ));
+                                              typeof(DateTime), timestamptz => ((DateTime)(NpgsqlTimeStampTZ)timestamptz).ToLocalTime(), npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime)npgsqlTimestampTZ : npgsqlTimestampTZ is DateTimeOffset ? (NpgsqlTimeStampTZ)(DateTimeOffset)npgsqlTimestampTZ :
+npgsqlTimestampTZ));
 			}
 		}
 
