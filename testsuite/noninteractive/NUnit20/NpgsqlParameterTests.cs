@@ -987,6 +987,31 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug1011100NpgsqlDbTypeTest()
+        {
+            NpgsqlParameter p = new NpgsqlParameter();
+            p.Value = DBNull.Value;
+            Assert.AreEqual(DbType.String, p.DbType, "#A:DbType");
+            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+
+            // Now change parameter value. 
+            // Note that as we didn't explicitly specified a dbtype, the dbtype property should change when 
+            // the value changes...
+
+            p.Value = 8;
+
+            Assert.AreEqual(DbType.Int32, p.DbType, "#A:DbType");
+            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
+
+
+            //Assert.AreEqual(3510, p.Value, "#A:Value");
+            //p.NpgsqlDbType = NpgsqlDbType.Varchar;
+            //Assert.AreEqual(DbType.String, p.DbType, "#B:DbType");
+            //Assert.AreEqual(NpgsqlDbType.Varchar, p.NpgsqlDbType, "#B:NpgsqlDbType");
+            //Assert.AreEqual(3510, p.Value, "#B:Value");
+        }
+
+        [Test]
         public void NpgsqlDbTypeTest_Value_Invalid()
         {
             NpgsqlParameter p = new NpgsqlParameter("zipcode", 3510);
