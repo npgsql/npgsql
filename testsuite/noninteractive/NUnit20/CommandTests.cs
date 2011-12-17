@@ -1761,13 +1761,23 @@ namespace NpgsqlTests
         [ExpectedException(typeof(NpgsqlException))]
         public void ConnectionStringWithInvalidParameterValue()
         {
+
             NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tets;Password=j");
 
             NpgsqlCommand command = new NpgsqlCommand("select * from tablea", conn);
 
-            command.Connection.Open();
-            command.ExecuteReader();
-            command.Connection.Close();
+            try
+            {
+                command.Connection.Open();
+                command.ExecuteReader();
+            }
+            finally
+            {
+                command.Connection.Close();
+
+            }
+            
+            
         }
 
         [Test]
@@ -3607,7 +3617,35 @@ connection.Open();*/
             
             
         }
-        
+
+        [Test]
+        public void Bug1011100NpgsqlParameterandDBNullValue()
+        {
+
+            using (Npgsql.NpgsqlCommand cmd = new Npgsql.NpgsqlCommand(
+            "select :BLOB"))
+            {
+                cmd.Connection = TheConnection;
+
+                Npgsql.NpgsqlParameter paramBLOB = new Npgsql.NpgsqlParameter();
+                paramBLOB.ParameterName = "BLOB";
+                cmd.Parameters.Add(paramBLOB);
+
+                cmd.Parameters[0].Value = DBNull.Value;
+                
+                
+                Assert.AreEqual(DbType.String, cmd.Parameters[0].DbType);
+
+
+
+                cmd.Parameters[0].Value = new byte[] { 1, 2, 3 };
+
+
+                Assert.AreEqual(DbType.Binary, cmd.Parameters[0].DbType);
+            }
+
+        }
+
         [Test]
         public void TestNpgsqlSpecificTypesCLRTypesNpgsqlTimeStamp()
         {
@@ -3739,6 +3777,133 @@ connection.Open();*/
             NpgsqlCommand command = new NpgsqlCommand("funcb", TheConnection);
             NpgsqlCommandBuilder.DeriveParameters(command);
         }
+
+        [Test]
+        public void DataTypeTests()
+        {
+
+            // Test all types according to this table:
+            // http://www.postgresql.org/docs/9.1/static/datatype.html
+
+            // bigint
+
+            NpgsqlCommand cmd = new NpgsqlCommand("select 1::bigint", TheConnection);
+
+            Object result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Int64), result.GetType());
+
+            
+
+            // bit
+
+            cmd.CommandText = "select '1'::bit(1)";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Boolean), result.GetType());
+
+
+            // bit(2)
+
+            cmd.CommandText = "select '11'::bit(2)";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(BitString), result.GetType());
+
+
+            // boolean
+
+            cmd.CommandText = "select 1::boolean";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Boolean), result.GetType());
+
+            // box
+
+            cmd.CommandText = "select '((7,4),(8,3))'::box";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(NpgsqlBox), result.GetType());
+
+            // bytea 
+
+            cmd.CommandText = @"SELECT E'\\xDEADBEEF'::bytea;";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Byte[]), result.GetType());
+
+
+            // varchar(2)
+
+            cmd.CommandText = "select 'aa'::varchar(2);";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(String), result.GetType());
+
+            // char(2)
+
+            cmd.CommandText = "select 'aa'::char(2);";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(String), result.GetType());
+
+            // cidr
+
+            cmd.CommandText = "select '192.168/24'::cidr";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(String), result.GetType());
+
+
+
+            // int4
+
+            cmd.CommandText = "select 1::int4";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Int32), result.GetType());
+
+            // int8
+
+            cmd.CommandText = "select 1::int8";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(Int64), result.GetType());
+
+
+
+            // time
+
+            cmd.CommandText = "select current_time::time";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(NpgsqlTime), result.GetType());
+
+            // timetz
+
+            cmd.CommandText = "select current_time::timetz";
+
+            result = cmd.ExecuteScalar();
+
+            Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
+
+
+
+
+
+        }
+
 
     }
     
