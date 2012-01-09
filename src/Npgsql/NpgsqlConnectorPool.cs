@@ -90,41 +90,44 @@ namespace Npgsql
     		    {
     				foreach (ConnectorQueue Queue in PooledConnectors.Values)
     				{
-        				if (Queue.Available.Count > 0)
-    					{
-    						if (Queue.Available.Count + Queue.Busy.Count > Queue.MinPoolSize)
-    						{
-    							if (Queue.InactiveTime >= Queue.ConnectionLifeTime)
-    							{
-    								Int32 diff = Queue.Available.Count + Queue.Busy.Count - Queue.MinPoolSize;
-    								Int32 toBeClosed = (diff + 1) / 2;
-    								toBeClosed = Math.Min(toBeClosed, Queue.Available.Count);
-    
-    								if (diff < 2)
-    								{
-    									diff = 2;
-    								}
-    								Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
-    								for (Int32 i = 0; i < toBeClosed; ++i)
-    								{
-                                        Connector = Queue.Available.Dequeue();
-    									Connector.Close();
-    								}
-    							}
-    							else
-    							{
-    								Queue.InactiveTime++;
-    							}
-    						}
-    						else
-    						{
-    							Queue.InactiveTime = 0;
-    						}
-    					}
-    					else
-    					{
-    						Queue.InactiveTime = 0;
-    					}
+                        lock (Queue)
+                        {
+                            if (Queue.Available.Count > 0)
+                            {
+                                if (Queue.Available.Count + Queue.Busy.Count > Queue.MinPoolSize)
+                                {
+                                    if (Queue.InactiveTime >= Queue.ConnectionLifeTime)
+                                    {
+                                        Int32 diff = Queue.Available.Count + Queue.Busy.Count - Queue.MinPoolSize;
+                                        Int32 toBeClosed = (diff + 1) / 2;
+                                        toBeClosed = Math.Min(toBeClosed, Queue.Available.Count);
+
+                                        if (diff < 2)
+                                        {
+                                            diff = 2;
+                                        }
+                                        Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
+                                        for (Int32 i = 0; i < toBeClosed; ++i)
+                                        {
+                                            Connector = Queue.Available.Dequeue();
+                                            Connector.Close();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Queue.InactiveTime++;
+                                    }
+                                }
+                                else
+                                {
+                                    Queue.InactiveTime = 0;
+                                }
+                            }
+                            else
+                            {
+                                Queue.InactiveTime = 0;
+                            }
+                        }
     				}
     			}
             }
@@ -187,19 +190,22 @@ namespace Npgsql
 			NpgsqlConnector Connector;
 			Int32 timeoutMilliseconds = Connection.Timeout * 1000;
 
-			lock (this)
+            // No need for this lock anymore
+			//lock (this)
 			{
-				Connector = RequestPooledConnectorInternal(Connection);
+                Connector = RequestPooledConnectorInternal(Connection);
 			}
 
 			while (Connector == null && timeoutMilliseconds > 0)
 			{
+
 				Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
 
 				Thread.Sleep(ST);
 				timeoutMilliseconds -= ST;
 
-				lock (this)
+                
+				//lock (this)
 				{
 					Connector = RequestPooledConnectorInternal(Connection);
 				}
@@ -295,7 +301,7 @@ namespace Npgsql
 		/// </summary>
 		private void ReleasePooledConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
 		{
-			lock (this)
+			//lock (this)
 			{
 				ReleasePooledConnectorInternal(Connection, Connector);
 			}
@@ -336,6 +342,7 @@ namespace Npgsql
 			return Connector;
 		}
 
+
 		/// <summary>
 		/// Find an available pooled connector in the non-shared pool, or create
 		/// a new one if none found.
@@ -345,77 +352,125 @@ namespace Npgsql
 			ConnectorQueue Queue;
 			NpgsqlConnector Connector = null;
 
-			// Try to find a queue.
-			if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
-			{
-				Queue = new ConnectorQueue();
-				Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
-				Queue.MinPoolSize = Connection.MinPoolSize;
-				PooledConnectors[Connection.ConnectionString] = Queue;
-			}
 
-			if (Queue.Available.Count > 0)
-			{
-				// Found a queue with connectors.  Grab the top one.
+            // We only need to lock all pools when trying to get one pool or create one.
 
-				// Check if the connector is still valid.
+            lock (this)
+            {
 
-				Connector = Queue.Available.Dequeue();
-				if (!Connector.IsValid())
-				{
-					Connector.Close();
-					
-					return GetPooledConnector(Connection); //Try again
-				}
-				Queue.Busy.Add(Connector, null);
-			}
-			else if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
-			{
-				Connector = CreateConnector(Connection);
-
-				Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-				Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-				Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-				Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
-
-				try
-				{
-					Connector.Open();
-				}
-				catch
-				{
-					Connector.Close();
-
-					throw;
-				}
+                // Try to find a queue.
+                if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
+                {
+                    Queue = new ConnectorQueue();
+                    Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
+                    Queue.MinPoolSize = Connection.MinPoolSize;
+                    PooledConnectors[Connection.ConnectionString] = Queue;
+                }
+            }
 
 
-				Queue.Busy.Add(Connector, null);
-			}
+            // Now we can simply lock on the pool itself.
+            lock (Queue)
+            {
 
-			// Meet the MinPoolSize requirement if needed.
-			if (Connection.MinPoolSize > 0)
-			{
-				while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
-				{
-					NpgsqlConnector Spare = CreateConnector(Connection);
 
-                    Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-					Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-					Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-					Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
+			    if (Queue.Available.Count > 0)
+			    {
+				    // Found a queue with connectors.  Grab the top one.
 
-					Spare.Open();
+				    // Check if the connector is still valid.
 
-                    Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-					Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-					Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-					Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
+				    Connector = Queue.Available.Dequeue();
+                    Queue.Busy.Add(Connector, null);
+			    }
+            }
 
-					Queue.Available.Enqueue(Spare);
-				}
-			}
+            if (Connector != null)
+            {
+                if (!Connector.IsValid())
+                {
+                    lock (Queue)
+                    {
+                        Queue.Busy.Remove(Connector);
+                    }
 
+
+                    Connector.Close();
+                    return GetPooledConnector(Connection); //Try again
+                }
+
+                return Connector;
+            }
+
+
+            lock (Queue)
+            {
+
+                if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
+                {
+                    Connector = CreateConnector(Connection);
+                    Queue.Busy.Add(Connector, null);
+
+                }
+                
+            }
+
+
+            if (Connector != null)
+            {
+
+                Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
+                Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
+                Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
+                Connector.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
+
+                try
+                {
+                    Connector.Open();
+                }
+                catch
+                {
+                    lock (Queue)
+                    {
+                        Queue.Busy.Remove(Connector);
+                    }
+
+                    Connector.Close();
+
+                    throw;
+                }
+
+
+                // Meet the MinPoolSize requirement if needed.
+                if (Connection.MinPoolSize > 1)
+                {
+
+                    lock (Queue)
+                    {
+
+                        while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                        {
+                            NpgsqlConnector Spare = CreateConnector(Connection);
+
+                            Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
+                            Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
+                            Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
+                            Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
+
+                            Spare.Open();
+
+                            Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
+                            Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
+                            Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
+                            Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
+
+                            Queue.Available.Enqueue(Spare);
+                        }
+                    }
+                }
+            }
+
+            
 			return Connector;
 		}
 
@@ -487,8 +542,15 @@ namespace Npgsql
 		{
 			ConnectorQueue queue;
 
-			// Find the queue.
-			if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out queue) || queue == null)
+            // Find the queue.
+            // As we are handling all possible queues, we have to lock everything...
+            lock (this)
+            {
+                PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
+            }
+
+			
+			if (queue == null)
 			{
 				Connector.Close(); // Release connection to postgres
 				return; // Queue may be emptied by connection problems. See ClearPool below.
@@ -499,8 +561,13 @@ namespace Npgsql
 			Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
 			Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
 
-			bool inQueue = queue.Busy.ContainsKey(Connector);
-			queue.Busy.Remove(Connector);
+            bool inQueue = false;
+
+            lock (queue)
+            {
+                inQueue = queue.Busy.ContainsKey(Connector);
+                queue.Busy.Remove(Connector);
+            }
 
 			if (!Connector.IsInitialized)
 			{
@@ -544,7 +611,10 @@ namespace Npgsql
 					}
 
 					if (inQueue)
-						queue.Available.Enqueue(Connector);
+                        lock (queue)
+                        {
+                            queue.Available.Enqueue(Connector);
+                        }
 					else
 						Connector.Close();
 				}
