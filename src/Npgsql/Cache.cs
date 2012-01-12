@@ -38,6 +38,7 @@ namespace Npgsql
 		where TEntity : class
 	{
 		private int _cache_size = 20;
+		private object locker = new object();
 
 		/// <summary>
 		/// Set Cache Size. The default value is 20.
@@ -53,7 +54,7 @@ namespace Npgsql
 
 				if (this.Count > _cache_size)
 				{
-					lock (this)
+					lock (locker)
 					{
 						while (_cache_size < this.Count)
 						{
@@ -74,7 +75,7 @@ namespace Npgsql
 		{
 			get
 			{
-				lock (this)
+				lock (locker)
 				{
 					for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
 					{
@@ -90,7 +91,7 @@ namespace Npgsql
 			}
 			set
 			{
-				lock (this)
+				lock (locker)
 				{
 					for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
 					{

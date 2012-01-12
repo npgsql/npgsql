@@ -64,6 +64,9 @@ namespace Npgsql
         /// mamager.</value>
         internal static NpgsqlConnectorPool ConnectorPoolMgr = new NpgsqlConnectorPool();
 
+        private object locker = new object();
+
+
         public NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
@@ -86,7 +89,7 @@ namespace Npgsql
             
             try
             {
-                lock (this)
+                lock (locker)
                 {
                     foreach (ConnectorQueue Queue in PooledConnectors.Values)
                     {
@@ -356,7 +359,7 @@ namespace Npgsql
 
             // We only need to lock all pools when trying to get one pool or create one.
 
-            lock (this)
+            lock (locker)
             {
 
                 // Try to find a queue.
@@ -506,7 +509,7 @@ namespace Npgsql
             ConnectorQueue Queue;
 
             // Prevent multithread access to connection pool count.
-            lock (this)
+            lock (locker)
             {
                 // Try to find a queue.
                 if (PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue) && Queue != null)
@@ -546,7 +549,7 @@ namespace Npgsql
 
             // Find the queue.
             // As we are handling all possible queues, we have to lock everything...
-            lock (this)
+            lock (locker)
             {
                 PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
             }
@@ -668,7 +671,7 @@ namespace Npgsql
         internal void ClearPool(NpgsqlConnection Connection)
         {
             // Prevent multithread access to connection pool count.
-            lock (this)
+            lock (locker)
             {
                 ConnectorQueue queue;
                 // Try to find a queue.
@@ -684,7 +687,7 @@ namespace Npgsql
         
         internal void ClearAllPools()
         {
-            lock (this)
+            lock (locker)
             {
                 foreach (ConnectorQueue Queue in PooledConnectors.Values)
                 {

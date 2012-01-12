@@ -78,6 +78,9 @@ namespace Npgsql
 		private static readonly byte[] THRASH_CAN = new byte[THRASH_CAN_SIZE];
 		private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
 
+        private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
+
+
 
 
 		///<summary>
@@ -344,11 +347,12 @@ namespace Npgsql
 		/// </summary>
 		public static void WriteString(String the_string, Stream network_stream)
 		{
+            
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
 
-			byte[] bytes = ENCODING_UTF8.GetBytes(the_string + '\x00');
+			byte[] bytes = ENCODING_UTF8.GetBytes(the_string + NULL_TERMINATOR_STRING);
 			
 			network_stream.Write(bytes, 0, bytes.Length);
 		}

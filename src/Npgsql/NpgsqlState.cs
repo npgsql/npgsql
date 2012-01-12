@@ -128,7 +128,11 @@ namespace Npgsql
                                 case -1:
                                     throw new EndOfStreamException();
                                 case 'Z':
-                                    context.Query(new NpgsqlCommand("UNLISTEN *", context));
+                                    //context.Query(new NpgsqlCommand("UNLISTEN *", context));
+                                    using(NpgsqlCommand cmd = new NpgsqlCommand("UNLISTEN *", context))
+                                    {
+                                        context.Query(cmd);
+                                    }
                                     return;
                             }
                         }

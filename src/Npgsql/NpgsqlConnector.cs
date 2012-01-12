@@ -365,7 +365,11 @@ namespace Npgsql
                 String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
                 
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
-                String compareValue = (String) new NpgsqlCommand("select '" + testValue + "'", this).ExecuteScalar();
+                string compareValue = string.Empty;
+                using(NpgsqlCommand cmd = new NpgsqlCommand("select '" + testValue + "'", this))
+                {
+                    compareValue = (string) cmd.ExecuteScalar();
+                }
                 
                 if (compareValue != testValue)
                     return false;
@@ -396,7 +400,11 @@ namespace Npgsql
 
         internal void ReleaseRegisteredListen()
         {
-            Query(new NpgsqlCommand("unlisten *", this));
+            //Query(new NpgsqlCommand("unlisten *", this));
+            using(NpgsqlCommand cmd = new NpgsqlCommand("unlisten *", this))
+            {
+                Query(cmd);
+            }
         }
 
         /// <summary>
@@ -412,7 +420,11 @@ namespace Npgsql
                 {
                     try
                     {
-                        Query(new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i), this));
+                        //Query(new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i), this));
+                        using(NpgsqlCommand cmd = new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i.ToString()), this))
+                        {
+                            Query(cmd);
+                        }
                     }
                     
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
@@ -717,8 +729,12 @@ namespace Npgsql
             // This should not happen for protocol version 3+.
             if (ServerVersion == null)
             {
-                NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
+                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                using(NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
+                {
+                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                }
             }
 
             // Adjust client encoding.
@@ -875,7 +891,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPortalName()
         {
-            return _portalNamePrefix + Interlocked.Increment(ref _portalIndex);
+            return _portalNamePrefix + Interlocked.Increment(ref _portalIndex).ToString();
         }
 
 
@@ -884,7 +900,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPlanName()
         {
-            return _planNamePrefix + Interlocked.Increment(ref _planIndex);
+            return _planNamePrefix + Interlocked.Increment(ref _planIndex).ToString();
         }
 
 
