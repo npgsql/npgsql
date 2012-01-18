@@ -108,7 +108,7 @@ namespace NpgsqlTests
         {
             try
             {
-                NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j");
+                NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j;pooling=false");
 
                 conn.Open();
             }
@@ -147,16 +147,17 @@ namespace NpgsqlTests
         [Test]
         public void SearchPathSupport()
         {
-            
-            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";searchpath=public");
-            conn.Open();
-            
-            NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);
-            
-            String searchpath = (String) c.ExecuteScalar();
-            //Note, public is no longer implicitly added to paths, so this is no longer "public, public".
-            Assert.AreEqual("public", searchpath );
-            
+
+            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";searchpath=public;pooling=false"))
+            {
+                conn.Open();
+
+                NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);
+
+                String searchpath = (String)c.ExecuteScalar();
+                //Note, public is no longer implicitly added to paths, so this is no longer "public, public".
+                Assert.AreEqual("public", searchpath);
+            }
             
         }
         
@@ -182,7 +183,7 @@ namespace NpgsqlTests
             
         }
 
-        [Test]
+        //[Test]
         public void UseAllConnectionsInPool()
         {
             List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
@@ -207,7 +208,7 @@ namespace NpgsqlTests
             }
         }
 
-        [Test]
+        //[Test]
         [ExpectedException(typeof(Exception))]
         public void ExceedConnectionsInPool()
         {

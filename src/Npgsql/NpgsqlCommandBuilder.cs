@@ -165,7 +165,7 @@ namespace Npgsql
                         if (names != null && i < names.Length)
                             command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
                         else
-                            command.Parameters.Add(new NpgsqlParameter("parameter" + i + 1, typeInfo.NpgsqlDbType));
+                            command.Parameters.Add(new NpgsqlParameter("parameter" + (i + 1).ToString(), typeInfo.NpgsqlDbType));
                     }
 				}
 			}

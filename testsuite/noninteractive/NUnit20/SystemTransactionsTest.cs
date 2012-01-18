@@ -29,7 +29,7 @@ namespace NpgsqlTests
         {
             int field_serial1;
             int field_serial2;
-            string connectionString = TheConnectionString + ";enlist=true";
+            string connectionString = TheConnectionString + ";enlist=true;pooling=false";
             using (TransactionScope scope = new TransactionScope())
             {
                 //UseStringParameterWithNoNpgsqlDbType
@@ -151,7 +151,7 @@ namespace NpgsqlTests
             command.Parameters.Add(new NpgsqlParameter("p0", field_serial));
             object result = command.ExecuteScalar();
             Assert.AreEqual(null, result);
-        }
+        }   
 
         [Test]
         public void TwoDistributedInSequence()

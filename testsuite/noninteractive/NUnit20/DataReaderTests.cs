@@ -152,21 +152,22 @@ namespace NpgsqlTests
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_serial = 1;", TheConnection);
 
-            NpgsqlDataReader dr = command.ExecuteReader(CommandBehavior.SequentialAccess);
+            using (NpgsqlDataReader dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
 
-            dr.Read();
-            Byte[] result = new Byte[2];
+                dr.Read();
+                Byte[] result = new Byte[2];
 
 
-            Int64 a = dr.GetBytes(0, 0, result, 0, 2);
-            Int64 b = dr.GetBytes(0, result.Length, result, 0, 2);
+                Int64 a = dr.GetBytes(0, 0, result, 0, 2);
+                Int64 b = dr.GetBytes(0, result.Length, result, 0, 2);
 
-            Assert.AreEqual('S', (Char)result[0]);
-            Assert.AreEqual('.', (Char)result[1]);
-            Assert.AreEqual(2, a);
-            Assert.AreEqual(0, b);
-            
-            dr.Close();
+                Assert.AreEqual('S', (Char)result[0]);
+                Assert.AreEqual('.', (Char)result[1]);
+                Assert.AreEqual(2, a);
+                Assert.AreEqual(0, b);
+
+            }
         }
         
         
