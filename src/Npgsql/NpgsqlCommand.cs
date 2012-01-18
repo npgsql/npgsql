@@ -1125,7 +1125,7 @@ namespace Npgsql
             {
                 if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
                 {
-                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID + " ");
+                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID.ToString() + " ");
                 }
 
                 if ((p.Direction == ParameterDirection.Output) || (p.Direction == ParameterDirection.InputOutput))
@@ -1380,11 +1380,11 @@ namespace Npgsql
                             // The space in front of '$' fixes a parsing problem in 7.3 server
                             // which gives errors of operator when finding the caracters '=$' in
                             // prepare text
-                            textCommand = ReplaceParameterValue(textCommand, parameterName, " $" + (i + 1));
+                            textCommand = ReplaceParameterValue(textCommand, parameterName, " $" + (i + 1).ToString());
                         }
                         else
                         {
-                            textCommand += " $" + (i + 1);
+                            textCommand += " $" + (i + 1).ToString();
                         }
                     }
                 }

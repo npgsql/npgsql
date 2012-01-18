@@ -671,18 +671,18 @@ namespace NpgsqlTypes
                 case 'Y':
                     return ZeroPad(XFormatString(true, false), padTo).Insert(0, "X'").Append('\'').ToString();
                 case 'c':
-                    return ToString((_lastChunkLen %4 == 0 ? "y" : "g") + padTo);
+                    return ToString((_lastChunkLen %4 == 0 ? "y" : "g") + padTo.ToString());
                 case 'C':
-                    return ToString((_lastChunkLen %4 == 0 ? "Y" : "G") + padTo);
+                    return ToString((_lastChunkLen %4 == 0 ? "Y" : "G") + padTo.ToString());
                 case 'e':
-                    return ToString("E" + padTo).ToLowerInvariant();
+                    return ToString("E" + padTo.ToString()).ToLowerInvariant();
                 case 'E':
                     if(_lastChunkLen == 1 && _chunks.Count == 1)
                         return (_chunks[0] & 0x80000000u) == 0 ? "0" : "1";//both safe in this case for all lengths, and allows for some backwards compatibility from threating bit(1) as if it were boolean.
                     else if(_lastChunkLen % 4 == 0)
-                        return ToString("Y" + padTo);
+                        return ToString("Y" + padTo.ToString());
                     else if(Length < 9)
-                        return ToString("G" + padTo);
+                        return ToString("G" + padTo.ToString());
                     else
                     {
                         StringBuilder sb = XFormatString(true, true).Insert(0, "X'");
