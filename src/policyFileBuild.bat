@@ -1,0 +1,1 @@
+al /link:policy.2.0.Npgsql.config /out:policy.2.0.Npgsql.dll /keyfile:Npgsql\Npgsql.snk
