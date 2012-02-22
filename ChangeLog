@@ -1,187 +1,415 @@
-2011-09-29	jbcooley
-	* src/Npgsql/AssemblyInfo.cs 1.32:
-	* src/policy.2.0.Npgsql.config 1.10:
-		Updated for build 2.0.11.92
+2012-02-21 23:49  fxjr
 
-2011-09-25	jbcooley
-	* testsuite/noninteractive/NUnit20/App.config 1.4:
-	* testsuite/noninteractive/NUnit20/NpgsqlTests2010.csproj 1.3:
-	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.ObjectLayer.cs 1.1:
-	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.Views.cs 1.1:
-	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.csdl 1.1:
-	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.msl 1.1:
-	* testsuite/noninteractive/NUnit20/xmlModel/XmlTest.ssdl 1.1:
-		Added XmlTest entity model
+	* RELEASENOTES.txt:
+	  Added release notes for 2.0.12 beta3 (2.0.11.93)
 
-2011-07-11	fxjr
-	* src/Npgsql/NpgsqlConnection.cs 1.34:
-	* src/Npgsql/NpgsqlSchema.cs 1.8:
-		
-		Added patch from Patrick Earl. Thanks, Patrick! http://pgfoundry.org/forum/message.php?msg_id=1014749
-		
-		This was implemented to support more of the NHibernate test suite. Here is what it does and does not do:
-		
-		1. It adds support for the "ForeignKeys" collection that uses almost the same format that SqlConnection Server does. The only difference is the deferrable bool columns are actually bools instead of strings.
-		
-		2. It fixes the restrictions for index and index column schema retrieval.
-		
-		3. It does not change the index column code to provide the capability of getting the foreign key columns (assuming it doesn't do it already). I didn't have a failing test depending on this, so I didn't check or implement anything here.
-		
-		http://patearl.net/files/Npgsql2.patch
+2012-02-21 23:21  jbcooley
 
-2011-07-05	fxjr
-	* src/Npgsql/NpgsqlDataReader.cs 1.24:
-	* testsuite/noninteractive/NUnit20/DataReaderTests.cs 1.15:
-		
-		[#1011044]. Fixed missing NpgsqlDataReader.GetTimeSpan() method.
-		Added unit test case to cover this method.
+	* src/policyFileBuild.bat: adding helper script for building policy
+	  dll.
 
-2011-06-15	fxjr
-	* src/Npgsql/NpgsqlConnection.cs 1.33:
-	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.16:
-	* src/Npgsql/NpgsqlConnector.cs 1.35:
-		
-		Fixed problem with last update about Password as byte[]. Reverted type of Password property of NpgsqlConnectionStringBuilder to String again. It was changed from String to byte[] which was causing problems with previous client code. There is a new property called PasswordAsByteArray for those willing to use the byte[] property. Thanks Dan Shoubridge for heads up.
+2012-02-02 11:46  fxjr
 
-2011-04-27	fxjr
-	* src/Npgsql/NpgsqlConnection.cs 1.32:
-	* src/Npgsql/NpgsqlSchema.cs 1.7:
-		
-		New: [#1011021] Support DbMetaDataCollectionNames.ReservedWords. Thanks Patrick Earl for patch.
+	* src/Npgsql/NpgsqlProviderManifest.cs:
+	  Applied patch #1011157. Fixes bug #1011102 -
+	  DateTimeOffset/TimeSpan mapping problem on EF 4.1, .NET 4, using
+	  code first.  Thanks Mirko Geffken for patch.
 
-2011-04-25	fxjr
-	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.39:
-	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.11:
-		
-		[ npgsql-Bugs-1011018 ] Invalid Cast with DbType.Time Parameter. Thanks Patrick Earl for patch.
-		Also added test case to reproduce the problem.
+2012-01-12 16:44  fxjr
 
-2011-04-07	fxjr
-	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.15:
-	* src/Npgsql/NpgsqlConnector.cs 1.34:
-		
-		[#1010977] Add application_name support to connection string. Thanks Chris Coleman for patch.
+	* src/: Npgsql/Cache.cs, Npgsql/NpgsqlCommand.cs,
+	  Npgsql/NpgsqlCommandBuilder.cs, Npgsql/NpgsqlConnector.cs,
+	  Npgsql/NpgsqlConnectorPool.cs, Npgsql/NpgsqlState.cs,
+	  Npgsql/PGUtil.cs, NpgsqlTypes/BitString.cs:
+	  Applied Gildas Prime patch with Gendarme report corrections:
 
-	* src/NpgsqlTypes/NpgsqlDbType.cs 1.16:
-	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.22:
-	* src/NpgsqlTypes/NpgsqlTypes.cs 1.15:
-	* src/NpgsqlTypes/NpgsqlTypesHelper.cs 1.38:
-	* testsuite/noninteractive/NUnit20/TypesTests.cs 1.10:
-		
-		[#1011008] Add PhysicalAddress (MAC Address) support to Npgsql. Thanks Gildas for patche and test case.
+	  Avoid concatenating chars rule ( i.e Unneeded boxing) A recursive
+	  method was found (Method remove in NpgsqlParameterCollection)
+	  Disposable fields should be disposed Do not lock on this  (
+	  lock(this) makes very difficult to ensure that the locking is
+	  done correctly.) Ensure that local variables are disposed
+	  surrounding them by using()
 
-2011-04-05	fxjr
-	* src/NpgsqlTypes/NpgsqlTypeConverters.cs 1.21:
-		
-		[npgsql-Patches-1011012 ] Australian Date and Time Formats. Thanks Hans Peter for patch.
+2012-01-10 01:14  fxjr
 
-2011-03-25	jbcooley
-	* src/Npgsql/NpgsqlConnectorPool.cs 1.17:
-		Changed from HashSet to Dictionary so we can build a .NET 2.0 
-		profile version.
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  Fixed tabulation.
 
-	* src/Npgsql.csproj 1.13:
-	* src/Npgsql.sln 1.6:
-		Removed 2005 project and solution as no longer supported
+2012-01-09 12:48  fxjr
 
-2011-03-25	fxjr
-	* src/Npgsql/AssemblyInfo.cs 1.31:
-		
-		Changed assembly version info to indicate a beta1 version of 2.0.12 (2.0.11.91)
-		Added a fix to AllowPartiallyTrustedCallersAttribute when using .net 4.0 framework. See http://weblogs.asp.net/peterblum/archive/2009/11/06/typeloadexception-based-on-security-transparent-code-level-2.aspx for more information.
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  Fix [#1011138] Connection pooling performance suffers under heavy
+	  load.  Rewritten connector pool logic in order to keep lock for
+	  much less time and also with a higher granularity.  Thanks Andrew
+	  for heads up.
 
-	* src/Npgsql/AssemblyInfo.cs 1.30:
-		
-		Updated copyright year
+2011-12-22 13:08  fxjr
 
-2011-03-15	fxjr
-	* src/Npgsql/NpgsqlConnector.cs 1.33:
-	* src/Npgsql/NpgsqlState.cs 1.23:
-		
-		[#1010986] Endless recursion on hanging connection in ProcessBackendResponsesEnum. Thanks Gildas for feedback and tests.
-		
-		Also added a better check in NpgsqlConnector.IsValid(). Now it generates a random number and checks the select return value to see if everything is ok. Should fix problems where Npgsql was returning connectors in wrong state.
+	* testsuite/noninteractive/NUnit20/TypesTests.cs:
+	  Fixed line endings.
 
-	* src/Npgsql/NpgsqlConnectorPool.cs 1.16:
-		
-		[#1010997] Consider using System.Threading.Timer instead of System.Timers.Timer
-		Thanks Alex A Ermoshenko for feedback, patch and tests.
+2011-12-17 00:42  fxjr
 
-2011-03-08	fxjr
-	* src/Npgsql/NpgsqlConnection.cs 1.31:
-	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.14:
-	* src/Npgsql/NpgsqlConnector.cs 1.32:
-	* src/Npgsql/NpgsqlPasswordPacket.cs 1.6:
-	* src/Npgsql/NpgsqlStartupState.cs 1.6:
-	* src/Npgsql/NpgsqlState.cs 1.22:
-	* src/Npgsql/PGUtil.cs 1.15:
-	* src/Npgsql/SSPIHandler.cs 1.3:
-		
-		Fixed problems with SSPI authentication when the password had some non ascii characteres.
-		Also, Npgsql supports to authenticate with an user name other than the current logged one.
-		Thanks Ahmed Shinwari for tests and patch.
-		See http://postgresql.1045698.n5.nabble.com/quot-could-not-accept-SSPI-security-context-quot-td3275102.html and http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001116.html for more info.
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs:
+	  Fixed line endings.
 
-2011-03-02	fxjr
-	* testsuite/noninteractive/NUnit20/CommandTests.cs 1.43:
-		
-		Added patches for connection leaks in tests. Thanks David Leaer.
-		
-		Added test for double value support.
+2011-12-17 00:36  fxjr
 
-2011-03-01	fxjr
-	* src/Npgsql/NpgsqlConnectorPool.cs 1.15:
-		
-		In Multi-threaded applications there is a race condition that can occur which will result in a broken connection being re-added to the pool. Thanks David Leaver for patches.
-		
-		More information here: http://pgfoundry.org/forum/forum.php?thread_id=10067&forum_id=519
+	* src/NpgsqlTypes/: DateDatatypes.cs, NpgsqlTypesHelper.cs:
+	  Fixed bug [#1011101] LINQ to entities timestamptz does not accept
+	  DateTimeOffset or DateTime. Thanks Misha Sugakov for patch and
+	  testing.
 
-2011-02-22	fxjr
-	* src/Npgsql/NpgsqlReadyState.cs 1.6:
-		
-		Exception when closing connection. If your connection is in the Ready state and the stream is actually broken NpgsqlReadyState.Close will throw an exception when trying to write to the stream. More info can be found at: http://pgfoundry.org/forum/forum.php?thread_id=10066&forum_id=519
-		Thanks David Leaver for the patch.
+2011-12-17 00:01  fxjr
 
-	* src/Npgsql/NpgsqlConnector.cs 1.31:
-		
-		NpgsqlConnector.CancelRequest leaks Connector. NpgsqlConnector.CancelRequest creates a connector to cancel the running request, but does not close it. More info at: http://pgfoundry.org/forum/forum.php?thread_id=10059&forum_id=519 Thanks David Leaver for patch.
+	* testsuite/noninteractive/NUnit20/NpgsqlParameterTests.cs:
+	  Added testcase for bug #1011100
 
-2011-02-06	fxjr
-	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.13:
-		
-		Forget to add mail reference for last commit:
-		http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001117.html
+2011-12-17 00:00  fxjr
 
-	* src/Npgsql/NpgsqlConnectionStringBuilder.cs 1.12:
-		
-		Added performance patch to GetKeyName method. Thanks Dan Smith for patch.
+	* testsuite/noninteractive/NUnit20/TypesTests.cs:
+	  Fixed line endings.
 
-2011-01-28	fxjr
-	* src/Npgsql/NpgsqlCommandBuilder.cs 1.19:
-		
-		[#1010973] specified cast is invalid - datetime fields. In order to fix this bug I had to disable some code in NpgsqlCommandBuilder. Watch out for possible side effects.
-		
-		Also changed Get***Command to reuse the version which takes a parameter.
+2011-12-16 23:58  fxjr
 
-2010-12-16	fxjr
-	* src/Npgsql.build 1.22:
-	* src/Npgsql/AssemblyInfo.cs 1.29:
-		
-		Fixed: [#1010951] AllowPartiallyTrustedCallers for npgsql assemblies.
-		Updated AssemblyInfo.cs to include the fix above and to update assembly version.
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed a test which were leaking a datareader open.
 
-2010-11-06	jbcooley
-	* src/policy.2.0.Npgsql.config 1.8:
-		Updating for new release
+	  Added bug tests
 
-2010-11-06	fxjr
-	* src/Npgsql/AssemblyInfo.cs 1.28:
-		
-		Updated AssemblyInfo for 2.0.11.0 release.
+	  Added initial massive datatype testcase.
 
-	* RELEASENOTES.txt 1.23:
-		
-		Updated release notes for 2.0.11 release.
+2011-12-13 17:42  fxjr
+
+	* src/Npgsql/NpgsqlClosedState.cs:
+	  Fixed line endings.
+
+2011-12-12 14:27  fxjr
+
+	* src/Npgsql/PGUtil.cs:
+	  Fixed line endings.
+
+2011-12-09 19:29  fxjr
+
+	* src/Npgsql/NpgsqlParameter.cs:
+	  Fix [#1011100] NpgsqlParameter and DBNull Value. Now
+	  NpgsqlParameter changes the dbtype accordingly to the value
+	  assigned to it unless the dbtype has been assigned explicitly.
+
+2011-12-09 19:14  fxjr
+
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  Fixed line endings.
+
+2011-12-09 19:13  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+	  Removed NpgsqlConnector finalizer call. Now connection close
+	  handling in the worst case is done by the NpgsqlNetworkStream
+	  which takes care of sending the proper Postgresql message when
+	  disposing the underlying socket.
+
+2011-12-05 00:00  fxjr
+
+	* src/Npgsql/NpgsqlClosedState.cs:
+	  Fixed "LOG: unexpected EOF on client connection" messages
+	  appearing in postgresql log. See
+	  http://fxjr.blogspot.com/2011/12/fixed-log-unexpected-eof-on-client.html
+	  for more information.
+
+2011-11-30 12:19  fxjr
+
+	* src/Npgsql.build:
+	  Removed assembly info creation from build process. There are now
+	  some options in the assemblyinfo which I couldn't create yet. For
+	  while, it is hardcoded again.
+
+2011-11-29 01:35  fxjr
+
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  Normalized line endings...
+
+2011-11-29 01:25  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+	  Normalized line endings....
+
+2011-11-21 00:44  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed Bug1010788UpdateRowSource testcase.
+
+2011-11-21 00:04  fxjr
+
+	* src/Npgsql/NpgsqlCommandBuilder.cs:
+	  Fixed some encoding problems detected by Monodevelop.
+
+2011-11-19 02:11  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Removed erroneous line added by mistake.  Fixed warning with
+	  NpgsqlParameters.Add method. Used AddWithValue.
+
+2011-11-19 01:43  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fixed problem with file encoding.
+
+2011-11-19 01:03  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs,
+	  src/NpgsqlTypes/NpgsqlTypeConverters.cs,
+	  src/NpgsqlTypes/NpgsqlTypesHelper.cs,
+	  testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Fix: [#1010992] System.Double to DOUBLE PRECISION conversion bug.
+	  Thanks Udo Liess for excellent report, test case and fix.
+
+2011-09-28 22:55  fxjr
+
+	* RELEASENOTES.txt:
+	  Updated release notes for beta 2 release.
+
+2011-09-28 22:33  jbcooley
+
+	* ChangeLog: Updated for build 2.0.11.92
+
+2011-09-28 22:26  jbcooley
+
+	* src/Npgsql/AssemblyInfo.cs: Updated for build 2.0.11.92
+
+2011-09-28 22:21  jbcooley
+
+	* src/policy.2.0.Npgsql.config: Updated for build 2.0.11.92
+
+2011-09-25 13:48  jbcooley
+
+	* testsuite/noninteractive/NUnit20/: App.config,
+	  NpgsqlTests2010.csproj, xmlModel/XmlTest.ObjectLayer.cs,
+	  xmlModel/XmlTest.Views.cs, xmlModel/XmlTest.csdl,
+	  xmlModel/XmlTest.msl, xmlModel/XmlTest.ssdl: Added XmlTest entity
+	  model
+
+2011-07-11 10:33  fxjr
+
+	* src/Npgsql/: NpgsqlConnection.cs, NpgsqlSchema.cs:
+	  Added patch from Patrick Earl. Thanks, Patrick!
+	  http://pgfoundry.org/forum/message.php?msg_id=1014749
+
+	  This was implemented to support more of the NHibernate test
+	  suite. Here is what it does and does not do:
+
+	  1. It adds support for the "ForeignKeys" collection that uses
+	  almost the same format that SqlConnection Server does. The only
+	  difference is the deferrable bool columns are actually bools
+	  instead of strings.
+
+	  2. It fixes the restrictions for index and index column schema
+	  retrieval.
+
+	  3. It does not change the index column code to provide the
+	  capability of getting the foreign key columns (assuming it
+	  doesn't do it already). I didn't have a failing test depending on
+	  this, so I didn't check or implement anything here.
+
+	  http://patearl.net/files/Npgsql2.patch
+
+2011-07-05 13:05  fxjr
+
+	* src/Npgsql/NpgsqlDataReader.cs,
+	  testsuite/noninteractive/NUnit20/DataReaderTests.cs:
+	  [#1011044]. Fixed missing NpgsqlDataReader.GetTimeSpan() method.
+	  Added unit test case to cover this method.
+
+2011-06-15 13:23  fxjr
+
+	* src/Npgsql/: NpgsqlConnection.cs,
+	  NpgsqlConnectionStringBuilder.cs, NpgsqlConnector.cs:
+	  Fixed problem with last update about Password as byte[]. Reverted
+	  type of Password property of NpgsqlConnectionStringBuilder to
+	  String again. It was changed from String to byte[] which was
+	  causing problems with previous client code. There is a new
+	  property called PasswordAsByteArray for those willing to use the
+	  byte[] property. Thanks Dan Shoubridge for heads up.
+
+2011-04-27 10:10  fxjr
+
+	* src/Npgsql/: NpgsqlConnection.cs, NpgsqlSchema.cs:
+	  New: [#1011021] Support DbMetaDataCollectionNames.ReservedWords.
+	  Thanks Patrick Earl for patch.
+
+2011-04-24 23:29  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypesHelper.cs,
+	  testsuite/noninteractive/NUnit20/TypesTests.cs:
+	  [ npgsql-Bugs-1011018 ] Invalid Cast with DbType.Time Parameter.
+	  Thanks Patrick Earl for patch.  Also added test case to reproduce
+	  the problem.
+
+2011-04-06 23:15  fxjr
+
+	* src/Npgsql/: NpgsqlConnectionStringBuilder.cs,
+	  NpgsqlConnector.cs:
+	  [#1010977] Add application_name support to connection string.
+	  Thanks Chris Coleman for patch.
+
+2011-04-06 22:48  fxjr
+
+	* src/NpgsqlTypes/NpgsqlDbType.cs,
+	  src/NpgsqlTypes/NpgsqlTypeConverters.cs,
+	  src/NpgsqlTypes/NpgsqlTypes.cs,
+	  src/NpgsqlTypes/NpgsqlTypesHelper.cs,
+	  testsuite/noninteractive/NUnit20/TypesTests.cs:
+	  [#1011008] Add PhysicalAddress (MAC Address) support to Npgsql.
+	  Thanks Gildas for patche and test case.
+
+2011-04-05 11:13  fxjr
+
+	* src/NpgsqlTypes/NpgsqlTypeConverters.cs:
+	  [npgsql-Patches-1011012 ] Australian Date and Time Formats.
+	  Thanks Hans Peter for patch.
+
+2011-03-24 22:52  fxjr
+
+	* RELEASENOTES.txt:
+	  Updated release notes for beta1 release of Npgsql 2.0.12
+	  (2.0.11.91)
+
+2011-03-24 22:50  jbcooley
+
+	* src/policy.2.0.Npgsql.config: updated for 2.0.11.91 beta release
+
+2011-03-24 22:33  jbcooley
+
+	* ChangeLog: updated change log.
+
+2011-03-24 22:23  jbcooley
+
+	* src/Npgsql/NpgsqlConnectorPool.cs: Changed from HashSet to
+	  Dictionary so we can build a .NET 2.0 profile version.
+
+2011-03-24 21:55  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Changed assembly version info to indicate a beta1 version of
+	  2.0.12 (2.0.11.91) Added a fix to
+	  AllowPartiallyTrustedCallersAttribute when using .net 4.0
+	  framework. See
+	  http://weblogs.asp.net/peterblum/archive/2009/11/06/typeloadexception-based-on-security-transparent-code-level-2.aspx
+	  for more information.
+
+2011-03-24 21:22  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated copyright year
+
+2011-03-24 21:15  jbcooley
+
+	* src/: Npgsql.csproj, Npgsql.sln: Removed 2005 project and
+	  solution as no longer supported
+
+2011-03-14 22:25  fxjr
+
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  [#1010997] Consider using System.Threading.Timer instead of
+	  System.Timers.Timer Thanks Alex A Ermoshenko for feedback, patch
+	  and tests.
+
+2011-03-14 22:06  fxjr
+
+	* src/Npgsql/: NpgsqlConnector.cs, NpgsqlState.cs:
+	  [#1010986] Endless recursion on hanging connection in
+	  ProcessBackendResponsesEnum. Thanks Gildas for feedback and
+	  tests.
+
+	  Also added a better check in NpgsqlConnector.IsValid(). Now it
+	  generates a random number and checks the select return value to
+	  see if everything is ok. Should fix problems where Npgsql was
+	  returning connectors in wrong state.
+
+2011-03-08 12:50  fxjr
+
+	* src/Npgsql/: NpgsqlConnection.cs,
+	  NpgsqlConnectionStringBuilder.cs, NpgsqlConnector.cs,
+	  NpgsqlPasswordPacket.cs, NpgsqlStartupState.cs, NpgsqlState.cs,
+	  PGUtil.cs, SSPIHandler.cs:
+	  Fixed problems with SSPI authentication when the password had
+	  some non ascii characteres.  Also, Npgsql supports to
+	  authenticate with an user name other than the current logged one.
+	  Thanks Ahmed Shinwari for tests and patch.  See
+	  http://postgresql.1045698.n5.nabble.com/quot-could-not-accept-SSPI-security-context-quot-td3275102.html
+	  and
+	  http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001116.html
+	  for more info.
+
+2011-03-01 21:08  fxjr
+
+	* testsuite/noninteractive/NUnit20/CommandTests.cs:
+	  Added patches for connection leaks in tests. Thanks David Leaer.
+
+	  Added test for double value support.
+
+2011-03-01 18:09  fxjr
+
+	* src/Npgsql/NpgsqlConnectorPool.cs:
+	  In Multi-threaded applications there is a race condition that can
+	  occur which will result in a broken connection being re-added to
+	  the pool. Thanks David Leaver for patches.
+
+	  More information here:
+	  http://pgfoundry.org/forum/forum.php?thread_id=10067&forum_id=519
+
+2011-02-21 22:30  fxjr
+
+	* src/Npgsql/NpgsqlConnector.cs:
+	  NpgsqlConnector.CancelRequest leaks Connector.
+	  NpgsqlConnector.CancelRequest creates a connector to cancel the
+	  running request, but does not close it. More info at:
+	  http://pgfoundry.org/forum/forum.php?thread_id=10059&forum_id=519
+	  Thanks David Leaver for patch.
+
+2011-02-21 22:17  fxjr
+
+	* src/Npgsql/NpgsqlReadyState.cs:
+	  Exception when closing connection. If your connection is in the
+	  Ready state and the stream is actually broken
+	  NpgsqlReadyState.Close will throw an exception when trying to
+	  write to the stream. More info can be found at:
+	  http://pgfoundry.org/forum/forum.php?thread_id=10066&forum_id=519
+	  Thanks David Leaver for the patch.
+
+2011-02-06 19:06  fxjr
+
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs:
+	  Forget to add mail reference for last commit:
+	  http://lists.pgfoundry.org/pipermail/npgsql-devel/2011-February/001117.html
+
+2011-02-06 19:00  fxjr
+
+	* src/Npgsql/NpgsqlConnectionStringBuilder.cs:
+	  Added performance patch to GetKeyName method. Thanks Dan Smith
+	  for patch.
+
+2011-01-28 17:04  fxjr
+
+	* src/Npgsql/NpgsqlCommandBuilder.cs:
+	  [#1010973] specified cast is invalid - datetime fields. In order
+	  to fix this bug I had to disable some code in
+	  NpgsqlCommandBuilder. Watch out for possible side effects.
+
+	  Also changed Get***Command to reuse the version which takes a
+	  parameter.
+
+2010-12-16 10:34  fxjr
+
+	* src/: Npgsql.build, Npgsql/AssemblyInfo.cs:
+	  Fixed: [#1010951] AllowPartiallyTrustedCallers for npgsql
+	  assemblies.  Updated AssemblyInfo.cs to include the fix above and
+	  to update assembly version.
+
+2010-11-05 22:42  fxjr
+
+	* ChangeLog:
+	  Updated changelog to 2.0.11 release
 
 2010-11-05 22:33  fxjr
 
