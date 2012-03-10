@@ -1,5 +1,46 @@
 
 
+2012-02-21 
+
+	Npgsql 2.0.11.93 (beta3)
+	
+	
+	Highlights: 
+	
+		In this beta version we can highlight two features:
+		
+		1. Improved connection pooling. Thanks to Andrew heads up we improved Npgsql connection pool code
+		to avoid locks as much as possible. This gave us 30%+ performance improvements.
+		
+		2. LOG: unexpected EOF on client connection" messages are gone! After so much time causing those messages 
+		to appear on server log, Npgsql finally got rid of them.
+		
+	
+	
+	
+	Fixed bugs:
+	
+		[#1010992] System.Double to DOUBLE PRECISION conversion bug. Thanks Udo Liess for excellent report, 
+		test case and fix.
+		
+		Fixed "LOG: unexpected EOF on client connection" messages  appearing in postgresql log. See
+		http://fxjr.blogspot.com/2011/12/fixed-log-unexpected-eof-on-client.html
+		for more information.
+
+		[#1011100] NpgsqlParameter and DBNull Value. Now  NpgsqlParameter changes the dbtype accordingly to 
+		the value assigned to it unless the dbtype has been assigned explicitly.
+		
+		[#1011101] LINQ to entities timestamptz does not accept DateTimeOffset or DateTime. Thanks Misha Sugakov
+		for patch and testing.
+		
+		[#1011138] Connection pooling performance suffers under heavy load.  Rewritten connector pool logic in 
+		order to keep lock for much less time and also with a higher granularity.  Thanks Andrew for heads up.
+		
+		[#1011102]  DateTimeOffset/TimeSpan mapping problem on EF 4.1, .NET 4, using code first.  
+		Thanks Mirko Geffken for patch.
+
+
+
 2011-09-28 
 
     Npgsql 2.0.11.92 (beta2)
