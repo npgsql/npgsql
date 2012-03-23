@@ -623,7 +623,17 @@ namespace Npgsql
                             }
                             sb.Append(";"); // Just in case the list of cursors is empty.
 
-                            reader = new NpgsqlCommand(sb.ToString(), Connection).GetReader(reader._behavior);
+                            //reader = new NpgsqlCommand(sb.ToString(), Connection).GetReader(reader._behavior);
+
+                            // Passthrough the commandtimeout to the inner command, so user can also control its timeout.
+                            // TODO: Check if there is a better way to handle that.
+
+                            NpgsqlCommand c = new NpgsqlCommand(sb.ToString(), Connection);
+
+                            c.CommandTimeout = this.CommandTimeout;
+
+                            reader = c.GetReader(reader._behavior);
+
                         }
                     }
                     else
