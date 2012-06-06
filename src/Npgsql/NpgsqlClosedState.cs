@@ -116,7 +116,7 @@ namespace Npgsql
                 
                 IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
-                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, true))
+                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
                 {
                     socket.Close();
                     throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
