@@ -1,4 +1,18 @@
 
+2012-07-06
+
+    Ngsql 2.0.11.94 (beta4)
+    
+    Fixed bugs:
+    
+        [#1011200] Uses API not supported in MonoTouch.
+        [#1011161] Bug in NpgsqlCommand while getting readers from
+	  refcursors. Thanks Rabin Karki for heads up and patch.
+	    [#1011174] Requesting the REPEATABLE READ isolation level gives
+	    [#1011208] Fix Include combined with Skip and/or Take using linq to entities for bug #1011208
+    
+    
+    This may be the last beta release.
 
 2012-02-21 
 
