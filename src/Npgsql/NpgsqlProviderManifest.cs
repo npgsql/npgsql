@@ -225,11 +225,11 @@ namespace Npgsql
                     if (edmType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
                         !facet.IsUnbounded && facet.Value != null)
                     {
-                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["timestamptz"], (byte)facet.Value);
+                        return TypeUsage.CreateDateTimeOffsetTypeUsage(StoreTypeNameToStorePrimitiveType["timestamptz"], (byte)facet.Value);
                     }
                     else
                     {
-                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["timestamptz"], null);
+                        return TypeUsage.CreateDateTimeOffsetTypeUsage(StoreTypeNameToStorePrimitiveType["timestamptz"], null);
                     }
                 case PrimitiveTypeKind.Time:
                     if (edmType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&

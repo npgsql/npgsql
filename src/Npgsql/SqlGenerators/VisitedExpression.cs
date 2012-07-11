@@ -347,16 +347,15 @@ namespace Npgsql.SqlGenerators
     internal class AllColumnsExpression : VisitedExpression
     {
         private InputExpression _input;
-        private ProjectionExpression _projection;
 
-        public AllColumnsExpression(InputExpression input, ProjectionExpression projection)
+        public AllColumnsExpression(InputExpression input)
         {
             _input = input;
-            _projection = projection;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
+            sqlText.Append("SELECT ");
             bool first = true;
             foreach (var column in _input.GetProjectedColumns())
             {
@@ -365,6 +364,8 @@ namespace Npgsql.SqlGenerators
                 first = false;
                 column.WriteSql(sqlText);
             }
+            sqlText.Append(" FROM ");
+            _input.WriteSql(sqlText);
             base.WriteSql(sqlText);
         }
     }
@@ -441,6 +442,7 @@ namespace Npgsql.SqlGenerators
         {
             if (_projectedColumns == null)
             {
+                _projectedColumns = new List<ColumnExpression>();
                 foreach (var property in _target.ElementType.Members.OfType<EdmProperty>())
                 {
                     _projectedColumns.Add(new ColumnExpression(new PropertyExpression(property), property.Name, property.TypeUsage));
