@@ -397,7 +397,19 @@ namespace Npgsql.SqlGenerators
             }
             if (joinPartExpression is FromExpression)
             {
-                variableName = ((FromExpression)joinPartExpression).Name;
+                // we can't let from expressions that contain limits or offsets
+                // participate directly in a join.
+                var fromExpression = (FromExpression)joinPartExpression;
+                if (fromExpression.Limit == null && fromExpression.Skip == null)
+                {
+                    variableName = fromExpression.Name;
+                }
+                else
+                {
+                    // Project all columns so that it can be used as a new from expression preserving the limits and/or offsets
+                    joinPartExpression = new FromExpression(new AllColumnsExpression(fromExpression), joinPart.VariableName);
+                    variableName = joinPart.VariableName;
+                }
             }
             else if (!(joinPartExpression is JoinExpression)) // don't alias join expressions at all
             {

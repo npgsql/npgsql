@@ -1,3 +1,47 @@
+2012-07-06 23:10  jbcooley
+
+	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
+	  VisitedExpression.cs: Fix Include combined with Skip and/or Take
+	  using linq to entities for bug #1011208
+
+2012-06-06 11:25  fxjr
+
+	* src/Npgsql/NpgsqlClosedState.cs:
+	  [#1011200] Uses API not supported in MonoTouch. Also fixes
+	  https://bugzilla.xamarin.com/show_bug.cgi?id=4992 Npgsql2.0.11 Is
+	  not working on MonoTouch. Thanks Sebastien for heads up and all
+	  others for helping with this issue.
+
+2012-03-23 09:45  fxjr
+
+	* src/Npgsql/NpgsqlCommand.cs:
+	  [#1011161] Bug in NpgsqlCommand while getting readers from
+	  refcursors. Thanks Rabin Karki for heads up and patch.
+
+2012-03-11 22:59  fxjr
+
+	* src/Npgsql/NpgsqlTransaction.cs:
+	  [#1011174] Requesting the REPEATABLE READ isolation level gives
+	  you SERIALIZABLE.  Thanks Randy Ficker for heads up and patch.
+
+	  Npgsql wasn't honoring the repeatable read isolation level
+	  request. This used to work until 9.1 version.
+
+2012-02-22 00:40  jbcooley
+
+	* src/policy.2.0.Npgsql.config: Updated to Npgsql 2.0.12 beta 3
+	  (2.0.11.93) release.
+
+2012-02-22 00:39  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Updated to Npgsql 2.0.12 beta 3 (2.0.11.93) release.
+
+2012-02-22 00:00  fxjr
+
+	* ChangeLog:
+	  Updated to 2.0.12 beta3 release (2.0.11.93)
+
 2012-02-21 23:49  fxjr
 
 	* RELEASENOTES.txt:
