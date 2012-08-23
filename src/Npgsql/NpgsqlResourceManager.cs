@@ -33,55 +33,55 @@ namespace Npgsql
 		void Enlist(INpgsqlTransactionCallbacks transactionCallbacks, byte[] txToken);
 		byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
 		void CommitWork(string txName);
-        void RollbackWork(string txName);
+		void RollbackWork(string txName);
 	}
 
 	internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
 	{
-        private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
+		private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
 
-        #region INpgsqlTransactionManager Members
+		#region INpgsqlTransactionManager Members
 
-        public byte[] Promote(INpgsqlTransactionCallbacks callbacks)
-        {
-            CommittableTransaction tx = new CommittableTransaction();
-            DurableResourceManager rm = new DurableResourceManager(this, callbacks, tx);
-            byte[] token = TransactionInterop.GetTransmitterPropagationToken(tx);
-            _transactions.Add(rm.TxName, tx);
-            rm.Enlist(tx);
-            return token;
-        }
+		public byte[] Promote(INpgsqlTransactionCallbacks callbacks)
+		{
+			CommittableTransaction tx = new CommittableTransaction();
+			DurableResourceManager rm = new DurableResourceManager(this, callbacks, tx);
+			byte[] token = TransactionInterop.GetTransmitterPropagationToken(tx);
+			_transactions.Add(rm.TxName, tx);
+			rm.Enlist(tx);
+			return token;
+		}
 
-        public void Enlist(INpgsqlTransactionCallbacks callbacks, byte[] txToken)
-        {
-            DurableResourceManager rm = new DurableResourceManager(this, callbacks);
-            rm.Enlist(txToken);
-        }
+		public void Enlist(INpgsqlTransactionCallbacks callbacks, byte[] txToken)
+		{
+			DurableResourceManager rm = new DurableResourceManager(this, callbacks);
+			rm.Enlist(txToken);
+		}
 
-        public void CommitWork(string txName)
-        {
-            CommittableTransaction tx;
-            if (_transactions.TryGetValue(txName, out tx))
-            {
-                tx.Commit();
-                _transactions.Remove(txName);
-            }
-        }
+		public void CommitWork(string txName)
+		{
+			CommittableTransaction tx;
+			if (_transactions.TryGetValue(txName, out tx))
+			{
+				tx.Commit();
+				_transactions.Remove(txName);
+			}
+		}
 
-        public void RollbackWork(string txName)
-        {
-            CommittableTransaction tx;
-            if (_transactions.TryGetValue(txName, out tx))
-            {
-                _transactions.Remove(txName);
-                // you can fail to commit,
-                // but you're not getting out
-                // of a rollback.  Remove from list first.
-                tx.Rollback();
-            }
-        }
+		public void RollbackWork(string txName)
+		{
+			CommittableTransaction tx;
+			if (_transactions.TryGetValue(txName, out tx))
+			{
+				_transactions.Remove(txName);
+				// you can fail to commit,
+				// but you're not getting out
+				// of a rollback.  Remove from list first.
+				tx.Rollback();
+			}
+		}
 
-        #endregion
+		#endregion
 
 		private class DurableResourceManager : ISinglePhaseNotification
 		{
@@ -96,7 +96,7 @@ namespace Npgsql
 			}
 
 			public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
-			                              CommittableTransaction tx)
+										  CommittableTransaction tx)
 			{
 				_rm = rm;
 				_tx = tx;
@@ -147,18 +147,18 @@ namespace Npgsql
 				_callbacks.Dispose();
 			}
 
-            #endregion
+			#endregion
 
-            #region ISinglePhaseNotification Members
+			#region ISinglePhaseNotification Members
 
-            public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
-            {
-                _callbacks.CommitTransaction();
-                singlePhaseEnlistment.Committed();
-                _callbacks.Dispose();
-            }
+			public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+			{
+				_callbacks.CommitTransaction();
+				singlePhaseEnlistment.Committed();
+				_callbacks.Dispose();
+			}
 
-            #endregion
+			#endregion
 
 			private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
 
@@ -170,8 +170,8 @@ namespace Npgsql
 			public Transaction Enlist(Transaction tx)
 			{
 				tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
-                return tx;
+				return tx;
 			}
-        }
-    }
+		}
+	}
 }

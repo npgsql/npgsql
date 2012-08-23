@@ -30,40 +30,40 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
-using SecurityProtocolType=Mono.Security.Protocol.Tls.SecurityProtocolType;
-using System.Security.Cryptography.X509Certificates;
+using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 
 namespace Npgsql
 {
 
-    internal class NpgsqlNetworkStream : NetworkStream
-    {
-        NpgsqlConnector mContext = null;
+	internal class NpgsqlNetworkStream : NetworkStream
+	{
+		NpgsqlConnector mContext = null;
 
-        
-        public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
-            : base(socket, owner)
-        {
-            mContext = context;
-        }
 
-        
+		public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
+			: base(socket, owner)
+		{
+			mContext = context;
+		}
 
-        protected override void Dispose(bool disposing)
-        {
-            if (!disposing)
-            {
-                mContext.Close();
-                mContext = null;
-            }
 
-            base.Dispose(disposing);
 
-        }
+		protected override void Dispose(bool disposing)
+		{
+			if (!disposing)
+			{
+				mContext.Close();
+				mContext = null;
+			}
 
-    }
+			base.Dispose(disposing);
+
+		}
+
+	}
 
 	internal sealed class NpgsqlClosedState : NpgsqlState
 	{
@@ -104,8 +104,8 @@ namespace Npgsql
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
 
 				/*TcpClient tcpc = new TcpClient();
-                tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-                Stream stream = tcpc.GetStream();*/
+				tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+				Stream stream = tcpc.GetStream();*/
 
 				/*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
 
@@ -113,25 +113,25 @@ namespace Npgsql
 
 
 				/*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-                
-                IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
+				
+				IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
-                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
-                {
-                    socket.Close();
-                    throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
-                }
+				if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
+				{
+					socket.Close();
+					throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+				}
 
-                try
-                {
-                    socket.EndConnect(result);
-                }
-                catch (Exception)
-                {
-                    socket.Close();
-                    throw;
-                }
-                */
+				try
+				{
+					socket.EndConnect(result);
+				}
+				catch (Exception)
+				{
+					socket.Close();
+					throw;
+				}
+				*/
 
 				IPAddress[] ips = ResolveIPHost(context.Host);
 				Socket socket = null;
@@ -148,7 +148,7 @@ namespace Npgsql
 					{
 						IAsyncResult result = socket.BeginConnect(ep, null, null);
 
-						if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, true))
+						if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout * 1000, true))
 						{
 							socket.Close();
 							throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
@@ -172,7 +172,7 @@ namespace Npgsql
 				}
 
 				//Stream stream = new NetworkStream(socket, true);
-                Stream stream = new NpgsqlNetworkStream(context, socket, true);
+				Stream stream = new NpgsqlNetworkStream(context, socket, true);
 
 				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
 				if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
@@ -181,27 +181,27 @@ namespace Npgsql
 					PGUtil.WriteInt32(stream, 80877103);
 					// Receive response
 
-					Char response = (Char) stream.ReadByte();
+					Char response = (Char)stream.ReadByte();
 					if (response == 'S')
 					{
-                        //create empty collection
-                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
-                            
-                        //trigger the callback to fetch some certificates
-                        context.DefaultProvideClientCertificatesCallback(clientCertificates);
+						//create empty collection
+						X509CertificateCollection clientCertificates = new X509CertificateCollection();
+
+						//trigger the callback to fetch some certificates
+						context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
 						stream = new SslClientStream(
-                            stream,
-                            context.Host,
-                            true,
-                            SecurityProtocolType.Default,
-                            clientCertificates);
+							stream,
+							context.Host,
+							true,
+							SecurityProtocolType.Default,
+							clientCertificates);
 
-						((SslClientStream) stream).ClientCertSelectionDelegate =
+						((SslClientStream)stream).ClientCertSelectionDelegate =
 							new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
-						((SslClientStream) stream).ServerCertValidationDelegate =
+						((SslClientStream)stream).ServerCertValidationDelegate =
 							new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
-						((SslClientStream) stream).PrivateKeyCertSelectionDelegate =
+						((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
 							new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
 					}
 					else if (context.SslMode == SslMode.Require)
@@ -217,12 +217,12 @@ namespace Npgsql
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
 				ChangeState(context, NpgsqlConnectedState.Instance);
 			}
-				//FIXME: Exceptions that come from what we are handling should be wrapped - e.g. an error connecting to
-				//the server should definitely be presented to the uesr as an NpgsqlError. Exceptions from userland should
-				//be passed untouched - e.g. ThreadAbortException because the user started this in a thread they created and
-				//then aborted should be passed through.
-				//Are there any others that should be pass through? Alternatively, are there a finite number that should
-				//be wrapped?
+			//FIXME: Exceptions that come from what we are handling should be wrapped - e.g. an error connecting to
+			//the server should definitely be presented to the uesr as an NpgsqlError. Exceptions from userland should
+			//be passed untouched - e.g. ThreadAbortException because the user started this in a thread they created and
+			//then aborted should be passed through.
+			//Are there any others that should be pass through? Alternatively, are there a finite number that should
+			//be wrapped?
 			catch (ThreadAbortException)
 			{
 				throw;

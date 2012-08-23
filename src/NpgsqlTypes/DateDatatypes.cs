@@ -62,14 +62,14 @@ namespace NpgsqlTypes
 	/// </summary>
 	[Serializable]
 	public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval>, IComparable<NpgsqlInterval>,
-	                               IComparer<NpgsqlInterval>
+								   IComparer<NpgsqlInterval>
 	{
 		#region Constants
 
 		/// <summary>
 		/// Represents the number of ticks (100ns periods) in one microsecond. This field is constant.
 		/// </summary>
-		public const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond/1000;
+		public const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
 
 		/// <summary>
 		/// Represents the number of ticks (100ns periods) in one millisecond. This field is constant.
@@ -111,7 +111,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Represents the number of ticks (100ns periods) in one day, assuming 30 days per month. <seealso cref="DaysPerMonth"/>
 		/// </summary>
-		public const long TicksPerMonth = TicksPerDay*DaysPerMonth;
+		public const long TicksPerMonth = TicksPerDay * DaysPerMonth;
 
 		/// <summary>
 		/// Represents the number of months in a year. This field is constant.
@@ -230,7 +230,7 @@ namespace NpgsqlTypes
 		/// <param name="seconds">Number of seconds.</param>
 		/// <param name="milliseconds">Number of milliseconds.</param>
 		public NpgsqlInterval(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds)
-			: this(years*12 + months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
+			: this(years * 12 + months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
 		{
 		}
 
@@ -293,7 +293,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Microseconds
 		{
-			get { return (int) ((_ticks/10)%1000000); }
+			get { return (int)((_ticks / 10) % 1000000); }
 		}
 
 		/// <summary>
@@ -302,7 +302,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Milliseconds
 		{
-			get { return (int) ((_ticks/TicksPerMillsecond)%1000); }
+			get { return (int)((_ticks / TicksPerMillsecond) % 1000); }
 		}
 
 		/// <summary>
@@ -311,7 +311,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Seconds
 		{
-			get { return (int) ((_ticks/TicksPerSecond)%60); }
+			get { return (int)((_ticks / TicksPerSecond) % 60); }
 		}
 
 		/// <summary>
@@ -320,7 +320,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Minutes
 		{
-			get { return (int) ((_ticks/TicksPerMinute)%60); }
+			get { return (int)((_ticks / TicksPerMinute) % 60); }
 		}
 
 		/// <summary>
@@ -330,7 +330,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Hours
 		{
-			get { return (int) (_ticks/TicksPerHour); }
+			get { return (int)(_ticks / TicksPerHour); }
 		}
 
 		/// <summary>
@@ -373,7 +373,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public long TotalTicks
 		{
-			get { return Ticks + Days*TicksPerDay + Months*TicksPerMonth; }
+			get { return Ticks + Days * TicksPerDay + Months * TicksPerMonth; }
 		}
 
 		/// <summary>
@@ -382,7 +382,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalMicroseconds
 		{
-			get { return TotalTicks/10d; }
+			get { return TotalTicks / 10d; }
 		}
 
 		/// <summary>
@@ -391,7 +391,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalMilliseconds
 		{
-			get { return TotalTicks/(double) TicksPerMillsecond; }
+			get { return TotalTicks / (double)TicksPerMillsecond; }
 		}
 
 		/// <summary>
@@ -400,7 +400,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalSeconds
 		{
-			get { return TotalTicks/(double) TicksPerSecond; }
+			get { return TotalTicks / (double)TicksPerSecond; }
 		}
 
 		/// <summary>
@@ -409,7 +409,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalMinutes
 		{
-			get { return TotalTicks/(double) TicksPerMinute; }
+			get { return TotalTicks / (double)TicksPerMinute; }
 		}
 
 		/// <summary>
@@ -418,7 +418,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalHours
 		{
-			get { return TotalTicks/(double) TicksPerHour; }
+			get { return TotalTicks / (double)TicksPerHour; }
 		}
 
 		/// <summary>
@@ -427,7 +427,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalDays
 		{
-			get { return TotalTicks/(double) TicksPerDay; }
+			get { return TotalTicks / (double)TicksPerDay; }
 		}
 
 		/// <summary>
@@ -436,7 +436,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public double TotalMonths
 		{
-			get { return TotalTicks/(double) TicksPerMonth; }
+			get { return TotalTicks / (double)TicksPerMonth; }
 		}
 
 		#endregion
@@ -460,7 +460,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of microseconds.</returns>
 		public static NpgsqlInterval FromMicroseconds(double micro)
 		{
-			return FromTicks((long) (micro*TicksPerMicrosecond));
+			return FromTicks((long)(micro * TicksPerMicrosecond));
 		}
 
 		/// <summary>
@@ -470,7 +470,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of milliseconds.</returns>
 		public static NpgsqlInterval FromMilliseconds(double milli)
 		{
-			return FromTicks((long) (milli*TicksPerMillsecond));
+			return FromTicks((long)(milli * TicksPerMillsecond));
 		}
 
 		/// <summary>
@@ -480,7 +480,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of seconds.</returns>
 		public static NpgsqlInterval FromSeconds(double seconds)
 		{
-			return FromTicks((long) (seconds*TicksPerSecond));
+			return FromTicks((long)(seconds * TicksPerSecond));
 		}
 
 		/// <summary>
@@ -490,7 +490,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of minutes.</returns>
 		public static NpgsqlInterval FromMinutes(double minutes)
 		{
-			return FromTicks((long) (minutes*TicksPerMinute));
+			return FromTicks((long)(minutes * TicksPerMinute));
 		}
 
 		/// <summary>
@@ -500,7 +500,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of hours.</returns>
 		public static NpgsqlInterval FromHours(double hours)
 		{
-			return FromTicks((long) (hours*TicksPerHour));
+			return FromTicks((long)(hours * TicksPerHour));
 		}
 
 		/// <summary>
@@ -510,7 +510,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of days.</returns>
 		public static NpgsqlInterval FromDays(double days)
 		{
-			return FromTicks((long) (days*TicksPerDay));
+			return FromTicks((long)(days * TicksPerDay));
 		}
 
 		/// <summary>
@@ -520,7 +520,7 @@ namespace NpgsqlTypes
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of months.</returns>
 		public static NpgsqlInterval FromMonths(double months)
 		{
-			return FromTicks((long) (months*TicksPerMonth));
+			return FromTicks((long)(months * TicksPerMonth));
 		}
 
 		#endregion
@@ -577,7 +577,7 @@ namespace NpgsqlTypes
 		/// converted into days.</returns>
 		public NpgsqlInterval JustifyDays()
 		{
-			return new NpgsqlInterval(Months, Days + (int) (Ticks/TicksPerDay), Ticks%TicksPerDay);
+			return new NpgsqlInterval(Months, Days + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
 		}
 
 		/// <summary>
@@ -586,7 +586,7 @@ namespace NpgsqlTypes
 		/// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any days converted to multiples of &#xB1;24hours.</returns>
 		public NpgsqlInterval UnjustifyDays()
 		{
-			return new NpgsqlInterval(Months, 0, Ticks + Days*TicksPerDay);
+			return new NpgsqlInterval(Months, 0, Ticks + Days * TicksPerDay);
 		}
 
 		/// <summary>
@@ -596,7 +596,7 @@ namespace NpgsqlTypes
 		/// converted into months.</returns>
 		public NpgsqlInterval JustifyMonths()
 		{
-			return new NpgsqlInterval(Months + Days/DaysPerMonth, Days%DaysPerMonth, Ticks);
+			return new NpgsqlInterval(Months + Days / DaysPerMonth, Days % DaysPerMonth, Ticks);
 		}
 
 		/// <summary>
@@ -605,7 +605,7 @@ namespace NpgsqlTypes
 		/// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any months converted to multiples of &#xB1;30days.</returns>
 		public NpgsqlInterval UnjustifyMonths()
 		{
-			return new NpgsqlInterval(0, Days + Months*DaysPerMonth, Ticks);
+			return new NpgsqlInterval(0, Days + Months * DaysPerMonth, Ticks);
 		}
 
 		/// <summary>
@@ -625,7 +625,7 @@ namespace NpgsqlTypes
 		/// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any months converted to multiples of &#xB1;30days and then any days converted to multiples of &#xB1;24hours;</returns>
 		public NpgsqlInterval UnjustifyInterval()
 		{
-			return new NpgsqlInterval(Ticks + Days*TicksPerDay + Months*DaysPerMonth*TicksPerDay);
+			return new NpgsqlInterval(Ticks + Days * TicksPerDay + Months * DaysPerMonth * TicksPerDay);
 		}
 
 		/// <summary>
@@ -650,7 +650,7 @@ namespace NpgsqlTypes
 		/// converted into days.</return>
 		public NpgsqlInterval Canonicalize()
 		{
-			return new NpgsqlInterval(0, Days + Months*DaysPerMonth + (int) (Ticks/TicksPerDay), Ticks%TicksPerDay);
+			return new NpgsqlInterval(0, Days + Months * DaysPerMonth + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
 		}
 
 		#endregion
@@ -674,7 +674,7 @@ namespace NpgsqlTypes
 		/// <returns>An equivalent <see cref="TimeSpan"/>.</returns>
 		public static explicit operator TimeSpan(NpgsqlInterval interval)
 		{
-			return new TimeSpan(interval.Ticks + interval.Days*TicksPerDay + interval.Months*DaysPerMonth*TicksPerDay);
+			return new TimeSpan(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
 		}
 
 		#endregion
@@ -707,7 +707,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlInterval)
 			{
-				return Equals((NpgsqlInterval) obj);
+				return Equals((NpgsqlInterval)obj);
 			}
 			return false;
 		}
@@ -741,7 +741,7 @@ namespace NpgsqlTypes
 			}
 			try
 			{
-				return ((IComparable) x).CompareTo(y);
+				return ((IComparable)x).CompareTo(y);
 			}
 			catch (Exception)
 			{
@@ -789,7 +789,7 @@ namespace NpgsqlTypes
 			}
 			else if (other is NpgsqlInterval)
 			{
-				return CompareTo((NpgsqlInterval) other);
+				return CompareTo((NpgsqlInterval)other);
 			}
 			else
 			{
@@ -829,23 +829,23 @@ namespace NpgsqlTypes
 				if (idx > 0)
 				{
 					years = int.Parse(str.Substring(0, idx));
-                    str = SafeSubstring(str, idx + 5);
+					str = SafeSubstring(str, idx + 5);
 				}
 				idx = str.IndexOf("mon");
 				if (idx > 0)
 				{
 					months = int.Parse(str.Substring(0, idx));
-                    str = SafeSubstring(str, idx + 4);
+					str = SafeSubstring(str, idx + 4);
 				}
 				idx = str.IndexOf("day");
 				if (idx > 0)
 				{
 					days = int.Parse(str.Substring(0, idx));
-                    str = SafeSubstring(str, idx + 4).Trim();
+					str = SafeSubstring(str, idx + 4).Trim();
 				}
 				if (str.Length > 0)
 				{
-                    bool isNegative = str[0] == '-';
+					bool isNegative = str[0] == '-';
 					string[] parts = str.Split(':');
 					switch (parts.Length) //One of those times that fall-through would actually be good.
 					{
@@ -862,14 +862,14 @@ namespace NpgsqlTypes
 							seconds = decimal.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
 							break;
 					}
-                    if (isNegative)
-                    {
-                        minutes *= -1;
-                        seconds *= -1;
-                    }
+					if (isNegative)
+					{
+						minutes *= -1;
+						seconds *= -1;
+					}
 				}
-				long ticks = hours*TicksPerHour + minutes*TicksPerMinute + (long) (seconds*TicksPerSecond);
-				return new NpgsqlInterval(years*MonthsPerYear + months, days, ticks);
+				long ticks = hours * TicksPerHour + minutes * TicksPerMinute + (long)(seconds * TicksPerSecond);
+				return new NpgsqlInterval(years * MonthsPerYear + months, days, ticks);
 			}
 			catch (OverflowException)
 			{
@@ -881,13 +881,13 @@ namespace NpgsqlTypes
 			}
 		}
 
-        private static string SafeSubstring(string s, int startIndex)
-        {
-            if (startIndex >= s.Length)
-                return string.Empty;
-            else
-                return s.Substring(startIndex);
-        }
+		private static string SafeSubstring(string s, int startIndex)
+		{
+			if (startIndex >= s.Length)
+				return string.Empty;
+			else
+				return s.Substring(startIndex);
+		}
 
 		/// <summary>
 		/// Attempt to parse a <see cref="String"/> to produce an <see cref="NpgsqlInterval"/>.
@@ -939,17 +939,17 @@ namespace NpgsqlTypes
 			}
 			if (Ticks != 0 || sb.Length == 0)
 			{
-			    if(Ticks < 0)
-			    {
-			        sb.Append('-');
-			    }
+				if (Ticks < 0)
+				{
+					sb.Append('-');
+				}
 				else if (Days < 0 || (Days == 0 && Months < 0))
 				{
 					sb.Append('+');
 				}
-                // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
-                decimal seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
-                sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
+				// calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
+				decimal seconds = _ticks / (decimal)TicksPerSecond - (_ticks / TicksPerMinute) * 60;
+				sb.Append(Math.Abs(Hours).ToString("D2")).Append(':').Append(Math.Abs(Minutes).ToString("D2")).Append(':').Append(Math.Abs(seconds).ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
 
 			}
 			if (sb[sb.Length - 1] == ' ')
@@ -1076,12 +1076,12 @@ namespace NpgsqlTypes
 
 	[Serializable]
 	public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,
-	                           IComparer
+							   IComparer
 	{
-		private static readonly int[] CommonYearDays = new int[] {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
-		private static readonly int[] LeapYearDays = new int[] {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
-		private static readonly int[] CommonYearMaxes = new int[] {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-		private static readonly int[] LeapYearMaxes = new int[] {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+		private static readonly int[] CommonYearDays = new int[] { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
+		private static readonly int[] LeapYearDays = new int[] { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
+		private static readonly int[] CommonYearMaxes = new int[] { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+		private static readonly int[] LeapYearMaxes = new int[] { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 		public const int MaxYear = 5874897;
 		public const int MinYear = -4714;
 		public static readonly NpgsqlDate Epoch = new NpgsqlDate(1970, 1, 1);
@@ -1111,19 +1111,19 @@ namespace NpgsqlTypes
 
 		public static NpgsqlDate Parse(string str)
 		{
-            
+
 			if (str == null)
 			{
 				throw new ArgumentNullException("str");
 			}
 
-            // Handle -infinity and infinity special values.
+			// Handle -infinity and infinity special values.
 
-            if (str == "-infinity")
-                return new NpgsqlDate(DateTime.MinValue);
+			if (str == "-infinity")
+				return new NpgsqlDate(DateTime.MinValue);
 
-            if (str == "infinity")
-                return new NpgsqlDate(DateTime.MaxValue);
+			if (str == "infinity")
+				return new NpgsqlDate(DateTime.MaxValue);
 
 
 			str = str.Trim();
@@ -1186,7 +1186,7 @@ namespace NpgsqlTypes
 		}
 
 		public NpgsqlDate(DateTime dateTime)
-			: this((int) (dateTime.Ticks/TimeSpan.TicksPerDay))
+			: this((int)(dateTime.Ticks / TimeSpan.TicksPerDay))
 		{
 		}
 
@@ -1198,7 +1198,7 @@ namespace NpgsqlTypes
 		public NpgsqlDate(int year, int month, int day)
 		{
 			if (year == 0 || year < MinYear || year > MaxYear || month < 1 || month > 12 || day < 1 ||
-			    (day > (IsLeap(year) ? 366 : 365)))
+				(day > (IsLeap(year) ? 366 : 365)))
 			{
 				throw new ArgumentOutOfRangeException();
 			}
@@ -1207,20 +1207,20 @@ namespace NpgsqlTypes
 		}
 
 		private const int DaysInYear = 365; //Common years
-		private const int DaysIn4Years = 4*DaysInYear + 1; //Leap year every 4 years.
-		private const int DaysInCentury = 25*DaysIn4Years - 1; //Except no leap year every 100.
-		private const int DaysIn4Centuries = 4*DaysInCentury + 1; //Except leap year every 400.
+		private const int DaysIn4Years = 4 * DaysInYear + 1; //Leap year every 4 years.
+		private const int DaysInCentury = 25 * DaysIn4Years - 1; //Except no leap year every 100.
+		private const int DaysIn4Centuries = 4 * DaysInCentury + 1; //Except leap year every 400.
 
 		private static int DaysForYears(int years)
 		{
 			//Number of years after 1CE (0 for 1CE, -1 for 1BCE, 1 for 2CE).
 			int calcYear = years < 1 ? years : years - 1;
 
-			return calcYear/400*DaysIn4Centuries //Blocks of 400 years with their leap and common years
-			       + calcYear%400/100*DaysInCentury //Remaining blocks of 100 years with their leap and common years
-			       + calcYear%100/4*DaysIn4Years //Remaining blocks of 4 years with their leap and common years
-			       + calcYear%4*DaysInYear //Remaining years, all common
-			       + (calcYear < 0 ? -1 : 0); //And 1BCE is leap.
+			return calcYear / 400 * DaysIn4Centuries //Blocks of 400 years with their leap and common years
+				   + calcYear % 400 / 100 * DaysInCentury //Remaining blocks of 100 years with their leap and common years
+				   + calcYear % 100 / 4 * DaysIn4Years //Remaining blocks of 4 years with their leap and common years
+				   + calcYear % 4 * DaysInYear //Remaining years, all common
+				   + (calcYear < 0 ? -1 : 0); //And 1BCE is leap.
 		}
 
 		public int DayOfYear
@@ -1232,7 +1232,7 @@ namespace NpgsqlTypes
 		{
 			get
 			{
-				int guess = (int) Math.Round(_daysSinceEra/365.2425);
+				int guess = (int)Math.Round(_daysSinceEra / 365.2425);
 				int test = guess - 1;
 				while (DaysForYears(++test) <= _daysSinceEra)
 				{
@@ -1264,7 +1264,7 @@ namespace NpgsqlTypes
 
 		public DayOfWeek DayOfWeek
 		{
-			get { return (DayOfWeek) ((_daysSinceEra + 1)%7); }
+			get { return (DayOfWeek)((_daysSinceEra + 1) % 7); }
 		}
 
 		internal int DaysSinceEra
@@ -1286,7 +1286,7 @@ namespace NpgsqlTypes
 			{
 				year = year + 1;
 			}
-			return (year%4 == 0) && ((year%100 != 0) || (year%400 == 0));
+			return (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
 		}
 
 		public NpgsqlDate AddDays(int days)
@@ -1308,26 +1308,26 @@ namespace NpgsqlTypes
 			return new NpgsqlDate(newYear, Month, Day);
 		}
 
-        public NpgsqlDate AddMonths(int months)
-        {
-            int newYear = Year;
-            int newMonth = Month + months;
+		public NpgsqlDate AddMonths(int months)
+		{
+			int newYear = Year;
+			int newMonth = Month + months;
 
-            while (newMonth > 12)
-            {
-                newMonth -= 12;
-                newYear += 1;
-            };
-            while (newMonth < 1)
-            {
-                newMonth += 12;
-                newYear -= 1;
-            };
-            int maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
-            int newDay = Day > maxDay ? maxDay : Day;
-            return new NpgsqlDate(newYear, newMonth, newDay);
+			while (newMonth > 12)
+			{
+				newMonth -= 12;
+				newYear += 1;
+			};
+			while (newMonth < 1)
+			{
+				newMonth += 12;
+				newYear -= 1;
+			};
+			int maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
+			int newDay = Day > maxDay ? maxDay : Day;
+			return new NpgsqlDate(newYear, newMonth, newDay);
 
-        }
+		}
 
 		public NpgsqlDate Add(NpgsqlInterval interval)
 		{
@@ -1358,7 +1358,7 @@ namespace NpgsqlTypes
 			{
 				throw new ArgumentException();
 			}
-			return ((IComparable) x).CompareTo(y);
+			return ((IComparable)x).CompareTo(y);
 		}
 
 		public bool Equals(NpgsqlDate other)
@@ -1368,7 +1368,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlDate && Equals((NpgsqlDate) obj);
+			return obj != null && obj is NpgsqlDate && Equals((NpgsqlDate)obj);
 		}
 
 		public int CompareTo(NpgsqlDate other)
@@ -1384,7 +1384,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlDate)
 			{
-				return CompareTo((NpgsqlDate) obj);
+				return CompareTo((NpgsqlDate)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -1436,7 +1436,7 @@ namespace NpgsqlTypes
 		{
 			try
 			{
-				return new DateTime(date._daysSinceEra*NpgsqlInterval.TicksPerDay);
+				return new DateTime(date._daysSinceEra * NpgsqlInterval.TicksPerDay);
 			}
 			catch
 			{
@@ -1446,7 +1446,7 @@ namespace NpgsqlTypes
 
 		public static explicit operator NpgsqlDate(DateTime date)
 		{
-			return new NpgsqlDate((int) (date.Ticks/NpgsqlInterval.TicksPerDay));
+			return new NpgsqlDate((int)(date.Ticks / NpgsqlInterval.TicksPerDay));
 		}
 
 		public static NpgsqlDate operator +(NpgsqlDate date, NpgsqlInterval interval)
@@ -1483,7 +1483,7 @@ namespace NpgsqlTypes
 
 		private NpgsqlTimeZone(long ticks)
 		{
-			_totalSeconds = (int) (ticks/NpgsqlInterval.TicksPerSecond);
+			_totalSeconds = (int)(ticks / NpgsqlInterval.TicksPerSecond);
 		}
 
 		public NpgsqlTimeZone(NpgsqlInterval ni)
@@ -1503,7 +1503,7 @@ namespace NpgsqlTypes
 
 		public NpgsqlTimeZone(int hours, int minutes, int seconds)
 		{
-			_totalSeconds = hours*60*60 + minutes*60 + seconds;
+			_totalSeconds = hours * 60 * 60 + minutes * 60 + seconds;
 		}
 
 		public static implicit operator NpgsqlTimeZone(NpgsqlInterval interval)
@@ -1513,7 +1513,7 @@ namespace NpgsqlTypes
 
 		public static implicit operator NpgsqlInterval(NpgsqlTimeZone timeZone)
 		{
-			return new NpgsqlInterval(timeZone._totalSeconds*NpgsqlInterval.TicksPerSecond);
+			return new NpgsqlInterval(timeZone._totalSeconds * NpgsqlInterval.TicksPerSecond);
 		}
 
 		public static implicit operator NpgsqlTimeZone(TimeSpan interval)
@@ -1523,27 +1523,27 @@ namespace NpgsqlTypes
 
 		public static implicit operator TimeSpan(NpgsqlTimeZone timeZone)
 		{
-			return new TimeSpan(timeZone._totalSeconds*NpgsqlInterval.TicksPerSecond);
+			return new TimeSpan(timeZone._totalSeconds * NpgsqlInterval.TicksPerSecond);
 		}
 
 		public static NpgsqlTimeZone SolarTimeZone(decimal longitude)
 		{
-			return new NpgsqlTimeZone((long) (longitude/15m*NpgsqlInterval.TicksPerHour));
+			return new NpgsqlTimeZone((long)(longitude / 15m * NpgsqlInterval.TicksPerHour));
 		}
 
 		public int Hours
 		{
-			get { return _totalSeconds/60/60; }
+			get { return _totalSeconds / 60 / 60; }
 		}
 
 		public int Minutes
 		{
-			get { return (_totalSeconds/60)%60; }
+			get { return (_totalSeconds / 60) % 60; }
 		}
 
 		public int Seconds
 		{
-			get { return _totalSeconds%60; }
+			get { return _totalSeconds % 60; }
 		}
 
 		public static NpgsqlTimeZone CurrentTimeZone
@@ -1556,7 +1556,7 @@ namespace NpgsqlTypes
 			DateTime dt;
 			if (date.Year >= 1902 && date.Year <= 2038)
 			{
-				dt = (DateTime) date;
+				dt = (DateTime)date;
 			}
 			else
 			{
@@ -1572,7 +1572,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlTimeZone && Equals((NpgsqlTimeZone) obj);
+			return obj != null && obj is NpgsqlTimeZone && Equals((NpgsqlTimeZone)obj);
 		}
 
 		public override string ToString()
@@ -1631,8 +1631,8 @@ namespace NpgsqlTypes
 						seconds = int.Parse(parts[2]);
 						break;
 				}
-				int totalSeconds = (hours*60*60 + minutes*60 + seconds)*(neg ? -1 : 1);
-				return new NpgsqlTimeZone(totalSeconds*NpgsqlInterval.TicksPerSecond);
+				int totalSeconds = (hours * 60 * 60 + minutes * 60 + seconds) * (neg ? -1 : 1);
+				return new NpgsqlTimeZone(totalSeconds * NpgsqlInterval.TicksPerSecond);
 			}
 			catch (OverflowException)
 			{
@@ -1677,7 +1677,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlTimeZone)
 			{
-				return CompareTo((NpgsqlTimeZone) obj);
+				return CompareTo((NpgsqlTimeZone)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -1725,7 +1725,7 @@ namespace NpgsqlTypes
 
 	[Serializable]
 	public struct NpgsqlTime : IEquatable<NpgsqlTime>, IComparable<NpgsqlTime>, IComparable, IComparer<NpgsqlTime>,
-	                           IComparer
+							   IComparer
 	{
 		public static readonly NpgsqlTime AllBalls = new NpgsqlTime(0);
 
@@ -1771,20 +1771,20 @@ namespace NpgsqlTypes
 
 		public NpgsqlTime(int hours, int minutes, int seconds, int microseconds)
 			: this(
-				hours*NpgsqlInterval.TicksPerHour + minutes*NpgsqlInterval.TicksPerMinute + seconds*NpgsqlInterval.TicksPerSecond +
-				microseconds*NpgsqlInterval.TicksPerMicrosecond)
+				hours * NpgsqlInterval.TicksPerHour + minutes * NpgsqlInterval.TicksPerMinute + seconds * NpgsqlInterval.TicksPerSecond +
+				microseconds * NpgsqlInterval.TicksPerMicrosecond)
 		{
 		}
 
 		public NpgsqlTime(int hours, int minutes, decimal seconds)
 			: this(
-				hours*NpgsqlInterval.TicksPerHour + minutes*NpgsqlInterval.TicksPerMinute +
-				(long) (seconds*NpgsqlInterval.TicksPerSecond))
+				hours * NpgsqlInterval.TicksPerHour + minutes * NpgsqlInterval.TicksPerMinute +
+				(long)(seconds * NpgsqlInterval.TicksPerSecond))
 		{
 		}
 
 		public NpgsqlTime(int hours, int minutes, double seconds)
-			: this(hours, minutes, (decimal) seconds)
+			: this(hours, minutes, (decimal)seconds)
 		{
 		}
 
@@ -1842,7 +1842,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Microseconds
 		{
-			get { return (int) ((_ticks/10)%1000000); }
+			get { return (int)((_ticks / 10) % 1000000); }
 		}
 
 		/// <summary>
@@ -1851,7 +1851,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Milliseconds
 		{
-			get { return (int) ((_ticks/NpgsqlInterval.TicksPerMillsecond)%1000); }
+			get { return (int)((_ticks / NpgsqlInterval.TicksPerMillsecond) % 1000); }
 		}
 
 		/// <summary>
@@ -1860,7 +1860,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Seconds
 		{
-			get { return (int) ((_ticks/NpgsqlInterval.TicksPerSecond)%60); }
+			get { return (int)((_ticks / NpgsqlInterval.TicksPerSecond) % 60); }
 		}
 
 		/// <summary>
@@ -1869,7 +1869,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Minutes
 		{
-			get { return (int) ((_ticks/NpgsqlInterval.TicksPerMinute)%60); }
+			get { return (int)((_ticks / NpgsqlInterval.TicksPerMinute) % 60); }
 		}
 
 		/// <summary>
@@ -1879,7 +1879,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public int Hours
 		{
-			get { return (int) (_ticks/NpgsqlInterval.TicksPerHour); }
+			get { return (int)(_ticks / NpgsqlInterval.TicksPerHour); }
 		}
 
 		/// <summary>
@@ -1888,7 +1888,7 @@ namespace NpgsqlTypes
 		/// <returns>This time, normalised</returns>
 		public NpgsqlTime Normalize()
 		{
-			return new NpgsqlTime(_ticks%NpgsqlInterval.TicksPerDay);
+			return new NpgsqlTime(_ticks % NpgsqlInterval.TicksPerDay);
 		}
 
 		public bool Equals(NpgsqlTime other)
@@ -1898,7 +1898,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlTime && Equals((NpgsqlTime) obj);
+			return obj != null && obj is NpgsqlTime && Equals((NpgsqlTime)obj);
 		}
 
 		public override int GetHashCode()
@@ -1907,12 +1907,12 @@ namespace NpgsqlTypes
 		}
 
 		public override string ToString()
-        {
-            // calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
-            decimal seconds = _ticks / (decimal)NpgsqlInterval.TicksPerSecond - (_ticks / NpgsqlInterval.TicksPerMinute) * 60;
+		{
+			// calculate total seconds and then subtract total whole minutes in seconds to get just the seconds and fractional part
+			decimal seconds = _ticks / (decimal)NpgsqlInterval.TicksPerSecond - (_ticks / NpgsqlInterval.TicksPerMinute) * 60;
 			StringBuilder sb =
 				new StringBuilder(Hours.ToString("D2")).Append(':').Append(Minutes.ToString("D2")).Append(':').Append(
-                    seconds.ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
+					seconds.ToString("0#.######", System.Globalization.CultureInfo.InvariantCulture.NumberFormat));
 			return sb.ToString();
 		}
 
@@ -1940,11 +1940,11 @@ namespace NpgsqlTypes
 					default:
 						hours = int.Parse(parts[0]);
 						minutes = int.Parse(parts[1]);
-                        seconds = decimal.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
+						seconds = decimal.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture.NumberFormat);
 						break;
 				}
 				if (hours < 0 || hours > 24 || minutes < 0 || minutes > 59 || seconds < 0m || seconds >= 60 ||
-				    (hours == 24 && (minutes != 0 || seconds != 0m)))
+					(hours == 24 && (minutes != 0 || seconds != 0m)))
 				{
 					throw new OverflowException();
 				}
@@ -1987,7 +1987,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlTime)
 			{
-				return CompareTo((NpgsqlTime) obj);
+				return CompareTo((NpgsqlTime)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -2011,7 +2011,7 @@ namespace NpgsqlTypes
 			{
 				throw new ArgumentException();
 			}
-			return ((IComparable) x).CompareTo(y);
+			return ((IComparable)x).CompareTo(y);
 		}
 
 		public static bool operator ==(NpgsqlTime x, NpgsqlTime y)
@@ -2059,32 +2059,32 @@ namespace NpgsqlTypes
 			return new TimeSpan(time.Ticks);
 		}
 
-        public static explicit operator DateTime(NpgsqlTime time)
-        {
-            try
-            {
-                return new DateTime(time.Ticks, DateTimeKind.Unspecified);
-            }
-            catch
-            {
-                throw new InvalidCastException();
-            }
-        }
+		public static explicit operator DateTime(NpgsqlTime time)
+		{
+			try
+			{
+				return new DateTime(time.Ticks, DateTimeKind.Unspecified);
+			}
+			catch
+			{
+				throw new InvalidCastException();
+			}
+		}
 
-        public static explicit operator NpgsqlTime(TimeSpan interval)
-        {
-            return new NpgsqlTime(interval);
-        }
+		public static explicit operator NpgsqlTime(TimeSpan interval)
+		{
+			return new NpgsqlTime(interval);
+		}
 
 		public NpgsqlTime AddTicks(long ticksAdded)
 		{
-			return new NpgsqlTime((Ticks + ticksAdded)%NpgsqlInterval.TicksPerDay);
+			return new NpgsqlTime((Ticks + ticksAdded) % NpgsqlInterval.TicksPerDay);
 		}
 
 		private NpgsqlTime AddTicks(long ticksAdded, out int overflow)
 		{
 			long result = Ticks + ticksAdded;
-			overflow = (int) (result/NpgsqlInterval.TicksPerDay);
+			overflow = (int)(result / NpgsqlInterval.TicksPerDay);
 			result %= NpgsqlInterval.TicksPerDay;
 			if (result < 0)
 			{
@@ -2141,7 +2141,7 @@ namespace NpgsqlTypes
 
 	[Serializable]
 	public struct NpgsqlTimeTZ : IEquatable<NpgsqlTimeTZ>, IComparable<NpgsqlTimeTZ>, IComparable, IComparer<NpgsqlTimeTZ>,
-	                             IComparer
+								 IComparer
 	{
 		public static readonly NpgsqlTimeTZ AllBalls = new NpgsqlTimeTZ(NpgsqlTime.AllBalls, NpgsqlTimeZone.UTC);
 
@@ -2297,7 +2297,7 @@ namespace NpgsqlTypes
 		internal NpgsqlTimeTZ AtTimeZone(NpgsqlTimeZone timeZone, out int overflow)
 		{
 			return
-				new NpgsqlTimeTZ(LocalTime.Add(timeZone - (NpgsqlInterval) (_timeZone), out overflow), timeZone);
+				new NpgsqlTimeTZ(LocalTime.Add(timeZone - (NpgsqlInterval)(_timeZone), out overflow), timeZone);
 		}
 
 		public long Ticks
@@ -2367,7 +2367,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlTimeTZ && Equals((NpgsqlTimeTZ) obj);
+			return obj != null && obj is NpgsqlTimeTZ && Equals((NpgsqlTimeTZ)obj);
 		}
 
 		public override int GetHashCode()
@@ -2396,7 +2396,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlTimeTZ)
 			{
-				return CompareTo((NpgsqlTimeTZ) obj);
+				return CompareTo((NpgsqlTimeTZ)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -2420,7 +2420,7 @@ namespace NpgsqlTypes
 			{
 				throw new ArgumentException();
 			}
-			return ((IComparable) x).CompareTo(y);
+			return ((IComparable)x).CompareTo(y);
 		}
 
 		public static bool operator ==(NpgsqlTimeTZ x, NpgsqlTimeTZ y)
@@ -2500,19 +2500,19 @@ namespace NpgsqlTypes
 
 		public static explicit operator TimeSpan(NpgsqlTimeTZ time)
 		{
-			return (TimeSpan) time.LocalTime;
-        }
+			return (TimeSpan)time.LocalTime;
+		}
 
-        public static explicit operator DateTime(NpgsqlTimeTZ time)
-        {
-            // LocalTime property is actually time local to TimeZone
-            return new DateTime(time.AtTimeZone(NpgsqlTimeZone.CurrentTimeZone).Ticks, DateTimeKind.Local);
-        }
+		public static explicit operator DateTime(NpgsqlTimeTZ time)
+		{
+			// LocalTime property is actually time local to TimeZone
+			return new DateTime(time.AtTimeZone(NpgsqlTimeZone.CurrentTimeZone).Ticks, DateTimeKind.Local);
+		}
 	}
 
 	[Serializable]
 	public struct NpgsqlTimeStamp : IEquatable<NpgsqlTimeStamp>, IComparable<NpgsqlTimeStamp>, IComparable,
-	                                IComparer<NpgsqlTimeStamp>, IComparer
+									IComparer<NpgsqlTimeStamp>, IComparer
 	{
 		private enum TimeType
 		{
@@ -2654,7 +2654,7 @@ namespace NpgsqlTypes
 
 		public long Ticks
 		{
-			get { return _date.DaysSinceEra*NpgsqlInterval.TicksPerDay + _time.Ticks; }
+			get { return _date.DaysSinceEra * NpgsqlInterval.TicksPerDay + _time.Ticks; }
 		}
 
 		public int Microseconds
@@ -2770,7 +2770,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlTimeStamp && Equals((NpgsqlTimeStamp) obj);
+			return obj != null && obj is NpgsqlTimeStamp && Equals((NpgsqlTimeStamp)obj);
 		}
 
 		public override int GetHashCode()
@@ -2816,7 +2816,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlTimeStamp)
 			{
-				return CompareTo((NpgsqlTimeStamp) obj);
+				return CompareTo((NpgsqlTimeStamp)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -2840,7 +2840,7 @@ namespace NpgsqlTypes
 			{
 				throw new ArgumentException();
 			}
-			return ((IComparable) x).CompareTo(y);
+			return ((IComparable)x).CompareTo(y);
 		}
 
 		public NpgsqlTimeStampTZ AtTimeZone(NpgsqlTimeZone timeZoneFrom, NpgsqlTimeZone timeZoneTo)
@@ -2919,8 +2919,8 @@ namespace NpgsqlTypes
 					try
 					{
 						return
-							new DateTime(timestamp.Date.DaysSinceEra*NpgsqlInterval.TicksPerDay + timestamp._time.Ticks,
-							             DateTimeKind.Unspecified);
+							new DateTime(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp._time.Ticks,
+										 DateTimeKind.Unspecified);
 					}
 					catch
 					{
@@ -2982,7 +2982,7 @@ namespace NpgsqlTypes
 
 	[Serializable]
 	public struct NpgsqlTimeStampTZ : IEquatable<NpgsqlTimeStampTZ>, IComparable<NpgsqlTimeStampTZ>, IComparable,
-	                                  IComparer<NpgsqlTimeStampTZ>, IComparer
+									  IComparer<NpgsqlTimeStampTZ>, IComparer
 	{
 		private enum TimeType
 		{
@@ -3045,7 +3045,7 @@ namespace NpgsqlTypes
 			: this(
 				new NpgsqlDate(year, month, day),
 				new NpgsqlTimeTZ(hours, minutes, seconds,
-				                 timezone.HasValue ? timezone.Value : NpgsqlTimeZone.LocalTimeZone(new NpgsqlDate(year, month, day)))
+								 timezone.HasValue ? timezone.Value : NpgsqlTimeZone.LocalTimeZone(new NpgsqlDate(year, month, day)))
 				)
 		{
 		}
@@ -3143,7 +3143,7 @@ namespace NpgsqlTypes
 
 		public long Ticks
 		{
-			get { return _date.DaysSinceEra*NpgsqlInterval.TicksPerDay + _time.Ticks; }
+			get { return _date.DaysSinceEra * NpgsqlInterval.TicksPerDay + _time.Ticks; }
 		}
 
 		public int Microseconds
@@ -3259,7 +3259,7 @@ namespace NpgsqlTypes
 
 		public override bool Equals(object obj)
 		{
-			return obj != null && obj is NpgsqlTimeStamp && Equals((NpgsqlTimeStampTZ) obj);
+			return obj != null && obj is NpgsqlTimeStamp && Equals((NpgsqlTimeStampTZ)obj);
 		}
 
 		public override int GetHashCode()
@@ -3305,7 +3305,7 @@ namespace NpgsqlTypes
 			}
 			if (obj is NpgsqlTimeStamp)
 			{
-				return CompareTo((NpgsqlTimeStamp) obj);
+				return CompareTo((NpgsqlTimeStamp)obj);
 			}
 			throw new ArgumentException();
 		}
@@ -3329,7 +3329,7 @@ namespace NpgsqlTypes
 			{
 				throw new ArgumentException();
 			}
-			return ((IComparable) x).CompareTo(y);
+			return ((IComparable)x).CompareTo(y);
 		}
 
 		public NpgsqlTimeStamp AtTimeZone(NpgsqlTimeZone timeZone)
@@ -3390,10 +3390,10 @@ namespace NpgsqlTypes
 				NpgsqlDate newDate = new NpgsqlDate(datetime);
 				return
 					new NpgsqlTimeStampTZ(newDate,
-					                      new NpgsqlTimeTZ(datetime.TimeOfDay,
-					                                       datetime.Kind == DateTimeKind.Utc
-					                                       	? NpgsqlTimeZone.UTC
-					                                       	: NpgsqlTimeZone.LocalTimeZone(newDate)));
+										  new NpgsqlTimeTZ(datetime.TimeOfDay,
+														   datetime.Kind == DateTimeKind.Utc
+															? NpgsqlTimeZone.UTC
+															: NpgsqlTimeZone.LocalTimeZone(newDate)));
 			}
 		}
 
@@ -3409,7 +3409,7 @@ namespace NpgsqlTypes
 					try
 					{
 						NpgsqlTimeStamp utc = timestamp.AtTimeZone(NpgsqlTimeZone.UTC);
-						return new DateTime(utc.Date.DaysSinceEra*NpgsqlInterval.TicksPerDay + utc.Time.Ticks, DateTimeKind.Utc);
+						return new DateTime(utc.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + utc.Time.Ticks, DateTimeKind.Utc);
 					}
 					catch
 					{
@@ -3419,44 +3419,44 @@ namespace NpgsqlTypes
 		}
 
 
-        public static implicit operator NpgsqlTimeStampTZ(DateTimeOffset datetimeoffset)
-        {
-            if (datetimeoffset == DateTimeOffset.MaxValue)
-            {
-                return Infinity;
-            }
-            else if (datetimeoffset == DateTimeOffset.MinValue)
-            {
-                return MinusInfinity;
-            }
-            else
-            {
-                NpgsqlDate newDate = new NpgsqlDate(datetimeoffset.Year,
-                    datetimeoffset.Month, datetimeoffset.Day);
-                return
-                    new NpgsqlTimeStampTZ(newDate, new NpgsqlTimeTZ(datetimeoffset.TimeOfDay,
-                        new NpgsqlTimeZone(datetimeoffset.Offset)));
-            }
-        }
-        public static explicit operator DateTimeOffset(NpgsqlTimeStampTZ timestamp)
-        {
-            switch (timestamp._type)
-            {
-                case TimeType.Infinity:
-                    return DateTimeOffset.MaxValue;
-                case TimeType.MinusInfinity:
-                    return DateTimeOffset.MinValue;
-                default:
-                    try
-                    {
-                        return new DateTimeOffset(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp.Time.Ticks, timestamp.TimeZone);
-                    }
-                    catch
-                    {
-                        throw new InvalidCastException();
-                    }
-            }
-        }
+		public static implicit operator NpgsqlTimeStampTZ(DateTimeOffset datetimeoffset)
+		{
+			if (datetimeoffset == DateTimeOffset.MaxValue)
+			{
+				return Infinity;
+			}
+			else if (datetimeoffset == DateTimeOffset.MinValue)
+			{
+				return MinusInfinity;
+			}
+			else
+			{
+				NpgsqlDate newDate = new NpgsqlDate(datetimeoffset.Year,
+					datetimeoffset.Month, datetimeoffset.Day);
+				return
+					new NpgsqlTimeStampTZ(newDate, new NpgsqlTimeTZ(datetimeoffset.TimeOfDay,
+						new NpgsqlTimeZone(datetimeoffset.Offset)));
+			}
+		}
+		public static explicit operator DateTimeOffset(NpgsqlTimeStampTZ timestamp)
+		{
+			switch (timestamp._type)
+			{
+				case TimeType.Infinity:
+					return DateTimeOffset.MaxValue;
+				case TimeType.MinusInfinity:
+					return DateTimeOffset.MinValue;
+				default:
+					try
+					{
+						return new DateTimeOffset(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp.Time.Ticks, timestamp.TimeZone);
+					}
+					catch
+					{
+						throw new InvalidCastException();
+					}
+			}
+		}
 
 		public static NpgsqlTimeStampTZ operator +(NpgsqlTimeStampTZ timestamp, NpgsqlInterval interval)
 		{

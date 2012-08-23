@@ -1,15 +1,15 @@
 /*-------------------------------------------------------------------------
  
   FastpathArg.cs
-      This class is a port of the class FastpathArg.java implemented by 
-      PostgreSQL Global Development Group
+	  This class is a port of the class FastpathArg.java implemented by 
+	  PostgreSQL Global Development Group
   
  Copyright (c) 2004, Emiliano Necciari
  Original Code: Copyright (c) 2003, PostgreSQL Global Development Group
  
  Note: (Francisco Figueiredo Jr.)
-  	Changed case of method names to conform to .Net names standard.
-  	Also changed type names to their true names. i.e. int -> Int32
+	Changed case of method names to conform to .Net names standard.
+	Also changed type names to their true names. i.e. int -> Int32
  
  // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -40,24 +40,24 @@ namespace NpgsqlTypes
 	public class FastpathArg
 	{
 		/*
-         * Type of argument, true=integer, false=byte[]
-         */
+		 * Type of argument, true=integer, false=byte[]
+		 */
 		public Boolean type;
 
 		/*
-         * Integer value if type=true
-         */
+		 * Integer value if type=true
+		 */
 		public Int32 value;
 
 		/*
-         * Byte value if type=false;
-         */
+		 * Byte value if type=false;
+		 */
 		public Byte[] bytes;
 
 		/*
-         * Constructs an argument that consists of an integer value
-         * @param value int value to set
-         */
+		 * Constructs an argument that consists of an integer value
+		 * @param value int value to set
+		 */
 
 		public FastpathArg(Int32 value)
 		{
@@ -66,9 +66,9 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * Constructs an argument that consists of an array of bytes
-         * @param bytes array to store
-         */
+		 * Constructs an argument that consists of an array of bytes
+		 * @param bytes array to store
+		 */
 
 		public FastpathArg(Byte[] bytes)
 		{
@@ -77,11 +77,11 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * Constructs an argument that consists of part of a byte array
-         * @param buf source array
-         * @param off offset within array
-         * @param len length of data to include
-         */
+		 * Constructs an argument that consists of part of a byte array
+		 * @param buf source array
+		 * @param off offset within array
+		 * @param len length of data to include
+		 */
 
 		public FastpathArg(Byte[] buf, Int32 off, Int32 len)
 		{
@@ -92,9 +92,9 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * Constructs an argument that consists of a String.
-         * @param s String to store
-         */
+		 * Constructs an argument that consists of a String.
+		 * @param s String to store
+		 */
 
 		public FastpathArg(String s)
 		{
@@ -102,16 +102,16 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This sends this argument down the network stream.
-         *
-         * <p>The stream sent consists of the length.int4 then the contents.
-         *
-         * <p><b>Note:</b> This is called from Fastpath, and cannot be called from
-         * client code.
-         *
-         * @param s output stream
-         * @exception IOException if something failed on the network stream
-         */
+		 * This sends this argument down the network stream.
+		 *
+		 * <p>The stream sent consists of the length.int4 then the contents.
+		 *
+		 * <p><b>Note:</b> This is called from Fastpath, and cannot be called from
+		 * client code.
+		 *
+		 * @param s output stream
+		 * @exception IOException if something failed on the network stream
+		 */
 
 		public void Send(Stream s)
 		{

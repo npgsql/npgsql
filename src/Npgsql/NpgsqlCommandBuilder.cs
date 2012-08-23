@@ -41,7 +41,7 @@ namespace Npgsql
 	{
 		// Logging related values
 		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-		private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
+		private readonly static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 		private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
 
@@ -152,59 +152,59 @@ namespace Npgsql
 				command.Parameters.Clear();
 				for (Int32 i = 0; i < types.Length; i++)
 				{
-                    // skip parameter if type string is empty
-                    // empty parameter lists can cause this
-                    if (!string.IsNullOrEmpty(types[i]))
-                    {
-                        NpgsqlBackendTypeInfo typeInfo = null;
-                        if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
-                        {
-                            command.Parameters.Clear();
-                            throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
-                        }
-                        if (names != null && i < names.Length)
-                            command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
-                        else
-                            command.Parameters.Add(new NpgsqlParameter("parameter" + (i + 1).ToString(), typeInfo.NpgsqlDbType));
-                    }
+					// skip parameter if type string is empty
+					// empty parameter lists can cause this
+					if (!string.IsNullOrEmpty(types[i]))
+					{
+						NpgsqlBackendTypeInfo typeInfo = null;
+						if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
+						{
+							command.Parameters.Clear();
+							throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
+						}
+						if (names != null && i < names.Length)
+							command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
+						else
+							command.Parameters.Add(new NpgsqlParameter("parameter" + (i + 1).ToString(), typeInfo.NpgsqlDbType));
+					}
 				}
 			}
 		}
 
 		public new NpgsqlCommand GetInsertCommand()
 		{
-            return GetInsertCommand(false);
+			return GetInsertCommand(false);
 		}
 
 		public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+			NpgsqlCommand cmd = (NpgsqlCommand)base.GetInsertCommand(useColumnsForParameterNames);
+			cmd.UpdatedRowSource = UpdateRowSource.None;
+			return cmd;
 		}
 
 		public new NpgsqlCommand GetUpdateCommand()
 		{
-            return GetUpdateCommand(false);
+			return GetUpdateCommand(false);
 		}
 
 		public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+			NpgsqlCommand cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
+			cmd.UpdatedRowSource = UpdateRowSource.None;
+			return cmd;
 		}
 
 		public new NpgsqlCommand GetDeleteCommand()
 		{
-            return GetDeleteCommand(false);
+			return GetDeleteCommand(false);
 		}
 
 		public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
 		{
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
-            cmd.UpdatedRowSource = UpdateRowSource.None;
-            return cmd;
+			NpgsqlCommand cmd = (NpgsqlCommand)base.GetDeleteCommand(useColumnsForParameterNames);
+			cmd.UpdatedRowSource = UpdateRowSource.None;
+			return cmd;
 		}
 
 		//never used
@@ -220,37 +220,37 @@ namespace Npgsql
 		//	}
 		//}
 
-/*
-		private static void SetParameterValuesFromRow(NpgsqlCommand command, DataRow row)
-		{
-			foreach (NpgsqlParameter parameter in command.Parameters)
-			{
-				parameter.Value = row[parameter.SourceColumn, parameter.SourceVersion];
-			}
-		}
-*/
+		/*
+				private static void SetParameterValuesFromRow(NpgsqlCommand command, DataRow row)
+				{
+					foreach (NpgsqlParameter parameter in command.Parameters)
+					{
+						parameter.Value = row[parameter.SourceColumn, parameter.SourceVersion];
+					}
+				}
+		*/
 
 		protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
 		{
-            
-			NpgsqlParameter parameter = (NpgsqlParameter) p;
 
-            /* TODO: Check if this is the right thing to do.
-             * ADO.Net seems to set this property to true when creating the parameter for the following query:
-             * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR 
-                  (FieldName = @Original_FieldName))
-             * This parameter: @IsNull_FieldName was having its sourcecolumn set to the same name of FieldName.
-             * This was causing ADO.Net to try to set a value of different type of Int32. 
-             * See bug 1010973 for more info.
-             */
-            if (parameter.SourceColumnNullMapping)
-            {
-                parameter.SourceColumn = "";
-            }
-            else
+			NpgsqlParameter parameter = (NpgsqlParameter)p;
 
-                parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
-            
+			/* TODO: Check if this is the right thing to do.
+			 * ADO.Net seems to set this property to true when creating the parameter for the following query:
+			 * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR 
+				  (FieldName = @Original_FieldName))
+			 * This parameter: @IsNull_FieldName was having its sourcecolumn set to the same name of FieldName.
+			 * This was causing ADO.Net to try to set a value of different type of Int32. 
+			 * See bug 1010973 for more info.
+			 */
+			if (parameter.SourceColumnNullMapping)
+			{
+				parameter.SourceColumn = "";
+			}
+			else
+
+				parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
+
 		}
 
 		protected override string GetParameterName(int parameterOrdinal)
@@ -270,15 +270,15 @@ namespace Npgsql
 
 		protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 		{
-			
-            /* Disabling this handler makes the ado.net updating code works.
-             * Check if this code is really necessary or how to implement it correctly.
-             * By having this handler specified, ADO.Net was reusing strangely NpgsqlParameters when updating datasets.
-             * See bug 1010973 for more info.
-             */
 
-            /*
-            if (!(adapter is NpgsqlDataAdapter))
+			/* Disabling this handler makes the ado.net updating code works.
+			 * Check if this code is really necessary or how to implement it correctly.
+			 * By having this handler specified, ADO.Net was reusing strangely NpgsqlParameters when updating datasets.
+			 * See bug 1010973 for more info.
+			 */
+
+			/*
+			if (!(adapter is NpgsqlDataAdapter))
 			{
 				throw new InvalidOperationException("adapter needs to be a NpgsqlDataAdapter");
 			}
@@ -287,23 +287,20 @@ namespace Npgsql
 			this.rowUpdatingHandler = new NpgsqlRowUpdatingEventHandler(this.RowUpdatingHandler);
 
 			((NpgsqlDataAdapter) adapter).RowUpdating += this.rowUpdatingHandler;
-             */
+			 */
 
 		}
 
 
 		private void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e)
-
 		{
 			base.RowUpdatingHandler(e);
 		}
 
 
 		public override string QuoteIdentifier(string unquotedIdentifier)
-
 		{
 			if (unquotedIdentifier == null)
-
 			{
 				throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
 			}
@@ -314,10 +311,8 @@ namespace Npgsql
 
 
 		public override string UnquoteIdentifier(string quotedIdentifier)
-
 		{
 			if (quotedIdentifier == null)
-
 			{
 				throw new ArgumentNullException("Quoted identifier parameter cannot be null");
 			}
@@ -327,13 +322,11 @@ namespace Npgsql
 
 
 			if (unquotedIdentifier.StartsWith(this.QuotePrefix))
-
 			{
 				unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
 			}
 
 			if (unquotedIdentifier.EndsWith(this.QuoteSuffix))
-
 			{
 				unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
 			}

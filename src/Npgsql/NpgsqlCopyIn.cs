@@ -144,7 +144,7 @@ namespace Npgsql
 				_cmd.ExecuteBlind();
 				_disposeCopyStream = _copyStream == null;
 				_copyStream = _context.Mediator.CopyStream;
-				if (_copyStream == null && ! (_context.CurrentState is NpgsqlReadyState))
+				if (_copyStream == null && !(_context.CurrentState is NpgsqlReadyState))
 				{
 					throw new NpgsqlException("Not a COPY IN query: " + _cmd.CommandText);
 				}
@@ -166,12 +166,12 @@ namespace Npgsql
 				{
 					if (IsActive)
 					{
-                        // Stop Notification thread so we can process this message.
-                        // See bug 1010796
-                        using (_context.BlockNotificationThread())
-                        {
-                            _context.CurrentState.SendCopyDone(_context);
-                        }
+						// Stop Notification thread so we can process this message.
+						// See bug 1010796
+						using (_context.BlockNotificationThread())
+						{
+							_context.CurrentState.SendCopyDone(_context);
+						}
 					}
 				}
 				finally
@@ -200,12 +200,12 @@ namespace Npgsql
 				{
 					if (IsActive)
 					{
-                        // Stop Notification thread so we can process this message.
-                        // See bug 1010796
-                        using (_context.BlockNotificationThread())
-                        {
-                            _context.CurrentState.SendCopyFail(_context, message);
-                        }
+						// Stop Notification thread so we can process this message.
+						// See bug 1010796
+						using (_context.BlockNotificationThread())
+						{
+							_context.CurrentState.SendCopyFail(_context, message);
+						}
 					}
 				}
 				finally

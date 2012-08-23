@@ -58,7 +58,7 @@ namespace Npgsql
 		internal CommandBehavior _behavior;
 		internal NpgsqlCommand _command;
 
-        internal Version Npgsql205 = new Version("2.0.5");
+		internal Version Npgsql205 = new Version("2.0.5");
 
 		internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior)
 		{
@@ -106,16 +106,16 @@ namespace Npgsql
 			return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof (string); //Default type is string.
 		}
 
-        /// <summary>
-        /// Return the Npgsql specific data type of the column at requested ordinal.
-        /// </summary>
-        /// <param name="ordinal">column position</param>
-        /// <returns>Appropriate Npgsql type for column.</returns>
-        public override Type GetProviderSpecificFieldType(int ordinal)
-        {
-            NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(ordinal, out TI) ? TI.Type : typeof(string); //Default type is string.
-        }
+		/// <summary>
+		/// Return the Npgsql specific data type of the column at requested ordinal.
+		/// </summary>
+		/// <param name="ordinal">column position</param>
+		/// <returns>Appropriate Npgsql type for column.</returns>
+		public override Type GetProviderSpecificFieldType(int ordinal)
+		{
+			NpgsqlBackendTypeInfo TI;
+			return TryGetTypeInfo(ordinal, out TI) ? TI.Type : typeof(string); //Default type is string.
+		}
 
 		/// <summary>
 		/// Gets the number of columns in the current row.
@@ -123,12 +123,12 @@ namespace Npgsql
 		public override Int32 FieldCount
 		{
 			get { 
-                    if (_connector.CompatVersion <= Npgsql205)
-                        return CurrentDescription == null ? -1 : CurrentDescription.NumFields; 
-                    else
-                        // We read msdn documentation and bug report #1010649 that the common return value is 0.
-                        return CurrentDescription == null ? 0 : CurrentDescription.NumFields; 
-                }
+					if (_connector.CompatVersion <= Npgsql205)
+						return CurrentDescription == null ? -1 : CurrentDescription.NumFields; 
+					else
+						// We read msdn documentation and bug report #1010649 that the common return value is 0.
+						return CurrentDescription == null ? 0 : CurrentDescription.NumFields; 
+				}
 		}
 
 		/// <summary>
@@ -169,9 +169,9 @@ namespace Npgsql
 		
 		public bool HasOrdinal(string fieldName)
 		{
-		    if(CurrentDescription == null)
-		        throw new InvalidOperationException("Invalid attempt to read when no data is present.");
-		    return CurrentDescription.HasOrdinal(fieldName);
+			if(CurrentDescription == null)
+				throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+			return CurrentDescription.HasOrdinal(fieldName);
 		}
 
 		/// <summary>
@@ -216,11 +216,11 @@ namespace Npgsql
 		
 		public BitString GetBitString(int i)
 		{
-		    object ret = GetValue(i);
-		    if(ret is bool)
-		        return new BitString((bool)ret);
-		    else
-		        return (BitString)ret;
+			object ret = GetValue(i);
+			if(ret is bool)
+				return new BitString((bool)ret);
+			else
+				return (BitString)ret;
 		}
 
 		/// <summary>
@@ -233,32 +233,32 @@ namespace Npgsql
 		/// <returns><see cref="NpgsqlInterval"/> value of the field.</returns>
 		public NpgsqlInterval GetInterval(Int32 i)
 		{
-            return (NpgsqlInterval)GetProviderSpecificValue(i);
+			return (NpgsqlInterval)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTime GetTime(int i)
 		{
-            return (NpgsqlTime)GetProviderSpecificValue(i);
+			return (NpgsqlTime)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeTZ GetTimeTZ(int i)
 		{
-            return (NpgsqlTimeTZ)GetProviderSpecificValue(i);
+			return (NpgsqlTimeTZ)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeStamp GetTimeStamp(int i)
 		{
-            return (NpgsqlTimeStamp)GetProviderSpecificValue(i);
+			return (NpgsqlTimeStamp)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlTimeStampTZ GetTimeStampTZ(int i)
 		{
-            return (NpgsqlTimeStampTZ)GetProviderSpecificValue(i);
+			return (NpgsqlTimeStampTZ)GetProviderSpecificValue(i);
 		}
 
 		public NpgsqlDate GetDate(int i)
 		{
-            return (NpgsqlDate)GetProviderSpecificValue(i);
+			return (NpgsqlDate)GetProviderSpecificValue(i);
 		}
 
 		protected void SendClosedEvent()
@@ -332,16 +332,16 @@ namespace Npgsql
 		{
 			return (Decimal) GetValue(i);
 		}
-        
-        /// <summary>
-        /// Gets the value of a column as TimeSpan.
-        /// </summary>
-        public TimeSpan GetTimeSpan(Int32 i)
-        {
-            return (TimeSpan) GetValue(i);
-        }
-        
-        
+		
+		/// <summary>
+		/// Gets the value of a column as TimeSpan.
+		/// </summary>
+		public TimeSpan GetTimeSpan(Int32 i)
+		{
+			return (TimeSpan) GetValue(i);
+		}
+		
+		
 
 		/// <summary>
 		/// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
@@ -365,35 +365,35 @@ namespace Npgsql
 		/// <returns>The number of column values copied.</returns>
 		public override Int32 GetValues(Object[] Values)
 		{
-            return LoadValues(Values, GetValue);
+			return LoadValues(Values, GetValue);
 		}
 
-        /// <summary>
-        /// Copy values from each column in the current row into <param name="Values"></param>.
-        /// </summary>
-        /// <param name="values">An array appropriately sized to store values from all columns.</param>
-        /// <returns>The number of column values copied.</returns>
-        public override int GetProviderSpecificValues(object[] values)
-        {
-            return LoadValues(values, GetProviderSpecificValue);
-        }
+		/// <summary>
+		/// Copy values from each column in the current row into <param name="Values"></param>.
+		/// </summary>
+		/// <param name="values">An array appropriately sized to store values from all columns.</param>
+		/// <returns>The number of column values copied.</returns>
+		public override int GetProviderSpecificValues(object[] values)
+		{
+			return LoadValues(values, GetProviderSpecificValue);
+		}
 
-        private delegate object ValueLoader(int ordinal);
-        private int LoadValues(object[] values, ValueLoader getValue)
-        {
-            CheckHaveRow();
+		private delegate object ValueLoader(int ordinal);
+		private int LoadValues(object[] values, ValueLoader getValue)
+		{
+			CheckHaveRow();
 
-            // Only the number of elements in the array are filled.
-            // It's also possible to pass an array with more that FieldCount elements.
-            Int32 maxColumnIndex = (values.Length < FieldCount) ? values.Length : FieldCount;
+			// Only the number of elements in the array are filled.
+			// It's also possible to pass an array with more that FieldCount elements.
+			Int32 maxColumnIndex = (values.Length < FieldCount) ? values.Length : FieldCount;
 
-            for (Int32 i = 0; i < maxColumnIndex; i++)
-            {
-                values[i] = getValue(i);
-            }
+			for (Int32 i = 0; i < maxColumnIndex; i++)
+			{
+				values[i] = getValue(i);
+			}
 
-            return maxColumnIndex;
-        }
+			return maxColumnIndex;
+		}
 
 		/// <summary>
 		/// Gets the value of a column as Boolean.
@@ -503,9 +503,9 @@ namespace Npgsql
 
 		private void FillSchemaTable_v2(DataTable schema)
 		{
-            List<string> keyList = (_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo
-                                    ? new List<string>(GetPrimaryKeys(GetTableNameFromQuery()))
-                                    : new List<string>();
+			List<string> keyList = (_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo
+									? new List<string>(GetPrimaryKeys(GetTableNameFromQuery()))
+									: new List<string>();
 
 			for (Int16 i = 0; i < CurrentDescription.NumFields; i++)
 			{
@@ -514,12 +514,12 @@ namespace Npgsql
 				row["ColumnName"] = GetName(i);
 				row["ColumnOrdinal"] = i + 1;
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				    (CurrentDescription[i].TypeInfo.Name == "varchar" || CurrentDescription[i].TypeInfo.Name == "bpchar"))
+					(CurrentDescription[i].TypeInfo.Name == "varchar" || CurrentDescription[i].TypeInfo.Name == "bpchar"))
 				{
 					row["ColumnSize"] = CurrentDescription[i].TypeModifier - 4;
 				}
 				else if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				         (CurrentDescription[i].TypeInfo.Name == "bit" || CurrentDescription[i].TypeInfo.Name == "varbit"))
+						 (CurrentDescription[i].TypeInfo.Name == "bit" || CurrentDescription[i].TypeInfo.Name == "varbit"))
 				{
 					row["ColumnSize"] = CurrentDescription[i].TypeModifier;
 				}
@@ -528,7 +528,7 @@ namespace Npgsql
 					row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
 				}
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				    CurrentDescription[i].TypeInfo.Name == "numeric")
+					CurrentDescription[i].TypeInfo.Name == "numeric")
 				{
 					row["NumericPrecision"] = ((CurrentDescription[i].TypeModifier - 4) >> 16) & ushort.MaxValue;
 					row["NumericScale"] = (CurrentDescription[i].TypeModifier - 4) & ushort.MaxValue;
@@ -546,7 +546,7 @@ namespace Npgsql
 				row["BaseColumnName"] = GetName(i);
 				row["DataType"] = GetFieldType(i);
 				row["AllowDBNull"] = true;
-                    // without other information, must allow dbnull on the client
+					// without other information, must allow dbnull on the client
 				if (CurrentDescription[i].TypeInfo != null)
 				{
 					row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
@@ -566,11 +566,11 @@ namespace Npgsql
 
 		private void FillSchemaTable_v3(DataTable schema)
 		{
-            Dictionary<long, Table> oidTableLookup = new Dictionary<long, Table>();
+			Dictionary<long, Table> oidTableLookup = new Dictionary<long, Table>();
 			KeyLookup keyLookup = new KeyLookup();
-            // needs to be null because there is a difference
-            // between an empty dictionary and not setting it
-            // the default values will be different
+			// needs to be null because there is a difference
+			// between an empty dictionary and not setting it
+			// the default values will be different
 			Dictionary<string, Column> columnLookup = null;
 
 			if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
@@ -606,12 +606,12 @@ namespace Npgsql
 				row["ColumnName"] = GetName(i);
 				row["ColumnOrdinal"] = i + 1;
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				    (CurrentDescription[i].TypeInfo.Name == "varchar" || CurrentDescription[i].TypeInfo.Name == "bpchar"))
+					(CurrentDescription[i].TypeInfo.Name == "varchar" || CurrentDescription[i].TypeInfo.Name == "bpchar"))
 				{
 					row["ColumnSize"] = CurrentDescription[i].TypeModifier - 4;
 				}
 				else if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				         (CurrentDescription[i].TypeInfo.Name == "bit" || CurrentDescription[i].TypeInfo.Name == "varbit"))
+						 (CurrentDescription[i].TypeInfo.Name == "bit" || CurrentDescription[i].TypeInfo.Name == "varbit"))
 				{
 					row["ColumnSize"] = CurrentDescription[i].TypeModifier;
 				}
@@ -620,7 +620,7 @@ namespace Npgsql
 					row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
 				}
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-				    CurrentDescription[i].TypeInfo.Name == "numeric")
+					CurrentDescription[i].TypeInfo.Name == "numeric")
 				{
 					row["NumericPrecision"] = ((CurrentDescription[i].TypeModifier - 4) >> 16) & ushort.MaxValue;
 					row["NumericScale"] = (CurrentDescription[i].TypeModifier - 4) & ushort.MaxValue;
@@ -843,8 +843,8 @@ namespace Npgsql
 			}
 
 			/*if (tableName.EndsWith("."));
-                return String.Empty;
-              */
+				return String.Empty;
+			  */
 			foreach (Char c in tableName.Substring(0, tableName.Length - 1))
 			{
 				if (!Char.IsLetterOrDigit(c) && c != '_' && c != '.')
@@ -960,7 +960,7 @@ namespace Npgsql
 						sb.Append(" OR ");
 					}
 					sb.AppendFormat("(a.attrelid={0} AND a.attnum={1})", CurrentDescription[i].TableOID,
-					                CurrentDescription[i].ColumnAttributeNumber);
+									CurrentDescription[i].ColumnAttributeNumber);
 					first = false;
 				}
 			}
@@ -1028,8 +1028,8 @@ namespace Npgsql
 		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 		internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
-		                                NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-		                                bool synchOnReadError)
+										NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
+										bool synchOnReadError)
 			: base(command, behavior)
 		{
 			_dataEnumerator = dataEnumeration.GetEnumerator();
@@ -1204,12 +1204,12 @@ namespace Npgsql
 			_pendingDescription = null;
 			
 			// If there were records affected before,  keep track of their values.
-                        if (_recordsAffected != null)
-                            _recordsAffected += (_nextRecordsAffected ?? 0);
-                        else
-                            _recordsAffected = _nextRecordsAffected;
+						if (_recordsAffected != null)
+							_recordsAffected += (_nextRecordsAffected ?? 0);
+						else
+							_recordsAffected = _nextRecordsAffected;
 			
-                        
+						
 
 			_nextRecordsAffected = null;
 			_lastInsertOID = _nextInsertOID;
@@ -1237,7 +1237,7 @@ namespace Npgsql
 				return null;
 			}
 			if (((_behavior & CommandBehavior.SingleRow) != 0 && CurrentRow != null && _pendingDescription == null) ||
-			    ((_behavior & CommandBehavior.SchemaOnly) != 0))
+				((_behavior & CommandBehavior.SchemaOnly) != 0))
 			{
 				if (!clearPending)
 				{
@@ -1247,8 +1247,8 @@ namespace Npgsql
 				//of recordset.
 				CurrentRow = null;
 				for (object skip = GetNextResponseObject();
-				     skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
-				     skip = GetNextResponseObject())
+					 skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
+					 skip = GetNextResponseObject())
 				{
 					if (skip is NpgsqlRow)
 					{
@@ -1370,16 +1370,16 @@ namespace Npgsql
 		/// <returns>True if the reader was advanced, otherwise false.</returns>
 		public override Boolean NextResult()
 		{
-            try
-            {
-                CurrentRow = null;
-                _currentResultsetSchema = null;
-                return (_currentDescription = GetNextRowDescription()) != null;
-            }
-            catch (System.IO.IOException ex)
-            {
-                throw _command.ClearPoolAndCreateException(ex);
-            }
+			try
+			{
+				CurrentRow = null;
+				_currentResultsetSchema = null;
+				return (_currentDescription = GetNextRowDescription()) != null;
+			}
+			catch (System.IO.IOException ex)
+			{
+				throw _command.ClearPoolAndCreateException(ex);
+			}
 		}
 
 		/// <summary>
@@ -1388,45 +1388,45 @@ namespace Npgsql
 		/// <returns>True if the reader was advanced, otherwise false.</returns>
 		public override Boolean Read()
 		{
-            try
-            {
-                //CurrentRow = null;
-                return (CurrentRow = GetNextRow(true)) != null;
-            }
-            catch (System.IO.IOException ex)
-            {
-                throw _command.ClearPoolAndCreateException(ex);
-            }
+			try
+			{
+				//CurrentRow = null;
+				return (CurrentRow = GetNextRow(true)) != null;
+			}
+			catch (System.IO.IOException ex)
+			{
+				throw _command.ClearPoolAndCreateException(ex);
+			}
 		}
 
 		/// <summary>
 		/// Return the value of the column at index <param name="Index"></param>.
 		/// </summary>
 		public override Object GetValue(Int32 Index)
-        {
-            object providerValue = GetProviderSpecificValue(Index);
-            NpgsqlBackendTypeInfo backendTypeInfo;
-            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
-            {
-                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
-            }                       
-            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
-                return backendTypeInfo.ConvertToFrameworkType(providerValue);
-            return providerValue;
-        }
+		{
+			object providerValue = GetProviderSpecificValue(Index);
+			NpgsqlBackendTypeInfo backendTypeInfo;
+			if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
+			{
+				return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
+			}                       
+			else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+				return backendTypeInfo.ConvertToFrameworkType(providerValue);
+			return providerValue;
+		}
 
-        public override object  GetProviderSpecificValue(int ordinal)
+		public override object  GetProviderSpecificValue(int ordinal)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
 
-            if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
+			if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
 			{
 				throw new IndexOutOfRangeException("Column index out of range");
 			}
 
 			CheckHaveRow();
 
-            object ret = CurrentRow[ordinal];
+			object ret = CurrentRow[ordinal];
 			if (ret is Exception)
 			{
 				throw (Exception) ret;

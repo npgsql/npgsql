@@ -1,17 +1,17 @@
 /*-------------------------------------------------------------------------
  
   LargeObjectManager.cs
-      This class is a port of the class LargeObjectManager.java implemented by 
-      PostgreSQL Global Development Group
+	  This class is a port of the class LargeObjectManager.java implemented by 
+	  PostgreSQL Global Development Group
  
  
  Copyright (c) 2004, Emiliano Necciari
  Original Code: Copyright (c) 2003, PostgreSQL Global Development Group
  
  Note: (Francisco Figueiredo Jr.)
-  	Changed case of method names to conform to .Net names standard.
-  	Also changed type names to their true names. i.e. int -> Int32
-    
+	Changed case of method names to conform to .Net names standard.
+	Also changed type names to their true names. i.e. int -> Int32
+	
  // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
@@ -48,19 +48,19 @@ namespace NpgsqlTypes
 		private readonly Fastpath fp;
 
 		/*
-         * This mode indicates we want to write to an object
-         */
+		 * This mode indicates we want to write to an object
+		 */
 		public const Int32 WRITE = 0x00020000;
 
 		/*
-         * This mode indicates we want to read an object
-         */
+		 * This mode indicates we want to read an object
+		 */
 		public static Int32 READ = 0x00040000;
 
 		/*
-         * This mode is the default. It indicates we want read and write access to
-         * a large object
-         */
+		 * This mode is the default. It indicates we want read and write access to
+		 * a large object
+		 */
 		public static Int32 READWRITE = READ | WRITE;
 
 
@@ -72,15 +72,15 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * Constructs the LargeObject API.
-         *
-         * <p><b>Important Notice</b>
-         * <br>This method should only be called by org.postgresql.Connection
-         *
-         * <p>There should only be one LargeObjectManager per Connection. The
-         * org.postgresql.Connection class keeps track of the various extension API's
-         * and it's advised you use those to gain access, and not going direct.
-         */
+		 * Constructs the LargeObject API.
+		 *
+		 * <p><b>Important Notice</b>
+		 * <br>This method should only be called by org.postgresql.Connection
+		 *
+		 * <p>There should only be one LargeObjectManager per Connection. The
+		 * org.postgresql.Connection class keeps track of the various extension API's
+		 * and it's advised you use those to gain access, and not going direct.
+		 */
 
 		public LargeObjectManager(NpgsqlConnection conn)
 		{
@@ -143,13 +143,13 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This opens an existing large object, based on its OID. This method
-         * assumes that READ and WRITE access is required (the default).
-         *
-         * @param oid of large object
-         * @return LargeObject instance providing access to the object
-         * @exception NpgsqlException on error
-         */
+		 * This opens an existing large object, based on its OID. This method
+		 * assumes that READ and WRITE access is required (the default).
+		 *
+		 * @param oid of large object
+		 * @return LargeObject instance providing access to the object
+		 * @exception NpgsqlException on error
+		 */
 
 		public LargeObject Open(Int32 oid)
 		{
@@ -157,13 +157,13 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This opens an existing large object, based on its OID
-         *
-         * @param oid of large object
-         * @param mode mode of open
-         * @return LargeObject instance providing access to the object
-         * @exception NpgsqlException on error
-         */
+		 * This opens an existing large object, based on its OID
+		 *
+		 * @param oid of large object
+		 * @param mode mode of open
+		 * @return LargeObject instance providing access to the object
+		 * @exception NpgsqlException on error
+		 */
 
 		public LargeObject Open(Int32 oid, Int32 mode)
 		{
@@ -171,13 +171,13 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This creates a large object, returning its OID.
-         *
-         * <p>It defaults to READWRITE for the new object's attributes.
-         *
-         * @return oid of new object
-         * @exception NpgsqlException on error
-         */
+		 * This creates a large object, returning its OID.
+		 *
+		 * <p>It defaults to READWRITE for the new object's attributes.
+		 *
+		 * @return oid of new object
+		 * @exception NpgsqlException on error
+		 */
 
 		public Int32 Create()
 		{
@@ -187,12 +187,12 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This creates a large object, returning its OID
-         *
-         * @param mode a bitmask describing different attributes of the new object
-         * @return oid of new object
-         * @exception NpgsqlException on error
-         */
+		 * This creates a large object, returning its OID
+		 *
+		 * @param mode a bitmask describing different attributes of the new object
+		 * @return oid of new object
+		 * @exception NpgsqlException on error
+		 */
 
 		public Int32 Create(Int32 mode)
 		{
@@ -202,11 +202,11 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This deletes a large object.
-         *
-         * @param oid describing object to delete
-         * @exception NpgsqlException on error
-         */
+		 * This deletes a large object.
+		 *
+		 * @param oid describing object to delete
+		 * @exception NpgsqlException on error
+		 */
 
 		public void Delete(Int32 oid)
 		{
@@ -216,14 +216,14 @@ namespace NpgsqlTypes
 		}
 
 		/*
-         * This deletes a large object.
-         *
-         * <p>It is identical to the delete method, and is supplied as the C API uses
-         * unlink.
-         *
-         * @param oid describing object to delete
-         * @exception NpgsqlException on error
-         */
+		 * This deletes a large object.
+		 *
+		 * <p>It is identical to the delete method, and is supplied as the C API uses
+		 * unlink.
+		 *
+		 * @param oid describing object to delete
+		 * @exception NpgsqlException on error
+		 */
 
 		public void Unlink(Int32 oid)
 		{

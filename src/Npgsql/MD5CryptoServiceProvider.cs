@@ -20,8 +20,8 @@ namespace Npgsql
 	/// C# implementation of the MD5 cryptographic hash function.
 	/// </summary>
 #if USE_VERSION_1_0
-    internal class MD5CryptoServiceProvider : MD5
-    {
+	internal class MD5CryptoServiceProvider : MD5
+	{
 #else
 	internal sealed class MD5CryptoServiceProvider : MD5
 	{
@@ -86,15 +86,15 @@ namespace Npgsql
 				}
 			}
 
-			for (i = 0; i < size - size%BLOCK_SIZE_BYTES; i += BLOCK_SIZE_BYTES)
+			for (i = 0; i < size - size % BLOCK_SIZE_BYTES; i += BLOCK_SIZE_BYTES)
 			{
 				ProcessBlock(rgb, start + i);
 			}
 
-			if (size%BLOCK_SIZE_BYTES != 0)
+			if (size % BLOCK_SIZE_BYTES != 0)
 			{
-				Buffer.BlockCopy(rgb, size - size%BLOCK_SIZE_BYTES + start, _ProcessingBuffer, 0, size%BLOCK_SIZE_BYTES);
-				_ProcessingBufferCount = size%BLOCK_SIZE_BYTES;
+				Buffer.BlockCopy(rgb, size - size % BLOCK_SIZE_BYTES + start, _ProcessingBuffer, 0, size % BLOCK_SIZE_BYTES);
+				_ProcessingBufferCount = size % BLOCK_SIZE_BYTES;
 			}
 		}
 
@@ -112,7 +112,7 @@ namespace Npgsql
 			{
 				for (j = 0; j < 4; j++)
 				{
-					hash[i*4 + j] = (byte) (_H[i] >> j*8);
+					hash[i * 4 + j] = (byte)(_H[i] >> j * 8);
 				}
 			}
 
@@ -148,9 +148,9 @@ namespace Npgsql
 
 			for (i = 0; i < 16; i++)
 			{
-				buff[i] = (inputBuffer[inputOffset + 4*i]) | (((uint) (inputBuffer[inputOffset + 4*i + 1])) << 8) |
-				          (((uint) (inputBuffer[inputOffset + 4*i + 2])) << 16) |
-				          (((uint) (inputBuffer[inputOffset + 4*i + 3])) << 24);
+				buff[i] = (inputBuffer[inputOffset + 4 * i]) | (((uint)(inputBuffer[inputOffset + 4 * i + 1])) << 8) |
+						  (((uint)(inputBuffer[inputOffset + 4 * i + 2])) << 16) |
+						  (((uint)(inputBuffer[inputOffset + 4 * i + 3])) << 24);
 			}
 
 			a = _H[0];
@@ -164,268 +164,268 @@ namespace Npgsql
 
 			// ---- Round 1 --------
 
-			a += (((c ^ d) & b) ^ d) + (uint) Constants.C0 + buff[0];
+			a += (((c ^ d) & b) ^ d) + (uint)Constants.C0 + buff[0];
 			a = (a << 7) | (a >> 25);
 			a += b;
 
-			d += (((b ^ c) & a) ^ c) + (uint) Constants.C1 + buff[1];
+			d += (((b ^ c) & a) ^ c) + (uint)Constants.C1 + buff[1];
 			d = (d << 12) | (d >> 20);
 			d += a;
 
-			c += (((a ^ b) & d) ^ b) + (uint) Constants.C2 + buff[2];
+			c += (((a ^ b) & d) ^ b) + (uint)Constants.C2 + buff[2];
 			c = (c << 17) | (c >> 15);
 			c += d;
 
-			b += (((d ^ a) & c) ^ a) + (uint) Constants.C3 + buff[3];
+			b += (((d ^ a) & c) ^ a) + (uint)Constants.C3 + buff[3];
 			b = (b << 22) | (b >> 10);
 			b += c;
 
-			a += (((c ^ d) & b) ^ d) + (uint) Constants.C4 + buff[4];
+			a += (((c ^ d) & b) ^ d) + (uint)Constants.C4 + buff[4];
 			a = (a << 7) | (a >> 25);
 			a += b;
 
-			d += (((b ^ c) & a) ^ c) + (uint) Constants.C5 + buff[5];
+			d += (((b ^ c) & a) ^ c) + (uint)Constants.C5 + buff[5];
 			d = (d << 12) | (d >> 20);
 			d += a;
 
-			c += (((a ^ b) & d) ^ b) + (uint) Constants.C6 + buff[6];
+			c += (((a ^ b) & d) ^ b) + (uint)Constants.C6 + buff[6];
 			c = (c << 17) | (c >> 15);
 			c += d;
 
-			b += (((d ^ a) & c) ^ a) + (uint) Constants.C7 + buff[7];
+			b += (((d ^ a) & c) ^ a) + (uint)Constants.C7 + buff[7];
 			b = (b << 22) | (b >> 10);
 			b += c;
 
-			a += (((c ^ d) & b) ^ d) + (uint) Constants.C8 + buff[8];
+			a += (((c ^ d) & b) ^ d) + (uint)Constants.C8 + buff[8];
 			a = (a << 7) | (a >> 25);
 			a += b;
 
-			d += (((b ^ c) & a) ^ c) + (uint) Constants.C9 + buff[9];
+			d += (((b ^ c) & a) ^ c) + (uint)Constants.C9 + buff[9];
 			d = (d << 12) | (d >> 20);
 			d += a;
 
-			c += (((a ^ b) & d) ^ b) + (uint) Constants.C10 + buff[10];
+			c += (((a ^ b) & d) ^ b) + (uint)Constants.C10 + buff[10];
 			c = (c << 17) | (c >> 15);
 			c += d;
 
-			b += (((d ^ a) & c) ^ a) + (uint) Constants.C11 + buff[11];
+			b += (((d ^ a) & c) ^ a) + (uint)Constants.C11 + buff[11];
 			b = (b << 22) | (b >> 10);
 			b += c;
 
-			a += (((c ^ d) & b) ^ d) + (uint) Constants.C12 + buff[12];
+			a += (((c ^ d) & b) ^ d) + (uint)Constants.C12 + buff[12];
 			a = (a << 7) | (a >> 25);
 			a += b;
 
-			d += (((b ^ c) & a) ^ c) + (uint) Constants.C13 + buff[13];
+			d += (((b ^ c) & a) ^ c) + (uint)Constants.C13 + buff[13];
 			d = (d << 12) | (d >> 20);
 			d += a;
 
-			c += (((a ^ b) & d) ^ b) + (uint) Constants.C14 + buff[14];
+			c += (((a ^ b) & d) ^ b) + (uint)Constants.C14 + buff[14];
 			c = (c << 17) | (c >> 15);
 			c += d;
 
-			b += (((d ^ a) & c) ^ a) + (uint) Constants.C15 + buff[15];
+			b += (((d ^ a) & c) ^ a) + (uint)Constants.C15 + buff[15];
 			b = (b << 22) | (b >> 10);
 			b += c;
 
 
 			// ---- Round 2 --------
 
-			a += (((b ^ c) & d) ^ c) + (uint) Constants.C16 + buff[1];
+			a += (((b ^ c) & d) ^ c) + (uint)Constants.C16 + buff[1];
 			a = (a << 5) | (a >> 27);
 			a += b;
 
-			d += (((a ^ b) & c) ^ b) + (uint) Constants.C17 + buff[6];
+			d += (((a ^ b) & c) ^ b) + (uint)Constants.C17 + buff[6];
 			d = (d << 9) | (d >> 23);
 			d += a;
 
-			c += (((d ^ a) & b) ^ a) + (uint) Constants.C18 + buff[11];
+			c += (((d ^ a) & b) ^ a) + (uint)Constants.C18 + buff[11];
 			c = (c << 14) | (c >> 18);
 			c += d;
 
-			b += (((c ^ d) & a) ^ d) + (uint) Constants.C19 + buff[0];
+			b += (((c ^ d) & a) ^ d) + (uint)Constants.C19 + buff[0];
 			b = (b << 20) | (b >> 12);
 			b += c;
 
-			a += (((b ^ c) & d) ^ c) + (uint) Constants.C20 + buff[5];
+			a += (((b ^ c) & d) ^ c) + (uint)Constants.C20 + buff[5];
 			a = (a << 5) | (a >> 27);
 			a += b;
 
-			d += (((a ^ b) & c) ^ b) + (uint) Constants.C21 + buff[10];
+			d += (((a ^ b) & c) ^ b) + (uint)Constants.C21 + buff[10];
 			d = (d << 9) | (d >> 23);
 			d += a;
 
-			c += (((d ^ a) & b) ^ a) + (uint) Constants.C22 + buff[15];
+			c += (((d ^ a) & b) ^ a) + (uint)Constants.C22 + buff[15];
 			c = (c << 14) | (c >> 18);
 			c += d;
 
-			b += (((c ^ d) & a) ^ d) + (uint) Constants.C23 + buff[4];
+			b += (((c ^ d) & a) ^ d) + (uint)Constants.C23 + buff[4];
 			b = (b << 20) | (b >> 12);
 			b += c;
 
-			a += (((b ^ c) & d) ^ c) + (uint) Constants.C24 + buff[9];
+			a += (((b ^ c) & d) ^ c) + (uint)Constants.C24 + buff[9];
 			a = (a << 5) | (a >> 27);
 			a += b;
 
-			d += (((a ^ b) & c) ^ b) + (uint) Constants.C25 + buff[14];
+			d += (((a ^ b) & c) ^ b) + (uint)Constants.C25 + buff[14];
 			d = (d << 9) | (d >> 23);
 			d += a;
 
-			c += (((d ^ a) & b) ^ a) + (uint) Constants.C26 + buff[3];
+			c += (((d ^ a) & b) ^ a) + (uint)Constants.C26 + buff[3];
 			c = (c << 14) | (c >> 18);
 			c += d;
 
-			b += (((c ^ d) & a) ^ d) + (uint) Constants.C27 + buff[8];
+			b += (((c ^ d) & a) ^ d) + (uint)Constants.C27 + buff[8];
 			b = (b << 20) | (b >> 12);
 			b += c;
 
-			a += (((b ^ c) & d) ^ c) + (uint) Constants.C28 + buff[13];
+			a += (((b ^ c) & d) ^ c) + (uint)Constants.C28 + buff[13];
 			a = (a << 5) | (a >> 27);
 			a += b;
 
-			d += (((a ^ b) & c) ^ b) + (uint) Constants.C29 + buff[2];
+			d += (((a ^ b) & c) ^ b) + (uint)Constants.C29 + buff[2];
 			d = (d << 9) | (d >> 23);
 			d += a;
 
-			c += (((d ^ a) & b) ^ a) + (uint) Constants.C30 + buff[7];
+			c += (((d ^ a) & b) ^ a) + (uint)Constants.C30 + buff[7];
 			c = (c << 14) | (c >> 18);
 			c += d;
 
-			b += (((c ^ d) & a) ^ d) + (uint) Constants.C31 + buff[12];
+			b += (((c ^ d) & a) ^ d) + (uint)Constants.C31 + buff[12];
 			b = (b << 20) | (b >> 12);
 			b += c;
 
 
 			// ---- Round 3 --------
 
-			a += (b ^ c ^ d) + (uint) Constants.C32 + buff[5];
+			a += (b ^ c ^ d) + (uint)Constants.C32 + buff[5];
 			a = (a << 4) | (a >> 28);
 			a += b;
 
-			d += (a ^ b ^ c) + (uint) Constants.C33 + buff[8];
+			d += (a ^ b ^ c) + (uint)Constants.C33 + buff[8];
 			d = (d << 11) | (d >> 21);
 			d += a;
 
-			c += (d ^ a ^ b) + (uint) Constants.C34 + buff[11];
+			c += (d ^ a ^ b) + (uint)Constants.C34 + buff[11];
 			c = (c << 16) | (c >> 16);
 			c += d;
 
-			b += (c ^ d ^ a) + (uint) Constants.C35 + buff[14];
+			b += (c ^ d ^ a) + (uint)Constants.C35 + buff[14];
 			b = (b << 23) | (b >> 9);
 			b += c;
 
-			a += (b ^ c ^ d) + (uint) Constants.C36 + buff[1];
+			a += (b ^ c ^ d) + (uint)Constants.C36 + buff[1];
 			a = (a << 4) | (a >> 28);
 			a += b;
 
-			d += (a ^ b ^ c) + (uint) Constants.C37 + buff[4];
+			d += (a ^ b ^ c) + (uint)Constants.C37 + buff[4];
 			d = (d << 11) | (d >> 21);
 			d += a;
 
-			c += (d ^ a ^ b) + (uint) Constants.C38 + buff[7];
+			c += (d ^ a ^ b) + (uint)Constants.C38 + buff[7];
 			c = (c << 16) | (c >> 16);
 			c += d;
 
-			b += (c ^ d ^ a) + (uint) Constants.C39 + buff[10];
+			b += (c ^ d ^ a) + (uint)Constants.C39 + buff[10];
 			b = (b << 23) | (b >> 9);
 			b += c;
 
-			a += (b ^ c ^ d) + (uint) Constants.C40 + buff[13];
+			a += (b ^ c ^ d) + (uint)Constants.C40 + buff[13];
 			a = (a << 4) | (a >> 28);
 			a += b;
 
-			d += (a ^ b ^ c) + (uint) Constants.C41 + buff[0];
+			d += (a ^ b ^ c) + (uint)Constants.C41 + buff[0];
 			d = (d << 11) | (d >> 21);
 			d += a;
 
-			c += (d ^ a ^ b) + (uint) Constants.C42 + buff[3];
+			c += (d ^ a ^ b) + (uint)Constants.C42 + buff[3];
 			c = (c << 16) | (c >> 16);
 			c += d;
 
-			b += (c ^ d ^ a) + (uint) Constants.C43 + buff[6];
+			b += (c ^ d ^ a) + (uint)Constants.C43 + buff[6];
 			b = (b << 23) | (b >> 9);
 			b += c;
 
-			a += (b ^ c ^ d) + (uint) Constants.C44 + buff[9];
+			a += (b ^ c ^ d) + (uint)Constants.C44 + buff[9];
 			a = (a << 4) | (a >> 28);
 			a += b;
 
-			d += (a ^ b ^ c) + (uint) Constants.C45 + buff[12];
+			d += (a ^ b ^ c) + (uint)Constants.C45 + buff[12];
 			d = (d << 11) | (d >> 21);
 			d += a;
 
-			c += (d ^ a ^ b) + (uint) Constants.C46 + buff[15];
+			c += (d ^ a ^ b) + (uint)Constants.C46 + buff[15];
 			c = (c << 16) | (c >> 16);
 			c += d;
 
-			b += (c ^ d ^ a) + (uint) Constants.C47 + buff[2];
+			b += (c ^ d ^ a) + (uint)Constants.C47 + buff[2];
 			b = (b << 23) | (b >> 9);
 			b += c;
 
 
 			// ---- Round 4 --------
 
-			a += (((~d) | b) ^ c) + (uint) Constants.C48 + buff[0];
+			a += (((~d) | b) ^ c) + (uint)Constants.C48 + buff[0];
 			a = (a << 6) | (a >> 26);
 			a += b;
 
-			d += (((~c) | a) ^ b) + (uint) Constants.C49 + buff[7];
+			d += (((~c) | a) ^ b) + (uint)Constants.C49 + buff[7];
 			d = (d << 10) | (d >> 22);
 			d += a;
 
-			c += (((~b) | d) ^ a) + (uint) Constants.C50 + buff[14];
+			c += (((~b) | d) ^ a) + (uint)Constants.C50 + buff[14];
 			c = (c << 15) | (c >> 17);
 			c += d;
 
-			b += (((~a) | c) ^ d) + (uint) Constants.C51 + buff[5];
+			b += (((~a) | c) ^ d) + (uint)Constants.C51 + buff[5];
 			b = (b << 21) | (b >> 11);
 			b += c;
 
-			a += (((~d) | b) ^ c) + (uint) Constants.C52 + buff[12];
+			a += (((~d) | b) ^ c) + (uint)Constants.C52 + buff[12];
 			a = (a << 6) | (a >> 26);
 			a += b;
 
-			d += (((~c) | a) ^ b) + (uint) Constants.C53 + buff[3];
+			d += (((~c) | a) ^ b) + (uint)Constants.C53 + buff[3];
 			d = (d << 10) | (d >> 22);
 			d += a;
 
-			c += (((~b) | d) ^ a) + (uint) Constants.C54 + buff[10];
+			c += (((~b) | d) ^ a) + (uint)Constants.C54 + buff[10];
 			c = (c << 15) | (c >> 17);
 			c += d;
 
-			b += (((~a) | c) ^ d) + (uint) Constants.C55 + buff[1];
+			b += (((~a) | c) ^ d) + (uint)Constants.C55 + buff[1];
 			b = (b << 21) | (b >> 11);
 			b += c;
 
-			a += (((~d) | b) ^ c) + (uint) Constants.C56 + buff[8];
+			a += (((~d) | b) ^ c) + (uint)Constants.C56 + buff[8];
 			a = (a << 6) | (a >> 26);
 			a += b;
 
-			d += (((~c) | a) ^ b) + (uint) Constants.C57 + buff[15];
+			d += (((~c) | a) ^ b) + (uint)Constants.C57 + buff[15];
 			d = (d << 10) | (d >> 22);
 			d += a;
 
-			c += (((~b) | d) ^ a) + (uint) Constants.C58 + buff[6];
+			c += (((~b) | d) ^ a) + (uint)Constants.C58 + buff[6];
 			c = (c << 15) | (c >> 17);
 			c += d;
 
-			b += (((~a) | c) ^ d) + (uint) Constants.C59 + buff[13];
+			b += (((~a) | c) ^ d) + (uint)Constants.C59 + buff[13];
 			b = (b << 21) | (b >> 11);
 			b += c;
 
-			a += (((~d) | b) ^ c) + (uint) Constants.C60 + buff[4];
+			a += (((~d) | b) ^ c) + (uint)Constants.C60 + buff[4];
 			a = (a << 6) | (a >> 26);
 			a += b;
 
-			d += (((~c) | a) ^ b) + (uint) Constants.C61 + buff[11];
+			d += (((~c) | a) ^ b) + (uint)Constants.C61 + buff[11];
 			d = (d << 10) | (d >> 22);
 			d += a;
 
-			c += (((~b) | d) ^ a) + (uint) Constants.C62 + buff[2];
+			c += (((~b) | d) ^ a) + (uint)Constants.C62 + buff[2];
 			c = (c << 15) | (c >> 17);
 			c += d;
 
-			b += (((~a) | c) ^ d) + (uint) Constants.C63 + buff[9];
+			b += (((~a) | c) ^ d) + (uint)Constants.C63 + buff[9];
 			b = (b << 21) | (b >> 11);
 			b += c;
 
@@ -449,7 +449,7 @@ namespace Npgsql
 			int i;
 			uint size;
 
-			paddingSize = (int) (56 - (inputCount + count)%BLOCK_SIZE_BYTES);
+			paddingSize = (int)(56 - (inputCount + count) % BLOCK_SIZE_BYTES);
 
 			if (paddingSize < 1)
 			{
@@ -470,12 +470,12 @@ namespace Npgsql
 				fooBuffer[i] = 0x00;
 			}
 
-			size = (uint) (count + inputCount);
+			size = (uint)(count + inputCount);
 			size *= 8;
-			fooBuffer[inputCount + paddingSize] = (byte) ((size) >> 0);
-			fooBuffer[inputCount + paddingSize + 1] = (byte) ((size) >> 8);
-			fooBuffer[inputCount + paddingSize + 2] = (byte) ((size) >> 16);
-			fooBuffer[inputCount + paddingSize + 3] = (byte) ((size) >> 24);
+			fooBuffer[inputCount + paddingSize] = (byte)((size) >> 0);
+			fooBuffer[inputCount + paddingSize + 1] = (byte)((size) >> 8);
+			fooBuffer[inputCount + paddingSize + 2] = (byte)((size) >> 16);
+			fooBuffer[inputCount + paddingSize + 3] = (byte)((size) >> 24);
 
 			fooBuffer[inputCount + paddingSize + 4] = 0x00;
 			fooBuffer[inputCount + paddingSize + 5] = 0x00;

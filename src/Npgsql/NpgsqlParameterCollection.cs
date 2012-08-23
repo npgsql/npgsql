@@ -51,8 +51,8 @@ namespace Npgsql
 	/// </summary>
 
 #if WITHDESIGN
-    [ListBindable(false)]
-    [Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
+	[ListBindable(false)]
+	[Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
 
 	public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
@@ -82,7 +82,7 @@ namespace Npgsql
 		/// <value>The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> with the specified name, or a null reference if the parameter is not found.</value>
 
 #if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
 
 		public new NpgsqlParameter this[string parameterName]
@@ -106,7 +106,7 @@ namespace Npgsql
 		/// <value>The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> at the specified index.</value>
 
 #if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
 
 		public new NpgsqlParameter this[int index]
@@ -250,7 +250,7 @@ namespace Npgsql
 
 			// Iterate values to see what is the index of parameter.
 			int index = 0;
-		        int bestChoose = -1;
+				int bestChoose = -1;
 			if ((parameterName[0] == ':') || (parameterName[0] == '@'))
 			{
 				parameterName = parameterName.Remove(0, 1);
@@ -260,14 +260,14 @@ namespace Npgsql
 			foreach (NpgsqlParameter parameter in this)
 			{
 				// allow for optional use of ':' and '@' in the ParameterName property
-                		string cleanName = parameter.CleanName;
-		                if(cleanName == parameterName)
+						string cleanName = parameter.CleanName;
+						if(cleanName == parameterName)
 				{
 					return index;
 				}
 				if(string.Compare(parameterName, cleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
 				{
-				    bestChoose = index;
+					bestChoose = index;
 				}
 				index++;
 			}
@@ -426,7 +426,7 @@ namespace Npgsql
 		/// <value>The number of <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> objects in the collection.</value>
 
 #if WITHDESIGN
-        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
 
 		public override int Count

@@ -54,13 +54,13 @@ namespace Npgsql
 		/// </summary>
 		/// <returns>The MetaDataCollections</returns>
 		internal static DataTable GetMetaDataCollections()
-        {
-            DataSet ds = new DataSet();
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
-            {
-                ds.ReadXml(xmlStream);
-            }
-            return ds.Tables["MetaDataCollections"].Copy();
+		{
+			DataSet ds = new DataSet();
+			using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+			{
+				ds.ReadXml(xmlStream);
+			}
+			return ds.Tables["MetaDataCollections"].Copy();
 		}
 
 		/// <summary>
@@ -68,19 +68,19 @@ namespace Npgsql
 		/// </summary>
 		/// <returns>The Restrictions</returns>
 		internal static DataTable GetRestrictions()
-        {
-            DataSet ds = new DataSet();
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
-            {
-                ds.ReadXml(xmlStream);
-            }
-            return ds.Tables["Restrictions"].Copy();
+		{
+			DataSet ds = new DataSet();
+			using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+			{
+				ds.ReadXml(xmlStream);
+			}
+			return ds.Tables["Restrictions"].Copy();
 		}
 
-        private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, params string[] names)
-        {
-            return BuildCommand(query, restrictions, true, names);
-        }
+		private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, params string[] names)
+		{
+			return BuildCommand(query, restrictions, true, names);
+		}
 
 		private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, bool addWhere, params string[] names)
 		{
@@ -102,7 +102,7 @@ namespace Npgsql
 							query.Append(" AND ");
 						}
 
-					    string paramName = RemoveSpecialChars(names[i]);
+						string paramName = RemoveSpecialChars(names[i]);
 
 						query.AppendFormat("{0} = :{1}", names[i], paramName);
 
@@ -116,10 +116,10 @@ namespace Npgsql
 			return command;
 		}
 
-        private string RemoveSpecialChars(string paramName)
-        {
-            return paramName.Replace("(", "").Replace(")", "").Replace(".", "");
-        }
+		private string RemoveSpecialChars(string paramName)
+		{
+			return paramName.Replace("(", "").Replace(")", "").Replace(".", "");
+		}
 
 		/// <summary>
 		/// Returns the Databases that contains a list of all accessable databases.
@@ -280,101 +280,101 @@ namespace Npgsql
 			return users;
 		}
 
-        internal DataTable GetIndexes(string[] restrictions)
-        {
-            DataTable indexes = new DataTable("Indexes");
+		internal DataTable GetIndexes(string[] restrictions)
+		{
+			DataTable indexes = new DataTable("Indexes");
 
-            indexes.Columns.AddRange(
-                new DataColumn[]
+			indexes.Columns.AddRange(
+				new DataColumn[]
 					{
 						new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
 						new DataColumn("index_name")
 					});
 
-            StringBuilder getIndexes = new StringBuilder();
+			StringBuilder getIndexes = new StringBuilder();
 
-            getIndexes.Append(
+			getIndexes.Append(
 @"select current_database() as table_catalog,
-    n.nspname as table_schema,
-    t.relname as table_name,
-    i.relname as index_name
+	n.nspname as table_schema,
+	t.relname as table_name,
+	i.relname as index_name
 from
-    pg_catalog.pg_class i join
-    pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
-    pg_catalog.pg_class t ON ix.indrelid = t.oid join
-    pg_attribute a on t.oid = a.attrelid left join
-    pg_catalog.pg_user u ON u.usesysid = i.relowner left join
-    pg_catalog.pg_namespace n ON n.oid = i.relnamespace
+	pg_catalog.pg_class i join
+	pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
+	pg_catalog.pg_class t ON ix.indrelid = t.oid join
+	pg_attribute a on t.oid = a.attrelid left join
+	pg_catalog.pg_user u ON u.usesysid = i.relowner left join
+	pg_catalog.pg_namespace n ON n.oid = i.relnamespace
 where
-    i.relkind = 'i'
-    and n.nspname not in ('pg_catalog', 'pg_toast')
-    and pg_catalog.pg_table_is_visible(i.oid)
-    and a.attnum = ANY(ix.indkey)
-    and t.relkind = 'r'");
+	i.relkind = 'i'
+	and n.nspname not in ('pg_catalog', 'pg_toast')
+	and pg_catalog.pg_table_is_visible(i.oid)
+	and a.attnum = ANY(ix.indkey)
+	and t.relkind = 'r'");
 
-            using (
-                NpgsqlCommand command =
-                    BuildCommand(getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
-            {
-                using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
-                {
-                    adapter.Fill(indexes);
-                }
-            }
+			using (
+				NpgsqlCommand command =
+					BuildCommand(getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
+			{
+				using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+				{
+					adapter.Fill(indexes);
+				}
+			}
 
-            return indexes;
-        }
+			return indexes;
+		}
 
-        internal DataTable GetIndexColumns(string[] restrictions)
-        {
-            DataTable indexColumns = new DataTable("IndexColumns");
+		internal DataTable GetIndexColumns(string[] restrictions)
+		{
+			DataTable indexColumns = new DataTable("IndexColumns");
 
-            indexColumns.Columns.AddRange(
-                new DataColumn[]
+			indexColumns.Columns.AddRange(
+				new DataColumn[]
 					{
 						new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
 						new DataColumn("index_name"), new DataColumn("column_name")
 					});
 
-            StringBuilder getIndexColumns = new StringBuilder();
+			StringBuilder getIndexColumns = new StringBuilder();
 
-            getIndexColumns.Append(
+			getIndexColumns.Append(
 @"select current_database() as table_catalog,
-    n.nspname as table_schema,
-    t.relname as table_name,
-    i.relname as index_name,
-    a.attname as column_name
+	n.nspname as table_schema,
+	t.relname as table_name,
+	i.relname as index_name,
+	a.attname as column_name
 from
-    pg_class t join
-    pg_index ix on t.oid = ix.indrelid join
-    pg_class i on ix.indexrelid = i.oid join
-    pg_attribute a on t.oid = a.attrelid left join
-    pg_namespace n on i.relnamespace = n.oid
+	pg_class t join
+	pg_index ix on t.oid = ix.indrelid join
+	pg_class i on ix.indexrelid = i.oid join
+	pg_attribute a on t.oid = a.attrelid left join
+	pg_namespace n on i.relnamespace = n.oid
 where
-    i.relkind = 'i'
-    and n.nspname not in ('pg_catalog', 'pg_toast')
-    and pg_catalog.pg_table_is_visible(i.oid)
-    and a.attnum = ANY(ix.indkey)
-    and t.relkind = 'r'");
+	i.relkind = 'i'
+	and n.nspname not in ('pg_catalog', 'pg_toast')
+	and pg_catalog.pg_table_is_visible(i.oid)
+	and a.attnum = ANY(ix.indkey)
+	and t.relkind = 'r'");
 
-            using (
-                NpgsqlCommand command =
-                    BuildCommand(getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
-            {
-                using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
-                {
-                    adapter.Fill(indexColumns);
-                }
-            }
+			using (
+				NpgsqlCommand command =
+					BuildCommand(getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
+			{
+				using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+				{
+					adapter.Fill(indexColumns);
+				}
+			}
 
-            return indexColumns;
-        }
+			return indexColumns;
+		}
 
-        internal DataTable GetForeignKeys(string[] restrictions)
-        {
-            StringBuilder getForeignKeys = new StringBuilder();
+		internal DataTable GetForeignKeys(string[] restrictions)
+		{
+			StringBuilder getForeignKeys = new StringBuilder();
 
-            getForeignKeys.Append(
+			getForeignKeys.Append(
 @"select
   current_database() as ""CONSTRAINT_CATALOG"",
   pgn.nspname as ""CONSTRAINT_SCHEMA"",
@@ -392,18 +392,18 @@ inner join pg_catalog.pg_namespace pgtn on pgt.relnamespace = pgtn.oid
 where pgc.contype='f'
 ");
 
-            using (
-                NpgsqlCommand command =
-                    BuildCommand(getForeignKeys, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
-            {
-                using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
-                {
-                    DataTable table = new DataTable("ForeignKeys");
-                    adapter.Fill(table);
-                    return table;
-                }
-            }
-        }
+			using (
+				NpgsqlCommand command =
+					BuildCommand(getForeignKeys, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
+			{
+				using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+				{
+					DataTable table = new DataTable("ForeignKeys");
+					adapter.Fill(table);
+					return table;
+				}
+			}
+		}
 
 		internal static DataTable GetDataSourceInformation()
 		{
@@ -415,117 +415,117 @@ where pgc.contype='f'
 			return ds.Tables["DataSourceInformation"].Copy();
 		}
 
-	    public static DataTable GetReservedWords()
-	    {
-	        DataTable table = new DataTable("ReservedWords");
-	        table.Columns.Add("ReservedWord", typeof (string));
-            // List of keywords taken from PostgreSQL 9.0 reserved words documentation.
-	        string[] keywords = new[]
-	        {
-                "ALL",
-                "ANALYSE",
-                "ANALYZE",
-                "AND",
-                "ANY",
-                "ARRAY",
-                "AS",
-                "ASC",
-                "ASYMMETRIC",
-                "AUTHORIZATION",
-                "BINARY",
-                "BOTH",
-                "CASE",
-                "CAST",
-                "CHECK",
-                "COLLATE",
-                "COLUMN",
-                "CONCURRENTLY",
-                "CONSTRAINT",
-                "CREATE",
-                "CROSS",
-                "CURRENT_CATALOG",
-                "CURRENT_DATE",
-                "CURRENT_ROLE",
-                "CURRENT_SCHEMA",
-                "CURRENT_TIME",
-                "CURRENT_TIMESTAMP",
-                "CURRENT_USER",
-                "DEFAULT",
-                "DEFERRABLE",
-                "DESC",
-                "DISTINCT",
-                "DO",
-                "ELSE",
-                "END",
-                "EXCEPT",
-                "FALSE",
-                "FETCH",
-                "FOR",
-                "FOREIGN",
-                "FREEZE",
-                "FROM",
-                "FULL",
-                "GRANT",
-                "GROUP",
-                "HAVING",
-                "ILIKE",
-                "IN",
-                "INITIALLY",
-                "INNER",
-                "INTERSECT",
-                "INTO",
-                "IS",
-                "ISNULL",
-                "JOIN",
-                "LEADING",
-                "LEFT",
-                "LIKE",
-                "LIMIT",
-                "LOCALTIME",
-                "LOCALTIMESTAMP",
-                "NATURAL",
-                "NOT",
-                "NOTNULL",
-                "NULL",
-                "OFFSET",
-                "ON",
-                "ONLY",
-                "OR",
-                "ORDER",
-                "OUTER",
-                "OVER",
-                "OVERLAPS",
-                "PLACING",
-                "PRIMARY",
-                "REFERENCES",
-                "RETURNING",
-                "RIGHT",
-                "SELECT",
-                "SESSION_USER",
-                "SIMILAR",
-                "SOME",
-                "SYMMETRIC",
-                "TABLE",
-                "THEN",
-                "TO",
-                "TRAILING",
-                "TRUE",
-                "UNION",
-                "UNIQUE",
-                "USER",
-                "USING",
-                "VARIADIC",
-                "VERBOSE",
-                "WHEN",
-                "WHERE",
-                "WINDOW",
-                "WITH"
-            };
-            foreach (string keyword in keywords)
-            {
-                table.Rows.Add(keyword);
-            }
-	        return table;
-	    }
+		public static DataTable GetReservedWords()
+		{
+			DataTable table = new DataTable("ReservedWords");
+			table.Columns.Add("ReservedWord", typeof (string));
+			// List of keywords taken from PostgreSQL 9.0 reserved words documentation.
+			string[] keywords = new[]
+			{
+				"ALL",
+				"ANALYSE",
+				"ANALYZE",
+				"AND",
+				"ANY",
+				"ARRAY",
+				"AS",
+				"ASC",
+				"ASYMMETRIC",
+				"AUTHORIZATION",
+				"BINARY",
+				"BOTH",
+				"CASE",
+				"CAST",
+				"CHECK",
+				"COLLATE",
+				"COLUMN",
+				"CONCURRENTLY",
+				"CONSTRAINT",
+				"CREATE",
+				"CROSS",
+				"CURRENT_CATALOG",
+				"CURRENT_DATE",
+				"CURRENT_ROLE",
+				"CURRENT_SCHEMA",
+				"CURRENT_TIME",
+				"CURRENT_TIMESTAMP",
+				"CURRENT_USER",
+				"DEFAULT",
+				"DEFERRABLE",
+				"DESC",
+				"DISTINCT",
+				"DO",
+				"ELSE",
+				"END",
+				"EXCEPT",
+				"FALSE",
+				"FETCH",
+				"FOR",
+				"FOREIGN",
+				"FREEZE",
+				"FROM",
+				"FULL",
+				"GRANT",
+				"GROUP",
+				"HAVING",
+				"ILIKE",
+				"IN",
+				"INITIALLY",
+				"INNER",
+				"INTERSECT",
+				"INTO",
+				"IS",
+				"ISNULL",
+				"JOIN",
+				"LEADING",
+				"LEFT",
+				"LIKE",
+				"LIMIT",
+				"LOCALTIME",
+				"LOCALTIMESTAMP",
+				"NATURAL",
+				"NOT",
+				"NOTNULL",
+				"NULL",
+				"OFFSET",
+				"ON",
+				"ONLY",
+				"OR",
+				"ORDER",
+				"OUTER",
+				"OVER",
+				"OVERLAPS",
+				"PLACING",
+				"PRIMARY",
+				"REFERENCES",
+				"RETURNING",
+				"RIGHT",
+				"SELECT",
+				"SESSION_USER",
+				"SIMILAR",
+				"SOME",
+				"SYMMETRIC",
+				"TABLE",
+				"THEN",
+				"TO",
+				"TRAILING",
+				"TRUE",
+				"UNION",
+				"UNIQUE",
+				"USER",
+				"USING",
+				"VARIADIC",
+				"VERBOSE",
+				"WHEN",
+				"WHERE",
+				"WINDOW",
+				"WITH"
+			};
+			foreach (string keyword in keywords)
+			{
+				table.Rows.Add(keyword);
+			}
+			return table;
+		}
 	}
 }

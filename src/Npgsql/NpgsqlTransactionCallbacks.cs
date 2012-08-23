@@ -101,14 +101,14 @@ namespace Npgsql
 
 		public void PrepareTransaction()
 		{
-            if (!_prepared)
-            {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
-                NpgsqlConnection connection = GetConnection();
-                NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), connection);
-                command.ExecuteBlind();
-                _prepared = true;
-            }
+			if (!_prepared)
+			{
+				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
+				NpgsqlConnection connection = GetConnection();
+				NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), connection);
+				command.ExecuteBlind();
+				_prepared = true;
+			}
 		}
 
 		public void RollbackTransaction()

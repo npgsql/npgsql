@@ -42,36 +42,36 @@ namespace Npgsql
 	///
 	internal abstract class NpgsqlRowDescription : IServerResponseObject
 	{
-	    private abstract class KanaWidthConverter
-	    {
-	        protected static readonly CompareInfo COMPARE_INFO = System.Globalization.CultureInfo.InvariantCulture.CompareInfo;
-	    }
-	    private sealed class KanaWidthInsensitiveComparer : KanaWidthConverter, IEqualityComparer<string>
-	    {
-	        public static readonly KanaWidthInsensitiveComparer INSTANCE = new KanaWidthInsensitiveComparer();
-	        private KanaWidthInsensitiveComparer(){}
-            public bool Equals(string x, string y)
-            {
-                return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
-            }
-            public int GetHashCode(string obj)
-            {
-                return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
-            }
-	    }
-	    private sealed class KanaWidthCaseInsensitiveComparator : KanaWidthConverter, IEqualityComparer<string>
-	    {
-	        public static readonly KanaWidthCaseInsensitiveComparator INSTANCE = new KanaWidthCaseInsensitiveComparator();
-	        private KanaWidthCaseInsensitiveComparator(){}
-            public bool Equals(string x, string y)
-            {
-                return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
-            }
-            public int GetHashCode(string obj)
-            {
-                return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-            }
-	    }
+		private abstract class KanaWidthConverter
+		{
+			protected static readonly CompareInfo COMPARE_INFO = System.Globalization.CultureInfo.InvariantCulture.CompareInfo;
+		}
+		private sealed class KanaWidthInsensitiveComparer : KanaWidthConverter, IEqualityComparer<string>
+		{
+			public static readonly KanaWidthInsensitiveComparer INSTANCE = new KanaWidthInsensitiveComparer();
+			private KanaWidthInsensitiveComparer(){}
+			public bool Equals(string x, string y)
+			{
+				return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
+			}
+			public int GetHashCode(string obj)
+			{
+				return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+			}
+		}
+		private sealed class KanaWidthCaseInsensitiveComparator : KanaWidthConverter, IEqualityComparer<string>
+		{
+			public static readonly KanaWidthCaseInsensitiveComparator INSTANCE = new KanaWidthCaseInsensitiveComparator();
+			private KanaWidthCaseInsensitiveComparator(){}
+			public bool Equals(string x, string y)
+			{
+				return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+			}
+			public int GetHashCode(string obj)
+			{
+				return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+			}
+		}
 		/// <summary>
 		/// This struct represents the internal data of the RowDescription message.
 		/// </summary>
@@ -149,13 +149,13 @@ namespace Npgsql
 			fields_data = new FieldData[num];
 			if((_compatVersion = compatVersion) < KANA_FIX_VERSION)
 			{
-                field_name_index_table = new Dictionary<string, int>(num, StringComparer.InvariantCulture);
-                caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, StringComparer.InvariantCultureIgnoreCase);
+				field_name_index_table = new Dictionary<string, int>(num, StringComparer.InvariantCulture);
+				caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, StringComparer.InvariantCultureIgnoreCase);
 			}
 			else
 			{
-    			field_name_index_table = new Dictionary<string, int>(num, KanaWidthInsensitiveComparer.INSTANCE);
-    			caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, KanaWidthCaseInsensitiveComparator.INSTANCE);
+				field_name_index_table = new Dictionary<string, int>(num, KanaWidthInsensitiveComparer.INSTANCE);
+				caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, KanaWidthCaseInsensitiveComparator.INSTANCE);
 			}
 			for (int i = 0; i != num; ++i)
 			{
@@ -187,21 +187,21 @@ namespace Npgsql
 
 		public bool HasOrdinal(string fieldName)
 		{
-		    return caseInsensitiveNameIndexTable.ContainsKey(fieldName);
+			return caseInsensitiveNameIndexTable.ContainsKey(fieldName);
 		}
 		public int TryFieldIndex(string fieldName)
 		{
-		    return HasOrdinal(fieldName) ? FieldIndex(fieldName) : -1;
+			return HasOrdinal(fieldName) ? FieldIndex(fieldName) : -1;
 		}
 		public int FieldIndex(String fieldName)
 		{
 			int ret = -1;
 			if(field_name_index_table.TryGetValue(fieldName, out ret) || caseInsensitiveNameIndexTable.TryGetValue(fieldName, out ret))
-			    return ret;
+				return ret;
 			else if(_compatVersion < GET_ORDINAL_THROW_EXCEPTION)
-			    return -1;
+				return -1;
 			else
-			    throw new IndexOutOfRangeException("Field not found");
+				throw new IndexOutOfRangeException("Field not found");
 		}
 	}
 

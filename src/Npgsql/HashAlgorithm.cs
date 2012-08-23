@@ -95,7 +95,7 @@ namespace Npgsql
 				throw new ObjectDisposedException("HashAlgorithm");
 			}
 
-			int l = (int) (inputStream.Length - inputStream.Position);
+			int l = (int)(inputStream.Length - inputStream.Position);
 			byte[] buffer = new byte[l];
 			inputStream.Read(buffer, 0, l);
 
@@ -105,23 +105,23 @@ namespace Npgsql
 		// Commented out because it uses the CryptoConfig which can't be available in all platforms
 
 		/*
-        /// <summary>
-        /// Creates the default implementation of the default hash algorithm (SHA1).
-        /// </summary>
-        public static HashAlgorithm Create ()
-        {
-        	return Create ("System.Security.Cryptography.HashAlgorithm");
-        }*/
+		/// <summary>
+		/// Creates the default implementation of the default hash algorithm (SHA1).
+		/// </summary>
+		public static HashAlgorithm Create ()
+		{
+			return Create ("System.Security.Cryptography.HashAlgorithm");
+		}*/
 
 		/*
-        /// <summary>
-        /// Creates a specific implementation of the general hash idea.
-        /// </summary>
-        /// <param name="hashName">Specifies which derived class to create.</param>
-        public static HashAlgorithm Create (string hashName)
-        {
-        	return (HashAlgorithm) CryptoConfig.CreateFromName (hashName);
-        }*/
+		/// <summary>
+		/// Creates a specific implementation of the general hash idea.
+		/// </summary>
+		/// <param name="hashName">Specifies which derived class to create.</param>
+		public static HashAlgorithm Create (string hashName)
+		{
+			return (HashAlgorithm) CryptoConfig.CreateFromName (hashName);
+		}*/
 
 
 		// Changed Exception type because it uses the CryptographicUnexpectedOperationException

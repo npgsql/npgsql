@@ -17,7 +17,7 @@
 // 
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITSC:\Projects\Npgsql\src\Npgsql\NpgsqlCommand.cs
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
@@ -68,7 +68,7 @@ namespace Npgsql
 		public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-            SelectCommand = selectCommand;
+			SelectCommand = selectCommand;
 		}
 
 		public NpgsqlDataAdapter(String selectCommandText, NpgsqlConnection selectConnection)
@@ -83,16 +83,16 @@ namespace Npgsql
 
 
 		protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
-		                                                             StatementType statementType,
-		                                                             DataTableMapping tableMapping)
+																	 StatementType statementType,
+																	 DataTableMapping tableMapping)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatedEvent");
 			return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
 		}
 
 		protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
-		                                                               StatementType statementType,
-		                                                               DataTableMapping tableMapping)
+																	   StatementType statementType,
+																	   DataTableMapping tableMapping)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatingEvent");
 			return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
@@ -120,10 +120,10 @@ namespace Npgsql
 		public new NpgsqlCommand DeleteCommand
 		{
 			get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.DeleteCommand");
-                return (NpgsqlCommand)base.DeleteCommand;
-            }
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.DeleteCommand");
+				return (NpgsqlCommand)base.DeleteCommand;
+			}
 
 			set { base.DeleteCommand = value; }
 		}
@@ -131,10 +131,10 @@ namespace Npgsql
 		public new NpgsqlCommand SelectCommand
 		{
 			get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.SelectCommand");
-                return (NpgsqlCommand)base.SelectCommand;
-            }
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.SelectCommand");
+				return (NpgsqlCommand)base.SelectCommand;
+			}
 
 			set { base.SelectCommand = value; }
 		}
@@ -143,10 +143,10 @@ namespace Npgsql
 		public new NpgsqlCommand UpdateCommand
 		{
 			get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.UpdateCommand");
-                return (NpgsqlCommand)base.UpdateCommand;
-            }
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.UpdateCommand");
+				return (NpgsqlCommand)base.UpdateCommand;
+			}
 
 			set { base.UpdateCommand = value; }
 		}
@@ -154,10 +154,10 @@ namespace Npgsql
 		public new NpgsqlCommand InsertCommand
 		{
 			get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.InsertCommand");
-                return (NpgsqlCommand)base.InsertCommand;
-            }
+			{
+				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.InsertCommand");
+				return (NpgsqlCommand)base.InsertCommand;
+			}
 
 			set { base.InsertCommand = value; }
 		}
@@ -167,7 +167,7 @@ namespace Npgsql
 public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
 {
 	public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
-	                                  DataTableMapping tableMapping)
+									  DataTableMapping tableMapping)
 		: base(dataRow, command, statementType, tableMapping)
 
 	{
@@ -177,7 +177,7 @@ public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
 public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
 {
 	public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
-	                                 DataTableMapping tableMapping)
+									 DataTableMapping tableMapping)
 		: base(dataRow, command, statementType, tableMapping)
 
 	{

@@ -78,7 +78,7 @@ namespace Npgsql
 		private static readonly byte[] THRASH_CAN = new byte[THRASH_CAN_SIZE];
 		private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
 
-        private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
+		private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
 
 
 
@@ -185,9 +185,9 @@ namespace Npgsql
 				}
 			}
 
-            if (NpgsqlEventLog.Level >= LogLevel.Debug)
-                NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
-                
+			if (NpgsqlEventLog.Level >= LogLevel.Debug)
+				NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
+				
 			return ENCODING_UTF8.GetString(buffer.ToArray());
 		}
 
@@ -306,29 +306,29 @@ namespace Npgsql
 			return false;
 		}
 
-        /// <summary>
-        /// Reads requested number of bytes from stream with retries until Stream.Read returns 0 or count is reached.
-        /// </summary>
-        /// <param name="stream">Stream to read</param>
-        /// <param name="buffer">byte buffer to fill</param>
-        /// <param name="offset">starting position to fill the buffer</param>
-        /// <param name="count">number of bytes to read</param>
-        /// <returns>The number of bytes read.  May be less than count if no more bytes are available.</returns>
-        public static int ReadBytes(Stream stream, byte[] buffer, int offset, int count)
-        {
-            int end = offset + count;
-            int got = 0;
-            int need = count;
-            do
-            {
-                got = stream.Read(buffer, offset, need);
-                offset += got;
-                need -= got;
-            }
-            while (offset < end && got != 0);
-            // return bytes read
-            return count - (end - offset);
-        }
+		/// <summary>
+		/// Reads requested number of bytes from stream with retries until Stream.Read returns 0 or count is reached.
+		/// </summary>
+		/// <param name="stream">Stream to read</param>
+		/// <param name="buffer">byte buffer to fill</param>
+		/// <param name="offset">starting position to fill the buffer</param>
+		/// <param name="count">number of bytes to read</param>
+		/// <returns>The number of bytes read.  May be less than count if no more bytes are available.</returns>
+		public static int ReadBytes(Stream stream, byte[] buffer, int offset, int count)
+		{
+			int end = offset + count;
+			int got = 0;
+			int need = count;
+			do
+			{
+				got = stream.Read(buffer, offset, need);
+				offset += got;
+				need -= got;
+			}
+			while (offset < end && got != 0);
+			// return bytes read
+			return count - (end - offset);
+		}
 
 		//This is like Encoding.UTF8.GetCharCount() but it ignores a trailing incomplete
 		//character. See comments on ValidUTF8Ending()
@@ -347,7 +347,7 @@ namespace Npgsql
 		/// </summary>
 		public static void WriteString(String the_string, Stream network_stream)
 		{
-            
+			
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
@@ -357,17 +357,17 @@ namespace Npgsql
 			network_stream.Write(bytes, 0, bytes.Length);
 		}
 
-        /// <summary>
-        /// This method writes a set of bytes to the stream. It also enables logging of them.
-        /// </summary>
-        public static void WriteBytes(byte[] the_bytes, Stream network_stream)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
-            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
+		/// <summary>
+		/// This method writes a set of bytes to the stream. It also enables logging of them.
+		/// </summary>
+		public static void WriteBytes(byte[] the_bytes, Stream network_stream)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
+			NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
 
-            network_stream.Write(the_bytes, 0, the_bytes.Length);
-            network_stream.Write(new byte[1], 0, 1);
-        }
+			network_stream.Write(the_bytes, 0, the_bytes.Length);
+			network_stream.Write(new byte[1], 0, 1);
+		}
 
 		///<summary>
 		/// This method writes a C NULL terminated string limited in length to the
@@ -383,7 +383,7 @@ namespace Npgsql
 			if (bytes.Length > n)
 			{
 				throw new ArgumentOutOfRangeException("the_string", the_string,
-				                                      string.Format(resman.GetString("LimStringWriteTooLarge"), the_string, n));
+													  string.Format(resman.GetString("LimStringWriteTooLarge"), the_string, n));
 			}
 
 			network_stream.Write(bytes, 0, bytes.Length);
@@ -400,16 +400,16 @@ namespace Npgsql
 		{
 			Int32 bytes_from_stream = 0;
 			Int32 total_bytes_read = 0;
-            // need to read in chunks so the socket doesn't run out of memory in recv
-            // the network stream doesn't prevent this and downloading a large bytea
-            // will throw an IOException with an error code of 10055 (WSAENOBUFS)
-            int maxReadChunkSize = 8192;
+			// need to read in chunks so the socket doesn't run out of memory in recv
+			// the network stream doesn't prevent this and downloading a large bytea
+			// will throw an IOException with an error code of 10055 (WSAENOBUFS)
+			int maxReadChunkSize = 8192;
 
 			while (size > 0)
 			{
-                // chunked read of maxReadChunkSize
-                int readSize = (size > maxReadChunkSize) ? maxReadChunkSize : size;
-                bytes_from_stream = stream.Read(buffer, offset + total_bytes_read, readSize);
+				// chunked read of maxReadChunkSize
+				int readSize = (size > maxReadChunkSize) ? maxReadChunkSize : size;
+				bytes_from_stream = stream.Read(buffer, offset + total_bytes_read, readSize);
 				total_bytes_read += bytes_from_stream;
 				size -= bytes_from_stream;
 			}
@@ -539,19 +539,19 @@ namespace Npgsql
 		
 		public static StringBuilder TrimStringBuilder(StringBuilder sb)
 		{
-		    while(sb.Length != 0 && char.IsWhiteSpace(sb[0]))
-		        sb.Remove(0, 1);
-		    while(sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
-		        sb.Remove(sb.Length - 1, 1);
-		    return sb;
+			while(sb.Length != 0 && char.IsWhiteSpace(sb[0]))
+				sb.Remove(0, 1);
+			while(sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
+				sb.Remove(sb.Length - 1, 1);
+			return sb;
 		}
 
-        internal static void LogStringWritten(string theString)
-        {
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-            
-        }
-    }
+		internal static void LogStringWritten(string theString)
+		{
+			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+			
+		}
+	}
 
 	/// <summary>
 	/// Represent the frontend/backend protocol version.
@@ -579,10 +579,10 @@ namespace Npgsql
 	public sealed class ServerVersion : IEquatable<ServerVersion>, IComparable<ServerVersion>, IComparable, ICloneable
 	{
 		[Obsolete("Use ServerVersionCode.ProtocolVersion2")] public static readonly Int32 ProtocolVersion2 = 2 << 16;
-		                                                                                  // 131072
+																						  // 131072
 
 		[Obsolete("Use ServerVersionCode.ProtocolVersion3")] public static readonly Int32 ProtocolVersion3 = 3 << 16;
-		                                                                                  // 196608
+																						  // 196608
 
 		private readonly Version _version;
 

@@ -52,29 +52,29 @@ namespace Npgsql
 
 			StringBuilder commandText = _command.GetCommandText();
 
-            // Log the string being sent.
+			// Log the string being sent.
 
-            if (NpgsqlEventLog.Level >= LogLevel.Debug)
-                PGUtil.LogStringWritten(commandText.ToString());
+			if (NpgsqlEventLog.Level >= LogLevel.Debug)
+				PGUtil.LogStringWritten(commandText.ToString());
 
-            // This method needs refactory.
-            // The code below which deals with writing string to stream needs to be redone to use
-            // PGUtil.WriteString() as before. The problem is that WriteString is using too much strings (concatenation).
-            // Find a way to optimize that. 
-            
-            
+			// This method needs refactory.
+			// The code below which deals with writing string to stream needs to be redone to use
+			// PGUtil.WriteString() as before. The problem is that WriteString is using too much strings (concatenation).
+			// Find a way to optimize that. 
+
+
 
 			// Tell to mediator what command is being sent.
 
 			_command.Connector.Mediator.SetSqlSent(commandText);
-            
+
 			// Workaround for seek exceptions when running under ms.net. TODO: Check why Npgsql may be letting behind data in the stream.
-		        outputStream.Flush();
+			outputStream.Flush();
 
 			// Send the query to server.
 			// Write the byte 'Q' to identify a query message.
-			outputStream.WriteByte((byte) FrontEndMessageCode.Query);
-			
+			outputStream.WriteByte((byte)FrontEndMessageCode.Query);
+
 			//Work out the encoding of the string (null-terminated) once and take the length from having done so
 			//rather than doing so repeatedly.
 			byte[] bytes = UTF8Encoding.GetBytes(commandText.Append('\x00').ToString());
@@ -84,7 +84,7 @@ namespace Npgsql
 				// Write message length. Int32 + string length + null terminator.
 				PGUtil.WriteInt32(outputStream, 4 + bytes.Length);
 			}
-			
+
 			outputStream.Write(bytes, 0, bytes.Length);
 
 		}
