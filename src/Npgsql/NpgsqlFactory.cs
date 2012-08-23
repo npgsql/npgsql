@@ -31,15 +31,13 @@ namespace Npgsql
 	/// A factory to create instances of various Npgsql objects.
 	/// </summary>
 	[Serializable]
-	public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
+	public sealed class NpgsqlFactory : DbProviderFactory
 	{
 		public static NpgsqlFactory Instance = new NpgsqlFactory();
-
 
 		private NpgsqlFactory()
 		{
 		}
-
 
 		/// <summary>
 		/// Creates an NpgsqlCommand object.
@@ -48,7 +46,6 @@ namespace Npgsql
 		{
 			return new NpgsqlCommand();
 		}
-
 
 		public override DbCommandBuilder CreateCommandBuilder()
 		{
@@ -74,19 +71,5 @@ namespace Npgsql
 		{
 			return new NpgsqlConnectionStringBuilder();
 		}
-
-		#region IServiceProvider Members
-
-		public object GetService(Type serviceType)
-		{
-#if ENTITIES
-            if (serviceType == typeof(DbProviderServices))
-                return NpgsqlServices.Instance;
-            else
-#endif
-			return null;
-		}
-
-		#endregion
 	}
 }

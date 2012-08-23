@@ -62,7 +62,7 @@ namespace Npgsql
 	/// PostgreSQL server.
 	/// </summary>
 #if WITHDESIGN
-    [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
+	[System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
 
 	public sealed class NpgsqlConnection : DbConnection, ICloneable
@@ -88,12 +88,12 @@ namespace Npgsql
 
 		internal NotificationEventHandler NotificationDelegate;
 
-        /// <summary>
-        /// Called to provide client certificates for SSL handshake.
-        /// </summary>
-        public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-        
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
+		/// <summary>
+		/// Called to provide client certificates for SSL handshake.
+		/// </summary>
+		public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
+
+		internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
 
 
 		/// <summary>
@@ -129,7 +129,7 @@ namespace Npgsql
 		// Connector being used for the active connection.
 		private NpgsqlConnector connector = null;
 
-        private NpgsqlPromotableSinglePhaseNotification promotable = null;
+		private NpgsqlPromotableSinglePhaseNotification promotable = null;
 
 
 		/// <summary>
@@ -166,7 +166,7 @@ namespace Npgsql
 			NoticeDelegate = new NoticeEventHandler(OnNotice);
 			NotificationDelegate = new NotificationEventHandler(OnNotification);
 
-            ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
+			ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
 			CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
 			CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
 			PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
@@ -238,9 +238,9 @@ namespace Npgsql
 		/// </value>
 
 #if WITHDESIGN
-        [RefreshProperties(RefreshProperties.All), DefaultValue(""), RecommendedAsConfigurable(true)]
-        [NpgsqlSysDescription("Description_ConnectionString", typeof(NpgsqlConnection)), Category("Data")]
-        [Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
+		[RefreshProperties(RefreshProperties.All), DefaultValue(""), RecommendedAsConfigurable(true)]
+		[NpgsqlSysDescription("Description_ConnectionString", typeof(NpgsqlConnection)), Category("Data")]
+		[Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
 
 		public override String ConnectionString
@@ -299,7 +299,7 @@ namespace Npgsql
 		/// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
 
 #if WITHDESIGN
-        [NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
+		[NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
 #endif
 
 		public override Int32 ConnectionTimeout
@@ -339,7 +339,7 @@ namespace Npgsql
 		/// <value>The name of the current database or the name of the database to be
 		/// used after a connection is opened. The default value is the empty string.</value>
 #if WITHDESIGN
-        [NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
+		[NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
 #endif
 
 		public override String Database
@@ -399,23 +399,23 @@ namespace Npgsql
 		/// </summary>
 		/// <value>ConnectionState.Open or ConnectionState.Closed</value>
 		[Browsable(false)]
-        public override ConnectionState State
-        {
-            get
-            {
-                return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
-            }
-        }
-        
-        public Version NpgsqlCompatibilityVersion
-        {
-            get
-            {
-                return settings.Compatible;
-            }
-        }
+		public override ConnectionState State
+		{
+			get
+			{
+				return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
+			}
+		}
 
-        /// <summary>
+		public Version NpgsqlCompatibilityVersion
+		{
+			get
+			{
+				return settings.Compatible;
+			}
+		}
+
+		/// <summary>
 		/// Version of the PostgreSQL backend.
 		/// This can only be called when there is an active connection.
 		/// </summary>
@@ -544,6 +544,7 @@ namespace Npgsql
 
 			connector.Notice += NoticeDelegate;
 			connector.Notification += NotificationDelegate;
+			connector.StateChanged += connector_StateChanged;
 
 			if (SyncNotification)
 			{
@@ -554,6 +555,11 @@ namespace Npgsql
 			{
 				Promotable.Enlist(Transaction.Current);
 			}
+		}
+
+		private void connector_StateChanged(object sender, StateChangeEventArgs e)
+		{
+			OnStateChange(e);
 		}
 
 		/// <summary>
@@ -596,17 +602,18 @@ namespace Npgsql
 		///	made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
 		/// </summary>
 		public override void Close()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-            
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
+
 			if (connector != null)
 			{
 				Promotable.Prepare();
-                // clear the way for another promotable transaction
-                promotable = null;
+				// clear the way for another promotable transaction
+				promotable = null;
 
 				connector.Notification -= NotificationDelegate;
 				connector.Notice -= NoticeDelegate;
+				connector.StateChanged -= connector_StateChanged;
 
 				if (SyncNotification)
 				{
@@ -617,7 +624,7 @@ namespace Npgsql
 
 
 				connector = null;
-			
+
 			}
 		}
 
@@ -665,7 +672,7 @@ namespace Npgsql
 					if (FullState != ConnectionState.Closed)
 					{
 						NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
-                        NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
+						NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
 					}
 				}
 
@@ -802,7 +809,7 @@ namespace Npgsql
 		/// </summary>
 		internal X509Certificate DefaultCertificateSelectionCallback(X509CertificateCollection clientCertificates,
 																	 X509Certificate serverCertificate, string targetHost,
-		                                                             X509CertificateCollection serverRequestedCertificates)
+																	 X509CertificateCollection serverRequestedCertificates)
 		{
 			if (CertificateSelectionCallback != null)
 			{
@@ -844,26 +851,26 @@ namespace Npgsql
 			}
 		}
 
-        /// <summary>
-        /// Default SSL ProvideClientCertificatesCallback implementation.
-        /// </summary>
-        internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
-        {
-            if (ProvideClientCertificatesCallback != null)
-            {
-                ProvideClientCertificatesCallback(certificates);
-            }            
-        }
+		/// <summary>
+		/// Default SSL ProvideClientCertificatesCallback implementation.
+		/// </summary>
+		internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
+		{
+			if (ProvideClientCertificatesCallback != null)
+			{
+				ProvideClientCertificatesCallback(certificates);
+			}
+		}
 
 
 		//
 		// Private methods and properties
-        //
+		//
 
-        private NpgsqlPromotableSinglePhaseNotification Promotable
-        {
-            get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
-        }
+		private NpgsqlPromotableSinglePhaseNotification Promotable
+		{
+			get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
+		}
 
 
 		/// <summary>
@@ -966,9 +973,9 @@ namespace Npgsql
 				case "DataSourceInformation":
 					return NpgsqlSchema.GetDataSourceInformation();
 				case "DataTypes":
-                    throw new NotSupportedException();
-                case "ReservedWords":
-			        return NpgsqlSchema.GetReservedWords();
+					throw new NotSupportedException();
+				case "ReservedWords":
+					return NpgsqlSchema.GetReservedWords();
 				// custom collections for npgsql
 				case "Databases":
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetDatabases(restrictions);
@@ -980,12 +987,12 @@ namespace Npgsql
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetViews(restrictions);
 				case "Users":
 					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetUsers(restrictions);
-                case "Indexes":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexes(restrictions);
-                case "IndexColumns":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexColumns(restrictions);
-                case "ForeignKeys":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetForeignKeys(restrictions);
+				case "Indexes":
+					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexes(restrictions);
+				case "IndexColumns":
+					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexColumns(restrictions);
+				case "ForeignKeys":
+					return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetForeignKeys(restrictions);
 				default:
 					throw new NotSupportedException();
 			}
@@ -1007,13 +1014,13 @@ namespace Npgsql
 		}
 
 #if NET35
-        protected override DbProviderFactory DbProviderFactory
-        {
-            get
-            {
-                return NpgsqlFactory.Instance;
-            }
-        }
+		protected override DbProviderFactory DbProviderFactory
+		{
+			get
+			{
+				return NpgsqlFactory.Instance;
+			}
+		}
 #endif
 	}
 }
