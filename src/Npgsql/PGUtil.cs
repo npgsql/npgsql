@@ -93,10 +93,10 @@ namespace Npgsql
 			switch (Ver)
 			{
 				case ProtocolVersion.Version2:
-					return (int) ServerVersionCode.ProtocolVersion2;
+					return (int)ServerVersionCode.ProtocolVersion2;
 
 				case ProtocolVersion.Version3:
-					return (int) ServerVersionCode.ProtocolVersion3;
+					return (int)ServerVersionCode.ProtocolVersion3;
 			}
 
 			throw new ArgumentOutOfRangeException();
@@ -145,23 +145,6 @@ namespace Npgsql
 			return VersionString;
 		}
 
-/*
-		/// <summary>
-		/// Convert the beginning numeric part of the given string to Int32.
-		/// For example:
-		///   Strings "12345ABCD" and "12345.54321" would both be converted to int 12345.
-		/// </summary>
-		private static Int32 ConvertBeginToInt32(String Raw)
-		{
-			Int32 Length = 0;
-			for (; Length < Raw.Length && Char.IsNumber(Raw[Length]); Length++)
-			{
-				;
-			}
-			return Convert.ToInt32(Raw.Substring(0, Length));
-		}
-*/
-
 		///<summary>
 		/// This method gets a C NULL terminated string from the network stream.
 		/// It keeps reading a byte in each time until a NULL byte is returned.
@@ -181,13 +164,13 @@ namespace Npgsql
 				}
 				else
 				{
-					buffer.Add((byte) bRead);
+					buffer.Add((byte)bRead);
 				}
 			}
 
 			if (NpgsqlEventLog.Level >= LogLevel.Debug)
 				NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
-				
+
 			return ENCODING_UTF8.GetString(buffer.ToArray());
 		}
 
@@ -201,7 +184,7 @@ namespace Npgsql
 				{
 					throw new EndOfStreamException();
 				}
-				buffer[i] = (byte) byteRead;
+				buffer[i] = (byte)byteRead;
 				if (ValidUTF8Ending(buffer, 0, i + 1)) //catch multi-byte encodings where we have not yet enough bytes.
 				{
 					return ENCODING_UTF8.GetChars(buffer)[0];
@@ -216,7 +199,7 @@ namespace Npgsql
 			{
 				return 0;
 			}
-			byte[] buffer = new byte[Math.Min(maxRead, maxChars*4)];
+			byte[] buffer = new byte[Math.Min(maxRead, maxChars * 4)];
 			int bytesSoFar = 0;
 			int charsSoFar = 0;
 			//A string of x chars length will take at least x bytes and at most
@@ -289,8 +272,8 @@ namespace Npgsql
 			{
 				return false;
 			}
-			byte[] masks = new byte[] {0xE0, 0xF0, 0xF8};
-			byte[] matches = new byte[] {0xC0, 0xE0, 0xF0};
+			byte[] masks = new byte[] { 0xE0, 0xF0, 0xF8 };
+			byte[] matches = new byte[] { 0xC0, 0xE0, 0xF0 };
 			for (int i = 0; i + 2 <= count; ++i)
 			{
 				examine = buffer[index + count - 2 - i];
@@ -347,13 +330,13 @@ namespace Npgsql
 		/// </summary>
 		public static void WriteString(String the_string, Stream network_stream)
 		{
-			
+
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
 
 			byte[] bytes = ENCODING_UTF8.GetBytes(the_string + NULL_TERMINATOR_STRING);
-			
+
 			network_stream.Write(bytes, 0, bytes.Length);
 		}
 
@@ -417,7 +400,7 @@ namespace Npgsql
 
 		public static void EatStreamBytes(Stream stream, int size)
 		{
-//See comment on THRASH_CAN and THRASH_CAN_SIZE.
+			//See comment on THRASH_CAN and THRASH_CAN_SIZE.
 			while (size > 0)
 			{
 				size -= stream.Read(THRASH_CAN, 0, size < THRASH_CAN_SIZE ? size : THRASH_CAN_SIZE);
@@ -454,13 +437,13 @@ namespace Npgsql
 								 int.Parse(ReadChar(stream).ToString()));
 							break;
 						default:
-							output[outputIdx++] = (byte) c;
+							output[outputIdx++] = (byte)c;
 							break;
 					}
 				}
 				else
 				{
-					output[outputIdx++] = (byte) c;
+					output[outputIdx++] = (byte)c;
 				}
 			}
 			return i;
@@ -534,14 +517,14 @@ namespace Npgsql
 
 		public static int RotateShift(int val, int shift)
 		{
-			return (val << shift) | (val >> (sizeof (int) - shift));
+			return (val << shift) | (val >> (sizeof(int) - shift));
 		}
-		
+
 		public static StringBuilder TrimStringBuilder(StringBuilder sb)
 		{
-			while(sb.Length != 0 && char.IsWhiteSpace(sb[0]))
+			while (sb.Length != 0 && char.IsWhiteSpace(sb[0]))
 				sb.Remove(0, 1);
-			while(sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
+			while (sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
 				sb.Remove(sb.Length - 1, 1);
 			return sb;
 		}
@@ -549,7 +532,7 @@ namespace Npgsql
 		internal static void LogStringWritten(string theString)
 		{
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-			
+
 		}
 	}
 
@@ -578,11 +561,13 @@ namespace Npgsql
 	[Obsolete("Use System.Version")]
 	public sealed class ServerVersion : IEquatable<ServerVersion>, IComparable<ServerVersion>, IComparable, ICloneable
 	{
-		[Obsolete("Use ServerVersionCode.ProtocolVersion2")] public static readonly Int32 ProtocolVersion2 = 2 << 16;
-																						  // 131072
+		[Obsolete("Use ServerVersionCode.ProtocolVersion2")]
+		public static readonly Int32 ProtocolVersion2 = 2 << 16;
+		// 131072
 
-		[Obsolete("Use ServerVersionCode.ProtocolVersion3")] public static readonly Int32 ProtocolVersion3 = 3 << 16;
-																						  // 196608
+		[Obsolete("Use ServerVersionCode.ProtocolVersion3")]
+		public static readonly Int32 ProtocolVersion3 = 3 << 16;
+		// 196608
 
 		private readonly Version _version;
 
@@ -617,42 +602,42 @@ namespace Npgsql
 
 		public static implicit operator Version(ServerVersion sv)
 		{
-			return (object) sv == null ? null : sv._version;
+			return (object)sv == null ? null : sv._version;
 		}
 
 		public static implicit operator ServerVersion(Version ver)
 		{
-			return (object) ver == null ? null : new ServerVersion(ver.Clone() as Version);
+			return (object)ver == null ? null : new ServerVersion(ver.Clone() as Version);
 		}
 
 		public static bool operator ==(ServerVersion One, ServerVersion TheOther)
 		{
-			return ((Version) One) == ((Version) TheOther);
+			return ((Version)One) == ((Version)TheOther);
 		}
 
 		public static bool operator !=(ServerVersion One, ServerVersion TheOther)
 		{
-			return (Version) One != (Version) TheOther;
+			return (Version)One != (Version)TheOther;
 		}
 
 		public static bool operator >(ServerVersion One, ServerVersion TheOther)
 		{
-			return (Version) One > (Version) TheOther;
+			return (Version)One > (Version)TheOther;
 		}
 
 		public static bool operator >=(ServerVersion One, ServerVersion TheOther)
 		{
-			return (Version) One >= (Version) TheOther;
+			return (Version)One >= (Version)TheOther;
 		}
 
 		public static bool operator <(ServerVersion One, ServerVersion TheOther)
 		{
-			return (Version) One < (Version) TheOther;
+			return (Version)One < (Version)TheOther;
 		}
 
 		public static bool operator <=(ServerVersion One, ServerVersion TheOther)
 		{
-			return (Version) One <= (Version) TheOther;
+			return (Version)One <= (Version)TheOther;
 		}
 
 		public bool Equals(ServerVersion other)
@@ -776,12 +761,12 @@ namespace Npgsql
 
 		public bool Contains(KeyValuePair<TKey, TValue> item)
 		{
-			return ((IDictionary<TKey, TValue>) _inner).Contains(item);
+			return ((IDictionary<TKey, TValue>)_inner).Contains(item);
 		}
 
 		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
-			((IDictionary<TKey, TValue>) _inner).CopyTo(array, arrayIndex);
+			((IDictionary<TKey, TValue>)_inner).CopyTo(array, arrayIndex);
 		}
 
 		public bool Remove(KeyValuePair<TKey, TValue> item)

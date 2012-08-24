@@ -79,13 +79,13 @@ namespace Npgsql
 					UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
 					return
 						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
-						                                                   field_descr.TypeSize, field_descr.TypeModifier);
+																		   field_descr.TypeSize, field_descr.TypeModifier);
 				}
 				else
 				{
 					return
 						NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, buffer, fieldSize,
-						                                                  field_descr.TypeModifier);
+																		  field_descr.TypeModifier);
 				}
 			}
 			catch (InvalidCastException ice)
@@ -107,7 +107,7 @@ namespace Npgsql
 			//and have the connector recovered later.
 			try
 			{
-				Stream.WriteByte((byte) FrontEndMessageCode.Termination);
+				Stream.WriteByte((byte)FrontEndMessageCode.Termination);
 				PGUtil.WriteInt32(Stream, 4);
 				Stream.Flush();
 			}
@@ -169,7 +169,7 @@ namespace Npgsql
 
 			public NullMap(NpgsqlRowDescription desc, Stream inputStream)
 			{
-				_map = new byte[(desc.NumFields + 7)/8];
+				_map = new byte[(desc.NumFields + 7) / 8];
 				PGUtil.CheckedStreamRead(inputStream, _map, 0, _map.Length);
 			}
 
@@ -178,7 +178,7 @@ namespace Npgsql
 				// Get the byte that holds the bit index position.
 				// Then check the bit that in MSB order corresponds
 				// to the index position.
-				return (_map[index/8] & (0x80 >> (index%8))) == 0;
+				return (_map[index / 8] & (0x80 >> (index % 8))) == 0;
 			}
 		}
 
@@ -207,7 +207,7 @@ namespace Npgsql
 			{
 				return
 					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
-					                                                   field_descr.TypeSize, field_descr.TypeModifier);
+																	   field_descr.TypeSize, field_descr.TypeModifier);
 			}
 			catch (InvalidCastException ice)
 			{

@@ -28,20 +28,20 @@
 
 namespace Npgsql
 {
-	public enum FrontEndMessageCode :byte
+	public enum FrontEndMessageCode : byte
 	{
-		StartupPacket = (byte) ' ',
-		Termination = (byte) 'X',
-		CopyFail = (byte) 'f',
-		CopyData = (byte) 'd',
-		CopyDone = (byte) 'c',
-		Flush = (byte) 'H',
-		Query = (byte) 'Q',
-		Parse = (byte) 'P',
-		Bind = (byte) 'B',
-		Execute = (byte) 'E',
-		Describe = (byte) 'D',
-		Close = (byte) 'C',
-		Sync = (byte) 'S'
+		StartupPacket = (byte)' ',
+		Termination = (byte)'X',
+		CopyFail = (byte)'f',
+		CopyData = (byte)'d',
+		CopyDone = (byte)'c',
+		Flush = (byte)'H',
+		Query = (byte)'Q',
+		Parse = (byte)'P',
+		Bind = (byte)'B',
+		Execute = (byte)'E',
+		Describe = (byte)'D',
+		Close = (byte)'C',
+		Sync = (byte)'S'
 	}
 }

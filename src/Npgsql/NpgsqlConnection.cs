@@ -38,10 +38,6 @@ using System.Transactions;
 using Mono.Security.Protocol.Tls;
 using IsolationLevel = System.Data.IsolationLevel;
 
-#if WITHDESIGN
-
-#endif
-
 namespace Npgsql
 {
 	/// <summary>
@@ -61,10 +57,6 @@ namespace Npgsql
 	/// This class represents a connection to a
 	/// PostgreSQL server.
 	/// </summary>
-#if WITHDESIGN
-	[System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
-#endif
-
 	public sealed class NpgsqlConnection : DbConnection, ICloneable
 	{
 		// Logging related values
@@ -236,13 +228,6 @@ namespace Npgsql
 		/// the database name, and other parameters needed to establish
 		/// the initial connection. The default value is an empty string.
 		/// </value>
-
-#if WITHDESIGN
-		[RefreshProperties(RefreshProperties.All), DefaultValue(""), RecommendedAsConfigurable(true)]
-		[NpgsqlSysDescription("Description_ConnectionString", typeof(NpgsqlConnection)), Category("Data")]
-		[Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
-#endif
-
 		public override String ConnectionString
 		{
 			get { return settings.ConnectionString; }
@@ -297,11 +282,6 @@ namespace Npgsql
 		/// before terminating the attempt and generating an error.
 		/// </summary>
 		/// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
-
-#if WITHDESIGN
-		[NpgsqlSysDescription("Description_ConnectionTimeout", typeof(NpgsqlConnection))]
-#endif
-
 		public override Int32 ConnectionTimeout
 		{
 			get { return settings.Timeout; }
@@ -338,10 +318,6 @@ namespace Npgsql
 		/// </summary>
 		/// <value>The name of the current database or the name of the database to be
 		/// used after a connection is opened. The default value is the empty string.</value>
-#if WITHDESIGN
-		[NpgsqlSysDescription("Description_Database", typeof(NpgsqlConnection))]
-#endif
-
 		public override String Database
 		{
 			get { return settings.Database; }

@@ -38,10 +38,6 @@ using System.Reflection;
 using System.Resources;
 using NpgsqlTypes;
 
-#if WITHDESIGN
-
-#endif
-
 namespace Npgsql
 {
 	/// <summary>
@@ -49,12 +45,6 @@ namespace Npgsql
 	/// as well as their respective mappings to columns in a <see cref="System.Data.DataSet">DataSet</see>.
 	/// This class cannot be inherited.
 	/// </summary>
-
-#if WITHDESIGN
-	[ListBindable(false)]
-	[Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
-#endif
-
 	public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
 	{
 		private readonly List<NpgsqlParameter> InternalList = new List<NpgsqlParameter>();
@@ -80,11 +70,6 @@ namespace Npgsql
 		/// </summary>
 		/// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
 		/// <value>The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> with the specified name, or a null reference if the parameter is not found.</value>
-
-#if WITHDESIGN
-		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
-
 		public new NpgsqlParameter this[string parameterName]
 		{
 			get
@@ -104,11 +89,6 @@ namespace Npgsql
 		/// </summary>
 		/// <param name="index">The zero-based index of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
 		/// <value>The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> at the specified index.</value>
-
-#if WITHDESIGN
-		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
-
 		public new NpgsqlParameter this[int index]
 		{
 			get
@@ -168,7 +148,7 @@ namespace Npgsql
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
 			return this.AddWithValue(parameterName, value);
 		}
-		
+
 		public NpgsqlParameter AddWithValue(string parameterName, object value)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
@@ -250,7 +230,7 @@ namespace Npgsql
 
 			// Iterate values to see what is the index of parameter.
 			int index = 0;
-				int bestChoose = -1;
+			int bestChoose = -1;
 			if ((parameterName[0] == ':') || (parameterName[0] == '@'))
 			{
 				parameterName = parameterName.Remove(0, 1);
@@ -260,12 +240,12 @@ namespace Npgsql
 			foreach (NpgsqlParameter parameter in this)
 			{
 				// allow for optional use of ':' and '@' in the ParameterName property
-						string cleanName = parameter.CleanName;
-						if(cleanName == parameterName)
+				string cleanName = parameter.CleanName;
+				if (cleanName == parameterName)
 				{
 					return index;
 				}
-				if(string.Compare(parameterName, cleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
+				if (string.Compare(parameterName, cleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
 				{
 					bestChoose = index;
 				}
@@ -306,7 +286,7 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, value);
 			CheckType(value);
-			this.InternalList.Insert(index, (NpgsqlParameter) value);
+			this.InternalList.Insert(index, (NpgsqlParameter)value);
 		}
 
 		/// <summary>
@@ -317,7 +297,7 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", value);
 			CheckType(value);
-			this.InternalList.Remove((NpgsqlParameter) value);
+			this.InternalList.Remove((NpgsqlParameter)value);
 		}
 
 		/// <summary>
@@ -332,7 +312,7 @@ namespace Npgsql
 			{
 				return false;
 			}
-			return this.InternalList.Contains((NpgsqlParameter) value);
+			return this.InternalList.Contains((NpgsqlParameter)value);
 		}
 
 
@@ -382,7 +362,7 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", value);
 			CheckType(value);
-			return this.InternalList.IndexOf((NpgsqlParameter) value);
+			return this.InternalList.IndexOf((NpgsqlParameter)value);
 		}
 
 		/// <summary>
@@ -394,7 +374,7 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", value);
 			CheckType(value);
-			this.Add((NpgsqlParameter) value);
+			this.Add((NpgsqlParameter)value);
 			return IndexOf(value);
 		}
 
@@ -424,11 +404,6 @@ namespace Npgsql
 		/// Gets the number of <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> objects in the collection.
 		/// </summary>
 		/// <value>The number of <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> objects in the collection.</value>
-
-#if WITHDESIGN
-		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-#endif
-
 		public override int Count
 		{
 			get
@@ -496,12 +471,12 @@ namespace Npgsql
 
 		protected override void SetParameter(string parameterName, DbParameter value)
 		{
-			this[parameterName] = (NpgsqlParameter) value;
+			this[parameterName] = (NpgsqlParameter)value;
 		}
 
 		protected override void SetParameter(int index, DbParameter value)
 		{
-			this[index] = (NpgsqlParameter) value;
+			this[index] = (NpgsqlParameter)value;
 		}
 
 		/// <summary>
@@ -518,23 +493,6 @@ namespace Npgsql
 					String.Format(resman.GetString("Exception_WrongType"), Object.GetType()));
 			}
 		}
-
-/*
-		/// <summary>
-		/// In methods taking an array as argument this method is used to verify
-		/// that the argument has the type <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>[]
-		/// </summary>
-		/// <param name="array">The array to verify</param>
-		private void CheckType(Array array)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckType", array);
-			if (array.GetType() != typeof (NpgsqlParameter[]))
-			{
-				throw new InvalidCastException(
-					String.Format(this.resman.GetString("Exception_WrongType"), array.GetType().ToString()));
-			}
-		}
-*/
 
 		NpgsqlParameter IList<NpgsqlParameter>.this[int index]
 		{

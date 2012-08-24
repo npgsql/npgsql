@@ -66,7 +66,6 @@ namespace Npgsql
 
 		private object locker = new object();
 
-
 		public NpgsqlConnectorPool()
 		{
 			PooledConnectors = new Dictionary<string, ConnectorQueue>();
@@ -74,7 +73,6 @@ namespace Npgsql
 			Timer.AutoReset = false;
 			Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
 			Timer.Start();
-
 		}
 
 		~NpgsqlConnectorPool()
@@ -142,7 +140,6 @@ namespace Npgsql
 			}
 		}
 
-
 		/// <value>Map of index to unused pooled connectors, avaliable to the
 		/// next RequestConnector() call.</value>
 		/// <remarks>This hashmap will be indexed by connection string.
@@ -194,25 +191,16 @@ namespace Npgsql
 			NpgsqlConnector Connector;
 			Int32 timeoutMilliseconds = Connection.Timeout * 1000;
 
-			// No need for this lock anymore
-			//lock (this)
-			{
-				Connector = RequestPooledConnectorInternal(Connection);
-			}
+			Connector = RequestPooledConnectorInternal(Connection);
 
 			while (Connector == null && timeoutMilliseconds > 0)
 			{
-
 				Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
 
 				Thread.Sleep(ST);
 				timeoutMilliseconds -= ST;
 
-
-				//lock (this)
-				{
-					Connector = RequestPooledConnectorInternal(Connection);
-				}
+				Connector = RequestPooledConnectorInternal(Connection);
 			}
 
 			if (Connector == null)
@@ -305,10 +293,7 @@ namespace Npgsql
 		/// </summary>
 		private void ReleasePooledConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
 		{
-			//lock (this)
-			{
-				ReleasePooledConnectorInternal(Connection, Connector);
-			}
+			ReleasePooledConnectorInternal(Connection, Connector);
 		}
 
 		/// <summary>
@@ -356,16 +341,12 @@ namespace Npgsql
 			ConnectorQueue Queue;
 			NpgsqlConnector Connector = null;
 
-
 			// We only need to lock all pools when trying to get one pool or create one.
-
 			lock (locker)
 			{
-
 				// Try to find a queue.
 				if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
 				{
-
 					Queue = new ConnectorQueue();
 					Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
 					Queue.MinPoolSize = Connection.MinPoolSize;
@@ -373,18 +354,13 @@ namespace Npgsql
 				}
 			}
 
-
 			// Now we can simply lock on the pool itself.
 			lock (Queue)
 			{
-
-
 				if (Queue.Available.Count > 0)
 				{
 					// Found a queue with connectors.  Grab the top one.
-
 					// Check if the connector is still valid.
-
 					Connector = Queue.Available.Dequeue();
 					Queue.Busy.Add(Connector, null);
 				}
@@ -399,7 +375,6 @@ namespace Npgsql
 						Queue.Busy.Remove(Connector);
 					}
 
-
 					Connector.Close();
 					return GetPooledConnector(Connection); //Try again
 				}
@@ -407,23 +382,17 @@ namespace Npgsql
 				return Connector;
 			}
 
-
 			lock (Queue)
 			{
-
 				if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
 				{
 					Connector = CreateConnector(Connection);
 					Queue.Busy.Add(Connector, null);
-
 				}
-
 			}
-
 
 			if (Connector != null)
 			{
-
 				Connector.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
 				Connector.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
 				Connector.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
@@ -445,14 +414,11 @@ namespace Npgsql
 					throw;
 				}
 
-
 				// Meet the MinPoolSize requirement if needed.
 				if (Connection.MinPoolSize > 1)
 				{
-
 					lock (Queue)
 					{
-
 						while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
 						{
 							NpgsqlConnector Spare = CreateConnector(Connection);
@@ -475,28 +441,13 @@ namespace Npgsql
 				}
 			}
 
-
 			return Connector;
 		}
-
-		/*
-				/// <summary>
-				/// Find an available shared connector in the shared pool, or create
-				/// a new one if none found.
-				/// </summary>
-				private NpgsqlConnector GetSharedConnector(NpgsqlConnection Connection)
-				{
-					// To be implemented
-
-					return null;
-				}
-		*/
 
 		private static NpgsqlConnector CreateConnector(NpgsqlConnection Connection)
 		{
 			return new NpgsqlConnector(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false);
 		}
-
 
 		/// <summary>
 		/// This method is only called when NpgsqlConnection.Dispose(false) is called which means a
@@ -553,7 +504,6 @@ namespace Npgsql
 			{
 				PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
 			}
-
 
 			if (queue == null)
 			{
@@ -631,17 +581,6 @@ namespace Npgsql
 			}
 		}
 
-		/*
-				/// <summary>
-				/// Stop sharing a shared connector.
-				/// </summary>
-				/// <param name="Connector">Connector to unshare</param>
-				private void UngetSharedConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
-				{
-					// To be implemented
-				}
-		*/
-
 		private static void ClearQueue(ConnectorQueue Queue)
 		{
 			if (Queue == null)
@@ -683,7 +622,6 @@ namespace Npgsql
 				}
 			}
 		}
-
 
 		internal void ClearAllPools()
 		{

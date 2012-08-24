@@ -31,7 +31,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -49,8 +48,8 @@ namespace NpgsqlTypes
 		private static readonly String[] TimeFormats =
 			new String[]
 				{
-					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff"
-					, "HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
+					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
+					"HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
 					"HH:mm:ss.fzz", 
 					"HH:mm:ss.fffffzzz", "HH:mm:ss.ffffzzz", "HH:mm:ss.fffzzz", "HH:mm:ss.ffzzz",
 					"HH:mm:ss.fzzz", "HH:mm:sszzz",
@@ -115,9 +114,6 @@ namespace NpgsqlTypes
 					else if (Char.IsDigit(BackendData[byteAPosition + 1]))
 					{
 						octalValue = Convert.ToByte(BackendData.Substring(byteAPosition + 1, 3), 8);
-						//octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
-						//octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
-						//octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
 						byteAPosition += 4;
 					}
 					else
@@ -132,7 +128,6 @@ namespace NpgsqlTypes
 					byteAPosition++;
 				}
 
-
 				ms.WriteByte((Byte)octalValue);
 			}
 			return ms.ToArray();
@@ -145,9 +140,8 @@ namespace NpgsqlTypes
 		internal static Object ToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
 										 Int32 TypeModifier)
 		{
-			return (BackendData.ToLower() == "t" ? true : false);
+			return BackendData.ToLower() == "t";
 		}
-
 
 		/// <summary>
 		/// Convert a postgresql bit to a System.Boolean.
@@ -209,7 +203,7 @@ namespace NpgsqlTypes
 			{
 				return DateTime.MinValue;
 			}
-			
+
 			return
 				DateTime.ParseExact(BackendData, DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
 		}
@@ -249,8 +243,8 @@ namespace NpgsqlTypes
 		{
 			Byte[] byteArray = (Byte[])NativeData;
 			StringBuilder res = new StringBuilder(byteArray.Length * 5);
-			foreach(byte b in byteArray)
-				if(b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
+			foreach (byte b in byteArray)
+				if (b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
 					res.Append((char)b);
 				else
 					res.Append("\\\\")
@@ -273,7 +267,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
 		{
-			if(NativeData is bool)
+			if (NativeData is bool)
 				return ((bool)NativeData) ? "1" : "0";
 			// It may seem more sensible to just convert an integer to a BitString here and pass it on.
 			// However behaviour varies in terms of how this is interpretted if being passed to a bitstring
@@ -288,7 +282,7 @@ namespace NpgsqlTypes
 			// Since we don't know what implicit casts (say by inserting into a table with a bitstring field of
 			// set size) may happen, we don't know how to ensure expected behaviour. While passing a bitstring
 			// literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
-			else if(NativeData is int)
+			else if (NativeData is int)
 				return NativeData.ToString();
 			else
 				return ((BitString)NativeData).ToString("E");
@@ -351,8 +345,7 @@ namespace NpgsqlTypes
 			//to happen.
 			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
 		}
-		
-		
+
 		/// <summary>
 		/// Convert to a postgres double with maximum precision.
 		/// </summary>
@@ -363,9 +356,6 @@ namespace NpgsqlTypes
 			//to happen.
 			return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
 		}
-		
-		
-
 
 		internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean ForExtendedQuery)
 		{
@@ -374,7 +364,6 @@ namespace NpgsqlTypes
 			return (((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
 		}
 	}
-
 
 	/// <summary>
 	/// Provide event handlers to convert extended native supported data types from their backend
@@ -538,7 +527,7 @@ namespace NpgsqlTypes
 		{
 			return new NpgsqlMacAddress(BackendData);
 		}
-		
+
 		internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
 			return new Guid(BackendData);
@@ -608,13 +597,6 @@ namespace NpgsqlTypes
 		/// </summary>
 		internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
 		{
-			/*if (NativeData.GetType() == typeof(Rectangle)) {
-				Rectangle       R = (Rectangle)NativeData;
-				return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
-			} else if (NativeData.GetType() == typeof(RectangleF)) {
-				RectangleF      R = (RectangleF)NativeData;
-				return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
-
 			if (NativeData is NpgsqlBox)
 			{
 				NpgsqlBox box = (NpgsqlBox)NativeData;
@@ -645,21 +627,19 @@ namespace NpgsqlTypes
 			StringBuilder B = null;
 			try
 			{
-	B =new StringBuilder();
+				B = new StringBuilder();
 
-			foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData))
-			{
-				B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
-			}
+				foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData))
+				{
+					B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
+				}
 
-			return String.Format("[{0}]", B);
+				return String.Format("[{0}]", B);
 			}
 			finally
 			{
 				B = null;
-
 			}
-		
 		}
 
 		/// <summary>
@@ -676,7 +656,7 @@ namespace NpgsqlTypes
 
 			return String.Format("({0})", B);
 		}
-  
+
 		/// <summary>
 		/// Convert to a postgres MAC Address.
 		/// </summary>
@@ -688,7 +668,7 @@ namespace NpgsqlTypes
 			}
 			return NativeData.ToString();
 		}
-		
+
 		/// <summary>
 		/// Circle.
 		/// </summary>
@@ -708,7 +688,6 @@ namespace NpgsqlTypes
 				return ((NpgsqlInet)NativeData).ToString();
 			}
 			return NativeData.ToString();
-
 		}
 
 		/// <summary>

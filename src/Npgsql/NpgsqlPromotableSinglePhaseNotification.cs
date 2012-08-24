@@ -204,7 +204,6 @@ namespace Npgsql
 				_sponser.Register((MarshalByRefObject)_resourceManager);
 			}
 			return _resourceManager;
-			//return new NpgsqlResourceManager();
 		}
 
 		private static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel _isolationLevel)

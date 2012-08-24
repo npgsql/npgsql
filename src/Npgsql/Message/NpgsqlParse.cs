@@ -55,7 +55,7 @@ namespace Npgsql
 
 		public override void WriteToStream(Stream outputStream)
 		{
-			outputStream.WriteByte((byte) FrontEndMessageCode.Parse);
+			outputStream.WriteByte((byte)FrontEndMessageCode.Parse);
 
 			// message length =
 			// Int32 self
@@ -64,13 +64,13 @@ namespace Npgsql
 			// + Int16
 			// + Int32 * number of parameters.
 			Int32 messageLength = 4 + UTF8Encoding.GetByteCount(_prepareName) + 1 + UTF8Encoding.GetByteCount(_queryString) + 1 +
-			                      2 + (_parameterIDs.Length*4);
+								  2 + (_parameterIDs.Length * 4);
 			//Int32 messageLength = 4 + _prepareName.Length + 1 + _queryString.Length + 1 + 2 + (_parameterIDs.Length * 4);
 
 			PGUtil.WriteInt32(outputStream, messageLength);
 			PGUtil.WriteString(_prepareName, outputStream);
 			PGUtil.WriteString(_queryString, outputStream);
-			PGUtil.WriteInt16(outputStream, (Int16) _parameterIDs.Length);
+			PGUtil.WriteInt16(outputStream, (Int16)_parameterIDs.Length);
 
 
 			for (Int32 i = 0; i < _parameterIDs.Length; i++)

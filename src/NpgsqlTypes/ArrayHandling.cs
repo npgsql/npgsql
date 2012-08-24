@@ -58,24 +58,15 @@ namespace NpgsqlTypes
 		/// </summary>
 		public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean ForExtendedQuery)
 		{
-
 			if (ForExtendedQuery)
 			{
 				StringBuilder sb = new StringBuilder("{");
-				//return sb.ToString();
-
 				WriteItem(TypeInfo, NativeData, sb, ForExtendedQuery);
-
 				sb.Append("}");
-
 				return sb.ToString();
-
-
-
 			}
 			else
 			{
-
 				//just prepend "array" and then pass to WriteItem.
 				StringBuilder sb = new StringBuilder("array");
 				if (WriteItem(TypeInfo, NativeData, sb, ForExtendedQuery))
@@ -117,7 +108,6 @@ namespace NpgsqlTypes
 				sb.Append(_elementConverter.ConvertToBackend(item, ForExtendedQuery));
 				return true;
 			}
-
 		}
 
 		private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb, Boolean ForExtendedQuery)
@@ -136,15 +126,11 @@ namespace NpgsqlTypes
 
 			foreach (object item in ar)
 			{
-
 				// As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
 				// we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
 
 				Char openElement = ForExtendedQuery ? '{' : '[';
 				Char closeElement = ForExtendedQuery ? '}' : ']';
-
-
-
 
 				//to work out how many [ characters we need we need to work where we are compared to the dimensions.
 				//Say we are at position 24 in a 3 * 4 * 5 array.
@@ -156,9 +142,7 @@ namespace NpgsqlTypes
 				{
 					if (c % (curlength *= lengthTest) == 0)
 					{
-						//sb.Append('[');
 						sb.Append(openElement);
-
 					}
 					else
 					{
@@ -176,7 +160,6 @@ namespace NpgsqlTypes
 				{
 					if (c % (curlength *= lengthTest) == 0)
 					{
-						//sb.Append(']');
 						sb.Append(closeElement);
 					}
 					else
@@ -204,9 +187,7 @@ namespace NpgsqlTypes
 			Char openElement = ForExtendedQuery ? '{' : '[';
 			Char closeElement = ForExtendedQuery ? '}' : ']';
 
-
 			bool writtenSomething = false;
-			//sb.Append('[');
 			sb.Append(openElement);
 
 			//write each item with a comma between them.
@@ -218,10 +199,7 @@ namespace NpgsqlTypes
 			if (writtenSomething)
 			{
 				//last comma was one too many. Replace it with the final }
-
-				//sb[sb.Length - 1] = ']';
 				sb[sb.Length - 1] = closeElement;
-
 			}
 			return writtenSomething;
 		}

@@ -46,7 +46,7 @@ namespace Npgsql
 
 
 		public NpgsqlBind(String portalName, String preparedStatementName, Int16[] parameterFormatCodes,
-		                  Object[] parameterValues, Int16[] resultFormatCodes)
+						  Object[] parameterValues, Int16[] resultFormatCodes)
 		{
 			_portalName = portalName;
 			_preparedStatementName = preparedStatementName;
@@ -89,8 +89,8 @@ namespace Npgsql
 		public override void WriteToStream(Stream outputStream)
 		{
 			Int32 messageLength = 4 + UTF8Encoding.GetByteCount(_portalName) + 1 +
-			                      UTF8Encoding.GetByteCount(_preparedStatementName) + 1 + 2 + (_parameterFormatCodes.Length*2) +
-			                      2;
+								  UTF8Encoding.GetByteCount(_preparedStatementName) + 1 + 2 + (_parameterFormatCodes.Length * 2) +
+								  2;
 
 
 			// Get size of parameter values.
@@ -103,29 +103,29 @@ namespace Npgsql
 					messageLength += 4;
 					if (_parameterValues[i] != null)
 					{
-						if (((_parameterFormatCodes.Length == 1) && (_parameterFormatCodes[0] == (Int16) FormatCode.Binary)) ||
-						    ((_parameterFormatCodes.Length != 1) && (_parameterFormatCodes[i] == (Int16) FormatCode.Binary)))
+						if (((_parameterFormatCodes.Length == 1) && (_parameterFormatCodes[0] == (Int16)FormatCode.Binary)) ||
+							((_parameterFormatCodes.Length != 1) && (_parameterFormatCodes[i] == (Int16)FormatCode.Binary)))
 						{
-							messageLength += ((Byte[]) _parameterValues[i]).Length;
+							messageLength += ((Byte[])_parameterValues[i]).Length;
 						}
 						else
 						{
-							messageLength += UTF8Encoding.GetByteCount((String) _parameterValues[i]);
+							messageLength += UTF8Encoding.GetByteCount((String)_parameterValues[i]);
 						}
 					}
 				}
 			}
 
-			messageLength += 2 + (_resultFormatCodes.Length*2);
+			messageLength += 2 + (_resultFormatCodes.Length * 2);
 
 
-			outputStream.WriteByte((byte) FrontEndMessageCode.Bind);
+			outputStream.WriteByte((byte)FrontEndMessageCode.Bind);
 
 			PGUtil.WriteInt32(outputStream, messageLength);
 			PGUtil.WriteString(_portalName, outputStream);
 			PGUtil.WriteString(_preparedStatementName, outputStream);
 
-			PGUtil.WriteInt16(outputStream, (Int16) _parameterFormatCodes.Length);
+			PGUtil.WriteInt16(outputStream, (Int16)_parameterFormatCodes.Length);
 
 			for (i = 0; i < _parameterFormatCodes.Length; i++)
 			{
@@ -134,14 +134,14 @@ namespace Npgsql
 
 			if (_parameterValues != null)
 			{
-				PGUtil.WriteInt16(outputStream, (Int16) _parameterValues.Length);
+				PGUtil.WriteInt16(outputStream, (Int16)_parameterValues.Length);
 
 				for (i = 0; i < _parameterValues.Length; i++)
 				{
-					if (((_parameterFormatCodes.Length == 1) && (_parameterFormatCodes[0] == (Int16) FormatCode.Binary)) ||
-					    ((_parameterFormatCodes.Length != 1) && (_parameterFormatCodes[i] == (Int16) FormatCode.Binary)))
+					if (((_parameterFormatCodes.Length == 1) && (_parameterFormatCodes[0] == (Int16)FormatCode.Binary)) ||
+						((_parameterFormatCodes.Length != 1) && (_parameterFormatCodes[i] == (Int16)FormatCode.Binary)))
 					{
-						Byte[] parameterValue = (Byte[]) _parameterValues[i];
+						Byte[] parameterValue = (Byte[])_parameterValues[i];
 						if (parameterValue == null)
 						{
 							PGUtil.WriteInt32(outputStream, -1);
@@ -160,7 +160,7 @@ namespace Npgsql
 						}
 						else
 						{
-							Byte[] parameterValueBytes = UTF8Encoding.GetBytes((String) _parameterValues[i]);
+							Byte[] parameterValueBytes = UTF8Encoding.GetBytes((String)_parameterValues[i]);
 							PGUtil.WriteInt32(outputStream, parameterValueBytes.Length);
 							outputStream.Write(parameterValueBytes, 0, parameterValueBytes.Length);
 						}
@@ -172,7 +172,7 @@ namespace Npgsql
 				PGUtil.WriteInt16(outputStream, 0);
 			}
 
-			PGUtil.WriteInt16(outputStream, (Int16) _resultFormatCodes.Length);
+			PGUtil.WriteInt16(outputStream, (Int16)_resultFormatCodes.Length);
 			for (i = 0; i < _resultFormatCodes.Length; i++)
 			{
 				PGUtil.WriteInt16(outputStream, _resultFormatCodes[i]);

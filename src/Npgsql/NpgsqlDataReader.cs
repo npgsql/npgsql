@@ -30,8 +30,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Text;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using NpgsqlTypes;
 
@@ -103,7 +103,7 @@ namespace Npgsql
 		public override Type GetFieldType(Int32 Index)
 		{
 			NpgsqlBackendTypeInfo TI;
-			return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof (string); //Default type is string.
+			return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof(string); //Default type is string.
 		}
 
 		/// <summary>
@@ -122,13 +122,14 @@ namespace Npgsql
 		/// </summary>
 		public override Int32 FieldCount
 		{
-			get { 
-					if (_connector.CompatVersion <= Npgsql205)
-						return CurrentDescription == null ? -1 : CurrentDescription.NumFields; 
-					else
-						// We read msdn documentation and bug report #1010649 that the common return value is 0.
-						return CurrentDescription == null ? 0 : CurrentDescription.NumFields; 
-				}
+			get
+			{
+				if (_connector.CompatVersion <= Npgsql205)
+					return CurrentDescription == null ? -1 : CurrentDescription.NumFields;
+				else
+					// We read msdn documentation and bug report #1010649 that the common return value is 0.
+					return CurrentDescription == null ? 0 : CurrentDescription.NumFields;
+			}
 		}
 
 		/// <summary>
@@ -140,7 +141,6 @@ namespace Npgsql
 			{
 				throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
 			}
-
 			return CurrentDescription[Index].Name;
 		}
 
@@ -154,10 +154,8 @@ namespace Npgsql
 			{
 				throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
 			}
-
 			return CurrentDescription[Index].TypeOID.ToString();
 		}
-
 
 		/// <summary>
 		/// Gets the value of a column in its native format.
@@ -166,10 +164,10 @@ namespace Npgsql
 		{
 			get { return GetValue(i); }
 		}
-		
+
 		public bool HasOrdinal(string fieldName)
 		{
-			if(CurrentDescription == null)
+			if (CurrentDescription == null)
 				throw new InvalidOperationException("Invalid attempt to read when no data is present.");
 			return CurrentDescription.HasOrdinal(fieldName);
 		}
@@ -183,7 +181,6 @@ namespace Npgsql
 				throw new InvalidOperationException("Invalid attempt to read when no data is present.");
 			return CurrentDescription.FieldIndex(Name);
 		}
-
 
 		/// <summary>
 		/// Gets the value of a column in its native format.
@@ -213,11 +210,11 @@ namespace Npgsql
 			NpgsqlBackendTypeInfo TI;
 			return TryGetTypeInfo(Index, out TI) ? TI.NpgsqlDbType : NpgsqlDbType.Text;
 		}
-		
+
 		public BitString GetBitString(int i)
 		{
 			object ret = GetValue(i);
-			if(ret is bool)
+			if (ret is bool)
 				return new BitString((bool)ret);
 			else
 				return (BitString)ret;
@@ -274,7 +271,7 @@ namespace Npgsql
 		/// </summary>
 		public override Guid GetGuid(Int32 i)
 		{
-			return (Guid) GetValue(i);
+			return (Guid)GetValue(i);
 		}
 
 		/// <summary>
@@ -282,7 +279,7 @@ namespace Npgsql
 		/// </summary>
 		public override Int16 GetInt16(Int32 i)
 		{
-			return (Int16) GetValue(i);
+			return (Int16)GetValue(i);
 		}
 
 		/// <summary>
@@ -290,7 +287,7 @@ namespace Npgsql
 		/// </summary>
 		public override Int32 GetInt32(Int32 i)
 		{
-			return (Int32) GetValue(i);
+			return (Int32)GetValue(i);
 		}
 
 		/// <summary>
@@ -298,7 +295,7 @@ namespace Npgsql
 		/// </summary>
 		public override Int64 GetInt64(Int32 i)
 		{
-			return (Int64) GetValue(i);
+			return (Int64)GetValue(i);
 		}
 
 		/// <summary>
@@ -306,7 +303,7 @@ namespace Npgsql
 		/// </summary>
 		public override Single GetFloat(Int32 i)
 		{
-			return (Single) GetValue(i);
+			return (Single)GetValue(i);
 		}
 
 		/// <summary>
@@ -314,7 +311,7 @@ namespace Npgsql
 		/// </summary>
 		public override Double GetDouble(Int32 i)
 		{
-			return (Double) GetValue(i);
+			return (Double)GetValue(i);
 		}
 
 		/// <summary>
@@ -322,7 +319,7 @@ namespace Npgsql
 		/// </summary>
 		public override String GetString(Int32 i)
 		{
-			return (String) GetValue(i);
+			return (String)GetValue(i);
 		}
 
 		/// <summary>
@@ -330,18 +327,16 @@ namespace Npgsql
 		/// </summary>
 		public override Decimal GetDecimal(Int32 i)
 		{
-			return (Decimal) GetValue(i);
+			return (Decimal)GetValue(i);
 		}
-		
+
 		/// <summary>
 		/// Gets the value of a column as TimeSpan.
 		/// </summary>
 		public TimeSpan GetTimeSpan(Int32 i)
 		{
-			return (TimeSpan) GetValue(i);
+			return (TimeSpan)GetValue(i);
 		}
-		
-		
 
 		/// <summary>
 		/// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
@@ -402,15 +397,15 @@ namespace Npgsql
 		{
 			// Should this be done using the GetValue directly and not by converting to String
 			// and parsing from there?
-			return (Boolean) GetValue(i);
+			return (Boolean)GetValue(i);
 		}
 
 		/// <summary>
-		/// Gets the value of a column as Byte.  Not implemented.
+		/// Gets the value of a column as Byte.
 		/// </summary>
 		public override Byte GetByte(Int32 i)
 		{
-			throw new NotImplementedException();
+			return (Byte)GetValue(i);
 		}
 
 		/// <summary>
@@ -446,7 +441,7 @@ namespace Npgsql
 		/// </summary>
 		public override DateTime GetDateTime(Int32 i)
 		{
-			return (DateTime) GetValue(i);
+			return (DateTime)GetValue(i);
 		}
 
 		/// <summary>
@@ -465,28 +460,28 @@ namespace Npgsql
 			{
 				result = new DataTable("SchemaTable");
 
-				result.Columns.Add("ColumnName", typeof (string));
-				result.Columns.Add("ColumnOrdinal", typeof (int));
-				result.Columns.Add("ColumnSize", typeof (int));
-				result.Columns.Add("NumericPrecision", typeof (int));
-				result.Columns.Add("NumericScale", typeof (int));
-				result.Columns.Add("IsUnique", typeof (bool));
-				result.Columns.Add("IsKey", typeof (bool));
-				result.Columns.Add("BaseCatalogName", typeof (string));
-				result.Columns.Add("BaseColumnName", typeof (string));
-				result.Columns.Add("BaseSchemaName", typeof (string));
-				result.Columns.Add("BaseTableName", typeof (string));
-				result.Columns.Add("DataType", typeof (Type));
-				result.Columns.Add("AllowDBNull", typeof (bool));
-				result.Columns.Add("ProviderType", typeof (string));
-				result.Columns.Add("IsAliased", typeof (bool));
-				result.Columns.Add("IsExpression", typeof (bool));
-				result.Columns.Add("IsIdentity", typeof (bool));
-				result.Columns.Add("IsAutoIncrement", typeof (bool));
-				result.Columns.Add("IsRowVersion", typeof (bool));
-				result.Columns.Add("IsHidden", typeof (bool));
-				result.Columns.Add("IsLong", typeof (bool));
-				result.Columns.Add("IsReadOnly", typeof (bool));
+				result.Columns.Add("ColumnName", typeof(string));
+				result.Columns.Add("ColumnOrdinal", typeof(int));
+				result.Columns.Add("ColumnSize", typeof(int));
+				result.Columns.Add("NumericPrecision", typeof(int));
+				result.Columns.Add("NumericScale", typeof(int));
+				result.Columns.Add("IsUnique", typeof(bool));
+				result.Columns.Add("IsKey", typeof(bool));
+				result.Columns.Add("BaseCatalogName", typeof(string));
+				result.Columns.Add("BaseColumnName", typeof(string));
+				result.Columns.Add("BaseSchemaName", typeof(string));
+				result.Columns.Add("BaseTableName", typeof(string));
+				result.Columns.Add("DataType", typeof(Type));
+				result.Columns.Add("AllowDBNull", typeof(bool));
+				result.Columns.Add("ProviderType", typeof(string));
+				result.Columns.Add("IsAliased", typeof(bool));
+				result.Columns.Add("IsExpression", typeof(bool));
+				result.Columns.Add("IsIdentity", typeof(bool));
+				result.Columns.Add("IsAutoIncrement", typeof(bool));
+				result.Columns.Add("IsRowVersion", typeof(bool));
+				result.Columns.Add("IsHidden", typeof(bool));
+				result.Columns.Add("IsLong", typeof(bool));
+				result.Columns.Add("IsReadOnly", typeof(bool));
 
 				if (_connector.BackendProtocolVersion == ProtocolVersion.Version2)
 				{
@@ -525,7 +520,7 @@ namespace Npgsql
 				}
 				else
 				{
-					row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
+					row["ColumnSize"] = (int)CurrentDescription[i].TypeSize;
 				}
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
 					CurrentDescription[i].TypeInfo.Name == "numeric")
@@ -539,14 +534,14 @@ namespace Npgsql
 					row["NumericScale"] = 0;
 				}
 				row["IsUnique"] = false;
-				row["IsKey"] = IsKey(GetName(i), keyList);
+				row["IsKey"] = keyList.Contains(GetName(i));
 				row["BaseCatalogName"] = "";
 				row["BaseSchemaName"] = "";
 				row["BaseTableName"] = "";
 				row["BaseColumnName"] = GetName(i);
 				row["DataType"] = GetFieldType(i);
 				row["AllowDBNull"] = true;
-					// without other information, must allow dbnull on the client
+				// without other information, must allow dbnull on the client
 				if (CurrentDescription[i].TypeInfo != null)
 				{
 					row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
@@ -617,7 +612,7 @@ namespace Npgsql
 				}
 				else
 				{
-					row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
+					row["ColumnSize"] = (int)CurrentDescription[i].TypeSize;
 				}
 				if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
 					CurrentDescription[i].TypeInfo.Name == "numeric")
@@ -649,7 +644,7 @@ namespace Npgsql
 				{
 					row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
 				}
-				row["IsAliased"] = string.CompareOrdinal((string) row["ColumnName"], baseColumnName) != 0;
+				row["IsAliased"] = !string.Equals((string)row["ColumnName"], baseColumnName);
 				row["IsExpression"] = false;
 				row["IsIdentity"] = false;
 				row["IsAutoIncrement"] = IsAutoIncrement(columnLookup, i);
@@ -660,20 +655,6 @@ namespace Npgsql
 
 				schema.Rows.Add(row);
 			}
-		}
-
-
-		private static Boolean IsKey(String ColumnName, IEnumerable<string> ListOfKeys)
-		{
-			foreach (String s in ListOfKeys)
-			{
-				if (s == ColumnName)
-				{
-					return true;
-				}
-			}
-
-			return false;
 		}
 
 		private IEnumerable<string> GetPrimaryKeys(String tablename)
@@ -705,9 +686,7 @@ namespace Npgsql
 			}
 		}
 
-
 		private static bool IsKey(KeyLookup keyLookup, string fieldName)
-
 		{
 			return keyLookup.primaryKey.Contains(fieldName);
 		}
@@ -826,7 +805,6 @@ namespace Npgsql
 					: true;
 		}
 
-
 		///<summary>
 		/// This methods parses the command text and tries to get the tablename
 		/// from it.
@@ -834,17 +812,13 @@ namespace Npgsql
 		private String GetTableNameFromQuery()
 		{
 			Int32 fromClauseIndex = _command.CommandText.ToLowerInvariant().IndexOf("from");
-
 			String tableName = _command.CommandText.Substring(fromClauseIndex + 4).Trim();
 
-			if (string.IsNullOrEmpty(tableName))// == String.Empty)
+			if (string.IsNullOrEmpty(tableName))
 			{
 				return String.Empty;
 			}
 
-			/*if (tableName.EndsWith("."));
-				return String.Empty;
-			  */
 			foreach (Char c in tableName.Substring(0, tableName.Length - 1))
 			{
 				if (!Char.IsLetterOrDigit(c) && c != '_' && c != '.')
@@ -1110,7 +1084,7 @@ namespace Npgsql
 				NpgsqlRow ret = CurrentRow ?? _pendingRow ?? GetNextRow(false);
 				if (ret is ForwardsOnlyRow)
 				{
-					ret = _pendingRow = new CachingRow((ForwardsOnlyRow) ret);
+					ret = _pendingRow = new CachingRow((ForwardsOnlyRow)ret);
 				}
 				return ret;
 			}
@@ -1147,7 +1121,7 @@ namespace Npgsql
 					}
 					else if (respNext is ForwardsOnlyRow)
 					{
-						return _pendingRow = BuildRow((ForwardsOnlyRow) respNext);
+						return _pendingRow = BuildRow((ForwardsOnlyRow)respNext);
 					}
 					else
 					{
@@ -1202,14 +1176,14 @@ namespace Npgsql
 			}
 
 			_pendingDescription = null;
-			
+
 			// If there were records affected before,  keep track of their values.
-						if (_recordsAffected != null)
-							_recordsAffected += (_nextRecordsAffected ?? 0);
-						else
-							_recordsAffected = _nextRecordsAffected;
-			
-						
+			if (_recordsAffected != null)
+				_recordsAffected += (_nextRecordsAffected ?? 0);
+			else
+				_recordsAffected = _nextRecordsAffected;
+
+
 
 			_nextRecordsAffected = null;
 			_lastInsertOID = _nextInsertOID;
@@ -1409,13 +1383,13 @@ namespace Npgsql
 			if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
 			{
 				return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
-			}                       
+			}
 			else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
 				return backendTypeInfo.ConvertToFrameworkType(providerValue);
 			return providerValue;
 		}
 
-		public override object  GetProviderSpecificValue(int ordinal)
+		public override object GetProviderSpecificValue(int ordinal)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
 
@@ -1429,7 +1403,7 @@ namespace Npgsql
 			object ret = CurrentRow[ordinal];
 			if (ret is Exception)
 			{
-				throw (Exception) ret;
+				throw (Exception)ret;
 			}
 			return ret;
 		}
@@ -1631,7 +1605,7 @@ namespace Npgsql
 
 		public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
 		{
-			byte[] source = (byte[]) this[i];
+			byte[] source = (byte[])this[i];
 			if (buffer == null)
 			{
 				return source.Length - fieldOffset;
@@ -1643,7 +1617,7 @@ namespace Npgsql
 
 		public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
 		{
-			string source = (string) this[i];
+			string source = (string)this[i];
 			if (buffer == null)
 			{
 				return source.Length - fieldoffset;

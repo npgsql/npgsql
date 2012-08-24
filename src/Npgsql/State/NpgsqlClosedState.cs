@@ -37,19 +37,15 @@ using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 
 namespace Npgsql
 {
-
 	internal class NpgsqlNetworkStream : NetworkStream
 	{
 		NpgsqlConnector mContext = null;
-
 
 		public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
 			: base(socket, owner)
 		{
 			mContext = context;
 		}
-
-
 
 		protected override void Dispose(bool disposing)
 		{
@@ -58,11 +54,8 @@ namespace Npgsql
 				mContext.Close();
 				mContext = null;
 			}
-
 			base.Dispose(disposing);
-
 		}
-
 	}
 
 	internal sealed class NpgsqlClosedState : NpgsqlState
@@ -70,11 +63,7 @@ namespace Npgsql
 		private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
 		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-
-		private NpgsqlClosedState()
-			: base()
-		{
-		}
+		private NpgsqlClosedState() { }
 
 		public static NpgsqlClosedState Instance
 		{
@@ -84,7 +73,6 @@ namespace Npgsql
 				return _instance;
 			}
 		}
-
 
 		/// <summary>
 		/// Resolve a host name or IP address.
@@ -102,36 +90,6 @@ namespace Npgsql
 			try
 			{
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
-
-				/*TcpClient tcpc = new TcpClient();
-				tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-				Stream stream = tcpc.GetStream();*/
-
-				/*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
-
-				//socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-
-
-				/*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-				
-				IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
-
-				if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
-				{
-					socket.Close();
-					throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
-				}
-
-				try
-				{
-					socket.EndConnect(result);
-				}
-				catch (Exception)
-				{
-					socket.Close();
-					throw;
-				}
-				*/
 
 				IPAddress[] ips = ResolveIPHost(context.Host);
 				Socket socket = null;
@@ -171,7 +129,6 @@ namespace Npgsql
 					throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host));
 				}
 
-				//Stream stream = new NetworkStream(socket, true);
 				Stream stream = new NpgsqlNetworkStream(context, socket, true);
 
 				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
@@ -212,7 +169,6 @@ namespace Npgsql
 
 				context.Stream = new BufferedStream(stream);
 				context.Socket = socket;
-
 
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
 				ChangeState(context, NpgsqlConnectedState.Instance);

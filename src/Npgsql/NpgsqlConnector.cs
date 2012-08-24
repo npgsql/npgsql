@@ -46,7 +46,6 @@ namespace Npgsql
 	/// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
 	public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
-
 	/// <summary>
 	/// !!! Helper class, for compilation only.
 	/// Connector implements the logic for the Connection Objects to
@@ -104,8 +103,6 @@ namespace Npgsql
 		// Values for possible CancelRequest messages.
 		private NpgsqlBackEndKeyData _backend_keydata;
 
-		// Flag for transaction status.
-		//        private Boolean                         _inTransaction = false;
 		private NpgsqlTransaction _transaction = null;
 
 		private Boolean _supportsPrepare = false;
@@ -121,13 +118,11 @@ namespace Npgsql
 
 		private NpgsqlState _state;
 
-
 		private Int32 _planIndex;
 		private Int32 _portalIndex;
 
 		private const String _planNamePrefix = "npgsqlplan";
 		private const String _portalNamePrefix = "npgsqlportal";
-
 
 		private Thread _notificationThread;
 
@@ -156,8 +151,6 @@ namespace Npgsql
 		// Did we already called cancelRequest?
 		private Boolean _cancelRequestCalled = false;
 
-
-
 #if WINDOWS && UNMANAGED
 
 		private SSPIHandler _sspi;
@@ -169,7 +162,6 @@ namespace Npgsql
 		}
 
 #endif
-
 
 		/// <summary>
 		/// Constructor.
@@ -190,15 +182,6 @@ namespace Npgsql
 			_notificationThreadStopCount = 1;
 			_notificationAutoResetEvent = new AutoResetEvent(true);
 		}
-
-		//Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
-		//case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
-
-		//~NpgsqlConnector()
-		//{
-		//    Close();
-		//}
-
 
 		internal String Host
 		{
@@ -360,7 +343,6 @@ namespace Npgsql
 		{
 			return CurrentState.ExecuteEnum(this, execute);
 		}
-
 
 		/// <summary>
 		/// This method checks if the connector is still ok.
@@ -651,15 +633,12 @@ namespace Npgsql
 		{
 			get { return _supportsSavepoint; }
 			set { _supportsSavepoint = value; }
-
 		}
 
 		public Boolean CancelRequestCalled
 		{
 			get { return _cancelRequestCalled; }
 		}
-
-
 
 		/// <summary>
 		/// This method is required to set all the version dependent features flags.
@@ -671,11 +650,6 @@ namespace Npgsql
 			this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
 			this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
 		}
-
-		/*/// <value>Counts the numbers of Connections that share
-		/// this Connector. Used in Release() to decide wether this
-		/// connector is to be moved to the PooledConnectors list.</value>
-		// internal int mShareCount;*/
 
 		/// <summary>
 		/// Opens the physical connection to the server.
@@ -743,8 +717,6 @@ namespace Npgsql
 			// This should not happen for protocol version 3+.
 			if (ServerVersion == null)
 			{
-				//NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-				//ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
 				using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
 				{
 					ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
@@ -752,7 +724,6 @@ namespace Npgsql
 			}
 
 			// Adjust client encoding.
-
 			NpgsqlParameterStatus clientEncodingParam = null;
 			if (
 				!ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
@@ -762,18 +733,6 @@ namespace Npgsql
 
 			if (!string.IsNullOrEmpty(settings.SearchPath))
 			{
-				/*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-				p.Value = settings.SearchPath;
-				NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-				commandSearchPath.Parameters.Add(p);
-				commandSearchPath.ExecuteNonQuery();*/
-
-				/*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-				p.Value = settings.SearchPath;
-				NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-				commandSearchPath.Parameters.Add(p);
-				commandSearchPath.ExecuteNonQuery();*/
-
 				// TODO: Add proper message when finding a semicolon in search_path.
 				// This semicolon could lead to a sql injection security hole as someone could write in connection string:
 				// searchpath=public;delete from table; and it would be executed.
@@ -813,7 +772,6 @@ namespace Npgsql
 			 * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
 			 * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
 			 */
-
 			try
 			{
 				NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
@@ -822,15 +780,11 @@ namespace Npgsql
 			}
 			catch { }
 
-
-
 			/*
 			 * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
 			 * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
 			 * Check bug report #1010992 for more information.
 			 */
-
-
 			try
 			{
 				NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
@@ -838,8 +792,6 @@ namespace Npgsql
 
 			}
 			catch { }
-
-
 
 			// Make a shallow copy of the type mapping that the connector will own.
 			// It is possible that the connector may add types to its private
