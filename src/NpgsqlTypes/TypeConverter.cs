@@ -14,6 +14,8 @@ namespace NpgsqlTypes
 		public static bool CanConvert(Type type)
 		{
 			NpgsqlNativeTypeInfo info;
+			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+				return NpgsqlTypesHelper.TryGetNativeTypeInfo(type.GetGenericArguments()[0], out info);
 			return NpgsqlTypesHelper.TryGetNativeTypeInfo(type, out info);
 		}
 		/// <summary>
@@ -22,7 +24,12 @@ namespace NpgsqlTypes
 		public static string Convert(Type type, object value)
 		{
 			NpgsqlNativeTypeInfo info;
-			if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(type, out info))
+			bool canConvert;
+			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+				canConvert = NpgsqlTypesHelper.TryGetNativeTypeInfo(type.GetGenericArguments()[0], out info);
+			else
+				canConvert = NpgsqlTypesHelper.TryGetNativeTypeInfo(type, out info);
+			if (!canConvert)
 				throw new NpgsqlException("Can't convert " + type.FullName + " to native value");
 			return info.ConvertToBackend(value, false);
 		}
