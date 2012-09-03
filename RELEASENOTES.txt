@@ -1,4 +1,23 @@
 
+2012-09-02
+
+    Npgsql 2.0.12
+    
+    Fixed bugs:
+    
+        [#1011208] Wrong SQL statement based on LINQ Query
+
+
+    About this release:
+    
+    After more than a year of development, Npgsql team is proud to announce the 2.0.12 stable release. 
+    This release contains a lot of support for Entity Framework added by our core developer Josh Cooley.
+    A lot of bugs has been ironed on this release. Users are highly recommended to update to this version 
+    which includes a lot of performance improvements.
+    
+    Please, drop your comments on our forums: http://forums.npgsql.org
+    All comments, suggestions and bug reports are welcome.
+    
 2012-07-06
 
     Ngsql 2.0.11.94 (beta4)
