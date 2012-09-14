@@ -149,13 +149,24 @@ namespace NpgsqlTests
         {
             
             NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";searchpath=public");
-            conn.Open();
+            try 
+            {
+                conn.Open();
             
-            NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);
+                NpgsqlCommand c = new NpgsqlCommand("show search_path", conn);
+                
+                String searchpath = (String) c.ExecuteScalar();
+                //Note, public is no longer implicitly added to paths, so this is no longer "public, public".
+                Assert.AreEqual("public", searchpath );
+                
+            }
             
-            String searchpath = (String) c.ExecuteScalar();
-            //Note, public is no longer implicitly added to paths, so this is no longer "public, public".
-            Assert.AreEqual("public", searchpath );
+            finally 
+            {
+                conn.Close();
+                
+            }
+            
             
             
         }
@@ -170,12 +181,23 @@ namespace NpgsqlTests
             for(int i = 0; i < 2; i++)
             {
                 NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
-                connection.Open();
-                command.Connection = connection;
-                command.Transaction = connection.BeginTransaction();
-                command.ExecuteScalar();
-                command.Transaction.Commit();
-                connection.Close();
+                
+                try 
+                {
+                    connection.Open();
+                    command.Connection = connection;
+                    command.Transaction = connection.BeginTransaction();
+                    command.ExecuteScalar();
+                    command.Transaction.Commit();
+                  
+                    
+                } 
+                finally 
+                {
+                     connection.Close();
+                    
+                }
+               
 
             }
             
@@ -244,7 +266,7 @@ namespace NpgsqlTests
                     }
                     catch(Exception ex)
                     {
-                        Console.WriteLine(ex.ToString());
+                        //Console.WriteLine(ex.ToString());
                         // ignore the LO failure
                     }
                 } // *1* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
@@ -259,7 +281,28 @@ namespace NpgsqlTests
                 }
             } // *3* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
         }
+  
+        [Test]
+        public void Bug1011001()
+        {
+            //[#1011001] Bug in NpgsqlConnectionStringBuilder affects on cache and connection pool
+            
+            string connString = "Server=server;Port=5432;User Id=user;Password=passwor;Database=database;";
+    
+            NpgsqlConnectionStringBuilder csb1 = new NpgsqlConnectionStringBuilder(connString);
 
+            string cs1 = csb1.ToString();
+        
+            NpgsqlConnectionStringBuilder csb2 = new NpgsqlConnectionStringBuilder(cs1);
+        
+            string cs2 = csb2.ToString();
+            
+            Assert.IsTrue(cs1 == cs2);
+            
+                                
+      
+        }
+        
         [Test]
         public void NpgsqlErrorRepro2()
         {
@@ -307,6 +350,17 @@ namespace NpgsqlTests
                     }
                 }
             }
+        }
+        
+        [Test]
+        public void GetSchemaForeignKeys()
+        {
+            
+            DataTable dt = TheConnection.GetSchema("ForeignKeys");
+            
+            Assert.IsNotNull(dt);
+            
+            
         }
 
     }
