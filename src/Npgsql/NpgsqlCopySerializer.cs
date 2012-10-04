@@ -436,9 +436,13 @@ namespace Npgsql
 				// some, possibly all of fieldValue string does not require escaping and can be buffered for output
 				if (escapeAt > bufferedUpto)
 				{
-					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt));
+//					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt));
+//					MakeRoomForBytes(encodedLength);
+//					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
+//					bufferedUpto = escapeAt;
+					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
 					MakeRoomForBytes(encodedLength);
-					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
+					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
 					bufferedUpto = escapeAt;
 				}
 

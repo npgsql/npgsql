@@ -1762,7 +1762,7 @@ namespace NpgsqlTests
         public void ConnectionStringWithInvalidParameterValue()
         {
 
-            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";userid=npgsql_tes;pooling=false");
+            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tets;Password=j");
 
             NpgsqlCommand command = new NpgsqlCommand("select * from tablea", conn);
 
@@ -1784,22 +1784,23 @@ namespace NpgsqlTests
         [ExpectedException(typeof(ArgumentException))]
         public void InvalidConnectionString()
         {
-            
             NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
 
-            conn.Open();
-            
-            
+            NpgsqlCommand command = new NpgsqlCommand("select * from tablea", conn);
+
+            command.Connection.Open();
+            command.ExecuteReader();
+            command.Connection.Close();
         }
 
 
         [Test]
         public void AmbiguousFunctionParameterType()
         {
-            //NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
 
 
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", TheConnection);
+            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
             command.CommandType = CommandType.StoredProcedure;
             NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
             p.Value = 2;
@@ -1820,39 +1821,47 @@ namespace NpgsqlTests
             p.Value = "a";
             command.Parameters.Add(p);
 
+
+            command.Connection.Open();
             command.ExecuteScalar();
-            
+            command.Connection.Close();
         }
         
         [Test]
         public void AmbiguousFunctionParameterTypePrepared()
         {
             
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", TheConnection);
-            command.CommandType = CommandType.StoredProcedure;
-            NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("b", DbType.Int32);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("c", DbType.Int64);
-            p.Value = 2;
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("d", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("e", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
-            p = new NpgsqlParameter("f", DbType.String);
-            p.Value = "a";
-            command.Parameters.Add(p);
+            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString))
+            {
+
+
+                NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("b", DbType.Int32);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("c", DbType.Int64);
+                p.Value = 2;
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("d", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("e", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
+                p = new NpgsqlParameter("f", DbType.String);
+                p.Value = "a";
+                command.Parameters.Add(p);
     
     
-            command.Prepare();
-            command.ExecuteScalar();
-            
+                command.Connection.Open();
+                command.Prepare();
+                command.ExecuteScalar();
+                //command.Connection.Close();
+            }
         }
 
 
@@ -2881,7 +2890,7 @@ connection.Open();*/
 
 	
 			
-	        using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180;pooling=false"))
+	        using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
             {
                 
                 

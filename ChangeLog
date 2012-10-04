@@ -1,3 +1,29 @@
+2012-08-07 15:36  fxjr
+
+	* src/Npgsql/NpgsqlCopySerializer.cs:
+	  [#1011215] AddString in NpgsqlCopySerializer.cs crashes with \ in
+	  string. Thanks Jelmer Baas for patch and Panda Răzvan for
+	  testing.
+
+2012-07-06 23:44  fxjr
+
+	* RELEASENOTES.txt:
+	  release notes for .94 release.
+
+2012-07-06 23:33  fxjr
+
+	* ChangeLog:
+	  Added changes for .94 release
+
+2012-07-06 23:28  fxjr
+
+	* src/Npgsql/AssemblyInfo.cs:
+	  Changed file for .94 beta release.
+
+2012-07-06 23:20  jbcooley
+
+	* src/policy.2.0.Npgsql.config: Updated for build 2.0.11.94
+
 2012-07-06 23:10  jbcooley
 
 	* src/Npgsql/SqlGenerators/: SqlBaseGenerator.cs,
@@ -228,10 +254,7 @@
 2011-09-25 13:48  jbcooley
 
 	* testsuite/noninteractive/NUnit20/: App.config,
-	  NpgsqlTests2010.csproj, xmlModel/XmlTest.ObjectLayer.cs,
-	  xmlModel/XmlTest.Views.cs, xmlModel/XmlTest.csdl,
-	  xmlModel/XmlTest.msl, xmlModel/XmlTest.ssdl: Added XmlTest entity
-	  model
+	  NpgsqlTests2010.csproj: Added XmlTest entity model
 
 2011-07-11 10:33  fxjr
 

@@ -53,8 +53,10 @@ namespace NpgsqlTests
         
         // Connection string
         
-        protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
-        protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
+        //protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
+		protected String _connString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false;protocol=3;maxpoolsize=10;connectionlifetime=1";
+        //protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
+		protected String _connV2String = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false;protocol=3;maxpoolsize=10;connectionlifetime=1";
         
         protected Boolean CommitTransaction
         {
@@ -90,23 +92,38 @@ namespace NpgsqlTests
         [TearDown]
         protected virtual void TearDown()
         {
-            if (_t != null && _t.Connection != null)
-                if (CommitTransaction)
-                    _t.Commit();
-                else
-                    _t.Rollback();
+            try 
+            {
                 
-            if (_conn.State != ConnectionState.Closed)
+                if (_t != null && _t.Connection != null)
+                    if (CommitTransaction)
+                        _t.Commit();
+                    else
+                        _t.Rollback();
+                
+                if (_tV2 != null && _tV2.Connection != null)
+                    if(CommitTransaction)
+                        _tV2.Commit();
+                    else
+                        _tV2.Rollback();
+                
+              
+                
+            } finally 
+            {
+                if (_conn.State != ConnectionState.Closed)
                 _conn.Close();
             
-            if (_tV2 != null && _tV2.Connection != null)
-                if(CommitTransaction)
-                    _tV2.Commit();
-                else
-                    _tV2.Rollback();
                 
-            if (_connV2.State != ConnectionState.Closed)
-                _connV2.Close();
+                if (_connV2.State != ConnectionState.Closed)
+                    _connV2.Close();
+                    
+            }
+            
+            
+                
+            
+            
         }
         
     }
