@@ -494,7 +494,7 @@ namespace Npgsql
 
         private static NpgsqlConnector CreateConnector(NpgsqlConnection Connection)
         {
-            return new NpgsqlConnector(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false);
+            return new NpgsqlConnector(Connection.ConnectionStringValuesClone(), Connection.Pooling, false);
         }
 
 
