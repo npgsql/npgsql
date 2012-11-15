@@ -58,10 +58,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.core" />
-    <Reference Include="nunit.core.interfaces" />
     <Reference Include="nunit.framework" />
-    <Reference Include="nunit.util" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
