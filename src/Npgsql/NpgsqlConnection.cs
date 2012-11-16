@@ -125,9 +125,6 @@ namespace Npgsql
         // Used when the connection is closed but an TransactionScope is still active
         // (the actual close is postponed until the scope ends)
 	    private bool _postponingClose;
-        // Used when the connection is disposed with a leak but an TransactionScope is still active
-        // (the actual leak report is postponed until the scope ends)
-        private bool _postponingHandleLeak;
 
 		// Strong-typed ConnectionString values
 		private NpgsqlConnectionStringBuilder settings;
@@ -652,8 +649,6 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
             if (_postponingClose)
                 ReallyClose();
-            if (_postponingHandleLeak)
-                HandleLeak();
         }
 
 		/// <summary>
@@ -696,27 +691,10 @@ namespace Npgsql
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
 				Close();
 			}
-			else
-			{
-				if (FullState != ConnectionState.Closed)
-				{
-                    if (promotable != null && promotable.InLocalTransaction)
-                        _postponingHandleLeak = true;
-                    else
-                        HandleLeak();
-				}
-			}
 
 			base.Dispose(disposing);
 			disposed = true;
 		}
-
-        private void HandleLeak()
-        {
-            NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
-            _postponingHandleLeak = false;
-            NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
-        }
 
 		/// <summary>
 		/// Create a new connection based on this one.
