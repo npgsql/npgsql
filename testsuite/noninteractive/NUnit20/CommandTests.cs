@@ -3563,9 +3563,11 @@ connection.Open();*/
 
             Decimal result = dr.GetDecimal(0);
 
+            dr.Close();
+
             Assert.AreEqual(-10.5, result);
             
-            dr.Close();
+            
         }
        
         [Test]
