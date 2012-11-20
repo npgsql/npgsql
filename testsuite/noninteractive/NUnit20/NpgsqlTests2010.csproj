@@ -58,10 +58,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.core" />
-    <Reference Include="nunit.core.interfaces" />
     <Reference Include="nunit.framework" />
-    <Reference Include="nunit.util" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -136,7 +133,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Npgsql2008.csproj">
+    <ProjectReference Include="..\..\..\src\Npgsql2010.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
       <Name>Npgsql2008</Name>
     </ProjectReference>

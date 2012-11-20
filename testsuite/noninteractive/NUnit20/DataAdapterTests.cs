@@ -30,7 +30,6 @@ using Npgsql;
 using NpgsqlTypes;
 
 using NUnit.Framework;
-using NUnit.Core;
 
 namespace NpgsqlTests
 {

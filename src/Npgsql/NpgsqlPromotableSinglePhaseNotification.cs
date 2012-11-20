@@ -36,6 +36,7 @@ namespace Npgsql
 		private NpgsqlTransactionCallbacks _callbacks;
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
+        internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
 
 		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
@@ -89,6 +90,7 @@ namespace Npgsql
                     _npgsqlTx.Cancel();
                     _npgsqlTx.Dispose();
                     _npgsqlTx = null;
+                    _connection.PromotableLocalTransactionEnded();
                 }
             }
 		}
@@ -114,6 +116,7 @@ namespace Npgsql
 				_npgsqlTx.Dispose();
                 _npgsqlTx = null;
                 singlePhaseEnlistment.Aborted();
+                _connection.PromotableLocalTransactionEnded();
 			}
             else if (_callbacks != null)
             {
@@ -141,6 +144,7 @@ namespace Npgsql
 				_npgsqlTx.Dispose();
 				_npgsqlTx = null;
 				singlePhaseEnlistment.Committed();
+                _connection.PromotableLocalTransactionEnded();
 			}
 			else if (_callbacks != null)
 			{
@@ -181,6 +185,7 @@ namespace Npgsql
                 _npgsqlTx.Cancel();
                 _npgsqlTx.Dispose();
                 _npgsqlTx = null;
+                _connection.PromotableLocalTransactionEnded();
             }
 			return token;
 		}

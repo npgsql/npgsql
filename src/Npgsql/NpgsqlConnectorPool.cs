@@ -497,28 +497,6 @@ namespace Npgsql
             return new NpgsqlConnector(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false);
         }
 
-
-        /// <summary>
-        /// This method is only called when NpgsqlConnection.Dispose(false) is called which means a
-        /// finalization. This also means, an NpgsqlConnection was leak. We clear pool count so that
-        /// client doesn't end running out of connections from pool. When the connection is finalized, its underlying
-        /// socket is closed.
-        /// </summary>
-        public void FixPoolCountBecauseOfConnectionDisposeFalse(NpgsqlConnection Connection)
-        {
-            ConnectorQueue Queue;
-
-            // Prevent multithread access to connection pool count.
-            lock (locker)
-            {
-                // Try to find a queue.
-                if (PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue) && Queue != null)
-                {
-                    Queue.Busy.Remove(Connection.Connector);
-                }
-            }
-        }
-
         /// <summary>
         /// Close the connector.
         /// </summary>
