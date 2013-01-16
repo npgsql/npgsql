@@ -138,7 +138,7 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(typeInfo.ConvertToBackend(_value, false));
                     break;
                 case PrimitiveTypeKind.Time:
-                    sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
+                    sqlText.AppendFormat(ni, "INTERVAL '{0:T}'", _value);
                     break;
                 case PrimitiveTypeKind.Byte:
                 case PrimitiveTypeKind.SByte:
