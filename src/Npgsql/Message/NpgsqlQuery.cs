@@ -25,7 +25,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
-using System;
 using System.IO;
 using System.Text;
 
@@ -38,6 +37,7 @@ namespace Npgsql
 	{
 		private readonly NpgsqlCommand _command;
 		private readonly ProtocolVersion _protocolVersion;
+		internal static int SplitStringLimit = 8 * 1024 * 1024;
 
 		public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
 		{
@@ -47,26 +47,19 @@ namespace Npgsql
 
 		public override void WriteToStream(Stream outputStream)
 		{
-			//NpgsqlEventLog.LogMsg( this.ToString() + _commandText, LogLevel.Debug  );
-
-
-			StringBuilder commandText = _command.GetCommandText();
-
+			var commandText = _command.GetCommandText();
 			// Log the string being sent.
 
 			if (NpgsqlEventLog.Level >= LogLevel.Debug)
-				PGUtil.LogStringWritten(commandText.ToString());
+				PGUtil.LogStringWritten(commandText);
 
 			// This method needs refactory.
 			// The code below which deals with writing string to stream needs to be redone to use
 			// PGUtil.WriteString() as before. The problem is that WriteString is using too much strings (concatenation).
 			// Find a way to optimize that. 
 
-
-
 			// Tell to mediator what command is being sent.
-
-			_command.Connector.Mediator.SetSqlSent(commandText);
+			_command.Connector.Mediator.SqlSent = commandText;
 
 			// Workaround for seek exceptions when running under ms.net. TODO: Check why Npgsql may be letting behind data in the stream.
 			outputStream.Flush();
@@ -77,16 +70,37 @@ namespace Npgsql
 
 			//Work out the encoding of the string (null-terminated) once and take the length from having done so
 			//rather than doing so repeatedly.
-			byte[] bytes = UTF8Encoding.GetBytes(commandText.Append('\x00').ToString());
-
-			if (_protocolVersion == ProtocolVersion.Version3)
+			if (commandText.Length > SplitStringLimit)
 			{
-				// Write message length. Int32 + string length + null terminator.
-				PGUtil.WriteInt32(outputStream, 4 + bytes.Length);
+				if (_protocolVersion == ProtocolVersion.Version3)
+				{
+					// Write message length. Int32 + string length + null terminator.
+					PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(commandText) + 1);
+				}
+				int cur = 0;
+				while (cur < commandText.Length)
+				{
+					var left = commandText.Length - cur;
+					var commandChunk = commandText.Substring(cur, left > SplitStringLimit ? SplitStringLimit : left);
+					var bytes = UTF8Encoding.GetBytes(commandChunk);
+					outputStream.Write(bytes, 0, bytes.Length);
+					cur += SplitStringLimit;
+				}
+				outputStream.WriteByte(0);
 			}
+			else
+			{
+				var bytes = UTF8Encoding.GetBytes(commandText);
 
-			outputStream.Write(bytes, 0, bytes.Length);
+				if (_protocolVersion == ProtocolVersion.Version3)
+				{
+					// Write message length. Int32 + string length + null terminator.
+					PGUtil.WriteInt32(outputStream, 4 + bytes.Length + 1);
+				}
 
+				outputStream.Write(bytes, 0, bytes.Length);
+				outputStream.WriteByte(0);
+			}
 		}
 	}
 }

@@ -21,10 +21,10 @@ using System.Resources;
 [assembly: AssemblyTitleAttribute("Npgsql - .Net Data Provider for PostgreSQL")]
 [assembly: AssemblyDescriptionAttribute(".Net Data Provider for PostgreSQL")]
 [assembly: AssemblyCompanyAttribute("Npgsql Development Team")]
-[assembly: AssemblyProductAttribute("Npgsql")]
+[assembly: AssemblyProductAttribute("Npgsql (modified by NGS)")]
 [assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2012 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
-[assembly: AssemblyVersionAttribute("2.0.11.94")]
-[assembly: AssemblyFileVersionAttribute("2.0.11.94")]
+[assembly: AssemblyVersionAttribute("2.0.12.01")]
+[assembly: AssemblyFileVersionAttribute("2.0.12.01")]
 [assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 

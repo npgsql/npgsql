@@ -838,17 +838,16 @@ namespace Npgsql
 		/// The parameter name format is <b>:ParameterName</b>.
 		/// </summary>
 		/// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
-		internal StringBuilder GetCommandText()
+		internal string GetCommandText()
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-			StringBuilder ret = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
+			var result = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
 			// In constructing the command text, we potentially called internal
 			// queries.  Reset command timeout and SQL sent.
 			m_Connector.Mediator.ResetResponses();
 			m_Connector.Mediator.CommandTimeout = CommandTimeout;
-			return ret;
-
+			return result;
 		}
 
 		private static void PassEscapedArray(StringBuilder query, string array)
@@ -922,20 +921,21 @@ namespace Npgsql
 			}
 		}
 
-		private StringBuilder GetClearCommandText()
+		private string GetClearCommandText()
 		{
 			if (NpgsqlEventLog.Level == LogLevel.Debug)
 			{
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetClearCommandText");
 			}
 
-			StringBuilder result = PGUtil.TrimStringBuilder(new StringBuilder(text));
+			StringBuilder result;
 
 			switch (type)
 			{
 				case CommandType.TableDirect:
-					return result.Insert(0, "select * from "); // There is no parameter support on table direct.
+					return "select * from " + text; // There is no parameter support on table direct.
 				case CommandType.StoredProcedure:
+					result = PGUtil.TrimStringBuilder(new StringBuilder(text));
 					if (!functionChecksDone)
 					{
 						functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
@@ -961,6 +961,11 @@ namespace Npgsql
 						: "select " //Only a single result return supported. 7.2 and earlier.
 					   );
 					break;
+				default:
+					if (parameters.Count == 0)
+						return text;
+					result = PGUtil.TrimStringBuilder(new StringBuilder(text));
+					break;
 			}
 
 			if (parameters.Count == 0)
@@ -971,7 +976,7 @@ namespace Npgsql
 				if (functionNeedsColumnListDefinition)
 					AddFunctionColumnListSupport(result);
 
-				return result;
+				return result.ToString();
 			}
 
 			// Get parameters in query string to translate them to their actual values.
@@ -1054,7 +1059,7 @@ namespace Npgsql
 				AddFunctionColumnListSupport(result);
 			}
 
-			return result;
+			return result.ToString();
 		}
 
 		private Boolean CheckFunctionNeedsColumnDefinitionList()
@@ -1170,7 +1175,7 @@ namespace Npgsql
 		}
 
 
-		private StringBuilder GetPreparedCommandText()
+		private string GetPreparedCommandText()
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
 
@@ -1198,7 +1203,7 @@ namespace Npgsql
 
 				result[result.Length - 1] = ')';
 			}
-			return result;
+			return result.ToString();
 		}
 
 
