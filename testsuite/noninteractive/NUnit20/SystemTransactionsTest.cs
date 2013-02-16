@@ -24,12 +24,47 @@ namespace NpgsqlTests
             get { return _connString; }
         }
 
+        //[Test, Description("TransactionScope with a single connection, enlisting explicitly")]
+        [Test]
+        public void SimpleTransactionScopeWithExplicitEnlist()
+        {
+            string connectionString = TheConnectionString;
+            using (var connection = new NpgsqlConnection(connectionString)) {
+                using (var scope = new TransactionScope()) {
+                    connection.Open();
+                    connection.EnlistTransaction(Transaction.Current);
+                    var command = new NpgsqlCommand("insert into tablea(field_text) values (:p0)", connection);
+                    command.Parameters.Add(new NpgsqlParameter("p0", "test"));
+                    Assert.AreEqual(1, command.ExecuteNonQuery());
+                    scope.Complete();
+                }
+            }
+            AssertNoTransactions();
+        }
+
+        //[Test, Description("TransactionScope with a single connection, enlisting implicitly")]
+        [Test]
+        public void SimpleTransactionScopeWithImplicitEnlist()
+        {
+            string connectionString = TheConnectionString + ";enlist=true";
+            using (var scope = new TransactionScope()) {
+                using (var connection = new NpgsqlConnection(connectionString)) {
+                    connection.Open();
+                    var command = new NpgsqlCommand("insert into tablea(field_text) values (:p0)", connection);
+                    command.Parameters.Add(new NpgsqlParameter("p0", "test"));
+                    Assert.AreEqual(1, command.ExecuteNonQuery());
+                }
+                scope.Complete();
+            }
+            AssertNoTransactions();
+        }
+
         [Test]
         public void DistributedTransactionRollback()
         {
             int field_serial1;
             int field_serial2;
-            string connectionString = TheConnectionString + ";enlist=true;pooling=false";
+            string connectionString = TheConnectionString + ";enlist=true";
             using (TransactionScope scope = new TransactionScope())
             {
                 //UseStringParameterWithNoNpgsqlDbType
@@ -151,7 +186,7 @@ namespace NpgsqlTests
             command.Parameters.Add(new NpgsqlParameter("p0", field_serial));
             object result = command.ExecuteScalar();
             Assert.AreEqual(null, result);
-        }   
+        }
 
         [Test]
         public void TwoDistributedInSequence()

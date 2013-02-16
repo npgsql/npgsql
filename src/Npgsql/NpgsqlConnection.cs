@@ -122,6 +122,9 @@ namespace Npgsql
 
 		// Used when we closed the connector due to an error, but are pretending it's open.
 		private bool _fakingOpen;
+        // Used when the connection is closed but an TransactionScope is still active
+        // (the actual close is postponed until the scope ends)
+	    private bool _postponingClose;
 
 		// Strong-typed ConnectionString values
 		private NpgsqlConnectionStringBuilder settings;
@@ -523,6 +526,11 @@ namespace Npgsql
 		/// </summary>
 		public override void Open()
 		{
+            // If we're postponing a close (see doc on this variable), the connection is already
+            // open and can be silently reused
+		    if (_postponingClose)
+		        return;
+
 			CheckConnectionClosed();
 
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
@@ -598,28 +606,50 @@ namespace Npgsql
 		public override void Close()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-            
-			if (connector != null)
-			{
-				Promotable.Prepare();
-                // clear the way for another promotable transaction
-                promotable = null;
 
-				connector.Notification -= NotificationDelegate;
-				connector.Notice -= NoticeDelegate;
+		    if (connector == null)
+		        return;
 
-				if (SyncNotification)
-				{
-					connector.RemoveNotificationThread();
-				}
+		    if (promotable != null && promotable.InLocalTransaction)
+		    {
+		        _postponingClose = true;
+		        return;
+		    }
 
-				NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+		    ReallyClose();
+        }
 
+        private void ReallyClose()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
+            _postponingClose = false;
 
-				connector = null;
-			
-			}
-		}
+            // clear the way for another promotable transaction
+            promotable = null;
+
+            connector.Notification -= NotificationDelegate;
+            connector.Notice -= NoticeDelegate;
+
+            if (SyncNotification)
+            {
+                connector.RemoveNotificationThread();
+            }
+
+            NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+
+            connector = null;
+        }
+
+        /// <summary>
+        /// When a connection is closed within an enclosing TransactionScope and the transaction
+        /// hasn't been promoted, we defer the actual closing until the scope ends.
+        /// </summary>
+        internal void PromotableLocalTransactionEnded()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
+            if (_postponingClose)
+                ReallyClose();
+        }
 
 		/// <summary>
 		/// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
@@ -653,25 +683,17 @@ namespace Npgsql
 		/// <b>false</b> when being called from the finalizer.</param>
 		protected override void Dispose(bool disposing)
 		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-					Close();
-				}
-				else
-				{
-					if (FullState != ConnectionState.Closed)
-					{
-						NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
-                        NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
-					}
-				}
+		    if (disposed)
+		        return;
 
-				base.Dispose(disposing);
-				disposed = true;
+			if (disposing)
+			{
+				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
+				Close();
 			}
+
+			base.Dispose(disposing);
+			disposed = true;
 		}
 
 		/// <summary>
@@ -900,7 +922,7 @@ namespace Npgsql
 				_fakingOpen = false;
 			}
 
-			if (connector == null)
+			if (_postponingClose || connector == null)
 			{
 				throw new InvalidOperationException(resman.GetString("Exception_ConnNotOpen"));
 			}
