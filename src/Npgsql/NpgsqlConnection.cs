@@ -129,8 +129,16 @@ namespace Npgsql
 		/// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class.
 		/// </summary>
 		public NpgsqlConnection()
-			: this(String.Empty)
+			: this(String.Empty) { }
+
+		private static NpgsqlConnectionStringBuilder GetBuilder(String connectionString)
 		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
+
+			NpgsqlConnectionStringBuilder builder = cache[connectionString];
+			return builder == null
+				? new NpgsqlConnectionStringBuilder(connectionString)
+				: builder.Clone();
 		}
 
 		/// <summary>
@@ -140,20 +148,14 @@ namespace Npgsql
 		/// </summary>
 		/// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
 		public NpgsqlConnection(String ConnectionString)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
+			: this(GetBuilder(ConnectionString)) { }
 
-			NpgsqlConnectionStringBuilder builder = cache[ConnectionString];
-			if (builder == null)
-			{
-				settings = new NpgsqlConnectionStringBuilder(ConnectionString);
-			}
-			else
-			{
-				settings = builder.Clone();
-			}
+		private NpgsqlConnection(NpgsqlConnectionStringBuilder builder)
+		{
+			this.settings = builder;
 
 			LogConnectionString();
+
 
 			NoticeDelegate = new NoticeEventHandler(OnNotice);
 			NotificationDelegate = new NotificationEventHandler(OnNotification);
@@ -563,6 +565,7 @@ namespace Npgsql
 
 			Close();
 
+			settings = settings.Clone();
 			settings[Keywords.Database] = dbName;
 
 			Open();
@@ -674,7 +677,7 @@ namespace Npgsql
 		{
 			CheckNotDisposed();
 
-			NpgsqlConnection C = new NpgsqlConnection(ConnectionString);
+			NpgsqlConnection C = new NpgsqlConnection(settings);
 
 			C.Notice += this.Notice;
 
@@ -854,6 +857,8 @@ namespace Npgsql
 		/// </summary>
 		private void LogConnectionString()
 		{
+			if (NpgsqlEventLog.Level < LogLevel.Debug)
+				return;
 			foreach (string key in settings.Keys)
 			{
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, key, settings[key]);
