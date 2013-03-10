@@ -432,18 +432,18 @@ namespace Npgsql
 			 */
 			const int limitOfSeconds = 2147;
 			
-			bool timeoutTriggered = false;
+			bool socketPoolResponse = false;
 			int secondsToWait = context.Mediator.CommandTimeout;
 			
 			/* In order to bypass this limit, the availability of
 			 * the socket is checked in 2,147 seconds cycles
 			 */
-			while ((secondsToWait > limitOfSeconds) && (!timeoutTriggered)) {    //
-				timeoutTriggered = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
+			while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
+				socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
 				secondsToWait -= limitOfSeconds;
 			}
 			
-			return timeoutTriggered || context.Socket.Poll (1000000 * secondsToWait, selectMode);
+			return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
 		}
 
         protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_2(NpgsqlConnector context)
