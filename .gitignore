@@ -1,2 +1,12 @@
 
 .DS_Store
+_ReSharper.Npgsql2010
+src/bin/
+src/obj/
+src/build/
+*.suo
+*.csproj.user
+testsuite/noninteractive/NUnit20/bin/
+testsuite/noninteractive/NUnit20/obj/
+NUnit20/obj/
+npgsql_tests.log

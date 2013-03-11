@@ -1117,15 +1117,15 @@ npgsqlTimestampTZ));
 			    {
 			        return
 			            (this.Quote
-			                 ? QuoteString((nativeData).ToString(null, ni).Replace("'", "''"))
-			                 : (nativeData).ToString(null, ni).Replace("'", "''"));
+                             ? QuoteString((nativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"))
+                             : (nativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"));
 			    }
 
 				// Do special handling of strings when in simple query. Escape quotes and backslashes.
 				return
 					(this.Quote
-					 	? QuoteString(NativeData.ToString().Replace("'", "''").Replace("\0", "\\0"))
-					 	: NativeData.ToString().Replace("'", "''").Replace("\0", "\\0"));
+					 	? QuoteString(NativeData.ToString().Replace("'", "''").Replace("\\", "\\\\").Replace("\0", "\\0"))
+					 	: NativeData.ToString().Replace("'", "''").Replace("\\", "\\\\").Replace("\0", "\\0"));
 			}
 		}
 
