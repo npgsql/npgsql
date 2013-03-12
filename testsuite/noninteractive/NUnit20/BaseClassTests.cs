@@ -117,12 +117,7 @@ namespace NpgsqlTests
                 if (_connV2.State != ConnectionState.Closed)
                     _connV2.Close();
                     
-            }
-            
-            
-                
-            
-            
+            }                                                        
         }
         
     }

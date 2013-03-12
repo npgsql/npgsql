@@ -6,6 +6,7 @@ src/obj/
 src/build/
 *.suo
 *.csproj.user
+*.DotSettings.user
 testsuite/noninteractive/NUnit20/bin/
 testsuite/noninteractive/NUnit20/obj/
 NUnit20/obj/
