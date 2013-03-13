@@ -1112,13 +1112,14 @@ npgsqlTimestampTZ));
 							Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof (String),
 							                   CultureInfo.InvariantCulture));
 				}
-				else if (NativeData is IFormattable)
-				{
-					return
-						(this.Quote
-						 	? QuoteString(((IFormattable) NativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"))
-						 	: ((IFormattable) NativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"));
-				}
+                IFormattable nativeData = NativeData as IFormattable;
+			    if (nativeData != null)
+			    {
+			        return
+			            (this.Quote
+                             ? QuoteString((nativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"))
+                             : (nativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"));
+			    }
 
 				// Do special handling of strings when in simple query. Escape quotes and backslashes.
 				return

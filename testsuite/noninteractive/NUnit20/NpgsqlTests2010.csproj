@@ -58,7 +58,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="EntityFramework, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\lib\EntityFramework.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -77,9 +82,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="BackslashTests.cs" />
     <Compile Include="BaseClassTests.cs" />
     <Compile Include="CommandTests.cs" />
     <Compile Include="ConnectionTests.cs" />
+    <Compile Include="POCO\Context.cs" />
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="DataReaderTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">
@@ -87,22 +94,12 @@
     </Compile>
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
+    <Compile Include="POCO\Tablea.cs" />
     <Compile Include="TypesTests.cs" />
-    <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
-    <Compile Include="xmlModel\XmlTest.Views.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
       <SubType>Designer</SubType>
-    </None>
-    <None Include="xmlModel\XmlTest.csdl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="xmlModel\XmlTest.msl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="xmlModel\XmlTest.ssdl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>

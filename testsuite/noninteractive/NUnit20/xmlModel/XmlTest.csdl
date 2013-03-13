@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="XmlTest" Alias="Self" xmlns="http://schemas.microsoft.com/ado/2006/04/edm">
+  <EntityContainer Name="XmlTestContext">
+    <EntitySet Name="Customer" EntityType="XmlTest.Customer" />
+    <EntitySet Name="SalesOrderHeader" EntityType="XmlTest.SalesOrderHeader" />
+    <EntitySet Name="User" EntityType="XmlTest.User" />
+    <EntitySet Name="UserDetails" EntityType="XmlTest.UserDetails" />
+    <EntitySet Name="UserToken" EntityType="XmlTest.UserToken" />
+    <EntitySet Name="XmlTable" EntityType="XmlTest.XmlTable" />
+    <EntitySet Name="dispViews" EntityType="XmlTest.dispViews" />
+    <AssociationSet Name="SalesOrderHeader_OrderID_fkey" Association="XmlTest.SalesOrderHeader_OrderID_fkey">
+      <End Role="Customer" EntitySet="Customer" />
+      <End Role="SalesOrderHeader" EntitySet="SalesOrderHeader" />
+    </AssociationSet>
+    <AssociationSet Name="UserDetails_FK" Association="XmlTest.UserDetails_FK">
+      <End Role="User" EntitySet="User" />
+      <End Role="UserDetails" EntitySet="UserDetails" />
+    </AssociationSet>
+    <AssociationSet Name="UserToken_FK" Association="XmlTest.UserToken_FK">
+      <End Role="User" EntitySet="User" />
+      <End Role="UserToken" EntitySet="UserToken" />
+    </AssociationSet>
+    <AssociationSet Name="dispTargetViews" Association="XmlTest.dispTargetViews">
+      <End Role="dispViews" EntitySet="dispViews" />
+      <End Role="dispViews1" EntitySet="dispViews" />
+    </AssociationSet>
+  </EntityContainer>
+  <EntityType Name="Customer">
+    <Key>
+      <PropertyRef Name="OrderID" />
+    </Key>
+    <Property Name="OrderID" Type="Int32" Nullable="false" />
+    <Property Name="NameStyle" Type="Int32" Nullable="false" />
+    <Property Name="FirstName" Type="String" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="LastName" Type="String" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="Active" Type="Boolean" Nullable="false" />
+    <Property Name="ModifiedDate" Type="DateTime" Nullable="false" Precision="6" />
+    <Property Name="TourNumber" Type="Int32" />
+    <Property Name="ExternalNumber" Type="Int32" />
+    <Property Name="MainPhone1" Type="String" MaxLength="25" Unicode="true" FixedLength="false" />
+    <Property Name="MainPhone2" Type="String" MaxLength="25" Unicode="true" FixedLength="false" />
+    <Property Name="PreOrderID" Type="String" MaxLength="15" Unicode="true" FixedLength="false" />
+    <Property Name="LastVisit" Type="DateTime" Precision="0" />
+    <Property Name="Created" Type="DateTime" Nullable="false" Precision="6" />
+    <Property Name="ExternalName" Type="String" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="NewCustomer" Type="Boolean" Nullable="false" />
+    <Property Name="Potential" Type="Boolean" Nullable="false" />
+    <Property Name="CustomerID" Type="Int32" />
+    <Property Name="OldExternalNumber" Type="Int32" />
+    <Property Name="OldTourNumber" Type="Int32" />
+    <Property Name="NewAssigned" Type="Boolean" Nullable="false" />
+    <Property Name="OldActive" Type="Boolean" Nullable="false" />
+    <Property Name="StartDate" Type="DateTime" Precision="0" />
+    <Property Name="Total" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <NavigationProperty Name="SalesOrderHeader" Relationship="XmlTest.SalesOrderHeader_OrderID_fkey" FromRole="Customer" ToRole="SalesOrderHeader" />
+  </EntityType>
+  <EntityType Name="SalesOrderHeader">
+    <Key>
+      <PropertyRef Name="ID" />
+    </Key>
+    <Property Name="OrderDate" Type="DateTime" Precision="6" />
+    <Property Name="Status" Type="Int32" Nullable="false" />
+    <Property Name="BillToAddressID" Type="Int32" />
+    <Property Name="SubTotal" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="TotalDue" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="Comment" Type="String" MaxLength="Max" Unicode="true" FixedLength="false" />
+    <Property Name="ModifiedDate" Type="DateTime" Precision="6" />
+    <Property Name="PaymentVersion" Type="Int32" />
+    <Property Name="BillID" Type="String" MaxLength="15" Unicode="true" FixedLength="false" />
+    <Property Name="BookCounter" Type="Int32" Nullable="false" />
+    <Property Name="SendID" Type="Int32" />
+    <Property Name="SubSubTotal" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="PriceRabatt15" Type="Boolean" Nullable="false" />
+    <Property Name="Total" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="Discount" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="Rabatt" Type="Decimal" Nullable="false" Precision="19" Scale="2" />
+    <Property Name="SendDate" Type="DateTime" Precision="6" />
+    <Property Name="ID" Type="Int32" Nullable="false" />
+    <Property Name="Saison" Type="String" Nullable="false" MaxLength="9" Unicode="true" FixedLength="true" />
+    <NavigationProperty Name="Customer" Relationship="XmlTest.SalesOrderHeader_OrderID_fkey" FromRole="SalesOrderHeader" ToRole="Customer" />
+  </EntityType>
+  <EntityType Name="User">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="Int32" Nullable="false" />
+    <Property Name="Name" Type="String" MaxLength="40" Unicode="true" FixedLength="false" />
+    <Property Name="Login" Type="String" MaxLength="40" Unicode="true" FixedLength="false" />
+    <Property Name="StatusId" Type="Int32" />
+    <NavigationProperty Name="UserDetails" Relationship="XmlTest.UserDetails_FK" FromRole="User" ToRole="UserDetails" />
+    <NavigationProperty Name="UserToken" Relationship="XmlTest.UserToken_FK" FromRole="User" ToRole="UserToken" />
+  </EntityType>
+  <EntityType Name="UserDetails">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="Int32" Nullable="false" />
+    <Property Name="Details" Type="String" MaxLength="120" Unicode="true" FixedLength="false" />
+    <NavigationProperty Name="User" Relationship="XmlTest.UserDetails_FK" FromRole="UserDetails" ToRole="User" />
+  </EntityType>
+  <EntityType Name="UserToken">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="Int32" Nullable="false" />
+    <Property Name="Token" Type="String" MaxLength="40" Unicode="true" FixedLength="false" />
+    <NavigationProperty Name="User" Relationship="XmlTest.UserToken_FK" FromRole="UserToken" ToRole="User" />
+  </EntityType>
+  <EntityType Name="XmlTable">
+    <Key>
+      <PropertyRef Name="key" />
+    </Key>
+    <Property Name="key" Type="Int32" Nullable="false" />
+    <Property Name="test_xml" Type="String" MaxLength="Max" Unicode="true" FixedLength="false" />
+  </EntityType>
+  <EntityType Name="dispViews">
+    <Key>
+      <PropertyRef Name="ViewName" />
+      <PropertyRef Name="MdsIdPlatformId" />
+    </Key>
+    <Property Name="ViewName" Type="String" Nullable="false" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="MdsIdPlatformId" Type="String" Nullable="false" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="DisplayName" Type="String" MaxLength="50" Unicode="true" FixedLength="false" />
+    <Property Name="ImageFileName" Type="String" MaxLength="200" Unicode="true" FixedLength="false" />
+    <NavigationProperty Name="dispViews1" Relationship="XmlTest.dispTargetViews" FromRole="dispViews" ToRole="dispViews1" />
+    <NavigationProperty Name="dispViews2" Relationship="XmlTest.dispTargetViews" FromRole="dispViews1" ToRole="dispViews" />
+  </EntityType>
+  <Association Name="SalesOrderHeader_OrderID_fkey">
+    <End Role="Customer" Type="XmlTest.Customer" Multiplicity="1">
+      <OnDelete Action="Cascade" />
+    </End>
+    <End Role="SalesOrderHeader" Type="XmlTest.SalesOrderHeader" Multiplicity="*" />
+  </Association>
+  <Association Name="UserDetails_FK">
+    <End Role="User" Type="XmlTest.User" Multiplicity="1" />
+    <End Role="UserDetails" Type="XmlTest.UserDetails" Multiplicity="0..1" />
+    <ReferentialConstraint>
+      <Principal Role="User">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="UserDetails">
+        <PropertyRef Name="UserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="UserToken_FK">
+    <End Role="User" Type="XmlTest.User" Multiplicity="1" />
+    <End Role="UserToken" Type="XmlTest.UserToken" Multiplicity="0..1" />
+    <ReferentialConstraint>
+      <Principal Role="User">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="UserToken">
+        <PropertyRef Name="UserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="dispTargetViews">
+    <End Role="dispViews" Type="XmlTest.dispViews" Multiplicity="*" />
+    <End Role="dispViews1" Type="XmlTest.dispViews" Multiplicity="*" />
+  </Association>
+</Schema>

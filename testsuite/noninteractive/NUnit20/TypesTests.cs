@@ -632,11 +632,7 @@ namespace NpgsqlTests
             
             Object o = p.Value;
             
-            
-            
         }
-
-        
-        
+           
 	}
 }
