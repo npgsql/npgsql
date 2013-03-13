@@ -134,13 +134,9 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Boolean:
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
-                    var x = typeInfo.ConvertToBackend(_value, false);
-                    if (x.StartsWith("'"))
-                    {
-                        sqlText.Append('E');
-                    }
-                    sqlText.Append(x);
+                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);                    
+                    sqlText.Append('E');
+                    sqlText.Append(typeInfo.ConvertToBackend(_value, false));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0:T}'", _value);
