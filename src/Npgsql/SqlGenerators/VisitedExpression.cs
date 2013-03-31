@@ -135,6 +135,10 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
                     NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
+                    // Escape syntax is needed for strings with escape values.
+                    // We don't check if there are escaped strings for performance reasons.
+                    // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
+                    sqlText.Append('E'); 
                     sqlText.Append(typeInfo.ConvertToBackend(_value, false));
                     break;
                 case PrimitiveTypeKind.Time:
