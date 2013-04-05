@@ -635,8 +635,59 @@ namespace NpgsqlTests
             
             
         }
+        [Test]
+        public void Bug1011321WrongBitStringvalue()
+        {
 
+            BitString b = new BitString (true, 32);
+
+            Assert.AreEqual ("11111111111111111111111111111111", b.ToString ());
+
+
+        }
+
+        [Test]
+        public void Bug1011321WrongBitStringvalue2()
+        {
+            BitString b = new BitString (true, 6);
+            
+            Assert.AreEqual ("111111", b.ToString ());
+            
+            
+        }
+        [Test]
+        public void Bug1011321WrongBitStringvalue3()
+        {
+            BitString b = new BitString (true, 32);
+            
+            BitString b2 = new BitString("11111111111111111111111111111111");
+            
+            Assert.IsTrue(b == b2);
+            
+            
+        }
         
+        [Test]
+        public void BitStringSupport()
+        {
+            String bitMask = "1101101101101101101101101011011011010110110110";
+            BitString b = new BitString(bitMask);
+            
+            Assert.AreEqual (bitMask, b.ToString ());
+            
+            
+        }
+        
+        [Test]
+        public void BitStringSupport2()
+        {
+            String bitMask = "110110110110110110110110101101101";
+            BitString b = new BitString(bitMask);
+            
+            Assert.AreEqual (bitMask, b.ToString ());
+            
+            
+        }
         
 	}
 }
