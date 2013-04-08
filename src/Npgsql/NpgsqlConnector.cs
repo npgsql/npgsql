@@ -153,10 +153,7 @@ namespace Npgsql
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
         
-        // Did we already called cancelRequest?
-        private Boolean _cancelRequestCalled = false;
 
-        
 
 #if WINDOWS && UNMANAGED
 
@@ -640,10 +637,6 @@ namespace Npgsql
             set { _supportsSavepoint = value; } 
           
         }
-        
-        public Boolean CancelRequestCalled  {
-            get { return _cancelRequestCalled; }
-        }
 
         
 
@@ -879,8 +872,6 @@ namespace Npgsql
             finally
             {
                 cancelConnector.CurrentState.Close(cancelConnector);
-                
-                _cancelRequestCalled = true;
             }
             
         }
