@@ -8,6 +8,7 @@ using NUnit.Framework;
 namespace NpgsqlTests
 {
     [TestFixture]
+    [Category("MonoNotSupported")]
     public class SystemTransactionsTest : BaseClassTests
     {
         protected override NpgsqlConnection TheConnection
