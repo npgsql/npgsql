@@ -578,23 +578,36 @@ namespace Npgsql
             if (value == null)
             {
                 Remove(keyword);
+                return;
+            }
+
+            string strValue = value as string;
+            if (strValue != null)
+            {
+                // .NET's DbConnectionStringBuilder trims whitespace and discards empty values,
+                // so we do the same
+                strValue = strValue.Trim();
+                if (strValue.Length == 0)
+                {
+                    Remove(keyword);
+                    return;
+                }
+                value = strValue;
+            }
+
+            Keywords key = GetKey(keyword);
+            SetValue(key, value);
+            if (key == Keywords.Protocol)
+            {
+                base[GetKeyName(key)] = ToString(this.Protocol);
+            }
+            else if (key == Keywords.Compatible)
+            {
+                base[GetKeyName(key)] = ((Version) this.Compatible).ToString();
             }
             else
             {
-                Keywords key = GetKey(keyword);
-                SetValue(key, value);
-                if (key == Keywords.Protocol)
-                {
-                    base[GetKeyName(key)] = ToString(this.Protocol);
-                }
-                else if (key == Keywords.Compatible)
-                {
-                    base[GetKeyName(key)] = ((Version) this.Compatible).ToString();
-                }
-                else
-                {
-                    base[GetKeyName(key)] = value;
-                }
+                base[GetKeyName(key)] = value;
             }
         }
 
