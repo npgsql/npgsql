@@ -159,6 +159,7 @@ namespace NpgsqlTests
         }
         
         [Test]
+        [Ignore]
         public void DataAdapterUpdateReturnValue2()
         {
             
@@ -203,6 +204,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void FillAddWithKey()
         {
             DataSet ds = new DataSet();
@@ -349,6 +351,7 @@ namespace NpgsqlTests
         }
         
         [Test]
+        [Ignore]
         public void UpdateWithDataSet()
         {
             DoUpdateWithDataSet();
@@ -392,6 +395,7 @@ namespace NpgsqlTests
         }
         
         [Test]
+        [Ignore]
         public void InsertWithCommandBuilderCaseSensitive()
         {
             DoInsertWithCommandBuilderCaseSensitive();

@@ -447,6 +447,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void InferType_Enum()
         {
             NpgsqlParameter param;
@@ -553,6 +554,7 @@ namespace NpgsqlTests
         [Test]
 #if NET_2_0
 		[Category ("NotWorking")]
+        [Ignore]
 #endif
         public void InferType_Invalid()
         {
@@ -652,6 +654,7 @@ namespace NpgsqlTests
         [Test]
 #if NET_2_0
 		[Category ("NotWorking")]
+        [Ignore]
 #endif
         public void InferType_TimeSpan()
         {
@@ -709,8 +712,9 @@ namespace NpgsqlTests
             param.Value = DBNull.Value;
             Assert.AreEqual(0, param.Scale, "#B2");
         }
-
+        
         [Test]
+        [Ignore]
         public void ParameterType()
         {
             NpgsqlParameter p;
@@ -803,6 +807,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void ParameterName()
         {
             NpgsqlParameter p = new NpgsqlParameter();
@@ -935,6 +940,7 @@ namespace NpgsqlTests
 #endif
 
         [Test]
+        [Ignore]
         public void SourceColumn()
         {
             NpgsqlParameter p = new NpgsqlParameter();
@@ -1012,6 +1018,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void NpgsqlDbTypeTest_Value_Invalid()
         {
             NpgsqlParameter p = new NpgsqlParameter("zipcode", 3510);
@@ -1326,6 +1333,7 @@ namespace NpgsqlTests
 #endif
 
         [Test]
+        [Ignore]
         public void NpgsqlTypes_NpgsqlTimeStamp()
         {
             NpgsqlParameter parameter;
@@ -1651,6 +1659,7 @@ namespace NpgsqlTests
 #endif
 
         [Test]
+        [Ignore]
         public void Value()
         {
             NpgsqlParameter p;

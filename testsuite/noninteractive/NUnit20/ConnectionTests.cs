@@ -251,6 +251,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void NpgsqlErrorRepro1()
         {
             using (NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString))
