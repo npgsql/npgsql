@@ -3,8 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+#if ENTITIES6
+using System.Data.Entity.Core.Common.CommandTrees;
+using System.Data.Entity.Core.Metadata.Edm;
+#else
 using System.Data.Metadata.Edm;
 using System.Data.Common.CommandTrees;
+#endif
 using NpgsqlTypes;
 using System.Data;
 

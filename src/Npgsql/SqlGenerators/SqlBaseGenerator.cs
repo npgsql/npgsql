@@ -2,8 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+#if ENTITIES6
+using System.Data.Entity.Core.Common.CommandTrees;
+using System.Data.Entity.Core.Metadata.Edm;
+#else
 using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
+#endif
 using System.Linq;
 
 namespace Npgsql.SqlGenerators
@@ -1320,6 +1325,18 @@ namespace Npgsql.SqlGenerators
         //    _projectVarName = _projectScopeStack.Pop();
         //    _filterVarName = _filterScopeStack.Pop();
         //}
+
+#if ENTITIES6
+        public override VisitedExpression Visit(DbInExpression expression)
+        {
+            throw new NotImplementedException("New in Entity Framework 6");
+        }
+
+        public override VisitedExpression Visit(DbPropertyExpression expression)
+        {
+            throw new NotImplementedException("New in Entity Framework 6");
+        }
+#endif
     }
 }
 #endif
