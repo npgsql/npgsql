@@ -2,7 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+#if ENTITIES6
+using System.Data.Entity.Core.Common.CommandTrees;
+#else
 using System.Data.Common.CommandTrees;
+#endif
 
 namespace Npgsql.SqlGenerators
 {
