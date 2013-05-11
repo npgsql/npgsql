@@ -1,0 +1,6 @@
+
+.DS_Store
+*.resources
+bin
+build
+testsuite/noninteractive/NUnit20/test-results/
