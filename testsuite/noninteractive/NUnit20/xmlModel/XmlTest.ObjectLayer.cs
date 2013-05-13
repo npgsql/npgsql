@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+#if ENTITIES
 [assembly: global::System.Data.Objects.DataClasses.EdmSchemaAttribute()]
 [assembly: global::System.Data.Objects.DataClasses.EdmRelationshipAttribute("XmlTest", "SalesOrderHeader_OrderID_fkey", "Customer", global::System.Data.Metadata.Edm.RelationshipMultiplicity.One, typeof(XmlTest.Customer), "SalesOrderHeader", global::System.Data.Metadata.Edm.RelationshipMultiplicity.Many, typeof(XmlTest.SalesOrderHeader))]
 [assembly: global::System.Data.Objects.DataClasses.EdmRelationshipAttribute("XmlTest", "UserDetails_FK", "User", global::System.Data.Metadata.Edm.RelationshipMultiplicity.One, typeof(XmlTest.User), "UserDetails", global::System.Data.Metadata.Edm.RelationshipMultiplicity.ZeroOrOne, typeof(XmlTest.UserDetails))]
@@ -1936,3 +1937,4 @@ namespace XmlTest
         }
     }
 }
+#endif

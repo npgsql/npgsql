@@ -7,7 +7,7 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
-
+#if ENTITIES
 [assembly: System.Data.Mapping.EntityViewGenerationAttribute(typeof(Edm_EntityMappingGeneratedViews.ViewsForBaseEntitySets32CD194B04BDC9F607C67C8FAB6BC4DC))]
 
 namespace Edm_EntityMappingGeneratedViews
@@ -486,3 +486,4 @@ namespace Edm_EntityMappingGeneratedViews
         }
     }
 }
+#endif
