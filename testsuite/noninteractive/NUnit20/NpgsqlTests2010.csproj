@@ -27,61 +27,43 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
     <OutputType>Library</OutputType>
     <AssemblyName>NpgsqlTests</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>..\..\..\src\build\nunit2tests\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DefineConstants>
-    </DefineConstants>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <OutputType>Library</OutputType>
-    <AssemblyName>NpgsqlTests</AssemblyName>
     <OutputPath>bin\Release\</OutputPath>
-    <DebugSymbols>false</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DefineConstants>
-    </DefineConstants>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Mono-Debug|AnyCPU' ">
-    <OutputType>Library</OutputType>
-    <AssemblyName>NpgsqlTests</AssemblyName>
     <OutputPath>..\..\..\src\build\nunit2tests\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DefineConstants>
-    </DefineConstants>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Mono-Release|AnyCPU' ">
-    <OutputType>Library</OutputType>
-    <AssemblyName>NpgsqlTests</AssemblyName>
     <OutputPath>bin\Mono-Release\</OutputPath>
-    <DebugSymbols>false</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <DefineConstants>
-    </DefineConstants>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
@@ -89,7 +71,6 @@
     <Reference Include="nunit.core.interfaces" />
     <Reference Include="nunit.framework" />
     <Reference Include="nunit.util" />
-    <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -103,7 +84,8 @@
     </Reference>
     <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
-    <Reference Include="System.XML" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
@@ -165,7 +147,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Npgsql2010.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
-      <Name>Npgsql2008</Name>
+      <Name>Npgsql2010</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
