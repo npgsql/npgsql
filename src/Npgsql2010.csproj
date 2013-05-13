@@ -8,8 +8,6 @@
     <ProjectGuid>{9D13B739-62B1-4190-B386-7A9547304EB3}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>
-    </RootNamespace>
     <AssemblyName>Npgsql</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
@@ -76,18 +74,16 @@
     <DocumentationFile>bin\Release4\Npgsql.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Mono.Security.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
-    <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.Entity" />
     <Reference Include="System.Transactions" />
-    <Reference Include="System.XML" />
+    <Reference Include="Mono.Security">
+      <HintPath>..\lib\Mono.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Npgsql\Npgsql.snk" />
