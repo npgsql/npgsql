@@ -67,10 +67,15 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.core" />
-    <Reference Include="nunit.core.interfaces" />
-    <Reference Include="nunit.framework" />
-    <Reference Include="nunit.util" />
+    <Reference Include="nunit.core">
+      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.core.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.util">
+      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.util.dll</HintPath>
+    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
