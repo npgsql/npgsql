@@ -207,14 +207,20 @@ namespace NpgsqlTests
         [Test]
         public void UseAllConnectionsInPool()
         {
+
+            // As this method uses a lot of connections, clear all connections from all pools before starting. 
+            // This is needed in order to not reach the max connections allowed and start to raise errors.
+
+            NpgsqlConnection.ClearAllPools ();
+
             List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
             // repeat test to exersize pool
             for (int i = 0; i < 10; ++i)
             {
                 try
                 {
-                    // 19 since base class opens one and the default pool size is 20
-                    for (int j = 0; j < 19; ++j)
+                    // 18 since base class opens two and the default pool size is 20
+                    for (int j = 0; j < 18; ++j)
                     {
                         NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
                         connection.Open();
@@ -227,6 +233,8 @@ namespace NpgsqlTests
                     openedConnections.Clear();
                 }
             }
+
+            NpgsqlConnection.ClearAllPools ();
         }
 
         [Test]
@@ -247,6 +255,7 @@ namespace NpgsqlTests
             finally
             {
                 openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+                NpgsqlConnection.ClearAllPools ();
             }
         }
 
