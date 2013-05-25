@@ -384,8 +384,8 @@
 	<copy file="${ms.build.dir}/Npgsql.pdb" todir="${nunit2tests.build.dir}" failonerror="false"/>
         <copy file="${tls.lib}" todir="${nunit2tests.build.dir}"/>
         <nunit2>
-	    <formatter type="Plain" usefile="true" extension=".log" outputdir="${nunit2tests.build.dir}" />
-            <test assemblyname="${nunit2tests.build.dir}/NpgsqlTests.dll"/>
+		<formatter type="Plain" usefile="true" extension=".log" outputdir="${nunit2tests.build.dir}" />
+		<test assemblyname="${nunit2tests.build.dir}/NpgsqlTests.dll" appconfig="./../testsuite/noninteractive/NUnit20/App.config"/>
         </nunit2>
     </target>
 
