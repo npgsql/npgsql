@@ -2269,61 +2269,6 @@ namespace NpgsqlTests
             
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType);
         }
-        
-        [Test]
-        public void ProblemSqlInsideException()
-        {
-            String sql = "selec 1 as test";
-            try
-            {
-                NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
-                
-                command.ExecuteReader();
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual(sql, ex.ErrorSql);
-            }
-        }
-
-        [Test]
-        public void ExceptionFieldsArePopulated()
-        {
-            String dropTable = "DROP TABLE IF EXISTS public.uniqueviolation";
-            String createTable = "CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
-            String insertStatement = "INSERT INTO public.uniqueviolation (id) VALUES(1)";
-
-            // 9.3 saw the introduction to 5 new error fields which can be supplied in certain error cases
-            // These won't be populated in version previous to 9.3.0, so we'll skip the test for releases earlier than this.
-            if (TheConnection.PostgreSqlVersion < new Version("9.3.0"))
-                return;
-
-            // In this case we'll test a simple unique violation, we're not too interested in testing more
-            // cases than this as the same code is executed in all error situations. 
-            try
-            {
-                NpgsqlCommand command = new NpgsqlCommand(dropTable, TheConnection);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(createTable, TheConnection);
-                command.ExecuteNonQuery();
-
-                command = new NpgsqlCommand(insertStatement, TheConnection);
-                command.ExecuteNonQuery();
-
-                //Now cause the unique violation...
-                command.ExecuteNonQuery();
-
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual("id",ex.ColumnName);
-                Assert.AreEqual("uniqueviolation", ex.TableName);
-                Assert.AreEqual("public", ex.SchemaName);
-                Assert.AreEqual("uniqueviolation_pkey", ex.ConstraintName);
-                Assert.AreEqual("integer", ex.DataTypeName);
-            }
-        }
 
         [Test]
         public void ReadUncommitedTransactionSupport()
