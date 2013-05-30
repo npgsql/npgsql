@@ -93,12 +93,15 @@ namespace NpgsqlTests
             }
             catch (NpgsqlException ex)
             {
+                Assert.AreEqual("", ex.ColumnName); // Should not be populated for unique violations.
                 Assert.AreEqual("uniqueviolation", ex.TableName);
                 Assert.AreEqual("public", ex.SchemaName);
                 Assert.AreEqual("uniqueviolation_pkey", ex.ConstraintName);
+                Assert.AreEqual("", ex.DataTypeName); // Should not be populated for unique violations.
             }
         }
 
+        [Test]
         public void ColumnNameExceptionFieldsIsPopulated()
         {
             String dropTable = "DROP TABLE IF EXISTS public.notnullviolation";
@@ -130,6 +133,7 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
         public void DataTypeNameExceptionFieldsIsPopulated()
         {
             String dropDomain = "DROP DOMAIN IF EXISTS public.intnotnull";
