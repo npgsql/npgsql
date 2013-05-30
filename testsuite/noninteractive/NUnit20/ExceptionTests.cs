@@ -64,7 +64,7 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void ExceptionFieldsArePopulated1()
+        public void ExceptionFieldsArePopulated()
         {
             String dropTable = "DROP TABLE IF EXISTS public.uniqueviolation";
             String createTable = "CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
@@ -102,7 +102,7 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void ColumnNameExceptionFieldsIsPopulated()
+        public void ColumnNameExceptionFieldIsPopulated()
         {
             String dropTable = "DROP TABLE IF EXISTS public.notnullviolation";
             String createTable = "CREATE TABLE public.notnullviolation (id INT NOT NULL)";
@@ -134,8 +134,12 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void DataTypeNameExceptionFieldsIsPopulated()
+        public void DataTypeNameExceptionFieldIsPopulated()
         {
+            // On reading the source code for PostgreSQL9.3beta1, the only time that the
+            // datatypename field is populated is when using domain types. So here we'll
+            // create a domain that simply does not allow NULLs then try and cast NULL
+            // to it.
             String dropDomain = "DROP DOMAIN IF EXISTS public.intnotnull";
             String createDomain = "CREATE DOMAIN public.intnotnull AS INT NOT NULL";
             String castStatement = "SELECT CAST(NULL AS public.intnotnull)";
