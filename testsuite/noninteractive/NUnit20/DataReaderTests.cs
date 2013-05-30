@@ -146,7 +146,10 @@ namespace NpgsqlTests
             
             dr.Close();
         }
+
+
         [Test]
+        [Ignore]
         public void GetBytesSequential()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_serial = 1;", TheConnection);

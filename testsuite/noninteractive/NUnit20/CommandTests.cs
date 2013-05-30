@@ -1081,6 +1081,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void TimeSupportTimezone()
         {
             NpgsqlCommand command = new NpgsqlCommand("select '13:03:45.001-05'::timetz", TheConnection);
@@ -3873,7 +3874,7 @@ connection.Open();*/
             Assert.AreEqual(typeof(Int64), result.GetType());
 
 
-
+            /*
             // time
 
             cmd.CommandText = "select current_time::time";
@@ -3889,7 +3890,8 @@ connection.Open();*/
             result = cmd.ExecuteScalar();
 
             Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
-
+            */
+            
 
 
 
