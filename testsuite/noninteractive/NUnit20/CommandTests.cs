@@ -3553,6 +3553,33 @@ connection.Open();*/
             
             
         }
+
+        [Test]
+        public void Bug1011085()
+        {
+            // Money format is not set in accordance with the system locale format
+
+            NpgsqlCommand command = new NpgsqlCommand("select :moneyvalue", TheConnection);
+            Decimal expectedValue = 8.99m;
+
+            command.Parameters.Add ("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
+
+            Decimal result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 100m;
+            command.Parameters [0].Value = expectedValue;
+            result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 72.25m;
+            command.Parameters [0].Value = expectedValue;
+            result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+
+
+        }
        
         [Test]
         public void Bug1010714AndPatch1010715()
