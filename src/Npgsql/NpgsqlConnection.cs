@@ -576,6 +576,10 @@ namespace Npgsql
 			{
 				Promotable.Enlist(Transaction.Current);
 			}
+
+#if ENTITIES6
+            this.OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+#endif
 		}
 
 		/// <summary>
@@ -638,6 +642,10 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
             _postponingClose = false;
 
+#if ENTITIES6
+            ConnectionState oldState = connector.State;
+#endif
+
             // clear the way for another promotable transaction
             promotable = null;
 
@@ -669,6 +677,10 @@ namespace Npgsql
             }
 
             connector = null;
+
+#if ENTITIES6
+            this.OnStateChange(new StateChangeEventArgs(oldState, ConnectionState.Closed));
+#endif
         }
 
         /// <summary>

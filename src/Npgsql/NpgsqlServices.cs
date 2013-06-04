@@ -3,8 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Xml;
+#if ENTITIES6
+using System.Data.Entity.Core.Common;
+using System.Data.Entity.Core.Common.CommandTrees;
+using System.Data.Entity.Core.Metadata.Edm;
+#else
 using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
+#endif
 using Npgsql.SqlGenerators;
 
 namespace Npgsql

@@ -2,7 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+#if ENTITIES6
+using System.Data.Entity.Core.Common.CommandTrees;
+#else
 using System.Data.Common.CommandTrees;
+#endif
 
 namespace Npgsql.SqlGenerators
 {
@@ -36,7 +40,11 @@ namespace Npgsql.SqlGenerators
                     DbScanExpression scan = _commandTree.Target.Expression as DbScanExpression;
                     if (scan != null)
                     {
+#if ENTITIES6
+                        System.Data.Entity.Core.Metadata.Edm.MetadataProperty metadata;
+#else
                         System.Data.Metadata.Edm.MetadataProperty metadata;
+#endif
                         string overrideSchema = "http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator:Schema";
                         if (scan.Target.MetadataProperties.TryGetValue(overrideSchema, false, out metadata) && metadata.Value != null)
                         {
