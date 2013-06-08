@@ -373,6 +373,29 @@ namespace NpgsqlTests
             
         }
 
+		[Test]
+		public void GetSchemaParameterMarkerFormats()
+		{
+			DataTable dt = TheConnection.GetSchema("DataSourceInformation");
+			String parameterMarkerFormat = dt.Rows[0]["ParameterMarkerFormat"] as string;
+
+			using (NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString))
+			{
+				connection.Open();
+				using (NpgsqlCommand command = connection.CreateCommand())
+				{
+					const String parameterName = "p_field_int4";
+					command.CommandText = "SELECT * FROM tablea WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
+					command.Parameters.Add(new NpgsqlParameter(parameterName,4));
+					using (NpgsqlDataReader reader = command.ExecuteReader())
+					{
+						Assert.IsTrue(reader.Read());
+						// This is OK, when no exceptions are occurred.
+					}
+				}
+			}
+		}
+
     }
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
