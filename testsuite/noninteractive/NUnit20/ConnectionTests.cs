@@ -373,6 +373,37 @@ namespace NpgsqlTests
             
         }
 
+        [Test]
+        public void ChangeState()
+        {
+
+            using (NpgsqlConnection c = new NpgsqlConnection (TheConnectionString)) 
+            {
+                bool stateChangeCalledForOpen = false;
+                bool stateChangeCalledForClose = false;
+
+
+                c.StateChange += new StateChangeEventHandler( delegate(object sender, StateChangeEventArgs e) {
+                    if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
+                        stateChangeCalledForOpen = true;
+
+                    if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
+                        stateChangeCalledForClose = true;
+                });
+
+                c.Open ();
+                c.Close ();
+
+                Assert.IsTrue (stateChangeCalledForOpen);
+                Assert.IsTrue (stateChangeCalledForClose);
+
+            }
+
+
+
+
+        }
+
     }
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
