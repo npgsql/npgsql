@@ -1,4 +1,4 @@
-@if "%WindowsSdkDir_35%"=="" goto NO_WIN_SDK
+@if "%WindowsSdkDir%"=="" goto NO_WIN_SDK
 
 @setlocal
 
@@ -8,8 +8,13 @@
 @if not exist %net20out% mkdir %net20out%
 @if not exist %net40out% mkdir %net40out%
 
-@"%WindowsSdkDir_35%\al.exe" /nologo /link:policy.2.0.Npgsql.config /out:%net20out%\policy.2.0.Npgsql.dll /keyfile:Npgsql\Npgsql.snk
-@"%WindowsSdkDir_35%\NETFX 4.0 Tools\al.exe" /nologo /link:policy.2.0.Npgsql.config /out:%net40out%\policy.2.0.Npgsql.dll /keyfile:Npgsql\Npgsql.snk
+@set aldir=%WindowsSdkDir_35%
+
+:: If dev env is VS2010, then another path should be used.
+@if "%aldir%"=="" set aldir=%WindowsSDKDir%\Bin
+
+@"%aldir%\al.exe" /nologo /link:policy.2.0.Npgsql.config /out:%net20out%\policy.2.0.Npgsql.dll /keyfile:Npgsql\Npgsql.snk
+@"%aldir%\NETFX 4.0 Tools\al.exe" /nologo /link:policy.2.0.Npgsql.config /out:%net40out%\policy.2.0.Npgsql.dll /keyfile:Npgsql\Npgsql.snk
 @goto :EOF
 
 :NO_WIN_SDK
