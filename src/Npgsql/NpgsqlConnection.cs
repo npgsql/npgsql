@@ -30,12 +30,12 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Net.Security;
 using System.Reflection;
 using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
-using Mono.Security.Protocol.Tls;
 using IsolationLevel = System.Data.IsolationLevel;
 
 #if WITHDESIGN
@@ -95,27 +95,12 @@ namespace Npgsql
         
         internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
 
-
-		/// <summary>
-		/// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-		/// </summary>
-		public event CertificateSelectionCallback CertificateSelectionCallback;
-
-		internal CertificateSelectionCallback CertificateSelectionCallbackDelegate;
-
-		/// <summary>
-		/// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-		/// </summary>
-		public event CertificateValidationCallback CertificateValidationCallback;
-
-		internal CertificateValidationCallback CertificateValidationCallbackDelegate;
-
-		/// <summary>
-		/// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-		/// </summary>
-		public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
-
-		internal PrivateKeySelectionCallback PrivateKeySelectionCallbackDelegate;
+        /// <summary>
+        /// Called to validate the server's certificate
+        /// </summary>
+        public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
+        
+        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
 
 		// Set this when disposed is called.
 		private bool disposed = false;
@@ -170,10 +155,7 @@ namespace Npgsql
 			NotificationDelegate = new NotificationEventHandler(OnNotification);
 
             ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
-			CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
-			CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-			PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
-
+            ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
 			// Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and 
 			// http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
 			RSACryptoServiceProvider.UseMachineKeyStore = true;
@@ -557,9 +539,7 @@ namespace Npgsql
                 connector = new NpgsqlConnector(this);
 
                 connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
-                connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
-                connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
-                connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
+                connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
 
                 connector.Open();
             }
@@ -659,9 +639,7 @@ namespace Npgsql
             else
             {
                 Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
-                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
-                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
 
                 if (Connector.Transaction != null)
                 {
@@ -856,53 +834,6 @@ namespace Npgsql
 		// Event handlers
 		//
 
-		/// <summary>
-		/// Default SSL CertificateSelectionCallback implementation.
-		/// </summary>
-		internal X509Certificate DefaultCertificateSelectionCallback(X509CertificateCollection clientCertificates,
-																	 X509Certificate serverCertificate, string targetHost,
-		                                                             X509CertificateCollection serverRequestedCertificates)
-		{
-			if (CertificateSelectionCallback != null)
-			{
-				return CertificateSelectionCallback(clientCertificates, serverCertificate, targetHost, serverRequestedCertificates);
-			}
-			else
-			{
-				return null;
-			}
-		}
-
-		/// <summary>
-		/// Default SSL CertificateValidationCallback implementation.
-		/// </summary>
-		internal bool DefaultCertificateValidationCallback(X509Certificate certificate, int[] certificateErrors)
-		{
-			if (CertificateValidationCallback != null)
-			{
-				return CertificateValidationCallback(certificate, certificateErrors);
-			}
-			else
-			{
-				return true;
-			}
-		}
-
-		/// <summary>
-		/// Default SSL PrivateKeySelectionCallback implementation.
-		/// </summary>
-		internal AsymmetricAlgorithm DefaultPrivateKeySelectionCallback(X509Certificate certificate, string targetHost)
-		{
-			if (PrivateKeySelectionCallback != null)
-			{
-				return PrivateKeySelectionCallback(certificate, targetHost);
-			}
-			else
-			{
-				return null;
-			}
-		}
-
         /// <summary>
         /// Default SSL ProvideClientCertificatesCallback implementation.
         /// </summary>
@@ -912,6 +843,22 @@ namespace Npgsql
             {
                 ProvideClientCertificatesCallback(certificates);
             }            
+        }
+
+        /// <summary>
+        /// Default SSL ValidateRemoteCertificateCallback implementation.
+        /// </summary>
+        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        {
+            if (ValidateRemoteCertificateCallback != null)
+            {
+                return ValidateRemoteCertificateCallback(cert, chain, errors);
+            }
+            else
+            {
+                // Fail validation by default for security reasons
+                return false;
+            }
         }
 
 
