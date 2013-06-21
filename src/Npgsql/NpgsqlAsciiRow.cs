@@ -29,6 +29,7 @@
 using System;
 using System.Data;
 using System.IO;
+using System.Text;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -68,6 +69,9 @@ namespace Npgsql
 
 			NpgsqlRowDescription.FieldData field_descr = FieldData;
 
+			if (fieldSize >= 85000)
+				return ReadLargeObject(field_descr, fieldSize);
+
 			byte[] buffer = new byte[fieldSize];
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, fieldSize);
 
@@ -75,18 +79,57 @@ namespace Npgsql
 			{
 				if (field_descr.FormatCode == FormatCode.Text)
 				{
-					char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-					UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
+					var str = UTF8Encoding.GetString(buffer);
 					return
-						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
-																		   field_descr.TypeSize, field_descr.TypeModifier);
+						NpgsqlTypesHelper.ConvertBackendStringToSystemType(
+							field_descr.TypeInfo,
+							str,
+							field_descr.TypeSize,
+							field_descr.TypeModifier);
 				}
 				else
 				{
 					return
-						NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, buffer, fieldSize,
-																		  field_descr.TypeModifier);
+						NpgsqlTypesHelper.ConvertBackendBytesToSystemType(
+							field_descr.TypeInfo,
+							buffer,
+							fieldSize,
+							field_descr.TypeModifier);
 				}
+			}
+			catch (InvalidCastException ice)
+			{
+				return ice;
+			}
+			catch (Exception ex)
+			{
+				return new InvalidCastException(ex.Message, ex);
+			}
+		}
+
+		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
+		{
+			var cms = new ChunkedMemoryStream(Stream, field_value_size);
+			var sb = new StringBuilder();
+			var buf = new char[8192];
+			using (var sr = new StreamReader(cms, Encoding.UTF8))
+			{
+				int pos = 0;
+				while (pos < field_value_size)
+				{
+					var read = sr.Read(buf, 0, 8192);
+					sb.Append(buf, 0, read);
+					pos += read;
+				}
+			}
+			try
+			{
+				return
+					NpgsqlTypesHelper.ConvertBackendStringToSystemType(
+						field_descr.TypeInfo,
+						sb,
+						field_descr.TypeSize,
+						field_descr.TypeModifier);
 			}
 			catch (InvalidCastException ice)
 			{
@@ -199,15 +242,53 @@ namespace Npgsql
 
 			NpgsqlRowDescription.FieldData field_descr = FieldData;
 			Int32 field_value_size = PGUtil.ReadInt32(Stream) - 4;
+			if (field_value_size >= 85000)
+				return ReadLargeObject(field_descr, field_value_size);
 			byte[] buffer = new byte[field_value_size];
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, field_value_size);
-			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
+			var str = UTF8Encoding.GetString(buffer);
 			try
 			{
 				return
-					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
-																	   field_descr.TypeSize, field_descr.TypeModifier);
+					NpgsqlTypesHelper.ConvertBackendStringToSystemType(
+						field_descr.TypeInfo,
+						str,
+						field_descr.TypeSize,
+						field_descr.TypeModifier);
+			}
+			catch (InvalidCastException ice)
+			{
+				return ice;
+			}
+			catch (Exception ex)
+			{
+				return new InvalidCastException(ex.Message, ex);
+			}
+		}
+
+		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
+		{
+			var cms = new ChunkedMemoryStream(Stream, field_value_size);
+			var sb = new StringBuilder();
+			var buf = new char[4096];
+			using (var sr = new StreamReader(cms, Encoding.UTF8))
+			{
+				int pos = 0;
+				while (pos < field_value_size)
+				{
+					var read = sr.Read(buf, 0, 4096);
+					sb.Append(buf, 0, read);
+					pos += read;
+				}
+			}
+			try
+			{
+				return
+					NpgsqlTypesHelper.ConvertBackendStringToSystemType(
+						field_descr.TypeInfo,
+						sb,
+						field_descr.TypeSize,
+						field_descr.TypeModifier);
 			}
 			catch (InvalidCastException ice)
 			{

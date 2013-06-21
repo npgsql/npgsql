@@ -430,7 +430,7 @@ namespace Npgsql
 						case BackEndMessageCode.ErrorResponse:
 							{
 								NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
-								error.ErrorSql = mediator.SqlSent;
+								error.ErrorSql = mediator.SqlSent.ToString(0, Math.Min(85000 / 2, mediator.SqlSent.Length));
 
 								errors.Add(error);
 
@@ -671,7 +671,7 @@ namespace Npgsql
 						case BackEndMessageCode.ErrorResponse:
 
 							NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
-							error.ErrorSql = mediator.SqlSent;
+							error.ErrorSql = mediator.SqlSent.ToString(0, Math.Min(85000 / 2, mediator.SqlSent.Length));
 
 							errors.Add(error);
 
@@ -814,12 +814,21 @@ namespace Npgsql
 						case BackEndMessageCode.ParameterDescription:
 
 							// Do nothing,for instance,  just read...
-							int lenght = PGUtil.ReadInt32(stream);
+							int length = PGUtil.ReadInt32(stream);
+							Console.WriteLine(length);
 							int nb_param = PGUtil.ReadInt16(stream);
+							Console.WriteLine(nb_param);
+							//WTF
+							/*
 							for (int i = 0; i < nb_param; i++)
 							{
 								int typeoid = PGUtil.ReadInt32(stream);
-							}
+							}*/
+							var buff = new byte[65536];
+							int pos = 0;
+							int read;
+							while ((read = stream.Read(buff, 0, 65536)) > 0)
+								pos += read;
 
 							break;
 

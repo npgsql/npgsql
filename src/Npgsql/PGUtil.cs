@@ -532,7 +532,6 @@ namespace Npgsql
 		internal static void LogStringWritten(string theString)
 		{
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
 		}
 	}
 

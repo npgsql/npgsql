@@ -235,8 +235,29 @@ namespace NpgsqlTypes
 		/// The given TypeInfo is called upon to do the conversion.
 		/// If no TypeInfo object is provided, no conversion is performed.
 		/// </summary>
-		public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, String data, Int16 typeSize,
-															  Int32 typeModifier)
+		public static Object ConvertBackendStringToSystemType(
+			NpgsqlBackendTypeInfo TypeInfo,
+			StringBuilder data,
+			Int16 typeSize,
+			Int32 typeModifier)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
+
+			if (TypeInfo != null)
+			{
+				return TypeInfo.ConvertToNative(data.ToString(), typeSize, typeModifier);
+			}
+			else
+			{
+				return data;
+			}
+		}
+
+		public static Object ConvertBackendStringToSystemType(
+			NpgsqlBackendTypeInfo TypeInfo,
+			string data,
+			Int16 typeSize,
+			Int32 typeModifier)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
 
@@ -601,9 +622,13 @@ namespace NpgsqlTypes
 				{
 					while (dr.Read())
 					{
-						NpgsqlBackendTypeInfo TypeInfo = NameIndex[dr[0].ToString()];
-
-						TypeInfo._OID = Convert.ToInt32(dr[1]);
+						var ni = dr[0] as string;
+						var oid = dr[1] as string;
+						NpgsqlBackendTypeInfo TypeInfo = NameIndex[ni];
+						var id = 0;
+						for (int i = 0; i < oid.Length; i++)
+							id = id * 10 + oid[i] - 48;
+						TypeInfo._OID = id;
 
 						TypeMappings.AddType(TypeInfo);
 					}

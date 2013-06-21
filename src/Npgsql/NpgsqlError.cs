@@ -68,7 +68,6 @@ namespace Npgsql
 		private readonly String _file = String.Empty;
 		private readonly String _line = String.Empty;
 		private readonly String _routine = String.Empty;
-		private String _errorSql = String.Empty;
 
 		/// <summary>
 		/// Severity code.  All versions.
@@ -168,11 +167,7 @@ namespace Npgsql
 		/// <summary>
 		/// String containing the sql sent which produced this error.
 		/// </summary>
-		public String ErrorSql
-		{
-			set { _errorSql = value; }
-			get { return _errorSql; }
-		}
+		public String ErrorSql { get; set; }
 
 		/// <summary>
 		/// Return a string representation of this error object.
@@ -203,7 +198,7 @@ namespace Npgsql
 			switch (protocol_version = protocolVersion)
 			{
 				case ProtocolVersion.Version2:
-					string[] parts = PGUtil.ReadString(stream).Split(new char[] {':'}, 2);
+					string[] parts = PGUtil.ReadString(stream).Split(new char[] { ':' }, 2);
 					if (parts.Length == 2)
 					{
 						_severity = parts[0].Trim();
@@ -220,7 +215,7 @@ namespace Npgsql
 					// "FATA" string, which would mean a protocol 2.0 error string.
 					if (PGUtil.ReadInt32(stream) == 1178686529)
 					{
-						string[] v2Parts = ("FATA" + PGUtil.ReadString(stream)).Split(new char[] {':'}, 2);
+						string[] v2Parts = ("FATA" + PGUtil.ReadString(stream)).Split(new char[] { ':' }, 2);
 						if (v2Parts.Length == 2)
 						{
 							_severity = v2Parts[0].Trim();
@@ -235,7 +230,7 @@ namespace Npgsql
 					}
 					else
 					{
-						for (char field = (char) stream.ReadByte(); field != 0; field = (char) stream.ReadByte())
+						for (char field = (char)stream.ReadByte(); field != 0; field = (char)stream.ReadByte())
 						{
 							switch (field)
 							{
@@ -287,7 +282,7 @@ namespace Npgsql
 									_routine = PGUtil.ReadString(stream);
 									;
 									break;
-								
+
 							}
 						}
 					}

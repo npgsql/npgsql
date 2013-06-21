@@ -52,7 +52,7 @@ namespace Npgsql
 		private NpgsqlException(SerializationInfo info, StreamingContext context)
 			: base(info, context)
 		{
-			errors = (IList) info.GetValue("errors", typeof (IList));
+			errors = (IList)info.GetValue("errors", typeof(IList));
 		}
 
 		/// <summary>
@@ -89,7 +89,7 @@ namespace Npgsql
 			// Thanks Robert Chartier for info: http://www.15seconds.com/issue/020903.htm
 
 			//use the info object to add the items you want serialized
-			info.AddValue("errors", errors, typeof (IList));
+			info.AddValue("errors", errors, typeof(IList));
 		}
 
 		/// <summary>
@@ -97,7 +97,7 @@ namespace Npgsql
 		/// </summary>
 		public NpgsqlError this[Int32 Index]
 		{
-			get { return (NpgsqlError) errors[Index]; }
+			get { return (NpgsqlError)errors[Index]; }
 		}
 
 

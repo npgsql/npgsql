@@ -319,7 +319,9 @@ namespace Npgsql
 		/// </summary>
 		public override String GetString(Int32 i)
 		{
-			return (String)GetValue(i);
+			var obj = GetValue(i);
+			var sb = obj as StringBuilder;
+			return sb != null ? sb.ToString() : obj as string;
 		}
 
 		/// <summary>

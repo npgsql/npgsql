@@ -145,6 +145,7 @@ namespace Npgsql
 		/// <param name="msglevel">The minimum <see cref="Npgsql.LogLevel">LogLevel</see> for which this message should be logged.</param>
 		private static void LogMsg(String message, LogLevel msglevel)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -180,8 +181,9 @@ namespace Npgsql
 		/// <param name="msglevel">The minimum <see cref="Npgsql.LogLevel">LogLevel</see> for which this message should be logged.</param>
 		/// <param name="Parameters">The additional parameters that shall be included into the log-message (must be compatible with the string in the resource):</param>
 		internal static void LogMsg(ResourceManager resman, string ResourceString, LogLevel msglevel,
-		                            params Object[] Parameters)
+									params Object[] Parameters)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -209,6 +211,7 @@ namespace Npgsql
 		/// <param name="IndexerParam">The parameter given to the Indexer</param>
 		internal static void LogIndexerGet(LogLevel msglevel, string ClassName, object IndexerParam)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -226,6 +229,7 @@ namespace Npgsql
 		/// <param name="value">The value the Indexer is set to</param>
 		internal static void LogIndexerSet(LogLevel msglevel, string ClassName, object IndexerParam, object value)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -242,6 +246,7 @@ namespace Npgsql
 		/// <param name="PropertyName">The name of the Property</param>
 		internal static void LogPropertyGet(LogLevel msglevel, string ClassName, string PropertyName)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -259,6 +264,7 @@ namespace Npgsql
 		/// <param name="value">The value the Property is set to</param>
 		internal static void LogPropertySet(LogLevel msglevel, string ClassName, string PropertyName, object value)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -275,6 +281,7 @@ namespace Npgsql
 		/// <param name="MethodName">The name of the Method</param>
 		internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -292,6 +299,7 @@ namespace Npgsql
 		/// <param name="MethodParameter">The value of the Argument of the Method</param>
 		internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -309,8 +317,9 @@ namespace Npgsql
 		/// <param name="MethodParameter1">The value of the first Argument of the Method</param>
 		/// <param name="MethodParameter2">The value of the second Argument of the Method</param>
 		internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter1,
-		                                    object MethodParameter2)
+											object MethodParameter2)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -330,8 +339,9 @@ namespace Npgsql
 		/// <param name="MethodParameter2">The value of the second Argument of the Method</param>
 		/// <param name="MethodParameter3">The value of the third Argument of the Method</param>
 		internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter1,
-		                                    object MethodParameter2, object MethodParameter3)
+											object MethodParameter2, object MethodParameter3)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;
@@ -350,8 +360,9 @@ namespace Npgsql
 		/// <param name="MethodName">The name of the Method</param>
 		/// <param name="MethodParameters">A <see cref="System.Object">Object</see>-Array with zero or more Ojects that are Arguments of the Method.</param>
 		internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName,
-		                                    params object[] MethodParameters)
+											params object[] MethodParameters)
 		{
+			return;
 			if (msglevel > level)
 			{
 				return;

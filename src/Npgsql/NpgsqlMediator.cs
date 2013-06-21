@@ -27,6 +27,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System.IO;
+using System.Text;
 
 namespace Npgsql
 {
@@ -52,7 +53,7 @@ namespace Npgsql
 			CommandTimeout = 20;
 		}
 
-		public string SqlSent { get; internal set; }
+		public StringBuilder SqlSent { get; internal set; }
 		public int CommandTimeout { get; set; }
 		public Stream CopyStream { get; set; }
 		public int CopyBufferSize { get; set; }

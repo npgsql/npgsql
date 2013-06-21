@@ -37,7 +37,7 @@ namespace Npgsql
 	{
 		private readonly NpgsqlCommand _command;
 		private readonly ProtocolVersion _protocolVersion;
-		internal static int SplitStringLimit = 8 * 1024 * 1024;
+		internal static int LargeObjectHeapLimit = 85000 / 4;
 
 		public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
 		{
@@ -50,8 +50,8 @@ namespace Npgsql
 			var commandText = _command.GetCommandText();
 			// Log the string being sent.
 
-			if (NpgsqlEventLog.Level >= LogLevel.Debug)
-				PGUtil.LogStringWritten(commandText);
+			//if (NpgsqlEventLog.Level >= LogLevel.Debug)
+			//PGUtil.LogStringWritten(commandText.ToString());
 
 			// This method needs refactory.
 			// The code below which deals with writing string to stream needs to be redone to use
@@ -70,27 +70,31 @@ namespace Npgsql
 
 			//Work out the encoding of the string (null-terminated) once and take the length from having done so
 			//rather than doing so repeatedly.
-			if (commandText.Length > SplitStringLimit)
+			if (commandText.Length > LargeObjectHeapLimit)
 			{
-				if (_protocolVersion == ProtocolVersion.Version3)
+				using (var str = new StringBuilderStream(commandText))
+				using (var cms = new ChunkedMemoryStream(str))
 				{
-					// Write message length. Int32 + string length + null terminator.
-					PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(commandText) + 1);
+					if (_protocolVersion == ProtocolVersion.Version3)
+					{
+						// Write message length. Int32 + string length + null terminator.
+						PGUtil.WriteInt32(outputStream, 4 + (int)cms.Length + 1);
+					}
+					cms.Position = 0;
+					var buf = new byte[65536];
+					int pos = 0;
+					int len = (int)cms.Length;
+					while (pos < len)
+					{
+						var read = cms.Read(buf, 0, 65536);
+						outputStream.Write(buf, 0, read);
+						pos += read;
+					}
 				}
-				int cur = 0;
-				while (cur < commandText.Length)
-				{
-					var left = commandText.Length - cur;
-					var commandChunk = commandText.Substring(cur, left > SplitStringLimit ? SplitStringLimit : left);
-					var bytes = UTF8Encoding.GetBytes(commandChunk);
-					outputStream.Write(bytes, 0, bytes.Length);
-					cur += SplitStringLimit;
-				}
-				outputStream.WriteByte(0);
 			}
 			else
 			{
-				var bytes = UTF8Encoding.GetBytes(commandText);
+				var bytes = UTF8Encoding.GetBytes(commandText.ToString());
 
 				if (_protocolVersion == ProtocolVersion.Version3)
 				{
@@ -99,8 +103,8 @@ namespace Npgsql
 				}
 
 				outputStream.Write(bytes, 0, bytes.Length);
-				outputStream.WriteByte(0);
 			}
+			outputStream.WriteByte(0);
 		}
 	}
 }
