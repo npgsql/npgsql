@@ -111,13 +111,13 @@ namespace Npgsql
 		{
 			var cms = new ChunkedMemoryStream(Stream, field_value_size);
 			var sb = new StringBuilder();
-			var buf = new char[8192];
+			var buf = new char[16384];
 			using (var sr = new StreamReader(cms, Encoding.UTF8))
 			{
 				int pos = 0;
 				while (pos < field_value_size)
 				{
-					var read = sr.Read(buf, 0, 8192);
+					var read = sr.Read(buf, 0, 16384);
 					sb.Append(buf, 0, read);
 					pos += read;
 				}

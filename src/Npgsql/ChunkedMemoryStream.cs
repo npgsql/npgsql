@@ -36,7 +36,7 @@ namespace Npgsql
 			int read;
 			while (size > 0)
 			{
-				read = another.Read(buf, 0, BlockSize);
+				read = another.Read(buf, 0, BlockSize < size ? BlockSize : size);
 				Write(buf, 0, read);
 				size -= read;
 			}
@@ -78,7 +78,7 @@ namespace Npgsql
 					Blocks.Add(new byte[BlockSize]);
 					BlockRemaining = BlockSize;
 				}
-				var min = Math.Min(cur, BlockRemaining);
+				var min = cur < BlockRemaining ? cur : BlockRemaining;
 				Buffer.BlockCopy(buffer, offset + count - cur, Blocks[Blocks.Count - 1], BlockSize - BlockRemaining, min);
 				cur -= min;
 				BlockRemaining -= min;

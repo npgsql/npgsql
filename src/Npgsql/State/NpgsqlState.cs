@@ -852,20 +852,12 @@ namespace Npgsql
 
 							// Do nothing,for instance,  just read...
 							int length = PGUtil.ReadInt32(stream);
-							Console.WriteLine(length);
 							int nb_param = PGUtil.ReadInt16(stream);
-							Console.WriteLine(nb_param);
 							//WTF
-							/*
 							for (int i = 0; i < nb_param; i++)
 							{
 								int typeoid = PGUtil.ReadInt32(stream);
-							}*/
-							var buff = new byte[65536];
-							int pos = 0;
-							int read;
-							while ((read = stream.Read(buff, 0, 65536)) > 0)
-								pos += read;
+							}
 
 							break;
 
