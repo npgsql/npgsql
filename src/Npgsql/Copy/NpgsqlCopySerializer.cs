@@ -39,10 +39,10 @@ namespace Npgsql
 		private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
 
 		public static String DEFAULT_DELIMITER = "\t",
-		                     DEFAULT_SEPARATOR = "\n",
-		                     DEFAULT_NULL = "\\N",
-		                     DEFAULT_ESCAPE = "\\",
-		                     DEFAULT_QUOTE = "\"";
+							 DEFAULT_SEPARATOR = "\n",
+							 DEFAULT_NULL = "\\N",
+							 DEFAULT_ESCAPE = "\\",
+							 DEFAULT_QUOTE = "\"";
 
 		public static int DEFAULT_BUFFER_SIZE = 8192;
 
@@ -50,9 +50,9 @@ namespace Npgsql
 		private Stream _toStream;
 
 		private String _delimiter = DEFAULT_DELIMITER,
-		               _escape = DEFAULT_ESCAPE,
-		               _separator = DEFAULT_SEPARATOR,
-		               _null = DEFAULT_NULL;
+					   _escape = DEFAULT_ESCAPE,
+					   _separator = DEFAULT_SEPARATOR,
+					   _null = DEFAULT_NULL;
 
 		private byte[] _delimiterBytes = null, _escapeBytes = null, _separatorBytes = null, _nullBytes = null;
 		private byte[][] _escapeSequenceBytes = null;
@@ -287,7 +287,7 @@ namespace Npgsql
 			{
 				if (_stringsToEscape == null)
 				{
-					_stringsToEscape = new String[] {Delimiter, Separator, Escape, "\r", "\n"};
+					_stringsToEscape = new String[] { Delimiter, Separator, Escape, "\r", "\n" };
 				}
 				return _stringsToEscape;
 			}
@@ -309,17 +309,17 @@ namespace Npgsql
 			}
 		}
 
-		private static readonly byte[] esc_t = new byte[] {(byte) 't'};
+		private static readonly byte[] esc_t = new byte[] { (byte)'t' };
 
-		private static readonly byte[] esc_n = new byte[] {(byte) 'n'};
+		private static readonly byte[] esc_n = new byte[] { (byte)'n' };
 
-		private static readonly byte[] esc_r = new byte[] {(byte) 'r'};
+		private static readonly byte[] esc_r = new byte[] { (byte)'r' };
 
-		private static readonly byte[] esc_b = new byte[] {(byte) 'b'};
+		private static readonly byte[] esc_b = new byte[] { (byte)'b' };
 
-		private static readonly byte[] esc_f = new byte[] {(byte) 'f'};
+		private static readonly byte[] esc_f = new byte[] { (byte)'f' };
 
-		private static readonly byte[] esc_v = new byte[] {(byte) 'v'};
+		private static readonly byte[] esc_v = new byte[] { (byte)'v' };
 
 		protected static byte[] EscapeSequenceFor(char c)
 		{
@@ -327,18 +327,18 @@ namespace Npgsql
 				c == '\t'
 					? esc_t
 					: c == '\n'
-					  	? esc_n
-					  	: c == '\r'
-					  	  	? esc_r
-					  	  	: c == '\b'
-					  	  	  	? esc_b
-					  	  	  	: c == '\f'
-					  	  	  	  	? esc_f
-					  	  	  	  	: c == '\v'
-					  	  	  	  	  	? esc_v
-					  	  	  	  	  	: (c < 32 || c > 127)
-					  	  	  	  	  	  	? new byte[] {(byte) ('0' + ((c/64) & 7)), (byte) ('0' + ((c/8) & 7)), (byte) ('0' + (c & 7))}
-					  	  	  	  	  	  	: new byte[] {(byte) c};
+						? esc_n
+						: c == '\r'
+							? esc_r
+							: c == '\b'
+								? esc_b
+								: c == '\f'
+									? esc_f
+									: c == '\v'
+										? esc_v
+										: (c < 32 || c > 127)
+											? new byte[] { (byte)('0' + ((c / 64) & 7)), (byte)('0' + ((c / 8) & 7)), (byte)('0' + (c & 7)) }
+											: new byte[] { (byte)c };
 		}
 
 		protected void MakeRoomForBytes(int len)
@@ -380,7 +380,7 @@ namespace Npgsql
 					AddNull();
 				}
 			}
-			if (_context == null || ! _context.CurrentState.CopyFormat.IsBinary)
+			if (_context == null || !_context.CurrentState.CopyFormat.IsBinary)
 			{
 				AddBytes(SeparatorBytes);
 			}
@@ -436,9 +436,9 @@ namespace Npgsql
 				// some, possibly all of fieldValue string does not require escaping and can be buffered for output
 				if (escapeAt > bufferedUpto)
 				{
-					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt));
+					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
 					MakeRoomForBytes(encodedLength);
-					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
+					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
 					bufferedUpto = escapeAt;
 				}
 
