@@ -110,7 +110,7 @@ namespace Npgsql
 		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
 		{
 			var cms = new ChunkedMemoryStream(Stream, field_value_size);
-			var sb = new StringBuilder();
+			var sb = new StringBuilder(field_value_size);
 			var buf = new char[16384];
 			using (var sr = new StreamReader(cms, Encoding.UTF8))
 			{
@@ -269,14 +269,14 @@ namespace Npgsql
 		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
 		{
 			var cms = new ChunkedMemoryStream(Stream, field_value_size);
-			var sb = new StringBuilder();
-			var buf = new char[4096];
+			var sb = new StringBuilder(field_value_size);
+			var buf = new char[16384];
 			using (var sr = new StreamReader(cms, Encoding.UTF8))
 			{
 				int pos = 0;
 				while (pos < field_value_size)
 				{
-					var read = sr.Read(buf, 0, 4096);
+					var read = sr.Read(buf, 0, 16384);
 					sb.Append(buf, 0, read);
 					pos += read;
 				}
