@@ -88,7 +88,8 @@ namespace NpgsqlTypes
 				_chunks = new List<uint>((count + 31) / 32);
 				for (int i = 0; i < count / 32; ++i)
 					_chunks.Add(0xFFFFFFFFu);
-				_chunks.Add(0xFFFFFFFFu << -count);
+				if (count % 32 != 0)
+					_chunks.Add(0xFFFFFFFFu << -count);
 			}
 			else
 				_chunks = new List<uint>(new uint[(count + 31) / 32]);
@@ -142,10 +143,8 @@ namespace NpgsqlTypes
 		{
 			get
 			{
-				if (_chunks.Count > 1)
-					return _chunks.GetRange(1, _chunks.Count - 1);
-				else
-					return new uint[] { };
+				for (int i = 0; i < _chunks.Count - 1; ++i)
+					yield return _chunks[i];
 			}
 		}
 		private IEnumerable<uint> EnumChunks(bool includeLast)
