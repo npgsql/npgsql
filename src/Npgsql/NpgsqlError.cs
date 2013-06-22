@@ -68,6 +68,11 @@ namespace Npgsql
 		private readonly String _file = String.Empty;
 		private readonly String _line = String.Empty;
 		private readonly String _routine = String.Empty;
+		private readonly String _schemaName = String.Empty;
+		private readonly String _tableName = String.Empty;
+		private readonly String _columnName = String.Empty;
+		private readonly String _datatypeName = String.Empty;
+		private readonly String _constraintName = String.Empty;
 
 		/// <summary>
 		/// Severity code.  All versions.
@@ -165,6 +170,46 @@ namespace Npgsql
 		}
 
 		/// <summary>
+		/// Schema name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String SchemaName
+		{
+			get { return _schemaName; }
+		}
+
+		/// <summary>
+		/// Table name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String TableName
+		{
+			get { return _tableName; }
+		}
+
+		/// <summary>
+		/// Column name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String ColumnName
+		{
+			get { return _columnName; }
+		}
+
+		/// <summary>
+		/// Data type of column which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String DataTypeName
+		{
+			get { return _datatypeName; }
+		}
+
+		/// <summary>
+		/// Constraint name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String ConstraintName
+		{
+			get { return _constraintName; }
+		}
+
+		/// <summary>
 		/// String containing the sql sent which produced this error.
 		/// </summary>
 		public String ErrorSql { get; set; }
@@ -236,53 +281,57 @@ namespace Npgsql
 							{
 								case 'S':
 									_severity = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'C':
 									_code = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'M':
 									_message = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'D':
 									_detail = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'H':
 									_hint = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'P':
 									_position = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'p':
 									_internalPosition = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'q':
 									_internalQuery = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'W':
 									_where = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'F':
 									_file = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'L':
 									_line = PGUtil.ReadString(stream);
-									;
 									break;
 								case 'R':
 									_routine = PGUtil.ReadString(stream);
-									;
 									break;
-
+								case 's':
+									_schemaName = PGUtil.ReadString(stream);
+									break;
+								case 't':
+									_tableName = PGUtil.ReadString(stream);
+									break;
+								case 'c':
+									_columnName = PGUtil.ReadString(stream);
+									break;
+								case 'd':
+									_datatypeName = PGUtil.ReadString(stream);
+									break;
+								case 'n':
+									_constraintName = PGUtil.ReadString(stream);
+									break;
+								default:
+									throw new NpgsqlException("Invalid error format!");
 							}
 						}
 					}

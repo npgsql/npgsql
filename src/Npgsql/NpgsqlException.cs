@@ -182,6 +182,46 @@ namespace Npgsql
 		}
 
 		/// <summary>
+		/// Schema name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String SchemaName
+		{
+			get { return this[0].SchemaName; }
+		}
+
+		/// <summary>
+		/// Table name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String TableName
+		{
+			get { return this[0].TableName; }
+		}
+
+		/// <summary>
+		/// Column name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String ColumnName
+		{
+			get { return this[0].ColumnName; }
+		}
+
+		/// <summary>
+		/// Data type of column which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String DataTypeName
+		{
+			get { return this[0].DataTypeName; }
+		}
+
+		/// <summary>
+		/// Constraint name which relates to the error. PostgreSQL 9.3 and up.
+		/// </summary>
+		public String ConstraintName
+		{
+			get { return this[0].ConstraintName; }
+		}
+
+		/// <summary>
 		/// String containing the sql sent which produced this error.
 		/// </summary>
 		public String ErrorSql

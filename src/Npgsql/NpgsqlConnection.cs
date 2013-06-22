@@ -533,6 +533,7 @@ namespace Npgsql
 			{
 				Promotable.Enlist(Transaction.Current);
 			}
+			this.OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
 		}
 
 		private void connector_StateChanged(object sender, StateChangeEventArgs e)
@@ -604,6 +605,7 @@ namespace Npgsql
 
 				connector = null;
 
+				this.OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
 			}
 		}
 
