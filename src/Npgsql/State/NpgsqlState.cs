@@ -315,7 +315,7 @@ namespace Npgsql
 		///
 		internal void ProcessBackendResponses(NpgsqlConnector context)
 		{
-			IterateThroughAllResponses(ProcessBackendResponsesEnum(context));
+			IterateThroughAllResponses(ProcessBackendResponsesEnum(context, false));
 		}
 
 		private static void IterateThroughAllResponses(IEnumerable<IServerResponseObject> ienum)
@@ -351,7 +351,9 @@ namespace Npgsql
 		/// to handle backend requests.
 		/// </summary>
 		///
-		internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum(NpgsqlConnector context)
+		internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum(
+			NpgsqlConnector context,
+			bool cancelRequestCalled)
 		{
 			try
 			{
@@ -362,12 +364,12 @@ namespace Npgsql
 				{
 					// If timeout occurs when establishing the session with server then
 					// throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
-					if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState || context.CancelRequestCalled)))
+					if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState || cancelRequestCalled)))
 					{
 						try
 						{
 							context.CancelRequest();
-							foreach (IServerResponseObject obj in ProcessBackendResponsesEnum(context))
+							foreach (IServerResponseObject obj in ProcessBackendResponsesEnum(context, true))
 							{
 								if (obj is IDisposable)
 								{

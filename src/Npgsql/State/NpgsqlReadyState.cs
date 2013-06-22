@@ -64,7 +64,7 @@ namespace Npgsql
 			query.WriteToStream(context.Stream);
 			context.Stream.Flush();
 
-			return ProcessBackendResponsesEnum(context);
+			return ProcessBackendResponsesEnum(context, false);
 		}
 
 		public override void Parse(NpgsqlConnector context, NpgsqlParse parse)
@@ -76,13 +76,12 @@ namespace Npgsql
 			//stream.Flush();
 		}
 
-
 		public override IEnumerable<IServerResponseObject> SyncEnum(NpgsqlConnector context)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Sync");
 			_syncMessage.WriteToStream(context.Stream);
 			context.Stream.Flush();
-			return ProcessBackendResponsesEnum(context);
+			return ProcessBackendResponsesEnum(context, false);
 		}
 
 		public override void Flush(NpgsqlConnector context)

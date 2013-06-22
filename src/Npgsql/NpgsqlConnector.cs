@@ -148,9 +148,6 @@ namespace Npgsql
 		// For IsValid test
 		private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
-		// Did we already called cancelRequest?
-		private Boolean _cancelRequestCalled = false;
-
 #if WINDOWS && UNMANAGED
 
 		private SSPIHandler _sspi;
@@ -639,11 +636,6 @@ namespace Npgsql
 			set { _supportsSavepoint = value; }
 		}
 
-		public Boolean CancelRequestCalled
-		{
-			get { return _cancelRequestCalled; }
-		}
-
 		/// <summary>
 		/// This method is required to set all the version dependent features flags.
 		/// SupportsPrepare means the server can use prepared query plans (7.3+)
@@ -832,7 +824,6 @@ namespace Npgsql
 
 		internal void CancelRequest()
 		{
-
 			NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
 
 			cancelConnector._backend_keydata = BackEndKeyData;
@@ -848,10 +839,7 @@ namespace Npgsql
 			finally
 			{
 				cancelConnector.CurrentState.Close(cancelConnector);
-
-				_cancelRequestCalled = true;
 			}
-
 		}
 
 
