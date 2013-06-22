@@ -183,6 +183,10 @@ namespace Npgsql
 			_notificationAutoResetEvent = new AutoResetEvent(true);
 		}
 
+		public NpgsqlConnector(NpgsqlConnection Connection)
+			: this(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false)
+		{ }
+
 		internal String Host
 		{
 			get { return settings.Host; }

@@ -517,8 +517,22 @@ namespace Npgsql
 											NpgsqlConnectionStringBuilder.GetKeyName(Keywords.UserName));
 			}
 
-			// Get a Connector.  The connector returned is guaranteed to be connected and ready to go.
-			connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+			// Get a Connector, either from the pool or creating one ourselves.
+			if (Pooling)
+			{
+				connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+			}
+			else
+			{
+				connector = new NpgsqlConnector(this);
+
+				connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
+				connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
+				connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
+				connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
+
+				connector.Open();
+			}
 
 			connector.Notice += NoticeDelegate;
 			connector.Notification += NotificationDelegate;
@@ -600,7 +614,24 @@ namespace Npgsql
 					connector.RemoveNotificationThread();
 				}
 
-				NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+				if (Pooling)
+				{
+					NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+				}
+				else
+				{
+					Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
+					Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
+					Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
+					Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+
+					if (Connector.Transaction != null)
+					{
+						Connector.Transaction.Cancel();
+					}
+
+					Connector.Close();
+				}
 
 
 				connector = null;
