@@ -25,8 +25,8 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 
-using System;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -56,6 +56,7 @@ namespace Npgsql
 		internal static DataTable GetMetaDataCollections()
 		{
 			DataSet ds = new DataSet();
+			ds.Locale = CultureInfo.InvariantCulture;
 			using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
 			{
 				ds.ReadXml(xmlStream);
@@ -70,6 +71,7 @@ namespace Npgsql
 		internal static DataTable GetRestrictions()
 		{
 			DataSet ds = new DataSet();
+			ds.Locale = CultureInfo.InvariantCulture;
 			using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
 			{
 				ds.ReadXml(xmlStream);
@@ -129,9 +131,10 @@ namespace Npgsql
 		internal DataTable GetDatabases(string[] restrictions)
 		{
 			DataTable databases = new DataTable("Databases");
+			databases.Locale = CultureInfo.InvariantCulture;
 
 			databases.Columns.AddRange(
-				new DataColumn[] {new DataColumn("database_name"), new DataColumn("owner"), new DataColumn("encoding")});
+				new DataColumn[] { new DataColumn("database_name"), new DataColumn("owner"), new DataColumn("encoding") });
 
 			StringBuilder getDatabases = new StringBuilder();
 
@@ -157,6 +160,7 @@ namespace Npgsql
 		internal DataTable GetTables(string[] restrictions)
 		{
 			DataTable tables = new DataTable("Tables");
+			tables.Locale = CultureInfo.InvariantCulture;
 
 			tables.Columns.AddRange(
 				new DataColumn[]
@@ -190,6 +194,7 @@ namespace Npgsql
 		internal DataTable GetColumns(string[] restrictions)
 		{
 			DataTable columns = new DataTable("Columns");
+			columns.Locale = CultureInfo.InvariantCulture;
 
 			columns.Columns.AddRange(
 				new DataColumn[]
@@ -230,6 +235,7 @@ namespace Npgsql
 		internal DataTable GetViews(string[] restrictions)
 		{
 			DataTable views = new DataTable("Views");
+			views.Locale = CultureInfo.InvariantCulture;
 
 			views.Columns.AddRange(
 				new DataColumn[]
@@ -262,8 +268,9 @@ namespace Npgsql
 		internal DataTable GetUsers(string[] restrictions)
 		{
 			DataTable users = new DataTable("Users");
+			users.Locale = CultureInfo.InvariantCulture;
 
-			users.Columns.AddRange(new DataColumn[] {new DataColumn("user_name"), new DataColumn("user_sysid", typeof (int))});
+			users.Columns.AddRange(new DataColumn[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(int)) });
 
 			StringBuilder getUsers = new StringBuilder();
 
@@ -283,6 +290,7 @@ namespace Npgsql
 		internal DataTable GetIndexes(string[] restrictions)
 		{
 			DataTable indexes = new DataTable("Indexes");
+			indexes.Locale = CultureInfo.InvariantCulture;
 
 			indexes.Columns.AddRange(
 				new DataColumn[]
@@ -328,6 +336,7 @@ where
 		internal DataTable GetIndexColumns(string[] restrictions)
 		{
 			DataTable indexColumns = new DataTable("IndexColumns");
+			indexColumns.Locale = CultureInfo.InvariantCulture;
 
 			indexColumns.Columns.AddRange(
 				new DataColumn[]
@@ -418,7 +427,8 @@ where pgc.contype='f'
 		public static DataTable GetReservedWords()
 		{
 			DataTable table = new DataTable("ReservedWords");
-			table.Columns.Add("ReservedWord", typeof (string));
+			table.Locale = CultureInfo.InvariantCulture;
+			table.Columns.Add("ReservedWord", typeof(string));
 			// List of keywords taken from PostgreSQL 9.0 reserved words documentation.
 			string[] keywords = new[]
 			{
