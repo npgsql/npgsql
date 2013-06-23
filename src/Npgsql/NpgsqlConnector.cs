@@ -31,11 +31,11 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -46,7 +46,14 @@ namespace Npgsql
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
-
+    /// <summary>
+    /// Represents the method that allows the application to validate the server's certificate
+    /// </summary>
+    /// <param name="cert">The server's <see cref="System.Security.Cryptography.X509Certificate">X509Certificate</see>.</param>
+    /// <param name="chain">A <see cref="System.Security.Cryptography.X509Chain">certificate chain</see> to validate the server's certificate.</param>
+    /// <param name="errors">The errors that have occurred during validation.</param>
+    public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
+    
     /// <summary>
     /// !!! Helper class, for compilation only.
     /// Connector implements the logic for the Connection Objects to
@@ -74,19 +81,9 @@ namespace Npgsql
         internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
 
         /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
+        /// Called to validate the remote server's certificate
         /// </summary>
-        internal event CertificateSelectionCallback CertificateSelectionCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-        /// </summary>
-        internal event CertificateValidationCallback CertificateValidationCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-        /// </summary>
-        internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
+        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
 
         private ConnectionState _connection_state;
 
@@ -465,53 +462,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Default SSL CertificateSelectionCallback implementation.
-        /// </summary>
-        internal X509Certificate DefaultCertificateSelectionCallback(X509CertificateCollection clientCertificates,
-                                                                     X509Certificate serverCertificate, string targetHost,
-                                                                     X509CertificateCollection serverRequestedCertificates)
-        {
-            if (CertificateSelectionCallback != null)
-            {
-                return CertificateSelectionCallback(clientCertificates, serverCertificate, targetHost, serverRequestedCertificates);
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Default SSL CertificateValidationCallback implementation.
-        /// </summary>
-        internal bool DefaultCertificateValidationCallback(X509Certificate certificate, int[] certificateErrors)
-        {
-            if (CertificateValidationCallback != null)
-            {
-                return CertificateValidationCallback(certificate, certificateErrors);
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// Default SSL PrivateKeySelectionCallback implementation.
-        /// </summary>
-        internal AsymmetricAlgorithm DefaultPrivateKeySelectionCallback(X509Certificate certificate, string targetHost)
-        {
-            if (PrivateKeySelectionCallback != null)
-            {
-                return PrivateKeySelectionCallback(certificate, targetHost);
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
         /// Default SSL ProvideClientCertificatesCallback implementation.
         /// </summary>
         internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
@@ -519,6 +469,22 @@ namespace Npgsql
             if (ProvideClientCertificatesCallback != null)
             {
                 ProvideClientCertificatesCallback(certificates);
+            }
+        }
+
+        /// <summary>
+        /// Default SSL ValidateRemoteCertificateCallback implementation.
+        /// </summary>
+        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        {
+            if (ValidateRemoteCertificateCallback != null)
+            {
+                return ValidateRemoteCertificateCallback(cert, chain, errors);
+            }
+            else
+            {
+                // assume server certificate invalid for security
+                return false;
             }
         }
 
