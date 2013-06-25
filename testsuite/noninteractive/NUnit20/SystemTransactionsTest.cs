@@ -47,17 +47,19 @@ namespace NpgsqlTests
                     }
                 }
                 AssertNoTransactions();
+
+                // Clean up data left in the last transaction.
+                var cleanCommand = new NpgsqlCommand("delete from tablea where field_text = (:p0)", TheConnection);
+                cleanCommand.Parameters.Add(new NpgsqlParameter("p0", "test"));
+                Assert.AreEqual(1, cleanCommand.ExecuteNonQuery());
+
+                // This transaction should commit.
+                CommitTransaction = true;
             }
             catch (System.NotImplementedException) {}
             // Mono version below 3.0 doesn't implement transaction methods. So just ignore. 
 
-            // Clean up data left in the last transaction.
-            var cleanCommand = new NpgsqlCommand("delete from tablea where field_text = (:p0)", TheConnection);
-            cleanCommand.Parameters.Add(new NpgsqlParameter("p0", "test"));
-            Assert.AreEqual(1, cleanCommand.ExecuteNonQuery());
-
-            // This transaction should commit.
-            CommitTransaction = true;
+            
 
         }
 
@@ -80,19 +82,18 @@ namespace NpgsqlTests
                     scope.Complete ();
                 }
                 AssertNoTransactions ();
+
+
+                // Clean up data left in the last transaction.
+                var cleanCommand = new NpgsqlCommand("delete from tablea where field_text = (:p0)", TheConnection);
+                cleanCommand.Parameters.Add(new NpgsqlParameter("p0", "test"));
+                Assert.AreEqual(1, cleanCommand.ExecuteNonQuery());
+
+                // This transaction should commit.
+                CommitTransaction = true;
             } 
             catch (System.NotImplementedException) {}
             // Mono version below 3.0 doesn't implement transaction methods. So just ignore. 
-
-
-
-            // Clean up data left in the last transaction.
-            var cleanCommand = new NpgsqlCommand("delete from tablea where field_text = (:p0)", TheConnection);
-            cleanCommand.Parameters.Add(new NpgsqlParameter("p0", "test"));
-            Assert.AreEqual(1, cleanCommand.ExecuteNonQuery());
-
-            // This transaction should commit.
-            CommitTransaction = true;
             
             
         }
