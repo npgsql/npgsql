@@ -134,6 +134,9 @@ namespace Npgsql
 
         private NpgsqlPromotableSinglePhaseNotification promotable = null;
 
+        // A cached copy of the result of `settings.ConnectionString`
+        private string _connectionString;
+
 
 		/// <summary>
 		/// Initializes a new instance of the
@@ -154,18 +157,8 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
 
-			NpgsqlConnectionStringBuilder builder = cache[ConnectionString];
-			if (builder == null)
-			{
-				settings = new NpgsqlConnectionStringBuilder(ConnectionString);
-			}
-			else
-			{
-				settings = builder.Clone();
-			}
-
-			LogConnectionString();
-
+            LoadConnectionStringBuilder(ConnectionString);
+			
 			NoticeDelegate = new NoticeEventHandler(OnNotice);
 			NotificationDelegate = new NotificationEventHandler(OnNotification);
 
@@ -246,9 +239,14 @@ namespace Npgsql
         [Editor(typeof(ConnectionStringEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
 
-		public override String ConnectionString
-		{
-			get { return settings.ConnectionString; }
+        public override String ConnectionString
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_connectionString))
+                    RefreshConnectionString();
+                return settings.ConnectionString;
+            }
 			set
 			{
 				// Connection string is used as the key to the connector.  Because of this,
@@ -264,7 +262,7 @@ namespace Npgsql
 				{
 					settings = builder.Clone();
 				}
-				LogConnectionString();
+                LoadConnectionStringBuilder(value);
 			}
 		}
 
@@ -606,7 +604,10 @@ namespace Npgsql
 
 			Close();
 
-			settings[Keywords.Database] = dbName;
+            // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
+            settings = settings.Clone();
+            settings[Keywords.Database] = dbName;
+            _connectionString = null;
 
 			Open();
 		}
@@ -781,6 +782,14 @@ namespace Npgsql
 			}
 		}
 
+        /// <summary>
+        /// Returns a copy of the NpgsqlConnectionStringBuilder that contains the parsed connection string values.
+        /// </summary>
+        internal NpgsqlConnectionStringBuilder CopyConnectionStringBuilder()
+        {
+            return settings.Clone();
+        }
+
 		/// <summary>
 		/// The connector object connected to the backend.
 		/// </summary>
@@ -930,11 +939,39 @@ namespace Npgsql
 		/// </summary>
 		private void LogConnectionString()
 		{
+            if (LogLevel.Debug >= NpgsqlEventLog.Level)
+                return;
+
 			foreach (string key in settings.Keys)
 			{
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, key, settings[key]);
 			}
 		}
+
+        /// <summary>
+        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
+        /// </summary>
+        /// <param name="connectionString">The connection string to load the builder from</param>
+        private void LoadConnectionStringBuilder(string connectionString)
+        {
+	        settings = cache[connectionString];
+	        if (settings == null)
+	        {
+		        settings = new NpgsqlConnectionStringBuilder(connectionString);
+		        cache[connectionString] = settings;
+	        }
+
+	        RefreshConnectionString();
+            LogConnectionString();
+        }
+
+        /// <summary>
+        /// Refresh the cached _connectionString whenever the builder settings change
+        /// </summary>
+        private void RefreshConnectionString()
+        {
+            _connectionString = settings.ConnectionString;
+        }
 
 		private void CheckConnectionOpen()
 		{

@@ -168,7 +168,7 @@ namespace Npgsql
 #endif
 
         public NpgsqlConnector(NpgsqlConnection Connection)
-            : this(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false)
+            : this(Connection.CopyConnectionStringBuilder(), Connection.Pooling, false)
         {}
 
         /// <summary>
