@@ -153,10 +153,7 @@ namespace Npgsql
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
         
-        // Did we already called cancelRequest?
-        private Boolean _cancelRequestCalled = false;
 
-        
 
 #if WINDOWS && UNMANAGED
 
@@ -170,6 +167,9 @@ namespace Npgsql
 
 #endif
 
+        public NpgsqlConnector(NpgsqlConnection Connection)
+            : this(Connection.ConnectionStringValues.Clone(), Connection.Pooling, false)
+        {}
 
         /// <summary>
         /// Constructor.
@@ -640,10 +640,6 @@ namespace Npgsql
             set { _supportsSavepoint = value; } 
           
         }
-        
-        public Boolean CancelRequestCalled  {
-            get { return _cancelRequestCalled; }
-        }
 
         
 
@@ -825,6 +821,24 @@ namespace Npgsql
             }
             catch {}
 
+
+            /*
+             * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
+             * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
+             * money is formatted as ($value) with parentheses to indicate negative value.
+             * By going with a culture agnostic format, we get a consistent behavior.
+             */
+
+            try
+            {
+                NpgsqlCommand commandMonetaryFormatC = new NpgsqlCommand("SET lc_monetary='C';", this);
+                commandMonetaryFormatC.ExecuteBlind();
+
+            }
+            catch 
+            {
+
+            }
 			
 
             // Make a shallow copy of the type mapping that the connector will own.
@@ -879,8 +893,6 @@ namespace Npgsql
             finally
             {
                 cancelConnector.CurrentState.Close(cancelConnector);
-                
-                _cancelRequestCalled = true;
             }
             
         }

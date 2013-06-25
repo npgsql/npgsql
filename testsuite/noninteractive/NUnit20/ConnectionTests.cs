@@ -207,14 +207,20 @@ namespace NpgsqlTests
         [Test]
         public void UseAllConnectionsInPool()
         {
+
+            // As this method uses a lot of connections, clear all connections from all pools before starting. 
+            // This is needed in order to not reach the max connections allowed and start to raise errors.
+
+            NpgsqlConnection.ClearAllPools ();
+
             List<NpgsqlConnection> openedConnections = new List<NpgsqlConnection>();
             // repeat test to exersize pool
             for (int i = 0; i < 10; ++i)
             {
                 try
                 {
-                    // 19 since base class opens one and the default pool size is 20
-                    for (int j = 0; j < 19; ++j)
+                    // 18 since base class opens two and the default pool size is 20
+                    for (int j = 0; j < 18; ++j)
                     {
                         NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString);
                         connection.Open();
@@ -227,6 +233,8 @@ namespace NpgsqlTests
                     openedConnections.Clear();
                 }
             }
+
+            NpgsqlConnection.ClearAllPools ();
         }
 
         [Test]
@@ -247,10 +255,12 @@ namespace NpgsqlTests
             finally
             {
                 openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+                NpgsqlConnection.ClearAllPools ();
             }
         }
 
         [Test]
+        [Ignore]
         public void NpgsqlErrorRepro1()
         {
             using (NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString))
@@ -362,6 +372,61 @@ namespace NpgsqlTests
             
             
         }
+
+        [Test]
+        public void ChangeState()
+        {
+
+            using (NpgsqlConnection c = new NpgsqlConnection (TheConnectionString)) 
+            {
+                bool stateChangeCalledForOpen = false;
+                bool stateChangeCalledForClose = false;
+
+
+                c.StateChange += new StateChangeEventHandler( delegate(object sender, StateChangeEventArgs e) {
+                    if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
+                        stateChangeCalledForOpen = true;
+
+                    if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
+                        stateChangeCalledForClose = true;
+                });
+
+                c.Open ();
+                c.Close ();
+
+                Assert.IsTrue (stateChangeCalledForOpen);
+                Assert.IsTrue (stateChangeCalledForClose);
+
+            }
+
+
+
+
+        }
+
+        [Test]
+		public void GetSchemaParameterMarkerFormats()
+		{
+			DataTable dt = TheConnection.GetSchema("DataSourceInformation");
+			String parameterMarkerFormat = dt.Rows[0]["ParameterMarkerFormat"] as string;
+
+			using (NpgsqlConnection connection = new NpgsqlConnection(TheConnectionString))
+			{
+				connection.Open();
+				using (NpgsqlCommand command = connection.CreateCommand())
+				{
+					const String parameterName = "p_field_int4";
+					command.CommandText = "SELECT * FROM tablea WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
+					command.Parameters.Add(new NpgsqlParameter(parameterName,4));
+					using (NpgsqlDataReader reader = command.ExecuteReader())
+					{
+						Assert.IsTrue(reader.Read());
+						// This is OK, when no exceptions are occurred.
+					}
+				}
+			}
+		}
+
 
     }
     [TestFixture]

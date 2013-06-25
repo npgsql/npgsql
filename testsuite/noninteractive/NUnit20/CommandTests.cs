@@ -30,7 +30,6 @@ using System;
 
 using Npgsql;
 using NUnit.Framework;
-using NUnit.Core;
 using System.Data;
 using System.Globalization;
 using System.Net;
@@ -1082,6 +1081,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void TimeSupportTimezone()
         {
             NpgsqlCommand command = new NpgsqlCommand("select '13:03:45.001-05'::timetz", TheConnection);
@@ -1762,7 +1762,7 @@ namespace NpgsqlTests
         public void ConnectionStringWithInvalidParameterValue()
         {
 
-            NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tets;Password=j");
+            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";userid=npgsql_tes;pooling=false");
 
             NpgsqlCommand command = new NpgsqlCommand("select * from tablea", conn);
 
@@ -1784,23 +1784,22 @@ namespace NpgsqlTests
         [ExpectedException(typeof(ArgumentException))]
         public void InvalidConnectionString()
         {
+            
             NpgsqlConnection conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
 
-            NpgsqlCommand command = new NpgsqlCommand("select * from tablea", conn);
-
-            command.Connection.Open();
-            command.ExecuteReader();
-            command.Connection.Close();
+            conn.Open();
+            
+            
         }
 
 
         [Test]
         public void AmbiguousFunctionParameterType()
         {
-            NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
+            //NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
 
 
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
+            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", TheConnection);
             command.CommandType = CommandType.StoredProcedure;
             NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
             p.Value = 2;
@@ -1821,47 +1820,39 @@ namespace NpgsqlTests
             p.Value = "a";
             command.Parameters.Add(p);
 
-
-            command.Connection.Open();
             command.ExecuteScalar();
-            command.Connection.Close();
+            
         }
         
         [Test]
         public void AmbiguousFunctionParameterTypePrepared()
         {
             
-            using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString))
-            {
-
-
-                NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", conn);
-                command.CommandType = CommandType.StoredProcedure;
-                NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
-                p.Value = 2;
-                command.Parameters.Add(p);
-                p = new NpgsqlParameter("b", DbType.Int32);
-                p.Value = 2;
-                command.Parameters.Add(p);
-                p = new NpgsqlParameter("c", DbType.Int64);
-                p.Value = 2;
-                command.Parameters.Add(p);
-                p = new NpgsqlParameter("d", DbType.String);
-                p.Value = "a";
-                command.Parameters.Add(p);
-                p = new NpgsqlParameter("e", DbType.String);
-                p.Value = "a";
-                command.Parameters.Add(p);
-                p = new NpgsqlParameter("f", DbType.String);
-                p.Value = "a";
-                command.Parameters.Add(p);
+            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", TheConnection);
+            command.CommandType = CommandType.StoredProcedure;
+            NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
+            p.Value = 2;
+            command.Parameters.Add(p);
+            p = new NpgsqlParameter("b", DbType.Int32);
+            p.Value = 2;
+            command.Parameters.Add(p);
+            p = new NpgsqlParameter("c", DbType.Int64);
+            p.Value = 2;
+            command.Parameters.Add(p);
+            p = new NpgsqlParameter("d", DbType.String);
+            p.Value = "a";
+            command.Parameters.Add(p);
+            p = new NpgsqlParameter("e", DbType.String);
+            p.Value = "a";
+            command.Parameters.Add(p);
+            p = new NpgsqlParameter("f", DbType.String);
+            p.Value = "a";
+            command.Parameters.Add(p);
     
     
-                command.Connection.Open();
-                command.Prepare();
-                command.ExecuteScalar();
-                //command.Connection.Close();
-            }
+            command.Prepare();
+            command.ExecuteScalar();
+            
         }
 
 
@@ -2277,22 +2268,6 @@ namespace NpgsqlTests
             p.Value = "teste";
             
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType);
-        }
-        
-        [Test]
-        public void ProblemSqlInsideException()
-        {
-            String sql = "selec 1 as test";
-            try
-            {
-                NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
-                
-                command.ExecuteReader();
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual(sql, ex.ErrorSql);
-            }
         }
 
         [Test]
@@ -2890,7 +2865,7 @@ connection.Open();*/
 
 	
 			
-	        using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180"))
+	        using (NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString + ";CommandTimeout=180;pooling=false"))
             {
                 
                 
@@ -3572,9 +3547,38 @@ connection.Open();*/
 
             Decimal result = dr.GetDecimal(0);
 
+            dr.Close();
+
             Assert.AreEqual(-10.5, result);
             
-            dr.Close();
+            
+        }
+
+        [Test]
+        public void Bug1011085()
+        {
+            // Money format is not set in accordance with the system locale format
+
+            NpgsqlCommand command = new NpgsqlCommand("select :moneyvalue", TheConnection);
+            Decimal expectedValue = 8.99m;
+
+            command.Parameters.Add ("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
+
+            Decimal result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 100m;
+            command.Parameters [0].Value = expectedValue;
+            result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 72.25m;
+            command.Parameters [0].Value = expectedValue;
+            result = (Decimal) command.ExecuteScalar ();
+            Assert.AreEqual(expectedValue, result);
+
+
+
         }
        
         [Test]
@@ -3881,7 +3885,7 @@ connection.Open();*/
             Assert.AreEqual(typeof(Int64), result.GetType());
 
 
-
+            /*
             // time
 
             cmd.CommandText = "select current_time::time";
@@ -3897,7 +3901,8 @@ connection.Open();*/
             result = cmd.ExecuteScalar();
 
             Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
-
+            */
+            
 
 
 

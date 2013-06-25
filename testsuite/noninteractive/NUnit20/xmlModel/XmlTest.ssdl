@@ -1,0 +1,229 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="XmlTest.Store" Alias="Self" Provider="Npgsql" ProviderManifestToken="8.3.5" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/ssdl">
+  <EntityContainer Name="XmlTestStoreContainer">
+    <EntitySet Name="Customer" EntityType="XmlTest.Store.Customer" store:Type="Tables" Schema="public" />
+    <EntitySet Name="SalesOrderHeader" EntityType="XmlTest.Store.SalesOrderHeader" store:Type="Tables" Schema="public" />
+    <EntitySet Name="User" EntityType="XmlTest.Store.User" store:Type="Tables" Schema="public" />
+    <EntitySet Name="UserDetails" EntityType="XmlTest.Store.UserDetails" store:Type="Tables" Schema="public" />
+    <EntitySet Name="UserToken" EntityType="XmlTest.Store.UserToken" store:Type="Tables" Schema="public" />
+    <EntitySet Name="XmlTable" EntityType="XmlTest.Store.XmlTable" store:Type="Tables" Schema="public" />
+    <EntitySet Name="dispTargetViews" EntityType="XmlTest.Store.dispTargetViews" store:Type="Tables" Schema="public" />
+    <EntitySet Name="dispViews" EntityType="XmlTest.Store.dispViews" store:Type="Tables" Schema="public" />
+    <AssociationSet Name="FK_dispTargetViews_dispViews1" Association="XmlTest.Store.FK_dispTargetViews_dispViews1">
+      <End Role="dispViews" EntitySet="dispViews" />
+      <End Role="dispTargetViews" EntitySet="dispTargetViews" />
+    </AssociationSet>
+    <AssociationSet Name="FK_dispTargetViews_dispViews2" Association="XmlTest.Store.FK_dispTargetViews_dispViews2">
+      <End Role="dispViews" EntitySet="dispViews" />
+      <End Role="dispTargetViews" EntitySet="dispTargetViews" />
+    </AssociationSet>
+    <AssociationSet Name="SalesOrderHeader_OrderID_fkey" Association="XmlTest.Store.SalesOrderHeader_OrderID_fkey">
+      <End Role="Customer" EntitySet="Customer" />
+      <End Role="SalesOrderHeader" EntitySet="SalesOrderHeader" />
+    </AssociationSet>
+    <AssociationSet Name="UserDetails_FK" Association="XmlTest.Store.UserDetails_FK">
+      <End Role="User" EntitySet="User" />
+      <End Role="UserDetails" EntitySet="UserDetails" />
+    </AssociationSet>
+    <AssociationSet Name="UserToken_FK" Association="XmlTest.Store.UserToken_FK">
+      <End Role="User" EntitySet="User" />
+      <End Role="UserToken" EntitySet="UserToken" />
+    </AssociationSet>
+  </EntityContainer>
+  <EntityType Name="Customer">
+    <Key>
+      <PropertyRef Name="OrderID" />
+    </Key>
+    <Property Name="OrderID" Type="int4" Nullable="false" StoreGeneratedPattern="Identity" />
+    <Property Name="NameStyle" Type="int4" Nullable="false" />
+    <Property Name="FirstName" Type="varchar" MaxLength="50" />
+    <Property Name="LastName" Type="varchar" MaxLength="50" />
+    <Property Name="Active" Type="bool" Nullable="false" />
+    <Property Name="ModifiedDate" Type="timestamp" Nullable="false" />
+    <Property Name="TourNumber" Type="int4" />
+    <Property Name="ExternalNumber" Type="int4" />
+    <Property Name="MainPhone1" Type="varchar" MaxLength="25" />
+    <Property Name="MainPhone2" Type="varchar" MaxLength="25" />
+    <Property Name="PreOrderID" Type="varchar" MaxLength="15" />
+    <Property Name="LastVisit" Type="date" />
+    <Property Name="Created" Type="timestamp" Nullable="false" />
+    <Property Name="ExternalName" Type="varchar" MaxLength="50" />
+    <Property Name="NewCustomer" Type="bool" Nullable="false" />
+    <Property Name="Potential" Type="bool" Nullable="false" />
+    <Property Name="CustomerID" Type="int4" />
+    <Property Name="OldExternalNumber" Type="int4" />
+    <Property Name="OldTourNumber" Type="int4" />
+    <Property Name="NewAssigned" Type="bool" Nullable="false" />
+    <Property Name="OldActive" Type="bool" Nullable="false" />
+    <Property Name="StartDate" Type="date" />
+    <Property Name="Total" Type="numeric" Nullable="false" Scale="2" />
+  </EntityType>
+  <EntityType Name="SalesOrderHeader">
+    <Key>
+      <PropertyRef Name="ID" />
+    </Key>
+    <Property Name="OrderDate" Type="timestamp" />
+    <Property Name="Status" Type="int4" Nullable="false" />
+    <Property Name="BillToAddressID" Type="int4" />
+    <Property Name="SubTotal" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="TotalDue" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="Comment" Type="text" />
+    <Property Name="ModifiedDate" Type="timestamp" />
+    <Property Name="PaymentVersion" Type="int4" />
+    <Property Name="BillID" Type="varchar" MaxLength="15" />
+    <Property Name="BookCounter" Type="int4" Nullable="false" />
+    <Property Name="SendID" Type="int4" />
+    <Property Name="SubSubTotal" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="PriceRabatt15" Type="bool" Nullable="false" />
+    <Property Name="Total" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="Discount" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="Rabatt" Type="numeric" Nullable="false" Scale="2" />
+    <Property Name="OrderID" Type="int4" Nullable="false" />
+    <Property Name="SendDate" Type="timestamp" />
+    <Property Name="ID" Type="int4" Nullable="false" StoreGeneratedPattern="Identity" />
+    <Property Name="Saison" Type="bpchar" Nullable="false" MaxLength="9" />
+  </EntityType>
+  <EntityType Name="User">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="int4" Nullable="false" />
+    <Property Name="Name" Type="varchar" MaxLength="40" />
+    <Property Name="Login" Type="varchar" MaxLength="40" />
+    <Property Name="StatusId" Type="int4" />
+  </EntityType>
+  <EntityType Name="UserDetails">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="int4" Nullable="false" />
+    <Property Name="Details" Type="varchar" MaxLength="120" />
+  </EntityType>
+  <EntityType Name="UserToken">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="UserId" Type="int4" Nullable="false" />
+    <Property Name="Token" Type="varchar" MaxLength="40" />
+  </EntityType>
+  <EntityType Name="XmlTable">
+    <Key>
+      <PropertyRef Name="key" />
+    </Key>
+    <Property Name="key" Type="int4" Nullable="false" StoreGeneratedPattern="Identity" />
+    <Property Name="test_xml" Type="xml" />
+  </EntityType>
+  <EntityType Name="dispTargetViews">
+    <Key>
+      <PropertyRef Name="ViewName" />
+      <PropertyRef Name="MdsIdPlatformId" />
+      <PropertyRef Name="TargetViewName" />
+      <PropertyRef Name="TargetMdsIdPlatformId" />
+    </Key>
+    <Property Name="ViewName" Type="varchar" Nullable="false" MaxLength="50" />
+    <Property Name="MdsIdPlatformId" Type="varchar" Nullable="false" MaxLength="50" />
+    <Property Name="TargetViewName" Type="varchar" Nullable="false" MaxLength="50" />
+    <Property Name="TargetMdsIdPlatformId" Type="varchar" Nullable="false" MaxLength="50" />
+  </EntityType>
+  <EntityType Name="dispViews">
+    <Key>
+      <PropertyRef Name="ViewName" />
+      <PropertyRef Name="MdsIdPlatformId" />
+    </Key>
+    <Property Name="ViewName" Type="varchar" Nullable="false" MaxLength="50" />
+    <Property Name="MdsIdPlatformId" Type="varchar" Nullable="false" MaxLength="50" />
+    <Property Name="DisplayName" Type="varchar" MaxLength="50" />
+    <Property Name="ImageFileName" Type="varchar" MaxLength="200" />
+  </EntityType>
+  <Association Name="FK_dispTargetViews_dispViews1">
+    <End Role="dispViews" Type="XmlTest.Store.dispViews" Multiplicity="1" />
+    <End Role="dispTargetViews" Type="XmlTest.Store.dispTargetViews" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="dispViews">
+        <PropertyRef Name="ViewName" />
+        <PropertyRef Name="MdsIdPlatformId" />
+      </Principal>
+      <Dependent Role="dispTargetViews">
+        <PropertyRef Name="ViewName" />
+        <PropertyRef Name="MdsIdPlatformId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_dispTargetViews_dispViews2">
+    <End Role="dispViews" Type="XmlTest.Store.dispViews" Multiplicity="1" />
+    <End Role="dispTargetViews" Type="XmlTest.Store.dispTargetViews" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="dispViews">
+        <PropertyRef Name="ViewName" />
+        <PropertyRef Name="MdsIdPlatformId" />
+      </Principal>
+      <Dependent Role="dispTargetViews">
+        <PropertyRef Name="TargetViewName" />
+        <PropertyRef Name="TargetMdsIdPlatformId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="SalesOrderHeader_OrderID_fkey">
+    <End Role="Customer" Type="XmlTest.Store.Customer" Multiplicity="1">
+      <OnDelete Action="Cascade" />
+    </End>
+    <End Role="SalesOrderHeader" Type="XmlTest.Store.SalesOrderHeader" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Customer">
+        <PropertyRef Name="OrderID" />
+      </Principal>
+      <Dependent Role="SalesOrderHeader">
+        <PropertyRef Name="OrderID" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="UserDetails_FK">
+    <End Role="User" Type="XmlTest.Store.User" Multiplicity="1" />
+    <End Role="UserDetails" Type="XmlTest.Store.UserDetails" Multiplicity="0..1" />
+    <ReferentialConstraint>
+      <Principal Role="User">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="UserDetails">
+        <PropertyRef Name="UserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="UserToken_FK">
+    <End Role="User" Type="XmlTest.Store.User" Multiplicity="1" />
+    <End Role="UserToken" Type="XmlTest.Store.UserToken" Multiplicity="0..1" />
+    <ReferentialConstraint>
+      <Principal Role="User">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="UserToken">
+        <PropertyRef Name="UserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Function Name="uuid_generate_v1" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_generate_v1mc" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_generate_v3" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public">
+    <Parameter Name="namespace" Type="uuid" Mode="In" />
+    <Parameter Name="name" Type="text" Mode="In" />
+  </Function>
+  <Function Name="uuid_generate_v4" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_generate_v5" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public">
+    <Parameter Name="namespace" Type="uuid" Mode="In" />
+    <Parameter Name="name" Type="text" Mode="In" />
+  </Function>
+  <Function Name="uuid_nil" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_ns_dns" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_ns_oid" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_ns_url" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <Function Name="uuid_ns_x500" ReturnType="uuid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+  <!--Errors Found During Generation:
+warning 6005: The function 'lo_manage' has a return data type 'trigger' that is not supported, the function was excluded.
+
+<Function Name="lo_manage" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />
+Errors Found During Generation:
+warning 6005: The function 'lo_oid' has a return data type 'oid' that is not supported, the function was excluded.
+warning 6005: The function 'lo_oid' has a parameter 'x' at parameter index 0 that has a data type 'lo' which is not supported, the function was excluded.
+
+<Function Name="lo_oid" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" />-->
+</Schema>

@@ -2,8 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+#if ENTITIES6
+using System.Data.Entity.Core.Common.CommandTrees;
+using System.Data.Entity.Core.Metadata.Edm;
+#else
 using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
+#endif
 using System.Linq;
 
 namespace Npgsql.SqlGenerators
@@ -1062,7 +1067,26 @@ namespace Npgsql.SqlGenerators
                         return StringModifier("btrim", args);
 
                         // date functions
-                    //case "AddNanoseconds":
+                    // date functions                    
+                    case "AddDays":                    
+                    case "AddHours":
+                    case "AddMicroseconds":
+                    case "AddMilliseconds":
+                    case "AddMinutes":
+                    case "AddMonths":
+                    case "AddNanoseconds":
+                    case "AddSeconds":
+                    case "AddYears":
+                    case "DiffDays":                                          
+                    case "DiffHours":
+                    case "DiffMicroseconds":
+                    case "DiffMilliseconds":
+                    case "DiffMinutes":
+                    case "DiffMonths":
+                    case "DiffNanoseconds":
+                    case "DiffSeconds":
+                    case "DiffYears":   
+                        return DateAdd(function.Name, args);
                     //    return 
                     case "Day":
                     case "Hour":
@@ -1178,6 +1202,52 @@ namespace Npgsql.SqlGenerators
             return extract_date;
         }
 
+        /// <summary>
+        /// PostgreSQL has no direct functions to implements DateTime canonical functions
+        /// http://msdn.microsoft.com/en-us/library/bb738626.aspx
+        /// http://msdn.microsoft.com/en-us/library/bb738626.aspx
+        /// but we can use workaround:
+        /// expression + number * INTERVAL '1 number_type'
+        /// where number_type is the number type (days, years and etc)
+        /// </summary>
+        /// <param name="functionName"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private VisitedExpression DateAdd(string functionName, IList<DbExpression> args)
+        {
+            string operation = "";
+            string part = "";
+            bool nano = false;
+            if (functionName.Contains("Add"))
+            {
+                operation = "+";
+                part = functionName.Substring(3);
+            }
+            else if (functionName.Contains("Diff"))
+            {
+                operation = "-";
+                part = functionName.Substring(4);
+            }
+            else throw new NotSupportedException();
+
+            if (part == "Nanoseconds")
+            {
+                nano = true;
+                part = "Microseconds";
+            }
+
+            System.Diagnostics.Debug.Assert(args.Count == 2);
+            VisitedExpression dateAddDiff = new LiteralExpression("");
+            dateAddDiff.Append(args[0].Accept(this));
+            dateAddDiff.Append(operation);
+            dateAddDiff.Append(args[1].Accept(this));
+            dateAddDiff.Append(nano
+                                   ? String.Format("/ 1000 * INTERVAL '1 {0}'", part)
+                                   : String.Format(" * INTERVAL '1 {0}'", part));
+
+            return dateAddDiff;
+        }
+
         private VisitedExpression BitwiseOperator(IList<DbExpression> args, string oper)
         {
             System.Diagnostics.Debug.Assert(args.Count == 2);
@@ -1255,6 +1325,18 @@ namespace Npgsql.SqlGenerators
         //    _projectVarName = _projectScopeStack.Pop();
         //    _filterVarName = _filterScopeStack.Pop();
         //}
+
+#if ENTITIES6
+        public override VisitedExpression Visit(DbInExpression expression)
+        {
+            throw new NotImplementedException("New in Entity Framework 6");
+        }
+
+        public override VisitedExpression Visit(DbPropertyExpression expression)
+        {
+            throw new NotImplementedException("New in Entity Framework 6");
+        }
+#endif
     }
 }
 #endif

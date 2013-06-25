@@ -1,0 +1,4 @@
+build
+.cvsignore
+obj
+bin

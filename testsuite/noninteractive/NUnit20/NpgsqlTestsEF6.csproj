@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
+    <ProjectTypeGuids>{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <ProjectGuid>{E9C258D7-0D8E-4E6A-9857-5C6438591755}</ProjectGuid>
     <RootNamespace>NpgsqlTests</RootNamespace>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -11,7 +12,7 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <IsWebBootstrapper>true</IsWebBootstrapper>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile />
     <PublishUrl>http://localhost/NpgsqlTests/</PublishUrl>
     <Install>true</Install>
@@ -27,70 +28,57 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <ProductVersion>10.0.0</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <OutputType>Library</OutputType>
-    <AssemblyName>NpgsqlTests</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputType>Library</OutputType>
+    <AssemblyName>NpgsqlTests</AssemblyName>
     <OutputPath>..\..\..\src\build\nunit2tests\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <DefineConstants>ENTITIES6</DefineConstants>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputType>Library</OutputType>
+    <AssemblyName>NpgsqlTests</AssemblyName>
     <OutputPath>bin\Release\</OutputPath>
+    <DebugSymbols>false</DebugSymbols>
     <RootNamespace>
     </RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <DefineConstants>
+    </DefineConstants>
     <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Mono-Debug|AnyCPU' ">
-    <OutputPath>..\..\..\src\build\nunit2tests\</OutputPath>
-    <DebugSymbols>true</DebugSymbols>
-    <RootNamespace>
-    </RootNamespace>
-    <Optimize>true</Optimize>
-    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Mono-Release|AnyCPU' ">
-    <OutputPath>bin\Mono-Release\</OutputPath>
-    <RootNamespace>
-    </RootNamespace>
-    <Optimize>true</Optimize>
-    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
-    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.core">
-      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.core.dll</HintPath>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\lib\EntityFramework.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.framework.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.util">
-      <HintPath>..\..\..\Tools\NAnt\lib\common\2.0\nunit.util.dll</HintPath>
-    </Reference>
+    <Reference Include="nunit.core" />
+    <Reference Include="nunit.core.interfaces" />
+    <Reference Include="nunit.framework" />
+    <Reference Include="nunit.util" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System" />
-    <Reference Include="System.Data.Entity">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
     <Reference Include="System.Runtime.Serialization">
       <RequiredTargetFramework>3.0</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Xml" />
+    <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
@@ -99,15 +87,14 @@
     <Compile Include="ConnectionTests.cs" />
     <Compile Include="DataAdapterTests.cs" />
     <Compile Include="DataReaderTests.cs" />
-    <Compile Include="ExceptionTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
     <Compile Include="TypesTests.cs" />
-    <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
-    <Compile Include="xmlModel\XmlTest.Views.cs" />
+    <Compile Include="xmlModel\XmlTest.Views.EF6.cs" />
+    <Compile Include="xmlModel\XmlTest.ObjectLayer.EF6.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
@@ -151,9 +138,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Npgsql2010.csproj">
+    <ProjectReference Include="..\..\..\src\NpgsqlEF6.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
-      <Name>Npgsql2010</Name>
+      <Name>NpgsqlEF6</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

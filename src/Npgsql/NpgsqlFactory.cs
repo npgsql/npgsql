@@ -24,6 +24,9 @@
 
 using System;
 using System.Data.Common;
+#if ENTITIES6
+using System.Data.Entity.Core.Common;
+#endif
 
 namespace Npgsql
 {

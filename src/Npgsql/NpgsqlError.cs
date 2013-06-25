@@ -68,6 +68,11 @@ namespace Npgsql
 		private readonly String _file = String.Empty;
 		private readonly String _line = String.Empty;
 		private readonly String _routine = String.Empty;
+        private readonly String _schemaName = String.Empty;
+        private readonly String _tableName = String.Empty;
+        private readonly String _columnName = String.Empty;
+        private readonly String _datatypeName = String.Empty;
+        private readonly String _constraintName = String.Empty;
 		private String _errorSql = String.Empty;
 
 		/// <summary>
@@ -164,6 +169,46 @@ namespace Npgsql
 		{
 			get { return _routine; }
 		}
+
+        /// <summary>
+        /// Schema name which relates to the error. PostgreSQL 9.3 and up.
+        /// </summary>
+        public String SchemaName
+        {
+            get { return _schemaName; }
+        }
+
+        /// <summary>
+        /// Table name which relates to the error. PostgreSQL 9.3 and up.
+        /// </summary>
+        public String TableName
+        {
+            get { return _tableName; }
+        }
+
+        /// <summary>
+        /// Column name which relates to the error. PostgreSQL 9.3 and up.
+        /// </summary>
+        public String ColumnName
+        {
+            get { return _columnName; }
+        }
+
+        /// <summary>
+        /// Data type of column which relates to the error. PostgreSQL 9.3 and up.
+        /// </summary>
+        public String DataTypeName
+        {
+            get { return _datatypeName; }
+        }
+
+        /// <summary>
+        /// Constraint name which relates to the error. PostgreSQL 9.3 and up.
+        /// </summary>
+        public String ConstraintName
+        {
+            get { return _constraintName; }
+        }
 
 		/// <summary>
 		/// String containing the sql sent which produced this error.
@@ -287,6 +332,26 @@ namespace Npgsql
 									_routine = PGUtil.ReadString(stream);
 									;
 									break;
+                                case 's':
+                                    _schemaName = PGUtil.ReadString(stream);
+                                    ;
+                                    break;
+                                case 't':
+                                    _tableName = PGUtil.ReadString(stream);
+                                    ;
+                                    break;
+                                case 'c':
+                                    _columnName = PGUtil.ReadString(stream);
+                                    ;
+                                    break;
+                                case 'd':
+                                    _datatypeName = PGUtil.ReadString(stream);
+                                    ;
+                                    break;
+                                case 'n':
+                                    _constraintName = PGUtil.ReadString(stream);
+                                    ;
+                                    break;
 								
 							}
 						}

@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Mapping Space="C-S" xmlns="urn:schemas-microsoft-com:windows:storage:mapping:CS">
+  <EntityContainerMapping StorageEntityContainer="XmlTestStoreContainer" CdmEntityContainer="XmlTestContext">
+    <EntitySetMapping Name="Customer" StoreEntitySet="Customer" TypeName="XmlTest.Customer">
+      <ScalarProperty Name="OrderID" ColumnName="OrderID" />
+      <ScalarProperty Name="NameStyle" ColumnName="NameStyle" />
+      <ScalarProperty Name="FirstName" ColumnName="FirstName" />
+      <ScalarProperty Name="LastName" ColumnName="LastName" />
+      <ScalarProperty Name="Active" ColumnName="Active" />
+      <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+      <ScalarProperty Name="TourNumber" ColumnName="TourNumber" />
+      <ScalarProperty Name="ExternalNumber" ColumnName="ExternalNumber" />
+      <ScalarProperty Name="MainPhone1" ColumnName="MainPhone1" />
+      <ScalarProperty Name="MainPhone2" ColumnName="MainPhone2" />
+      <ScalarProperty Name="PreOrderID" ColumnName="PreOrderID" />
+      <ScalarProperty Name="LastVisit" ColumnName="LastVisit" />
+      <ScalarProperty Name="Created" ColumnName="Created" />
+      <ScalarProperty Name="ExternalName" ColumnName="ExternalName" />
+      <ScalarProperty Name="NewCustomer" ColumnName="NewCustomer" />
+      <ScalarProperty Name="Potential" ColumnName="Potential" />
+      <ScalarProperty Name="CustomerID" ColumnName="CustomerID" />
+      <ScalarProperty Name="OldExternalNumber" ColumnName="OldExternalNumber" />
+      <ScalarProperty Name="OldTourNumber" ColumnName="OldTourNumber" />
+      <ScalarProperty Name="NewAssigned" ColumnName="NewAssigned" />
+      <ScalarProperty Name="OldActive" ColumnName="OldActive" />
+      <ScalarProperty Name="StartDate" ColumnName="StartDate" />
+      <ScalarProperty Name="Total" ColumnName="Total" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="SalesOrderHeader" StoreEntitySet="SalesOrderHeader" TypeName="XmlTest.SalesOrderHeader">
+      <ScalarProperty Name="OrderDate" ColumnName="OrderDate" />
+      <ScalarProperty Name="Status" ColumnName="Status" />
+      <ScalarProperty Name="BillToAddressID" ColumnName="BillToAddressID" />
+      <ScalarProperty Name="SubTotal" ColumnName="SubTotal" />
+      <ScalarProperty Name="TotalDue" ColumnName="TotalDue" />
+      <ScalarProperty Name="Comment" ColumnName="Comment" />
+      <ScalarProperty Name="ModifiedDate" ColumnName="ModifiedDate" />
+      <ScalarProperty Name="PaymentVersion" ColumnName="PaymentVersion" />
+      <ScalarProperty Name="BillID" ColumnName="BillID" />
+      <ScalarProperty Name="BookCounter" ColumnName="BookCounter" />
+      <ScalarProperty Name="SendID" ColumnName="SendID" />
+      <ScalarProperty Name="SubSubTotal" ColumnName="SubSubTotal" />
+      <ScalarProperty Name="PriceRabatt15" ColumnName="PriceRabatt15" />
+      <ScalarProperty Name="Total" ColumnName="Total" />
+      <ScalarProperty Name="Discount" ColumnName="Discount" />
+      <ScalarProperty Name="Rabatt" ColumnName="Rabatt" />
+      <ScalarProperty Name="SendDate" ColumnName="SendDate" />
+      <ScalarProperty Name="ID" ColumnName="ID" />
+      <ScalarProperty Name="Saison" ColumnName="Saison" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="User" StoreEntitySet="User" TypeName="XmlTest.User">
+      <ScalarProperty Name="UserId" ColumnName="UserId" />
+      <ScalarProperty Name="Name" ColumnName="Name" />
+      <ScalarProperty Name="Login" ColumnName="Login" />
+      <ScalarProperty Name="StatusId" ColumnName="StatusId" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="UserDetails" StoreEntitySet="UserDetails" TypeName="XmlTest.UserDetails">
+      <ScalarProperty Name="UserId" ColumnName="UserId" />
+      <ScalarProperty Name="Details" ColumnName="Details" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="UserToken" StoreEntitySet="UserToken" TypeName="XmlTest.UserToken">
+      <ScalarProperty Name="UserId" ColumnName="UserId" />
+      <ScalarProperty Name="Token" ColumnName="Token" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="XmlTable" StoreEntitySet="XmlTable" TypeName="XmlTest.XmlTable">
+      <ScalarProperty Name="key" ColumnName="key" />
+      <ScalarProperty Name="test_xml" ColumnName="test_xml" />
+    </EntitySetMapping>
+    <EntitySetMapping Name="dispViews" StoreEntitySet="dispViews" TypeName="XmlTest.dispViews">
+      <ScalarProperty Name="ViewName" ColumnName="ViewName" />
+      <ScalarProperty Name="MdsIdPlatformId" ColumnName="MdsIdPlatformId" />
+      <ScalarProperty Name="DisplayName" ColumnName="DisplayName" />
+      <ScalarProperty Name="ImageFileName" ColumnName="ImageFileName" />
+    </EntitySetMapping>
+    <AssociationSetMapping Name="SalesOrderHeader_OrderID_fkey" TypeName="XmlTest.SalesOrderHeader_OrderID_fkey" StoreEntitySet="SalesOrderHeader">
+      <EndProperty Name="Customer">
+        <ScalarProperty Name="OrderID" ColumnName="OrderID" />
+      </EndProperty>
+      <EndProperty Name="SalesOrderHeader">
+        <ScalarProperty Name="ID" ColumnName="ID" />
+      </EndProperty>
+    </AssociationSetMapping>
+    <AssociationSetMapping Name="UserDetails_FK" TypeName="XmlTest.UserDetails_FK" StoreEntitySet="UserDetails">
+      <EndProperty Name="User">
+        <ScalarProperty Name="UserId" ColumnName="UserId" />
+      </EndProperty>
+      <EndProperty Name="UserDetails">
+        <ScalarProperty Name="UserId" ColumnName="UserId" />
+      </EndProperty>
+    </AssociationSetMapping>
+    <AssociationSetMapping Name="UserToken_FK" TypeName="XmlTest.UserToken_FK" StoreEntitySet="UserToken">
+      <EndProperty Name="User">
+        <ScalarProperty Name="UserId" ColumnName="UserId" />
+      </EndProperty>
+      <EndProperty Name="UserToken">
+        <ScalarProperty Name="UserId" ColumnName="UserId" />
+      </EndProperty>
+    </AssociationSetMapping>
+    <AssociationSetMapping Name="dispTargetViews" TypeName="XmlTest.dispTargetViews" StoreEntitySet="dispTargetViews">
+      <EndProperty Name="dispViews">
+        <ScalarProperty Name="ViewName" ColumnName="ViewName" />
+        <ScalarProperty Name="MdsIdPlatformId" ColumnName="MdsIdPlatformId" />
+      </EndProperty>
+      <EndProperty Name="dispViews1">
+        <ScalarProperty Name="ViewName" ColumnName="TargetViewName" />
+        <ScalarProperty Name="MdsIdPlatformId" ColumnName="TargetMdsIdPlatformId" />
+      </EndProperty>
+    </AssociationSetMapping>
+  </EntityContainerMapping>
+</Mapping>

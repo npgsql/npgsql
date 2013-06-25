@@ -122,6 +122,9 @@ namespace Npgsql
 
 		// Used when we closed the connector due to an error, but are pretending it's open.
 		private bool _fakingOpen;
+        // Used when the connection is closed but an TransactionScope is still active
+        // (the actual close is postponed until the scope ends)
+	    private bool _postponingClose;
 
 		// Strong-typed ConnectionString values
 		private NpgsqlConnectionStringBuilder settings;
@@ -130,9 +133,6 @@ namespace Npgsql
 		private NpgsqlConnector connector = null;
 
         private NpgsqlPromotableSinglePhaseNotification promotable = null;
-
-		// A cached copy of the result of `settings.ConnectionString`
-		private string _connectionString;
 
 
 		/// <summary>
@@ -154,7 +154,16 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
 
-			LoadConnectionStringBuilder(ConnectionString);
+			NpgsqlConnectionStringBuilder builder = cache[ConnectionString];
+			if (builder == null)
+			{
+				settings = new NpgsqlConnectionStringBuilder(ConnectionString);
+			}
+			else
+			{
+				settings = builder.Clone();
+			}
+
 			LogConnectionString();
 
 			NoticeDelegate = new NoticeEventHandler(OnNotice);
@@ -239,12 +248,7 @@ namespace Npgsql
 
 		public override String ConnectionString
 		{
-			get
-			{
-				if (string.IsNullOrEmpty(_connectionString))
-					RefreshConnectionString();
-				return settings.ConnectionString;
-			}
+			get { return settings.ConnectionString; }
 			set
 			{
 				// Connection string is used as the key to the connector.  Because of this,
@@ -260,7 +264,6 @@ namespace Npgsql
 				{
 					settings = builder.Clone();
 				}
-				LoadConnectionStringBuilder(value);
 				LogConnectionString();
 			}
 		}
@@ -523,6 +526,11 @@ namespace Npgsql
 		/// </summary>
 		public override void Open()
 		{
+            // If we're postponing a close (see doc on this variable), the connection is already
+            // open and can be silently reused
+		    if (_postponingClose)
+		        return;
+
 			CheckConnectionClosed();
 
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
@@ -539,8 +547,22 @@ namespace Npgsql
 											NpgsqlConnectionStringBuilder.GetKeyName(Keywords.UserName));
 			}
 
-			// Get a Connector.  The connector returned is guaranteed to be connected and ready to go.
-			connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+			// Get a Connector, either from the pool or creating one ourselves.
+            if (Pooling)
+            {
+                connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);                
+            }
+            else
+            {
+                connector = new NpgsqlConnector(this);
+
+                connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
+                connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
+                connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
+                connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
+
+                connector.Open();
+            }
 
 			connector.Notice += NoticeDelegate;
 			connector.Notification += NotificationDelegate;
@@ -554,6 +576,9 @@ namespace Npgsql
 			{
 				Promotable.Enlist(Transaction.Current);
 			}
+
+            this.OnStateChange (new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+
 		}
 
 		/// <summary>
@@ -581,10 +606,7 @@ namespace Npgsql
 
 			Close();
 
-			// Mutating the `settings` object would invalid its cached copy, so work on a copy instead.
-			settings = settings.Clone();
 			settings[Keywords.Database] = dbName;
-			_connectionString = null;
 
 			Open();
 		}
@@ -601,28 +623,70 @@ namespace Npgsql
 		public override void Close()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-            
-			if (connector != null)
-			{
-				Promotable.Prepare();
-                // clear the way for another promotable transaction
-                promotable = null;
 
-				connector.Notification -= NotificationDelegate;
-				connector.Notice -= NoticeDelegate;
+		    if (connector == null)
+		        return;
 
-				if (SyncNotification)
-				{
-					connector.RemoveNotificationThread();
-				}
+		    if (promotable != null && promotable.InLocalTransaction)
+		    {
+		        _postponingClose = true;
+		        return;
+		    }
 
-				NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
+		    ReallyClose();
+        }
 
+        private void ReallyClose()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
+            _postponingClose = false;
 
-				connector = null;
-			
-			}
-		}
+            // clear the way for another promotable transaction
+            promotable = null;
+
+            connector.Notification -= NotificationDelegate;
+            connector.Notice -= NoticeDelegate;
+
+            if (SyncNotification)
+            {
+                connector.RemoveNotificationThread();
+            }
+
+            if (Pooling)
+            {
+                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);                
+            }
+            else
+            {
+                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
+                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
+                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
+                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+
+                if (Connector.Transaction != null)
+                {
+                    Connector.Transaction.Cancel();
+                }
+
+                Connector.Close();
+            }
+
+            connector = null;
+
+            this.OnStateChange (new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
+
+        }
+
+        /// <summary>
+        /// When a connection is closed within an enclosing TransactionScope and the transaction
+        /// hasn't been promoted, we defer the actual closing until the scope ends.
+        /// </summary>
+        internal void PromotableLocalTransactionEnded()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
+            if (_postponingClose)
+                ReallyClose();
+        }
 
 		/// <summary>
 		/// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
@@ -656,25 +720,17 @@ namespace Npgsql
 		/// <b>false</b> when being called from the finalizer.</param>
 		protected override void Dispose(bool disposing)
 		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-					Close();
-				}
-				else
-				{
-					if (FullState != ConnectionState.Closed)
-					{
-						NpgsqlEventLog.LogMsg(resman, "Log_ConnectionLeaking", LogLevel.Debug);
-                        NpgsqlConnectorPool.ConnectorPoolMgr.FixPoolCountBecauseOfConnectionDisposeFalse(this);
-					}
-				}
+		    if (disposed)
+		        return;
 
-				base.Dispose(disposing);
-				disposed = true;
+			if (disposing)
+			{
+				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
+				Close();
 			}
+
+			base.Dispose(disposing);
+			disposed = true;
 		}
 
 		/// <summary>
@@ -726,19 +782,20 @@ namespace Npgsql
 		}
 
 		/// <summary>
-		/// Gets a clone of the NpgsqlConnectionStringBuilder containing the parsed connection string values.
-		/// </summary>
-		internal NpgsqlConnectionStringBuilder ConnectionStringValuesClone()
-		{
-			return settings.Clone();
-		}
-
-		/// <summary>
 		/// The connector object connected to the backend.
 		/// </summary>
 		internal NpgsqlConnector Connector
 		{
 			get { return connector; }
+		}
+
+
+		/// <summary>
+		/// Gets the NpgsqlConnectionStringBuilder containing the parsed connection string values.
+		/// </summary>
+		internal NpgsqlConnectionStringBuilder ConnectionStringValues
+		{
+			get { return settings; }
 		}
 
 		/// <summary>
@@ -873,37 +930,10 @@ namespace Npgsql
 		/// </summary>
 		private void LogConnectionString()
 		{
-			if (LogLevel.Debug >= NpgsqlEventLog.Level)
-				return;
-
 			foreach (string key in settings.Keys)
 			{
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, key, settings[key]);
 			}
-		}
-
-		/// <summary>
-		/// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
-		/// </summary>
-		/// <param name="connectionString">The connection string to load the builder from</param>
-		private void LoadConnectionStringBuilder(string connectionString)
-		{
-			settings = cache[connectionString];
-			if (settings == null)
-			{
-				settings = new NpgsqlConnectionStringBuilder(connectionString);
-				cache[connectionString] = settings;
-			}
-
-			RefreshConnectionString();
-		}
-
-		/// <summary>
-		/// Refresh the cached _connectionString whenever the builder settings change
-		/// </summary>
-		private void RefreshConnectionString()
-		{
-			_connectionString = settings.ConnectionString;
 		}
 
 		private void CheckConnectionOpen()
@@ -929,7 +959,7 @@ namespace Npgsql
 				_fakingOpen = false;
 			}
 
-			if (connector == null)
+			if (_postponingClose || connector == null)
 			{
 				throw new InvalidOperationException(resman.GetString("Exception_ConnNotOpen"));
 			}
