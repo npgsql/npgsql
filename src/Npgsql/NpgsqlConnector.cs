@@ -31,6 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -46,6 +47,14 @@ namespace Npgsql
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
+
+    /// <summary>
+    /// Represents the method that is called to validate the certificate provided by the server during an SSL handshake
+    /// </summary>
+    /// <param name="cert">The server's certificate</param>
+    /// <param name="chain">The certificate chain containing the certificate's CA and any intermediate authorities</param>
+    /// <param name="errors">Any errors that were detected</param>
+    public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
 
     /// <summary>
     /// !!! Helper class, for compilation only.
@@ -87,6 +96,11 @@ namespace Npgsql
         /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
         /// </summary>
         internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
+
+        /// <summary>
+        /// Called to validate server's certificate during SSL handshake
+        /// </summary>
+        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
 
         private ConnectionState _connection_state;
 
@@ -233,6 +247,11 @@ namespace Npgsql
         internal SslMode SslMode
         {
             get { return settings.SslMode; }
+        }
+
+        internal Boolean UseMonoSsl
+        {
+            get { return ValidateRemoteCertificateCallback == null; }
         }
 
         internal Int32 ConnectionTimeout
@@ -519,6 +538,21 @@ namespace Npgsql
             if (ProvideClientCertificatesCallback != null)
             {
                 ProvideClientCertificatesCallback(certificates);
+            }
+        }
+
+        /// <summary>
+        /// Default SSL ValidateRemoteCertificateCallback implementation.
+        /// </summary>
+        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        {
+            if (ValidateRemoteCertificateCallback != null)
+            {
+                return ValidateRemoteCertificateCallback(cert, chain, errors);
+            }
+            else
+            {
+                return false;
             }
         }
 
