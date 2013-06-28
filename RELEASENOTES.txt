@@ -1,4 +1,30 @@
 
+2013-06-27 
+
+    Npgsql 2.0.13.91 (beta1)
+    
+    Fixed bugs:
+        [#1011271] NpgsqlSchema: Use InvariantCulture on all return DataTables with schema data. Thanks Oskar Berggren for patch.
+        [#1011305] Scope without prepared transactions. Thanks Shay Rojansky for the patch.
+        [#1011310] Command timeouts after the first are not handled. Thanks Evan Martin for the patch.
+        [#1011316] ConnectionTimeout fix, bypass the 2147 seconds limit of Socket.Poll method. Thanks Tasos Mamaloukos for patch.
+        [#1011325] Escaped strings don't work with EF. Thanks  Andrey Polyakov for patch and tests.
+        Implements DateTime canonical functions for EntityFramework. Thanks Andrey Polyakov for patch.
+        [#1011325] Escaped strings don't work with EF. Thanks  Andrey Polyakov for patch and tests.
+        [#1011321] Wrong BitString value. Thanks Jon Hanna for patch and support.
+        [#1011326] Connection pooling timer (thus thread) is active even if connection pooling is disabled. Thanks Shay Rojansky for the patch.
+        [#1011001] Bug in NpgsqlConnectionStringBuilder affects on cache and connection pool. Thanks Shay Rojansky for the patch.
+        [#1011267] Monetary localization bug
+        [#1011085] Money format is not set in accordance with the system locale format
+        
+
+    New Features:
+    
+        Add support for new error fields added in PostgreSQL 9.3. See here for more information about those fields: http://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=991f3e5ab3f8196d18d5b313c81a5f744f3baaea Thanks David Rowley for patch.
+        
+        Initial support for Entity Framework 6. See http://fxjr.blogspot.com/2013/06/initial-ef-6-support-added-to-npgsql.html for more information about it.
+        
+
 2012-09-02
 
     Npgsql 2.0.12
