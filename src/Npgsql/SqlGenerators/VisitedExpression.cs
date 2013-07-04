@@ -132,6 +132,8 @@ namespace Npgsql.SqlGenerators
                     sqlText.AppendFormat(ni, "cast({0} as float4)", _value);
                     break;
                 case PrimitiveTypeKind.Boolean:
+                     sqlText.AppendFormat(ni, "cast({0} as boolean)", ((bool)_value)?"TRUE":"FALSE");
+                     break;
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
                     NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
