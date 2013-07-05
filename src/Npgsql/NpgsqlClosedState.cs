@@ -28,6 +28,7 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
@@ -190,19 +191,31 @@ namespace Npgsql
                         //trigger the callback to fetch some certificates
                         context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
-						stream = new SslClientStream(
-                            stream,
-                            context.Host,
-                            true,
-                            SecurityProtocolType.Default,
-                            clientCertificates);
+                        if (context.UseMonoSsl)
+                        {
+                            stream = new SslClientStream(
+                                stream,
+                                context.Host,
+                                true,
+                                SecurityProtocolType.Default,
+                                clientCertificates);
 
-						((SslClientStream) stream).ClientCertSelectionDelegate =
-							new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
-						((SslClientStream) stream).ServerCertValidationDelegate =
-							new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
-						((SslClientStream) stream).PrivateKeyCertSelectionDelegate =
-							new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
+                            ((SslClientStream)stream).ClientCertSelectionDelegate =
+                                new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
+                            ((SslClientStream)stream).ServerCertValidationDelegate =
+                                new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
+                            ((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
+                                new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
+                        }
+                        else
+                        {
+                            SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+                            {
+                                return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
+                            });
+                            sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                            stream = sstream;
+                        }
 					}
 					else if (context.SslMode == SslMode.Require)
 					{

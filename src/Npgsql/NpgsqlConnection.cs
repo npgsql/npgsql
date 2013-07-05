@@ -30,6 +30,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Net.Security;
 using System.Reflection;
 using System.Resources;
 using System.Security.Cryptography;
@@ -98,7 +99,8 @@ namespace Npgsql
 
 		/// <summary>
 		/// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-		/// </summary>
+        /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
 		public event CertificateSelectionCallback CertificateSelectionCallback;
 
 		internal CertificateSelectionCallback CertificateSelectionCallbackDelegate;
@@ -106,16 +108,25 @@ namespace Npgsql
 		/// <summary>
 		/// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
 		/// </summary>
-		public event CertificateValidationCallback CertificateValidationCallback;
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
+        public event CertificateValidationCallback CertificateValidationCallback;
 
 		internal CertificateValidationCallback CertificateValidationCallbackDelegate;
 
 		/// <summary>
 		/// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
 		/// </summary>
-		public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
+        public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
 
 		internal PrivateKeySelectionCallback PrivateKeySelectionCallbackDelegate;
+
+        /// <summary>
+        /// Called to validate server's certificate during SSL handshake
+        /// </summary>
+        public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
+
+        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
 
 		// Set this when disposed is called.
 		private bool disposed = false;
@@ -166,6 +177,7 @@ namespace Npgsql
 			CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
 			CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
 			PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+            ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
 
 			// Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and 
 			// http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
@@ -558,6 +570,7 @@ namespace Npgsql
                 connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
                 connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
                 connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
+                connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
 
                 connector.Open();
             }
@@ -663,6 +676,7 @@ namespace Npgsql
                 Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
                 Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
                 Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
 
                 if (Connector.Transaction != null)
                 {
@@ -923,6 +937,20 @@ namespace Npgsql
             }            
         }
 
+        /// <summary>
+        /// Default SSL ValidateRemoteCertificateCallback implementation.
+        /// </summary>
+        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        {
+            if (ValidateRemoteCertificateCallback != null)
+            {
+                return ValidateRemoteCertificateCallback(cert, chain, errors);
+            }
+            else
+            {
+                return false;
+            }
+        }
 
 		//
 		// Private methods and properties
