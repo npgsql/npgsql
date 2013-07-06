@@ -53,7 +53,12 @@ namespace Npgsql
 			CommandTimeout = 20;
 		}
 
-		public StringBuilder SqlSent { get; internal set; }
+		private StringBuilder SqlLog;
+		public StringBuilder SqlSent
+		{
+			get { return SqlLog ?? new StringBuilder(); }
+			internal set { SqlLog = value; }
+		}
 		public int CommandTimeout { get; set; }
 		public Stream CopyStream { get; set; }
 		public int CopyBufferSize { get; set; }
