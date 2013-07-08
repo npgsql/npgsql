@@ -114,13 +114,9 @@ namespace Npgsql
 			var buf = new char[16384];
 			using (var sr = new StreamReader(cms, Encoding.UTF8))
 			{
-				int pos = 0;
-				while (pos < field_value_size)
-				{
-					var read = sr.Read(buf, 0, 16384);
+				int read;
+				while ((read = sr.Read(buf, 0, 16384)) > 0)
 					sb.Append(buf, 0, read);
-					pos += read;
-				}
 			}
 			try
 			{
@@ -273,13 +269,9 @@ namespace Npgsql
 			var buf = new char[16384];
 			using (var sr = new StreamReader(cms, Encoding.UTF8))
 			{
-				int pos = 0;
-				while (pos < field_value_size)
-				{
-					var read = sr.Read(buf, 0, 16384);
+				int read;
+				while ((read = sr.Read(buf, 0, 16384)) > 0)
 					sb.Append(buf, 0, read);
-					pos += read;
-				}
 			}
 			try
 			{
