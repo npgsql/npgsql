@@ -555,6 +555,7 @@ namespace NpgsqlTests
         [Ignore]
 #if NET_2_0
 		[Category ("NotWorking")]
+        [Ignore]
 #endif
         public void InferType_Invalid()
         {
@@ -655,6 +656,7 @@ namespace NpgsqlTests
         [Ignore]
 #if NET_2_0
 		[Category ("NotWorking")]
+        [Ignore]
 #endif
         public void InferType_TimeSpan()
         {
@@ -712,7 +714,7 @@ namespace NpgsqlTests
             param.Value = DBNull.Value;
             Assert.AreEqual(0, param.Scale, "#B2");
         }
-
+        
         [Test]
         [Ignore]
         public void ParameterType()
