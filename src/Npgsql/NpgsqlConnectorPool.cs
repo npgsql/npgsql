@@ -478,13 +478,15 @@ namespace Npgsql
             Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
             Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
-            bool inQueue = false;
+            /*bool inQueue = false;
 
             lock (queue)
             {
                 inQueue = queue.Busy.ContainsKey(Connector);
                 queue.Busy.Remove(Connector);
             }
+            */
+
 
             if (!Connector.IsInitialized)
             {
@@ -510,6 +512,10 @@ namespace Npgsql
                 }
             }
 
+            
+            bool inQueue = queue.Busy.ContainsKey(Connector);
+
+            
             if (Connector.State == ConnectionState.Open)
             {
                 //If thread is good
@@ -525,22 +531,35 @@ namespace Npgsql
                         //If the connector fails to release its resources then it is probably broken, so make sure we don't add it to the queue.
                         // Usually it already won't be in the queue as it would of broken earlier
                         inQueue = false;
+                        Connector.Close();
                     }
 
-                    if (inQueue)
-                        lock (queue)
-                        {
-                            queue.Available.Enqueue(Connector);
-                        }
-                    else
-                        Connector.Close();
+               
                 }
                 else
                 {
                     //Thread is being aborted, this connection is possibly broken. So kill it rather than returning it to the pool
+                    inQueue = false;
                     Connector.Close();
                 }
             }
+            
+            
+            // Check if Connector should return to the queue of available connectors. If not, this connector is invalid and should
+            // only be removed from the busy queue which effectvely removes it from the pool.
+            if (inQueue)
+                lock (queue)
+                {
+                    queue.Busy.Remove(Connector);
+                    queue.Available.Enqueue(Connector);
+                }
+            else
+                lock (queue)
+                {
+                    queue.Busy.Remove(Connector);
+                }
+
+
         }
 
         /*
