@@ -1,11 +1,5 @@
-
 .DS_Store
 *.resources
-bin
-build
 testsuite/noninteractive/NUnit20/test-results/
-Npgsql2010.userprefs
-src/Npgsql2010.sln.docstates.suo
-src/Npgsql2010.suo
-src/obj/
 testsuite/noninteractive/NUnit20/obj/
+Npgsql2010.userprefs
