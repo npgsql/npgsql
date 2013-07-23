@@ -1258,7 +1258,7 @@ namespace Npgsql.SqlGenerators
             string part = functionName.Substring(4);
             if (!functionName.Contains("Diff"))
                  throw new NotSupportedException();
-            int divisor=1;
+            string operationAndFactor = null;
             VisitedExpression dateDiff = null;
             switch(part)
             {
@@ -1266,9 +1266,9 @@ namespace Npgsql.SqlGenerators
                 case "Years":
                     {
                         dateDiff = new LiteralExpression("DATE_PART(\'year\',");
-                        dateDiff.Append(args[0].Accept(this));
-                        dateDiff.Append(") - DATE_PART(\'year\',");
                         dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(") - DATE_PART(\'year\',");
+                        dateDiff.Append(args[0].Accept(this));
                         dateDiff.Append(")");
                     }
                     break;
@@ -1276,13 +1276,13 @@ namespace Npgsql.SqlGenerators
                 case "Months":
                     {
                         dateDiff = new LiteralExpression("DATE_PART(\'year\',");
-                        dateDiff.Append(args[0].Accept(this));
+                        dateDiff.Append(args[1].Accept(this));
                         dateDiff.Append(")*12 - DATE_PART(\'year\',");
-                        dateDiff.Append(args[1].Accept(this));
-                        dateDiff.Append(")*12+DATE_PART(\'month\',");
                         dateDiff.Append(args[0].Accept(this));
-                        dateDiff.Append(") - DATE_PART(\'month\',");
+                        dateDiff.Append(")*12+DATE_PART(\'month\',");
                         dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(") - DATE_PART(\'month\',");
+                        dateDiff.Append(args[0].Accept(this));
                         dateDiff.Append(")");
                     }
                     break;
@@ -1290,32 +1290,44 @@ namespace Npgsql.SqlGenerators
                  case "Days":
                     {
                         dateDiff = new LiteralExpression("DATE_PART('day',");
-                        dateDiff.Append(args[0].Accept(this));
-                        dateDiff.Append("-");
                         dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append("-");
+                        dateDiff.Append(args[0].Accept(this));
                         dateDiff.Append(")");
                     }
                     break;
-                 //FLOOR(EXTRACT(EPOCH FROM end - start)/$divisor)::INT
+                 //FLOOR(EXTRACT(EPOCH FROM end - start) operationAndFactor)::INT
                  case "Hours":
-                    divisor = 60*60;
+                    operationAndFactor = "/3600";
                     break;
                  case "Minutes":
-                    divisor = 60;
+                    operationAndFactor = "/60";
                     break;
                  case "Seconds":
-                    divisor = 1;
+                    //do nothing factor = "/1";
                     break;
-                default:
+                 case "Milliseconds":
+                    operationAndFactor = "*1000";
+                    break;
+                 case "Microseconds":
+                    operationAndFactor = "*1000000";
+                    break;
+                 case "Nanoseconds":
+                    operationAndFactor = "*1000000000";
+                    break;
+                 default:
                     throw new NotSupportedException(); 
             }
             if(dateDiff == null)
             {
                 dateDiff = new LiteralExpression("FLOOR(EXTRACT(EPOCH FROM ");
-                dateDiff.Append(args[0].Accept(this));
-                dateDiff.Append("-");
                 dateDiff.Append(args[1].Accept(this));
-                dateDiff.Append(string.Format(")/{0})::INT", divisor));
+                dateDiff.Append("-");
+                dateDiff.Append(args[0].Accept(this));
+                dateDiff.Append(")");
+                if (!string.IsNullOrEmpty(operationAndFactor))
+                    dateDiff.Append(operationAndFactor); 
+                dateDiff.Append(")::INT");
             }
             return dateDiff;
         }
