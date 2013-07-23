@@ -1,5 +1,11 @@
 .DS_Store
 *.resources
-testsuite/noninteractive/NUnit20/test-results/
-testsuite/noninteractive/NUnit20/obj/
-Npgsql2010.userprefs
+*.suo
+*.user
+*.sln.docstates
+*.userprefs
+[Bb]in/
+[Bb]uild/
+/src/[Oo]bj/
+/testsuite/noninteractive/NUnit20/test-results/
+/testsuite/noninteractive/NUnit20/[Oo]bj/
