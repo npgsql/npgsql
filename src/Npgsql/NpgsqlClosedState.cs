@@ -100,7 +100,8 @@ namespace Npgsql
 
 		public override void Open(NpgsqlConnector context)
 		{
-			try {
+			try
+			{
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
 
 				/*TcpClient tcpc = new TcpClient();
@@ -135,7 +136,7 @@ namespace Npgsql
 
 				IPAddress[] ips = ResolveIPHost(context.Host);
 				Socket socket = null;
-				Exception LastSocketException = null;
+				Exception lastSocketException = null;
 
 				// try every ip address of the given hostname, use the first reachable one
 				foreach (IPAddress ip in ips)
@@ -162,7 +163,7 @@ namespace Npgsql
 					}
 					catch (Exception E)
 					{
-						LastSocketException = E;
+						lastSocketException = E;
 						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
 						socket.Close();
 					}
@@ -170,9 +171,12 @@ namespace Npgsql
 
 				if (socket == null || !socket.Connected)
 				{
-					if (LastSocketException != null) {
-						throw LastSocketException;
-					} else {
+					if (lastSocketException != null)
+					{
+						throw lastSocketException;
+					}
+					else
+					{
 						// CHECKME: Not sure if this condition is possible, but if it is, something has to be thrown.
 						throw new Exception("Unknown/internal error");
 					}
