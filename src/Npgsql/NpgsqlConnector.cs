@@ -711,8 +711,13 @@ namespace Npgsql
             // Reset state to initialize new connector in pool.
             CurrentState = NpgsqlClosedState.Instance;
 
+            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+            // this allows us to still respect the caller's timeout expectation.
+            int connectTimeRemaining = this.ConnectionTimeout * 1000;
+            DateTime attemptStart = DateTime.Now;
+
             // Get a raw connection, possibly SSL...
-            CurrentState.Open(this);
+            CurrentState.Open(this, connectTimeRemaining);
             try
             {
                 // Establish protocol communication and handle authentication...
@@ -720,6 +725,8 @@ namespace Npgsql
             }
             catch (NpgsqlException ne)
             {
+                connectTimeRemaining -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
                 // Check for protocol not supported.  If we have been told what protocol to use,
                 // we will not try this step.
                 if (settings.Protocol != ProtocolVersion.Unknown)
@@ -746,7 +753,7 @@ namespace Npgsql
                 CurrentState = NpgsqlClosedState.Instance;
 
                 // Get a raw connection, possibly SSL...
-                CurrentState.Open(this);
+                CurrentState.Open(this, connectTimeRemaining);
                 // Establish protocol communication and handle authentication...
                 CurrentState.Startup(this);
             }
@@ -919,7 +926,7 @@ namespace Npgsql
             try
             {
                 // Get a raw connection, possibly SSL...
-                cancelConnector.CurrentState.Open(cancelConnector);
+                cancelConnector.CurrentState.Open(cancelConnector, cancelConnector.ConnectionTimeout * 1000);
 
                 // Cancel current request.
                 cancelConnector.CurrentState.CancelRequest(cancelConnector);

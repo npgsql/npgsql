@@ -87,18 +87,7 @@ namespace Npgsql
 		}
 
 
-		/// <summary>
-		/// Resolve a host name or IP address.
-		/// This is needed because if you call Dns.Resolve() with an IP address, it will attempt
-		/// to resolve it as a host name, when it should just convert it to an IP address.
-		/// </summary>
-		/// <param name="HostName"></param>
-		private static IPAddress[] ResolveIPHost(String HostName)
-		{
-			return Dns.GetHostAddresses(HostName);
-		}
-
-		public override void Open(NpgsqlConnector context)
+		public override void Open(NpgsqlConnector context, int connectTimeRemaining)
 		{
 			try
 			{
@@ -134,11 +123,30 @@ namespace Npgsql
 								}
 								*/
 
-				IPAddress[] ips = ResolveIPHost(context.Host);
+				IAsyncResult result;
+				// Keep track of time remaining; Even though there may be multiple timeout-able calls,
+				// this allows us to still respect the caller's timeout expectation.
+				DateTime attemptStart;
+
+				attemptStart = DateTime.Now;
+
+				result = Dns.BeginGetHostAddresses(context.Host, null, null);
+
+				if (!result.AsyncWaitHandle.WaitOne(connectTimeRemaining, true))
+				{
+					// Timeout was used up attempting the Dns lookup
+					throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
+				}
+
+				IPAddress[] ips = Dns.EndGetHostAddresses(result);
+
+				connectTimeRemaining -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
 				Socket socket = null;
 				Exception lastSocketException = null;
 
 				// try every ip address of the given hostname, use the first reachable one
+				// make sure not to exceed the caller's timeout expectation
 				foreach (IPAddress ip in ips)
 				{
 					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ip);
@@ -146,14 +154,15 @@ namespace Npgsql
 					IPEndPoint ep = new IPEndPoint(ip, context.Port);
 					socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
+					attemptStart = DateTime.Now;
+
 					try
 					{
-						IAsyncResult result = socket.BeginConnect(ep, null, null);
+						result = socket.BeginConnect(ep, null, null);
 
-						if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, true))
+						if (!result.AsyncWaitHandle.WaitOne(connectTimeRemaining, true))
 						{
-							socket.Close();
-							throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+							throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
 						}
 
 						socket.EndConnect(result);
@@ -163,9 +172,15 @@ namespace Npgsql
 					}
 					catch (Exception E)
 					{
+						connectTimeRemaining -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
 						lastSocketException = E;
 						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
 						socket.Close();
+
+						if (connectTimeRemaining <= 0) {
+							// even if there are more ip's to try, we're out of time, so leave the loop with no connection
+							break;
+						}
 					}
 				}
 
