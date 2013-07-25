@@ -177,7 +177,8 @@ namespace Npgsql
 						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
 						socket.Close();
 
-						if (connectTimeRemaining <= 0) {
+						if (connectTimeRemaining <= 0)
+						{
 							// even if there are more ip's to try, we're out of time, so leave the loop with no connection
 							break;
 						}
