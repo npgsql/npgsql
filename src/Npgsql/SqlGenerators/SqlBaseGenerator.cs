@@ -1269,17 +1269,17 @@ namespace Npgsql.SqlGenerators
                 // DATE_PART('year', end) - DATE_PART('year', start)
                 case "Years":
                     {
-                        dateDiff = new LiteralExpression("DATE_PART(\'year\',");
+                        dateDiff = new LiteralExpression("(DATE_PART(\'year\',");
                         dateDiff.Append(end);
                         dateDiff.Append(") - DATE_PART(\'year\',");
                         dateDiff.Append(start);
-                        dateDiff.Append(")");
+                        dateDiff.Append("))::INT");
                     }
                     break;
                 //years_diff * 12 + (DATE_PART('month', end) - DATE_PART('month', start))
                 case "Months":
                     {
-                        dateDiff = new LiteralExpression("DATE_PART(\'year\',");
+                        dateDiff = new LiteralExpression("(DATE_PART(\'year\',");
                         dateDiff.Append(end);
                         dateDiff.Append(")*12 - DATE_PART(\'year\',");
                         dateDiff.Append(start);
@@ -1287,7 +1287,7 @@ namespace Npgsql.SqlGenerators
                         dateDiff.Append(args[1].Accept(this));
                         dateDiff.Append(") - DATE_PART(\'month\',");
                         dateDiff.Append(start);
-                        dateDiff.Append(")");
+                        dateDiff.Append("))::INT");
                     }
                     break;
                  //DATE_PART('day', end - start)
@@ -1297,7 +1297,7 @@ namespace Npgsql.SqlGenerators
                         dateDiff.Append(end);
                         dateDiff.Append("-");
                         dateDiff.Append(start);
-                        dateDiff.Append(")");
+                        dateDiff.Append(")::INT");
                     }
                     break;
                  //FLOOR(EXTRACT(EPOCH FROM end - start) operationAndFactor)::INT
