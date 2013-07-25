@@ -1260,15 +1260,19 @@ namespace Npgsql.SqlGenerators
                  throw new NotSupportedException();
             string operationAndFactor = null;
             VisitedExpression dateDiff = null;
+
+            VisitedExpression start = DateDiffArg(args[0]);
+            VisitedExpression end = DateDiffArg(args[1]);
+
             switch(part)
             {
                 // DATE_PART('year', end) - DATE_PART('year', start)
                 case "Years":
                     {
                         dateDiff = new LiteralExpression("DATE_PART(\'year\',");
-                        dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(end);
                         dateDiff.Append(") - DATE_PART(\'year\',");
-                        dateDiff.Append(args[0].Accept(this));
+                        dateDiff.Append(start);
                         dateDiff.Append(")");
                     }
                     break;
@@ -1276,13 +1280,13 @@ namespace Npgsql.SqlGenerators
                 case "Months":
                     {
                         dateDiff = new LiteralExpression("DATE_PART(\'year\',");
-                        dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(end);
                         dateDiff.Append(")*12 - DATE_PART(\'year\',");
-                        dateDiff.Append(args[0].Accept(this));
+                        dateDiff.Append(start);
                         dateDiff.Append(")*12+DATE_PART(\'month\',");
                         dateDiff.Append(args[1].Accept(this));
                         dateDiff.Append(") - DATE_PART(\'month\',");
-                        dateDiff.Append(args[0].Accept(this));
+                        dateDiff.Append(start);
                         dateDiff.Append(")");
                     }
                     break;
@@ -1290,9 +1294,9 @@ namespace Npgsql.SqlGenerators
                  case "Days":
                     {
                         dateDiff = new LiteralExpression("DATE_PART('day',");
-                        dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(end);
                         dateDiff.Append("-");
-                        dateDiff.Append(args[0].Accept(this));
+                        dateDiff.Append(start);
                         dateDiff.Append(")");
                     }
                     break;
@@ -1321,15 +1325,32 @@ namespace Npgsql.SqlGenerators
             if(dateDiff == null)
             {
                 dateDiff = new LiteralExpression("FLOOR(EXTRACT(EPOCH FROM ");
-                dateDiff.Append(args[1].Accept(this));
+                dateDiff.Append(end);
                 dateDiff.Append("-");
-                dateDiff.Append(args[0].Accept(this));
+                dateDiff.Append(start);
                 dateDiff.Append(")");
                 if (!string.IsNullOrEmpty(operationAndFactor))
                     dateDiff.Append(operationAndFactor); 
                 dateDiff.Append(")::INT");
             }
             return dateDiff;
+        }
+        
+        private VisitedExpression DateDiffArg(DbExpression arg)
+        {
+            VisitedExpression expr = null;
+            if (arg is DbParameterReferenceExpression)
+            {
+                
+                expr = new LiteralExpression("");
+                expr.Append(arg.Accept(this));
+                expr.Append("::TIMESTAMP");
+            }
+            else
+            {
+                expr =  arg.Accept(this);
+            }
+            return expr;
         }
 
         private VisitedExpression BitwiseOperator(IList<DbExpression> args, string oper)
