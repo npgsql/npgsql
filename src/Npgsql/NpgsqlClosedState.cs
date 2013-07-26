@@ -35,7 +35,6 @@ using System.Threading;
 using Mono.Security.Protocol.Tls;
 using SecurityProtocolType=Mono.Security.Protocol.Tls.SecurityProtocolType;
 using System.Security.Cryptography.X509Certificates;
-using System.Diagnostics;
 
 namespace Npgsql
 {
@@ -148,11 +147,11 @@ namespace Npgsql
 				// try every ip address of the given hostname, use the first reachable one
 				// make sure not to exceed the caller's timeout expectation by splitting the
 				// time we have left between all the remaining ip's in the list.
-				for (int I = 0 ; I < ips.Length ; I++)
+				for (int i = 0 ; i < ips.Length ; i++)
 				{
-					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[I]);
+					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
 
-					IPEndPoint ep = new IPEndPoint(ips[I], context.Port);
+					IPEndPoint ep = new IPEndPoint(ips[i], context.Port);
 					socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
 					attemptStart = DateTime.Now;
@@ -161,7 +160,7 @@ namespace Npgsql
 					{
 						result = socket.BeginConnect(ep, null, null);
 
-						if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - I), true))
+						if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
 						{
 							throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
 						}
@@ -171,12 +170,12 @@ namespace Npgsql
 						// connect was successful, leave the loop
 						break;
 					}
-					catch (Exception E)
+					catch (Exception e)
 					{
-						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[I]);
+						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
 
 						timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-						lastSocketException = E;
+						lastSocketException = e;
 
 						socket.Close();
 						socket = null;
@@ -246,9 +245,9 @@ namespace Npgsql
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
 				ChangeState(context, NpgsqlConnectedState.Instance);
 			}
-			catch (Exception E)
+			catch (Exception e)
 			{
-				throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), E);
+				throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e);
 			}
 		}
 
