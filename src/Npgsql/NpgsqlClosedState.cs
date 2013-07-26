@@ -87,26 +87,15 @@ namespace Npgsql
 		}
 
 
-		/// <summary>
-		/// Resolve a host name or IP address.
-		/// This is needed because if you call Dns.Resolve() with an IP address, it will attempt
-		/// to resolve it as a host name, when it should just convert it to an IP address.
-		/// </summary>
-		/// <param name="HostName"></param>
-		private static IPAddress[] ResolveIPHost(String HostName)
-		{
-			return Dns.GetHostAddresses(HostName);
-		}
-
-		public override void Open(NpgsqlConnector context)
+		public override void Open(NpgsqlConnector context, Int32 timeout)
 		{
 			try
 			{
 				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
 
 				/*TcpClient tcpc = new TcpClient();
-                tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-                Stream stream = tcpc.GetStream();*/
+								tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+								Stream stream = tcpc.GetStream();*/
 
 				/*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
 
@@ -115,44 +104,65 @@ namespace Npgsql
 
 				/*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
                 
-                IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
+								IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
-                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
-                {
-                    socket.Close();
-                    throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
-                }
+								if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
+								{
+										socket.Close();
+										throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+								}
 
-                try
-                {
-                    socket.EndConnect(result);
-                }
-                catch (Exception)
-                {
-                    socket.Close();
-                    throw;
-                }
-                */
+								try
+								{
+										socket.EndConnect(result);
+								}
+								catch (Exception)
+								{
+										socket.Close();
+										throw;
+								}
+								*/
 
-				IPAddress[] ips = ResolveIPHost(context.Host);
+				IAsyncResult result;
+				// Keep track of time remaining; Even though there may be multiple timeout-able calls,
+				// this allows us to still respect the caller's timeout expectation.
+				DateTime attemptStart;
+
+				attemptStart = DateTime.Now;
+
+				result = Dns.BeginGetHostAddresses(context.Host, null, null);
+
+				if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+				{
+					// Timeout was used up attempting the Dns lookup
+					throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
+				}
+
+				timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
+				IPAddress[] ips = Dns.EndGetHostAddresses(result);
 				Socket socket = null;
+				Exception lastSocketException = null;
 
 				// try every ip address of the given hostname, use the first reachable one
-				foreach (IPAddress ip in ips)
+				// make sure not to exceed the caller's timeout expectation by splitting the
+				// time we have left between all the remaining ip's in the list.
+				for (int i = 0 ; i < ips.Length ; i++)
 				{
-					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ip);
+					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
 
-					IPEndPoint ep = new IPEndPoint(ip, context.Port);
+					IPEndPoint ep = new IPEndPoint(ips[i], context.Port);
 					socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+					attemptStart = DateTime.Now;
 
 					try
 					{
-						IAsyncResult result = socket.BeginConnect(ep, null, null);
+						result = socket.BeginConnect(ep, null, null);
 
-						if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, true))
+						if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
 						{
-							socket.Close();
-							throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+							throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
 						}
 
 						socket.EndConnect(result);
@@ -160,20 +170,25 @@ namespace Npgsql
 						// connect was successful, leave the loop
 						break;
 					}
-					catch (Exception)
+					catch (Exception e)
 					{
-						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ip);
+						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
+
+						timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+						lastSocketException = e;
+
 						socket.Close();
+						socket = null;
 					}
 				}
 
-				if (socket == null || !socket.Connected)
+				if (socket == null)
 				{
-					throw new Exception(string.Format(resman.GetString("Exception_FailedConnection"), context.Host));
+					throw lastSocketException;
 				}
 
 				//Stream stream = new NetworkStream(socket, true);
-                Stream stream = new NpgsqlNetworkStream(context, socket, true);
+								Stream stream = new NpgsqlNetworkStream(context, socket, true);
 
 				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
 				if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
@@ -185,37 +200,37 @@ namespace Npgsql
 					Char response = (Char) stream.ReadByte();
 					if (response == 'S')
 					{
-                        //create empty collection
-                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
+												//create empty collection
+												X509CertificateCollection clientCertificates = new X509CertificateCollection();
                             
-                        //trigger the callback to fetch some certificates
-                        context.DefaultProvideClientCertificatesCallback(clientCertificates);
+												//trigger the callback to fetch some certificates
+												context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
-                        if (context.UseMonoSsl)
-                        {
-                            stream = new SslClientStream(
-                                stream,
-                                context.Host,
-                                true,
-                                SecurityProtocolType.Default,
-                                clientCertificates);
+												if (context.UseMonoSsl)
+												{
+														stream = new SslClientStream(
+																stream,
+																context.Host,
+																true,
+																SecurityProtocolType.Default,
+																clientCertificates);
 
-                            ((SslClientStream)stream).ClientCertSelectionDelegate =
-                                new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
-                            ((SslClientStream)stream).ServerCertValidationDelegate =
-                                new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
-                            ((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
-                                new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
-                        }
-                        else
-                        {
-                            SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-                            {
-                                return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
-                            });
-                            sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                            stream = sstream;
-                        }
+														((SslClientStream)stream).ClientCertSelectionDelegate =
+																new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
+														((SslClientStream)stream).ServerCertValidationDelegate =
+																new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
+														((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
+																new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
+												}
+												else
+												{
+														SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+														{
+																return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
+														});
+														sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+														stream = sstream;
+												}
 					}
 					else if (context.SslMode == SslMode.Require)
 					{
@@ -230,19 +245,9 @@ namespace Npgsql
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
 				ChangeState(context, NpgsqlConnectedState.Instance);
 			}
-				//FIXME: Exceptions that come from what we are handling should be wrapped - e.g. an error connecting to
-				//the server should definitely be presented to the uesr as an NpgsqlError. Exceptions from userland should
-				//be passed untouched - e.g. ThreadAbortException because the user started this in a thread they created and
-				//then aborted should be passed through.
-				//Are there any others that should be pass through? Alternatively, are there a finite number that should
-				//be wrapped?
-			catch (ThreadAbortException)
-			{
-				throw;
-			}
 			catch (Exception e)
 			{
-				throw new NpgsqlException(e.Message, e);
+				throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e);
 			}
 		}
 
