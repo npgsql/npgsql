@@ -54,7 +54,7 @@ namespace Npgsql
         {
         }
 
-        public virtual void Open(NpgsqlConnector context, int timeRemaining)
+        public virtual void Open(NpgsqlConnector context, Int32 timeout)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
