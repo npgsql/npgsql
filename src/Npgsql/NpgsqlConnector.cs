@@ -188,6 +188,8 @@ namespace Npgsql
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="ConnectionString">Connection string.</param>
+        /// <param name="Pooled">Pooled</param>
         /// <param name="Shared">Controls whether the connector can be shared.</param>
         public NpgsqlConnector(NpgsqlConnectionStringBuilder ConnectionString, bool Pooled, bool Shared)
         {
@@ -1135,7 +1137,7 @@ namespace Npgsql
              * say we don't support it.
              */
               
-            catch(NpgsqlException e)
+            catch(NpgsqlException)
             {
                 return null;
             }

@@ -274,9 +274,8 @@ namespace NpgsqlTests
                         LargeObject largeObject = largeObjectMgr.Open(-1, LargeObjectManager.READWRITE);
                         transaction.Commit();
                     }
-                    catch(Exception ex)
+                    catch
                     {
-                        //Console.WriteLine(ex.ToString());
                         // ignore the LO failure
                     }
                 } // *1* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"

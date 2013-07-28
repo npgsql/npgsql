@@ -50,7 +50,7 @@ namespace NpgsqlTypes
 	/// <para>If you don't know whether these differences are important to your application, they
 	/// probably arent! Just use <see cref="TimeSpan"/> and do not use this class directly &#x263a;</para>
 	/// <para>To avoid forcing unnecessary provider-specific concerns on users who need not be concerned
-	/// with them a call to <see cref="IDataRecord.GetValue(int)"/> on a field containing an
+	/// with them a call to <see cref="System.Data.IDataRecord.GetValue(int)"/> on a field containing an
 	/// <see cref="NpgsqlInterval"/> value will return a <see cref="TimeSpan"/> rather than an
 	/// <see cref="NpgsqlInterval"/>. If you need the extra functionality of <see cref="NpgsqlInterval"/>
 	/// then use <see cref="Npgsql.NpgsqlDataReader.GetInterval(Int32)"/>.</para>
@@ -456,7 +456,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of microseconds.
 		/// </summary>
-		/// <param name="ticks">The number of microseconds in the interval.</param>
+		/// <param name="micro">The number of microseconds in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of microseconds.</returns>
 		public static NpgsqlInterval FromMicroseconds(double micro)
 		{
@@ -466,7 +466,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of milliseconds.
 		/// </summary>
-		/// <param name="ticks">The number of milliseconds in the interval.</param>
+		/// <param name="milli">The number of milliseconds in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of milliseconds.</returns>
 		public static NpgsqlInterval FromMilliseconds(double milli)
 		{
@@ -476,7 +476,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of seconds.
 		/// </summary>
-		/// <param name="ticks">The number of seconds in the interval.</param>
+		/// <param name="seconds">The number of seconds in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of seconds.</returns>
 		public static NpgsqlInterval FromSeconds(double seconds)
 		{
@@ -486,7 +486,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of minutes.
 		/// </summary>
-		/// <param name="ticks">The number of minutes in the interval.</param>
+		/// <param name="minutes">The number of minutes in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of minutes.</returns>
 		public static NpgsqlInterval FromMinutes(double minutes)
 		{
@@ -496,7 +496,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of hours.
 		/// </summary>
-		/// <param name="ticks">The number of hours in the interval.</param>
+		/// <param name="hours">The number of hours in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of hours.</returns>
 		public static NpgsqlInterval FromHours(double hours)
 		{
@@ -506,7 +506,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of days.
 		/// </summary>
-		/// <param name="ticks">The number of days in the interval.</param>
+		/// <param name="days">The number of days in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of days.</returns>
 		public static NpgsqlInterval FromDays(double days)
 		{
@@ -516,7 +516,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creates an <see cref="NpgsqlInterval"/> from a number of months.
 		/// </summary>
-		/// <param name="ticks">The number of months in the interval.</param>
+		/// <param name="months">The number of months in the interval.</param>
 		/// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of months.</returns>
 		public static NpgsqlInterval FromMonths(double months)
 		{
@@ -646,8 +646,9 @@ namespace NpgsqlTypes
 		/// <para>Note that the results of casting a <see cref="TimeSpan"/> to <see cref="NpgsqlInterval"/> is
 		/// canonicalised.</para>
 		/// </remarks>
-		/// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
-		/// converted into days.</return>
+		/// </summary>
+		/// <returns>An <see cref="NpgsqlTypes.NpgsqlInterval"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
+		/// converted into days.</returns>
 		public NpgsqlInterval Canonicalize()
 		{
 			return new NpgsqlInterval(0, Days + Months*DaysPerMonth + (int) (Ticks/TicksPerDay), Ticks%TicksPerDay);

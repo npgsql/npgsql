@@ -34,15 +34,16 @@ using NpgsqlTypes;
 
 namespace Npgsql
 {
-	///<summary>
-	/// This class is responsible to create database commands for automatic insert, update and delete operations.
-	///</summary>
-	public sealed class NpgsqlCommandBuilder : DbCommandBuilder
-	{
-		// Logging related values
-		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-		private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-		private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
+    ///<summary>
+    /// This class is responsible to create database commands for automatic insert, update and delete operations.
+    ///</summary>
+    public sealed class NpgsqlCommandBuilder : DbCommandBuilder
+    {
+        // Logging related values
+        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
+        // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
+        // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
 
 		public NpgsqlCommandBuilder()
