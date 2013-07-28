@@ -206,8 +206,8 @@ namespace Npgsql
 	internal abstract class RowReader : IStreamOwner
 	{
 		/// <summary>
-		/// Reads part of a field, as needed (for <see cref="System.Data.IDataRecord.GetChars()"/>
-		/// and <see cref="System.Data.IDataRecord.GetBytes()"/>
+		/// Reads part of a field, as needed (for <see cref="System.Data.IDataRecord.GetChars(int, long, char[], int, int)"/>
+		/// and <see cref="System.Data.IDataRecord.GetBytes(int, long, byte[], int, int)"/>
 		/// </summary>
 		protected abstract class Streamer : IStreamOwner
 		{

@@ -503,7 +503,9 @@ namespace Npgsql
                     return "SSL";
                 case Keywords.SslMode:
                     return "SSLMODE";
+#pragma warning disable 618
                 case Keywords.Encoding:
+#pragma warning restore 618
                     return "ENCODING";
                 case Keywords.Timeout:
                     return "TIMEOUT";

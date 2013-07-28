@@ -140,24 +140,23 @@ namespace NpgsqlTypes
 		}
 
 
-		/// <summary>
-		/// Convert a postgresql bit to a System.Boolean.
-		/// </summary>
-		internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
-		    /// <summary>
-		    /// Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
-		    /// 
-		    /// To ensure compatibility we return a bool if the bitstring is single-length.
-		    /// Maybe we don't need to do this (why do we?) or maybe people used to some other,
-		    /// but taking a conservative approach here.
-		    /// 
-		    /// It means that IDataReader.GetValue() can't be used safely for bitstrings that
-		    /// may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
-		    /// below by reversing it, so if GetBitString() is used, no harm is done.
-		    BitString bs = BitString.Parse(BackendData);
-		    return bs.Length == 1 ? (object)bs[0] : bs;
-		}
+        /// <summary>
+        /// Convert a postgresql bit to a System.Boolean.
+        /// </summary>
+        internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            // Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
+            // 
+            // To ensure compatibility we return a bool if the bitstring is single-length.
+            // Maybe we don't need to do this (why do we?) or maybe people used to some other,
+            // but taking a conservative approach here.
+            // 
+            // It means that IDataReader.GetValue() can't be used safely for bitstrings that
+            // may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
+            // below by reversing it, so if GetBitString() is used, no harm is done.
+            BitString bs = BitString.Parse(BackendData);
+            return bs.Length == 1 ? (object)bs[0] : bs;
+        }
 
 		/// <summary>
 		/// Convert a postgresql datetime to a System.DateTime.
