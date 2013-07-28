@@ -8,5 +8,6 @@
 [Bb]uild/
 /src/[Oo]bj/
 /testsuite/[Oo]bj/
+/testsuite/noninteractive/*.log
 /testsuite/noninteractive/NUnit20/test-results/
 /testsuite/noninteractive/NUnit20/[Oo]bj/
