@@ -268,6 +268,7 @@ namespace Npgsql
         /// Shared connectors should just have their use count decremented
         /// since they always stay in the shared pool.
         /// </remarks>
+        /// <param name="Connection">Connection to which the connector is leased.</param>
         /// <param name="Connector">The connector to release.</param>
         public void ReleaseConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
         {
@@ -453,6 +454,7 @@ namespace Npgsql
         /// <summary>
         /// Put a pooled connector into the pool queue.
         /// </summary>
+        /// <param name="Connection">Connection <paramref name="Connector"/> is leased to.</param>
         /// <param name="Connector">Connector to pool</param>
         private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
         {

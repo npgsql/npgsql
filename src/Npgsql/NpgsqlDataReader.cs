@@ -225,8 +225,8 @@ namespace Npgsql
 
 		/// <summary>
 		/// Get the value of a column as a <see cref="NpgsqlInterval"/>.
-		/// <remarks>If the differences between <see cref="NpgsqlInterval"/> and <see cref="System.Timespan"/>
-		/// in handling of days and months is not important to your application, use <see cref="GetTimeSpan()"/>
+		/// <remarks>If the differences between <see cref="NpgsqlInterval"/> and <see cref="System.TimeSpan"/>
+		/// in handling of days and months is not important to your application, use <see cref="GetTimeSpan(Int32)"/>
 		/// instead.</remarks>
 		/// </summary>
 		/// <param name="i">Index of the field to find.</param>
@@ -360,16 +360,17 @@ namespace Npgsql
 		}
 
 		/// <summary>
-		/// Copy values from each column in the current row into <param name="Values"></param>.
+		/// Copy values from each column in the current row into <paramref name="values"/>.
 		/// </summary>
+        /// <param name="values">Destination for column values.</param>
 		/// <returns>The number of column values copied.</returns>
-		public override Int32 GetValues(Object[] Values)
+		public override Int32 GetValues(Object[] values)
 		{
-            return LoadValues(Values, GetValue);
+            return LoadValues(values, GetValue);
 		}
 
         /// <summary>
-        /// Copy values from each column in the current row into <param name="Values"></param>.
+        /// Copy values from each column in the current row into <paramref name="values"></paramref>.
         /// </summary>
         /// <param name="values">An array appropriately sized to store values from all columns.</param>
         /// <returns>The number of column values copied.</returns>

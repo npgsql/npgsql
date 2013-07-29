@@ -376,7 +376,7 @@ namespace Npgsql
                             }
                         }
                     }
-                    catch(Exception ex)
+                    catch(Exception)
                     {
                     }
                     //We should have gotten an error from CancelRequest(). Whether we did or not, what we
@@ -417,7 +417,7 @@ namespace Npgsql
 		/// Checks for context socket availability.
 		/// Socket.Poll supports integer as microseconds parameter.
 		/// This limits the usable command timeout value
-		/// to 2,147 seconds: (2,147 x 1,000,000 < max_int).
+		/// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
 		/// In order to bypass this limit, the availability of
 		/// the socket is checked in 2,147 seconds cycles
 		/// </summary>
@@ -1074,6 +1074,7 @@ namespace Npgsql
     /// <summary>
     /// Marker interface which identifies a class which represents part of
     /// a response from the server.
+    /// </summary>
     internal interface IServerResponseObject
     {
     }

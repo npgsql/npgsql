@@ -98,7 +98,7 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Creats a bitstring from a <see cref="System.String">string</see>.
 		/// <param name="str">The <see cref="System.String">string to copy from</see>.</param>
-		/// <seealso cref="Npgsql.BitString.Parse(System.String)"/>
+		/// <seealso cref="NpgsqlTypes.BitString.Parse(System.String)"/>
 		/// </summary>
 		public BitString(string str)
 		{
@@ -559,7 +559,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="obj">The object to compare with.</param>
         /// <returns>If the object is null then this string is considered greater. If the object is another BitString
-        /// then they are compared as in <see cref="CompareTo(Npgsql.BitString)">the explicit comparison for BitStrings</see>
+        /// then they are compared as in <see cref="CompareTo(NpgsqlTypes.BitString)">the explicit comparison for BitStrings</see>
         /// in any other case a <see cref="System.ArgumentException"/> is thrown.</returns>
         public int CompareTo(object obj)
         {

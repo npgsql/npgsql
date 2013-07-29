@@ -466,6 +466,7 @@ namespace NpgsqlTypes
         /// a 1-dimensional array from something else. 
         /// </summary>
         /// <param name="list"><see cref="ArrayList"/> to convert</param>
+        /// <param name="elementType">Type of the elements in the list</param>
         /// <returns><see cref="Array"/> produced.</returns>
         private static Array ToArray(ArrayList list, Type elementType)
         {

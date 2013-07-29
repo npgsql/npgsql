@@ -632,7 +632,8 @@ npgsqlTimestampTZ));
 		/// </summary>
 		/// <returns>NpgsqlTypeMapping containing all known data types.  The mapping must be
 		/// cloned before it is modified because it is cached; changes made by one connection may
-		/// effect another connection.</returns>
+		/// effect another connection.
+		/// </returns>
 		public static NpgsqlBackendTypeMapping CreateAndLoadInitialTypesMapping(NpgsqlConnector conn)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "LoadTypesMapping");
@@ -782,27 +783,31 @@ npgsqlTimestampTZ));
         private readonly Type _frameworkType;
 
 
-		/// <summary>
-		/// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
-		/// </summary>
-		/// <param name="OID">Type OID provided by the backend server.</param>
-		/// <param name="Name">Type name provided by the backend server.</param>
-		/// <param name="NpgsqlDbType">NpgsqlDbType</param>
-		/// <param name="Type">System type to convert fields of this type to.</param>
-		/// <param name="ConvertBackendToNative">Data conversion handler.</param>
-		public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-		                             ConvertBackendToNativeHandler ConvertBackendToNative)
-		{
+        /// <summary>
+        /// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
+        /// </summary>
+        /// <param name="OID">Type OID provided by the backend server.</param>
+        /// <param name="Name">Type name provided by the backend server.</param>
+        /// <param name="NpgsqlDbType">NpgsqlDbType</param>
+        /// <param name="DbType">DbType</param>
+        /// <param name="Type">System type to convert fields of this type to.</param>
+        /// <param name="ConvertBackendToNative">Data conversion handler.</param>
+        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+		                                ConvertBackendToNativeHandler ConvertBackendToNative)
+        {
             if (Type == null)
+            {
                 throw new ArgumentNullException("Type");
-			_OID = OID;
-			_Name = Name;
-			_NpgsqlDbType = NpgsqlDbType;
-			_DbType = DbType;
-			_Type = Type;
+            }
+
+            _OID = OID;
+            _Name = Name;
+            _NpgsqlDbType = NpgsqlDbType;
+            _DbType = DbType;
+            _Type = Type;
             _frameworkType = Type;
-			_ConvertBackendToNative = ConvertBackendToNative;
-		}
+            _ConvertBackendToNative = ConvertBackendToNative;
+        }
 
         public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
                                      ConvertBackendToNativeHandler ConvertBackendToNative, Type frameworkType,
@@ -863,30 +868,31 @@ npgsqlTimestampTZ));
             get { return _frameworkType; }
         }
 
-		/// <summary>
-		/// Perform a data conversion from a backend representation to 
-		/// a native object.
-		/// </summary>
-		/// <param name="BackendData">Data sent from the backend.</param>
-		/// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-		public Object ConvertToNative(String BackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
-			if (_ConvertBackendToNative != null)
-			{
-				return _ConvertBackendToNative(this, BackendData, TypeSize, TypeModifier);
-			}
-			else
-			{
-				try
-				{
-					return Convert.ChangeType(BackendData, Type, CultureInfo.InvariantCulture);
-				}
-				catch
-				{
-					return BackendData;
-				}
-			}
-		}
+        /// <summary>
+        /// Perform a data conversion from a backend representation to 
+        /// a native object.
+        /// </summary>
+        /// <param name="BackendData">Data sent from the backend.</param>
+        /// <param name="TypeSize">TypeSize</param>
+        /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
+        public Object ConvertToNative(String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            if (_ConvertBackendToNative != null)
+            {
+                return _ConvertBackendToNative(this, BackendData, TypeSize, TypeModifier);
+            }
+            else
+            {
+                try
+                {
+                    return Convert.ChangeType(BackendData, Type, CultureInfo.InvariantCulture);
+                }
+                catch
+                {
+                    return BackendData;
+                }
+            }
+        }
 
         internal object ConvertToFrameworkType(object providerValue)
         {
@@ -984,34 +990,36 @@ npgsqlTimestampTZ));
             get { return ni; }
         }
 
-		/// <summary>
-		/// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
-		/// </summary>
-		/// <param name="Name">Type name provided by the backend server.</param>
-		/// <param name="NpgsqlDbType">NpgsqlDbType</param>
-		/// <param name="ConvertNativeToBackend">Data conversion handler.</param>
-		public NpgsqlNativeTypeInfo(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
-		                            ConvertNativeToBackendHandler ConvertNativeToBackend)
-		{
-			_Name = Name;
-			_CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
-			_NpgsqlDbType = NpgsqlDbType;
-			_DbType = DbType;
-			_Quote = Quote;
-			_ConvertNativeToBackend = ConvertNativeToBackend;
+        /// <summary>
+        /// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
+        /// </summary>
+        /// <param name="Name">Type name provided by the backend server.</param>
+        /// <param name="DbType">DbType</param>
+        /// <param name="Quote">Quote</param>
+        /// <param name="NpgsqlDbType">NpgsqlDbType</param>
+        /// <param name="ConvertNativeToBackend">Data conversion handler.</param>
+        public NpgsqlNativeTypeInfo(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
+                                    ConvertNativeToBackendHandler ConvertNativeToBackend)
+        {
+            _Name = Name;
+            _CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
+            _NpgsqlDbType = NpgsqlDbType;
+            _DbType = DbType;
+            _Quote = Quote;
+            _ConvertNativeToBackend = ConvertNativeToBackend;
 
 
-			// The only parameters types which use length currently supported are char and varchar. Check for them.
+            // The only parameters types which use length currently supported are char and varchar. Check for them.
 
-			if ((NpgsqlDbType == NpgsqlDbType.Char) || (NpgsqlDbType == NpgsqlDbType.Varchar))
-			{
-				_UseSize = true;
-			}
-			else
-			{
-				_UseSize = false;
-			}
-		}
+            if ((NpgsqlDbType == NpgsqlDbType.Char) || (NpgsqlDbType == NpgsqlDbType.Varchar))
+            {
+                _UseSize = true;
+            }
+            else
+            {
+                _UseSize = false;
+            }
+        }
 
 		/// <summary>
 		/// Type name provided by the backend server.
@@ -1205,19 +1213,20 @@ npgsqlTimestampTZ));
 			NameIndex[T.Name] = T;
 		}
 
-		/// <summary>
-		/// Add a new NpgsqlBackendTypeInfo with the given attributes and conversion handlers to this mapping.
-		/// </summary>
-		/// <param name="OID">Type OID provided by the backend server.</param>
-		/// <param name="Name">Type name provided by the backend server.</param>
-		/// <param name="NpgsqlDbType">NpgsqlDbType</param>
-		/// <param name="Type">System type to convert fields of this type to.</param>
-		/// <param name="BackendConvert">Data conversion handler.</param>
-		public void AddType(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-		                    ConvertBackendToNativeHandler BackendConvert)
-		{
-			AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendConvert));
-		}
+        /// <summary>
+        /// Add a new NpgsqlBackendTypeInfo with the given attributes and conversion handlers to this mapping.
+        /// </summary>
+        /// <param name="OID">Type OID provided by the backend server.</param>
+        /// <param name="Name">Type name provided by the backend server.</param>
+        /// <param name="NpgsqlDbType">NpgsqlDbType</param>
+        /// <param name="DbType">DbType</param>
+        /// <param name="Type">System type to convert fields of this type to.</param>
+        /// <param name="BackendConvert">Data conversion handler.</param>
+        public void AddType(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+                            ConvertBackendToNativeHandler BackendConvert)
+        {
+            AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendConvert));
+        }
 
 		/// <summary>
 		/// Get the number of type infos held.
@@ -1319,17 +1328,19 @@ npgsqlTimestampTZ));
 			}
 		}
 
-		/// <summary>
-		/// Add a new NpgsqlNativeTypeInfo with the given attributes and conversion handlers to this mapping.
-		/// </summary>
-		/// <param name="Name">Type name provided by the backend server.</param>
-		/// <param name="NpgsqlDbType">NpgsqlDbType</param>
-		/// <param name="NativeConvert">Data conversion handler.</param>
-		public void AddType(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
-		                    ConvertNativeToBackendHandler NativeConvert)
-		{
-			AddType(new NpgsqlNativeTypeInfo(Name, NpgsqlDbType, DbType, Quote, NativeConvert));
-		}
+        /// <summary>
+        /// Add a new NpgsqlNativeTypeInfo with the given attributes and conversion handlers to this mapping.
+        /// </summary>
+        /// <param name="Name">Type name provided by the backend server.</param>
+        /// <param name="NpgsqlDbType">NpgsqlDbType</param>
+        /// <param name="DbType">DbType</param>
+        /// <param name="Quote">Quote</param>
+        /// <param name="NativeConvert">Data conversion handler.</param>
+        public void AddType(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
+                            ConvertNativeToBackendHandler NativeConvert)
+        {
+            AddType(new NpgsqlNativeTypeInfo(Name, NpgsqlDbType, DbType, Quote, NativeConvert));
+        }
 
 		public void AddNpgsqlDbTypeAlias(String Name, NpgsqlDbType NpgsqlDbType)
 		{

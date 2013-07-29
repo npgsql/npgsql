@@ -45,11 +45,12 @@ using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// Represents the method that handles the <see cref="Npgsql.NpgsqlConnection.Notification">Notice</see> events.
-	/// </summary>
-	/// <param name="e">A <see cref="Npgsql.NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
-	public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
+    /// <summary>
+    /// Represents the method that handles the <see cref="Npgsql.NpgsqlConnection.Notification">Notice</see> events.
+    /// </summary>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="e">A <see cref="Npgsql.NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
+    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
 
 	/// <summary>
 	/// Represents the method that handles the <see cref="Npgsql.NpgsqlConnection.Notification">Notification</see> events.

@@ -721,13 +721,13 @@ namespace NpgsqlTests
             NpgsqlCommand arrCommand = new NpgsqlCommand(cmdTxt, TheConnection);
             string testStrPar = "This string has a 'literal' backslash \\";
             string[,] testArrPar = new string[,]{{testStrPar, ""}, {testStrPar, testStrPar}};
-            command.Parameters.Add(":par", testStrPar);
+            command.Parameters.AddWithValue(":par", testStrPar);
             using(IDataReader rdr = command.ExecuteReader())
             {
                 rdr.Read();
                 Assert.AreEqual(rdr.GetString(0), testStrPar);
             }
-            arrCommand.Parameters.Add(":par", testArrPar);
+            arrCommand.Parameters.AddWithValue(":par", testArrPar);
             using(IDataReader rdr = arrCommand.ExecuteReader())
             {
                 rdr.Read();
@@ -799,7 +799,7 @@ namespace NpgsqlTests
             //Without parenthesis the meaning of [, . and potentially other characters is
             //a syntax error. See comment in NpgsqlCommand.GetClearCommandText() on "usually-redundant parenthesis".
             NpgsqlCommand command = new NpgsqlCommand("select :arr[2]", TheConnection);
-            command.Parameters.Add(":arr", new int[]{5,4,3,2,1});
+            command.Parameters.AddWithValue(":arr", new int[]{5,4,3,2,1});
             using(IDataReader rdr = command.ExecuteReader())
             {
                 rdr.Read();
@@ -2824,7 +2824,7 @@ namespace NpgsqlTests
         {
             NpgsqlCommand command = new NpgsqlCommand("select count(*) from tablea where field_serial >:param1", TheConnection);
             
-            command.Parameters.Add(":param1", 1);
+            command.Parameters.AddWithValue(":param1", 1);
             
 
             command.Prepare();
@@ -3701,7 +3701,7 @@ connection.Open();*/
                 command.ExecuteNonQuery();
                 Assert.Fail("1.5s command survived a 1s timeout");
             }
-            catch (NpgsqlException e)
+            catch (NpgsqlException)
             {
                 // We cannot currently identify that the exception was a timeout
                 // in a locale-independent fashion, so just assume so.
@@ -3732,7 +3732,7 @@ connection.Open();*/
                 command.ExecuteNonQuery();
                 Assert.Fail("1.5s function call survived a 1s timeout");
             }
-            catch (NpgsqlException e)
+            catch (NpgsqlException)
             {
                 // We cannot currently identify that the exception was a timeout
                 // in a locale-independent fashion, so just assume so.
