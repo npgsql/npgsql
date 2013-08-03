@@ -126,6 +126,8 @@ namespace Npgsql
         
         private Boolean _supportsSavepoint = false;
 
+        private Boolean _supports_E_StringPrefix = false;
+
         private NpgsqlBackendTypeMapping _oidToNameMapping = null;
 
         private Boolean _isInitialized;
@@ -159,15 +161,22 @@ namespace Npgsql
         // expect a ready_for_query response.
         private bool _requireReadyForQuery = true;
         
-        private bool? _useConformantStrings;
+        // Assume this is false until we find out otherwise naturally, rather than asking the backend.
+        // Since we can't really track the backend status of this flag
+        // on a verion 2 connection, it will always be false.  That means strings will always be
+        // escaped the old way on such a connection.  This works fine whether the flag is on, off,
+        // or not even understood by the backend.  To reliabl;y track the status of this setting at
+        // the backend, we'd have to issue a show command every time we want to know what it is; clearly unworkable.
+        // If we ask once and cache the result, we'll never know if it changes after that.
+        // On version 3, it will be set during connection startup, and any time set standard_conforming_strings = on/off
+        // is executed.
+        private bool _useConformantStrings = false;
 
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
         
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-        
-
 
 #if WINDOWS && UNMANAGED
 
@@ -407,6 +416,7 @@ namespace Npgsql
 
             return true;
         }
+
         /// <summary>
         /// This method is responsible for releasing all resources associated with this Connector.
         /// </summary>
@@ -674,9 +684,15 @@ namespace Npgsql
         {
             get { return _supportsSavepoint; }
             set { _supportsSavepoint = value; } 
-          
         }
 
+        /// <summary>
+        /// Report whether the backend understands the string literal E prefix.
+        /// </summary>
+        internal Boolean Supports_E_StringPrefix
+        {
+            get { return _supports_E_StringPrefix; }
+        }
         
 
         /// <summary>
@@ -688,6 +704,10 @@ namespace Npgsql
         {
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
+
+            // CHECKME: Per the PG documentation, this flag appears to be new as of 8.2.0.
+            // Assuming thats true, we need to make sure we don't ever send it to earlier backends.
+            this._supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
         }
 
         /*/// <value>Counts the numbers of Connections that share
@@ -1110,76 +1130,25 @@ namespace Npgsql
             {
                 _serverParameters.Add(ps.Parameter, ps);
             }
-            _useConformantStrings = null;
+
+            // Since UseConformantStrings can be called extremely often when generating backend
+            // encoded data, store its value here.
+            if (ps.Parameter == "standard_conforming_strings")
+            {
+                _useConformantStrings = (ps.ParameterValue == "on");
+            }
         }
 
         public IDictionary<string, NpgsqlParameterStatus> ServerParameters
         {
             get { return new ReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
         }
-        public string CheckParameter(string paramName)
-        {
-            NpgsqlParameterStatus ps = null;
-            if(_serverParameters.TryGetValue(paramName, out ps))
-                return ps.ParameterValue;
-            try
-            {
-                using(NpgsqlCommand cmd = new NpgsqlCommand("show " + paramName, this))
-                {
-                    string paramValue = (string)cmd.ExecuteScalar();
-                    AddParameterStatus(new NpgsqlParameterStatus(paramName, paramValue));
-                    return paramValue;
-                }
-            }
-            
-            /*
-             * In case of problems with the command above, we simply return null in order to 
-             * say we don't support it.
-             */
-              
-            catch(NpgsqlException)
-            {
-                return null;
-            }
-            /*
-             * Original catch handler by Jon Hanna.
-             * 7.3 version doesn't support error code. Only 7.4+
-             
-             * catch(NpgsqlException ne)
-            {
-                if(ne.Code == "42704")//unrecognized configuration parameter
-                    return null;
-                else
-                    throw;
-            }*/
-        }
-        private bool CheckStringConformanceRequirements()
-        {
-            //If standards_conforming_strings is "on" then postgres will handle \ in strings differently to how we expect, unless
-            //an escaped-string literal is use (E'example\n' rather than 'example\n'. At time of writing this defaults
-            //to "off", but documentation says this will change to default "on" in the future, and it can still be "on" now.
-            //escape_string_warning being "on" (current default) will result in a warning, but not an error, on every such
-            //string, which is not ideal.
-            //On the other hand, earlier versions of postgres do not have the escaped-literal syntax and will error if it
-            //is used. Version numbers could be checked, but here the approach taken is to check on what the server is
-            //explicitly requesting.
-            
-            NpgsqlParameterStatus warning = null;
-            if(_serverParameters.TryGetValue("escape_string_warning", out warning) && warning.ParameterValue == "on")//try the most commonly set at time of coding first
-                return true;
-            NpgsqlParameterStatus insist = null;
-            if(_serverParameters.TryGetValue("standard_conforming_strings", out insist) && insist.ParameterValue == "on")
-                return true;
-            if(warning != null && insist != null)//both where present and "off".
-                return false;
-            //We need to check at least one of these on the server.
-            return CheckParameter("standard_conforming_strings") == "on" || CheckParameter("escape_string_warning") == "on";
-        }
+
         public bool UseConformantStrings
         {
             get
             {
-                return _useConformantStrings ?? (_useConformantStrings = CheckStringConformanceRequirements()).Value;
+                return _useConformantStrings;
             }
         }
     }

@@ -48,7 +48,7 @@ namespace Npgsql.SqlGenerators
             VisitedExpression ve = _commandTree.Query.Accept(this);
             System.Diagnostics.Debug.Assert(ve is ProjectionExpression);
             ProjectionExpression pe = (ProjectionExpression)ve;
-            command.CommandText = pe.ToString();
+            command.CommandText = pe.ToString(command as NpgsqlCommand);
             List<Type> expectedTypes = new List<Type>();
             foreach (var column in pe.Columns)
             {

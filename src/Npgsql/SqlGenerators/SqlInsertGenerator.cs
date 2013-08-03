@@ -67,6 +67,7 @@ namespace Npgsql.SqlGenerators
         public override void BuildCommand(DbCommand command)
         {
             // TODO: handle_commandTree.Parameters
+            System.Diagnostics.Debug.Assert(command is NpgsqlCommand);
             InsertExpression insert = new InsertExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
             insert.AppendTarget(_commandTree.Target.Expression.Accept(this));
@@ -85,7 +86,7 @@ namespace Npgsql.SqlGenerators
                 insert.ReturningExpression = _commandTree.Returning.Accept(this);
             }
             _projectVarName.Pop();
-            command.CommandText = insert.ToString();
+            command.CommandText = insert.ToString(command as NpgsqlCommand);
         }
 	}
 }

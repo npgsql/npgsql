@@ -34,6 +34,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using Npgsql;
 
 namespace NpgsqlTypes
 {
@@ -232,132 +233,141 @@ namespace NpgsqlTypes
 	/// </summary>
 	internal abstract class BasicNativeToBackendTypeConverter
 	{
-		/// <summary>
-		/// Binary data.
-		/// </summary>
-		internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			Byte[] byteArray = (Byte[])NativeData;
-			StringBuilder res = new StringBuilder(byteArray.Length * 5);
-			foreach(byte b in byteArray)
-			    if(b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
-			        res.Append((char)b);
-			    else
-			        res.Append("\\\\")
-			            .Append((char)('0' + (7 & (b >> 6))))
-			            .Append((char)('0' + (7 & (b >> 3))))
-			            .Append((char)('0' + (7 & b)));
+        /// <summary>
+        /// Binary data.
+        /// </summary>
+        internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            Byte[] byteArray = (Byte[])NativeData;
+            StringBuilder res = new StringBuilder(byteArray.Length * 5);
+
+            foreach (byte b in byteArray)
+            {
+                if (b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
+                {
+                    res.Append((char)b);
+                }
+                else
+                {
+                    res
+                      .Append('\\')
+                      .Append((char)('0' + (7 & (b >> 6))))
+                      .Append((char)('0' + (7 & (b >> 3))))
+                      .Append((char)('0' + (7 & b)));
+                }
+            }
+
             return res.ToString();
-		}
+        }
 
-		/// <summary>
-		/// Convert to a postgresql boolean.
-		/// </summary>
-        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			return ((bool)NativeData) ? "TRUE" : "FALSE";
-		}
+        /// <summary>
+        /// Convert to a postgresql boolean.
+        /// </summary>
+        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            return ((bool)NativeData) ? "TRUE" : "FALSE";
+        }
 
-		/// <summary>
-		/// Convert to a postgresql bit.
-		/// </summary>
-        internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-		    if(NativeData is bool)
-		        return ((bool)NativeData) ? "1" : "0";
-		    // It may seem more sensible to just convert an integer to a BitString here and pass it on.
-		    // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
-		    // value smaller than the int.
-		    // Prior to Postgres 8.0, the behaviour would be the same either way. E.g. if 10 were passed to
-		    // a bit(1) then the bits (1010) would be extracted from the left, so resulting in the bitstring B'1'.
-		    // From 8.0 onwards though, if we cast 10 straight to a bit(1) then the right-most bit is taken,
-		    // resulting in B'0'. If we cast it to the "natural" bitstring for it's size first (which is what would
-		    // happen if we did that work here) then it would become B'1010' which would then be cast to bit(1) by
-		    // taking the left-most bit resulting in B'1' (the behaviour one would expect from Postgres 7.x).
-		    // 
-		    // Since we don't know what implicit casts (say by inserting into a table with a bitstring field of
-		    // set size) may happen, we don't know how to ensure expected behaviour. While passing a bitstring
-		    // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
-		    else if(NativeData is int)
-		        return NativeData.ToString();
-		    else
-		        return ((BitString)NativeData).ToString("E");
-		}
+        /// <summary>
+        /// Convert to a postgresql bit.
+        /// </summary>
+        internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (NativeData is bool)
+                return ((bool)NativeData) ? "1" : "0";
+            // It may seem more sensible to just convert an integer to a BitString here and pass it on.
+            // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
+            // value smaller than the int.
+            // Prior to Postgres 8.0, the behaviour would be the same either way. E.g. if 10 were passed to
+            // a bit(1) then the bits (1010) would be extracted from the left, so resulting in the bitstring B'1'.
+            // From 8.0 onwards though, if we cast 10 straight to a bit(1) then the right-most bit is taken,
+            // resulting in B'0'. If we cast it to the "natural" bitstring for it's size first (which is what would
+            // happen if we did that work here) then it would become B'1010' which would then be cast to bit(1) by
+            // taking the left-most bit resulting in B'1' (the behaviour one would expect from Postgres 7.x).
+            //
+            // Since we don't know what implicit casts (say by inserting into a table with a bitstring field of
+            // set size) may happen, we don't know how to ensure expected behaviour. While passing a bitstring
+            // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
+            else if (NativeData is int)
+                return NativeData.ToString();
+            else
+                return ((BitString)NativeData).ToString("E");
+        }
 
-		/// <summary>
-		/// Convert to a postgresql timestamp.
-		/// </summary>
-        internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (!(NativeData is DateTime))
-			{
-				return ExtendedNativeToBackendTypeConverter.ToTimeStamp(TypeInfo, NativeData, ForExtendedQuery);
-			}
-			if (DateTime.MaxValue.Equals(NativeData))
-			{
-				return "infinity";
-			}
-			if (DateTime.MinValue.Equals(NativeData))
-			{
-				return "-infinity";
-			}
-			return ((DateTime)NativeData).ToString("yyyy-MM-dd HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
-		}
+        /// <summary>
+        /// Convert to a postgresql timestamp.
+        /// </summary>
+        internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (!(NativeData is DateTime))
+            {
+                return ExtendedNativeToBackendTypeConverter.ToTimeStamp(TypeInfo, NativeData, forExtendedQuery, connector);
+            }
+            if (DateTime.MaxValue.Equals(NativeData))
+            {
+                return "infinity";
+            }
+            if (DateTime.MinValue.Equals(NativeData))
+            {
+                return "-infinity";
+            }
+            return ((DateTime)NativeData).ToString("yyyy-MM-dd HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
+        }
 
-		/// <summary>
-		/// Convert to a postgresql date.
-		/// </summary>
-        internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (!(NativeData is DateTime))
-			{
-				return ExtendedNativeToBackendTypeConverter.ToDate(TypeInfo, NativeData, ForExtendedQuery);
-			}
-			return ((DateTime)NativeData).ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo);
-		}
+        /// <summary>
+        /// Convert to a postgresql date.
+        /// </summary>
+        internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (!(NativeData is DateTime))
+            {
+                return ExtendedNativeToBackendTypeConverter.ToDate(TypeInfo, NativeData, forExtendedQuery, connector);
+            }
+            return ((DateTime)NativeData).ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo);
+        }
 
-		/// <summary>
-		/// Convert to a postgresql time.
-		/// </summary>
-        internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (!(NativeData is DateTime))
-			{
-				return ExtendedNativeToBackendTypeConverter.ToTime(TypeInfo, NativeData, ForExtendedQuery);
-			}
-			else
-			{
-				return ((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
-			}
-		}
+        /// <summary>
+        /// Convert to a postgresql time.
+        /// </summary>
+        internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (!(NativeData is DateTime))
+            {
+                return ExtendedNativeToBackendTypeConverter.ToTime(TypeInfo, NativeData, forExtendedQuery, connector);
+            }
+            else
+            {
+                return ((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
+            }
+        }
 
-		/// <summary>
-		/// Convert to a postgres money.
-		/// </summary>
-        internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-		    //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
-		    //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
-		    //to happen.
-			return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
-		}
-		
-		
-		/// <summary>
-		/// Convert to a postgres double with maximum precision.
-		/// </summary>
-        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-		    //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
-		    //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
-		    //to happen.
-			return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
-		}
-		
-		
+        /// <summary>
+        /// Convert to a postgres money.
+        /// </summary>
+        internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
+            //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
+            //to happen.
+            return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
+        }
 
 
-        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean ForExtendedQuery)
+        /// <summary>
+        /// Convert to a postgres double with maximum precision.
+        /// </summary>
+        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
+            //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
+            //to happen.
+            return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
+        }
+
+
+
+
+        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
         {
             // This double cast is needed in order to get the enum type handled correctly (IConvertible)
             // and the decimal separator always as "." regardless of culture (IFormattable)
@@ -571,106 +581,106 @@ namespace NpgsqlTypes
 		}
 	}
 
-	/// <summary>
-	/// Provide event handlers to convert extended native supported data types from
-	/// native form to backend representation.
-	/// </summary>
-	internal abstract class ExtendedNativeToBackendTypeConverter
-	{
-		/// <summary>
-		/// Point.
-		/// </summary>
-        internal static String ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (NativeData is NpgsqlPoint)
-			{
-				NpgsqlPoint P = (NpgsqlPoint)NativeData;
-				return String.Format(CultureInfo.InvariantCulture, "({0},{1})", P.X, P.Y);
-			}
-			else
-			{
-				throw new InvalidCastException("Unable to cast data to NpgsqlPoint type");
-			}
-		}
+    /// <summary>
+    /// Provide event handlers to convert extended native supported data types from
+    /// native form to backend representation.
+    /// </summary>
+    internal abstract class ExtendedNativeToBackendTypeConverter
+    {
+        /// <summary>
+        /// Point.
+        /// </summary>
+        internal static String ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (NativeData is NpgsqlPoint)
+            {
+                NpgsqlPoint P = (NpgsqlPoint)NativeData;
+                return String.Format(CultureInfo.InvariantCulture, "({0},{1})", P.X, P.Y);
+            }
+            else
+            {
+                throw new InvalidCastException("Unable to cast data to NpgsqlPoint type");
+            }
+        }
 
-		/// <summary>
-		/// Box.
-		/// </summary>
-        internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			/*if (NativeData.GetType() == typeof(Rectangle)) {
+        /// <summary>
+        /// Box.
+        /// </summary>
+        internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            /*if (NativeData.GetType() == typeof(Rectangle)) {
                 Rectangle       R = (Rectangle)NativeData;
                 return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
             } else if (NativeData.GetType() == typeof(RectangleF)) {
                 RectangleF      R = (RectangleF)NativeData;
                 return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
 
-			if (NativeData is NpgsqlBox)
-			{
-				NpgsqlBox box = (NpgsqlBox)NativeData;
-				return
-					String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", box.LowerLeft.X, box.LowerLeft.Y,
-								  box.UpperRight.X, box.UpperRight.Y);
-			}
-			else
-			{
-				throw new InvalidCastException("Unable to cast data to Rectangle type");
-			}
-		}
+            if (NativeData is NpgsqlBox)
+            {
+                NpgsqlBox box = (NpgsqlBox)NativeData;
+                return
+                    String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", box.LowerLeft.X, box.LowerLeft.Y,
+                                  box.UpperRight.X, box.UpperRight.Y);
+            }
+            else
+            {
+                throw new InvalidCastException("Unable to cast data to Rectangle type");
+            }
+        }
 
-		/// <summary>
-		/// LSeg.
-		/// </summary>
-        internal static String ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			NpgsqlLSeg S = (NpgsqlLSeg)NativeData;
-			return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", S.Start.X, S.Start.Y, S.End.X, S.End.Y);
-		}
+        /// <summary>
+        /// LSeg.
+        /// </summary>
+        internal static String ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            NpgsqlLSeg S = (NpgsqlLSeg)NativeData;
+            return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", S.Start.X, S.Start.Y, S.End.X, S.End.Y);
+        }
 
-		/// <summary>
-		/// Open path.
-		/// </summary>
-        internal static String ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			StringBuilder B = null;
-			try
-			{
-	B =new StringBuilder();
+        /// <summary>
+        /// Open path.
+        /// </summary>
+        internal static String ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            StringBuilder B = null;
+            try
+            {
+                B = new StringBuilder();
 
-			foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData))
-			{
-				B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
-			}
+                foreach (NpgsqlPoint P in ((NpgsqlPath)NativeData))
+                {
+                    B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
+                }
 
-			return String.Format("[{0}]", B);
-			}
-			finally
-			{
-				B = null;
+                return String.Format("[{0}]", B);
+            }
+            finally
+            {
+                B = null;
 
-			}
-		
-		}
+            }
 
-		/// <summary>
-		/// Polygon.
-		/// </summary>
-        internal static String ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			StringBuilder B = new StringBuilder();
+        }
 
-			foreach (NpgsqlPoint P in ((NpgsqlPolygon)NativeData))
-			{
-				B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
-			}
+        /// <summary>
+        /// Polygon.
+        /// </summary>
+        internal static String ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            StringBuilder B = new StringBuilder();
 
-			return String.Format("({0})", B);
-		}
-  
+            foreach (NpgsqlPoint P in ((NpgsqlPolygon)NativeData))
+            {
+                B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
+            }
+
+            return String.Format("({0})", B);
+        }
+
         /// <summary>
         /// Convert to a postgres MAC Address.
         /// </summary>
-        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
+        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
         {
             if (NativeData is NpgsqlMacAddress)
             {
@@ -678,98 +688,98 @@ namespace NpgsqlTypes
             }
             return NativeData.ToString();
         }
-        
-		/// <summary>
-		/// Circle.
-		/// </summary>
-        internal static String ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			NpgsqlCircle C = (NpgsqlCircle)NativeData;
-			return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2}", C.Center.X, C.Center.Y, C.Radius);
-		}
 
-		/// <summary>
-		/// Convert to a postgres inet.
-		/// </summary>
-        internal static String ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (NativeData is NpgsqlInet)
-			{
-				return ((NpgsqlInet)NativeData).ToString();
-			}
-			return NativeData.ToString();
+        /// <summary>
+        /// Circle.
+        /// </summary>
+        internal static String ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            NpgsqlCircle C = (NpgsqlCircle)NativeData;
+            return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2}", C.Center.X, C.Center.Y, C.Radius);
+        }
 
-		}
+        /// <summary>
+        /// Convert to a postgres inet.
+        /// </summary>
+        internal static String ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (NativeData is NpgsqlInet)
+            {
+                return ((NpgsqlInet)NativeData).ToString();
+            }
+            return NativeData.ToString();
 
-		/// <summary>
-		/// Convert to a postgres interval
-		/// </summary>
-        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery)
-		{
-			return
-				((NativeData is TimeSpan)
-					? ((NpgsqlInterval)(TimeSpan)NativeData).ToString()
-					: ((NpgsqlInterval)NativeData).ToString());
-		}
+        }
 
-        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean ForExtendedQuery)
-		{
-			if (nativeData is DateTime)
-			{
-				return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData, ForExtendedQuery);
-			}
-			NpgsqlTime time;
-			if (nativeData is TimeSpan)
-			{
-				time = (NpgsqlTime)(TimeSpan)nativeData;
-			}
-			else
-			{
-				time = (NpgsqlTime)nativeData;
-			}
-			return time.ToString();
-		}
+        /// <summary>
+        /// Convert to a postgres interval
+        /// </summary>
+        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            return
+                ((NativeData is TimeSpan)
+                    ? ((NpgsqlInterval)(TimeSpan)NativeData).ToString()
+                    : ((NpgsqlInterval)NativeData).ToString());
+        }
 
-        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean ForExtendedQuery)
-		{
-			if (nativeData is DateTime)
-			{
-				return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData, ForExtendedQuery);
-			}
-			NpgsqlTimeTZ time;
-			if (nativeData is TimeSpan)
-			{
-				time = (NpgsqlTimeTZ)(TimeSpan)nativeData;
-			}
-			else
-			{
-				time = (NpgsqlTimeTZ)nativeData;
-			}
-			return time.ToString();
-		}
+        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (nativeData is DateTime)
+            {
+                return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData, forExtendedQuery, connector);
+            }
+            NpgsqlTime time;
+            if (nativeData is TimeSpan)
+            {
+                time = (NpgsqlTime)(TimeSpan)nativeData;
+            }
+            else
+            {
+                time = (NpgsqlTime)nativeData;
+            }
+            return time.ToString();
+        }
 
-        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean ForExtendedQuery)
-		{
-			if (nativeData is DateTime)
-			{
-				return BasicNativeToBackendTypeConverter.ToDate(typeInfo, nativeData, ForExtendedQuery);
-			}
-			else
-			{
-				return nativeData.ToString();
-			}
-		}
+        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (nativeData is DateTime)
+            {
+                return BasicNativeToBackendTypeConverter.ToTime(typeInfo, nativeData, forExtendedQuery, connector);
+            }
+            NpgsqlTimeTZ time;
+            if (nativeData is TimeSpan)
+            {
+                time = (NpgsqlTimeTZ)(TimeSpan)nativeData;
+            }
+            else
+            {
+                time = (NpgsqlTimeTZ)nativeData;
+            }
+            return time.ToString();
+        }
 
-        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean ForExtendedQuery)
-		{
-			if (nativeData is DateTime)
-			{
-				return BasicNativeToBackendTypeConverter.ToDateTime(typeInfo, nativeData, ForExtendedQuery);
-			}
-			else
-			{
-				return nativeData.ToString();
-			}
-		}
-	}
+        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (nativeData is DateTime)
+            {
+                return BasicNativeToBackendTypeConverter.ToDate(typeInfo, nativeData, forExtendedQuery, connector);
+            }
+            else
+            {
+                return nativeData.ToString();
+            }
+        }
+
+        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
+        {
+            if (nativeData is DateTime)
+            {
+                return BasicNativeToBackendTypeConverter.ToDateTime(typeInfo, nativeData, forExtendedQuery, connector);
+            }
+            else
+            {
+                return nativeData.ToString();
+            }
+        }
+    }
 }
