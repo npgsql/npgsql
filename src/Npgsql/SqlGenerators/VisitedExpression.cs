@@ -32,20 +32,20 @@ namespace Npgsql.SqlGenerators
             ExpressionList.Add(new LiteralExpression(literal));
         }
 
-        public override string ToString()
+        public virtual string ToString(NpgsqlCommand command)
         {
             StringBuilder sqlText = new StringBuilder();
-            WriteSql(sqlText);
+            WriteSql(sqlText, command);
             return sqlText.ToString();
         }
 
         protected List<VisitedExpression> ExpressionList { get; private set; }
 
-        internal virtual void WriteSql(StringBuilder sqlText)
+        internal virtual void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             foreach (VisitedExpression expression in ExpressionList)
             {
-                expression.WriteSql(sqlText);
+                expression.WriteSql(sqlText, command);
             }
         }
 
@@ -79,10 +79,10 @@ namespace Npgsql.SqlGenerators
             base.Append(literal);
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(_literal);
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
     }
 
@@ -101,7 +101,7 @@ namespace Npgsql.SqlGenerators
             _value = value;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             NpgsqlNativeTypeInfo typeInfo;
             System.Globalization.NumberFormatInfo ni = NpgsqlNativeTypeInfo.NumberFormat;
@@ -142,11 +142,7 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
                     NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
-                    // Escape syntax is needed for strings with escape values.
-                    // We don't check if there are escaped strings for performance reasons.
-                    // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
-                    sqlText.Append('E'); 
-                    sqlText.Append(typeInfo.ConvertToBackend(_value, false));
+                    sqlText.Append(typeInfo.ConvertToBackend(_value, false, command.Connector));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
@@ -157,7 +153,7 @@ namespace Npgsql.SqlGenerators
                     // TODO: must support more constant value types.
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         private DbType GetDbType(PrimitiveTypeKind _primitiveType)
@@ -193,12 +189,12 @@ namespace Npgsql.SqlGenerators
             }
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("SELECT ");
             if (Distinct)
                 sqlText.Append("DISTINCT ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal IEnumerable<ColumnExpression> Columns { get { return _columns; } }
@@ -267,14 +263,14 @@ namespace Npgsql.SqlGenerators
 
         public VisitedExpression ReturningExpression { get; set; }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("INSERT INTO ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
             if (ReturningExpression != null)
             {
                 sqlText.Append(";");
-                ReturningExpression.WriteSql(sqlText);
+                ReturningExpression.WriteSql(sqlText, command);
             }
         }
 
@@ -318,10 +314,10 @@ namespace Npgsql.SqlGenerators
             Append(where);
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("UPDATE ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -343,10 +339,10 @@ namespace Npgsql.SqlGenerators
             Append(where);
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("DELETE FROM ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -364,7 +360,7 @@ namespace Npgsql.SqlGenerators
             _input = input;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("SELECT ");
             bool first = true;
@@ -373,11 +369,11 @@ namespace Npgsql.SqlGenerators
                 if (!first)
                     sqlText.Append(",");
                 first = false;
-                column.WriteSql(sqlText);
+                column.WriteSql(sqlText, command);
             }
             sqlText.Append(" FROM ");
-            _input.WriteSql(sqlText);
-            base.WriteSql(sqlText);
+            _input.WriteSql(sqlText, command);
+            base.WriteSql(sqlText, command);
         }
     }
 
@@ -411,11 +407,11 @@ namespace Npgsql.SqlGenerators
             }
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
-            _column.WriteSql(sqlText);
+            _column.WriteSql(sqlText, command);
             sqlText.Append(" AS " + SqlBaseGenerator.QuoteIdentifier(_columnName));
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -442,10 +438,10 @@ namespace Npgsql.SqlGenerators
 
         internal EntitySetBase Target { get { return _target; } }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(_scanString);
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         List<ColumnExpression> _projectedColumns;
@@ -514,14 +510,14 @@ namespace Npgsql.SqlGenerators
             }
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
-            base.WriteSql(sqlText);
-            if (Where != null) Where.WriteSql(sqlText);
-            if (GroupBy != null) GroupBy.WriteSql(sqlText);
-            if (OrderBy != null) OrderBy.WriteSql(sqlText);
-            if (Skip != null) Skip.WriteSql(sqlText);
-            if (Limit != null) Limit.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
+            if (Where != null) Where.WriteSql(sqlText, command);
+            if (GroupBy != null) GroupBy.WriteSql(sqlText, command);
+            if (OrderBy != null) OrderBy.WriteSql(sqlText, command);
+            if (Skip != null) Skip.WriteSql(sqlText, command);
+            if (Limit != null) Limit.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -560,17 +556,17 @@ namespace Npgsql.SqlGenerators
             get { return _name; }
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             bool wrap = !(_from is LiteralExpression || _from is ScanExpression);
             if (wrap)
                 sqlText.Append("(");
-            _from.WriteSql(sqlText);
+            _from.WriteSql(sqlText, command);
             if (wrap)
                 sqlText.Append(")");
             sqlText.Append(" AS ");
             sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -625,9 +621,9 @@ namespace Npgsql.SqlGenerators
             set { _condition = value; }
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
-            _left.WriteSql(sqlText);
+            _left.WriteSql(sqlText, command);
             switch (_joinType)
             {
                 case DbExpressionKind.InnerJoin:
@@ -645,13 +641,13 @@ namespace Npgsql.SqlGenerators
                 default:
                     throw new NotSupportedException();
             }
-            _right.WriteSql(sqlText);
+            _right.WriteSql(sqlText, command);
             if (_joinType != DbExpressionKind.CrossJoin)
             {
                 sqlText.Append(" ON ");
-                _condition.WriteSql(sqlText);
+                _condition.WriteSql(sqlText, command);
             }
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -694,11 +690,11 @@ namespace Npgsql.SqlGenerators
             _where = where;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(" WHERE ");
-            _where.WriteSql(sqlText);
-            base.WriteSql(sqlText);
+            _where.WriteSql(sqlText, command);
+            base.WriteSql(sqlText, command);
         }
 
         internal void And(VisitedExpression andAlso)
@@ -734,7 +730,7 @@ namespace Npgsql.SqlGenerators
             _variableSubstitution = expression._variableSubstitution;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             if (_variableSubstitution.ContainsKey(_name))
                 sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_variableSubstitution[_name]));
@@ -751,7 +747,7 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
                 }
             }
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         // override ToString since we don't want variable substitution
@@ -810,15 +806,15 @@ namespace Npgsql.SqlGenerators
 
         public TypeUsage PropertyType { get { return _property.TypeUsage; } }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             if (_variable != null)
             {
-                _variable.WriteSql(sqlText);
+                _variable.WriteSql(sqlText, command);
                 sqlText.Append(".");
             }
             sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_property.Name));
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         // override ToString since we don't want variable substitution or identifier quoting
@@ -864,7 +860,7 @@ namespace Npgsql.SqlGenerators
             _args.Add(visitedExpression);
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(_name);
             sqlText.Append("(");
@@ -873,11 +869,11 @@ namespace Npgsql.SqlGenerators
             {
                 if (!first)
                     sqlText.Append(",");
-                arg.WriteSql(sqlText);
+                arg.WriteSql(sqlText, command);
                 first = false;
             }
             sqlText.Append(")");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -905,12 +901,12 @@ namespace Npgsql.SqlGenerators
             _type = type;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append("CAST (");
-            _value.WriteSql(sqlText);
+            _value.WriteSql(sqlText, command);
             sqlText.AppendFormat(" AS {0})", _type);
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -936,11 +932,11 @@ namespace Npgsql.SqlGenerators
             _requiresGroupSeperator = true;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             if (ExpressionList.Count != 0)
                 sqlText.Append(" GROUP BY ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()
@@ -958,11 +954,11 @@ namespace Npgsql.SqlGenerators
             _arg = arg;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(" LIMIT ");
-            _arg.WriteSql(sqlText);
-            base.WriteSql(sqlText);
+            _arg.WriteSql(sqlText, command);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -985,11 +981,11 @@ namespace Npgsql.SqlGenerators
             _arg = arg;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(" OFFSET ");
-            _arg.WriteSql(sqlText);
-            base.WriteSql(sqlText);
+            _arg.WriteSql(sqlText, command);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1016,22 +1012,22 @@ namespace Npgsql.SqlGenerators
             _right = right;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
             bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
             if (wrapLeft)
                 sqlText.Append("(");
-            _left.WriteSql(sqlText);
+            _left.WriteSql(sqlText, command);
             if (wrapLeft)
                 sqlText.Append(") ");
             sqlText.Append(_booleanOperator);
             if (wrapRight)
                 sqlText.Append(" (");
-            _right.WriteSql(sqlText);
+            _right.WriteSql(sqlText, command);
             if (wrapRight)
                 sqlText.Append(")");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1062,13 +1058,13 @@ namespace Npgsql.SqlGenerators
             _right = right;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
             bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
             if (wrapLeft)
                 sqlText.Append("(");
-            _left.WriteSql(sqlText);
+            _left.WriteSql(sqlText, command);
             if (wrapLeft)
                 sqlText.Append(") ");
             switch (_booleanOperator)
@@ -1119,10 +1115,10 @@ namespace Npgsql.SqlGenerators
             }
             if (wrapRight)
                 sqlText.Append(" (");
-            _right.WriteSql(sqlText);
+            _right.WriteSql(sqlText, command);
             if (wrapRight)
                 sqlText.Append(")");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1153,14 +1149,14 @@ namespace Npgsql.SqlGenerators
             _second = second;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
-            _first.WriteSql(sqlText);
+            _first.WriteSql(sqlText, command);
             sqlText.Append(" ");
             sqlText.Append(_setOperator);
             sqlText.Append(" ");
-            _second.WriteSql(sqlText);
-            base.WriteSql(sqlText);
+            _second.WriteSql(sqlText, command);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1205,14 +1201,14 @@ namespace Npgsql.SqlGenerators
             _argument = argument;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             if (Negated)
                 sqlText.Append("NOT ");
             sqlText.Append("EXISTS (");
-            _argument.WriteSql(sqlText);
+            _argument.WriteSql(sqlText, command);
             sqlText.Append(")");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1236,14 +1232,14 @@ namespace Npgsql.SqlGenerators
             Negated = true;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             if (Negated)
                 sqlText.Append(" NOT ");
             sqlText.Append("(");
-            _argument.WriteSql(sqlText);
+            _argument.WriteSql(sqlText, command);
             sqlText.Append(")");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1261,14 +1257,14 @@ namespace Npgsql.SqlGenerators
             _argument = argument;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
-            _argument.WriteSql(sqlText);
+            _argument.WriteSql(sqlText, command);
             sqlText.Append(" IS ");
             if (Negated)
                 sqlText.Append("NOT ");
             sqlText.Append("NULL ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<PropertyExpression> GetAccessedProperties()
@@ -1298,10 +1294,10 @@ namespace Npgsql.SqlGenerators
             _requiresOrderSeperator = true;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        internal override void WriteSql(StringBuilder sqlText, NpgsqlCommand command)
         {
             sqlText.Append(" ORDER BY ");
-            base.WriteSql(sqlText);
+            base.WriteSql(sqlText, command);
         }
 
         internal override IEnumerable<ColumnExpression> GetProjectedColumns()

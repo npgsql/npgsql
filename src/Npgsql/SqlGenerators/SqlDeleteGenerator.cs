@@ -30,6 +30,7 @@ namespace Npgsql.SqlGenerators
         public override void BuildCommand(DbCommand command)
         {
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
+            System.Diagnostics.Debug.Assert(command is NpgsqlCommand);
             DeleteExpression delete = new DeleteExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
             delete.AppendFrom(_commandTree.Target.Expression.Accept(this));
@@ -38,7 +39,7 @@ namespace Npgsql.SqlGenerators
                 delete.AppendWhere(_commandTree.Predicate.Accept(this));
             }
             _projectVarName.Pop();
-            command.CommandText = delete.ToString();
+            command.CommandText = delete.ToString(command as NpgsqlCommand);
         }
 	}
 }

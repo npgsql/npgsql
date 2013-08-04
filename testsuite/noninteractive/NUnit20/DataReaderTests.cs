@@ -126,7 +126,7 @@ namespace NpgsqlTests
            
            
         [Test]
-        public void GetBytes()
+        public void GetBytes1()
         {
             NpgsqlCommand command = new NpgsqlCommand("select field_bytea from tablef where field_serial = 1;", TheConnection);
 
@@ -147,6 +147,32 @@ namespace NpgsqlTests
             dr.Close();
         }
 
+        [Test]
+        public void GetBytes2()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select '\\001\\002\\003'::bytea;", TheConnection);
+
+            NpgsqlDataReader dr = command.ExecuteReader();
+
+            dr.Read();
+            Byte[] result = new Byte[3];
+
+
+            Int64 a = dr.GetBytes(0, 0, result, 0, 0);
+            Int64 b = dr.GetBytes(0, 0, result, 0, 1);
+            Int64 c = dr.GetBytes(0, 0, result, 0, 2);
+            Int64 d = dr.GetBytes(0, 0, result, 0, 3);
+
+            Assert.AreEqual(1, result[0]);
+            Assert.AreEqual(2, result[1]);
+            Assert.AreEqual(3, result[2]);
+            Assert.AreEqual(0, a);
+            Assert.AreEqual(1, b);
+            Assert.AreEqual(2, c);
+            Assert.AreEqual(3, d);
+            
+            dr.Close();
+        }
 
         [Test]
         [Ignore]
@@ -414,9 +440,9 @@ namespace NpgsqlTests
                     Assert.AreEqual(el, cmp++);
             }
         }
-        
+
         [Test]
-        public void TestArrayOfBytea()
+        public void TestArrayOfBytea1()
         {
             NpgsqlCommand command = new NpgsqlCommand("select get_byte(:i[1], 2)", TheConnection);
             command.Parameters.AddWithValue(":i", new byte[][]{new byte[]{0,1,2}, new byte[]{3,4,5}});
@@ -424,6 +450,18 @@ namespace NpgsqlTests
             {
                 dr.Read();
                 Assert.AreEqual(dr[0], 2);
+            }
+        }
+
+        [Test]
+        public void TestArrayOfBytea2()
+        {
+            NpgsqlCommand command = new NpgsqlCommand("select get_byte(:i[1], 2)", TheConnection);
+            command.Parameters.AddWithValue(":i", new byte[][]{new byte[]{1,2,3}, new byte[]{4,5,6}});
+            using(NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                dr.Read();
+                Assert.AreEqual(dr[0], 3);
             }
         }
 

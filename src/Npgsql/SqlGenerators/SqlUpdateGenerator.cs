@@ -30,6 +30,7 @@ namespace Npgsql.SqlGenerators
         public override void BuildCommand(DbCommand command)
         {
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
+            System.Diagnostics.Debug.Assert(command is NpgsqlCommand);
             UpdateExpression update = new UpdateExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
             update.AppendTarget(_commandTree.Target.Expression.Accept(this));
@@ -42,7 +43,7 @@ namespace Npgsql.SqlGenerators
                 update.AppendWhere(_commandTree.Predicate.Accept(this));
             }
             _projectVarName.Pop();
-            command.CommandText = update.ToString();
+            command.CommandText = update.ToString(command as NpgsqlCommand);
         }
 	}
 }

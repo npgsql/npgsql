@@ -476,6 +476,32 @@ namespace Npgsql
 			}
 		}
 
+        /// <summary>
+        /// Report whether the backend is expecting standards conforming strings.
+        /// </summary>
+        [Browsable(false)]
+        public Boolean UseConformantStrings
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.UseConformantStrings;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the string literal E prefix.
+        /// </summary>
+        [Browsable(false)]
+        public Boolean Supports_E_StringPrefix
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.Supports_E_StringPrefix;
+            }
+        }
+
 		/// <summary>
 		/// Begins a database transaction with the specified isolation level.
 		/// </summary>
