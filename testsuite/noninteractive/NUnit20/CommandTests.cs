@@ -36,8 +36,6 @@ using System.Net;
 using NpgsqlTypes;
 using System.Resources;
 using System.Threading;
-using System.Diagnostics;
-using System.IO;
 
 namespace NpgsqlTests
 {
@@ -923,19 +921,9 @@ namespace NpgsqlTests
         [Test]
         public void ByteaLargeSupport()
         {
-            var s = new MemoryStream();
-            int l = 0;
-            byte[] buff = new byte[8192];
+            byte[] buff = new byte[100000];
 
-            using (var f = File.Open(Process.GetCurrentProcess().MainModule.FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                while ((l = f.Read(buff, 0, buff.Length)) > 0)
-                {
-                    s.Write(buff, 0, l);
-                }
-            }
-
-            buff = s.ToArray();
+            new Random().NextBytes(buff);
 
             NpgsqlCommand command = new NpgsqlCommand("select :val", TheConnection);
 
@@ -982,13 +970,30 @@ namespace NpgsqlTests
             Assert.AreEqual(toStore, result);
 
         }
+
+        [Test]
+        public void ByteaInsertWithPrepareSupport1()
+        {
+            Byte[] toStore = { 0 };
+
+            NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
+            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
+            cmd.Parameters[0].Value = toStore;
+            cmd.Prepare();
+            cmd.ExecuteNonQuery();
+
+            cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+            
+            cmd.Prepare();
+            Byte[] result = (Byte[])cmd.ExecuteScalar();
+            
+            
+            Assert.AreEqual(toStore, result);
+        }
         
         [Test]
-        public void ByteaInsertWithPrepareSupport()
+        public void ByteaInsertWithPrepareSupport2()
         {
-            
-
-
             Byte[] toStore = { 1 };
 
             NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
