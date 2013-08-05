@@ -477,7 +477,7 @@ namespace Npgsql
 		}
 
         /// <summary>
-        /// Report whether the backend is expecting standards conforming strings..
+        /// Report whether the backend is expecting standards conforming strings.
         /// </summary>
         [Browsable(false)]
         public Boolean UseConformantStrings
