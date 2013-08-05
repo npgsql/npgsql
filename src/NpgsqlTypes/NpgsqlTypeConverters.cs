@@ -238,6 +238,21 @@ namespace NpgsqlTypes
         /// </summary>
         internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NpgsqlConnector connector)
         {
+            if (! connector.SupportsHexByteFormat)
+            {
+                return ToBinaryEscaped(TypeInfo, NativeData, forExtendedQuery);
+            }
+            else
+            {
+                return ToBinaryHexFormat(TypeInfo, NativeData, forExtendedQuery);
+            }
+        }
+
+        /// <summary>
+        /// Binary data with possible older style escapes.
+        /// </summary>
+        internal static String ToBinaryEscaped(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery)
+        {
             Byte[] byteArray = (Byte[])NativeData;
             StringBuilder res = new StringBuilder(byteArray.Length * 5);
 
@@ -255,6 +270,30 @@ namespace NpgsqlTypes
                       .Append((char)('0' + (7 & (b >> 3))))
                       .Append((char)('0' + (7 & b)));
                 }
+            }
+
+            return res.ToString();
+        }
+
+        /// <summary>
+        /// Binary data in the new hex format.
+        /// </summary>
+        internal static String ToBinaryHexFormat(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery)
+        {
+            Byte[] byteArray = (Byte[])NativeData;
+
+            if (byteArray.Length == 0)
+            {
+                return "";
+            }
+
+            StringBuilder res = new StringBuilder(byteArray.Length * 5);
+
+            res.Append("\\x");
+
+            foreach (byte b in byteArray)
+            {
+                res.AppendFormat("{0:x2}", b);
             }
 
             return res.ToString();

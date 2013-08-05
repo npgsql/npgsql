@@ -127,6 +127,7 @@ namespace Npgsql
         private Boolean _supportsSavepoint = false;
 
         private Boolean _supports_E_StringPrefix = false;
+        private Boolean _supportsHexByteFormat = false;
 
         private NpgsqlBackendTypeMapping _oidToNameMapping = null;
 
@@ -687,11 +688,19 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Report whether the backend understands the string literal E prefix.
+        /// Report whether the backend understands the string literal E prefix (>= 8.2).
         /// </summary>
         internal Boolean Supports_E_StringPrefix
         {
             get { return _supports_E_StringPrefix; }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the hex byte format (>= 9.0).
+        /// </summary>
+        internal Boolean SupportsHexByteFormat
+        {
+            get { return _supportsHexByteFormat; }
         }
         
 
@@ -708,6 +717,8 @@ namespace Npgsql
             // CHECKME: Per the PG documentation, this flag appears to be new as of 8.2.0.
             // Assuming thats true, we need to make sure we don't ever send it to earlier backends.
             this._supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
+
+            this._supportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
         }
 
         /*/// <value>Counts the numbers of Connections that share

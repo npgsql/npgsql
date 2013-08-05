@@ -477,7 +477,7 @@ namespace Npgsql
 		}
 
         /// <summary>
-        /// Report whether the backend is expecting standards conforming strings.
+        /// Report whether the backend is expecting standards conforming strings..
         /// </summary>
         [Browsable(false)]
         public Boolean UseConformantStrings
@@ -490,7 +490,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Report whether the backend understands the string literal E prefix.
+        /// Report whether the backend understands the string literal E prefix (>= 8.2).
         /// </summary>
         [Browsable(false)]
         public Boolean Supports_E_StringPrefix
@@ -499,6 +499,19 @@ namespace Npgsql
             {
                 CheckConnectionOpen();
                 return connector.Supports_E_StringPrefix;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the hex byte format (>= 9.0).
+        /// </summary>
+        [Browsable(false)]
+        public Boolean SupportsHexByteFormat
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.SupportsHexByteFormat;
             }
         }
 
