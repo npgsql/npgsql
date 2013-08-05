@@ -145,8 +145,9 @@ namespace Npgsql.SqlGenerators
                     // Escape syntax is needed for strings with escape values.
                     // We don't check if there are escaped strings for performance reasons.
                     // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
-                    sqlText.Append('E'); 
-                    sqlText.Append(typeInfo.ConvertToBackend(_value, false));
+                    // BackendToNativeTypeConverterOptions.Default should provide the correct
+                    // formatting rules for any backend >= 8.0.
+                    sqlText.Append(typeInfo.ConvertToBackend(_value, false, BackendToNativeTypeConverterOptions.Default));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);

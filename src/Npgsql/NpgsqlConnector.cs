@@ -142,6 +142,8 @@ namespace Npgsql
         private const String _planNamePrefix = "npgsqlplan";
         private const String _portalNamePrefix = "npgsqlportal";
 
+        private BackendToNativeTypeConverterOptions _backendToNativeTypeConverterOptions = BackendToNativeTypeConverterOptions.Default;
+
 
         private Thread _notificationThread;
 
@@ -159,15 +161,11 @@ namespace Npgsql
         // expect a ready_for_query response.
         private bool _requireReadyForQuery = true;
         
-        private bool? _useConformantStrings;
-
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
         
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-        
-
 
 #if WINDOWS && UNMANAGED
 
@@ -407,6 +405,7 @@ namespace Npgsql
 
             return true;
         }
+
         /// <summary>
         /// This method is responsible for releasing all resources associated with this Connector.
         /// </summary>
@@ -674,10 +673,19 @@ namespace Npgsql
         {
             get { return _supportsSavepoint; }
             set { _supportsSavepoint = value; } 
-          
         }
 
-        
+        /// <summary>
+        /// Options that control certain aspects of native to backend conversions that depend
+        /// on backend version and status.
+        /// </summary>
+        public BackendToNativeTypeConverterOptions BackendToNativeTypeConverterOptions
+        {
+            get
+            {
+                return _backendToNativeTypeConverterOptions;
+            }
+        }
 
         /// <summary>
         /// This method is required to set all the version dependent features flags.
@@ -688,6 +696,12 @@ namespace Npgsql
         {
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
+
+            // CHECKME: Per the PG documentation, this flag appears to be new as of 8.2.0.
+            // Assuming thats true, we need to make sure we don't ever send it to earlier backends.
+            BackendToNativeTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
+
+            BackendToNativeTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
         }
 
         /*/// <value>Counts the numbers of Connections that share
@@ -1110,77 +1124,16 @@ namespace Npgsql
             {
                 _serverParameters.Add(ps.Parameter, ps);
             }
-            _useConformantStrings = null;
+
+            if (ps.Parameter == "standard_conforming_strings")
+            {
+                BackendToNativeTypeConverterOptions.UseConformantStrings = (ps.ParameterValue == "on");
+            }
         }
 
         public IDictionary<string, NpgsqlParameterStatus> ServerParameters
         {
             get { return new ReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
-        }
-        public string CheckParameter(string paramName)
-        {
-            NpgsqlParameterStatus ps = null;
-            if(_serverParameters.TryGetValue(paramName, out ps))
-                return ps.ParameterValue;
-            try
-            {
-                using(NpgsqlCommand cmd = new NpgsqlCommand("show " + paramName, this))
-                {
-                    string paramValue = (string)cmd.ExecuteScalar();
-                    AddParameterStatus(new NpgsqlParameterStatus(paramName, paramValue));
-                    return paramValue;
-                }
-            }
-            
-            /*
-             * In case of problems with the command above, we simply return null in order to 
-             * say we don't support it.
-             */
-              
-            catch(NpgsqlException)
-            {
-                return null;
-            }
-            /*
-             * Original catch handler by Jon Hanna.
-             * 7.3 version doesn't support error code. Only 7.4+
-             
-             * catch(NpgsqlException ne)
-            {
-                if(ne.Code == "42704")//unrecognized configuration parameter
-                    return null;
-                else
-                    throw;
-            }*/
-        }
-        private bool CheckStringConformanceRequirements()
-        {
-            //If standards_conforming_strings is "on" then postgres will handle \ in strings differently to how we expect, unless
-            //an escaped-string literal is use (E'example\n' rather than 'example\n'. At time of writing this defaults
-            //to "off", but documentation says this will change to default "on" in the future, and it can still be "on" now.
-            //escape_string_warning being "on" (current default) will result in a warning, but not an error, on every such
-            //string, which is not ideal.
-            //On the other hand, earlier versions of postgres do not have the escaped-literal syntax and will error if it
-            //is used. Version numbers could be checked, but here the approach taken is to check on what the server is
-            //explicitly requesting.
-            
-            NpgsqlParameterStatus warning = null;
-            if(_serverParameters.TryGetValue("escape_string_warning", out warning) && warning.ParameterValue == "on")//try the most commonly set at time of coding first
-                return true;
-            NpgsqlParameterStatus insist = null;
-            if(_serverParameters.TryGetValue("standard_conforming_strings", out insist) && insist.ParameterValue == "on")
-                return true;
-            if(warning != null && insist != null)//both where present and "off".
-                return false;
-            //We need to check at least one of these on the server.
-            return CheckParameter("standard_conforming_strings") == "on" || CheckParameter("escape_string_warning") == "on";
-        }
-        public bool UseConformantStrings
-        {
-            get
-            {
-                return _useConformantStrings ?? (_useConformantStrings = CheckStringConformanceRequirements()).Value;
-            }
         }
     }
 }

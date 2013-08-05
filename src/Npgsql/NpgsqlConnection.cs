@@ -476,6 +476,45 @@ namespace Npgsql
 			}
 		}
 
+        /// <summary>
+        /// Report whether the backend is expecting standards conforming strings..
+        /// </summary>
+        [Browsable(false)]
+        public Boolean UseConformantStrings
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.BackendToNativeTypeConverterOptions.UseConformantStrings;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the string literal E prefix (>= 8.2).
+        /// </summary>
+        [Browsable(false)]
+        public Boolean Supports_E_StringPrefix
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.BackendToNativeTypeConverterOptions.Supports_E_StringPrefix;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the hex byte format (>= 9.0).
+        /// </summary>
+        [Browsable(false)]
+        public Boolean SupportsHexByteFormat
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.BackendToNativeTypeConverterOptions.SupportsHexByteFormat;
+            }
+        }
+
 		/// <summary>
 		/// Begins a database transaction with the specified isolation level.
 		/// </summary>
