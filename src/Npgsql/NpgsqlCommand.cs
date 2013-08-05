@@ -671,7 +671,7 @@ namespace Npgsql
                     // TODO: Add binary format support for all supported types. Not only bytea.
                     if (parameters[i].TypeInfo.NpgsqlDbType != NpgsqlDbType.Bytea)
                     {
-                        parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.BackendToNativeTypeConverterOptions);
+                        parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
                     }
                     else
                     {
@@ -682,7 +682,7 @@ namespace Npgsql
                         }
                         else
                         {
-                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.BackendToNativeTypeConverterOptions);
+                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
                         }
                     }
                 }
@@ -909,7 +909,7 @@ namespace Npgsql
 
         private void PassParam(StringBuilder query, NpgsqlParameter p)
         {
-            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.BackendToNativeTypeConverterOptions);
+            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
             // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
             // See bug #1010543
@@ -1188,7 +1188,7 @@ namespace Npgsql
                     // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
                     // See bug #1010543
                     result.Append('(');
-                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false, Connector.BackendToNativeTypeConverterOptions));
+                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions));
                     result.Append(')');
                     if (p.UseCast)
                     {

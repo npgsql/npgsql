@@ -759,7 +759,7 @@ npgsqlTimestampTZ));
 	/// <summary>
 	/// Delegate called to convert the given native data to its backand representation.
 	/// </summary>
-	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options);
+	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
 
@@ -1083,7 +1083,7 @@ npgsqlTimestampTZ));
         /// <param name="NativeData">Native .NET object to be converted.</param>
         /// <param name="forExtendedQuery">Options to guide serialization.</param>
         /// <param name="options">Connection specific options.</param>
-        public String ConvertToBackend(Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        public String ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (forExtendedQuery)
             {
@@ -1095,7 +1095,7 @@ npgsqlTimestampTZ));
             }
         }
 
-        private String ConvertToBackendPlainQuery(Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        private String ConvertToBackendPlainQuery(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if ((NativeData == DBNull.Value) || (NativeData == null))
             {
@@ -1145,7 +1145,7 @@ npgsqlTimestampTZ));
             return backendSerialization;
         }
 
-		private String ConvertToBackendExtendedQuery(Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+		private String ConvertToBackendExtendedQuery(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
 		{
 			if ((NativeData == DBNull.Value) || (NativeData == null))
 			{

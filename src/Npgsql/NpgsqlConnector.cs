@@ -142,7 +142,7 @@ namespace Npgsql
         private const String _planNamePrefix = "npgsqlplan";
         private const String _portalNamePrefix = "npgsqlportal";
 
-        private BackendToNativeTypeConverterOptions _backendToNativeTypeConverterOptions = BackendToNativeTypeConverterOptions.Default;
+        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default;
 
 
         private Thread _notificationThread;
@@ -679,11 +679,11 @@ namespace Npgsql
         /// Options that control certain aspects of native to backend conversions that depend
         /// on backend version and status.
         /// </summary>
-        public BackendToNativeTypeConverterOptions BackendToNativeTypeConverterOptions
+        public NativeToBackendTypeConverterOptions NativeToBackendTypeConverterOptions
         {
             get
             {
-                return _backendToNativeTypeConverterOptions;
+                return _NativeToBackendTypeConverterOptions;
             }
         }
 
@@ -699,9 +699,9 @@ namespace Npgsql
 
             // CHECKME: Per the PG documentation, this flag appears to be new as of 8.2.0.
             // Assuming thats true, we need to make sure we don't ever send it to earlier backends.
-            BackendToNativeTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
+            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
 
-            BackendToNativeTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
+            NativeToBackendTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
         }
 
         /*/// <value>Counts the numbers of Connections that share
@@ -1127,7 +1127,7 @@ namespace Npgsql
 
             if (ps.Parameter == "standard_conforming_strings")
             {
-                BackendToNativeTypeConverterOptions.UseConformantStrings = (ps.ParameterValue == "on");
+                NativeToBackendTypeConverterOptions.UseConformantStrings = (ps.ParameterValue == "on");
             }
         }
 

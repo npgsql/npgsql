@@ -485,7 +485,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return connector.BackendToNativeTypeConverterOptions.UseConformantStrings;
+                return connector.NativeToBackendTypeConverterOptions.UseConformantStrings;
             }
         }
 
@@ -498,7 +498,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return connector.BackendToNativeTypeConverterOptions.Supports_E_StringPrefix;
+                return connector.NativeToBackendTypeConverterOptions.Supports_E_StringPrefix;
             }
         }
 
@@ -511,7 +511,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return connector.BackendToNativeTypeConverterOptions.SupportsHexByteFormat;
+                return connector.NativeToBackendTypeConverterOptions.SupportsHexByteFormat;
             }
         }
 

@@ -57,7 +57,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Serialise the enumeration or array.
         /// </summary>
-        public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        public string FromArray(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
 
             if (forExtendedQuery)
@@ -90,7 +90,7 @@ namespace NpgsqlTypes
             }
         }
 
-        private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        private bool WriteItem(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //item could be:
             //an Ienumerable - in which case we call WriteEnumeration
@@ -121,7 +121,7 @@ namespace NpgsqlTypes
             
         }
 
-        private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        private bool WriteArray(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             bool writtenSomething = false;
             //we need to know the size of each dimension.
@@ -197,7 +197,7 @@ namespace NpgsqlTypes
             return writtenSomething;
         }
 
-        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
             // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )

@@ -42,20 +42,20 @@ namespace NpgsqlTypes
     /// Options that control certain aspects of native to backend conversions that depend
     /// on backend version and status.
     /// </summary>
-    internal class BackendToNativeTypeConverterOptions
+    internal class NativeToBackendTypeConverterOptions
     {
-        internal static BackendToNativeTypeConverterOptions _default;
+        internal static NativeToBackendTypeConverterOptions _default;
 
         internal bool UseConformantStrings;
         internal bool Supports_E_StringPrefix;
         internal bool SupportsHexByteFormat;
 
-        static BackendToNativeTypeConverterOptions()
+        static NativeToBackendTypeConverterOptions()
         {
-            _default = new BackendToNativeTypeConverterOptions(false, true, false);
+            _default = new NativeToBackendTypeConverterOptions(false, true, false);
         }
 
-        internal static BackendToNativeTypeConverterOptions Default
+        internal static NativeToBackendTypeConverterOptions Default
         {
             get
             {
@@ -63,7 +63,7 @@ namespace NpgsqlTypes
             }
         }
 
-        internal BackendToNativeTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
         {
             this.UseConformantStrings = useConformantStrings;
             this.Supports_E_StringPrefix = supports_E_StringPrefix;
@@ -269,7 +269,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data, escaped as needed per options.
         /// </summary>
-        internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (! options.SupportsHexByteFormat)
             {
@@ -340,7 +340,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql boolean.
         /// </summary>
-        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return ((bool)NativeData) ? "TRUE" : "FALSE";
         }
@@ -348,7 +348,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
-        internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is bool)
                 return ((bool)NativeData) ? "1" : "0";
@@ -374,7 +374,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql timestamp.
         /// </summary>
-        internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
@@ -394,7 +394,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql date.
         /// </summary>
-        internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
@@ -406,7 +406,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql time.
         /// </summary>
-        internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
@@ -421,7 +421,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres money.
         /// </summary>
-        internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
@@ -433,7 +433,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres double with maximum precision.
         /// </summary>
-        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
@@ -444,7 +444,7 @@ namespace NpgsqlTypes
 
 
 
-        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             // This double cast is needed in order to get the enum type handled correctly (IConvertible)
             // and the decimal separator always as "." regardless of culture (IFormattable)
@@ -667,7 +667,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Point.
         /// </summary>
-        internal static String ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlPoint)
             {
@@ -683,7 +683,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Box.
         /// </summary>
-        internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             /*if (NativeData.GetType() == typeof(Rectangle)) {
                 Rectangle       R = (Rectangle)NativeData;
@@ -708,7 +708,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// LSeg.
         /// </summary>
-        internal static String ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             NpgsqlLSeg S = (NpgsqlLSeg)NativeData;
             return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", S.Start.X, S.Start.Y, S.End.X, S.End.Y);
@@ -717,7 +717,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Open path.
         /// </summary>
-        internal static String ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             StringBuilder B = null;
             try
@@ -742,7 +742,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Polygon.
         /// </summary>
-        internal static String ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             StringBuilder B = new StringBuilder();
 
@@ -757,7 +757,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres MAC Address.
         /// </summary>
-        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlMacAddress)
             {
@@ -769,7 +769,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Circle.
         /// </summary>
-        internal static String ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             NpgsqlCircle C = (NpgsqlCircle)NativeData;
             return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2}", C.Center.X, C.Center.Y, C.Radius);
@@ -778,7 +778,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres inet.
         /// </summary>
-        internal static String ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlInet)
             {
@@ -791,7 +791,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres interval
         /// </summary>
-        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return
                 ((NativeData is TimeSpan)
@@ -799,7 +799,7 @@ namespace NpgsqlTypes
                     : ((NpgsqlInterval)NativeData).ToString());
         }
 
-        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -817,7 +817,7 @@ namespace NpgsqlTypes
             return time.ToString();
         }
 
-        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -835,7 +835,7 @@ namespace NpgsqlTypes
             return time.ToString();
         }
 
-        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -847,7 +847,7 @@ namespace NpgsqlTypes
             }
         }
 
-        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, BackendToNativeTypeConverterOptions options)
+        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
