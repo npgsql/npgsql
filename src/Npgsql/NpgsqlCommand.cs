@@ -37,7 +37,6 @@ using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
 using NpgsqlTypes;
-using System.Diagnostics;
 
 #if WITHDESIGN
 
@@ -903,7 +902,7 @@ namespace Npgsql
             // queries.  Reset command timeout and SQL sent.
             m_Connector.Mediator.ResetResponses();
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
-Debug.WriteLine(ret);
+
             return ret;
 
         }
