@@ -659,7 +659,7 @@ namespace Npgsql.SqlGenerators
             foreach (var prop in joinCondition.GetAccessedProperties())
             {
                 System.Text.StringBuilder propName = new System.Text.StringBuilder();
-                prop.WriteSql(propName);
+                prop.WriteSql(propName, null);
                 var propParts = propName.ToString().Split('.');
                 string table = propParts[0];
                 if (fromNames.Contains(table))
@@ -676,7 +676,7 @@ namespace Npgsql.SqlGenerators
                 foreach (var prop in accessedProperties)
                 {
                     System.Text.StringBuilder propName = new System.Text.StringBuilder();
-                    prop.WriteSql(propName);
+                    prop.WriteSql(propName, null);
                     string table = propName.ToString().Split('.')[0];
                     if (fromNames.Contains(table))
                     {
