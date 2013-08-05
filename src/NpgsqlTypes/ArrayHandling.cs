@@ -62,16 +62,16 @@ namespace NpgsqlTypes
 
             if (forExtendedQuery)
             {
-                StringBuilder sb = new StringBuilder("");
+                StringBuilder sb = new StringBuilder("{");
+                //return sb.ToString();
 
-                if (WriteItem(TypeInfo, NativeData, sb, forExtendedQuery, options))
-                {
-                    return sb.ToString();
-                }
-                else
-                {
-                    return "{}";
-                }
+                WriteItem(TypeInfo, NativeData, sb, forExtendedQuery, options);
+
+                sb.Append("}");
+
+                return sb.ToString();
+
+
 
             }
             else
