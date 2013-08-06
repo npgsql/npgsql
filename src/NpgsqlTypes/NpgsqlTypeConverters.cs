@@ -260,12 +260,14 @@ namespace NpgsqlTypes
 		}
 	}
 
-	/// <summary>
-	/// Provide event handlers to convert the basic native supported data types from
-	/// native form to backend representation.
-	/// </summary>
-	internal abstract class BasicNativeToBackendTypeConverter
-	{
+    /// <summary>
+    /// Provide event handlers to convert the basic native supported data types from
+    /// native form to backend representation.
+    /// </summary>
+    internal abstract class BasicNativeToBackendTypeConverter
+    {
+        private static char[]           hexEncodingCharMap = "0123456789ABCDEF".ToCharArray();
+
         /// <summary>
         /// Binary data, escaped as needed per options.
         /// </summary>
@@ -287,7 +289,7 @@ namespace NpgsqlTypes
         private static String ToBinaryEscaped(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
-            StringBuilder res = new StringBuilder(byteArray.Length * 5);
+            StringBuilder res = new StringBuilder(byteArray.Length);
 
             foreach (byte b in byteArray)
             {
@@ -320,18 +322,15 @@ namespace NpgsqlTypes
                 return "";
             }
 
-            string rawEncoding;
             StringBuilder res = new StringBuilder(byteArray.Length * 2 + 3);
-
-            rawEncoding = BitConverter.ToString(byteArray);
 
             res.AppendFormat(@"\{0}x", UseConformantStrings ? "" : @"\");
 
-            // BitConverter.ToString() puts dashes between each byte code.
-            // This is actually faster than string.Replace().
-            for (int i = 0; i < rawEncoding.Length; i += 3)
+            foreach (Byte b in byteArray)
             {
-                res.Append(rawEncoding[i]).Append(rawEncoding[i + 1]);
+                res
+                    .Append(hexEncodingCharMap[0xF & (b >> 4)])
+                    .Append(hexEncodingCharMap[0xF & b]);
             }
 
             return res.ToString();
