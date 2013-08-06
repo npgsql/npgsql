@@ -322,18 +322,23 @@ namespace NpgsqlTypes
                 return "";
             }
 
-            StringBuilder res = new StringBuilder(byteArray.Length * 2 + 3);
+            char[] ret = new char[byteArray.Length * 2 + (UseConformantStrings ? 2 : 3)];
+            int i = 0;
 
-            res.AppendFormat(@"\{0}x", UseConformantStrings ? "" : @"\");
-
-            foreach (Byte b in byteArray)
+            for (; i < (UseConformantStrings ? 1 : 2); )
             {
-                res
-                    .Append(hexEncodingCharMap[0xF & (b >> 4)])
-                    .Append(hexEncodingCharMap[0xF & b]);
+                ret[i++] = '\\';
             }
 
-            return res.ToString();
+            ret[i++] = 'x';
+
+            foreach (byte b in byteArray)
+            {
+                ret[i++] = hexEncodingCharMap[(b >> 4) & 0xF];
+                ret[i++] = hexEncodingCharMap[b & 0xF];
+            }
+
+            return new string(ret);
         }
 
         /// <summary>
