@@ -3227,14 +3227,36 @@ connection.Open();*/
             using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
             {
 
+                Double[] inVal = new Double[] { 1.2d, 1.3d };
                 NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = new Double[] {1.2d, 1.3d};
+                parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
- 
-                cmd.ExecuteNonQuery();
+
+                Double[] retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
             }
             
-            
+        }
+
+
+        [Test]
+        public void DoubleArrayHandlingZeroItem()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+
+                Double[] inVal = new Double[] { };
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                Double[] retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+            }
+
         }
         
         [Test]
@@ -3243,17 +3265,39 @@ connection.Open();*/
             
             using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
             {
-
+                Double[] inVal = new Double[] { 1.2d, 1.3d };
                 NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = new Double[] {1.2d, 1.3d};
+                parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
                 
                 cmd.Prepare();
- 
-                cmd.ExecuteNonQuery();
+
+                Double[] retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
             }
             
             
+        }
+
+        [Test]
+        public void DoubleArrayHandlingZeroItemPrepared()
+        {
+
+            using (NpgsqlCommand cmd = new NpgsqlCommand("select :p1", TheConnection))
+            {
+                Double[] inVal = new Double[] { };
+                NpgsqlParameter parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                cmd.Prepare();
+
+                Double[] retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+            }
+
         }
 
         
