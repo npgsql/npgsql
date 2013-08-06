@@ -1087,15 +1087,15 @@ npgsqlTimestampTZ));
         {
             if (forExtendedQuery)
             {
-                return ConvertToBackendExtendedQuery(NativeData, forExtendedQuery, options);
+                return ConvertToBackendExtendedQuery(NativeData, options);
             }
             else
             {
-                return ConvertToBackendPlainQuery(NativeData, forExtendedQuery, options);
+                return ConvertToBackendPlainQuery(NativeData, options);
             }
         }
 
-        private String ConvertToBackendPlainQuery(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        private String ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
         {
             if ((NativeData == DBNull.Value) || (NativeData == null))
             {
@@ -1107,7 +1107,7 @@ npgsqlTimestampTZ));
             if (_ConvertNativeToBackend != null)
             {
                 // This route escapes output strings as needed.
-                backendSerialization = _ConvertNativeToBackend(this, NativeData, forExtendedQuery, options);
+                backendSerialization = _ConvertNativeToBackend(this, NativeData, false, options);
 
                 if (Quote)
                 {
@@ -1145,7 +1145,7 @@ npgsqlTimestampTZ));
             return backendSerialization;
         }
 
-		private String ConvertToBackendExtendedQuery(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+		private String ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
 		{
 			if ((NativeData == DBNull.Value) || (NativeData == null))
 			{
@@ -1154,7 +1154,7 @@ npgsqlTimestampTZ));
 
 			if (_ConvertNativeToBackend != null)
 			{
-				return _ConvertNativeToBackend(this, NativeData, forExtendedQuery, options);
+				return _ConvertNativeToBackend(this, NativeData, true, options);
 			}
 			else
 			{
