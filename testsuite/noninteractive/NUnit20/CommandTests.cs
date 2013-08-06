@@ -917,31 +917,83 @@ namespace NpgsqlTests
 
             Assert.AreEqual(2, result.Length);
         }
-        
+
         [Test]
-        public void ByteaInsertSupport()
+        public void ByteaLargeSupport()
         {
-            Byte[] toStore = { 1 };
+            byte[] buff = new byte[100000];
 
-                  NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
-              cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-                  cmd.Parameters[0].Value = toStore;
-                  cmd.ExecuteNonQuery();
+            new Random().NextBytes(buff);
 
-                  cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+            NpgsqlCommand command = new NpgsqlCommand("select :val", TheConnection);
+
+            command.Parameters.Add("val", NpgsqlDbType.Bytea);
+            command.Parameters["val"].Value = buff;
+
+            Byte[] result = (Byte[]) command.ExecuteScalar();
+
+            Assert.AreEqual(buff, result);
+        }
+
+        [Test]
+        public void ByteaInsertSupport1()
+        {
+            Byte[] toStore = { 0, 1, 255, 254 };
+
+            NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
+            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
+            cmd.Parameters[0].Value = toStore;
+            cmd.ExecuteNonQuery();
+
+            cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+
+            Byte[] result = (Byte[])cmd.ExecuteScalar();
+
+            Assert.AreEqual(toStore, result);
+
+        }
+
+        [Test]
+        public void ByteaInsertSupport2()
+        {
+            Byte[] toStore = { 1, 2, 127, 126 };
+
+            NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
+            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
+            cmd.Parameters[0].Value = toStore;
+            cmd.ExecuteNonQuery();
+
+            cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
+
+            Byte[] result = (Byte[])cmd.ExecuteScalar();
+
+            Assert.AreEqual(toStore, result);
+
+        }
+
+        [Test]
+        public void ByteaInsertWithPrepareSupport1()
+        {
+            Byte[] toStore = { 0 };
+
+            NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
+            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
+            cmd.Parameters[0].Value = toStore;
+            cmd.Prepare();
+            cmd.ExecuteNonQuery();
+
+            cmd = new NpgsqlCommand("select field_bytea from tablef where field_serial = (select max(field_serial) from tablef)", TheConnection);
             
-                  Byte[] result = (Byte[])cmd.ExecuteScalar();
+            cmd.Prepare();
+            Byte[] result = (Byte[])cmd.ExecuteScalar();
             
-            Assert.AreEqual(1, result.Length);
-
+            
+            Assert.AreEqual(toStore, result);
         }
         
         [Test]
-        public void ByteaInsertWithPrepareSupport()
+        public void ByteaInsertWithPrepareSupport2()
         {
-            
-
-
             Byte[] toStore = { 1 };
 
             NpgsqlCommand cmd = new NpgsqlCommand("insert into tablef(field_bytea) values (:val)", TheConnection);
