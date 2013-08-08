@@ -31,30 +31,30 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents the Parse message sent to PostgreSQL
-	/// server.
-	/// </summary>
-	///
-	internal sealed class NpgsqlDescribe : ClientMessage
-	{
-		private readonly Char _whatToDescribe;
-		private readonly String _portalName;
+    /// <summary>
+    /// This class represents the Parse message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlDescribe : ClientMessage
+    {
+        private readonly char _whatToDescribe;
+        private readonly byte[] _portalName;
 
-		public NpgsqlDescribe(Char whatToDescribe, String portalName)
-		{
-			_whatToDescribe = whatToDescribe;
-			_portalName = portalName;
-		}
+        public NpgsqlDescribe(Char whatToDescribe, String portalName)
+        {
+            _whatToDescribe = whatToDescribe;
+            _portalName = UTF8Encoding.GetBytes(portalName);
+        }
 
-		public override void WriteToStream(Stream outputStream)
-		{
-			outputStream.WriteByte((byte) FrontEndMessageCode.Describe);
+        public override void WriteToStream(Stream outputStream)
+        {
+            outputStream.WriteByte((byte)FrontEndMessageCode.Describe);
 
-			PGUtil.WriteInt32(outputStream, 4 + 1 + UTF8Encoding.GetByteCount(_portalName) + 1);
+            PGUtil.WriteInt32(outputStream, 4 + 1 + _portalName.Length + 1);
 
-			outputStream.WriteByte((Byte) _whatToDescribe);
-			PGUtil.WriteString(_portalName, outputStream);
-		}
-	}
+            outputStream.WriteByte((Byte)_whatToDescribe);
+            PGUtil.WriteBytes(_portalName, outputStream);
+        }
+    }
 }

@@ -31,52 +31,52 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents the Parse message sent to PostgreSQL
-	/// server.
-	/// </summary>
-	///
-	internal sealed class NpgsqlParse : ClientMessage
-	{
-		// Logging related values
-		//private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+    /// <summary>
+    /// This class represents the Parse message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlParse : ClientMessage
+    {
+        // Logging related values
+        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-		private readonly String _prepareName;
-		private readonly String _queryString;
-		private readonly Int32[] _parameterIDs;
-
-
-		public NpgsqlParse(String prepareName, String queryString, Int32[] parameterIDs)
-		{
-			_prepareName = prepareName;
-			_queryString = queryString;
-			_parameterIDs = parameterIDs;
-		}
-
-		public override void WriteToStream(Stream outputStream)
-		{
-			outputStream.WriteByte((byte) FrontEndMessageCode.Parse);
-
-			// message length =
-			// Int32 self
-			// name of prepared statement + 1 null string terminator +
-			// query string + 1 null string terminator
-			// + Int16
-			// + Int32 * number of parameters.
-			Int32 messageLength = 4 + UTF8Encoding.GetByteCount(_prepareName) + 1 + UTF8Encoding.GetByteCount(_queryString) + 1 +
-			                      2 + (_parameterIDs.Length*4);
-			//Int32 messageLength = 4 + _prepareName.Length + 1 + _queryString.Length + 1 + 2 + (_parameterIDs.Length * 4);
-
-			PGUtil.WriteInt32(outputStream, messageLength);
-			PGUtil.WriteString(_prepareName, outputStream);
-			PGUtil.WriteString(_queryString, outputStream);
-			PGUtil.WriteInt16(outputStream, (Int16) _parameterIDs.Length);
+        private readonly byte[] _prepareNameBytes;
+        private readonly byte[] _queryStringBytes;
+        private readonly Int32[] _parameterIDs;
 
 
-			for (Int32 i = 0; i < _parameterIDs.Length; i++)
-			{
-				PGUtil.WriteInt32(outputStream, _parameterIDs[i]);
-			}
-		}
-	}
+        public NpgsqlParse(String prepareName, String queryString, Int32[] parameterIDs)
+        {
+            _prepareNameBytes = UTF8Encoding.GetBytes(prepareName);
+            _queryStringBytes = UTF8Encoding.GetBytes(queryString);
+            _parameterIDs = parameterIDs;
+        }
+
+        public override void WriteToStream(Stream outputStream)
+        {
+            outputStream.WriteByte((byte)FrontEndMessageCode.Parse);
+
+            // message length =
+            // Int32 self
+            // name of prepared statement + 1 null string terminator +
+            // query string + 1 null string terminator
+            // + Int16
+            // + Int32 * number of parameters.
+            Int32 messageLength = 4 + _prepareNameBytes.Length + 1 + _queryStringBytes.Length + 1 +
+                                  2 + (_parameterIDs.Length * 4);
+            //Int32 messageLength = 4 + _prepareName.Length + 1 + _queryString.Length + 1 + 2 + (_parameterIDs.Length * 4);
+
+            PGUtil.WriteInt32(outputStream, messageLength);
+            PGUtil.WriteBytes(_prepareNameBytes, outputStream);
+            PGUtil.WriteBytes(_queryStringBytes, outputStream);
+            PGUtil.WriteInt16(outputStream, (Int16)_parameterIDs.Length);
+
+
+            for (Int32 i = 0; i < _parameterIDs.Length; i++)
+            {
+                PGUtil.WriteInt32(outputStream, _parameterIDs[i]);
+            }
+        }
+    }
 }

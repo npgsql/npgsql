@@ -40,6 +40,8 @@ namespace Npgsql
     {
         private readonly String _portalName;
         private readonly String _preparedStatementName;
+        private readonly byte[] _portalNameBytes;
+        private readonly byte[] _preparedStatementNameBytes;
         private Int16[] _parameterFormatCodes;
         private Object[] _parameterValues;
         private Int16[] _resultFormatCodes;
@@ -51,6 +53,8 @@ namespace Npgsql
         {
             _portalName = portalName;
             _preparedStatementName = preparedStatementName;
+            _portalNameBytes = UTF8Encoding.GetBytes(portalName);
+            _preparedStatementNameBytes = UTF8Encoding.GetBytes(preparedStatementName);
             _parameterFormatCodes = parameterFormatCodes;
             _parameterValues = parameterValues;
             _resultFormatCodes = resultFormatCodes;
@@ -87,17 +91,12 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            byte[] portalNameBytes;
-            byte[] preparedStatementNameBytes;
             Int32 messageLength;
             byte[][] parameterValueBytes = null;
 
-            portalNameBytes = UTF8Encoding.GetBytes(_portalName);
-            preparedStatementNameBytes = UTF8Encoding.GetBytes(_preparedStatementName);
-
             messageLength =
-                4 + portalNameBytes.Length + 1 +
-                preparedStatementNameBytes.Length + 1 + 2 + (_parameterFormatCodes.Length * 2) + 2 +
+                4 + _portalNameBytes.Length + 1 +
+                _preparedStatementNameBytes.Length + 1 + 2 + (_parameterFormatCodes.Length * 2) + 2 +
                 2 + (_resultFormatCodes.Length * 2);
 
             if (_parameterValues != null)
@@ -128,8 +127,8 @@ namespace Npgsql
             outputStream.WriteByte((byte)FrontEndMessageCode.Bind);
             PGUtil.WriteInt32(outputStream, messageLength);
 
-            PGUtil.WriteBytes(portalNameBytes, outputStream);
-            PGUtil.WriteBytes(preparedStatementNameBytes, outputStream);
+            PGUtil.WriteBytes(_portalNameBytes, outputStream);
+            PGUtil.WriteBytes(_preparedStatementNameBytes, outputStream);
 
             PGUtil.WriteInt16(outputStream, (Int16)_parameterFormatCodes.Length);
 

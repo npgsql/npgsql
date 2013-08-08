@@ -30,36 +30,38 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents the Parse message sent to PostgreSQL
-	/// server.
-	/// </summary>
-	///
-	internal sealed class NpgsqlExecute : ClientMessage
-	{
-		private readonly String _portalName;
-		private readonly Int32 _maxRows;
+    /// <summary>
+    /// This class represents the Parse message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlExecute : ClientMessage
+    {
+        private readonly String _portalName;
+        private readonly byte[] _portalNameBytes;
+        private readonly Int32 _maxRows;
 
 
-		public NpgsqlExecute(String portalName, Int32 maxRows)
-		{
-			_portalName = portalName;
-			_maxRows = maxRows;
-		}
+        public NpgsqlExecute(String portalName, Int32 maxRows)
+        {
+            _portalName = portalName;
+            _portalNameBytes = UTF8Encoding.GetBytes(_portalName);
+            _maxRows = maxRows;
+        }
 
-		public String PortalName
-		{
-			get { return _portalName; }
-		}
+        public String PortalName
+        {
+            get { return _portalName; }
+        }
 
-		public override void WriteToStream(Stream outputStream)
-		{
-			outputStream.WriteByte((byte) FrontEndMessageCode.Execute);
+        public override void WriteToStream(Stream outputStream)
+        {
+            outputStream.WriteByte((byte)FrontEndMessageCode.Execute);
 
-			PGUtil.WriteInt32(outputStream, 4 + UTF8Encoding.GetByteCount(_portalName) + 1 + 4);
+            PGUtil.WriteInt32(outputStream, 4 + _portalNameBytes.Length + 1 + 4);
 
-			PGUtil.WriteString(_portalName, outputStream);
-			PGUtil.WriteInt32(outputStream, _maxRows);
-		}
-	}
+            PGUtil.WriteBytes(_portalNameBytes, outputStream);
+            PGUtil.WriteInt32(outputStream, _maxRows);
+        }
+    }
 }
