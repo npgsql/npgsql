@@ -697,10 +697,10 @@ namespace Npgsql
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
 
-            // CHECKME: Per the PG documentation, this flag appears to be new as of 8.2.0.
-            // Assuming thats true, we need to make sure we don't ever send it to earlier backends.
-            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 2, 0));
+            // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
+            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 1, 0));
 
+            // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
             NativeToBackendTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
         }
 
