@@ -88,7 +88,6 @@ namespace Npgsql
 
         private UpdateRowSource updateRowSource = UpdateRowSource.Both;
 
-
         // Constructors
 
         /// <summary>
@@ -672,7 +671,7 @@ namespace Npgsql
                     // TODO: Add binary format support for all supported types. Not only bytea.
                     if (parameters[i].TypeInfo.NpgsqlDbType != NpgsqlDbType.Bytea)
                     {
-                        parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true);
+                        parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
                     }
                     else
                     {
@@ -683,7 +682,7 @@ namespace Npgsql
                         }
                         else
                         {
-                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true);
+                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
                         }
                     }
                 }
@@ -903,79 +902,30 @@ namespace Npgsql
             // queries.  Reset command timeout and SQL sent.
             m_Connector.Mediator.ResetResponses();
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
+
             return ret;
 
         }
 
-        private static void PassEscapedArray(StringBuilder query, string array)
-        {
-            bool inTextLiteral = false;
-            int endAt = array.Length - 1;//leave last char for separate append as we don't have to continually check we're safe to add the next char too.
-            for(int i = 0; i != endAt; ++i)
-            {
-                if(array[i] == '\'')
-                {
-                    if(!inTextLiteral)
-                    {
-                        query.Append("E'");
-                        inTextLiteral = true;
-                    }
-                    else if(array[i + 1] == '\'')//SQL-escaped '
-                    {
-                        query.Append("''");
-                        ++i;
-                    }
-                    else
-                    {
-                        query.Append('\'');
-                        inTextLiteral = false;
-                    }
-                }
-                else
-                    query.Append(array[i]);
-            }
-            query.Append(array[endAt]);
-        }
-        
         private void PassParam(StringBuilder query, NpgsqlParameter p)
         {
-                string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
+            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
-                // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
-                // See bug #1010543
-                // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
-                // only one pair of parentheses for the two purposes instead of two pairs.
-                query.Append('(');
+            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+            // See bug #1010543
+            // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
+            // only one pair of parentheses for the two purposes instead of two pairs.
+            query.AppendFormat("({0})", serialised);
 
-                if(Connector.UseConformantStrings)
-                    switch(serialised[0])
-                    {
-                    case '\''://type passed as string or string with type.
-                        //We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
-                        query.Append("E").Append(serialised);
-                        break;
-                    case 'a':
-                        if(POSTGRES_TEXT_ARRAY.IsMatch(serialised))
-                            PassEscapedArray(query, serialised);
-                        else
-                            query.Append(serialised);
-                        break;
-                    default:
-                        query.Append(serialised);
-                        break;
-                    }
-                else
-                    query.Append(serialised);
+            if (p.UseCast)
+            {
+                query.AppendFormat("::{0}", p.TypeInfo.CastName);
 
-                query.Append(')');
-
-
-                if (p.UseCast)
+                if (p.TypeInfo.UseSize && (p.Size > 0))
                 {
-                    query.Append("::").Append(p.TypeInfo.CastName);
-                    if (p.TypeInfo.UseSize && (p.Size > 0))
-                        query.Append('(').Append(p.Size).Append(')');
+                    query.AppendFormat("({0})", p.Size);
                 }
+            }
         }
 
         private StringBuilder GetClearCommandText()
@@ -1238,7 +1188,7 @@ namespace Npgsql
                     // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
                     // See bug #1010543
                     result.Append('(');
-                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false));
+                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions));
                     result.Append(')');
                     if (p.UseCast)
                     {

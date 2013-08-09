@@ -759,7 +759,7 @@ npgsqlTimestampTZ));
 	/// <summary>
 	/// Delegate called to convert the given native data to its backand representation.
 	/// </summary>
-	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean ForExtendedQuery);
+	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
 
@@ -1008,7 +1008,6 @@ npgsqlTimestampTZ));
             _Quote = Quote;
             _ConvertNativeToBackend = ConvertNativeToBackend;
 
-
             // The only parameters types which use length currently supported are char and varchar. Check for them.
 
             if ((NpgsqlDbType == NpgsqlDbType.Char) || (NpgsqlDbType == NpgsqlDbType.Varchar))
@@ -1075,68 +1074,78 @@ npgsqlTimestampTZ));
 		}
 
 
-		/// <summary>
-		/// Perform a data conversion from a native object to
-		/// a backend representation.
-		/// DBNull and null values are handled differently depending if a plain query is used
-		/// When 
-		/// </summary>
-		/// <param name="NativeData">Native .NET object to be converted.</param>
-		/// <param name="ForExtendedQuery">Flag indicating if the conversion has to be done for 
-		/// plain queries or extended queries</param>
-		public String ConvertToBackend(Object NativeData, Boolean ForExtendedQuery)
-		{
-			if (ForExtendedQuery)
-			{
-				return ConvertToBackendExtendedQuery(NativeData);
-			}
-			else
-			{
-				return ConvertToBackendPlainQuery(NativeData);
-			}
-		}
+        /// <summary>
+        /// Perform a data conversion from a native object to
+        /// a backend representation.
+        /// DBNull and null values are handled differently depending if a plain query is used
+        /// When 
+        /// </summary>
+        /// <param name="NativeData">Native .NET object to be converted.</param>
+        /// <param name="forExtendedQuery">Options to guide serialization.</param>
+        /// <param name="options">Connection specific options.</param>
+        public String ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        {
+            if (forExtendedQuery)
+            {
+                return ConvertToBackendExtendedQuery(NativeData, options);
+            }
+            else
+            {
+                return ConvertToBackendPlainQuery(NativeData, options);
+            }
+        }
 
-		private String ConvertToBackendPlainQuery(Object NativeData)
-		{
-			if ((NativeData == DBNull.Value) || (NativeData == null))
-			{
-				return "NULL"; // Plain queries exptects null values as string NULL. 
-			}
+        private String ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            if ((NativeData == DBNull.Value) || (NativeData == null))
+            {
+                return "NULL"; // Plain queries exptects null values as string NULL.
+            }
 
-			if (_ConvertNativeToBackend != null)
-			{
-				return
-					(this.Quote ? QuoteString(_ConvertNativeToBackend(this, NativeData, false)) : _ConvertNativeToBackend(this, NativeData, false));
-			}
-			else
-			{
-				if (NativeData is Enum)
-				{
-					// Do a special handling of Enum values.
-					// Translate enum value to its underlying type. 
-					return
-						QuoteString(
-							(String)
-							Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof (String),
-							                   CultureInfo.InvariantCulture));
-				}
-				else if (NativeData is IFormattable)
-				{
-					return
-						(this.Quote
-						 	? QuoteString(((IFormattable) NativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"))
-						 	: ((IFormattable) NativeData).ToString(null, ni).Replace("'", "''").Replace("\\", "\\\\"));
-				}
+            string backendSerialization;
 
-				// Do special handling of strings when in simple query. Escape quotes and backslashes.
-				return
-					(this.Quote
-					 	? QuoteString(NativeData.ToString().Replace("'", "''").Replace("\\", "\\\\").Replace("\0", "\\0"))
-					 	: NativeData.ToString().Replace("'", "''").Replace("\\", "\\\\").Replace("\0", "\\0"));
-			}
-		}
+            if (_ConvertNativeToBackend != null)
+            {
+                // This route escapes output strings as needed.
+                backendSerialization = _ConvertNativeToBackend(this, NativeData, false, options);
 
-		private String ConvertToBackendExtendedQuery(Object NativeData)
+                if (Quote)
+                {
+                    backendSerialization = QuoteString(backendSerialization, ! options.UseConformantStrings && options.Supports_E_StringPrefix);
+                }
+            }
+            else if (NativeData is Enum)
+            {
+                // Do a special handling of Enum values.
+                // Translate enum value to its underlying type.
+                backendSerialization = (String)Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof(String), CultureInfo.InvariantCulture);
+
+                // Wrap the string in quotes.  No 'E' is needed here.
+                backendSerialization = QuoteString(backendSerialization, false);
+            }
+            else
+            {
+                bool escaped = false;
+
+                if (NativeData is IFormattable)
+                {
+                    backendSerialization = ((IFormattable)NativeData).ToString(null, ni);
+                }
+
+                // Do special handling of strings when in simple query. Escape quotes and possibly backslashes, depending on options.
+                backendSerialization = EscapeString(NativeData.ToString(), options.UseConformantStrings, out escaped);
+
+                if (Quote)
+                {
+                    // Wrap the string in quotes and possibly prepend with 'E', depending on options and escaping.
+                    backendSerialization = QuoteString(backendSerialization, escaped && options.Supports_E_StringPrefix);
+                }
+            }
+
+            return backendSerialization;
+        }
+
+		private String ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
 		{
 			if ((NativeData == DBNull.Value) || (NativeData == null))
 			{
@@ -1145,7 +1154,7 @@ npgsqlTimestampTZ));
 
 			if (_ConvertNativeToBackend != null)
 			{
-				return _ConvertNativeToBackend(this, NativeData, true);
+				return _ConvertNativeToBackend(this, NativeData, true, options);
 			}
 			else
 			{
@@ -1167,10 +1176,49 @@ npgsqlTimestampTZ));
 			}
 		}
 
-		internal static String QuoteString(String S)
-		{
-			return String.Format("'{0}'", S);
-		}
+        internal static string EscapeString(string src, bool StandardsConformingStrings, out bool backslashEscaped)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            backslashEscaped = false;
+
+            foreach (Char ch in src)
+            {
+                switch (ch)
+                {
+                    case '\'':
+                        ret.AppendFormat("{0}{0}", ch);
+
+                        break;
+
+                    case '\\':
+                        if (! StandardsConformingStrings)
+                        {
+                            backslashEscaped = true;
+                            ret.AppendFormat("{0}{0}", ch);
+                        }
+                        else
+                        {
+                            ret.Append(ch);
+                        }
+
+                        break;
+
+                    default:
+                        ret.Append(ch);
+
+                        break;
+
+                }
+            }
+
+            return ret.ToString();
+        }
+
+        internal static String QuoteString(String S, bool use_E_Prefix)
+        {
+            return String.Format("{0}'{1}'", use_E_Prefix ? "E" : "", S);
+        }
 	}
 
 	/// <summary>
