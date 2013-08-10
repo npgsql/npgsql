@@ -302,7 +302,8 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddTypeAlias("bit", typeof(BitString));
 
 			nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
-			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToBoolean));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanText),
+			                          new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanBinary));
 
 			nativeTypeMapping.AddTypeAlias("bool", typeof (Boolean));
 
@@ -470,7 +471,8 @@ namespace NpgsqlTypes
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof (Boolean),
-				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean));
+				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.BooleanTextToBoolean),
+				                          new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.BooleanBinaryToBoolean));
 
 			yield return new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof (Int16),
                                             null,

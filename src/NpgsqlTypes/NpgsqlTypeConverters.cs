@@ -175,10 +175,19 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Convert a postgresql boolean to a System.Boolean.
 		/// </summary>
-		internal static Object ToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+		internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
 										 Int32 TypeModifier)
 		{
 			return (BackendData.ToLower() == "t" ? true : false);
+		}
+
+		/// <summary>
+		/// Convert a postgresql boolean to a System.Boolean.
+		/// </summary>
+		internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+										 Int32 TypeModifier)
+		{
+			return (BackendData[0] != 0);
 		}
 
 		internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
@@ -369,11 +378,19 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Convert to a postgresql boolean.
+        /// Convert to a postgresql boolean text format.
         /// </summary>
-        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static String BooleanToBooleanText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return ((bool)NativeData) ? "TRUE" : "FALSE";
+        }
+
+        /// <summary>
+        /// Convert to a postgresql boolean binary format.
+        /// </summary>
+        internal static byte[] BooleanToBooleanBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return ((bool)NativeData) ? new byte[] { 1 } : new byte[] { 0 };
         }
 
         /// <summary>
