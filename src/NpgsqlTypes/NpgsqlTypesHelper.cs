@@ -222,35 +222,13 @@ namespace NpgsqlTypes
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
 
-
-			// We are never guaranteed to know about every possible data type the server can send us.
-			// When we encounter an unknown type, we punt and return the data without modification.
-			if (TypeInfo == null)
+			if (TypeInfo != null)
+			{
+				return TypeInfo.ConvertToNative(data, fieldValueSize, typeModifier);
+			}
+			else
 			{
 				return data;
-			}
-
-			switch (TypeInfo.NpgsqlDbType)
-			{
-				case NpgsqlDbType.Bytea:
-					return data;
-					/*case NpgsqlDbType.Boolean:
-                return BitConverter.ToBoolean(data, 0);
-            case NpgsqlDbType.DateTime:
-                return DateTime.MinValue.AddTicks(IPAddress.NetworkToHostOrder(BitConverter.ToInt64(data, 0)));
-
-            case NpgsqlDbType.Int16:
-                return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(data, 0));
-            case NpgsqlDbType.Int32:
-                return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(data, 0));
-            case NpgsqlDbType.Int64:
-                return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(data, 0));
-            case NpgsqlDbType.String:
-            case NpgsqlDbType.AnsiString:
-            case NpgsqlDbType.StringFixedLength:
-                return encoding.GetString(data, 0, fieldValueSize);*/
-				default:
-					throw new InvalidCastException("Type not supported in binary format");
 			}
 		}
 
@@ -313,21 +291,24 @@ namespace NpgsqlTypes
 
 
 			nativeTypeMapping.AddType("bytea", NpgsqlDbType.Bytea, DbType.Binary, true,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBinary));
+			                                new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaText),
+			                                new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaBinary));
 
 			nativeTypeMapping.AddTypeAlias("bytea", typeof (Byte[]));
 
 			nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Object, false,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBit));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToBit));
 			
 			nativeTypeMapping.AddTypeAlias("bit", typeof(BitString));
 
 			nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToBoolean));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToBoolean));
 
 			nativeTypeMapping.AddTypeAlias("bool", typeof (Boolean));
 
-			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false, BasicNativeToBackendTypeConverter.ToBasicType<short>);
+			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false,
+                                            BasicNativeToBackendTypeConverter.ToBasicType<short>,
+                                            BasicNativeToBackendTypeConverter.Int16ToInt2Binary);
 
             nativeTypeMapping.AddTypeAlias("int2", typeof (UInt16));
             
@@ -337,20 +318,24 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddTypeAlias("int2", typeof (Byte));
 
-			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false, BasicNativeToBackendTypeConverter.ToBasicType<int>);
+			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false,
+                                            BasicNativeToBackendTypeConverter.ToBasicType<int>,
+                                            BasicNativeToBackendTypeConverter.Int32ToInt4Binary);
 
 			nativeTypeMapping.AddTypeAlias("int4", typeof (Int32));
 
-			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false, BasicNativeToBackendTypeConverter.ToBasicType<long>);
+			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false,
+                                            BasicNativeToBackendTypeConverter.ToBasicType<long>,
+                                            BasicNativeToBackendTypeConverter.Int64ToInt8Binary);
 
 			nativeTypeMapping.AddTypeAlias("int8", typeof (Int64));
 
-			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
+			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
 
 			nativeTypeMapping.AddTypeAlias("float4", typeof (Single));
 
 			//nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, BasicNativeToBackendTypeConverter.ToBasicType<double>);
-			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
+			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
 			
 			nativeTypeMapping.AddTypeAlias("float8", typeof (Double));
 
@@ -359,25 +344,25 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddTypeAlias("numeric", typeof (Decimal));
 
 			nativeTypeMapping.AddType("money", NpgsqlDbType.Money, DbType.Currency, true,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToMoney));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToMoney));
 
 			nativeTypeMapping.AddType("date", NpgsqlDbType.Date, DbType.Date, true,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToDate));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToDate));
 
 			nativeTypeMapping.AddTypeAlias("date", typeof (NpgsqlDate));
 
 			nativeTypeMapping.AddType("timetz", NpgsqlDbType.TimeTZ, DbType.Time, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeTZ));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeTZ));
 
 			nativeTypeMapping.AddTypeAlias("timetz", typeof (NpgsqlTimeTZ));
 
 			nativeTypeMapping.AddType("time", NpgsqlDbType.Time, DbType.Time, true,
-			                          new ConvertNativeToBackendHandler(BasicNativeToBackendTypeConverter.ToTime));
+			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToTime));
 
 			nativeTypeMapping.AddTypeAlias("time", typeof (NpgsqlTime));
 
             nativeTypeMapping.AddType("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, true,
-                                      new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
+                                      new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
             nativeTypeMapping.AddTypeAlias("timestamptz", typeof(NpgsqlTimeStampTZ));
 
@@ -387,10 +372,10 @@ namespace NpgsqlTypes
 
 
             nativeTypeMapping.AddType("abstime", NpgsqlDbType.Abstime, DbType.DateTime, true,
-                                      new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
+                                      new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
 			nativeTypeMapping.AddType("timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
             
 			nativeTypeMapping.AddTypeAlias("timestamp", typeof (DateTime));
 			nativeTypeMapping.AddTypeAlias("timestamp", typeof (NpgsqlTimeStamp));
@@ -398,43 +383,43 @@ namespace NpgsqlTypes
 			
 
 			nativeTypeMapping.AddType("point", NpgsqlDbType.Point, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToPoint));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToPoint));
 
 			nativeTypeMapping.AddTypeAlias("point", typeof (NpgsqlPoint));
 
 			nativeTypeMapping.AddType("box", NpgsqlDbType.Box, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToBox));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToBox));
 
 			nativeTypeMapping.AddTypeAlias("box", typeof (NpgsqlBox));
 
 			nativeTypeMapping.AddType("lseg", NpgsqlDbType.LSeg, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToLSeg));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToLSeg));
 
 			nativeTypeMapping.AddTypeAlias("lseg", typeof (NpgsqlLSeg));
 
 			nativeTypeMapping.AddType("path", NpgsqlDbType.Path, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToPath));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToPath));
 
 			nativeTypeMapping.AddTypeAlias("path", typeof (NpgsqlPath));
 
 			nativeTypeMapping.AddType("polygon", NpgsqlDbType.Polygon, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToPolygon));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToPolygon));
 
 			nativeTypeMapping.AddTypeAlias("polygon", typeof (NpgsqlPolygon));
 
 			nativeTypeMapping.AddType("circle", NpgsqlDbType.Circle, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToCircle));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToCircle));
 
 			nativeTypeMapping.AddTypeAlias("circle", typeof (NpgsqlCircle));
 
 			nativeTypeMapping.AddType("inet", NpgsqlDbType.Inet, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToIPAddress));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToIPAddress));
 
 			nativeTypeMapping.AddTypeAlias("inet", typeof (IPAddress));
 			nativeTypeMapping.AddTypeAlias("inet", typeof (NpgsqlInet));
 
             nativeTypeMapping.AddType("macaddr", NpgsqlDbType.MacAddr, DbType.Object, true,
-                                      new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToMacAddress));
+                                      new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToMacAddress));
 
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
@@ -445,7 +430,7 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null);
 
 			nativeTypeMapping.AddType("interval", NpgsqlDbType.Interval, DbType.Object, true,
-			                          new ConvertNativeToBackendHandler(ExtendedNativeToBackendTypeConverter.ToInterval));
+			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToInterval));
 
 			nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
 			nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
@@ -476,21 +461,28 @@ namespace NpgsqlTypes
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof (Byte[]),
-				                          new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBinary));
+				                            new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ByteaTextToByteArray),
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.ByteaBinaryToByteArray));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Object, typeof (BitString),
-				                          new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBit));
+				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ToBit));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof (Boolean),
-				                          new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean));
+				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ToBoolean));
 
-			yield return new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof (Int16), null);
+			yield return new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof (Int16),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.IntBinaryToInt));
 
-			yield return new NpgsqlBackendTypeInfo(0, "int4", NpgsqlDbType.Integer, DbType.Int32, typeof (Int32), null);
+			yield return new NpgsqlBackendTypeInfo(0, "int4", NpgsqlDbType.Integer, DbType.Int32, typeof (Int32),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.IntBinaryToInt));
 
-			yield return new NpgsqlBackendTypeInfo(0, "int8", NpgsqlDbType.Bigint, DbType.Int64, typeof (Int64), null);
+			yield return new NpgsqlBackendTypeInfo(0, "int8", NpgsqlDbType.Bigint, DbType.Int64, typeof (Int64),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.IntBinaryToInt));
 
 			yield return new NpgsqlBackendTypeInfo(0, "oid", NpgsqlDbType.Bigint, DbType.Int64, typeof (Int64), null);
 
@@ -502,47 +494,47 @@ namespace NpgsqlTypes
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof (NpgsqlInet),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet),
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet),
                                           typeof(IPAddress),
                                           ipaddress => (IPAddress)(NpgsqlInet)ipaddress, 
                                           npgsqlinet => (npgsqlinet is IPAddress ? (NpgsqlInet)(IPAddress) npgsqlinet : npgsqlinet));
             yield return
                 new NpgsqlBackendTypeInfo(0, "macaddr", NpgsqlDbType.MacAddr, DbType.Object, typeof(NpgsqlMacAddress),
-                                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToMacAddress),
+                                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToMacAddress),
                                           typeof(PhysicalAddress),
                                           macAddress => (PhysicalAddress)(NpgsqlMacAddress)macAddress,
                                           npgsqlmacaddr => (npgsqlmacaddr is PhysicalAddress ? (NpgsqlMacAddress)(PhysicalAddress)npgsqlmacaddr : npgsqlmacaddr));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof (Decimal),
-				                          new ConvertBackendToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney));
+				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ToMoney));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "point", NpgsqlDbType.Point, DbType.Object, typeof (NpgsqlPoint),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPoint));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPoint));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "lseg", NpgsqlDbType.LSeg, DbType.Object, typeof (NpgsqlLSeg),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToLSeg));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToLSeg));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "path", NpgsqlDbType.Path, DbType.Object, typeof (NpgsqlPath),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPath));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPath));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "box", NpgsqlDbType.Box, DbType.Object, typeof (NpgsqlBox),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToBox));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToBox));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "circle", NpgsqlDbType.Circle, DbType.Object, typeof (NpgsqlCircle),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToCircle));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToCircle));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof (NpgsqlPolygon),
-				                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon));
+				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon));
 
 			yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof (Guid), new
-ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
+ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 
 			yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof (String), null);
 
@@ -550,30 +542,30 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
             {
                 yield return
                     new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                                  new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval));
+                                  new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate),
-                                  new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToDate));
+                                  new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToDate));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "time", NpgsqlDbType.Time, DbType.Time, typeof(NpgsqlTime),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTime));
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTime));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "timetz", NpgsqlDbType.TimeTZ, DbType.Time, typeof(NpgsqlTimeTZ),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeTZ));
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeTZ));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof(NpgsqlTimeStamp),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp));
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp));
                 yield return
                     new NpgsqlBackendTypeInfo(0, "abstime", NpgsqlDbType.Abstime , DbType.DateTime, typeof(NpgsqlTimeStampTZ),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ));
             }
 			else
             {
@@ -583,42 +575,42 @@ ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
                     // later versions return a CLR type and rely on provider specific api for NpgsqlInterval
                     yield return
                         new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                                                  new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval));
+                                                  new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval));
                 }
                 else
                 {
                     yield return
                         new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                                                  new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval),
+                                                  new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInterval),
                                                   typeof(TimeSpan), interval => (TimeSpan)(NpgsqlInterval)interval, intervalNpgsql => (intervalNpgsql is TimeSpan ? (NpgsqlInterval)(TimeSpan) intervalNpgsql : intervalNpgsql));
                 }
 
 				yield return
 					new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof (NpgsqlDate),
-					                          new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToDate),
+					                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToDate),
                                               typeof(DateTime), date => (DateTime)(NpgsqlDate)date, npgsqlDate => (npgsqlDate is DateTime ? (NpgsqlDate)(DateTime) npgsqlDate : npgsqlDate));
 
 				yield return
 					new NpgsqlBackendTypeInfo(0, "time", NpgsqlDbType.Time, DbType.Time, typeof (NpgsqlTime),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTime),
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTime),
                                               typeof(DateTime), time => time is DateTime ? time : (DateTime)(NpgsqlTime)time, npgsqlTime => (npgsqlTime is TimeSpan ? (NpgsqlTime)(TimeSpan) npgsqlTime : npgsqlTime));
 
 				yield return
 					new NpgsqlBackendTypeInfo(0, "timetz", NpgsqlDbType.TimeTZ, DbType.Time, typeof (NpgsqlTimeTZ),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeTZ),
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeTZ),
                                               typeof(DateTime), timetz => (DateTime)(NpgsqlTimeTZ)timetz, npgsqlTimetz => (npgsqlTimetz is TimeSpan ? (NpgsqlTimeTZ)(TimeSpan) npgsqlTimetz : npgsqlTimetz));
 
 				yield return
 					new NpgsqlBackendTypeInfo(0, "timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, typeof (NpgsqlTimeStamp),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp),
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStamp),
                                               typeof(DateTime), timestamp => (DateTime)(NpgsqlTimeStamp)timestamp, npgsqlTimestamp => (npgsqlTimestamp is DateTime ? (NpgsqlTimeStamp)(DateTime) npgsqlTimestamp : npgsqlTimestamp));
                 yield return
                     new NpgsqlBackendTypeInfo(0, "abstime", NpgsqlDbType.Abstime, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
-                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
+                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
                               typeof(DateTime), timestamp => (DateTime)(NpgsqlTimeStampTZ)timestamp, npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime) npgsqlTimestampTZ : npgsqlTimestampTZ));
 				yield return
 					new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof (NpgsqlTimeStampTZ),
-                                              new ConvertBackendToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
+                                              new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToTimeStampTZ),
                                               typeof(DateTime), timestamptz => ((DateTime)(NpgsqlTimeStampTZ)timestamptz).ToLocalTime(), npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime)npgsqlTimestampTZ : npgsqlTimestampTZ is DateTimeOffset ? (NpgsqlTimeStampTZ)(DateTimeOffset)npgsqlTimestampTZ :
 npgsqlTimestampTZ));
 			}
@@ -691,7 +683,7 @@ npgsqlTimestampTZ));
 			return
 				new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
 				                          elementInfo.Type.MakeArrayType(),
-				                          new ConvertBackendToNativeHandler(
+				                          new ConvertBackendTextToNativeHandler(
 				                          	new ArrayBackendToNativeTypeConverter(elementInfo).ToArray));
 		}
 
@@ -751,15 +743,21 @@ npgsqlTimestampTZ));
 	}
 
 	/// <summary>
-	/// Delegate called to convert the given backend data to its native representation.
+	/// Delegate called to convert the given backend text data to its native representation.
 	/// </summary>
-	internal delegate Object ConvertBackendToNativeHandler(
+	internal delegate Object ConvertBackendTextToNativeHandler(
 		NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier);
+	/// <summary>
+	/// Delegate called to convert the given backend binary data to its native representation.
+	/// </summary>
+	internal delegate Object ConvertBackendBinaryToNativeHandler(
+		NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier);
 
 	/// <summary>
 	/// Delegate called to convert the given native data to its backand representation.
 	/// </summary>
-	internal delegate String ConvertNativeToBackendHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
+	internal delegate String ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
+	internal delegate byte[] ConvertNativeToBackendBinaryHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
 
@@ -771,7 +769,8 @@ npgsqlTimestampTZ));
 	/// </summary>
 	internal class NpgsqlBackendTypeInfo
 	{
-		private readonly ConvertBackendToNativeHandler _ConvertBackendToNative;
+		private readonly ConvertBackendTextToNativeHandler _ConvertBackendTextToNative;
+		private readonly ConvertBackendBinaryToNativeHandler _ConvertBackendBinaryToNative;
         private readonly ConvertProviderTypeToFrameworkTypeHander _convertProviderToFramework;
         private readonly ConvertFrameworkTypeToProviderTypeHander _convertFrameworkToProvider;
 
@@ -791,9 +790,11 @@ npgsqlTimestampTZ));
         /// <param name="NpgsqlDbType">NpgsqlDbType</param>
         /// <param name="DbType">DbType</param>
         /// <param name="Type">System type to convert fields of this type to.</param>
-        /// <param name="ConvertBackendToNative">Data conversion handler.</param>
+        /// <param name="ConvertBackendTextToNative">Data conversion handler for text encoding.</param>
+        /// <param name="ConvertBackendBinaryToNative">Data conversion handler for binary data.</param>
         public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-		                                ConvertBackendToNativeHandler ConvertBackendToNative)
+		                                ConvertBackendTextToNativeHandler ConvertBackendTextToNative = null,
+                                        ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative = null)
         {
             if (Type == null)
             {
@@ -806,14 +807,29 @@ npgsqlTimestampTZ));
             _DbType = DbType;
             _Type = Type;
             _frameworkType = Type;
-            _ConvertBackendToNative = ConvertBackendToNative;
+            _ConvertBackendTextToNative = ConvertBackendTextToNative;
+            _ConvertBackendBinaryToNative = ConvertBackendBinaryToNative;
         }
 
         public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-                                     ConvertBackendToNativeHandler ConvertBackendToNative, Type frameworkType,
-                                     ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
-                                     ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
-            : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendToNative)
+                                        ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
+                                        ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative,
+                                        Type frameworkType,
+                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
+                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
+            : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, ConvertBackendBinaryToNative)
+        {
+            _frameworkType = frameworkType;
+            _convertProviderToFramework = convertProviderToFramework;
+            _convertFrameworkToProvider = convertFrameworkToProvider;
+        }
+
+        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+                                        ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
+                                        Type frameworkType,
+                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
+                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
+            : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, null)
         {
             _frameworkType = frameworkType;
             _convertProviderToFramework = convertProviderToFramework;
@@ -869,17 +885,44 @@ npgsqlTimestampTZ));
         }
 
         /// <summary>
+        /// Reports whether a backend binary to native decoder is available for this type.
+        /// </summary>
+        public bool SupportsBinaryBackendData
+        {
+            get { return (this._ConvertBackendBinaryToNative != null); }
+        }
+
+        /// <summary>
+        /// Perform a data conversion from a backend representation to 
+        /// a native object.
+        /// </summary>
+        /// <param name="BackendData">Data sent from the backend.</param>
+        /// <param name="fieldValueSize">fieldValueSize</param>
+        /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
+        public Object ConvertToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            if (_ConvertBackendBinaryToNative != null)
+            {
+                return _ConvertBackendBinaryToNative(this, BackendData, fieldValueSize, TypeModifier);
+            }
+            else
+            {
+                return BackendData;
+            }
+        }
+
+        /// <summary>
         /// Perform a data conversion from a backend representation to 
         /// a native object.
         /// </summary>
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="TypeSize">TypeSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertToNative(String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        public Object ConvertToNative(string BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
-            if (_ConvertBackendToNative != null)
+            if (_ConvertBackendTextToNative != null)
             {
-                return _ConvertBackendToNative(this, BackendData, TypeSize, TypeModifier);
+                return _ConvertBackendTextToNative(this, BackendData, TypeSize, TypeModifier);
             }
             else
             {
@@ -944,7 +987,8 @@ npgsqlTimestampTZ));
 	{
 		private static readonly NumberFormatInfo ni;
 
-		private readonly ConvertNativeToBackendHandler _ConvertNativeToBackend;
+		private readonly ConvertNativeToBackendTextHandler _ConvertNativeToBackendText;
+		private readonly ConvertNativeToBackendBinaryHandler _ConvertNativeToBackendBinary;
 
 		private readonly String _Name;
 		private readonly string _CastName;
@@ -970,7 +1014,7 @@ npgsqlTimestampTZ));
 			NpgsqlNativeTypeInfo copy =
 				new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
 				                         false,
-				                         new ConvertNativeToBackendHandler(
+				                         new ConvertNativeToBackendTextHandler(
 				                         	new ArrayNativeToBackendTypeConverter(elementType).FromArray));
 
 			copy._IsArray = true;
@@ -997,16 +1041,19 @@ npgsqlTimestampTZ));
         /// <param name="DbType">DbType</param>
         /// <param name="Quote">Quote</param>
         /// <param name="NpgsqlDbType">NpgsqlDbType</param>
-        /// <param name="ConvertNativeToBackend">Data conversion handler.</param>
+        /// <param name="ConvertNativeToBackendText">Data conversion handler for text backend encoding.</param>
+        /// <param name="ConvertNativeToBackendBinary">Data conversion handler for binary backend encoding (for extended queries).</param>
         public NpgsqlNativeTypeInfo(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
-                                    ConvertNativeToBackendHandler ConvertNativeToBackend)
+                                    ConvertNativeToBackendTextHandler ConvertNativeToBackendText = null,
+                                    ConvertNativeToBackendBinaryHandler ConvertNativeToBackendBinary = null)
         {
             _Name = Name;
             _CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
             _NpgsqlDbType = NpgsqlDbType;
             _DbType = DbType;
             _Quote = Quote;
-            _ConvertNativeToBackend = ConvertNativeToBackend;
+            _ConvertNativeToBackendText = ConvertNativeToBackendText;
+            _ConvertNativeToBackendBinary = ConvertNativeToBackendBinary;
 
             // The only parameters types which use length currently supported are char and varchar. Check for them.
 
@@ -1083,7 +1130,7 @@ npgsqlTimestampTZ));
         /// <param name="NativeData">Native .NET object to be converted.</param>
         /// <param name="forExtendedQuery">Options to guide serialization.</param>
         /// <param name="options">Connection specific options.</param>
-        public String ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (forExtendedQuery)
             {
@@ -1104,10 +1151,10 @@ npgsqlTimestampTZ));
 
             string backendSerialization;
 
-            if (_ConvertNativeToBackend != null)
+            if (_ConvertNativeToBackendText != null)
             {
                 // This route escapes output strings as needed.
-                backendSerialization = _ConvertNativeToBackend(this, NativeData, false, options);
+                backendSerialization = _ConvertNativeToBackendText(this, NativeData, false, options);
 
                 if (Quote)
                 {
@@ -1145,16 +1192,20 @@ npgsqlTimestampTZ));
             return backendSerialization;
         }
 
-		private String ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+		private object ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
 		{
 			if ((NativeData == DBNull.Value) || (NativeData == null))
 			{
 				return null; // Extended query expects null values be represented as null.
 			}
 
-			if (_ConvertNativeToBackend != null)
+			if (_ConvertNativeToBackendBinary != null)
 			{
-				return _ConvertNativeToBackend(this, NativeData, true, options);
+				return _ConvertNativeToBackendBinary(this, NativeData, options);
+			}
+			else if (_ConvertNativeToBackendText != null)
+			{
+				return _ConvertNativeToBackendText(this, NativeData, true, options);
 			}
 			else
 			{
@@ -1269,11 +1320,13 @@ npgsqlTimestampTZ));
         /// <param name="NpgsqlDbType">NpgsqlDbType</param>
         /// <param name="DbType">DbType</param>
         /// <param name="Type">System type to convert fields of this type to.</param>
-        /// <param name="BackendConvert">Data conversion handler.</param>
+        /// <param name="BackendTextConvert">Data conversion handler for text encoding.</param>
+        /// <param name="BackendBinaryConvert">Data conversion handler for binary data.</param>
         public void AddType(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-                            ConvertBackendToNativeHandler BackendConvert)
+                            ConvertBackendTextToNativeHandler BackendTextConvert = null,
+                            ConvertBackendBinaryToNativeHandler BackendBinaryConvert = null)
         {
-            AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendConvert));
+            AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendTextConvert = null, BackendBinaryConvert = null));
         }
 
 		/// <summary>
@@ -1383,11 +1436,13 @@ npgsqlTimestampTZ));
         /// <param name="NpgsqlDbType">NpgsqlDbType</param>
         /// <param name="DbType">DbType</param>
         /// <param name="Quote">Quote</param>
-        /// <param name="NativeConvert">Data conversion handler.</param>
+        /// <param name="NativeTextConvert">Data conversion handler for text backend encoding.</param>
+        /// <param name="NativeBinaryConvert">Data conversion handler for binary backend encoding (for extended query).</param>
         public void AddType(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
-                            ConvertNativeToBackendHandler NativeConvert)
+                            ConvertNativeToBackendTextHandler NativeTextConvert = null,
+                            ConvertNativeToBackendBinaryHandler NativeBinaryConvert = null)
         {
-            AddType(new NpgsqlNativeTypeInfo(Name, NpgsqlDbType, DbType, Quote, NativeConvert));
+            AddType(new NpgsqlNativeTypeInfo(Name, NpgsqlDbType, DbType, Quote, NativeTextConvert, NativeBinaryConvert));
         }
 
 		public void AddNpgsqlDbTypeAlias(String Name, NpgsqlDbType NpgsqlDbType)

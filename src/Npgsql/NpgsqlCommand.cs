@@ -663,29 +663,15 @@ namespace Npgsql
 
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
-                    // Do not quote strings, or escape existing quotes - this will be handled by the backend.
-                    // DBNull or null values are returned as null.
-                    // TODO: Would it be better to remove this null special handling out of ConvertToBackend??
+                    parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
 
-                    // Do special handling of bytea values. They will be send in binary form.
-                    // TODO: Add binary format support for all supported types. Not only bytea.
-                    if (parameters[i].TypeInfo.NpgsqlDbType != NpgsqlDbType.Bytea)
-                    {
-                        parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
-                    }
-                    else
-                    {
-                        if (parameters[i].Value != DBNull.Value)
-                        {
-                            parameterFormatCodes[i] = (Int16)FormatCode.Binary;
-                            parameterValues[i] = (byte[])parameters[i].Value;
-                        }
-                        else
-                        {
-                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
-                        }
+                    if (parameterValues[i] == null) {
+                        parameterFormatCodes[i]= (Int16)FormatCode.Binary;
+                    } else {
+                        parameterFormatCodes[i] = parameterValues[i].GetType() == typeof(byte[]) ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
                     }
                 }
+
                 bind.ParameterValues = parameterValues;
                 bind.ParameterFormatCodes = parameterFormatCodes;
             }
@@ -797,11 +783,10 @@ namespace Npgsql
                             {
                                 NpgsqlRowDescription.FieldData returnRowDescData = returnRowDesc[i];
 
-
-                                if (returnRowDescData.TypeInfo != null && returnRowDescData.TypeInfo.NpgsqlDbType == NpgsqlDbType.Bytea)
+                                if (returnRowDescData.TypeInfo != null)
                                 {
-                                    // Binary format
-                                    resultFormatCodes[i] = (Int16)FormatCode.Binary;
+                                    // Binary format?
+                                    resultFormatCodes[i] = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
                                 }
                                 else
                                 {
@@ -909,7 +894,7 @@ namespace Npgsql
 
         private void PassParam(StringBuilder query, NpgsqlParameter p)
         {
-            string serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
+            string serialised = (string)p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
             // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
             // See bug #1010543

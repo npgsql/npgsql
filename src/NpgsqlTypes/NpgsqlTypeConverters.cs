@@ -102,9 +102,9 @@ namespace NpgsqlTypes
 				};
 
 		/// <summary>
-		/// Binary data.
+		/// Byte array from bytea encoded as text, escaped or hex format.
 		/// </summary>
-		internal static Object ToBinary(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
 			Int32 octalValue = 0;
 			Int32 byteAPosition = 0;
@@ -165,6 +165,14 @@ namespace NpgsqlTypes
 		}
 
 		/// <summary>
+		/// Byte array from bytea in ray binary.
+		/// </summary>
+		internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            return BackendData;
+        }
+
+		/// <summary>
 		/// Convert a postgresql boolean to a System.Boolean.
 		/// </summary>
 		internal static Object ToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
@@ -173,6 +181,17 @@ namespace NpgsqlTypes
 			return (BackendData.ToLower() == "t" ? true : false);
 		}
 
+		internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+										 Int32 TypeModifier)
+        {
+            switch (BackendData.Length)
+            {
+                case 2 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
+                case 4 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
+                case 8 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
+                default: throw new NpgsqlException("Unexpected integer binary field length");
+            }
+        }
 
         /// <summary>
         /// Convert a postgresql bit to a System.Boolean.
@@ -271,22 +290,22 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data, escaped as needed per options.
         /// </summary>
-        internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static String ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (! options.SupportsHexByteFormat)
             {
-                return ToBinaryEscaped(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextEscaped(NativeData, options.UseConformantStrings);
             }
             else
             {
-                return ToBinaryHexFormat(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextHexFormat(NativeData, options.UseConformantStrings);
             }
         }
 
         /// <summary>
         /// Binary data with possible older style escapes.
         /// </summary>
-        private static String ToBinaryEscaped(Object NativeData, bool UseConformantStrings)
+        private static String ByteArrayToByteaTextEscaped(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
             StringBuilder res = new StringBuilder(byteArray.Length);
@@ -313,7 +332,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data in the new hex format (>= 9.0).
         /// </summary>
-        private static String ToBinaryHexFormat(Object NativeData, bool UseConformantStrings)
+        private static String ByteArrayToByteaTextHexFormat(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
 
@@ -342,11 +361,43 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
+        /// Binary data, raw.
+        /// </summary>
+        internal static byte[] ByteArrayToByteaBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return (byte[])NativeData;
+        }
+
+        /// <summary>
         /// Convert to a postgresql boolean.
         /// </summary>
         internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return ((bool)NativeData) ? "TRUE" : "FALSE";
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int2.
+        /// </summary>
+        internal static byte[] Int16ToInt2Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt16(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int4.
+        /// </summary>
+        internal static byte[] Int32ToInt4Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt32(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int8.
+        /// </summary>
+        internal static byte[] Int64ToInt8Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt64(NativeData)));
         }
 
         /// <summary>
