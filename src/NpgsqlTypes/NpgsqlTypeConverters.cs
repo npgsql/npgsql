@@ -42,17 +42,18 @@ namespace NpgsqlTypes
     /// Options that control certain aspects of native to backend conversions that depend
     /// on backend version and status.
     /// </summary>
-    internal class NativeToBackendTypeConverterOptions
+    internal class NativeToBackendTypeConverterOptions : ICloneable
     {
         internal static NativeToBackendTypeConverterOptions _default;
 
-        internal bool UseConformantStrings;
-        internal bool Supports_E_StringPrefix;
-        internal bool SupportsHexByteFormat;
+        private bool IsImmutable;
+        private bool _UseConformantStrings;
+        private bool _Supports_E_StringPrefix;
+        private bool _SupportsHexByteFormat;
 
         static NativeToBackendTypeConverterOptions()
         {
-            _default = new NativeToBackendTypeConverterOptions(false, true, false);
+            _default = new NativeToBackendTypeConverterOptions(true, false, true, false);
         }
 
         internal static NativeToBackendTypeConverterOptions Default
@@ -63,18 +64,90 @@ namespace NpgsqlTypes
             }
         }
 
-        internal NativeToBackendTypeConverterOptions(NativeToBackendTypeConverterOptions src)
+        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
         {
-            this.UseConformantStrings = src.UseConformantStrings;
-            this.Supports_E_StringPrefix = src.Supports_E_StringPrefix;
-            this.SupportsHexByteFormat = src.SupportsHexByteFormat;
+            this.IsImmutable = Immutable;
+            this._UseConformantStrings = useConformantStrings;
+            this._Supports_E_StringPrefix = supports_E_StringPrefix;
+            this._SupportsHexByteFormat = supportsHexByteFormat;
         }
 
         internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
         {
-            this.UseConformantStrings = useConformantStrings;
-            this.Supports_E_StringPrefix = supports_E_StringPrefix;
-            this.SupportsHexByteFormat = supportsHexByteFormat;
+            IsImmutable = false;
+            this._UseConformantStrings = useConformantStrings;
+            this._Supports_E_StringPrefix = supports_E_StringPrefix;
+            this._SupportsHexByteFormat = supportsHexByteFormat;
+        }
+
+        /// <summary>
+        /// Clone the current object.
+        /// </summary>
+        /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
+        Object ICloneable.Clone()
+        {
+            return Clone();
+        }
+
+        /// <summary>
+        /// Clone the current object.
+        /// </summary>
+        /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
+        internal NativeToBackendTypeConverterOptions Clone()
+        {
+            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat);
+        }
+
+        internal bool UseConformantStrings
+        {
+            get { return _UseConformantStrings; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _UseConformantStrings = value;
+                }
+            }
+        }
+
+        internal bool Supports_E_StringPrefix
+        {
+            get { return _Supports_E_StringPrefix; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _Supports_E_StringPrefix = value;
+                }
+            }
+        }
+
+
+        internal bool SupportsHexByteFormat
+        {
+            get { return _SupportsHexByteFormat; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _SupportsHexByteFormat = value;
+                }
+            }
         }
     }
 	/// <summary>
