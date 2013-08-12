@@ -75,10 +75,8 @@ namespace Npgsql
 			{
 				if (field_descr.FormatCode == FormatCode.Text)
 				{
-					char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-					UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
 					return
-						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
+						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, UTF8Encoding.GetString(buffer, 0, buffer.Length),
 						                                                   field_descr.TypeSize, field_descr.TypeModifier);
 				}
 				else
