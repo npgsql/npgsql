@@ -142,7 +142,7 @@ namespace Npgsql
         private const String _planNamePrefix = "npgsqlplan";
         private const String _portalNamePrefix = "npgsqlportal";
 
-        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default;
+        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = new NativeToBackendTypeConverterOptions(NativeToBackendTypeConverterOptions.Default);
 
 
         private Thread _notificationThread;

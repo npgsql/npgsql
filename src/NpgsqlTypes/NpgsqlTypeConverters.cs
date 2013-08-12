@@ -63,6 +63,13 @@ namespace NpgsqlTypes
             }
         }
 
+        internal NativeToBackendTypeConverterOptions(NativeToBackendTypeConverterOptions src)
+        {
+            this.UseConformantStrings = src.UseConformantStrings;
+            this.Supports_E_StringPrefix = src.Supports_E_StringPrefix;
+            this.SupportsHexByteFormat = src.SupportsHexByteFormat;
+        }
+
         internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
         {
             this.UseConformantStrings = useConformantStrings;
@@ -70,7 +77,6 @@ namespace NpgsqlTypes
             this.SupportsHexByteFormat = supportsHexByteFormat;
         }
     }
-
 	/// <summary>
 	/// Provide event handlers to convert all native supported basic data types from their backend
 	/// text representation to a .NET object.
