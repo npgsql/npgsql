@@ -243,40 +243,40 @@ namespace NpgsqlTypes
 			return ms.ToArray();
 		}
 
-		/// <summary>
-		/// Byte array from bytea in ray binary.
-		/// </summary>
-		internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        /// <summary>
+        /// Byte array from bytea encoded as binary.
+        /// </summary>
+        internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
         {
             return BackendData;
         }
 
-		/// <summary>
-		/// Convert a postgresql boolean to a System.Boolean.
-		/// </summary>
-		internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
-										 Int32 TypeModifier)
-		{
-			return (BackendData.ToLower() == "t" ? true : false);
-		}
+        /// <summary>
+        /// Convert a postgresql boolean to a System.Boolean.
+        /// </summary>
+        internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+                                         Int32 TypeModifier)
+        {
+            return (BackendData.ToLower() == "t" ? true : false);
+        }
 
-		/// <summary>
-		/// Convert a postgresql boolean to a System.Boolean.
-		/// </summary>
-		internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
-										 Int32 TypeModifier)
-		{
-			return (BackendData[0] != 0);
-		}
+        /// <summary>
+        /// Convert a postgresql boolean to a System.Boolean.
+        /// </summary>
+        internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+                                         Int32 TypeModifier)
+        {
+            return (BackendData[0] != 0);
+        }
 
-		internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
-										 Int32 TypeModifier)
+        internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+                                         Int32 TypeModifier)
         {
             switch (BackendData.Length)
             {
-                case 2 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
-                case 4 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
-                case 8 : return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
+                case 2: return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
+                case 4: return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
+                case 8: return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
                 default: throw new NpgsqlException("Unexpected integer binary field length");
             }
         }
@@ -477,7 +477,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] Int16ToInt2Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt16(NativeData)));
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt16(NativeData)));
         }
 
         /// <summary>
@@ -485,7 +485,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] Int32ToInt4Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt32(NativeData)));
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt32(NativeData)));
         }
 
         /// <summary>
@@ -493,7 +493,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] Int64ToInt8Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-			return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt64(NativeData)));
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt64(NativeData)));
         }
 
         /// <summary>
