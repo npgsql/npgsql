@@ -47,6 +47,11 @@ namespace NpgsqlTypes
 		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
+        // This is used by the test suite to test both text and binary encodings on version 3 connections. 
+        // See NpgsqlTests.BaseClassTests.ResolveSuppressBinaryBackendEncoding().
+        // If this field is changed or removed, some tests will become partially non-functional, and an error will be issued.
+        internal static bool SuppressBinaryBackendEncoding = false;
+
 		private struct MappingKey : IEquatable<MappingKey>
 		{
 			public readonly Version Version;
@@ -891,7 +896,7 @@ npgsqlTimestampTZ));
         /// </summary>
         public bool SupportsBinaryBackendData
         {
-            get { return (this._ConvertBackendBinaryToNative != null); }
+            get { return (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertBackendBinaryToNative != null); }
         }
 
         /// <summary>
@@ -903,7 +908,7 @@ npgsqlTimestampTZ));
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
         public Object ConvertToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
         {
-            if (_ConvertBackendBinaryToNative != null)
+            if (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertBackendBinaryToNative != null)
             {
                 return _ConvertBackendBinaryToNative(this, BackendData, fieldValueSize, TypeModifier);
             }
@@ -1201,7 +1206,7 @@ npgsqlTimestampTZ));
 				return null; // Extended query expects null values be represented as null.
 			}
 
-			if (_ConvertNativeToBackendBinary != null)
+			if (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertNativeToBackendBinary != null)
 			{
 				return _ConvertNativeToBackendBinary(this, NativeData, options);
 			}

@@ -59,6 +59,15 @@ namespace NpgsqlTests
         protected virtual string TheConnectionString {
             get { return _connString; }
         }
+
+        [Test]
+        // Test BaseClassTests.ResolveSuppressBinaryBackendEncoding().
+        // If it fails here, it won't fail again.
+        public void _BindTo_NpgsqlTypes_NpgsqlTypesHelper_SuppressBinaryBackendEncoding()
+        {
+            ResolveSuppressBinaryBackendEncoding();
+        }
+
         [Test]
         public void ParametersGetName()
         {
@@ -361,6 +370,29 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void FunctionCallWithParametersPrepareReturnSingleValue_SuppressBinary()
+        {
+            using (BackendBinarySuppressor.Suppress(this))
+            {
+                NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", TheConnection);
+                command.CommandType = CommandType.StoredProcedure;
+
+
+                command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+
+                Assert.AreEqual(1, command.Parameters.Count);
+                command.Prepare();
+
+
+                command.Parameters[0].Value = 4;
+
+                Int64 result = (Int64) command.ExecuteScalar();
+
+                Assert.AreEqual(1, result);
+            }
+        }
+
+        [Test]
         public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType()
         {
             NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", TheConnection);
@@ -378,6 +410,29 @@ namespace NpgsqlTests
             Int64 result = (Int64) command.ExecuteScalar();
 
             Assert.AreEqual(1, result);
+        }
+
+        [Test]
+        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType_SuppressBinary()
+        {
+            using (BackendBinarySuppressor.Suppress(this))
+            {
+                NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", TheConnection);
+                command.CommandType = CommandType.StoredProcedure;
+
+
+                command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
+
+                Assert.AreEqual(1, command.Parameters.Count);
+                command.Prepare();
+
+
+                command.Parameters[0].Value = 4;
+
+                Int64 result = (Int64) command.ExecuteScalar();
+
+                Assert.AreEqual(1, result);
+            }
         }
 
 
@@ -401,6 +456,28 @@ namespace NpgsqlTests
             Assert.AreEqual(1, result);
         }
 
+        [Test]
+        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2_SuppressBinary()
+        {
+            using (BackendBinarySuppressor.Suppress(this))
+            {
+                NpgsqlCommand command = new NpgsqlCommand("funcC(@a)", TheConnection);
+                command.CommandType = CommandType.StoredProcedure;
+
+
+                command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
+
+                Assert.AreEqual(1, command.Parameters.Count);
+                //command.Prepare();
+
+
+                command.Parameters[0].Value = 4;
+
+                Int64 result = (Int64) command.ExecuteScalar();
+
+                Assert.AreEqual(1, result);
+            }
+        }
 
         [Test]
         public void FunctionCallReturnResultSet()

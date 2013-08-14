@@ -24,6 +24,7 @@
 using System;
 using System.Data;
 using System.Configuration;
+using System.Reflection;
 using Npgsql;
 
 using NpgsqlTypes;
@@ -35,7 +36,6 @@ namespace NpgsqlTests
 
     public abstract class BaseClassTests
     {
-        
         // Connection tests will use.
         protected NpgsqlConnection _conn = null;
         protected NpgsqlConnection _connV2 = null;
@@ -54,6 +54,9 @@ namespace NpgsqlTests
         
         protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
         protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
+
+        protected FieldInfo SuppressBinaryBackendEncoding = null;
+        protected bool SuppressBinaryBackendEncodingResolutionAttempted = false;
         
         protected Boolean CommitTransaction
         {
@@ -107,6 +110,85 @@ namespace NpgsqlTests
             if (_connV2.State != ConnectionState.Closed)
                 _connV2.Close();
         }
-        
+
+
+        // Some tests need to suppress binary backend formatting of parameters and result values,
+        // so that both binary and text formatting can be tested.
+        // Setting NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding accomplishes this, but it is intentionally internal.
+        // Since it's internal, reflection is required to observe and set it.
+
+        // Attempt to initialize the FieldInfo object used to observe and set NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
+        // Fail only once, so that tests that use it won't all fail.
+        // There is a test to report whether this succeeded, which should run first.
+        protected bool ResolveSuppressBinaryBackendEncoding()
+        {
+            if (SuppressBinaryBackendEncodingResolutionAttempted)
+            {
+                return (SuppressBinaryBackendEncoding != null);
+            }
+
+            SuppressBinaryBackendEncodingResolutionAttempted = true;
+
+            try
+            {
+                SuppressBinaryBackendEncoding = System.Reflection.Assembly.Load("Npgsql").GetType("NpgsqlTypes.NpgsqlTypesHelper").GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
+
+                if (SuppressBinaryBackendEncoding.FieldType != typeof(bool))
+                {
+                    throw new Exception("Field is present, but not of type bool");
+                }
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Unable to bind to internal field NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding; some tests will be incomplete", e);
+            }
+
+            return true;
+        }
+
+        // Attempt to observe NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
+        internal bool GetBackendBinarySuppression()
+        {
+            if (ResolveSuppressBinaryBackendEncoding())
+            {
+                return (bool)SuppressBinaryBackendEncoding.GetValue(null);
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        // Attempt to set NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
+        internal void SetBackendBinarySuppression(bool Suppress)
+        {
+            if (ResolveSuppressBinaryBackendEncoding())
+            {
+                SuppressBinaryBackendEncoding.SetValue(null, Suppress);
+            }
+        }
+    }
+
+    // using (BackendBinarySuppressor.Suppress()) {}
+    internal class BackendBinarySuppressor : IDisposable
+    {
+        private BaseClassTests Owner;
+
+        private BackendBinarySuppressor(BaseClassTests Owner)
+        {
+            this.Owner = Owner;
+        }
+
+        internal static BackendBinarySuppressor Suppress(BaseClassTests Owner)
+        {
+            Owner.SetBackendBinarySuppression(true);
+
+            return new BackendBinarySuppressor(Owner);
+        }
+
+        public void Dispose()
+        {
+            Owner.SetBackendBinarySuppression(false);
+        }
     }
 }
