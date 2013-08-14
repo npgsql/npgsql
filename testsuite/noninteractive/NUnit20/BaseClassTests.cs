@@ -43,7 +43,7 @@ namespace NpgsqlTests
             internal BackendBinarySuppressor(FieldInfo suppressionField)
             {
                 this.suppressionField = suppressionField;
-                suppressionField.SetValue(null, false);
+                suppressionField.SetValue(null, true);
             }
 
             public void Dispose()
