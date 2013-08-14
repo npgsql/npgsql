@@ -36,6 +36,22 @@ namespace NpgsqlTests
 
     public abstract class BaseClassTests
     {
+        protected class BackendBinarySuppressor : IDisposable
+        {
+            private FieldInfo suppressionField;
+
+            internal BackendBinarySuppressor(FieldInfo suppressionField)
+            {
+                this.suppressionField = suppressionField;
+                suppressionField.SetValue(null, false);
+            }
+
+            public void Dispose()
+            {
+                suppressionField.SetValue(null, false);
+            }
+        }
+
         // Connection tests will use.
         protected NpgsqlConnection _conn = null;
         protected NpgsqlConnection _connV2 = null;
@@ -56,7 +72,6 @@ namespace NpgsqlTests
         protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
 
         protected FieldInfo SuppressBinaryBackendEncoding = null;
-        protected bool SuppressBinaryBackendEncodingResolutionAttempted = false;
         
         protected Boolean CommitTransaction
         {
@@ -118,17 +133,9 @@ namespace NpgsqlTests
         // Since it's internal, reflection is required to observe and set it.
 
         // Attempt to initialize the FieldInfo object used to observe and set NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
-        // Fail only once, so that tests that use it won't all fail.
-        // There is a test to report whether this succeeded, which should run first.
-        protected bool ResolveSuppressBinaryBackendEncoding()
+        // There is a test to report whether this succeeded, which must run before any tests that suppress binary.
+        protected void ResolveSuppressBinaryBackendEncoding()
         {
-            if (SuppressBinaryBackendEncodingResolutionAttempted)
-            {
-                return (SuppressBinaryBackendEncoding != null);
-            }
-
-            SuppressBinaryBackendEncodingResolutionAttempted = true;
-
             try
             {
                 SuppressBinaryBackendEncoding = System.Reflection.Assembly.Load("Npgsql").GetType("NpgsqlTypes.NpgsqlTypesHelper").GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
@@ -142,53 +149,14 @@ namespace NpgsqlTests
             {
                 throw new Exception("Unable to bind to internal field NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding; some tests will be incomplete", e);
             }
-
-            return true;
         }
 
-        // Attempt to observe NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
-        internal bool GetBackendBinarySuppression()
+        // Return a BackendBinarySuppressor which has suppressed backed binary encoding.
+        // When it is disposed, suppression will be ended.
+        // using (SuppressBackendBinary()) {}
+        protected BackendBinarySuppressor SuppressBackendBinary()
         {
-            if (ResolveSuppressBinaryBackendEncoding())
-            {
-                return (bool)SuppressBinaryBackendEncoding.GetValue(null);
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        // Attempt to set NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
-        internal void SetBackendBinarySuppression(bool Suppress)
-        {
-            if (ResolveSuppressBinaryBackendEncoding())
-            {
-                SuppressBinaryBackendEncoding.SetValue(null, Suppress);
-            }
-        }
-    }
-
-    // using (BackendBinarySuppressor.Suppress()) {}
-    internal class BackendBinarySuppressor : IDisposable
-    {
-        private BaseClassTests Owner;
-
-        private BackendBinarySuppressor(BaseClassTests Owner)
-        {
-            this.Owner = Owner;
-        }
-
-        internal static BackendBinarySuppressor Suppress(BaseClassTests Owner)
-        {
-            Owner.SetBackendBinarySuppression(true);
-
-            return new BackendBinarySuppressor(Owner);
-        }
-
-        public void Dispose()
-        {
-            Owner.SetBackendBinarySuppression(false);
+            return new BackendBinarySuppressor(SuppressBinaryBackendEncoding);
         }
     }
 }

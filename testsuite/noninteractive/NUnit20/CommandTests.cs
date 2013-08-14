@@ -372,7 +372,7 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallWithParametersPrepareReturnSingleValue_SuppressBinary()
         {
-            using (BackendBinarySuppressor.Suppress(this))
+            using (SuppressBackendBinary())
             {
                 NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", TheConnection);
                 command.CommandType = CommandType.StoredProcedure;
@@ -415,7 +415,7 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType_SuppressBinary()
         {
-            using (BackendBinarySuppressor.Suppress(this))
+            using (SuppressBackendBinary())
             {
                 NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", TheConnection);
                 command.CommandType = CommandType.StoredProcedure;
@@ -459,7 +459,7 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2_SuppressBinary()
         {
-            using (BackendBinarySuppressor.Suppress(this))
+            using (SuppressBackendBinary())
             {
                 NpgsqlCommand command = new NpgsqlCommand("funcC(@a)", TheConnection);
                 command.CommandType = CommandType.StoredProcedure;
