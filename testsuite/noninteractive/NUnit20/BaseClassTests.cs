@@ -33,7 +33,6 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
-
     public abstract class BaseClassTests
     {
         protected class BackendBinarySuppressor : IDisposable
@@ -76,7 +75,7 @@ namespace NpgsqlTests
         // Setting NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding accomplishes this, but it is intentionally internal.
         // Since it's internal, reflection is required to observe and set it.
         protected FieldInfo SuppressBinaryBackendEncoding;
-        
+
         protected Boolean CommitTransaction
         {
             set
@@ -89,8 +88,22 @@ namespace NpgsqlTests
                 return commitTransaction;
             }
         }
-        
-        
+
+        [TestFixtureSetUp]
+        protected virtual void TestFixtureSetup()
+        {
+            try
+            {
+                SuppressBinaryBackendEncoding = Assembly
+                    .Load("Npgsql")
+                    .GetType("NpgsqlTypes.NpgsqlTypesHelper")
+                    .GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
+            }
+            catch
+            // Throwing an exception here causes all tests to fail without running.
+            {}
+        }
+
         [SetUp]
         protected virtual void SetUp()
         {
@@ -106,24 +119,6 @@ namespace NpgsqlTests
             _tV2 = _connV2.BeginTransaction();
             
             CommitTransaction = false;
-
-            // Initialize binary backend encoding suppress.  If error, ignore.  SuppressBackendBinary() will report the failure.
-            try
-            {
-                SuppressBinaryBackendEncoding = Assembly
-                    .Load("Npgsql")
-                    .GetType("NpgsqlTypes.NpgsqlTypesHelper")
-                    .GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
-
-                if (SuppressBinaryBackendEncoding.FieldType != typeof(bool))
-                {
-                    SuppressBinaryBackendEncoding = null;
-                    throw new Exception("Field is present, but not of type bool");
-                }
-            }
-            catch
-            {
-            }
         }
 
         [TearDown]
@@ -148,12 +143,20 @@ namespace NpgsqlTests
                 _connV2.Close();
         }
 
-        // Return a BackendBinarySuppressor which has suppressed backed binary encoding.
-        // When it is disposed, suppression will be ended.
-        // using (SuppressBackendBinary()) {}
+        /// <summary>
+        /// Return a BackendBinarySuppressor which has suppressed backend binary encoding.
+        /// When it is disposed, suppression will be ended.  Example:
+        /// using (SuppressBackendBinary())
+        /// {
+        ///   // Test text encoding functionality here.
+        /// }
+        /// </summary>
         protected BackendBinarySuppressor SuppressBackendBinary()
         {
-            Assert.IsNotNull(SuppressBinaryBackendEncoding, "SuppressBinaryBackendEncoding shouldn't be null. Check NpgsqlTypes.NpgsqlTypesHelper. SuppressBinaryBackendEncoding field");
+            Assert.IsTrue(
+                SuppressBinaryBackendEncoding != null && SuppressBinaryBackendEncoding.FieldType == typeof(bool),
+                "SuppressBinaryBackendEncoding is null or not boolean (reflection failed previously). Check NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding field"
+            );
 
             return new BackendBinarySuppressor(SuppressBinaryBackendEncoding);
         }
