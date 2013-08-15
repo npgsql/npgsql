@@ -71,7 +71,11 @@ namespace NpgsqlTests
         protected String _connString = ConfigurationManager.AppSettings["ConnectionString"];
         protected string _connV2String = ConfigurationManager.AppSettings["ConnectionStringV2"];
 
-        protected FieldInfo SuppressBinaryBackendEncoding = null;
+        // Some tests need to suppress binary backend formatting of parameters and result values,
+        // so that both binary and text formatting can be tested.
+        // Setting NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding accomplishes this, but it is intentionally internal.
+        // Since it's internal, reflection is required to observe and set it.
+        protected FieldInfo SuppressBinaryBackendEncoding;
         
         protected Boolean CommitTransaction
         {
@@ -102,6 +106,24 @@ namespace NpgsqlTests
             _tV2 = _connV2.BeginTransaction();
             
             CommitTransaction = false;
+
+            // Initialize binary backend encoding suppress.  If error, ignore.  SuppressBackendBinary() will report the failure.
+            try
+            {
+                SuppressBinaryBackendEncoding = Assembly
+                    .Load("Npgsql")
+                    .GetType("NpgsqlTypes.NpgsqlTypesHelper")
+                    .GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
+
+                if (SuppressBinaryBackendEncoding.FieldType != typeof(bool))
+                {
+                    SuppressBinaryBackendEncoding = null;
+                    throw new Exception("Field is present, but not of type bool");
+                }
+            }
+            catch
+            {
+            }
         }
 
         [TearDown]
@@ -126,36 +148,13 @@ namespace NpgsqlTests
                 _connV2.Close();
         }
 
-
-        // Some tests need to suppress binary backend formatting of parameters and result values,
-        // so that both binary and text formatting can be tested.
-        // Setting NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding accomplishes this, but it is intentionally internal.
-        // Since it's internal, reflection is required to observe and set it.
-
-        // Attempt to initialize the FieldInfo object used to observe and set NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding.
-        // There is a test to report whether this succeeded, which must run before any tests that suppress binary.
-        protected void ResolveSuppressBinaryBackendEncoding()
-        {
-            try
-            {
-                SuppressBinaryBackendEncoding = System.Reflection.Assembly.Load("Npgsql").GetType("NpgsqlTypes.NpgsqlTypesHelper").GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
-
-                if (SuppressBinaryBackendEncoding.FieldType != typeof(bool))
-                {
-                    throw new Exception("Field is present, but not of type bool");
-                }
-            }
-            catch (Exception e)
-            {
-                throw new Exception("Unable to bind to internal field NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding; some tests will be incomplete", e);
-            }
-        }
-
         // Return a BackendBinarySuppressor which has suppressed backed binary encoding.
         // When it is disposed, suppression will be ended.
         // using (SuppressBackendBinary()) {}
         protected BackendBinarySuppressor SuppressBackendBinary()
         {
+            Assert.IsNotNull(SuppressBinaryBackendEncoding, "SuppressBinaryBackendEncoding shouldn't be null. Check NpgsqlTypes.NpgsqlTypesHelper. SuppressBinaryBackendEncoding field");
+
             return new BackendBinarySuppressor(SuppressBinaryBackendEncoding);
         }
     }

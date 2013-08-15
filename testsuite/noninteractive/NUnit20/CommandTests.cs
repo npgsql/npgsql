@@ -61,14 +61,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        // Test BaseClassTests.ResolveSuppressBinaryBackendEncoding().
-        // If it fails here, it won't fail again.
-        public void _BindTo_NpgsqlTypes_NpgsqlTypesHelper_SuppressBinaryBackendEncoding()
-        {
-            ResolveSuppressBinaryBackendEncoding();
-        }
-
-        [Test]
         public void ParametersGetName()
         {
             NpgsqlCommand command = new NpgsqlCommand();
