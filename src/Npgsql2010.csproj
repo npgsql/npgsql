@@ -88,7 +88,6 @@
     <Compile Include="NpgsqlTypes\TypeConverter.cs" />
     <Compile Include="Npgsql\ChunkedMemoryStream.cs" />
     <Compile Include="Npgsql\Message\ClientMessage.cs" />
-    <Compile Include="Npgsql\StringBuilderStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
     <Compile Include="Npgsql\Security\HashAlgorithm.cs" />

@@ -467,7 +467,7 @@ namespace Npgsql
 						case BackEndMessageCode.ErrorResponse:
 							{
 								NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
-								error.ErrorSql = mediator.SqlSent.ToString(0, Math.Min(85000 / 2, mediator.SqlSent.Length));
+								error.ErrorSql = mediator.SqlSent;
 
 								errors.Add(error);
 
@@ -708,7 +708,7 @@ namespace Npgsql
 						case BackEndMessageCode.ErrorResponse:
 
 							NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
-							error.ErrorSql = mediator.SqlSent.ToString(0, Math.Min(85000 / 2, mediator.SqlSent.Length));
+							error.ErrorSql = mediator.SqlSent;
 
 							errors.Add(error);
 

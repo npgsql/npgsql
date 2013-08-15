@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Reflection;
@@ -237,7 +238,7 @@ namespace NpgsqlTypes
 		/// </summary>
 		public static Object ConvertBackendStringToSystemType(
 			NpgsqlBackendTypeInfo TypeInfo,
-			StringBuilder data,
+			StreamReader data,
 			Int16 typeSize,
 			Int32 typeModifier)
 		{
@@ -245,7 +246,7 @@ namespace NpgsqlTypes
 
 			if (TypeInfo != null)
 			{
-				return TypeInfo.ConvertToNative(data.ToString(), typeSize, typeModifier);
+				return TypeInfo.ConvertToNative(data.ReadToEnd(), typeSize, typeModifier);
 			}
 			else
 			{

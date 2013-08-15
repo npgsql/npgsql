@@ -519,15 +519,6 @@ namespace Npgsql
 			return (val << shift) | (val >> (sizeof(int) - shift));
 		}
 
-		public static StringBuilder TrimStringBuilder(StringBuilder sb)
-		{
-			while (sb.Length != 0 && char.IsWhiteSpace(sb[0]))
-				sb.Remove(0, 1);
-			while (sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
-				sb.Remove(sb.Length - 1, 1);
-			return sb;
-		}
-
 		internal static void LogStringWritten(string theString)
 		{
 			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);

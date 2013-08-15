@@ -27,7 +27,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
@@ -53,10 +52,10 @@ namespace Npgsql
 			CommandTimeout = 20;
 		}
 
-		private StringBuilder SqlLog;
-		public StringBuilder SqlSent
+		private string SqlLog;
+		public string SqlSent
 		{
-			get { return SqlLog ?? new StringBuilder(); }
+			get { return SqlLog ?? string.Empty; }
 			internal set { SqlLog = value; }
 		}
 		public int CommandTimeout { get; set; }

@@ -30,6 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -320,8 +321,8 @@ namespace Npgsql
 		public override String GetString(Int32 i)
 		{
 			var obj = GetValue(i);
-			var sb = obj as StringBuilder;
-			return sb != null ? sb.ToString() : obj as string;
+			var sr = obj as StreamReader;
+			return sr != null ? sr.ReadToEnd() : obj as string;
 		}
 
 		/// <summary>

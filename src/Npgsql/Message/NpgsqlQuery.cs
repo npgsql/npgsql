@@ -26,7 +26,6 @@
 
 
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
@@ -37,7 +36,6 @@ namespace Npgsql
 	{
 		private readonly NpgsqlCommand _command;
 		private readonly ProtocolVersion _protocolVersion;
-		internal static int LargeObjectHeapLimit = 85000 / 4;
 
 		public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
 		{
@@ -47,7 +45,8 @@ namespace Npgsql
 
 		public override void WriteToStream(Stream outputStream)
 		{
-			var commandText = _command.GetCommandText();
+			var commandStream = _command.GetCommandStream();
+			commandStream.Position = 0;
 			// Log the string being sent.
 
 			//if (NpgsqlEventLog.Level >= LogLevel.Debug)
@@ -59,7 +58,8 @@ namespace Npgsql
 			// Find a way to optimize that. 
 
 			// Tell to mediator what command is being sent.
-			_command.Connector.Mediator.SqlSent = commandText;
+			//TODO
+			_command.Connector.Mediator.SqlSent = _command.CommandText;
 
 			// Workaround for seek exceptions when running under ms.net. TODO: Check why Npgsql may be letting behind data in the stream.
 			outputStream.Flush();
@@ -70,40 +70,14 @@ namespace Npgsql
 
 			//Work out the encoding of the string (null-terminated) once and take the length from having done so
 			//rather than doing so repeatedly.
-			if (commandText.Length > LargeObjectHeapLimit)
-			{
-				using (var str = new StringBuilderStream(commandText))
-				using (var cms = new ChunkedMemoryStream(str))
-				{
-					if (_protocolVersion == ProtocolVersion.Version3)
-					{
-						// Write message length. Int32 + string length + null terminator.
-						PGUtil.WriteInt32(outputStream, 4 + (int)cms.Length + 1);
-					}
-					cms.Position = 0;
-					var buf = new byte[65536];
-					int pos = 0;
-					int len = (int)cms.Length;
-					while (pos < len)
-					{
-						var read = cms.Read(buf, 0, 65536);
-						outputStream.Write(buf, 0, read);
-						pos += read;
-					}
-				}
-			}
-			else
-			{
-				var bytes = UTF8Encoding.GetBytes(commandText.ToString());
 
-				if (_protocolVersion == ProtocolVersion.Version3)
-				{
-					// Write message length. Int32 + string length + null terminator.
-					PGUtil.WriteInt32(outputStream, 4 + bytes.Length + 1);
-				}
-
-				outputStream.Write(bytes, 0, bytes.Length);
+			if (_protocolVersion == ProtocolVersion.Version3)
+			{
+				// Write message length. Int32 + string length + null terminator.
+				PGUtil.WriteInt32(outputStream, 4 + (int)commandStream.Length + 1);
 			}
+
+			commandStream.CopyTo(outputStream);
 			outputStream.WriteByte(0);
 		}
 	}

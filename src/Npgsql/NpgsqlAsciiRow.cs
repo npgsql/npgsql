@@ -110,20 +110,12 @@ namespace Npgsql
 		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
 		{
 			var cms = new ChunkedMemoryStream(Stream, field_value_size);
-			var sb = new StringBuilder(field_value_size);
-			var buf = new char[16384];
-			using (var sr = new StreamReader(cms, Encoding.UTF8))
-			{
-				int read;
-				while ((read = sr.Read(buf, 0, 16384)) > 0)
-					sb.Append(buf, 0, read);
-			}
 			try
 			{
 				return
 					NpgsqlTypesHelper.ConvertBackendStringToSystemType(
 						field_descr.TypeInfo,
-						sb,
+						new StreamReader(cms, Encoding.UTF8),
 						field_descr.TypeSize,
 						field_descr.TypeModifier);
 			}
@@ -265,20 +257,12 @@ namespace Npgsql
 		private object ReadLargeObject(NpgsqlRowDescription.FieldData field_descr, int field_value_size)
 		{
 			var cms = new ChunkedMemoryStream(Stream, field_value_size);
-			var sb = new StringBuilder(field_value_size);
-			var buf = new char[16384];
-			using (var sr = new StreamReader(cms, Encoding.UTF8))
-			{
-				int read;
-				while ((read = sr.Read(buf, 0, 16384)) > 0)
-					sb.Append(buf, 0, read);
-			}
 			try
 			{
 				return
 					NpgsqlTypesHelper.ConvertBackendStringToSystemType(
 						field_descr.TypeInfo,
-						sb,
+						new StreamReader(cms, Encoding.UTF8),
 						field_descr.TypeSize,
 						field_descr.TypeModifier);
 			}
