@@ -36,6 +36,7 @@ using System.Net;
 using NpgsqlTypes;
 using System.Resources;
 using System.Threading;
+using System.Reflection;
 
 namespace NpgsqlTests
 {
@@ -58,6 +59,27 @@ namespace NpgsqlTests
         }
         protected virtual string TheConnectionString {
             get { return _connString; }
+        }
+
+        // Make sure SuppressBinaryBackendEncoding is initialized.
+        // Try to make this test run first by prepending '__' for sorting.  This test should run before any other tests
+        // that use binary backend suppression.
+        [Test]
+        public void __SuppressBinaryBackendEncodingInitTest()
+        {
+            if (SuppressBinaryBackendEncoding == null)
+            {
+                try
+                {
+                    InitBinaryBackendSuppression();
+
+                    throw new Exception("Unknown error occurred previously");
+                }
+                catch (Exception e)
+                {
+                    throw new Exception("BaseClassTests.SuppressBinaryBackendEncoding is not bound via reflection to NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding", e);
+                }
+            }
         }
 
         [Test]

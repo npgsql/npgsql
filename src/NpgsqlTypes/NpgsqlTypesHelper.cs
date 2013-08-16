@@ -48,7 +48,7 @@ namespace NpgsqlTypes
 		private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         // This is used by the test suite to test both text and binary encodings on version 3 connections. 
-        // See NpgsqlTests.BaseClassTests.ResolveSuppressBinaryBackendEncoding().
+        // See NpgsqlTests.BaseClassTests.TestFixtureSetup() and InitBinaryBackendSuppression().
         // If this field is changed or removed, some tests will become partially non-functional, and an error will be issued.
         internal static bool SuppressBinaryBackendEncoding = false;
 
