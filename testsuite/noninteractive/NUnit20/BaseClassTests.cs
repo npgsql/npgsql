@@ -189,14 +189,6 @@ namespace NpgsqlTests
         /// </summary>
         protected BackendBinarySuppressor SuppressBackendBinary()
         {
-            try
-            {
-                SuppressBinaryBackendEncoding = InitBinaryBackendSuppression();
-            }
-            catch
-            // Throwing an exception here causes all tests to fail without running.
-            {}
-
             Assert.IsTrue(
                 SuppressBinaryBackendEncoding != null && SuppressBinaryBackendEncoding.FieldType == typeof(bool),
                 "SuppressBinaryBackendEncoding is null or not boolean; binary backend encoding cannot be suppressed. Check test CommandTests.__SuppressBinaryBackendEncodingInitTest() for more information"
