@@ -167,7 +167,7 @@ namespace NpgsqlTests
             {
                 fi = typesHelper.GetField("SuppressBinaryBackendEncoding", BindingFlags.Static | BindingFlags.NonPublic);
 
-                Assert.IsNotNull(fi, "GetField(\"SuppressBinaryBackendEncoding2\") returned null indicating field not found");
+                Assert.IsNotNull(fi, "GetField(\"SuppressBinaryBackendEncoding\") returned null indicating field not found");
             }
             catch (Exception e)
             {
