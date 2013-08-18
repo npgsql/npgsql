@@ -477,7 +477,10 @@ namespace Npgsql
 		}
 
         /// <summary>
-        /// Report whether the backend is expecting standards conforming strings..
+        /// Report whether the backend is expecting standard conformant strings.
+        /// In version 8.1, Postgres began reporting this value (false), but did not actually support standard conformant strings.
+        /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
+        /// As of version 9.1, this flag defaults to true.
         /// </summary>
         [Browsable(false)]
         public Boolean UseConformantStrings
@@ -490,7 +493,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Report whether the backend understands the string literal E prefix (>= 8.2).
+        /// Report whether the backend understands the string literal E prefix (>= 8.1).
         /// </summary>
         [Browsable(false)]
         public Boolean Supports_E_StringPrefix
