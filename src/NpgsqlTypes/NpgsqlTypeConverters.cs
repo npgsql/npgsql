@@ -42,17 +42,18 @@ namespace NpgsqlTypes
     /// Options that control certain aspects of native to backend conversions that depend
     /// on backend version and status.
     /// </summary>
-    internal class NativeToBackendTypeConverterOptions
+    internal class NativeToBackendTypeConverterOptions : ICloneable
     {
         internal static NativeToBackendTypeConverterOptions _default;
 
-        internal bool UseConformantStrings;
-        internal bool Supports_E_StringPrefix;
-        internal bool SupportsHexByteFormat;
+        private bool IsImmutable;
+        private bool _UseConformantStrings;
+        private bool _Supports_E_StringPrefix;
+        private bool _SupportsHexByteFormat;
 
         static NativeToBackendTypeConverterOptions()
         {
-            _default = new NativeToBackendTypeConverterOptions(false, true, false);
+            _default = new NativeToBackendTypeConverterOptions(true, false, true, false);
         }
 
         internal static NativeToBackendTypeConverterOptions Default
@@ -63,14 +64,92 @@ namespace NpgsqlTypes
             }
         }
 
+        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        {
+            this.IsImmutable = Immutable;
+            this._UseConformantStrings = useConformantStrings;
+            this._Supports_E_StringPrefix = supports_E_StringPrefix;
+            this._SupportsHexByteFormat = supportsHexByteFormat;
+        }
+
         internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
         {
-            this.UseConformantStrings = useConformantStrings;
-            this.Supports_E_StringPrefix = supports_E_StringPrefix;
-            this.SupportsHexByteFormat = supportsHexByteFormat;
+            IsImmutable = false;
+            this._UseConformantStrings = useConformantStrings;
+            this._Supports_E_StringPrefix = supports_E_StringPrefix;
+            this._SupportsHexByteFormat = supportsHexByteFormat;
+        }
+
+        /// <summary>
+        /// Clone the current object.
+        /// </summary>
+        /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
+        Object ICloneable.Clone()
+        {
+            return Clone();
+        }
+
+        /// <summary>
+        /// Clone the current object.
+        /// </summary>
+        /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
+        internal NativeToBackendTypeConverterOptions Clone()
+        {
+            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat);
+        }
+
+        internal bool UseConformantStrings
+        {
+            get { return _UseConformantStrings; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _UseConformantStrings = value;
+                }
+            }
+        }
+
+        internal bool Supports_E_StringPrefix
+        {
+            get { return _Supports_E_StringPrefix; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _Supports_E_StringPrefix = value;
+                }
+            }
+        }
+
+
+        internal bool SupportsHexByteFormat
+        {
+            get { return _SupportsHexByteFormat; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _SupportsHexByteFormat = value;
+                }
+            }
         }
     }
-
 	/// <summary>
 	/// Provide event handlers to convert all native supported basic data types from their backend
 	/// text representation to a .NET object.
@@ -102,9 +181,9 @@ namespace NpgsqlTypes
 				};
 
 		/// <summary>
-		/// Binary data.
+		/// Byte array from bytea encoded as text, escaped or hex format.
 		/// </summary>
-		internal static Object ToBinary(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
 			Int32 octalValue = 0;
 			Int32 byteAPosition = 0;
@@ -164,15 +243,43 @@ namespace NpgsqlTypes
 			return ms.ToArray();
 		}
 
-		/// <summary>
-		/// Convert a postgresql boolean to a System.Boolean.
-		/// </summary>
-		internal static Object ToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
-										 Int32 TypeModifier)
-		{
-			return (BackendData.ToLower() == "t" ? true : false);
-		}
+        /// <summary>
+        /// Byte array from bytea encoded as binary.
+        /// </summary>
+        internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            return BackendData;
+        }
 
+        /// <summary>
+        /// Convert a postgresql boolean to a System.Boolean.
+        /// </summary>
+        internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+                                         Int32 TypeModifier)
+        {
+            return (BackendData.ToLower() == "t" ? true : false);
+        }
+
+        /// <summary>
+        /// Convert a postgresql boolean to a System.Boolean.
+        /// </summary>
+        internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+                                         Int32 TypeModifier)
+        {
+            return (BackendData[0] != 0);
+        }
+
+        internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+                                         Int32 TypeModifier)
+        {
+            switch (BackendData.Length)
+            {
+                case 2: return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
+                case 4: return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
+                case 8: return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
+                default: throw new NpgsqlException("Unexpected integer binary field length");
+            }
+        }
 
         /// <summary>
         /// Convert a postgresql bit to a System.Boolean.
@@ -271,22 +378,22 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data, escaped as needed per options.
         /// </summary>
-        internal static String ToBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static String ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (! options.SupportsHexByteFormat)
             {
-                return ToBinaryEscaped(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextEscaped(NativeData, options.UseConformantStrings);
             }
             else
             {
-                return ToBinaryHexFormat(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextHexFormat(NativeData, options.UseConformantStrings);
             }
         }
 
         /// <summary>
         /// Binary data with possible older style escapes.
         /// </summary>
-        private static String ToBinaryEscaped(Object NativeData, bool UseConformantStrings)
+        private static String ByteArrayToByteaTextEscaped(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
             StringBuilder res = new StringBuilder(byteArray.Length);
@@ -313,7 +420,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data in the new hex format (>= 9.0).
         /// </summary>
-        private static String ToBinaryHexFormat(Object NativeData, bool UseConformantStrings)
+        private static String ByteArrayToByteaTextHexFormat(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
 
@@ -342,11 +449,51 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Convert to a postgresql boolean.
+        /// Binary data, raw.
         /// </summary>
-        internal static String ToBoolean(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ByteArrayToByteaBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return (byte[])NativeData;
+        }
+
+        /// <summary>
+        /// Convert to a postgresql boolean text format.
+        /// </summary>
+        internal static String BooleanToBooleanText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return ((bool)NativeData) ? "TRUE" : "FALSE";
+        }
+
+        /// <summary>
+        /// Convert to a postgresql boolean binary format.
+        /// </summary>
+        internal static byte[] BooleanToBooleanBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return ((bool)NativeData) ? new byte[] { 1 } : new byte[] { 0 };
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int2.
+        /// </summary>
+        internal static byte[] Int16ToInt2Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt16(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int4.
+        /// </summary>
+        internal static byte[] Int32ToInt4Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt32(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert to a postgresql binary int8.
+        /// </summary>
+        internal static byte[] Int64ToInt8Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt64(NativeData)));
         }
 
         /// <summary>

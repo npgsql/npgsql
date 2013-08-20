@@ -142,7 +142,7 @@ namespace Npgsql
         private const String _planNamePrefix = "npgsqlplan";
         private const String _portalNamePrefix = "npgsqlportal";
 
-        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default;
+        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone();
 
 
         private Thread _notificationThread;
@@ -691,13 +691,15 @@ namespace Npgsql
         /// This method is required to set all the version dependent features flags.
         /// SupportsPrepare means the server can use prepared query plans (7.3+)
         /// </summary>
-        // FIXME - should be private
-        internal void ProcessServerVersion()
+        private void ProcessServerVersion()
         {
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
 
             // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
+            // Note that it is possible that support for this prefix will vanish in some future version
+            // of Postgres, in which case this test will need to be revised.
+            // At that time it may also be necessary to set UseConformantStrings = true here.
             NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 1, 0));
 
             // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
@@ -896,7 +898,6 @@ namespace Npgsql
             {
 
             }
-			
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
