@@ -69,25 +69,6 @@ namespace Npgsql
 		public override long Seek(long offset, SeekOrigin origin) { return 0; }
 		public override void SetLength(long value) { }
 
-		public ChunkedMemoryStream Write(char value)
-		{
-			if (value < 256)
-				WriteByte((byte)value);
-			else
-			{
-				WriteByte((byte)(value >> 4));
-				WriteByte((byte)(value & 0xff));
-			}
-			return this;
-		}
-
-		public ChunkedMemoryStream Write(string value)
-		{
-			var bytes = Encoding.UTF8.GetBytes(value);
-			Write(bytes, 0, bytes.Length);
-			return this;
-		}
-
 		public override void Write(byte[] buffer, int offset, int count)
 		{
 			int cur = count;

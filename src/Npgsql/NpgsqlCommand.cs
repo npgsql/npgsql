@@ -857,7 +857,7 @@ namespace Npgsql
 			return result;
 		}
 
-		private static void PassEscapedArray(ChunkedMemoryStream query, string array)
+		private static void PassEscapedArray(StreamWriter query, string array)
 		{
 			bool inTextLiteral = false;
 			int endAt = array.Length - 1;//leave last char for separate append as we don't have to continually check we're safe to add the next char too.
@@ -867,19 +867,17 @@ namespace Npgsql
 				{
 					if (!inTextLiteral)
 					{
-						query.WriteByte((byte)'E');
-						query.WriteByte((byte)'\'');
+						query.Write("E'");
 						inTextLiteral = true;
 					}
 					else if (array[i + 1] == '\'')//SQL-escaped '
 					{
-						query.WriteByte((byte)'\'');
-						query.WriteByte((byte)'\'');
+						query.Write("''");
 						++i;
 					}
 					else
 					{
-						query.WriteByte((byte)'\'');
+						query.Write('\'');
 						inTextLiteral = false;
 					}
 				}
@@ -889,7 +887,7 @@ namespace Npgsql
 			query.Write(array[endAt]);
 		}
 
-		private void PassParam(ChunkedMemoryStream query, NpgsqlParameter p)
+		private void PassParam(StreamWriter query, NpgsqlParameter p)
 		{
 			string serialised = p.TypeInfo.ConvertToBackend(p.Value, false);
 
@@ -897,14 +895,14 @@ namespace Npgsql
 			// See bug #1010543
 			// Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
 			// only one pair of parentheses for the two purposes instead of two pairs.
-			query.WriteByte((byte)'(');
+			query.Write('(');
 
 			if (Connector.UseConformantStrings)
 				switch (serialised[0])
 				{
 					case '\''://type passed as string or string with type.
 						//We could test to see if \ is used anywhere, but then we could be doing quite an expensive check (if the value is large) for little gain.
-						query.WriteByte((byte)'E');
+						query.Write('E');
 						query.Write(serialised);
 						break;
 					case 'a':
@@ -920,19 +918,18 @@ namespace Npgsql
 			else
 				query.Write(serialised);
 
-			query.WriteByte((byte)')');
+			query.Write(')');
 
 
 			if (p.UseCast)
 			{
-				query.WriteByte((byte)':');
-				query.WriteByte((byte)':');
+				query.Write("::");
 				query.Write(p.TypeInfo.CastName);
 				if (p.TypeInfo.UseSize && (p.Size > 0))
 				{
-					query.WriteByte((byte)'(');
+					query.Write('(');
 					query.Write(p.Size.ToString());
-					query.WriteByte((byte)')');
+					query.Write(')');
 				}
 			}
 		}
@@ -950,13 +947,14 @@ namespace Npgsql
 				return new MemoryStream(Encoding.UTF8.GetBytes(text));
 
 			var cms = new ChunkedMemoryStream();
+			var sw = new StreamWriter(cms);
 			if (type == CommandType.StoredProcedure)
 			{
 				if (Connector.SupportsPrepare)
-					cms.Write("SELECT * FROM ");
+					sw.Write("SELECT * FROM ");
 				else
-					cms.Write("SELECT ");
-				cms.Write(text);
+					sw.Write("SELECT ");
+				sw.Write(text);
 				if (!functionChecksDone)
 				{
 					functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
@@ -978,17 +976,18 @@ namespace Npgsql
 			}
 			else
 			{
-				cms.Write(text);
+				sw.Write(text);
 			}
 
 			if (parameters.Count == 0)
 			{
 				if (addProcedureParenthesis)
-					cms.Write("()");
+					sw.Write("()");
 
 				if (functionNeedsColumnListDefinition)
-					AddFunctionColumnListSupport(cms);
+					AddFunctionColumnListSupport(sw);
 
+				sw.Flush();
 				return cms;
 			}
 
@@ -1008,6 +1007,7 @@ namespace Npgsql
 					parameterIndex[parameter.CleanName] = parameter;
 
 				cms = new ChunkedMemoryStream();
+				sw = new StreamWriter(cms);
 
 				foreach (string s in parameterReplace.Split(text))
 					//foreach (String s in parameterReplace.Split(result.ToString()))
@@ -1035,22 +1035,22 @@ namespace Npgsql
 									//
 									//The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
 
-									cms.WriteByte((byte)'(');
-									PassParam(cms, p);
-									cms.WriteByte((byte)')');
+									sw.Write('(');
+									PassParam(sw, p);
+									sw.Write(')');
 									break;
 							}
 						}
 						else
 						{
-							cms.Write(s);
+							sw.Write(s);
 						}
 					}
 				//result = sb;
 			}
 			else
 			{
-				cms.WriteByte((byte)'(');
+				sw.Write('(');
 
 				var len = parameters.Where(it => it.Direction == ParameterDirection.Input || it.Direction == ParameterDirection.InputOutput).Count();
 				for (int i = 0; i < parameters.Count; i++)
@@ -1059,22 +1059,23 @@ namespace Npgsql
 					{
 						case ParameterDirection.Input:
 						case ParameterDirection.InputOutput:
-							PassParam(cms, parameters[i]);
+							PassParam(sw, parameters[i]);
 							len--;
 							if (len > 1)
-								cms.WriteByte((byte)',');
+								sw.Write(',');
 							break;
 					}
 				}
 
-				cms.WriteByte((byte)')');
+				sw.Write(')');
 			}
 
 			if (functionNeedsColumnListDefinition)
 			{
-				AddFunctionColumnListSupport(cms);
+				AddFunctionColumnListSupport(sw);
 			}
 
+			sw.Flush();
 			return cms;
 		}
 
@@ -1176,9 +1177,9 @@ namespace Npgsql
 			return ret;
 		}
 
-		private void AddFunctionColumnListSupport(ChunkedMemoryStream cms)
+		private void AddFunctionColumnListSupport(StreamWriter sw)
 		{
-			cms.Write(" as (");
+			sw.Write(" as (");
 			for (int i = 0; i < Parameters.Count; i++)
 			{
 				var p = Parameters[i];
@@ -1186,14 +1187,14 @@ namespace Npgsql
 				{
 					case ParameterDirection.Output:
 					case ParameterDirection.InputOutput:
-						cms.Write(p.CleanName);
-						cms.WriteByte((byte)' ');
-						cms.Write(p.TypeInfo.Name);
-						cms.WriteByte((byte)',');
+						sw.Write(p.CleanName);
+						sw.Write(' ');
+						sw.Write(p.TypeInfo.Name);
+						sw.Write(',');
 						break;
 				}
 			}
-			cms.WriteByte((byte)')');
+			sw.Write(')');
 		}
 
 
@@ -1201,42 +1202,39 @@ namespace Npgsql
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
 
-			var execBytes = Encoding.UTF8.GetBytes("execute " + planName);
 			if (parameters.Count == 0)
-				return new MemoryStream(execBytes);
+				return new MemoryStream(Encoding.UTF8.GetBytes("execute " + planName));
 
 			var cms = new ChunkedMemoryStream();
-			cms.Write(execBytes, 0, execBytes.Length);
-			cms.WriteByte((byte)'(');
+			var sw = new StreamWriter(cms);
+			sw.Write("execute " + planName);
+			sw.Write('(');
 
 			for (int i = 0; i < parameters.Count; i++)
 			{
 				var p = parameters[i];
 				// Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
 				// See bug #1010543
-				cms.WriteByte((byte)'(');
+				sw.Write('(');
 				//TODO fix LOH issue
-				var bytes = Encoding.UTF8.GetBytes(p.TypeInfo.ConvertToBackend(p.Value, false));
-				cms.Write(bytes, 0, bytes.Length);
-				cms.WriteByte((byte)'(');
+				sw.Write(p.TypeInfo.ConvertToBackend(p.Value, false));
+				sw.Write('(');
 				if (p.UseCast)
 				{
-					cms.WriteByte((byte)':');
-					cms.WriteByte((byte)':');
-					var byteName = Encoding.UTF8.GetBytes(p.TypeInfo.CastName);
-					cms.Write(byteName, 0, byteName.Length);
+					sw.Write("::");
+					sw.Write(p.TypeInfo.CastName);
 					if (p.TypeInfo.UseSize && (p.Size > 0))
 					{
-						cms.WriteByte((byte)'(');
-						var byteSize = Encoding.UTF8.GetBytes(p.Size.ToString());
-						cms.Write(byteSize, 0, byteSize.Length);
-						cms.WriteByte((byte)')');
+						sw.Write('(');
+						sw.Write(p.Size);
+						sw.Write(')');
 					}
 				}
 				if (i < parameters.Count - 1)
-					cms.WriteByte((byte)',');
+					sw.Write(',');
 			}
-			cms.WriteByte((byte)')');
+			sw.Write(')');
+			sw.Flush();
 			return cms;
 		}
 
