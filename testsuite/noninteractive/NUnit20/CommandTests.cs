@@ -802,7 +802,12 @@ namespace NpgsqlTests
         [Test]
         public void StringEscapeSyntax()
         {
-            try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
+            //regardless of this setting, Npgsql will always use the E string prefix when possible,
+            //therefore, this test is not fully functional on version 2.
+
+            //the next command will fail on earlier postgres versions, but that is not a bug in itself.
+            try
             {
                 new NpgsqlCommand("set standard_conforming_strings=off;set escape_string_warning=off", TheConnection).ExecuteNonQuery();
             }
@@ -845,6 +850,10 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallStringEscape()
         {
+            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
+            //regardless of this setting, Npgsql will always use the E string prefix when possible,
+            //therefore, this test is not fully functional on version 2.
+
             int warnings = 0;
             NoticeEventHandler countWarn = delegate(Object c, NpgsqlNoticeEventArgs e) { warnings += 1; };
             TheConnection.Notice += countWarn;
@@ -3866,10 +3875,9 @@ connection.Open();*/
         [Test]
         public void TimeoutFirstParameters()
         {
-            // The first command of a connection that uses a string parameter
-            // against a server with "standard_conforming_strings = off" trips
-            // an internal "SHOW escape_string_warning".  Verify that this does
-            // not sabotage the requested timeout.
+            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
+            //regardless of this setting, Npgsql will always use the E string prefix when possible,
+            //therefore, this test is not fully functional on version 2.
  
             NpgsqlConnection conn = new NpgsqlConnection(TheConnectionString);
             conn.Open();
