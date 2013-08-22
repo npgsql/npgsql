@@ -1,4 +1,4 @@
-﻿// project created on 30/11/2002 at 22:00
+// project created on 30/11/2002 at 22:00
 //
 // Author:
 //  David Rowley <dgrowley@gmail.com>
@@ -32,29 +32,32 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
-
     [TestFixture]
     public class ExceptionTests : BaseClassTests
     {
-        protected override NpgsqlConnection TheConnection {
-            get { return _conn;}
+        protected override NpgsqlConnection TheConnection
+        {
+            get { return _conn; }
         }
-        protected override NpgsqlTransaction TheTransaction {
+
+        protected override NpgsqlTransaction TheTransaction
+        {
             get { return _t; }
             set { _t = value; }
         }
-        protected virtual string TheConnectionString {
+
+        protected virtual string TheConnectionString
+        {
             get { return _connString; }
         }
 
         [Test]
         public void ProblemSqlInsideException()
         {
-            String sql = "selec 1 as test";
+            const string sql = "selec 1 as test";
             try
             {
-                NpgsqlCommand command = new NpgsqlCommand(sql, TheConnection);
-
+                var command = new NpgsqlCommand(sql, TheConnection);
                 command.ExecuteReader();
             }
             catch (NpgsqlException ex)
@@ -66,9 +69,9 @@ namespace NpgsqlTests
         [Test]
         public void ExceptionFieldsArePopulated()
         {
-            String dropTable = "DROP TABLE IF EXISTS public.uniqueviolation";
-            String createTable = "CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
-            String insertStatement = "INSERT INTO public.uniqueviolation (id) VALUES(1)";
+            const string dropTable = @"DROP TABLE IF EXISTS public.uniqueviolation";
+            const string createTable = @"CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
+            const string insertStatement = @"INSERT INTO public.uniqueviolation (id) VALUES(1)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
             if (TheConnection.PostgreSqlVersion < new Version("9.3"))
@@ -78,7 +81,7 @@ namespace NpgsqlTests
             // cases than this as the same code is executed in all error situations.
             try
             {
-                NpgsqlCommand command = new NpgsqlCommand(dropTable, TheConnection);
+                var command = new NpgsqlCommand(dropTable, TheConnection);
                 command.ExecuteNonQuery();
 
                 command = new NpgsqlCommand(createTable, TheConnection);
@@ -104,9 +107,9 @@ namespace NpgsqlTests
         [Test]
         public void ColumnNameExceptionFieldIsPopulated()
         {
-            String dropTable = "DROP TABLE IF EXISTS public.notnullviolation";
-            String createTable = "CREATE TABLE public.notnullviolation (id INT NOT NULL)";
-            String insertStatement = "INSERT INTO public.notnullviolation (id) VALUES(NULL)";
+            const string dropTable = @"DROP TABLE IF EXISTS public.notnullviolation";
+            const string createTable = @"CREATE TABLE public.notnullviolation (id INT NOT NULL)";
+            const string insertStatement = @"INSERT INTO public.notnullviolation (id) VALUES(NULL)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
             if (TheConnection.PostgreSqlVersion < new Version("9.3"))
@@ -114,7 +117,7 @@ namespace NpgsqlTests
 
             try
             {
-                NpgsqlCommand command = new NpgsqlCommand(dropTable, TheConnection);
+                var command = new NpgsqlCommand(dropTable, TheConnection);
                 command.ExecuteNonQuery();
 
                 command = new NpgsqlCommand(createTable, TheConnection);
@@ -140,9 +143,9 @@ namespace NpgsqlTests
             // datatypename field is populated is when using domain types. So here we'll
             // create a domain that simply does not allow NULLs then try and cast NULL
             // to it.
-            String dropDomain = "DROP DOMAIN IF EXISTS public.intnotnull";
-            String createDomain = "CREATE DOMAIN public.intnotnull AS INT NOT NULL";
-            String castStatement = "SELECT CAST(NULL AS public.intnotnull)";
+            const string dropDomain = @"DROP DOMAIN IF EXISTS public.intnotnull";
+            const string createDomain = @"CREATE DOMAIN public.intnotnull AS INT NOT NULL";
+            const string castStatement = @"SELECT CAST(NULL AS public.intnotnull)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
             if (TheConnection.PostgreSqlVersion < new Version("9.3"))
@@ -150,7 +153,7 @@ namespace NpgsqlTests
 
             try
             {
-                NpgsqlCommand command = new NpgsqlCommand(dropDomain, TheConnection);
+                var command = new NpgsqlCommand(dropDomain, TheConnection);
                 command.ExecuteNonQuery();
 
                 command = new NpgsqlCommand(createDomain, TheConnection);
@@ -167,6 +170,5 @@ namespace NpgsqlTests
                 Assert.AreEqual("intnotnull", ex.DataTypeName);
             }
         }
-
     }
 }
