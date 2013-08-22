@@ -1,4 +1,4 @@
-﻿// Npgsql.NpgsqlCommand.cs
+// Npgsql.NpgsqlCommand.cs
 //
 // Author:
 //  Josh Cooley <jbnpgsql@tuxinthebox.net>
@@ -36,8 +36,8 @@ namespace NpgsqlTests
     /// Tests NpgsqlTypes.* independent of a database
     /// </summary>
     [TestFixture]
-	public class TypesTests
-	{
+    public class TypesTests
+    {
         [Test]
         public void NpgsqlIntervalParse()
         {
@@ -94,42 +94,42 @@ namespace NpgsqlTests
 
             input = "1 year";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 12).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*12).Ticks, test.TotalTicks, input);
 
             input = "2 years";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 24).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*24).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 mon";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 11).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*11).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 mons";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 10).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*10).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 day";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 12 - 1).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*12 - 1).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 days";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 12 - 2).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*12 - 2).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 mon -1 day";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 11 - 1).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*11 - 1).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 mons -2 days";
             test = NpgsqlInterval.Parse(input);
-            Assert.AreEqual(TimeSpan.FromDays(30 * 10 - 2).Ticks, test.TotalTicks, input);
+            Assert.AreEqual(TimeSpan.FromDays(30*10 - 2).Ticks, test.TotalTicks, input);
 
             input = "1 day 2:3:4.005";
             test = NpgsqlInterval.Parse(input);
             Assert.AreEqual(new TimeSpan(1, 2, 3, 4, 5).Ticks, test.TotalTicks, input);
 
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
             try
             {
@@ -231,7 +231,8 @@ namespace NpgsqlTests
 
             Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567891).ToString());
 
-            Assert.AreEqual("1 day 02:03:04.005", new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
+            Assert.AreEqual("1 day 02:03:04.005",
+                            new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
 
             Assert.AreEqual("3 mons 2 days 00:02:03.456789", new NpgsqlInterval(3, 2, 1234567890).ToString());
 
@@ -244,7 +245,7 @@ namespace NpgsqlTests
             Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
 
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
             try
             {
@@ -336,7 +337,7 @@ namespace NpgsqlTests
             Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567891).ToString());
 
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
             try
             {
@@ -403,7 +404,7 @@ namespace NpgsqlTests
             Assert.AreEqual("0001-05-07 BC", new NpgsqlDate(-1, 5, 7).ToString());
 
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
-            System.Globalization.CultureInfo testCulture = new System.Globalization.CultureInfo("fr-FR");
+            var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
             try
             {
@@ -486,11 +487,11 @@ namespace NpgsqlTests
             Assert.AreEqual(1, date.Month);
             Assert.AreEqual(1, date.Year);
 
-            NpgsqlInterval diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
+            var diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
             Assert.AreEqual(new NpgsqlInterval(0, 1, 0), diff);
 
             // Test of the addMonths method (positive values added)
-            NpgsqlDate dateForTestMonths = new NpgsqlDate(2008, 1, 1);
+            var dateForTestMonths = new NpgsqlDate(2008, 1, 1);
             Assert.AreEqual(dateForTestMonths.AddMonths(0), dateForTestMonths);
             Assert.AreEqual(dateForTestMonths.AddMonths(4), new NpgsqlDate(2008, 5, 1));
             Assert.AreEqual(dateForTestMonths.AddMonths(11), new NpgsqlDate(2008, 12, 1));
@@ -577,7 +578,7 @@ namespace NpgsqlTests
         [Test]
         public void NpgsqlTimeTzConvert()
         {
-            NpgsqlTimeTZ timetz = new NpgsqlTimeTZ(13, 3, 45.001, new NpgsqlTimeZone(-5, 0));
+            var timetz = new NpgsqlTimeTZ(13, 3, 45.001, new NpgsqlTimeZone(-5, 0));
 
             Assert.AreEqual(13, timetz.Hours);
             Assert.AreEqual(3, timetz.Minutes);
@@ -592,10 +593,10 @@ namespace NpgsqlTests
             Assert.AreEqual(45, timetz.UTCTime.Seconds);
             Assert.AreEqual(1, timetz.UTCTime.Milliseconds);
 
-            TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
+            var utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
             // add utc time as timespan to get local time as a timespan
-            TimeSpan localTime = utcOffset + new TimeSpan(0, 18, 3, 45, 1);
-            DateTime localDateTime = (DateTime)timetz;
+            var localTime = utcOffset + new TimeSpan(0, 18, 3, 45, 1);
+            var localDateTime = (DateTime) timetz;
 
             Assert.AreEqual(localTime.Hours, localDateTime.Hour);
             Assert.AreEqual(localTime.Minutes, localDateTime.Minute);
@@ -609,85 +610,64 @@ namespace NpgsqlTests
             Assert.AreEqual(1, timetz.LocalTime.Milliseconds);
 
         }
-        
+
         [Test]
         public void NpgsqlMacAddress()
         {
-            System.Net.NetworkInformation.PhysicalAddress local = System.Net.NetworkInformation.PhysicalAddress.Parse("012345ABCDEF");
-            NpgsqlMacAddress mac = new NpgsqlMacAddress(local);
-
-            NpgsqlMacAddress mac2 = new NpgsqlMacAddress("01:23-45-aB,cD.eF");
+            System.Net.NetworkInformation.PhysicalAddress local =
+                System.Net.NetworkInformation.PhysicalAddress.Parse("012345ABCDEF");
+            var mac = new NpgsqlMacAddress(local);
+            var mac2 = new NpgsqlMacAddress("01:23-45-aB,cD.eF");
 
             Assert.AreEqual(mac, mac2);
             Assert.AreEqual(mac.ToString(), mac2.ToString());
         }
-        
+
         [Test]
         public void Bug1011018()
         {
-            
-            NpgsqlParameter p = new NpgsqlParameter();
+            var p = new NpgsqlParameter();
             p.NpgsqlDbType = NpgsqlDbType.Time;
             p.Value = DateTime.Now;
-            
             Object o = p.Value;
-            
-            
-            
         }
+
         [Test]
         public void Bug1011321WrongBitStringvalue()
         {
-
-            BitString b = new BitString (true, 32);
-
-            Assert.AreEqual ("11111111111111111111111111111111", b.ToString ());
-
-
+            var b = new BitString(true, 32);
+            Assert.AreEqual("11111111111111111111111111111111", b.ToString());
         }
 
         [Test]
         public void Bug1011321WrongBitStringvalue2()
         {
-            BitString b = new BitString (true, 6);
-            
-            Assert.AreEqual ("111111", b.ToString ());
-            
-            
+            var b = new BitString(true, 6);
+            Assert.AreEqual("111111", b.ToString());
         }
+
         [Test]
         public void Bug1011321WrongBitStringvalue3()
         {
-            BitString b = new BitString (true, 32);
-            
-            BitString b2 = new BitString("11111111111111111111111111111111");
-            
+            var b = new BitString(true, 32);
+            var b2 = new BitString("11111111111111111111111111111111");
             Assert.IsTrue(b == b2);
-            
-            
         }
-        
+
         [Test]
         public void BitStringSupport()
         {
-            String bitMask = "1101101101101101101101101011011011010110110110";
-            BitString b = new BitString(bitMask);
-            
-            Assert.AreEqual (bitMask, b.ToString ());
-            
-            
+            const string bitMask = "1101101101101101101101101011011011010110110110";
+            var b = new BitString(bitMask);
+            Assert.AreEqual(bitMask, b.ToString());
         }
-        
+
         [Test]
         public void BitStringSupport2()
         {
-            String bitMask = "110110110110110110110110101101101";
-            BitString b = new BitString(bitMask);
-            
-            Assert.AreEqual (bitMask, b.ToString ());
-            
-            
+            const string bitMask = "110110110110110110110110101101101";
+            var b = new BitString(bitMask);
+            Assert.AreEqual(bitMask, b.ToString());
         }
-        
-	}
+    }
 }
