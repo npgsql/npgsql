@@ -50,10 +50,11 @@ namespace NpgsqlTypes
         private bool _UseConformantStrings;
         private bool _Supports_E_StringPrefix;
         private bool _SupportsHexByteFormat;
+        private NpgsqlBackendTypeMapping _oidToNameMapping;
 
         static NativeToBackendTypeConverterOptions()
         {
-            _default = new NativeToBackendTypeConverterOptions(true, false, true, false);
+            _default = new NativeToBackendTypeConverterOptions(true, false, true, false, null);
         }
 
         internal static NativeToBackendTypeConverterOptions Default
@@ -64,20 +65,18 @@ namespace NpgsqlTypes
             }
         }
 
-        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat, NpgsqlBackendTypeMapping oidToNameMapping)
         {
             this.IsImmutable = Immutable;
             this._UseConformantStrings = useConformantStrings;
             this._Supports_E_StringPrefix = supports_E_StringPrefix;
             this._SupportsHexByteFormat = supportsHexByteFormat;
+            this._oidToNameMapping = oidToNameMapping;
         }
 
-        internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat, NpgsqlBackendTypeMapping oidToNameMapping)
+        : this(false, useConformantStrings, supports_E_StringPrefix, supportsHexByteFormat, oidToNameMapping)
         {
-            IsImmutable = false;
-            this._UseConformantStrings = useConformantStrings;
-            this._Supports_E_StringPrefix = supports_E_StringPrefix;
-            this._SupportsHexByteFormat = supportsHexByteFormat;
         }
 
         /// <summary>
@@ -90,12 +89,13 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Clone the current object.
+        /// Clone the current object with a different OID/Name mapping.
         /// </summary>
+        /// <param name="oidToNameMapping">OID/Name mapping object to use in the new instance.</param>
         /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
-        internal NativeToBackendTypeConverterOptions Clone()
+        internal NativeToBackendTypeConverterOptions Clone(NpgsqlBackendTypeMapping oidToNameMapping = null)
         {
-            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat);
+            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat, oidToNameMapping);
         }
 
         internal bool UseConformantStrings
@@ -132,7 +132,6 @@ namespace NpgsqlTypes
             }
         }
 
-
         internal bool SupportsHexByteFormat
         {
             get { return _SupportsHexByteFormat; }
@@ -149,7 +148,25 @@ namespace NpgsqlTypes
                 }
             }
         }
+
+        internal NpgsqlBackendTypeMapping OidToNameMapping
+        {
+            get { return _oidToNameMapping; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _oidToNameMapping = value;
+                }
+            }
+        }
     }
+
 	/// <summary>
 	/// Provide event handlers to convert all native supported basic data types from their backend
 	/// text representation to a .NET object.
@@ -580,7 +597,6 @@ namespace NpgsqlTypes
             return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
         }
 
-
         /// <summary>
         /// Convert to a postgres double with maximum precision.
         /// </summary>
@@ -591,9 +607,6 @@ namespace NpgsqlTypes
             //to happen.
             return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
         }
-
-
-
 
         internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {

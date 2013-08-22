@@ -330,6 +330,34 @@ namespace Npgsql
             return count - (end - offset);
         }
 
+        /// <summary>
+        /// Reads requested number of bytes from <paramref name="src"/>.  If output matches <paramref name="src"/> exactly, and <paramref name="forceCopy"/> == false, <paramref name="src"/> is returned directly.
+        /// </summary>
+        /// <param name="src">Source array.</param>
+        /// <param name="offset">Starting position to read from <paramref name="src"/></param>
+        /// <param name="count">Number of bytes to read</param>
+        /// <param name="forceCopy">Force a copy, even if the output is an exact copy of <paramref name="src"/>.</param>
+        /// <returns>byte[] containing data requested.</returns>
+        public static byte[] ReadBytes(byte[] src, int offset, int count, bool forceCopy = false)
+        {
+            if (! forceCopy && offset == 0 && count == src.Length)
+            {
+                return src;
+            }
+            else
+            {
+                byte[] dst = new byte[count];
+                int sOfs, dOfs;
+
+                for (sOfs = offset, dOfs = 0 ; dOfs < count ; sOfs++, dOfs++)
+                {
+                    dst[dOfs] = src[sOfs];
+                }
+
+                return dst;
+            }
+        }
+
 		//This is like Encoding.UTF8.GetCharCount() but it ignores a trailing incomplete
 		//character. See comments on ValidUTF8Ending()
 		public static int PessimisticGetCharCount(byte[] buffer, int index, int count)
@@ -515,6 +543,14 @@ namespace Npgsql
 		}
 
 		/// <summary>
+		/// Read a 32-bit integer from the given array in the correct byte order.
+		/// </summary>
+		public static Int32 ReadInt32(byte[] src, Int32 offset)
+		{
+            return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(src, offset));
+		}
+
+		/// <summary>
 		/// Write a 16-bit integer to the given stream in the correct byte order.
 		/// </summary>
 		public static void WriteInt16(Stream stream, Int16 value)
@@ -530,6 +566,14 @@ namespace Npgsql
 			byte[] buffer = new byte[2];
 			CheckedStreamRead(stream, buffer, 0, 2);
 			return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
+		}
+
+		/// <summary>
+		/// Read a 16-bit integer from the given array in the correct byte order.
+		/// </summary>
+		public static Int16 ReadInt16(byte[] src, Int32 offset)
+		{
+            return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(src, offset));
 		}
 
 		public static int RotateShift(int val, int shift)
@@ -550,6 +594,45 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
             
+        }
+
+        /// <summary>
+        /// Copy and possibly reverse a byte array, depending on host architecture endienness.
+        /// </summary>
+        /// <param name="src">Source byte array.</param>
+        /// <param name="forceCopy">Force a copy even if no swap is performed.</param>
+        /// <returns><paramref name="src"/>, reversed if on a little-endian architecture, copied if required.</returns>
+        internal static byte[] HostNetworkByteOrderSwap(byte[] src, bool forceCopy = false)
+        {
+            return HostNetworkByteOrderSwap(src, 0, src.Length, forceCopy);
+        }
+
+        /// <summary>
+        /// Copy and possibly reverse a byte array, depending on host architecture endienness.
+        /// </summary>
+        /// <param name="src">Source byte array.</param>
+        /// <param name="start">Starting offset in source array.</param>
+        /// <param name="length">Number of bytes to copy.</param>
+        /// <param name="forceCopy">Force a copy even if no swap is performed.</param>
+        /// <returns><paramref name="src"/>, reversed if on a little-endian architecture, copied if required.</returns>
+        internal static byte[] HostNetworkByteOrderSwap(byte[] src, int start, int length, bool forceCopy = false)
+        {
+            if (BitConverter.IsLittleEndian)
+            {
+                byte[] dst = new byte[length];
+                int end = start + length;
+
+                for (int i = start; i < end ; i++)
+                {
+                    dst[end - i - 1] = src[i];
+                }
+
+                return dst;
+            }
+            else
+            {
+                return ReadBytes(src, start, length, forceCopy);
+            }
         }
     }
 
