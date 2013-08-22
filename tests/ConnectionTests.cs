@@ -31,29 +31,14 @@ using NpgsqlTypes;
 
 namespace NpgsqlTests
 {
-
     [TestFixture]
-    public class ConnectionTests : BaseClassTests
+    public class ConnectionTests : TestBase
     {
-        protected override NpgsqlConnection TheConnection
-        {
-            get { return _conn; }
-        }
-        protected override NpgsqlTransaction TheTransaction
-        {
-            get { return _t; }
-            set { _t = value; }
-        }
-        protected virtual string TheConnectionString
-        {
-            get { return _connString; }
-        }
-
         [Test]
         public void ChangeDatabase()
         {
-            TheConnection.ChangeDatabase("template1");
-            var command = new NpgsqlCommand("select current_database()", TheConnection);
+            Conn.ChangeDatabase("template1");
+            var command = new NpgsqlCommand("select current_database()", Conn);
             var result = (String)command.ExecuteScalar();
             Assert.AreEqual("template1", result);
         }
@@ -61,8 +46,8 @@ namespace NpgsqlTests
         [Test]
         public void ChangeDatabaseTestConnectionCache()
         {
-            using (var conn1 = new NpgsqlConnection(TheConnectionString))
-            using (var conn2 = new NpgsqlConnection(TheConnectionString))
+            using (var conn1 = new NpgsqlConnection(ConnectionString))
+            using (var conn2 = new NpgsqlConnection(ConnectionString))
             {
                 //	connection 1 change database
                 conn1.Open();
@@ -83,16 +68,16 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void NestedTransaction()
         {
-            var t = TheConnection.BeginTransaction();
-            if (t == null)
-                return;
+            using (Conn.BeginTransaction())
+            using (Conn.BeginTransaction())
+                ;
         }
 
         [Test]
         public void SequencialTransaction()
         {
-            TheTransaction.Rollback();
-            TheTransaction = TheConnection.BeginTransaction();
+            Conn.BeginTransaction().Rollback();
+            Conn.BeginTransaction();
         }
 
         [Test]
@@ -131,7 +116,7 @@ namespace NpgsqlTests
         [Test]
         public void SearchPathSupport()
         {
-            using (var conn = new NpgsqlConnection(TheConnectionString + ";searchpath=public"))
+            using (var conn = new NpgsqlConnection(ConnectionString + ";searchpath=public"))
             {
                 conn.Open();
                 var c = new NpgsqlCommand("show search_path", conn);
@@ -149,7 +134,7 @@ namespace NpgsqlTests
 
             for (var i = 0; i < 2; i++)
             {
-                using (var connection = new NpgsqlConnection(TheConnectionString))
+                using (var connection = new NpgsqlConnection(ConnectionString))
                 {
                     connection.Open();
                     command.Connection = connection;
@@ -178,7 +163,7 @@ namespace NpgsqlTests
                         // 18 since base class opens two and the default pool size is 20
                         for (var j = 0; j < 18; ++j)
                         {
-                            var connection = new NpgsqlConnection(TheConnectionString);
+                            var connection = new NpgsqlConnection(ConnectionString);
                             connection.Open();
                             openedConnections.Add(connection);
                         }
@@ -206,7 +191,7 @@ namespace NpgsqlTests
                 // exceed default pool size of 20
                 for (var i = 0; i < 21; ++i)
                 {
-                    var connection = new NpgsqlConnection(TheConnectionString);
+                    var connection = new NpgsqlConnection(ConnectionString);
                     connection.Open();
                     openedConnections.Add(connection);
                 }
@@ -222,7 +207,7 @@ namespace NpgsqlTests
         [Ignore]
         public void NpgsqlErrorRepro1()
         {
-            using (var connection = new NpgsqlConnection(TheConnectionString))
+            using (var connection = new NpgsqlConnection(ConnectionString))
             {
                 connection.Open();
                 using (var transaction = connection.BeginTransaction())
@@ -265,7 +250,7 @@ namespace NpgsqlTests
         [Test]
         public void NpgsqlErrorRepro2()
         {
-            var connection = new NpgsqlConnection(TheConnectionString);
+            var connection = new NpgsqlConnection(ConnectionString);
             connection.Open();
             var transaction = connection.BeginTransaction();
             var largeObjectMgr = new LargeObjectManager(connection);
@@ -295,7 +280,7 @@ namespace NpgsqlTests
                 }
             }
 
-            using (connection = new NpgsqlConnection(TheConnectionString))
+            using (connection = new NpgsqlConnection(ConnectionString))
             {
                 connection.Open();
                 using (var command = connection.CreateCommand())
@@ -314,14 +299,14 @@ namespace NpgsqlTests
         [Test]
         public void GetSchemaForeignKeys()
         {
-            var dt = TheConnection.GetSchema("ForeignKeys");
+            var dt = Conn.GetSchema("ForeignKeys");
             Assert.IsNotNull(dt);
         }
 
         [Test]
         public void ChangeState()
         {
-            using (var c = new NpgsqlConnection(TheConnectionString))
+            using (var c = new NpgsqlConnection(ConnectionString))
             {
                 var stateChangeCalledForOpen = false;
                 var stateChangeCalledForClose = false;
@@ -346,16 +331,17 @@ namespace NpgsqlTests
         [Test]
         public void GetSchemaParameterMarkerFormats()
         {
-            var dt = TheConnection.GetSchema("DataSourceInformation");
+            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
+            var dt = Conn.GetSchema("DataSourceInformation");
             var parameterMarkerFormat = (string)dt.Rows[0]["ParameterMarkerFormat"];
 
-            using (var connection = new NpgsqlConnection(TheConnectionString))
+            using (var connection = new NpgsqlConnection(ConnectionString))
             {
                 connection.Open();
                 using (var command = connection.CreateCommand())
                 {
                     const String parameterName = "p_field_int4";
-                    command.CommandText = "SELECT * FROM tablea WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
+                    command.CommandText = "SELECT * FROM data WHERE field_int4=" + String.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
                     {
@@ -371,18 +357,6 @@ namespace NpgsqlTests
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
     {
-        protected override NpgsqlConnection TheConnection
-        {
-            get { return _connV2; }
-        }
-        protected override NpgsqlTransaction TheTransaction
-        {
-            get { return _tV2; }
-            set { _tV2 = value; }
-        }
-        protected override string TheConnectionString
-        {
-            get { return _connV2String; }
-        }
+        protected override string ConnectionString { get { return CONN_STRING_V2; } }
     }
 }

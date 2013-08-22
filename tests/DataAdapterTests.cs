@@ -35,22 +35,15 @@ namespace NpgsqlTests
 {
 
     [TestFixture]
-    public class DataAdapterTests : BaseClassTests
+    public class DataAdapterTests : TestBase
     {
-        protected override NpgsqlConnection TheConnection {
-            get { return _conn;}
-        }
-        protected override NpgsqlTransaction TheTransaction {
-            get { return _t; }
-            set { _t = value; }
-        }
         [Test]
         public void InsertWithDataSet()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tableb", TheConnection);
+            var da = new NpgsqlDataAdapter("SELECT * FROM data", Conn);
 
-            da.InsertCommand = new NpgsqlCommand("insert into tableb(field_int2, field_timestamp, field_numeric) values (:a, :b, :c)", TheConnection);
+            da.InsertCommand = new NpgsqlCommand("INSERT INTO data (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", Conn);
 
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -79,11 +72,11 @@ namespace NpgsqlTests
             ds.Merge(ds2);
             ds.AcceptChanges();
 
-            var dr2 = new NpgsqlCommand("select * from tableb where field_serial > 4", TheConnection).ExecuteReader();
+            var dr2 = new NpgsqlCommand("SELECT field_int2, field_numeric, field_timestamp FROM data", Conn).ExecuteReader();
             dr2.Read();
 
-            Assert.AreEqual(4, dr2[1]);
-            Assert.AreEqual(7.3000000M, dr2[3]);
+            Assert.AreEqual(4, dr2[0]);
+            Assert.AreEqual(7.3000000M, dr2[1]);
             dr2.Close();
         }
         
@@ -91,9 +84,9 @@ namespace NpgsqlTests
         public void DataAdapterUpdateReturnValue()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tableb", TheConnection);
+            var da = new NpgsqlDataAdapter("SELECT * FROM data", Conn);
 
-            da.InsertCommand = new NpgsqlCommand("insert into tableb(field_int2, field_timestamp, field_numeric) values (:a, :b, :c)", TheConnection);
+            da.InsertCommand = new NpgsqlCommand(@"INSERT INTO data (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", Conn);
 
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -108,7 +101,6 @@ namespace NpgsqlTests
             da.InsertCommand.Parameters[2].SourceColumn = "field_numeric";
 
             da.Fill(ds);
-
 
             var dt = ds.Tables[0];
             var dr = dt.NewRow();
@@ -133,8 +125,8 @@ namespace NpgsqlTests
         [Ignore]
         public void DataAdapterUpdateReturnValue2()
         {
-            var cmd = TheConnection.CreateCommand();
-            var da = new NpgsqlDataAdapter("select * from tabled", TheConnection);
+            var cmd = Conn.CreateCommand();
+            var da = new NpgsqlDataAdapter("select * from tabled", Conn);
             var cb = new NpgsqlCommandBuilder(da);
             var ds = new DataSet();
             da.Fill(ds);
@@ -159,7 +151,7 @@ namespace NpgsqlTests
         public void FillWithEmptyResultset()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tableb where field_serial = -1", TheConnection);
+            var da = new NpgsqlDataAdapter("SELECT field_serial, field_int2, field_timestamp, field_numeric FROM data WHERE field_serial = -1", Conn);
 
             da.Fill(ds);
 
@@ -176,7 +168,7 @@ namespace NpgsqlTests
         public void FillAddWithKey()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", TheConnection);
+            var da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", Conn);
 
             da.MissingSchemaAction = MissingSchemaAction.AddWithKey;
             da.Fill(ds);
@@ -192,7 +184,7 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof(int), field_serial.DataType);
             Assert.AreEqual(0, field_serial.Ordinal);
             // version 2 of the protocol doesn't know how to populate the unique field
-            if (TheConnection.BackendProtocolVersion != ProtocolVersion.Version2)
+            if (Conn.BackendProtocolVersion != ProtocolVersion.Version2)
             {
                 Assert.IsTrue(field_serial.Unique);
             }
@@ -223,7 +215,7 @@ namespace NpgsqlTests
         public void FillAddColumns()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", TheConnection);
+            var da = new NpgsqlDataAdapter(@"SELECT field_serial, field_int2, field_timestamp, field_numeric FROM data", Conn);
 
             da.MissingSchemaAction = MissingSchemaAction.Add;
             da.Fill(ds);
@@ -253,14 +245,14 @@ namespace NpgsqlTests
         [Test]
         public void UpdateLettingNullFieldValue()
         {
-            var command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", TheConnection);
+            var command = new NpgsqlCommand(@"INSERT INTO data (field_int2) VALUES (2)", Conn);
             command.ExecuteNonQuery();
 
             var ds = new DataSet();
 
-            var da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", TheConnection);
-            da.InsertCommand = new NpgsqlCommand(";", TheConnection);
-            da.UpdateCommand = new NpgsqlCommand("update tableb set field_int2 = :a, field_timestamp = :b, field_numeric = :c where field_serial = :d", TheConnection);
+            var da = new NpgsqlDataAdapter("SELECT * FROM data", Conn);
+            da.InsertCommand = new NpgsqlCommand(";", Conn);
+            da.UpdateCommand = new NpgsqlCommand("UPDATE data SET field_int2 = :a, field_timestamp = :b, field_numeric = :c WHERE field_serial = :d", Conn);
 
             da.UpdateCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
             da.UpdateCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -290,7 +282,7 @@ namespace NpgsqlTests
             ds.Merge(ds2);
             ds.AcceptChanges();
 
-            using (var dr2 = new NpgsqlCommand("select * from tableb where field_serial = (select max(field_serial) from tableb)", TheConnection).ExecuteReader())
+            using (var dr2 = new NpgsqlCommand(@"SELECT field_int2 FROM data", Conn).ExecuteReader())
             {
                 dr2.Read();
                 Assert.AreEqual(4, dr2["field_int2"]);
@@ -301,7 +293,7 @@ namespace NpgsqlTests
         public void FillWithDuplicateColumnName()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select field_serial, field_serial from tableb", TheConnection);
+            var da = new NpgsqlDataAdapter("SELECT field_serial, field_serial FROM data", Conn);
             da.Fill(ds);
         }
         
@@ -314,11 +306,11 @@ namespace NpgsqlTests
 
         public virtual void DoUpdateWithDataSet()
         {
-            var command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", TheConnection);
+            var command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", Conn);
             command.ExecuteNonQuery();
 
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", TheConnection);
+            var da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", Conn);
             var cb = new NpgsqlCommandBuilder(da);
             Assert.IsNotNull(cb);
             
@@ -336,7 +328,7 @@ namespace NpgsqlTests
             ds.Merge(ds2);
             ds.AcceptChanges();
 
-            using (var dr2 = new NpgsqlCommand("select * from tableb where field_serial = (select max(field_serial) from tableb)", TheConnection).ExecuteReader())
+            using (var dr2 = new NpgsqlCommand("select * from tableb where field_serial = (select max(field_serial) from tableb)", Conn).ExecuteReader())
             {
                 dr2.Read();
                 Assert.AreEqual(4, dr2["field_int2"]);
@@ -352,7 +344,7 @@ namespace NpgsqlTests
         public virtual void DoInsertWithCommandBuilderCaseSensitive()
         {
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tablei", TheConnection);
+            var da = new NpgsqlDataAdapter("select * from tablei", Conn);
             var builder = new NpgsqlCommandBuilder(da);
             Assert.IsNotNull(builder);
 
@@ -368,7 +360,7 @@ namespace NpgsqlTests
             ds.Merge(ds2);
             ds.AcceptChanges();
 
-            using (var dr2 = new NpgsqlCommand("select * from tablei", TheConnection).ExecuteReader())
+            using (var dr2 = new NpgsqlCommand("select * from tablei", Conn).ExecuteReader())
             {
                 dr2.Read();
                 Assert.AreEqual(4, dr2[1]);
@@ -385,7 +377,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand();
             command.CommandType = CommandType.Text;
             command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
-            command.Connection = TheConnection;
+            command.Connection = Conn;
             var da = new NpgsqlDataAdapter();
             da.SelectCommand = command;
             da.Fill(dt);
@@ -405,7 +397,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand();
             command.CommandType = CommandType.Text;
             command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
-            command.Connection = TheConnection;
+            command.Connection = Conn;
             var da = new NpgsqlDataAdapter();
             da.SelectCommand = command;
             da.Fill(dt);
@@ -421,7 +413,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand();
             command.CommandType = CommandType.Text;
             command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
-            command.Connection = TheConnection;
+            command.Connection = Conn;
             var da = new NpgsqlDataAdapter();
             da.SelectCommand = command;
             System.Data.Common.DbDataAdapter common = da;
@@ -431,13 +423,7 @@ namespace NpgsqlTests
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
     {
-        protected override NpgsqlConnection TheConnection {
-            get { return _connV2; }
-        }
-        protected override NpgsqlTransaction TheTransaction {
-            get { return _tV2; }
-            set { _tV2 = value; }
-        }
+        protected override string ConnectionString { get { return CONN_STRING_V2; } }
         public override void DoInsertWithCommandBuilderCaseSensitive()
         {
             //Not possible with V2?

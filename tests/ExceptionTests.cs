@@ -33,31 +33,15 @@ using NUnit.Framework;
 namespace NpgsqlTests
 {
     [TestFixture]
-    public class ExceptionTests : BaseClassTests
+    public class ExceptionTests : TestBase
     {
-        protected override NpgsqlConnection TheConnection
-        {
-            get { return _conn; }
-        }
-
-        protected override NpgsqlTransaction TheTransaction
-        {
-            get { return _t; }
-            set { _t = value; }
-        }
-
-        protected virtual string TheConnectionString
-        {
-            get { return _connString; }
-        }
-
         [Test]
         public void ProblemSqlInsideException()
         {
             const string sql = "selec 1 as test";
             try
             {
-                var command = new NpgsqlCommand(sql, TheConnection);
+                var command = new NpgsqlCommand(sql, Conn);
                 command.ExecuteReader();
             }
             catch (NpgsqlException ex)
@@ -74,20 +58,20 @@ namespace NpgsqlTests
             const string insertStatement = @"INSERT INTO public.uniqueviolation (id) VALUES(1)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (TheConnection.PostgreSqlVersion < new Version("9.3"))
-                return;
+            if (Conn.PostgreSqlVersion < new Version("9.3"))
+                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             // In this case we'll test a simple unique violation, we're not too interested in testing more
             // cases than this as the same code is executed in all error situations.
             try
             {
-                var command = new NpgsqlCommand(dropTable, TheConnection);
+                var command = new NpgsqlCommand(dropTable, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(createTable, TheConnection);
+                command = new NpgsqlCommand(createTable, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(insertStatement, TheConnection);
+                command = new NpgsqlCommand(insertStatement, Conn);
                 command.ExecuteNonQuery();
 
                 //Now cause the unique violation...
@@ -112,18 +96,18 @@ namespace NpgsqlTests
             const string insertStatement = @"INSERT INTO public.notnullviolation (id) VALUES(NULL)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (TheConnection.PostgreSqlVersion < new Version("9.3"))
-                return;
+            if (Conn.PostgreSqlVersion < new Version("9.3"))
+                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             try
             {
-                var command = new NpgsqlCommand(dropTable, TheConnection);
+                var command = new NpgsqlCommand(dropTable, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(createTable, TheConnection);
+                command = new NpgsqlCommand(createTable, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(insertStatement, TheConnection);
+                command = new NpgsqlCommand(insertStatement, Conn);
                 //Cause the NOT NULL violation
                 command.ExecuteNonQuery();
 
@@ -148,18 +132,18 @@ namespace NpgsqlTests
             const string castStatement = @"SELECT CAST(NULL AS public.intnotnull)";
 
             // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (TheConnection.PostgreSqlVersion < new Version("9.3"))
-                return;
+            if (Conn.PostgreSqlVersion < new Version("9.3"))
+                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             try
             {
-                var command = new NpgsqlCommand(dropDomain, TheConnection);
+                var command = new NpgsqlCommand(dropDomain, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(createDomain, TheConnection);
+                command = new NpgsqlCommand(createDomain, Conn);
                 command.ExecuteNonQuery();
 
-                command = new NpgsqlCommand(castStatement, TheConnection);
+                command = new NpgsqlCommand(castStatement, Conn);
                 //Cause the NOT NULL violation
                 command.ExecuteNonQuery();
 
