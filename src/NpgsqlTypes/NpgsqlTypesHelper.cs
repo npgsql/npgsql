@@ -682,20 +682,20 @@ npgsqlTimestampTZ));
         //an array of that type.
         private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
         {
-            if (!elementInfo.SupportsBinaryBackendData)
-            {
-                return
-                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
-                                              elementInfo.Type.MakeArrayType(),
-                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray));
-            }
-            else
+            if (elementInfo.SupportsBinaryBackendData)
             {
                 return
                     new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
                                               elementInfo.Type.MakeArrayType(),
                                               new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray),
                                               new ConvertBackendBinaryToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayBinaryToArray));
+            }
+            else
+            {
+                return
+                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
+                                              elementInfo.Type.MakeArrayType(),
+                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray));
             }
         }
 
@@ -1023,18 +1023,18 @@ npgsqlTimestampTZ));
 
             NpgsqlNativeTypeInfo copy = null;
 
-            if (elementType._ConvertNativeToBackendBinary == null)
-            {
-                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
-                                             false,
-                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText));
-            }
-            else
+            if (elementType._ConvertNativeToBackendBinary != null)
             {
                 copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
                                              false,
                                              new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText),
                                              new ConvertNativeToBackendBinaryHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayBinary));
+            }
+            else
+            {
+                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
+                                             false,
+                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText));
             }
 
             copy._IsArray = true;

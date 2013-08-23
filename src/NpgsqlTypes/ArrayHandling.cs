@@ -208,7 +208,7 @@ namespace NpgsqlTypes
 
             // Write the number of dimensions in the array.
             PGUtil.WriteInt32(dst, NativeData.Rank);
-            // Placeholder for null bitmap flag, which will be injected later if any null elements are encountered.
+            // Placeholder for null bitmap flag, which isn't used?
             PGUtil.WriteInt32(dst, 0);
             // Write the OID of the elements of the array.
             PGUtil.WriteInt32(dst, options.OidToNameMapping[_elementConverter.Name].OID);
@@ -218,48 +218,40 @@ namespace NpgsqlTypes
             {
                 // Number of elements in the dimension.
                 PGUtil.WriteInt32(dst, NativeData.GetLength(i));
-                // Lower bounds of the dimension.
-                PGUtil.WriteInt32(dst, 1);
+                // Lower bounds of the dimension, 1-based for SQL.
+                PGUtil.WriteInt32(dst, NativeData.GetLowerBound(i) + 1);
             }
 
             int[] dimensionOffsets = new int[NativeData.Rank];
-            bool hasNulls = false;
 
             // Write all array data.
-            WriteBinaryArrayData(TypeInfo, NativeData, options, dst, 0, dimensionOffsets, ref hasNulls);
+            WriteBinaryArrayData(TypeInfo, NativeData, options, dst, 0, dimensionOffsets);
 
-            byte[] ret = dst.ToArray();
-
-            if (hasNulls)
-            {
-                // Inject the has-nulls flag (int 1) at position 4.
-                BitConverter.GetBytes(IPAddress.HostToNetworkOrder(1)).CopyTo(ret, 4);
-            }
-
-            return ret;
+            return dst.ToArray();
         }
 
         /// <summary>
         /// Append all array data to the binary stream.
         /// </summary>
-        private void WriteBinaryArrayData(NpgsqlNativeTypeInfo TypeInfo, Array nativeData, NativeToBackendTypeConverterOptions options, MemoryStream dst, int dimensionOffset, int[] dimensionOffsets, ref bool hasNulls)
+        private void WriteBinaryArrayData(NpgsqlNativeTypeInfo TypeInfo, Array nativeData, NativeToBackendTypeConverterOptions options, MemoryStream dst, int dimensionOffset, int[] dimensionOffsets)
         {
             int dimensionLength = nativeData.GetLength(dimensionOffset);
+            int dimensionLBound = nativeData.GetLowerBound(dimensionOffset);
 
             if (dimensionOffset < nativeData.Rank - 1)
             {
                 // Drill down recursively until we hit a single dimension array.
-                for (int i = 0 ; i < dimensionLength ; i++)
+                for (int i = dimensionLBound ; i < dimensionLBound + dimensionLength ; i++)
                 {
                     dimensionOffsets[dimensionOffset] = i;
 
-                    WriteBinaryArrayData(TypeInfo, nativeData, options, dst, dimensionOffset + 1, dimensionOffsets, ref hasNulls);
+                    WriteBinaryArrayData(TypeInfo, nativeData, options, dst, dimensionOffset + 1, dimensionOffsets);
                 }
             }
             else
             {
                 // Write the individual array elements to the output stream.
-                for (int i = 0 ; i < dimensionLength ; i++)
+                for (int i = dimensionLBound ; i < dimensionLBound + dimensionLength ; i++)
                 {
                     object elementNative;
 
@@ -270,7 +262,6 @@ namespace NpgsqlTypes
                     {
                         // Write length identifier -1 indicating NULL value.
                         PGUtil.WriteInt32(dst, -1);
-                        hasNulls |= true;
                     }
                     else
                     {
@@ -281,7 +272,7 @@ namespace NpgsqlTypes
                         // Write lenght identifier.
                         PGUtil.WriteInt32(dst, elementBinary.Length);
                         // Write element data.
-                        PGUtil.WriteBytes(elementBinary, dst);
+                        dst.Write(elementBinary, 0, elementBinary.Length);
                     }
                 }
             }
@@ -496,15 +487,6 @@ namespace NpgsqlTypes
             }
         }
 
-        /// <summary>
-        /// Describes an array dimension as provided by the backend in binary mode.
-        /// </summary>
-		private class BinArrayDimension
-		{
-			public int Length;
-			public int LowerBound;
-		}
-
         #endregion
 
         private readonly NpgsqlBackendTypeInfo _elementConverter;
@@ -637,7 +619,6 @@ namespace NpgsqlTypes
             int dimOffset;
             // Offset 12 begins an array of {int,int} objects, of length nDims.
             int dataOffset = 12;
-            BinArrayDimension[] dimensions = new BinArrayDimension[nDims];
 
             // Sanity check.
             if (BackendData.Length < dataOffset + nDims * 8)
@@ -645,40 +626,33 @@ namespace NpgsqlTypes
                 throw new NpgsqlException("Insuffient backend data to describe all expected dimensions in binary array header");
             }
 
-            // Populate an array of dimension descriptors.
+            int[] dimLengths;
+            int[] dimLBounds;
+
+            dimLengths = new int[nDims];
+            dimLBounds = new int[nDims];
+
+            // Populate array dimension lengths and lower bounds.
             for (dimOffset = 0 ; dimOffset < nDims ; dimOffset++)
             {
-                BinArrayDimension dim = new BinArrayDimension();
-
-                dim.Length = PGUtil.ReadInt32(BackendData, dataOffset);
+                dimLengths[dimOffset] = PGUtil.ReadInt32(BackendData, dataOffset);
                 dataOffset += 4;
 
-                dim.LowerBound = PGUtil.ReadInt32(BackendData, dataOffset);
+                // Lower bounds is 1-based in SQL, 0-based in .NET.
+                dimLBounds[dimOffset] = PGUtil.ReadInt32(BackendData, dataOffset) - 1;
                 dataOffset += 4;
-
-                dimensions[dimOffset] = dim;
             }
 
             Array dst;
-            int[] tempArray;
+            int[] dstOffsets;
 
-            tempArray = new int[dimensions.Length];
+            dst = Array.CreateInstance(_elementConverter.FrameworkType, dimLengths, dimLBounds);
 
-            for (dimOffset = 0; dimOffset < nDims; dimOffset++)
-            {
-                tempArray[dimOffset] = dimensions[dimOffset].Length;
-            }
-
-            dst = Array.CreateInstance(_elementConverter.FrameworkType, tempArray);
-
-            for (dimOffset = 0; dimOffset < nDims; dimOffset++)
-            {
-                tempArray[dimOffset] = 0;
-            }
+            dstOffsets = new int[nDims];
 
             // Right after the dimension descriptors begins array data.
             // Populate the new array.
-            PopulateArrayFromBinaryArray(TypeInfo, BackendData, fieldValueSize, TypeModifier, ref dataOffset, dimensions, 0, dst, tempArray);
+            PopulateArrayFromBinaryArray(TypeInfo, BackendData, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, 0, dst, dstOffsets);
 
             return dst;
         }
@@ -686,24 +660,25 @@ namespace NpgsqlTypes
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        private void PopulateArrayFromBinaryArray(NpgsqlBackendTypeInfo TypeInfo, byte[] backendData, Int32 fieldValueSize, Int32 TypeModifier, ref int dataOffset, BinArrayDimension[] dimensions, int dimensionOffset, Array dst, int[] dstOffsets)
+        private void PopulateArrayFromBinaryArray(NpgsqlBackendTypeInfo TypeInfo, byte[] backendData, Int32 fieldValueSize, Int32 TypeModifier, ref int dataOffset, int[] dimLengths, int[] dimLBounds, int dimOffset, Array dst, int[] dstOffsets)
         {
-            int dimensionLength = dimensions[dimensionOffset].Length;
+            int dimensionLBound = dimLBounds[dimOffset];
+            int end = dimensionLBound + dimLengths[dimOffset];
 
-            if (dimensionOffset < dimensions.Length - 1)
+            if (dimOffset < dimLengths.Length - 1)
             {
                 // Drill down recursively until we hit a single dimension array.
-                for (int i = 0 ; i < dimensionLength ; i++)
+                for (int i = dimensionLBound ; i < end ; i++)
                 {
-                    dstOffsets[dimensionOffset] = i;
+                    dstOffsets[dimOffset] = i;
 
-                    PopulateArrayFromBinaryArray(TypeInfo, backendData, fieldValueSize, TypeModifier, ref dataOffset, dimensions, dimensionOffset + 1, dst, dstOffsets);
+                    PopulateArrayFromBinaryArray(TypeInfo, backendData, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, dimOffset + 1, dst, dstOffsets);
                 }
             }
             else
             {
                 // Populate a single dimension array.
-                for (int i = 0 ; i < dimensionLength ; i++)
+                for (int i = dimensionLBound ; i < end ; i++)
                 {
                     // Sanity check.
                     if (backendData.Length < dataOffset + 4)
@@ -740,7 +715,7 @@ namespace NpgsqlTypes
 
                         elementNative = _elementConverter.ConvertToNative(elementBinary, fieldValueSize, TypeModifier);
 
-                        dstOffsets[dimensionOffset] = i;
+                        dstOffsets[dimOffset] = i;
                         dst.SetValue(elementNative, dstOffsets);
 
                         dataOffset += elementLength;
