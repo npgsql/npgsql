@@ -109,6 +109,8 @@ namespace Npgsql
 
         private Socket _socket;
 
+        internal bool usingNetSslStream = false;
+
         // Mediator which will hold data generated from backend.
         private readonly NpgsqlMediator _mediator;
 
