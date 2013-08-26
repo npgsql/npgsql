@@ -149,9 +149,6 @@ namespace Npgsql
 
         private Thread _notificationThread;
 
-        // The AutoResetEvent to synchronize processing threads.
-        internal AutoResetEvent _notificationAutoResetEvent;
-
         // Counter of notification thread start/stop requests in order to 
         internal Int16 _notificationThreadStopCount;
 
@@ -204,7 +201,6 @@ namespace Npgsql
             _planIndex = 0;
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
-            _notificationAutoResetEvent = new AutoResetEvent(true);
         }
 
         //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
@@ -979,21 +975,21 @@ namespace Npgsql
         internal void RemoveNotificationThread()
         {
             // Wait notification thread finish its work.
-            _notificationAutoResetEvent.WaitOne();
+            lock (this._socket)
+            {
+                // Kill notification thread.
+                _notificationThread.Abort();
+                _notificationThread = null;
 
-            // Kill notification thread.
-            _notificationThread.Abort();
-            _notificationThread = null;
-
-            // Special case in order to not get problems with thread synchronization.
-            // It will be turned to 0 when synch thread is created.
-            _notificationThreadStopCount = 1;
+                // Special case in order to not get problems with thread synchronization.
+                // It will be turned to 0 when synch thread is created.
+                _notificationThreadStopCount = 1;
+            }
         }
 
         internal void AddNotificationThread()
         {
             _notificationThreadStopCount = 0;
-            _notificationAutoResetEvent.Set();
 
             NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
 
@@ -1049,7 +1045,7 @@ namespace Npgsql
 
             if (_notificationThreadStopCount == 1) // If this call was the first to increment.
             {
-                _notificationAutoResetEvent.WaitOne();
+                Monitor.Enter(_socket);
             }
         }
 
@@ -1060,7 +1056,7 @@ namespace Npgsql
             {
                 // Release the synchronization handle.
 
-                _notificationAutoResetEvent.Set();
+                Monitor.Exit(_socket);
             }
         }
 
@@ -1089,22 +1085,20 @@ namespace Npgsql
                     {
                         Thread.Sleep(0);
                         //To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
-                        this.connector._notificationAutoResetEvent.WaitOne();
-
-                        if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
+                        lock (this.connector.Socket)
                         {
-                            // reset any responses just before getting new ones
-                            this.connector.Mediator.ResetResponses();
-                            this.state.ProcessBackendResponses(this.connector);
+                            if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
+                            {
+                                // reset any responses just before getting new ones
+                                this.connector.Mediator.ResetResponses();
+                                this.state.ProcessBackendResponses(this.connector);
+                            }
                         }
-
-                        this.connector._notificationAutoResetEvent.Set();
                     }
                 }
                 catch (IOException ex)
                 {
                     this.connector._notificationException = ex;
-                    this.connector._notificationAutoResetEvent.Set();
                 }
 
             }
