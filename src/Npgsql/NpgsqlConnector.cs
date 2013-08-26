@@ -1087,7 +1087,7 @@ namespace Npgsql
                         //To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
                         lock (this.connector.Socket)
                         {
-                            if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
+                            if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
                             {
                                 // reset any responses just before getting new ones
                                 this.connector.Mediator.ResetResponses();
