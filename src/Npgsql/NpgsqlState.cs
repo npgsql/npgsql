@@ -456,11 +456,62 @@ namespace Npgsql
                 NpgsqlMediator mediator = context.Mediator;
                 NpgsqlRowDescription lastRowDescription = null;
                 List<NpgsqlError> errors = new List<NpgsqlError>();
+                bool shortWaitForMoreNotifications = false;
 
                 for (;;)
                 {
-                    // Check the first Byte of response.
-                    switch ((BackEndMessageCode) stream.ReadByte())
+                    BackEndMessageCode messageCode = 0;
+
+                    if (shortWaitForMoreNotifications)
+                    {
+                        // The last message received was a notification and the notification thread is the caller.
+                        // There may or may not be additional messages.  If yes, continue to process them
+                        // on a very short timeout.  If not, return control to the caller.
+                        // At this point, we're only interested in messages that may already be buffered.
+                        // There should be no chance of a timeout if another message code is buffered,
+                        // but if none is buffered, we want to timeout as quickly as possible.
+                        int oldTimeout = context.Socket.ReceiveTimeout;
+
+                        context.Socket.ReceiveTimeout = 1;
+
+                        try
+                        {
+                            // Check the first Byte of response.
+                            messageCode = (BackEndMessageCode) stream.ReadByte();
+                        }
+                        catch
+                        {
+                            if (context.usingNetSslStream)
+                            {
+                                // HACK BUG WORKAROUND
+                                // There is a bug in System.Net.Security.SslStream.
+                                // When a read timeout occures. it leaves 5 bytes of garbage in its buffer.
+                                // By reading and discarding these 5 bytes, we work around the problem.
+                                byte[] b = new byte[5];
+
+                                try
+                                {
+                                    stream.Read(b, 0, b.Length);
+                                }
+                                catch
+                                {
+                                }
+                            }
+
+                            yield break;
+                        }
+                        finally
+                        {
+                            context.Socket.ReceiveTimeout = oldTimeout;
+                        }
+                    }
+                    else
+                    {
+                        // Check the first Byte of response.
+                        messageCode = (BackEndMessageCode) stream.ReadByte();
+                    }
+
+                    switch (messageCode)
                     {
                         case BackEndMessageCode.ErrorResponse:
 
@@ -613,7 +664,7 @@ namespace Npgsql
                             context.FireNotification(new NpgsqlNotificationEventArgs(stream, false));
                             if (context.IsNotificationThreadRunning)
                             {
-                                yield break;
+                                shortWaitForMoreNotifications = true;
                             }
                             break;
                         case BackEndMessageCode.IO_ERROR:
@@ -697,12 +748,62 @@ namespace Npgsql
                 NpgsqlRowDescription lastRowDescription = null;
 
                 List<NpgsqlError> errors = new List<NpgsqlError>();
+                bool shortWaitForMoreNotifications = false;
 
                 for (;;)
                 {
-                    // Check the first Byte of response.
-                    BackEndMessageCode message = (BackEndMessageCode) stream.ReadByte();
-                    switch (message)
+                    BackEndMessageCode messageCode = 0;
+
+                    if (shortWaitForMoreNotifications)
+                    {
+                        // The last message received was a notification and the notification thread is the caller.
+                        // There may or may not be additional messages.  If yes, continue to process them
+                        // on a very short timeout.  If not, return control to the caller.
+                        // At this point, we're only interested in messages that may already be buffered.
+                        // There should be no chance of a timeout if another message code is buffered,
+                        // but if none is buffered, we want to timeout as quickly as possible.
+                        int oldTimeout = context.Socket.ReceiveTimeout;
+
+                        context.Socket.ReceiveTimeout = 1;
+
+                        try
+                        {
+                            // Check the first Byte of response.
+                            messageCode = (BackEndMessageCode) stream.ReadByte();
+                        }
+                        catch
+                        {
+                            if (context.usingNetSslStream)
+                            {
+                                // HACK BUG WORKAROUND
+                                // There is a bug in System.Net.Security.SslStream.
+                                // When a read timeout occures. it leaves 5 bytes of garbage in its buffer.
+                                // By reading and discarding these 5 bytes, we work around the problem.
+                                byte[] b = new byte[5];
+
+                                try
+                                {
+                                    stream.Read(b, 0, b.Length);
+                                }
+                                catch
+                                {
+                                }
+                            }
+
+                            yield break;
+                        }
+                        finally
+                        {
+                            context.Socket.ReceiveTimeout = oldTimeout;
+                        }
+                    }
+                    else
+                    {
+                        // Check the first Byte of response.
+                        messageCode = (BackEndMessageCode) stream.ReadByte();
+                    }
+
+                    switch (messageCode)
                     {
                         case BackEndMessageCode.ErrorResponse:
 
@@ -925,7 +1026,7 @@ namespace Npgsql
                             context.FireNotification(new NpgsqlNotificationEventArgs(stream, true));
                             if (context.IsNotificationThreadRunning)
                             {
-                                yield break;
+                                shortWaitForMoreNotifications = true;
                             }
                             break;
                         case BackEndMessageCode.ParameterStatus:
@@ -1006,7 +1107,7 @@ namespace Npgsql
                             //   Backend has gone insane?
                             // FIXME
                             // what exception should we really throw here?
-                            throw new NotSupportedException(String.Format("Backend sent unrecognized response type: {0}", (Char) message));
+                            throw new NotSupportedException(String.Format("Backend sent unrecognized response type: {0}", (Char) messageCode));
                     }
                 }
             }

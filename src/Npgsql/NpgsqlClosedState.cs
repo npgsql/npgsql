@@ -240,7 +240,7 @@ namespace Npgsql
 
 				context.Stream = new BufferedStream(stream);
 				context.Socket = socket;
-
+                context.usingNetSslStream = (stream is System.Net.Security.SslStream);
 
 				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
 				ChangeState(context, NpgsqlConnectedState.Instance);
