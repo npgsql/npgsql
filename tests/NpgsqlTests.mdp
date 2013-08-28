@@ -16,7 +16,7 @@
   <DeployTargets />
   <Contents>
     <File name="./AssemblyInfo.cs" subtype="Code" buildaction="Compile" />
-    <File name="./BaseClassTests.cs" subtype="Code" buildaction="Compile" />
+    <File name="./TestBase.cs" subtype="Code" buildaction="Compile" />
     <File name="./CommandTests.cs" subtype="Code" buildaction="Compile" />
     <File name="./ConnectionTests.cs" subtype="Code" buildaction="Compile" />
     <File name="./DataAdapterTests.cs" subtype="Code" buildaction="Compile" />
