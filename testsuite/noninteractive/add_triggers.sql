@@ -1,6 +1,0 @@
--- ===================================================================
---
--- This file contains triggers that must be loaded in PostgreSQL for the
--- noninteractive tests to run
---
--- ===================================================================
