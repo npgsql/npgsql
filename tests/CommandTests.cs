@@ -279,8 +279,7 @@ namespace NpgsqlTests
         }
 
 
-        [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValue()
+        private void FunctionCallWithParametersPrepareReturnSingleValueInternal()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
@@ -296,26 +295,21 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValue_SuppressBinary()
+        public void FunctionCallWithParametersPrepareReturnSingleValue()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
-
-            using (SuppressBackendBinary())
-            {
-                var command = new NpgsqlCommand("funcC(:a)", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-                Assert.AreEqual(1, command.Parameters.Count);
-                command.Prepare();
-                command.Parameters[0].Value = 4;
-                var result = (Int64) command.ExecuteScalar();
-                Assert.AreEqual(1, result);
-            }
+            FunctionCallWithParametersPrepareReturnSingleValueInternal();
         }
 
         [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType()
+        public void FunctionCallWithParametersPrepareReturnSingleValue_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                FunctionCallWithParametersPrepareReturnSingleValueInternal();
+            }
+        }
+
+        private void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
@@ -332,26 +326,21 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType_SuppressBinary()
+        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
-
-            using (SuppressBackendBinary())
-            {
-                var command = new NpgsqlCommand("funcC(:a)", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
-                Assert.AreEqual(1, command.Parameters.Count);
-                command.Prepare();
-                command.Parameters[0].Value = 4;
-                var result = (Int64) command.ExecuteScalar();
-                Assert.AreEqual(1, result);
-            }
+            FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal();
         }
 
         [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2()
+        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal();
+            }
+        }
+
+        private void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
@@ -367,21 +356,17 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2()
+        {
+            FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal();
+        }
+
+        [Test]
         public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2_SuppressBinary()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
-            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
-
             using (SuppressBackendBinary())
             {
-                var command = new NpgsqlCommand("funcC(@a)", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
-                Assert.AreEqual(1, command.Parameters.Count);
-                //command.Prepare();
-                command.Parameters[0].Value = 4;
-                var result = (Int64) command.ExecuteScalar();
-                Assert.AreEqual(1, result);
+                FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal();
             }
         }
 
@@ -658,7 +643,7 @@ namespace NpgsqlTests
             string cmdTxt = "select :par";
             var command = new NpgsqlCommand(cmdTxt, Conn);
             var arrCommand = new NpgsqlCommand(cmdTxt, Conn);
-            string testStrPar = "This string has a 'literal' backslash \\";
+            string testStrPar = "This string has a single quote: '', a double quote: \", and a backslash: \\";
             string[,] testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
             command.Parameters.AddWithValue(":par", testStrPar);
             using (var rdr = command.ExecuteReader())
@@ -2486,6 +2471,70 @@ namespace NpgsqlTests
             }
         }
 
+        private void TextArrayHandlingPreparedInternal()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] {"Array element", "Array element with a ,", "Array element with a \\"};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                cmd.Prepare();
+
+                var retVal = (string[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void TextArrayHandlingPrepared()
+        {
+            TextArrayHandlingPreparedInternal();
+        }
+
+        [Test]
+        public void TextArrayHandlingPrepared_SuppressBinary()
+        {
+            using (this.SuppressBackendBinary())
+            {
+                TextArrayHandlingPreparedInternal();
+            }
+        }
+
+        private void IntArrayHandlingPreparedInternal()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] {1, 2};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                cmd.Prepare();
+
+                var retVal = (int[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void IntArrayHandlingPrepared()
+        {
+            IntArrayHandlingPreparedInternal();
+        }
+
+        [Test]
+        public void IntArrayHandlingPrepared_SuppressBinary()
+        {
+            using (this.SuppressBackendBinary())
+            {
+                IntArrayHandlingPreparedInternal();
+            }
+        }
+
         [Test]
         public void DoubleArrayHandlingPrepared()
         {
@@ -2517,6 +2566,38 @@ namespace NpgsqlTests
 
                 var retVal = (Double[]) cmd.ExecuteScalar();
                 Assert.AreEqual(inVal.Length, retVal.Length);
+            }
+        }
+
+        private void ByteaArrayHandlingPreparedInternal()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] {new byte[] {1,2,3,4,5}, new byte[] {255,254,253,252,251}};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                cmd.Prepare();
+
+                var retVal = (byte[][]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void ByteaArrayHandlingPrepared()
+        {
+            ByteaArrayHandlingPreparedInternal();
+        }
+
+        [Test]
+        public void ByteaArrayHandlingPrepared_SuppressBinary()
+        {
+            using (this.SuppressBackendBinary())
+            {
+                ByteaArrayHandlingPreparedInternal();
             }
         }
 

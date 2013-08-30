@@ -100,7 +100,7 @@ namespace NpgsqlTypes
         {
             Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
 
-            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("10.0.0.0")))
+            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("1000.0.0.0")))
 			{
 				NameIndex.Add(TypeInfo.Name, TypeInfo);
 				
@@ -266,7 +266,6 @@ namespace NpgsqlTypes
 		private static NpgsqlNativeTypeMapping PrepareDefaultTypesMap()
 		{
 			NpgsqlNativeTypeMapping nativeTypeMapping = new NpgsqlNativeTypeMapping();
-
 
             nativeTypeMapping.AddType("name", NpgsqlDbType.Name, DbType.String, true, null);
 
@@ -442,8 +441,7 @@ namespace NpgsqlTypes
 			nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
 			
 			nativeTypeMapping.AddDbTypeAlias("text", DbType.Object);
-			
-			
+
 			return nativeTypeMapping;
 		}
 
@@ -680,20 +678,26 @@ npgsqlTimestampTZ));
 			return oidToNameMapping;
 		}
 
-		//Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
-
-		//an array of that type.
-
-		private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
-
-		{
-			return
-				new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
-				                          elementInfo.Type.MakeArrayType(),
-				                          new ConvertBackendTextToNativeHandler(
-				                          	new ArrayBackendToNativeTypeConverter(elementInfo).ToArray));
-		}
-
+        //Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
+        //an array of that type.
+        private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
+        {
+            if (elementInfo.SupportsBinaryBackendData)
+            {
+                return
+                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
+                                              elementInfo.Type.MakeArrayType(),
+                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray),
+                                              new ConvertBackendBinaryToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayBinaryToArray));
+            }
+            else
+            {
+                return
+                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
+                                              elementInfo.Type.MakeArrayType(),
+                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray));
+            }
+        }
 
 		/// <summary>
 		/// Attempt to map types by issuing a query against pg_type.
@@ -1005,30 +1009,38 @@ npgsqlTimestampTZ));
 		private readonly Boolean _UseSize;
 		private Boolean _IsArray = false;
 
-		/// <summary>
-		/// Returns an NpgsqlNativeTypeInfo for an array where the elements are of the type
-		/// described by the NpgsqlNativeTypeInfo supplied.
-		/// </summary>
-		public static NpgsqlNativeTypeInfo ArrayOf(NpgsqlNativeTypeInfo elementType)
+        /// <summary>
+        /// Returns an NpgsqlNativeTypeInfo for an array where the elements are of the type
+        /// described by the NpgsqlNativeTypeInfo supplied.
+        /// </summary>
+        public static NpgsqlNativeTypeInfo ArrayOf(NpgsqlNativeTypeInfo elementType)
+        {
+            if (elementType._IsArray)
+            //we've an array of arrays. It's the inner most elements whose type we care about, so the type we have is fine.
+            {
+                return elementType;
+            }
 
-		{
-			if (elementType._IsArray)
-				//we've an array of arrays. It's the inner most elements whose type we care about, so the type we have is fine.
-			{
-				return elementType;
-			}
+            NpgsqlNativeTypeInfo copy = null;
 
-			NpgsqlNativeTypeInfo copy =
-				new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
-				                         false,
-				                         new ConvertNativeToBackendTextHandler(
-				                         	new ArrayNativeToBackendTypeConverter(elementType).FromArray));
+            if (elementType._ConvertNativeToBackendBinary != null)
+            {
+                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
+                                             false,
+                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText),
+                                             new ConvertNativeToBackendBinaryHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayBinary));
+            }
+            else
+            {
+                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
+                                             false,
+                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText));
+            }
 
-			copy._IsArray = true;
+            copy._IsArray = true;
 
-			return copy;
-		}
-
+            return copy;
+        }
 
 		static NpgsqlNativeTypeInfo()
 		{
@@ -1135,10 +1147,15 @@ npgsqlTimestampTZ));
         /// When 
         /// </summary>
         /// <param name="NativeData">Native .NET object to be converted.</param>
-        /// <param name="forExtendedQuery">Options to guide serialization.</param>
+        /// <param name="forExtendedQuery">Options to guide serialization.  If null, a default options set is used.</param>
         /// <param name="options">Connection specific options.</param>
-        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null)
         {
+            if (options == null)
+            {
+                options = NativeToBackendTypeConverterOptions.Default;
+            }
+
             if (forExtendedQuery)
             {
                 return ConvertToBackendExtendedQuery(NativeData, options);

@@ -69,8 +69,11 @@ namespace NpgsqlTests
         public void NestedTransaction()
         {
             using (Conn.BeginTransaction())
-            using (Conn.BeginTransaction())
-                ;
+            {
+                using (Conn.BeginTransaction())
+                {
+                }
+            }
         }
 
         [Test]
