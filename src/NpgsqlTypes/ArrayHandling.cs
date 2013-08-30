@@ -61,7 +61,6 @@ namespace NpgsqlTypes
         /// </summary>
         public string ArrayToArrayText(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
-
             if (forExtendedQuery)
             {
                 StringBuilder sb = new StringBuilder("");
@@ -102,7 +101,17 @@ namespace NpgsqlTypes
 
             if(item == null || NpgsqlTypesHelper.DefinedType(item))
             {
-                sb.Append(_elementConverter.ConvertToBackend(item, forExtendedQuery, options));
+                string element;
+
+                element = (string)_elementConverter.ConvertToBackend(item, forExtendedQuery, options);
+
+                if (forExtendedQuery)
+                {
+                    element = QuoteAndEscapeStringArrayElement(element);
+                }
+
+                sb.Append(element);
+
                 return true;
             }
             else if (item is Array)
@@ -115,7 +124,17 @@ namespace NpgsqlTypes
             }
             else
             {//This shouldn't really be reachable.
-                sb.Append(_elementConverter.ConvertToBackend(item, forExtendedQuery, options));
+                string element;
+
+                element = (string)_elementConverter.ConvertToBackend(item, forExtendedQuery, options);
+
+                if (forExtendedQuery)
+                {
+                    element = QuoteAndEscapeStringArrayElement(element);
+                }
+
+                sb.Append(element);
+
                 return true;
             }
             
@@ -195,6 +214,39 @@ namespace NpgsqlTypes
                 sb.Remove(sb.Length - 1, 1);
             }
             return writtenSomething;
+        }
+
+        internal static string QuoteAndEscapeStringArrayElement(string src)
+        {
+            StringBuilder ret = new StringBuilder();
+
+            ret.Append('"');
+
+            foreach (Char ch in src)
+            {
+                switch (ch)
+                {
+                    case '"':
+                        ret.AppendFormat("\\{0}", ch);
+
+                        break;
+
+                    case '\\':
+                        ret.AppendFormat("\\{0}", ch);
+
+                        break;
+
+                    default:
+                        ret.Append(ch);
+
+                        break;
+
+                }
+            }
+
+            ret.Append('"');
+
+            return ret.ToString();
         }
 
         /// <summary>
