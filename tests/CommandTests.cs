@@ -1834,7 +1834,7 @@ namespace NpgsqlTests
             insertCommand.ExecuteNonQuery();
 
             var selectCommand = new NpgsqlCommand("select max(oid) from data;", Conn);
-            var previousOid = (Int64) selectCommand.ExecuteScalar();
+            var previousOid = (Int32) selectCommand.ExecuteScalar();
 
             insertCommand.ExecuteNonQuery();
 
@@ -2475,7 +2475,7 @@ namespace NpgsqlTests
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] {"Array element", "Array element with a ,", "Array element with a \\"};
+                var inVal = new[] {"Array element", "Array element with a '", "Array element with a ,", "Array element with a \\"};
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -2507,7 +2507,7 @@ namespace NpgsqlTests
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] {1, 2};
+                var inVal = new[] {1, 2, 3, 0xFE, 0xFD, 0xFC};
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -2535,12 +2535,11 @@ namespace NpgsqlTests
             }
         }
 
-        [Test]
-        public void DoubleArrayHandlingPrepared()
+        private void DoubleArrayHandlingPreparedInternal()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] {1.2d, 1.3d};
+                var inVal = new[] {12345.12345d, 98765.98765d};
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -2550,6 +2549,21 @@ namespace NpgsqlTests
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void DoubleArrayHandlingPrepared()
+        {
+            DoubleArrayHandlingPreparedInternal();
+        }
+
+        [Test]
+        public void DoubleArrayHandlingPrepared_SuppressBinary()
+        {
+            using (this.SuppressBackendBinary())
+            {
+                DoubleArrayHandlingPreparedInternal();
             }
         }
 

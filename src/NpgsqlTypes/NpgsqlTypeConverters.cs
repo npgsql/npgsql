@@ -173,14 +173,15 @@ namespace NpgsqlTypes
 	/// </summary>
 	internal abstract class BasicBackendToNativeTypeConverter
 	{
+        protected static readonly UTF8Encoding UTF8Encoding = (UTF8Encoding)Encoding.UTF8;
 		private static readonly String[] DateFormats = new String[] { "yyyy-MM-dd", };
 		private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9\\-]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 		private static readonly String[] TimeFormats =
 			new String[]
 				{
-					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff"
-					, "HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
+					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
+					"HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
 					"HH:mm:ss.fzz", 
                     "HH:mm:ss.fffffzzz", "HH:mm:ss.ffffzzz", "HH:mm:ss.fffzzz", "HH:mm:ss.ffzzz",
                     "HH:mm:ss.fzzz", "HH:mm:sszzz",
@@ -196,6 +197,14 @@ namespace NpgsqlTypes
                     "yyyy-MM-dd HH:mm:ss.fffffzzz", "yyyy-MM-dd HH:mm:ss.ffffzzz", "yyyy-MM-dd HH:mm:ss.fffzzz",
                     "yyyy-MM-dd HH:mm:ss.ffzzz", "yyyy-MM-dd HH:mm:ss.fzzz", "yyyy-MM-dd HH:mm:sszzz"
 				};
+
+        /// <summary>
+        /// Convert UTF8 encoded text a string.
+        /// </summary>
+        internal static Object TextBinaryToString(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            return UTF8Encoding.GetString(BackendData);
+        }
 
 		/// <summary>
 		/// Byte array from bytea encoded as text, escaped or hex format.
@@ -382,6 +391,19 @@ namespace NpgsqlTypes
 			// divide by 100.
 			return Convert.ToDecimal(EXCLUDE_DIGITS.Replace(BackendData, string.Empty), CultureInfo.InvariantCulture) / 100m;
 		}
+
+        /// <summary>
+        /// Convert a postgresql float4 or float8 to a System.Float or System.Double respectively.
+        /// </summary>
+        internal static Object Float4Float8BinaryToFloatDouble(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            switch (BackendData.Length)
+            {
+                case 4: return BitConverter.ToSingle(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
+                case 8: return BitConverter.ToDouble(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
+                default: throw new NpgsqlException("Unexpected float binary field length");
+            }
+        }
 	}
 
     /// <summary>
@@ -390,7 +412,16 @@ namespace NpgsqlTypes
     /// </summary>
     internal abstract class BasicNativeToBackendTypeConverter
     {
-        private static char[]           hexEncodingCharMap = "0123456789ABCDEF".ToCharArray();
+        protected static readonly UTF8Encoding UTF8Encoding = (UTF8Encoding)Encoding.UTF8;
+        private static char[] hexEncodingCharMap = "0123456789ABCDEF".ToCharArray();
+
+        /// <summary>
+        /// Convert a string to UTF8 encoded text.
+        /// </summary>
+        internal static byte[] StringToTextBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return UTF8Encoding.GetBytes((string)NativeData);
+        }
 
         /// <summary>
         /// Binary data, escaped as needed per options.
@@ -597,10 +628,17 @@ namespace NpgsqlTypes
             return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
         }
 
+        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        {
+            // This double cast is needed in order to get the enum type handled correctly (IConvertible)
+            // and the decimal separator always as "." regardless of culture (IFormattable)
+            return (((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
+        }
+
         /// <summary>
         /// Convert to a postgres double with maximum precision.
         /// </summary>
-        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static String SingleDoubleToFloat4Float8Text(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
@@ -608,11 +646,20 @@ namespace NpgsqlTypes
             return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
         }
 
-        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        /// <summary>
+        /// Convert a System.Float to a postgres float4.
+        /// </summary>
+        internal static byte[] SingleToFloat4Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-            // This double cast is needed in order to get the enum type handled correctly (IConvertible)
-            // and the decimal separator always as "." regardless of culture (IFormattable)
-            return (((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
+            return PGUtil.HostNetworkByteOrderSwap(BitConverter.GetBytes(Convert.ToSingle(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert a System.Double to a postgres float8.
+        /// </summary>
+        internal static byte[] DoubleToFloat8Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return PGUtil.HostNetworkByteOrderSwap(BitConverter.GetBytes(Convert.ToDouble(NativeData)));
         }
 	}
 
