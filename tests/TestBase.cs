@@ -43,27 +43,39 @@ namespace NpgsqlTests
         protected NpgsqlConnection Conn { get; private set; }
 
         /// <summary>
-        /// The connection string that will be used when opening the connection to the tests database.
-        /// May be overridden in fixtures (e.g. for protocol v2)
-        /// </summary>
-        protected virtual string ConnectionString { get { return CONN_STRING_V3; } }
-
-        private const string CONN_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
-        protected const string CONN_STRING_V3 = CONN_STRING_BASE + ";protocol=3";
-        protected const string CONN_STRING_V2 = CONN_STRING_BASE + ";protocol=2";
-
-        /// <summary>
         /// Indicates whether the database schema has already been created in this unit test session.
         /// Multiple fixtures may run in the same session but we only want to create the schema once.
         /// </summary>
         private static bool _schemaCreated;
+
+        #region Connection string management
+
+        /// <summary>
+        /// The connection string that will be used when opening the connection to the tests database.
+        /// May be overridden in fixtures (e.g. for protocol v2)
+        /// </summary>
+        protected virtual string ConnectionString { get { return ConnectionStringV3; } }
+
+        protected string ConnectionStringV3 { get { return ConnectionStringBase + ";protocol=3"; } }
+        protected string ConnectionStringV2 { get { return ConnectionStringBase + ";protocol=2"; } }
+
+        protected string ConnectionStringBase
+        {
+            get { return ConfigurationManager.AppSettings["ConnectionStringBase"] ?? DEFAULT_CONN_STRING_BASE; }
+        }
+
+        private const string DEFAULT_CONN_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
+
+        #endregion
 
         #region Setup / Teardown
 
         [TestFixtureSetUp]
         public void TestFixtureSetup()
         {
-            if (!_schemaCreated)
+            if (_schemaCreated)
+                Console.WriteLine("Already created schema at " + ConnectionString);
+            else
             {
                 try
                 {
@@ -114,7 +126,7 @@ namespace NpgsqlTests
 
         private void CreateSchema()
         {
-            Console.WriteLine("Creating test database schema");
+            Console.WriteLine("Creating test database schema at " + ConnectionString);
             ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
             ExecuteNonQuery(@"CREATE TABLE data (
                                 field_pk                      SERIAL PRIMARY KEY,

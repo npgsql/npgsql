@@ -132,6 +132,6 @@ namespace NpgsqlTests
     [TestFixture]
     public class PrepareTestV2 : PrepareTest
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override string ConnectionString { get { return ConnectionStringV2; } }
     }
 }
