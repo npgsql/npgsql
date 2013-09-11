@@ -76,7 +76,6 @@ namespace Npgsql
 		//done to actually use the data. This is not the case here - we are pre-assigning a buffer for
 		//this case purely because we don't care what gets put into it.
 		private static readonly byte[] THRASH_CAN = new byte[THRASH_CAN_SIZE];
-		private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
 
         private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
 
@@ -186,9 +185,9 @@ namespace Npgsql
 			}
 
             if (NpgsqlEventLog.Level >= LogLevel.Debug)
-                NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
+                NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, BackendEncoding.UTF8Encoding.GetString(buffer.ToArray()));
                 
-			return ENCODING_UTF8.GetString(buffer.ToArray());
+			return BackendEncoding.UTF8Encoding.GetString(buffer.ToArray());
 		}
 
 		public static char ReadChar(Stream stream)
@@ -204,7 +203,7 @@ namespace Npgsql
 				buffer[i] = (byte) byteRead;
 				if (ValidUTF8Ending(buffer, 0, i + 1)) //catch multi-byte encodings where we have not yet enough bytes.
 				{
-					return ENCODING_UTF8.GetChars(buffer)[0];
+					return BackendEncoding.UTF8Encoding.GetChars(buffer)[0];
 				}
 			}
 			throw new InvalidDataException();
@@ -233,7 +232,7 @@ namespace Npgsql
 				bytesSoFar += toRead;
 			}
 			while (maxRead > 0 && (charsSoFar = PessimisticGetCharCount(buffer, 0, bytesSoFar)) < maxChars);
-			return ENCODING_UTF8.GetDecoder().GetChars(buffer, 0, bytesSoFar, output, outputIdx, false);
+			return BackendEncoding.UTF8Encoding.GetDecoder().GetChars(buffer, 0, bytesSoFar, output, outputIdx, false);
 		}
 
 		public static int SkipChars(Stream stream, int maxChars, ref int maxRead)
@@ -243,7 +242,7 @@ namespace Npgsql
 			{
 				return 0;
 			}
-			byte[] buffer = new byte[Math.Min(maxRead, ENCODING_UTF8.GetMaxByteCount(maxChars))];
+			byte[] buffer = new byte[Math.Min(maxRead, BackendEncoding.UTF8Encoding.GetMaxByteCount(maxChars))];
 			int bytesSoFar = 0;
 			int charsSoFar = 0;
 			do
@@ -362,39 +361,83 @@ namespace Npgsql
 		//character. See comments on ValidUTF8Ending()
 		public static int PessimisticGetCharCount(byte[] buffer, int index, int count)
 		{
-			return ENCODING_UTF8.GetCharCount(buffer, index, count) - (ValidUTF8Ending(buffer, index, count) ? 0 : 1);
+			return BackendEncoding.UTF8Encoding.GetCharCount(buffer, index, count) - (ValidUTF8Ending(buffer, index, count) ? 0 : 1);
+		}
+
+		///<summary>
+		/// This method writes a string to the network stream.
+		/// </summary>
+		public static void WriteString(Stream stream, String theString)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+
+			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+			stream.Write(bytes, 0, bytes.Length);
+		}
+
+		///<summary>
+		/// This method writes a string to the network stream.
+		/// </summary>
+		public static void WriteString(Stream stream, String format, params object[] parameters)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+
+            string theString = string.Format(format, parameters);
+
+			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+			stream.Write(bytes, 0, bytes.Length);
 		}
 
 		///<summary>
 		/// This method writes a C NULL terminated string to the network stream.
 		/// It appends a NULL terminator to the end of the String.
 		/// </summary>
+		public static void WriteStringNullTerminated(Stream stream, String theString)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
+
+			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+			stream.Write(bytes, 0, bytes.Length);
+			stream.WriteByte(0);
+		}
+
 		///<summary>
 		/// This method writes a C NULL terminated string to the network stream.
 		/// It appends a NULL terminator to the end of the String.
 		/// </summary>
-		public static void WriteString(String the_string, Stream network_stream)
+		public static void WriteStringNullTerminated(Stream stream, String format, params object[] parameters)
 		{
-            
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
 
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
+            string theString = string.Format(format, parameters);
 
-			byte[] bytes = ENCODING_UTF8.GetBytes(the_string + NULL_TERMINATOR_STRING);
-			
-			network_stream.Write(bytes, 0, bytes.Length);
+			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+			stream.Write(bytes, 0, bytes.Length);
+			stream.WriteByte(0);
 		}
 
         /// <summary>
         /// This method writes a set of bytes to the stream. It also enables logging of them.
         /// </summary>
-        public static void WriteBytes(byte[] the_bytes, Stream network_stream)
+        public static void WriteBytesNullTerminated(Stream network_stream, byte[] the_bytes)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
             NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
 
             network_stream.Write(the_bytes, 0, the_bytes.Length);
-            network_stream.Write(new byte[1], 0, 1);
+            network_stream.WriteByte(0);
         }
 
 		///<summary>
@@ -407,7 +450,7 @@ namespace Npgsql
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
 
 			//Note: We do not know the size in bytes until after we have converted the string.
-			byte[] bytes = ENCODING_UTF8.GetBytes(the_string);
+			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(the_string);
 			if (bytes.Length > n)
 			{
 				throw new ArgumentOutOfRangeException("the_string", the_string,

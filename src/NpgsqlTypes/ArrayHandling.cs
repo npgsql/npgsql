@@ -34,6 +34,13 @@ using Npgsql;
 
 namespace NpgsqlTypes
 {
+    internal class ASCIIArrayByteArrays
+    {
+        internal static readonly byte[] ArrayPrefix        = BackendEncoding.UTF8Encoding.GetBytes("array");
+        internal static readonly byte[] EmptyArray         = BackendEncoding.UTF8Encoding.GetBytes("'{}'");
+        internal static readonly byte[] EmptyArrayExtended = BackendEncoding.UTF8Encoding.GetBytes("{}");
+    }
+
     /// <summary>
     /// Handles serialisation of .NET array or IEnumeration to pg format.
     /// Arrays of arrays, enumerations of enumerations, arrays of enumerations etc.
@@ -59,37 +66,38 @@ namespace NpgsqlTypes
         /// <summary>
         /// Serialise the enumeration or array.
         /// </summary>
-        public string ArrayToArrayText(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        public byte[] ArrayToArrayText(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
+            MemoryStream array = new MemoryStream();
+
             if (forExtendedQuery)
             {
-                StringBuilder sb = new StringBuilder("");
-
-                if (WriteItemText(TypeInfo, NativeData, sb, forExtendedQuery, options))
+                if (WriteItemText(TypeInfo, NativeData, array, forExtendedQuery, options))
                 {
-                    return sb.ToString();
+                    return array.ToArray();
                 }
                 else
                 {
-                    return "{}";
+                    return ASCIIArrayByteArrays.EmptyArrayExtended;
                 }
             }
             else
             {
                 //just prepend "array" and then pass to WriteItem.
-                StringBuilder sb = new StringBuilder("array");
-                if (WriteItemText(TypeInfo, NativeData, sb, forExtendedQuery, options))
+                array.Write(ASCIIArrayByteArrays.ArrayPrefix, 0, ASCIIArrayByteArrays.ArrayPrefix.Length);
+
+                if (WriteItemText(TypeInfo, NativeData, array, forExtendedQuery, options))
                 {
-                    return sb.ToString();
+                    return array.ToArray();
                 }
                 else
                 {
-                    return "'{}'";
+                    return ASCIIArrayByteArrays.EmptyArray;
                 }
             }
         }
 
-        private bool WriteItemText(NpgsqlNativeTypeInfo TypeInfo, object item, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        private bool WriteItemText(NpgsqlNativeTypeInfo TypeInfo, object item, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //item could be:
             //an Ienumerable - in which case we call WriteEnumeration
@@ -101,51 +109,53 @@ namespace NpgsqlTypes
 
             if(item == null || NpgsqlTypesHelper.DefinedType(item))
             {
-                string element;
+                byte[] element;
 
-                element = (string)_elementConverter.ConvertToBackend(item, forExtendedQuery, options);
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
                 if (forExtendedQuery)
                 {
-                    element = QuoteAndEscapeStringArrayElement(element);
+                    element = QuoteAndEscapeASCIIArrayElement(element);
                 }
 
-                sb.Append(element);
+                array.Write(element, 0, element.Length);
 
                 return true;
             }
             else if (item is Array)
             {
-                return WriteArrayText(TypeInfo, item as Array, sb, forExtendedQuery, options);
+                return WriteArrayText(TypeInfo, item as Array, array, forExtendedQuery, options);
             }
             else if (item is IEnumerable)
             {
-                return WriteEnumeration(TypeInfo, item as IEnumerable, sb, forExtendedQuery, options);
+                return WriteEnumeration(TypeInfo, item as IEnumerable, array, forExtendedQuery, options);
             }
             else
             {//This shouldn't really be reachable.
-                string element;
+                byte[] element;
 
-                element = (string)_elementConverter.ConvertToBackend(item, forExtendedQuery, options);
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
                 if (forExtendedQuery)
                 {
-                    element = QuoteAndEscapeStringArrayElement(element);
+                    element = QuoteAndEscapeASCIIArrayElement(element);
                 }
 
-                sb.Append(element);
+                array.Write(element, 0, element.Length);
 
                 return true;
             }
             
         }
 
-        private bool WriteArrayText(NpgsqlNativeTypeInfo TypeInfo, Array ar, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        private bool WriteArrayText(NpgsqlNativeTypeInfo TypeInfo, Array ar, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             bool writtenSomething = false;
             //we need to know the size of each dimension.
             int c = ar.Rank;
             List<int> lengths = new List<int>(c);
+            bool firstItem = true;
+
             do
             {
                 lengths.Add(ar.GetLength(--c));
@@ -156,15 +166,19 @@ namespace NpgsqlTypes
 
             foreach (object item in ar)
             {
+                if (firstItem)
+                {
+                    firstItem = false;
+                }
+                else
+                {
+                    array.WriteByte((byte)ASCIIBytes.Comma);
+                }
 
                 // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
                 // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
-
-                Char openElement = forExtendedQuery ? '{' : '[';
-                Char closeElement = forExtendedQuery ? '}' : ']';
-
-
-
+                byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
+                byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
 
                 //to work out how many [ characters we need we need to work where we are compared to the dimensions.
                 //Say we are at position 24 in a 3 * 4 * 5 array.
@@ -176,8 +190,7 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        //sb.Append('[');
-                        sb.Append(openElement);
+                        array.WriteByte(openElement);
                         
                     }
                     else
@@ -187,7 +200,7 @@ namespace NpgsqlTypes
                 }
 
                 //Write whatever the element is.
-                writtenSomething |= WriteItemText(TypeInfo, item, sb, forExtendedQuery, options);
+                writtenSomething |= WriteItemText(TypeInfo, item, array, forExtendedQuery, options);
                 ++c; //up our counter for knowing when to write [ and ]
 
                 //same logic as above for writing [ this time writing ]
@@ -196,57 +209,41 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        //sb.Append(']');
-                        sb.Append(closeElement);
+                        array.WriteByte(closeElement);
                     }
                     else
                     {
                         break;
                     }
                 }
+            }
 
-                //comma between each item.
-                sb.Append(',');
-            }
-            if (writtenSomething)
-            {
-                //last comma was one too many.
-                sb.Remove(sb.Length - 1, 1);
-            }
             return writtenSomething;
         }
 
-        internal static string QuoteAndEscapeStringArrayElement(string src)
+        internal static byte[] QuoteAndEscapeASCIIArrayElement(byte[] src)
         {
-            StringBuilder ret = new StringBuilder();
+            MemoryStream ret = new MemoryStream();
 
-            ret.Append('"');
+            ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
 
-            foreach (Char ch in src)
+            foreach (byte ch in src)
             {
                 switch (ch)
                 {
-                    case '"':
-                        ret.AppendFormat("\\{0}", ch);
+                    case (byte)ASCIIBytes.DoubleQuote :
+                    case (byte)ASCIIBytes.BackSlash :
+                        ret.WriteByte((byte)ASCIIBytes.BackSlash);
 
                         break;
-
-                    case '\\':
-                        ret.AppendFormat("\\{0}", ch);
-
-                        break;
-
-                    default:
-                        ret.Append(ch);
-
-                        break;
-
                 }
+
+                ret.WriteByte(ch);
             }
 
-            ret.Append('"');
+            ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
 
-            return ret.ToString();
+            return ret.ToArray();
         }
 
         /// <summary>
@@ -330,33 +327,39 @@ namespace NpgsqlTypes
             }
         }
 
-        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, StringBuilder sb, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
             // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
-
-            Char openElement = forExtendedQuery ? '{' : '[';
-            Char closeElement = forExtendedQuery ? '}' : ']';
-
+            byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
+            byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
 
             bool writtenSomething = false;
-            //sb.Append('[');
-            sb.Append(openElement);
+            bool firstItem = true;
+
+            array.WriteByte(openElement);
 
             //write each item with a comma between them.
             foreach (object item in col)
             {
-                writtenSomething |= WriteItemText(TypeInfo, item, sb, forExtendedQuery, options);
-                sb.Append(',');
+                if (firstItem)
+                {
+                    firstItem = false;
+                }
+                else
+                {
+                    array.WriteByte((byte)ASCIIBytes.Comma);
+                }
+
+                writtenSomething |= WriteItemText(TypeInfo, item, array, forExtendedQuery, options);
             }
+
             if (writtenSomething)
             {
-                //last comma was one too many. Replace it with the final }
-
-                //sb[sb.Length - 1] = ']';
-                sb[sb.Length - 1] = closeElement;
+                array.WriteByte(closeElement);
                 
             }
+
             return writtenSomething;
         }
     }
@@ -555,8 +558,9 @@ namespace NpgsqlTypes
         /// <summary>
         /// Creates an array from pg text representation.
         /// </summary>
-        public object ArrayTextToArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        public object ArrayTextToArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 //first create an arraylist, then convert it to an array.
             return ToArray(ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier), _elementConverter.Type);
         }
@@ -589,7 +593,7 @@ namespace NpgsqlTypes
                 foreach (string token in TokenEnumeration(stripBraces))
                 {
                     //Use the NpgsqlBackendTypeInfo for the element type to obtain each element.
-                    list.Add(_elementConverter.ConvertToNative(token, elementTypeSize, elementTypeModifier));
+                    list.Add(_elementConverter.ConvertBackendTextToNative(BackendEncoding.UTF8Encoding.GetBytes(token), elementTypeSize, elementTypeModifier));
                 }
             }
             return list;
@@ -765,7 +769,7 @@ namespace NpgsqlTypes
 
                         object elementNative;
 
-                        elementNative = _elementConverter.ConvertToNative(elementBinary, fieldValueSize, TypeModifier);
+                        elementNative = _elementConverter.ConvertBackendBinaryToNative(elementBinary, fieldValueSize, TypeModifier);
 
                         dstOffsets[dimOffset] = i;
                         dst.SetValue(elementNative, dstOffsets);

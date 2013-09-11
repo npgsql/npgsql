@@ -76,7 +76,7 @@ namespace Npgsql
 				if (field_descr.FormatCode == FormatCode.Text)
 				{
 					return
-						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, UTF8Encoding.GetString(buffer, 0, buffer.Length),
+						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
 						                                                   field_descr.TypeSize, field_descr.TypeModifier);
 				}
 				else
@@ -199,12 +199,11 @@ namespace Npgsql
 			Int32 field_value_size = PGUtil.ReadInt32(Stream) - 4;
 			byte[] buffer = new byte[field_value_size];
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, field_value_size);
-			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
+
 			try
 			{
 				return
-					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
+					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
 					                                                   field_descr.TypeSize, field_descr.TypeModifier);
 			}
 			catch (InvalidCastException ice)

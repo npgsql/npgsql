@@ -46,7 +46,6 @@ namespace Npgsql
     ///
     internal abstract class NpgsqlState
     {
-        protected static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
         private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         protected readonly static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -104,10 +103,13 @@ namespace Npgsql
             //ZA  Hnotifytest CNOTIFY Z
             //Qlisten notifytest;notify notifytest; 
             Stream stm = context.Stream;
-            string uuidString = "uuid" + Guid.NewGuid().ToString("N");
-            PGUtil.WriteString("Qlisten " + uuidString + ";notify " + uuidString + ";", stm);
+//            string uuidString = "uuid" + Guid.NewGuid().ToString("N");
+            string uuidString = string.Format("uuid{0:N}", Guid.NewGuid());
             Queue<byte> buffer = new Queue<byte>();
             byte[] convertBuffer = new byte[36];
+
+            PGUtil.WriteStringNullTerminated(stm, "Qlisten {0};notify {0};", uuidString);
+
             for (;;)
             {
                 int newByte = stm.ReadByte();
@@ -119,7 +121,7 @@ namespace Npgsql
                 if (buffer.Count > 35)
                 {
                     buffer.CopyTo(convertBuffer, 0);
-                    if (ENCODING_UTF8.GetString(convertBuffer) == uuidString)
+                    if (BackendEncoding.UTF8Encoding.GetString(convertBuffer) == uuidString)
                     {
                         for (;;)
                         {
@@ -515,7 +517,7 @@ namespace Npgsql
 
                                     // 1.
                                     byte[] passwd = context.Password;
-                                    byte[] saltUserName = ENCODING_UTF8.GetBytes(context.UserName);
+                                    byte[] saltUserName = BackendEncoding.UTF8Encoding.GetBytes(context.UserName);
 
                                     byte[] crypt_buf = new byte[passwd.Length + saltUserName.Length];
 
@@ -533,7 +535,7 @@ namespace Npgsql
 
                                     String prehash = sb.ToString();
 
-                                    byte[] prehashbytes = ENCODING_UTF8.GetBytes(prehash);
+                                    byte[] prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
 
 
                                     byte[] saltServer = new byte[4];
@@ -555,7 +557,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(ENCODING_UTF8.GetBytes(sb.ToString()));
+                                    context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
 
                                     break;
                                 default:
@@ -761,7 +763,7 @@ namespace Npgsql
 
                                     // 1.
                                     byte[] passwd = context.Password;
-                                    byte[] saltUserName = ENCODING_UTF8.GetBytes(context.UserName);
+                                    byte[] saltUserName = BackendEncoding.UTF8Encoding.GetBytes(context.UserName);
 
                                     byte[] crypt_buf = new byte[passwd.Length + saltUserName.Length];
 
@@ -779,7 +781,7 @@ namespace Npgsql
 
                                     String prehash = sb.ToString();
 
-                                    byte[] prehashbytes = ENCODING_UTF8.GetBytes(prehash);
+                                    byte[] prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
                                     crypt_buf = new byte[prehashbytes.Length + 4];
 
 
@@ -798,7 +800,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(ENCODING_UTF8.GetBytes(sb.ToString()));
+                                    context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
 
                                     break;
 #if WINDOWS && UNMANAGED
@@ -1067,7 +1069,6 @@ namespace Npgsql
     /// </summary>
     internal abstract class ClientMessage
     {
-        protected static readonly Encoding UTF8Encoding = Encoding.UTF8;
         public abstract void WriteToStream(Stream outputStream);
     }
 

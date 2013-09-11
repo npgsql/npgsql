@@ -68,7 +68,7 @@ namespace Npgsql
 					PGUtil.WriteInt32(outputStream, 4 + password.Length + 1);
 
 					// Write String.
-					PGUtil.WriteBytes(password, outputStream);
+					PGUtil.WriteBytesNullTerminated(outputStream, password);
 
 					break;
 
@@ -77,7 +77,7 @@ namespace Npgsql
 					PGUtil.WriteInt32(outputStream, 4 + password.Length + 1);
 
 					// Write String.
-					PGUtil.WriteBytes(password, outputStream);
+					PGUtil.WriteBytesNullTerminated(outputStream, password);
 
 					break;
 			}

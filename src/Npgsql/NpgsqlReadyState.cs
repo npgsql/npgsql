@@ -113,7 +113,7 @@ namespace Npgsql
 		public override void Execute(NpgsqlConnector context, NpgsqlExecute execute)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
-			NpgsqlDescribe describe = new NpgsqlDescribe('P', execute.PortalName);
+			NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.P, execute.PortalName);
 			Stream stream = context.Stream;
 			describe.WriteToStream(stream);
 			execute.WriteToStream(stream);
@@ -124,7 +124,7 @@ namespace Npgsql
 		public override IEnumerable<IServerResponseObject> ExecuteEnum(NpgsqlConnector context, NpgsqlExecute execute)
 		{
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
-			NpgsqlDescribe describe = new NpgsqlDescribe('P', execute.PortalName);
+			NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.P, execute.PortalName);
 			Stream stream = context.Stream;
 			describe.WriteToStream(stream);
 			execute.WriteToStream(stream);

@@ -33,6 +33,7 @@ using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Resources;
 using System.Text;
+using System.IO;
 using Npgsql;
 
 namespace NpgsqlTypes
@@ -218,47 +219,47 @@ namespace NpgsqlTypes
 			return DefinedType(item.GetType());
 		}
 
-        ///<summary>
-        /// This method is responsible to convert the byte[] received from the backend
-        /// to the corresponding NpgsqlType.
-        /// The given TypeInfo is called upon to do the conversion.
-        /// If no TypeInfo object is provided, no conversion is performed.
-        /// </summary>
-        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
-                                                             Int32 typeModifier)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
+		///<summary>
+		/// This method is responsible to convert the byte[] received from the backend
+		/// to the corresponding NpgsqlType.
+		/// The given TypeInfo is called upon to do the conversion.
+		/// If no TypeInfo object is provided, no conversion is performed.
+		/// </summary>
+		public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
+		                                                     Int32 typeModifier)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
 
-            if (TypeInfo != null)
-            {
-                return TypeInfo.ConvertToNative(data, fieldValueSize, typeModifier);
-            }
-            else
-            {
-                return data;
-            }
-        }
+			if (TypeInfo != null)
+			{
+				return TypeInfo.ConvertBackendBinaryToNative(data, fieldValueSize, typeModifier);
+			}
+			else
+			{
+				return data;
+			}
+		}
 
-        ///<summary>
-        /// This method is responsible to convert the string received from the backend
-        /// to the corresponding NpgsqlType.
-        /// The given TypeInfo is called upon to do the conversion.
-        /// If no TypeInfo object is provided, no conversion is performed.
-        /// </summary>
-        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, String data, Int16 typeSize,
-                                                              Int32 typeModifier)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
+		///<summary>
+		/// This method is responsible to convert the string received from the backend
+		/// to the corresponding NpgsqlType.
+		/// The given TypeInfo is called upon to do the conversion.
+		/// If no TypeInfo object is provided, no conversion is performed.
+		/// </summary>
+		public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int16 typeSize,
+		                                                      Int32 typeModifier)
+		{
+			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
 
-            if (TypeInfo != null)
-            {
-                return TypeInfo.ConvertToNative(data, typeSize, typeModifier);
-            }
-            else
-            {
-                return data;
-            }
-        }
+			if (TypeInfo != null)
+			{
+				return TypeInfo.ConvertBackendTextToNative(data, typeSize, typeModifier);
+			}
+			else
+			{
+				return BackendEncoding.UTF8Encoding.GetString(data);
+			}
+		}
 
 		/// <summary>
 		/// Create the one and only native to backend type map.
@@ -789,7 +790,7 @@ npgsqlTimestampTZ));
 	/// Delegate called to convert the given backend text data to its native representation.
 	/// </summary>
 	internal delegate Object ConvertBackendTextToNativeHandler(
-		NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier);
+		NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int16 TypeSize, Int32 TypeModifier);
 	/// <summary>
 	/// Delegate called to convert the given backend binary data to its native representation.
 	/// </summary>
@@ -799,7 +800,7 @@ npgsqlTimestampTZ));
 	/// <summary>
 	/// Delegate called to convert the given native data to its backand representation.
 	/// </summary>
-	internal delegate String ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
+	internal delegate byte[] ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
 	internal delegate byte[] ConvertNativeToBackendBinaryHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
@@ -823,7 +824,6 @@ npgsqlTimestampTZ));
 		private readonly DbType _DbType;
 		private readonly Type _Type;
         private readonly Type _frameworkType;
-
 
         /// <summary>
         /// Construct a new NpgsqlTypeInfo with the given attributes and conversion handlers.
@@ -942,7 +942,7 @@ npgsqlTimestampTZ));
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="fieldValueSize">fieldValueSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        public Object ConvertBackendBinaryToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
         {
             if (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertBackendBinaryToNative != null)
             {
@@ -961,7 +961,7 @@ npgsqlTimestampTZ));
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="TypeSize">TypeSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertToNative(string BackendData, Int16 TypeSize, Int32 TypeModifier)
+        public Object ConvertBackendTextToNative(Byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             if (_ConvertBackendTextToNative != null)
             {
@@ -971,7 +971,7 @@ npgsqlTimestampTZ));
             {
                 try
                 {
-                    return Convert.ChangeType(BackendData, Type, CultureInfo.InvariantCulture);
+                    return Convert.ChangeType(BackendEncoding.UTF8Encoding.GetString(BackendData), Type, CultureInfo.InvariantCulture);
                 }
                 catch
                 {
@@ -1181,7 +1181,7 @@ npgsqlTimestampTZ));
         /// <param name="NativeData">Native .NET object to be converted.</param>
         /// <param name="forExtendedQuery">Options to guide serialization.  If null, a default options set is used.</param>
         /// <param name="options">Connection specific options.</param>
-        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null)
+        public byte[] ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null)
         {
             if (options == null)
             {
@@ -1198,36 +1198,43 @@ npgsqlTimestampTZ));
             }
         }
 
-        private String ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+        private byte[] ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
         {
             if ((NativeData == DBNull.Value) || (NativeData == null))
             {
-                return "NULL"; // Plain queries exptects null values as string NULL.
+                return ASCIIByteArrays.NULL; // Plain queries exptects null values as string NULL.
             }
-
-            string backendSerialization;
 
             if (_ConvertNativeToBackendText != null)
             {
+                byte[] backendSerialization;
+
                 // This route escapes output strings as needed.
-                backendSerialization = _ConvertNativeToBackendText(this, NativeData, false, options);
+                backendSerialization = (_ConvertNativeToBackendText(this, NativeData, false, options));
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteString(backendSerialization, ! options.UseConformantStrings && options.Supports_E_StringPrefix);
+                    backendSerialization = QuoteASCIIString(backendSerialization, ! options.UseConformantStrings && options.Supports_E_StringPrefix);
                 }
+
+                return backendSerialization;
             }
             else if (NativeData is Enum)
             {
+                string backendSerialization;
+
                 // Do a special handling of Enum values.
                 // Translate enum value to its underlying type.
                 backendSerialization = (String)Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof(String), CultureInfo.InvariantCulture);
 
                 // Wrap the string in quotes.  No 'E' is needed here.
                 backendSerialization = QuoteString(backendSerialization, false);
+
+                return BackendEncoding.UTF8Encoding.GetBytes(backendSerialization);
             }
             else
             {
+                string backendSerialization;
                 bool escaped = false;
 
                 if (NativeData is IFormattable)
@@ -1243,12 +1250,12 @@ npgsqlTimestampTZ));
                     // Wrap the string in quotes and possibly prepend with 'E', depending on options and escaping.
                     backendSerialization = QuoteString(backendSerialization, escaped && options.Supports_E_StringPrefix);
                 }
-            }
 
-            return backendSerialization;
+                return BackendEncoding.UTF8Encoding.GetBytes(backendSerialization);
+            }
         }
 
-		private object ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+		private byte[] ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
 		{
 			if ((NativeData == DBNull.Value) || (NativeData == null))
 			{
@@ -1270,16 +1277,16 @@ npgsqlTimestampTZ));
 					// Do a special handling of Enum values.
 					// Translate enum value to its underlying type. 
 					return
-						(String)
+						BackendEncoding.UTF8Encoding.GetBytes((String)
 						Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof (String),
-						                   CultureInfo.InvariantCulture);
+						                   CultureInfo.InvariantCulture));
 				}
 				else if (NativeData is IFormattable)
 				{
-					return ((IFormattable) NativeData).ToString(null, ni);
+					return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable) NativeData).ToString(null, ni));
 				}
 
-				return NativeData.ToString();
+				return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
 			}
 		}
 
@@ -1322,9 +1329,64 @@ npgsqlTimestampTZ));
             return ret.ToString();
         }
 
+        internal static byte[] EscapeASCIIString(byte[] src, bool StandardsConformingStrings, out bool backslashEscaped)
+        {
+            MemoryStream ret = new MemoryStream();
+
+            backslashEscaped = false;
+
+            foreach (byte ch in src)
+            {
+                switch (ch)
+                {
+                    case (byte)ASCIIBytes.SingleQuote :
+                        ret.WriteByte(ch);
+
+                        break;
+
+                    case (byte)ASCIIBytes.BackSlash :
+                        if (! StandardsConformingStrings)
+                        {
+                            backslashEscaped = true;
+                            ret.WriteByte(ch);
+                        }
+
+                        break;
+                }
+
+                ret.WriteByte(ch);
+            }
+
+            return ret.ToArray();
+        }
+
         internal static String QuoteString(String S, bool use_E_Prefix)
         {
             return String.Format("{0}'{1}'", use_E_Prefix ? "E" : "", S);
+        }
+
+        internal static byte[] QuoteASCIIString(byte[] S, bool use_E_Prefix)
+        {
+            MemoryStream ret = new MemoryStream();
+
+            if (use_E_Prefix)
+            {
+                ret.WriteByte((byte)ASCIIBytes.E);
+            }
+
+            ret.WriteByte((byte)ASCIIBytes.SingleQuote);
+            ret.Write(S, 0, S.Length);
+            ret.WriteByte((byte)ASCIIBytes.SingleQuote);
+
+            return ret.ToArray();
+        }
+
+        /// <summary>
+        /// Reports whether a native to backend binary encoder is available for this type.
+        /// </summary>
+        public bool SupportsBinaryBackendData
+        {
+            get { return (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertNativeToBackendBinary != null); }
         }
 	}
 

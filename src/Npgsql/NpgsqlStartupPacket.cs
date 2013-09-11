@@ -123,28 +123,28 @@ namespace Npgsql
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream_Ver_3");
 
 			PGUtil.WriteInt32(output_stream,
-			                  4 + 4 + 5 + (UTF8Encoding.GetByteCount(user_name) + 1) + 9 +
-			                  (UTF8Encoding.GetByteCount(database_name) + 1) + 10 + 4 + 1);
+			                  4 + 4 + 5 + (BackendEncoding.UTF8Encoding.GetByteCount(user_name) + 1) + 9 +
+			                  (BackendEncoding.UTF8Encoding.GetByteCount(database_name) + 1) + 10 + 4 + 1);
 
 			PGUtil.WriteInt32(output_stream, PGUtil.ConvertProtocolVersion(this.protocol_version));
 
 			// User name.
-			PGUtil.WriteString("user", output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, "user");
 
 			// User name.
-			PGUtil.WriteString(user_name, output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, user_name);
 
 			// Database name.
-			PGUtil.WriteString("database", output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, "database");
 
 			// Database name.
-			PGUtil.WriteString(database_name, output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, database_name);
 
 			// DateStyle.
-			PGUtil.WriteString("DateStyle", output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, "DateStyle");
 
 			// DateStyle.
-			PGUtil.WriteString("ISO", output_stream);
+			PGUtil.WriteStringNullTerminated(output_stream, "ISO");
 
 			output_stream.WriteByte(0);
 			output_stream.Flush();

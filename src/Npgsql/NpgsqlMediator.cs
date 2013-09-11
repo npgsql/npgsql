@@ -51,27 +51,27 @@ namespace Npgsql
 		//
 		// Responses collected from the backend.
 		//
-		private StringBuilder _sqlSent;
+		private byte[] _sqlSent;
 		private Int32 _commandTimeout;
 
 
 		public NpgsqlMediator()
 		{
-		    _sqlSent = new StringBuilder();
+		    _sqlSent = new byte[0];
 			_commandTimeout = 20;
 		}
 
 		public void ResetResponses()
 		{
-			_sqlSent = new StringBuilder();
+			_sqlSent = new byte[0];
 			_commandTimeout = 20;
 		}
 
 		public String SqlSent
 		{
-		    get { return _sqlSent.Length != 0 && _sqlSent[_sqlSent.Length - 1] == '\x00' ? _sqlSent.ToString(0, _sqlSent.Length - 1) : _sqlSent.ToString(); }
+		    get { return BackendEncoding.UTF8Encoding.GetString(_sqlSent); }
 		}
-		public void SetSqlSent(StringBuilder sqlSent)
+		public void SetSqlSent(byte[] sqlSent)
 		{//We only use this if there is an error, so let's only get the string when that happens.
 		    _sqlSent = sqlSent;
 		}
