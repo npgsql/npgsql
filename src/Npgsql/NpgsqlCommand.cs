@@ -889,7 +889,6 @@ namespace Npgsql
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             return ret;
-
         }
 
         private void PassParam(MemoryStream query, NpgsqlParameter p)
@@ -900,9 +899,10 @@ namespace Npgsql
             // See bug #1010543
             // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
             // only one pair of parentheses for the two purposes instead of two pairs.
-            query.WriteByte((byte)ASCIIBytes.ParenLeft);
-            query.Write(serialised, 0, serialised.Length);
-            query.WriteByte((byte)ASCIIBytes.ParenRight);
+            query
+                .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                .WriteBytes(serialised)
+                .WriteBytes((byte)ASCIIBytes.ParenRight);
 
             if (p.UseCast)
             {
@@ -927,8 +927,9 @@ namespace Npgsql
             switch(type)
             {
                 case CommandType.TableDirect:
-                    PGUtil.WriteString(result, "SELECT * FROM ");
-                    PGUtil.WriteString(result, text.Trim());
+                    result
+                        .WriteString("SELECT * FROM ")
+                        .WriteString(text.Trim());
 
                     return result.ToArray();
                 case CommandType.StoredProcedure:
@@ -967,8 +968,9 @@ namespace Npgsql
 
                 if (addProcedureParenthesis)
                 {
-                    result.WriteByte((byte)ASCIIBytes.ParenLeft);
-                    result.WriteByte((byte)ASCIIBytes.ParenRight);
+                    result
+                        .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                        .WriteBytes((byte)ASCIIBytes.ParenRight);
                 }
 
                 if (functionNeedsColumnListDefinition)
@@ -1034,8 +1036,9 @@ namespace Npgsql
 
             else
             {
-                PGUtil.WriteString(result, text.Trim());
-                result.WriteByte((byte)ASCIIBytes.ParenLeft);
+                result
+                    .WriteString(text.Trim())
+                    .WriteBytes((byte)ASCIIBytes.ParenLeft);
 
                 for (Int32 i = 0 ; i < parameters.Count ; i++)
                 {
@@ -1178,9 +1181,10 @@ namespace Npgsql
                             st.WriteByte((byte)ASCIIBytes.Comma);
                         }
 
-                        PGUtil.WriteString(st, p.CleanName);
-                        st.WriteByte((byte)ASCIIBytes.Space);
-                        PGUtil.WriteString(st, p.TypeInfo.Name);
+                        st
+                            .WriteString(p.CleanName)
+                            .WriteBytes((byte)ASCIIBytes.Space)
+                            .WriteString(p.TypeInfo.Name);
 
                         break;
                 }

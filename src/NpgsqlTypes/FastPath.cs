@@ -254,14 +254,10 @@ namespace NpgsqlTypes
 			{
 				// send the function call
 
-				// 70 is 'F' in ASCII. Note: don't use SendChar() here as it adds padding
-				// that confuses the backend. The 0 terminates the command line.
-				stream.WriteByte(70);
-				stream.WriteByte(0);
-
-				PGUtil.WriteInt32(stream, fnid);
-				PGUtil.WriteInt32(stream, args.Length);
-
+                stream
+                    .WriteBytesNullTerminated((byte)ASCIIBytes.F)
+                    .WriteInt32(fnid)
+                    .WriteInt32(args.Length);
 
 				for (Int32 i = 0; i < args.Length; i++)
 				{

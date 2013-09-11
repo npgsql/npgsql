@@ -71,15 +71,16 @@ namespace Npgsql
             Int32 messageLength = 4 + _bPrepareName.Length + 1 + _bQueryString.Length + 1 +
                                   2 + (_parameterIDs.Length * 4);
 
-            PGUtil.WriteInt32(outputStream, messageLength);
-            PGUtil.WriteBytesNullTerminated(outputStream, _bPrepareName);
-            PGUtil.WriteBytesNullTerminated(outputStream, _bQueryString);
-            PGUtil.WriteInt16(outputStream, (Int16)_parameterIDs.Length);
+            outputStream
+                .WriteInt32(messageLength)
+                .WriteBytesNullTerminated(_bPrepareName)
+                .WriteBytesNullTerminated(_bQueryString)
+                .WriteInt16((Int16)_parameterIDs.Length);
 
 
             for (Int32 i = 0; i < _parameterIDs.Length; i++)
             {
-                PGUtil.WriteInt32(outputStream, _parameterIDs[i]);
+                outputStream.WriteInt32(_parameterIDs[i]);
             }
         }
     }

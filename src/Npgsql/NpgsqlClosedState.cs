@@ -193,9 +193,10 @@ namespace Npgsql
 				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
 				if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
 				{
-					PGUtil.WriteInt32(stream, 8);
-					PGUtil.WriteInt32(stream, 80877103);
-					// Receive response
+                    stream
+                        .WriteInt32(8)
+                        .WriteInt32(80877103);
+                    // Receive response
 
 					Char response = (Char) stream.ReadByte();
 					if (response == 'S')

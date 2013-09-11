@@ -31,13 +31,13 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents the Bind message sent to PostgreSQL
-	/// server.
-	/// </summary>
-	///
-	internal sealed class NpgsqlBind : ClientMessage
-	{
+    /// <summary>
+    /// This class represents the Bind message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlBind : ClientMessage
+    {
         private readonly String _portalName;
         private readonly byte[] _bPortalName;
         private readonly String _preparedStatementName;
@@ -92,72 +92,72 @@ namespace Npgsql
 		}
 
 
-		public override void WriteToStream(Stream outputStream)
-		{
-			Int32 messageLength = 4 + _bPortalName.Length + 1 +
-			                      _bPreparedStatementName.Length + 1 + 2 + (_parameterFormatCodes.Length * 2) +
-			                      2;
+        public override void WriteToStream(Stream outputStream)
+        {
+            Int32 messageLength = 4 + _bPortalName.Length + 1 +
+                                  _bPreparedStatementName.Length + 1 + 2 + (_parameterFormatCodes.Length * 2) +
+                                  2;
 
-			// Get size of parameter values.
-			Int32 i;
+            // Get size of parameter values.
+            Int32 i;
 
-			if (_parameterValues != null)
-			{
-				for (i = 0; i < _parameterValues.Length; i++)
-				{
-					messageLength += 4;
-					if (_parameterValues[i] != null)
-					{
-						messageLength += _parameterValues[i].Length;
-					}
-				}
-			}
+            if (_parameterValues != null)
+            {
+                for (i = 0; i < _parameterValues.Length; i++)
+                {
+                    messageLength += 4;
+                    if (_parameterValues[i] != null)
+                    {
+                        messageLength += _parameterValues[i].Length;
+                    }
+                }
+            }
 
-			messageLength += 2 + (_resultFormatCodes.Length * 2);
+            messageLength += 2 + (_resultFormatCodes.Length * 2);
 
-			outputStream.WriteByte((byte) FrontEndMessageCode.Bind);
+            outputStream
+                .WriteBytes((byte)FrontEndMessageCode.Bind)
+                .WriteInt32(messageLength)
+                .WriteBytesNullTerminated(_bPortalName)
+                .WriteBytesNullTerminated(_bPreparedStatementName)
+                .WriteInt16((Int16)_parameterFormatCodes.Length);
 
-			PGUtil.WriteInt32(outputStream, messageLength);
-		    PGUtil.WriteBytesNullTerminated(outputStream, _bPortalName);
-			PGUtil.WriteBytesNullTerminated(outputStream, _bPreparedStatementName);
+            for (i = 0 ; i < _parameterFormatCodes.Length ; i++)
+            {
+                PGUtil.WriteInt16(outputStream, _parameterFormatCodes[i]);
+            }
 
-			PGUtil.WriteInt16(outputStream, (Int16) _parameterFormatCodes.Length);
+            if (_parameterValues != null)
+            {
+                PGUtil.WriteInt16(outputStream, (Int16)_parameterValues.Length);
 
-			for (i = 0 ; i < _parameterFormatCodes.Length ; i++)
-			{
-				PGUtil.WriteInt16(outputStream, _parameterFormatCodes[i]);
-			}
+                for (i = 0 ; i < _parameterValues.Length ; i++)
+                {
+                    Byte[] parameterValue = _parameterValues[i];
 
-			if (_parameterValues != null)
-			{
-				PGUtil.WriteInt16(outputStream, (Int16) _parameterValues.Length);
+                    if (parameterValue == null)
+                    {
+                        PGUtil.WriteInt32(outputStream, -1);
+                    }
+                    else
+                    {
+                        outputStream
+                            .WriteInt32(parameterValue.Length)
+                            .WriteBytes(parameterValue);
+                    }
+                }
+            }
+            else
+            {
+                PGUtil.WriteInt16(outputStream, 0);
+            }
 
-				for (i = 0 ; i < _parameterValues.Length ; i++)
-				{
-					Byte[] parameterValue = _parameterValues[i];
+            PGUtil.WriteInt16(outputStream, (Int16)_resultFormatCodes.Length);
 
-					if (parameterValue == null)
-					{
-						PGUtil.WriteInt32(outputStream, -1);
-					}
-					else
-					{
-						PGUtil.WriteInt32(outputStream, parameterValue.Length);
-						outputStream.Write(parameterValue, 0, parameterValue.Length);
-					}
-				}
-			}
-			else
-			{
-				PGUtil.WriteInt16(outputStream, 0);
-			}
-
-			PGUtil.WriteInt16(outputStream, (Int16) _resultFormatCodes.Length);
-
-			for (i = 0 ; i < _resultFormatCodes.Length ; i++)
-			{
-				PGUtil.WriteInt16(outputStream, _resultFormatCodes[i]);
-			}
-		}
-	}
+            for (i = 0 ; i < _resultFormatCodes.Length ; i++)
+            {
+                PGUtil.WriteInt16(outputStream, _resultFormatCodes[i]);
+            }
+        }
+    }
 }

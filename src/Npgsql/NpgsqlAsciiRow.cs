@@ -96,31 +96,32 @@ namespace Npgsql
 			}
 		}
 
-		private void AbandonShip()
-		{
-			//field size will always be smaller than message size
-			//but if we fall out of sync with the stream due to an error then we will probably hit
-			//such a situation soon as bytes from elsewhere in the stream get interpreted as a size.
-			//so if we see this happens, we know we've lost the stream - our best option is to just give up on it,
-			//and have the connector recovered later.
-			try
-			{
-				Stream.WriteByte((byte) FrontEndMessageCode.Termination);
-				PGUtil.WriteInt32(Stream, 4);
-				Stream.Flush();
-			}
-			catch
-			{
-			}
-			try
-			{
-				Stream.Close();
-			}
-			catch
-			{
-			}
-			throw new DataException();
-		}
+        private void AbandonShip()
+        {
+            //field size will always be smaller than message size
+            //but if we fall out of sync with the stream due to an error then we will probably hit
+            //such a situation soon as bytes from elsewhere in the stream get interpreted as a size.
+            //so if we see this happens, we know we've lost the stream - our best option is to just give up on it,
+            //and have the connector recovered later.
+            try
+            {
+                Stream
+                    .WriteBytes((byte)FrontEndMessageCode.Termination)
+                    .WriteInt32(4)
+                    .Flush();
+            }
+            catch
+            {
+            }
+            try
+            {
+                Stream.Close();
+            }
+            catch
+            {
+            }
+            throw new DataException();
+        }
 
 		protected override void SkipOne()
 		{

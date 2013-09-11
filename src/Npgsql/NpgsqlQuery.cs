@@ -75,8 +75,7 @@ namespace Npgsql
                 PGUtil.WriteInt32(outputStream, 4 + commandText.Length + 1);
             }
 
-            outputStream.Write(commandText, 0, commandText.Length);
-            outputStream.WriteByte(0);
+            outputStream.WriteBytesNullTerminated(commandText);
         }
 	}
 }

@@ -364,108 +364,158 @@ namespace Npgsql
 			return BackendEncoding.UTF8Encoding.GetCharCount(buffer, index, count) - (ValidUTF8Ending(buffer, index, count) ? 0 : 1);
 		}
 
-		///<summary>
-		/// This method writes a string to the network stream.
-		/// </summary>
-		public static void WriteString(Stream stream, String theString)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+        ///<summary>
+        /// This method writes a string to the network stream.
+        /// </summary>
+        public static Stream WriteString(this Stream stream, String theString)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
 
-			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
 
-			stream.Write(bytes, 0, bytes.Length);
-		}
+            stream.Write(bytes, 0, bytes.Length);
 
-		///<summary>
-		/// This method writes a string to the network stream.
-		/// </summary>
-		public static void WriteString(Stream stream, String format, params object[] parameters)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+            return stream;
+        }
 
-            string theString = string.Format(format, parameters);
-
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
-			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
-			stream.Write(bytes, 0, bytes.Length);
-		}
-
-		///<summary>
-		/// This method writes a C NULL terminated string to the network stream.
-		/// It appends a NULL terminator to the end of the String.
-		/// </summary>
-		public static void WriteStringNullTerminated(Stream stream, String theString)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
-
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
-			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
-			stream.Write(bytes, 0, bytes.Length);
-			stream.WriteByte(0);
-		}
-
-		///<summary>
-		/// This method writes a C NULL terminated string to the network stream.
-		/// It appends a NULL terminator to the end of the String.
-		/// </summary>
-		public static void WriteStringNullTerminated(Stream stream, String format, params object[] parameters)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
+        ///<summary>
+        /// This method writes a string to the network stream.
+        /// </summary>
+        public static Stream WriteString(this Stream stream, String format, params object[] parameters)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
             string theString = string.Format(format, parameters);
 
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
 
-			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
 
-			stream.Write(bytes, 0, bytes.Length);
-			stream.WriteByte(0);
-		}
+            stream.Write(bytes, 0, bytes.Length);
+
+            return stream;
+        }
+
+        ///<summary>
+        /// This method writes a C NULL terminated string to the network stream.
+        /// It appends a NULL terminator to the end of the String.
+        /// </summary>
+        public static Stream WriteStringNullTerminated(this Stream stream, String theString)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
+
+            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+            stream.Write(bytes, 0, bytes.Length);
+            stream.WriteByte(0);
+
+            return stream;
+        }
+
+        ///<summary>
+        /// This method writes a C NULL terminated string to the network stream.
+        /// It appends a NULL terminator to the end of the String.
+        /// </summary>
+        public static Stream WriteStringNullTerminated(this Stream stream, String format, params object[] parameters)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
+
+            string theString = string.Format(format, parameters);
+
+            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
+
+            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
+
+            stream.Write(bytes, 0, bytes.Length);
+            stream.WriteByte(0);
+
+            return stream;
+        }
+
+        /// <summary>
+        /// This method writes a byte to the stream. It also enables logging of them.
+        /// </summary>
+        public static Stream WriteBytes(this Stream stream, byte the_byte)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteByte");
+            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_byte);
+
+            stream.WriteByte(the_byte);
+
+            return stream;
+        }
+
+        /// <summary>
+        /// This method writes a byte to the stream. It also enables logging of them.
+        /// </summary>
+        public static Stream WriteBytesNullTerminated(this Stream stream, byte the_byte)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteByte");
+            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_byte);
+
+            stream.WriteByte(the_byte);
+            stream.WriteByte(0);
+
+            return stream;
+        }
 
         /// <summary>
         /// This method writes a set of bytes to the stream. It also enables logging of them.
         /// </summary>
-        public static void WriteBytesNullTerminated(Stream network_stream, byte[] the_bytes)
+        public static Stream WriteBytes(this Stream stream, byte[] the_bytes)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
             NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
 
-            network_stream.Write(the_bytes, 0, the_bytes.Length);
-            network_stream.WriteByte(0);
+            stream.Write(the_bytes, 0, the_bytes.Length);
+
+            return stream;
         }
 
-		///<summary>
-		/// This method writes a C NULL terminated string limited in length to the
-		/// backend server.
-		/// It pads the string with null bytes to the size specified.
-		/// </summary>
-		public static void WriteLimString(String the_string, Int32 n, Stream network_stream)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
+        /// <summary>
+        /// This method writes a set of bytes to the stream. It also enables logging of them.
+        /// </summary>
+        public static Stream WriteBytesNullTerminated(this Stream stream, byte[] the_bytes)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
+            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
 
-			//Note: We do not know the size in bytes until after we have converted the string.
-			byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(the_string);
-			if (bytes.Length > n)
-			{
-				throw new ArgumentOutOfRangeException("the_string", the_string,
-				                                      string.Format(resman.GetString("LimStringWriteTooLarge"), the_string, n));
-			}
+            stream.Write(the_bytes, 0, the_bytes.Length);
+            stream.WriteByte(0);
 
-			network_stream.Write(bytes, 0, bytes.Length);
+            return stream;
+        }
 
-			//pad with zeros.
-			if (bytes.Length < n)
-			{
-				bytes = new byte[n - bytes.Length];
-				network_stream.Write(bytes, 0, bytes.Length);
-			}
-		}
+        ///<summary>
+        /// This method writes a C NULL terminated string limited in length to the
+        /// backend server.
+        /// It pads the string with null bytes to the size specified.
+        /// </summary>
+        public static void WriteLimString(String the_string, Int32 n, Stream network_stream)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
+
+            //Note: We do not know the size in bytes until after we have converted the string.
+            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(the_string);
+            if (bytes.Length > n)
+            {
+                throw new ArgumentOutOfRangeException("the_string", the_string,
+                                                      string.Format(resman.GetString("LimStringWriteTooLarge"), the_string, n));
+            }
+
+            network_stream.Write(bytes, 0, bytes.Length);
+
+            //pad with zeros.
+            if (bytes.Length < n)
+            {
+                bytes = new byte[n - bytes.Length];
+                network_stream.Write(bytes, 0, bytes.Length);
+            }
+        }
 
 		public static void CheckedStreamRead(Stream stream, Byte[] buffer, Int32 offset, Int32 size)
 		{
@@ -567,13 +617,15 @@ namespace Npgsql
 			return i;
 		}
 
-		/// <summary>
-		/// Write a 32-bit integer to the given stream in the correct byte order.
-		/// </summary>
-		public static void WriteInt32(Stream stream, Int32 value)
-		{
-			stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
-		}
+        /// <summary>
+        /// Write a 32-bit integer to the given stream in the correct byte order.
+        /// </summary>
+        public static Stream WriteInt32(this Stream stream, Int32 value)
+        {
+            stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
+
+            return stream;
+        }
 
 		/// <summary>
 		/// Read a 32-bit integer from the given stream in the correct byte order.
@@ -593,13 +645,15 @@ namespace Npgsql
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(src, offset));
 		}
 
-		/// <summary>
-		/// Write a 16-bit integer to the given stream in the correct byte order.
-		/// </summary>
-		public static void WriteInt16(Stream stream, Int16 value)
-		{
-			stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 2);
-		}
+        /// <summary>
+        /// Write a 16-bit integer to the given stream in the correct byte order.
+        /// </summary>
+        public static Stream WriteInt16(this Stream stream, Int16 value)
+        {
+            stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 2);
+
+            return stream;
+        }
 
 		/// <summary>
 		/// Read a 16-bit integer from the given stream in the correct byte order.

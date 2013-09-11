@@ -1,4 +1,4 @@
-// Npgsql.BackendEncoding.cs
+// Npgsql.ASCIIBytes.cs
 //
 // Authors:
 // 	Glen Parker         <glenebob@gmail.com>

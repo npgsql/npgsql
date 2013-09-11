@@ -57,12 +57,11 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteByte((byte)FrontEndMessageCode.Execute);
-
-            PGUtil.WriteInt32(outputStream, 4 + _bPortalName.Length + 1 + 4);
-
-            PGUtil.WriteBytesNullTerminated(outputStream, _bPortalName);
-            PGUtil.WriteInt32(outputStream, _maxRows);
+            outputStream
+                .WriteBytes((byte)FrontEndMessageCode.Execute)
+                .WriteInt32(4 + _bPortalName.Length + 1 + 4)
+                .WriteBytesNullTerminated(_bPortalName)
+                .WriteInt32(_maxRows);
         }
     }
 }
