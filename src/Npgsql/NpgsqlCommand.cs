@@ -1200,7 +1200,7 @@ namespace Npgsql
 
             MemoryStream result = new MemoryStream();
 
-            PGUtil.WriteString(result, string.Format("EXECUTE {0}", planName));
+            result.WriteString("EXECUTE {0}", planName);
 
             if(parameters.Count != 0)
             {
@@ -1223,8 +1223,9 @@ namespace Npgsql
 
                     serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
-                    result.Write(serialization, 0, serialization.Length);
-                    result.WriteByte((byte)ASCIIBytes.ParenRight);
+                    result
+                        .WriteBytes(serialization)
+                        .WriteBytes((byte)ASCIIBytes.ParenRight);
 
                     if (p.UseCast)
                     {
@@ -1232,7 +1233,7 @@ namespace Npgsql
 
                         if (p.TypeInfo.UseSize && (p.Size > 0))
                         {
-                            PGUtil.WriteString(result, "({0})", p.Size);
+                            result.WriteString("({0})", p.Size);
                         }
                     }
                 }
@@ -1243,39 +1244,52 @@ namespace Npgsql
             return result.ToArray();
         }
 
-
-        // TODO
-        // Optimize this!!!
         private String GetParseCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetParseCommandText");
 
             Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
 
-            String parseCommand = text;
+            string tText = text.Trim();
+            StringBuilder parseCommand = new StringBuilder();
 
             if (type == CommandType.StoredProcedure)
             {
+                parseCommand
+                    .Append("select ")
+                    .Append(tText);
+
                 // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection.
-                if (!parseCommand.Trim().EndsWith(")"))
+                if (! tText.EndsWith(")"))
                 {
                     addProcedureParenthesis = true;
-                    parseCommand += "(";
-                }
 
-                parseCommand = string.Format("select * from {0}", parseCommand); // This syntax is only available in 7.3+ as well SupportsPrepare.
+                    parseCommand.Append("(");
+                }
+            }
+            else if (type == CommandType.TableDirect)
+            {
+                parseCommand
+                    .Append("select * from ")
+                    .Append(tText);
+
+                return parseCommand.ToString();
             }
             else
             {
-                if (type == CommandType.TableDirect)
-                {
-                    return string.Format("select * from {0}", parseCommand); // There is no parameter support on TableDirect.
-                }
+                parseCommand.Append(tText);
             }
+
+            if (!addProcedureParenthesis)
+            {
+                // tText is now the command text, within which parameter replacement will be carried out.
+                // parseCommand is not used from here on out in this code path.
+                tText = parseCommand.ToString();
+            }
+
             if (parameters.Count > 0)
             {
                 // The ReplaceParameterValue below, also checks if the parameter is present.
-
                 String parameterName;
                 Int32 i;
 
@@ -1284,7 +1298,6 @@ namespace Npgsql
                     if ((parameters[i].Direction == ParameterDirection.Input) ||
                         (parameters[i].Direction == ParameterDirection.InputOutput))
                     {
-                        
                         string parameterSize = "";
 
                         if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
@@ -1300,36 +1313,43 @@ namespace Npgsql
                             //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
                             
                             // Just add typecast if needed.
+                            // TODO
+                            // Optimize.
+                            // Scanning the command string for each individual parameter is inefficient.  One scan should be used for all parameters if possible.
                             if (parameters[i].UseCast)
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
+                            {
+                                tText = ReplaceParameterValue(tText, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
+                            }
                             else
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
+                            {
+                                tText = ReplaceParameterValue(tText, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
+                            }
                         }
                         else
                         {
                             if (parameters[i].UseCast)
-                                parseCommand += string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
+                            {
+                                parseCommand.AppendFormat("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
+                            }
                             else
-                                parseCommand += string.Format("${0}{1}", (i + 1), parameterSize);
+                            {
+                                parseCommand.AppendFormat("${0}{1}", (i + 1), parameterSize);
+                            }
                         }
-                       
-                    
                     }
                 }
             }
 
+            if (addProcedureParenthesis)
+            {
+                parseCommand.Append(")");
 
-            return string.Format("{0}{1}", parseCommand, addProcedureParenthesis ? ")" : string.Empty);
-
-
-            //if (addProcedureParenthesis)
-            //{
-            //    return parseCommand + ")";
-            //}
-            //else
-            //{
-            //    return parseCommand;
-            //}
+                return parseCommand.ToString();
+            }
+            else
+            {
+                return tText;
+            }
         }
 
 
