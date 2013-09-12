@@ -127,19 +127,20 @@ namespace NpgsqlTypes
 						l_msgLen += args[i].SendSize();
 					}
 
-					stream.WriteByte((Byte) 'F');
-					PGUtil.WriteInt32(stream, l_msgLen);
-					PGUtil.WriteInt32(stream, fnid);
-					PGUtil.WriteInt16(stream, 1);
-					PGUtil.WriteInt16(stream, 1);
-					PGUtil.WriteInt16(stream, (short) args.Length);
+                    stream
+                        .WriteBytes((Byte)ASCIIBytes.F)
+                        .WriteInt32(l_msgLen)
+                        .WriteInt32(fnid)
+                        .WriteInt16(1)
+                        .WriteInt16(1)
+                        .WriteInt16((short)args.Length);
 
 					for (Int32 i = 0; i < args.Length; i++)
 					{
 						args[i].Send(stream);
 					}
 
-					PGUtil.WriteInt16(stream, 1);
+					stream.WriteInt16(1);
 
 					// This is needed, otherwise data can be lost
 					stream.Flush();

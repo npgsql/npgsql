@@ -495,7 +495,7 @@ namespace Npgsql
         /// backend server.
         /// It pads the string with null bytes to the size specified.
         /// </summary>
-        public static void WriteLimString(String the_string, Int32 n, Stream network_stream)
+        public static Stream WriteLimString(this Stream network_stream, String the_string, Int32 n)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
 
@@ -515,6 +515,35 @@ namespace Npgsql
                 bytes = new byte[n - bytes.Length];
                 network_stream.Write(bytes, 0, bytes.Length);
             }
+
+            return network_stream;
+        }
+
+        ///<summary>
+        /// This method writes a C NULL terminated byte[] limited in length to the
+        /// backend server.
+        /// It pads the string with null bytes to the size specified.
+        /// </summary>
+        public static Stream WriteLimBytes(this Stream network_stream, byte[] bytes, Int32 n)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimBytes");
+
+            if (bytes.Length > n)
+            {
+                throw new ArgumentOutOfRangeException("bytes", bytes,
+                                                      string.Format(resman.GetString("LimStringWriteTooLarge"), bytes, n));
+            }
+
+            network_stream.Write(bytes, 0, bytes.Length);
+
+            //pad with zeros.
+            if (bytes.Length < n)
+            {
+                bytes = new byte[n - bytes.Length];
+                network_stream.Write(bytes, 0, bytes.Length);
+            }
+
+            return network_stream;
         }
 
 		public static void CheckedStreamRead(Stream stream, Byte[] buffer, Int32 offset, Int32 size)
