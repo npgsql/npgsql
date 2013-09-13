@@ -118,36 +118,42 @@ namespace Npgsql
 		}
 
 
-		private void WriteToStream_Ver_3(Stream output_stream)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream_Ver_3");
+        private void WriteToStream_Ver_3(Stream output_stream)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream_Ver_3");
 
-			PGUtil.WriteInt32(output_stream,
-			                  4 + 4 + 5 + (UTF8Encoding.GetByteCount(user_name) + 1) + 9 +
-			                  (UTF8Encoding.GetByteCount(database_name) + 1) + 10 + 4 + 1);
+            byte[] userNameBytes;
+            byte[] databaseNameBytes;
 
-			PGUtil.WriteInt32(output_stream, PGUtil.ConvertProtocolVersion(this.protocol_version));
+            userNameBytes = UTF8Encoding.GetBytes(user_name);
+            databaseNameBytes = UTF8Encoding.GetBytes(database_name);
 
-			// User name.
-			PGUtil.WriteString("user", output_stream);
+            PGUtil.WriteInt32(output_stream,
+                              4 + 4 + 5 + userNameBytes.Length + 1 + 9 +
+                              databaseNameBytes.Length + 1 + 10 + 4 + 1);
 
-			// User name.
-			PGUtil.WriteString(user_name, output_stream);
+            PGUtil.WriteInt32(output_stream, PGUtil.ConvertProtocolVersion(this.protocol_version));
 
-			// Database name.
-			PGUtil.WriteString("database", output_stream);
+            // User name.
+            PGUtil.WriteString("user", output_stream);
 
-			// Database name.
-			PGUtil.WriteString(database_name, output_stream);
+            // User name.
+            PGUtil.WriteBytes(userNameBytes, output_stream);
 
-			// DateStyle.
-			PGUtil.WriteString("DateStyle", output_stream);
+            // Database name.
+            PGUtil.WriteString("database", output_stream);
 
-			// DateStyle.
-			PGUtil.WriteString("ISO", output_stream);
+            // Database name.
+            PGUtil.WriteBytes(databaseNameBytes, output_stream);
 
-			output_stream.WriteByte(0);
-			output_stream.Flush();
-		}
+            // DateStyle.
+            PGUtil.WriteString("DateStyle", output_stream);
+
+            // DateStyle.
+            PGUtil.WriteString("ISO", output_stream);
+
+            output_stream.WriteByte(0);
+            output_stream.Flush();
+        }
 	}
 }
