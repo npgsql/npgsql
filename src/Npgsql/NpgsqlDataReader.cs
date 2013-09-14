@@ -863,14 +863,14 @@ namespace Npgsql
 			public readonly string Catalog;
 			public readonly string Schema;
 			public readonly string Name;
-			public readonly long Id;
+			public readonly int Id;
 
 			public Table(IDataReader rdr)
 			{
 				Catalog = rdr.GetString(0);
 				Schema = rdr.GetString(1);
 				Name = rdr.GetString(2);
-				Id = rdr.GetInt64(3);
+				Id = rdr.GetInt32(3);
 			}
 		}
 
@@ -922,7 +922,7 @@ namespace Npgsql
 		{
 			public readonly string Name;
 			public readonly bool NotNull;
-			public readonly long TableId;
+			public readonly int TableId;
 			public readonly short ColumnNum;
 			public readonly object ColumnDefault;
 
@@ -935,7 +935,7 @@ namespace Npgsql
 			{
 				Name = rdr.GetString(0);
 				NotNull = rdr.GetBoolean(1);
-				TableId = rdr.GetInt64(2);
+				TableId = rdr.GetInt32(2);
 				ColumnNum = rdr.GetInt16(3);
 				ColumnDefault = rdr.GetValue(4);
 			}

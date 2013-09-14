@@ -100,7 +100,7 @@ namespace NpgsqlTypes
         {
             Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
 
-            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("10.0.0.0")))
+            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("1000.0.0.0")))
 			{
 				NameIndex.Add(TypeInfo.Name, TypeInfo);
 				
@@ -218,45 +218,47 @@ namespace NpgsqlTypes
 			return DefinedType(item.GetType());
 		}
 
-		// CHECKME
-		// Not sure what to do with this one.  I don't believe we ever ask for a binary
-		// formatting, so this shouldn't even be used right now.
-		// At some point this will need to be merged into the type converter system somehow?
-		public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
-		                                                     Int32 typeModifier)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
+        ///<summary>
+        /// This method is responsible to convert the byte[] received from the backend
+        /// to the corresponding NpgsqlType.
+        /// The given TypeInfo is called upon to do the conversion.
+        /// If no TypeInfo object is provided, no conversion is performed.
+        /// </summary>
+        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
+                                                             Int32 typeModifier)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
 
-			if (TypeInfo != null)
-			{
-				return TypeInfo.ConvertToNative(data, fieldValueSize, typeModifier);
-			}
-			else
-			{
-				return data;
-			}
-		}
+            if (TypeInfo != null)
+            {
+                return TypeInfo.ConvertToNative(data, fieldValueSize, typeModifier);
+            }
+            else
+            {
+                return data;
+            }
+        }
 
-		///<summary>
-		/// This method is responsible to convert the string received from the backend
-		/// to the corresponding NpgsqlType.
-		/// The given TypeInfo is called upon to do the conversion.
-		/// If no TypeInfo object is provided, no conversion is performed.
-		/// </summary>
-		public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, String data, Int16 typeSize,
-		                                                      Int32 typeModifier)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
+        ///<summary>
+        /// This method is responsible to convert the string received from the backend
+        /// to the corresponding NpgsqlType.
+        /// The given TypeInfo is called upon to do the conversion.
+        /// If no TypeInfo object is provided, no conversion is performed.
+        /// </summary>
+        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, String data, Int16 typeSize,
+                                                              Int32 typeModifier)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
 
-			if (TypeInfo != null)
-			{
-				return TypeInfo.ConvertToNative(data, typeSize, typeModifier);
-			}
-			else
-			{
-				return data;
-			}
-		}
+            if (TypeInfo != null)
+            {
+                return TypeInfo.ConvertToNative(data, typeSize, typeModifier);
+            }
+            else
+            {
+                return data;
+            }
+        }
 
 		/// <summary>
 		/// Create the one and only native to backend type map.
@@ -266,7 +268,6 @@ namespace NpgsqlTypes
 		private static NpgsqlNativeTypeMapping PrepareDefaultTypesMap()
 		{
 			NpgsqlNativeTypeMapping nativeTypeMapping = new NpgsqlNativeTypeMapping();
-
 
             nativeTypeMapping.AddType("name", NpgsqlDbType.Name, DbType.String, true, null);
 
@@ -280,70 +281,84 @@ namespace NpgsqlTypes
 
 			nativeTypeMapping.AddType("refcursor", NpgsqlDbType.Refcursor, DbType.String, true, null);
 
-			nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, true, null);
-			
-			nativeTypeMapping.AddTypeAlias("char", typeof (Char));
+            nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, true,
+                                            null,
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
 
-			nativeTypeMapping.AddType("varchar", NpgsqlDbType.Varchar, DbType.String, true, null);
+            nativeTypeMapping.AddTypeAlias("char", typeof(Char));
 
-			nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, true, null);
+            nativeTypeMapping.AddType("varchar", NpgsqlDbType.Varchar, DbType.String, true,
+                                            null,
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
 
-			nativeTypeMapping.AddDbTypeAlias("text", DbType.StringFixedLength);
-			nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiString);
-			nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiStringFixedLength);
-			
-			nativeTypeMapping.AddTypeAlias("text", typeof (String));
+            // Dummy type that facilitates non-binary string conversions for types that are treated as
+            // text but which are not really text.  Those types cause problems if they are encoded as binary.
+            // The mapping NpgsqlDbType.Text => text_nonbinary is removed when text is mapped.
+            // DBType.Object will be re-mapped to this type at the end.
+            nativeTypeMapping.AddType("text_nonbinary", NpgsqlDbType.Text, DbType.Object, true);
 
+            nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, true,
+                                            null,
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
 
-			nativeTypeMapping.AddType("bytea", NpgsqlDbType.Bytea, DbType.Binary, true,
-			                                new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaText),
-			                                new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaBinary));
+            nativeTypeMapping.AddDbTypeAlias("text", DbType.StringFixedLength);
+            nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiString);
+            nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiStringFixedLength);
 
-			nativeTypeMapping.AddTypeAlias("bytea", typeof (Byte[]));
+            nativeTypeMapping.AddTypeAlias("text", typeof(String));
+
+            nativeTypeMapping.AddType("bytea", NpgsqlDbType.Bytea, DbType.Binary, true,
+                                            new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaText),
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaBinary));
+
+            nativeTypeMapping.AddTypeAlias("bytea", typeof(Byte[]));
 
 			nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Object, false,
 			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToBit));
 			
 			nativeTypeMapping.AddTypeAlias("bit", typeof(BitString));
 
-			nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
-			                          new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanText),
-			                          new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanBinary));
+            nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
+                                            new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanText),
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.BooleanToBooleanBinary));
 
-			nativeTypeMapping.AddTypeAlias("bool", typeof (Boolean));
+            nativeTypeMapping.AddTypeAlias("bool", typeof(Boolean));
 
-			nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false,
+            nativeTypeMapping.AddType("int2", NpgsqlDbType.Smallint, DbType.Int16, false,
                                             BasicNativeToBackendTypeConverter.ToBasicType<short>,
                                             BasicNativeToBackendTypeConverter.Int16ToInt2Binary);
 
-            nativeTypeMapping.AddTypeAlias("int2", typeof (UInt16));
-            
-		    nativeTypeMapping.AddTypeAlias("int2", typeof (Int16));
+            nativeTypeMapping.AddTypeAlias("int2", typeof(UInt16));
 
-			nativeTypeMapping.AddDbTypeAlias("int2", DbType.Byte);
+            nativeTypeMapping.AddTypeAlias("int2", typeof(Int16));
 
-			nativeTypeMapping.AddTypeAlias("int2", typeof (Byte));
+            nativeTypeMapping.AddDbTypeAlias("int2", DbType.Byte);
 
-			nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false,
+            nativeTypeMapping.AddTypeAlias("int2", typeof(Byte));
+
+            nativeTypeMapping.AddType("int4", NpgsqlDbType.Integer, DbType.Int32, false,
                                             BasicNativeToBackendTypeConverter.ToBasicType<int>,
                                             BasicNativeToBackendTypeConverter.Int32ToInt4Binary);
 
-			nativeTypeMapping.AddTypeAlias("int4", typeof (Int32));
+            nativeTypeMapping.AddTypeAlias("int4", typeof(Int32));
 
-			nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false,
+            nativeTypeMapping.AddType("int8", NpgsqlDbType.Bigint, DbType.Int64, false,
                                             BasicNativeToBackendTypeConverter.ToBasicType<long>,
                                             BasicNativeToBackendTypeConverter.Int64ToInt8Binary);
 
-			nativeTypeMapping.AddTypeAlias("int8", typeof (Int64));
+            nativeTypeMapping.AddTypeAlias("int8", typeof(Int64));
 
-			nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true, new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
+            nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true,
+                                            new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text),
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.SingleToFloat4Binary));
 
-			nativeTypeMapping.AddTypeAlias("float4", typeof (Single));
+            nativeTypeMapping.AddTypeAlias("float4", typeof(Single));
 
-			//nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, BasicNativeToBackendTypeConverter.ToBasicType<double>);
-			nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true, new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToSingleDouble));
-			
-			nativeTypeMapping.AddTypeAlias("float8", typeof (Double));
+            nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true,
+                                            new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text),
+                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.DoubleToFloat8Binary));
+
+            nativeTypeMapping.AddTypeAlias("float8", typeof(Double));
 
 			nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true, BasicNativeToBackendTypeConverter.ToBasicType<decimal>);
 
@@ -430,20 +445,19 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
             nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
 
-			nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true, null);
+			nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true);
 			nativeTypeMapping.AddTypeAlias("uuid", typeof (Guid));
 
-			nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true, null);
+			nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true);
 
 			nativeTypeMapping.AddType("interval", NpgsqlDbType.Interval, DbType.Object, true,
 			                          new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToInterval));
 
 			nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
 			nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
-			
-			nativeTypeMapping.AddDbTypeAlias("text", DbType.Object);
-			
-			
+
+            nativeTypeMapping.AddDbTypeAlias("text_nonbinary", DbType.Object);
+
 			return nativeTypeMapping;
 		}
 
@@ -451,33 +465,43 @@ namespace NpgsqlTypes
 		{
             yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
-			yield return new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "unknown", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
-			yield return new NpgsqlBackendTypeInfo(0, "refcursor", NpgsqlDbType.Refcursor, DbType.String, typeof (String), null);
+			yield return new NpgsqlBackendTypeInfo(0, "refcursor", NpgsqlDbType.Refcursor, DbType.String, typeof (String),  null);
 
-			yield return new NpgsqlBackendTypeInfo(0, "char", NpgsqlDbType.Char, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "char", NpgsqlDbType.Char, DbType.String, typeof(String),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.TextBinaryToString));
 
-			yield return new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Text, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "bpchar", NpgsqlDbType.Text, DbType.String, typeof(String),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.TextBinaryToString));
 
-			yield return new NpgsqlBackendTypeInfo(0, "varchar", NpgsqlDbType.Varchar, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "varchar", NpgsqlDbType.Varchar, DbType.String, typeof(String),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.TextBinaryToString));
 
-			yield return new NpgsqlBackendTypeInfo(0, "text", NpgsqlDbType.Text, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "text", NpgsqlDbType.Text, DbType.String, typeof(String),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.TextBinaryToString));
 
-			yield return new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Name, DbType.String, typeof (String), null);
+            yield return new NpgsqlBackendTypeInfo(0, "name", NpgsqlDbType.Name, DbType.String, typeof(String),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.TextBinaryToString));
 
-			yield return
-				new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof (Byte[]),
-				                            new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ByteaTextToByteArray),
+            yield return
+                new NpgsqlBackendTypeInfo(0, "bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(Byte[]),
+                                            new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ByteaTextToByteArray),
                                             new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.ByteaBinaryToByteArray));
 
 			yield return
 				new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Object, typeof (BitString),
 				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.ToBit));
 
-			yield return
-				new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof (Boolean),
-				                          new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.BooleanTextToBoolean),
-				                          new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.BooleanBinaryToBoolean));
+            yield return
+                new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(Boolean),
+                                            new ConvertBackendTextToNativeHandler(BasicBackendToNativeTypeConverter.BooleanTextToBoolean),
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.BooleanBinaryToBoolean));
 
 			yield return new NpgsqlBackendTypeInfo(0, "int2", NpgsqlDbType.Smallint, DbType.Int16, typeof (Int16),
                                             null,
@@ -491,11 +515,17 @@ namespace NpgsqlTypes
                                             null,
                                             new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.IntBinaryToInt));
 
-			yield return new NpgsqlBackendTypeInfo(0, "oid", NpgsqlDbType.Bigint, DbType.Int64, typeof (Int64), null);
+			yield return new NpgsqlBackendTypeInfo(0, "oid", NpgsqlDbType.Integer, DbType.Int32, typeof (Int32),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.IntBinaryToInt));
 
-			yield return new NpgsqlBackendTypeInfo(0, "float4", NpgsqlDbType.Real, DbType.Single, typeof (Single), null);
+            yield return new NpgsqlBackendTypeInfo(0, "float4", NpgsqlDbType.Real, DbType.Single, typeof(Single),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.Float4Float8BinaryToFloatDouble));
 
-			yield return new NpgsqlBackendTypeInfo(0, "float8", NpgsqlDbType.Double, DbType.Double, typeof (Double), null);
+            yield return new NpgsqlBackendTypeInfo(0, "float8", NpgsqlDbType.Double, DbType.Double, typeof(Double),
+                                            null,
+                                            new ConvertBackendBinaryToNativeHandler(BasicBackendToNativeTypeConverter.Float4Float8BinaryToFloatDouble));
 
 			yield return new NpgsqlBackendTypeInfo(0, "numeric", NpgsqlDbType.Numeric, DbType.Decimal, typeof (Decimal), null);
 
@@ -540,8 +570,8 @@ namespace NpgsqlTypes
 				new NpgsqlBackendTypeInfo(0, "polygon", NpgsqlDbType.Polygon, DbType.Object, typeof (NpgsqlPolygon),
 				                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToPolygon));
 
-			yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof (Guid), new
-ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
+			yield return new NpgsqlBackendTypeInfo(0, "uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof (Guid),
+                                          new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToGuid));
 
 			yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof (String), null);
 
@@ -680,20 +710,26 @@ npgsqlTimestampTZ));
 			return oidToNameMapping;
 		}
 
-		//Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
-
-		//an array of that type.
-
-		private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
-
-		{
-			return
-				new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
-				                          elementInfo.Type.MakeArrayType(),
-				                          new ConvertBackendTextToNativeHandler(
-				                          	new ArrayBackendToNativeTypeConverter(elementInfo).ToArray));
-		}
-
+        //Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
+        //an array of that type.
+        private static NpgsqlBackendTypeInfo ArrayTypeInfo(NpgsqlBackendTypeInfo elementInfo)
+        {
+            if (elementInfo.SupportsBinaryBackendData)
+            {
+                return
+                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
+                                              elementInfo.Type.MakeArrayType(),
+                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray),
+                                              new ConvertBackendBinaryToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayBinaryToArray));
+            }
+            else
+            {
+                return
+                    new NpgsqlBackendTypeInfo(0, "_" + elementInfo.Name, NpgsqlDbType.Array | elementInfo.NpgsqlDbType, DbType.Object,
+                                              elementInfo.Type.MakeArrayType(),
+                                              new ConvertBackendTextToNativeHandler(new ArrayBackendToNativeTypeConverter(elementInfo).ArrayTextToArray));
+            }
+        }
 
 		/// <summary>
 		/// Attempt to map types by issuing a query against pg_type.
@@ -1005,30 +1041,38 @@ npgsqlTimestampTZ));
 		private readonly Boolean _UseSize;
 		private Boolean _IsArray = false;
 
-		/// <summary>
-		/// Returns an NpgsqlNativeTypeInfo for an array where the elements are of the type
-		/// described by the NpgsqlNativeTypeInfo supplied.
-		/// </summary>
-		public static NpgsqlNativeTypeInfo ArrayOf(NpgsqlNativeTypeInfo elementType)
+        /// <summary>
+        /// Returns an NpgsqlNativeTypeInfo for an array where the elements are of the type
+        /// described by the NpgsqlNativeTypeInfo supplied.
+        /// </summary>
+        public static NpgsqlNativeTypeInfo ArrayOf(NpgsqlNativeTypeInfo elementType)
+        {
+            if (elementType._IsArray)
+            //we've an array of arrays. It's the inner most elements whose type we care about, so the type we have is fine.
+            {
+                return elementType;
+            }
 
-		{
-			if (elementType._IsArray)
-				//we've an array of arrays. It's the inner most elements whose type we care about, so the type we have is fine.
-			{
-				return elementType;
-			}
+            NpgsqlNativeTypeInfo copy = null;
 
-			NpgsqlNativeTypeInfo copy =
-				new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
-				                         false,
-				                         new ConvertNativeToBackendTextHandler(
-				                         	new ArrayNativeToBackendTypeConverter(elementType).FromArray));
+            if (elementType._ConvertNativeToBackendBinary != null)
+            {
+                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
+                                             false,
+                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText),
+                                             new ConvertNativeToBackendBinaryHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayBinary));
+            }
+            else
+            {
+                copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
+                                             false,
+                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText));
+            }
 
-			copy._IsArray = true;
+            copy._IsArray = true;
 
-			return copy;
-		}
-
+            return copy;
+        }
 
 		static NpgsqlNativeTypeInfo()
 		{
@@ -1135,10 +1179,15 @@ npgsqlTimestampTZ));
         /// When 
         /// </summary>
         /// <param name="NativeData">Native .NET object to be converted.</param>
-        /// <param name="forExtendedQuery">Options to guide serialization.</param>
+        /// <param name="forExtendedQuery">Options to guide serialization.  If null, a default options set is used.</param>
         /// <param name="options">Connection specific options.</param>
-        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        public object ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null)
         {
+            if (options == null)
+            {
+                options = NativeToBackendTypeConverterOptions.Default;
+            }
+
             if (forExtendedQuery)
             {
                 return ConvertToBackendExtendedQuery(NativeData, options);
@@ -1412,29 +1461,28 @@ npgsqlTimestampTZ));
 		private readonly Dictionary<DbType, NpgsqlNativeTypeInfo> DbTypeIndex = new Dictionary<DbType, NpgsqlNativeTypeInfo>();
 		private readonly Dictionary<Type, NpgsqlNativeTypeInfo> TypeIndex = new Dictionary<Type, NpgsqlNativeTypeInfo>();
 
-		/// <summary>
-		/// Add the given NpgsqlNativeTypeInfo to this mapping.
-		/// </summary>
-		public void AddType(NpgsqlNativeTypeInfo T)
-		{
-			if (NameIndex.ContainsKey(T.Name))
-			{
-				throw new Exception("Type already mapped");
-			}
+        /// <summary>
+        /// Add the given NpgsqlNativeTypeInfo to this mapping.
+        /// </summary>
+        public void AddType(NpgsqlNativeTypeInfo T)
+        {
+            if (NameIndex.ContainsKey(T.Name))
+            {
+                throw new Exception("Type already mapped");
+            }
 
-			NameIndex[T.Name] = T;
-			NpgsqlDbTypeIndex[T.NpgsqlDbType] = T;
-			DbTypeIndex[T.DbType] = T;
-			if (!T.IsArray)
+            NameIndex[T.Name] = T;
+            NpgsqlDbTypeIndex[T.NpgsqlDbType] = T;
+            DbTypeIndex[T.DbType] = T;
+            if (!T.IsArray)
+            {
+                NpgsqlNativeTypeInfo arrayType = NpgsqlNativeTypeInfo.ArrayOf(T);
+                NameIndex[arrayType.Name] = arrayType;
 
-			{
-				NpgsqlNativeTypeInfo arrayType = NpgsqlNativeTypeInfo.ArrayOf(T);
-				NameIndex[arrayType.Name] = arrayType;
-
-				NameIndex[arrayType.CastName] = arrayType;
-				NpgsqlDbTypeIndex[arrayType.NpgsqlDbType] = arrayType;
-			}
-		}
+                NameIndex[arrayType.CastName] = arrayType;
+                NpgsqlDbTypeIndex[arrayType.NpgsqlDbType] = arrayType;
+            }
+        }
 
         /// <summary>
         /// Add a new NpgsqlNativeTypeInfo with the given attributes and conversion handlers to this mapping.
