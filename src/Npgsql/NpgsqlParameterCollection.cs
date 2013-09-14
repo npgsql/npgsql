@@ -147,11 +147,8 @@ namespace Npgsql
 		}
 
 		/// <summary>
-		/// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+		/// Obsolete. Use AddWithValue instead.
 		/// </summary>
-		/// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
-		/// <param name="value">The Value of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-		/// <returns>The index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
 		/// <remarks>
 		/// Use caution when using this overload of the
 		/// <b>Add</b> method to specify integer parameter values.
@@ -168,12 +165,75 @@ namespace Npgsql
 			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
 			return this.AddWithValue(parameterName, value);
 		}
-		
-		public NpgsqlParameter AddWithValue(string parameterName, object value)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
-			return this.Add(new NpgsqlParameter(parameterName, value));
-		}
+
+        /// <summary>
+        /// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+        /// </summary>
+        /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="value">The Value of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(string parameterName, object value)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, value);
+            return this.Add(new NpgsqlParameter(parameterName, value));
+        }
+
+        /// <summary>
+        /// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+        /// </summary>
+        /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="value">The Value of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <param name="parameterType">One of the NpgsqlDbType values.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, object value)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, value);
+
+            NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType);
+
+            param.Value = value;
+
+            return this.Add(param);
+        }
+
+        /// <summary>
+        /// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+        /// </summary>
+        /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="value">The Value of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <param name="parameterType">One of the NpgsqlDbType values.</param>
+        /// <param name="size">The length of the column.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, object value)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, size, value);
+
+            NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType, size);
+
+            param.Value = value;
+
+            return this.Add(param);
+        }
+
+        /// <summary>
+        /// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
+        /// </summary>
+        /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="value">The Value of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        /// <param name="parameterType">One of the NpgsqlDbType values.</param>
+        /// <param name="size">The length of the column.</param>
+        /// <param name="sourceColumn">The name of the source column.</param>
+        /// <returns>The paramater that was added.</returns>
+        public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn, object value)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, size, sourceColumn, value);
+
+            NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType, size, sourceColumn);
+
+            param.Value = value;
+
+            return this.Add(param);
+        }
 
 		/// <summary>
 		/// Adds a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the parameter name and the data type.
