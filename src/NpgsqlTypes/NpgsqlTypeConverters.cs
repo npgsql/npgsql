@@ -183,65 +183,79 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Byte array from bytea encoded as text, escaped or hex format.
 		/// </summary>
-		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
-			Int32 octalValue = 0;
-			Int32 byteAPosition = 0;
-			Int32 byteAStringLength = BackendData.Length;
-			MemoryStream ms = new MemoryStream();
+        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            Int32 byteAPosition = 0;
+            Int32 byteAStringLength = BackendData.Length;
 
-			if (BackendData.StartsWith("\\x"))
+            if (BackendData.StartsWith("\\x"))
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
-                for (byteAPosition = 2; byteAPosition < byteAStringLength; byteAPosition += 2)
+
+                byte[] result = new byte[byteAStringLength / 2];
+
+                //unsafe
                 {
-                    byte value = Convert.ToByte(BackendData.Substring(byteAPosition, 2), 16);
-                    ms.WriteByte(value);
+                    //fixed (byte* p = &result[0])
+                    {
+                        //  byte* ptr = p;
+                        int k = 0;
+                        for (byteAPosition = 2; byteAPosition < byteAStringLength; byteAPosition += 2)
+                        {
+                            //*ptr=
+                            result[k] = FastConverter.ToByte(BackendData, byteAPosition);
+                            k++;
+                            //ptr++;
+                        }
+                    }
                 }
+
+                return result;
             }
-            
             else
             {
-            
+                Int32 octalValue = 0;
+                MemoryStream ms = new MemoryStream();
+
                 while (byteAPosition < byteAStringLength)
-    			{
-    				// The IsDigit is necessary in case we receive a \ as the octal value and not
-    				// as the indicator of a following octal value in decimal format.
-    				// i.e.: \201\301P\A
-    				if (BackendData[byteAPosition] == '\\')
-    				{
-    					if (byteAPosition + 1 == byteAStringLength)
-    					{
-    						octalValue = '\\';
-    						byteAPosition++;
-    					}
-    					else if (Char.IsDigit(BackendData[byteAPosition + 1]))
-    					{
+                {
+                    // The IsDigit is necessary in case we receive a \ as the octal value and not
+                    // as the indicator of a following octal value in decimal format.
+                    // i.e.: \201\301P\A
+                    if (BackendData[byteAPosition] == '\\')
+                    {
+                        if (byteAPosition + 1 == byteAStringLength)
+                        {
+                            octalValue = '\\';
+                            byteAPosition++;
+                        }
+                        else if (Char.IsDigit(BackendData[byteAPosition + 1]))
+                        {
                             octalValue = Convert.ToByte(BackendData.Substring(byteAPosition + 1, 3), 8);
                             //octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
                             //octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
                             //octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
-    						byteAPosition += 4;
-    					}
-    					else
-    					{
-    						octalValue = '\\';
-    						byteAPosition += 2;
-    					}
-    				}
-    				else
-    				{
-    					octalValue = (Byte)BackendData[byteAPosition];
-    					byteAPosition++;
-    				}
-    
-    
-    				ms.WriteByte((Byte)octalValue);
-    			}
+                            byteAPosition += 4;
+                        }
+                        else
+                        {
+                            octalValue = '\\';
+                            byteAPosition += 2;
+                        }
+                    }
+                    else
+                    {
+                        octalValue = (Byte)BackendData[byteAPosition];
+                        byteAPosition++;
+                    }
+
+
+                    ms.WriteByte((Byte)octalValue);
+                }
+
+                return ms.ToArray();
             }
-            
-			return ms.ToArray();
-		}
+        }
 
         /// <summary>
         /// Byte array from bytea encoded as binary.
