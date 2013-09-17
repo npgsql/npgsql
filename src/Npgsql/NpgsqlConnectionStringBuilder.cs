@@ -15,13 +15,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-//
+// 
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-//
+// 
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -83,7 +83,9 @@ namespace Npgsql
             this.Clear();
             this.originalConnectionString = connectionString;
             base.ConnectionString = connectionString;
+            CheckValues();
         }
+
 
         /// <summary>
         /// Return an exact copy of this NpgsqlConnectionString.
@@ -98,6 +100,16 @@ namespace Npgsql
             }
 
             return builder;
+        }
+
+        private void CheckValues()
+        {
+            if ((MaxPoolSize > 0) && (MinPoolSize > MaxPoolSize))
+            {
+                string key = GetKeyName(Keywords.MinPoolSize);
+                throw new ArgumentOutOfRangeException(
+                    key, String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, MaxPoolSize));
+            }
         }
 
         #region Parsing Functions
@@ -156,12 +168,12 @@ namespace Npgsql
             if (v < min)
             {
                 throw new ArgumentOutOfRangeException(
-                    String.Format(resman.GetString("Exception_IntegerKeyValMin"), key, min), key);
+                    key, String.Format(resman.GetString("Exception_IntegerKeyValMin"), key, min));
             }
             else if (v > max)
             {
                 throw new ArgumentOutOfRangeException(
-                    String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, max), key);
+                    key, String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, max));
             }
 
             return v;
@@ -404,6 +416,7 @@ namespace Npgsql
             get { return _compatible; }
             set { SetValue(GetKeyName(Keywords.Compatible), value); }
         }
+
 
         private string _application_name;
         public string ApplicationName
@@ -666,9 +679,7 @@ namespace Npgsql
                         this._connection_life_time = Convert.ToInt32(value);
                         break;
                     case Keywords.MinPoolSize:
-                        this._min_pool_size = (MaxPoolSize > 0)
-                                                  ? ToInt32(value, 0, MaxPoolSize, key_name)
-                                                  : Convert.ToInt32(value);
+                        this._min_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, key_name);
                         break;
                     case Keywords.MaxPoolSize:
                         this._max_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, key_name);
@@ -735,6 +746,7 @@ namespace Npgsql
                 throw;
             }
         }
+
 
         /// <summary>
         /// Clear the member and assign them to the default value.
