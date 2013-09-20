@@ -76,7 +76,7 @@ namespace Npgsql
 				if (field_descr.FormatCode == FormatCode.Text)
 				{
 					return
-						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, UTF8Encoding.GetString(buffer, 0, buffer.Length),
+						NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
 						                                                   field_descr.TypeSize, field_descr.TypeModifier);
 				}
 				else
@@ -96,31 +96,32 @@ namespace Npgsql
 			}
 		}
 
-		private void AbandonShip()
-		{
-			//field size will always be smaller than message size
-			//but if we fall out of sync with the stream due to an error then we will probably hit
-			//such a situation soon as bytes from elsewhere in the stream get interpreted as a size.
-			//so if we see this happens, we know we've lost the stream - our best option is to just give up on it,
-			//and have the connector recovered later.
-			try
-			{
-				Stream.WriteByte((byte) FrontEndMessageCode.Termination);
-				PGUtil.WriteInt32(Stream, 4);
-				Stream.Flush();
-			}
-			catch
-			{
-			}
-			try
-			{
-				Stream.Close();
-			}
-			catch
-			{
-			}
-			throw new DataException();
-		}
+        private void AbandonShip()
+        {
+            //field size will always be smaller than message size
+            //but if we fall out of sync with the stream due to an error then we will probably hit
+            //such a situation soon as bytes from elsewhere in the stream get interpreted as a size.
+            //so if we see this happens, we know we've lost the stream - our best option is to just give up on it,
+            //and have the connector recovered later.
+            try
+            {
+                Stream
+                    .WriteBytes((byte)FrontEndMessageCode.Termination)
+                    .WriteInt32(4)
+                    .Flush();
+            }
+            catch
+            {
+            }
+            try
+            {
+                Stream.Close();
+            }
+            catch
+            {
+            }
+            throw new DataException();
+        }
 
 		protected override void SkipOne()
 		{
@@ -199,12 +200,11 @@ namespace Npgsql
 			Int32 field_value_size = PGUtil.ReadInt32(Stream) - 4;
 			byte[] buffer = new byte[field_value_size];
 			PGUtil.CheckedStreamRead(Stream, buffer, 0, field_value_size);
-			char[] charBuffer = new char[UTF8Encoding.GetCharCount(buffer, 0, buffer.Length)];
-			UTF8Encoding.GetChars(buffer, 0, buffer.Length, charBuffer, 0);
+
 			try
 			{
 				return
-					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, new string(charBuffer),
+					NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
 					                                                   field_descr.TypeSize, field_descr.TypeModifier);
 			}
 			catch (InvalidCastException ice)

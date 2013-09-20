@@ -36,8 +36,6 @@ namespace Npgsql
 	/// </summary>
 	public class NpgsqlCopySerializer
 	{
-		private static readonly Encoding ENCODING_UTF8 = Encoding.UTF8;
-
 		public static String DEFAULT_DELIMITER = "\t",
 		                     DEFAULT_SEPARATOR = "\n",
 		                     DEFAULT_NULL = "\\N",
@@ -113,7 +111,7 @@ namespace Npgsql
 			{
 				if (_delimiterBytes == null)
 				{
-					_delimiterBytes = ENCODING_UTF8.GetBytes(_delimiter);
+					_delimiterBytes = BackendEncoding.UTF8Encoding.GetBytes(_delimiter);
 				}
 				return _delimiterBytes;
 			}
@@ -141,7 +139,7 @@ namespace Npgsql
 			{
 				if (_separatorBytes == null)
 				{
-					_separatorBytes = ENCODING_UTF8.GetBytes(_separator);
+					_separatorBytes = BackendEncoding.UTF8Encoding.GetBytes(_separator);
 				}
 				return _separatorBytes;
 			}
@@ -169,7 +167,7 @@ namespace Npgsql
 			{
 				if (_escapeBytes == null)
 				{
-					_escapeBytes = ENCODING_UTF8.GetBytes(_escape);
+					_escapeBytes = BackendEncoding.UTF8Encoding.GetBytes(_escape);
 				}
 				return _escapeBytes;
 			}
@@ -197,7 +195,7 @@ namespace Npgsql
 			{
 				if (_nullBytes == null)
 				{
-					_nullBytes = ENCODING_UTF8.GetBytes(_null);
+					_nullBytes = BackendEncoding.UTF8Encoding.GetBytes(_null);
 				}
 				return _nullBytes;
 			}
@@ -436,13 +434,13 @@ namespace Npgsql
 				// some, possibly all of fieldValue string does not require escaping and can be buffered for output
 				if (escapeAt > bufferedUpto)
 				{
-//					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt));
+//					int encodedLength = BackendEncoding.UTF8Encoding.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt));
 //					MakeRoomForBytes(encodedLength);
-//					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
+//					_sendBufferAt += BackendEncoding.UTF8Encoding.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
 //					bufferedUpto = escapeAt;
-					int encodedLength = ENCODING_UTF8.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
+					int encodedLength = BackendEncoding.UTF8Encoding.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
 					MakeRoomForBytes(encodedLength);
-					_sendBufferAt += ENCODING_UTF8.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
+					_sendBufferAt += BackendEncoding.UTF8Encoding.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
 					bufferedUpto = escapeAt;
 				}
 
