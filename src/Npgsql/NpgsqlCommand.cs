@@ -1250,41 +1250,41 @@ namespace Npgsql
 
             Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
 
-            string tText = text.Trim();
-            StringBuilder parseCommand = new StringBuilder();
+            string commandText = text.Trim();
+            StringBuilder commandBuilder = new StringBuilder();
 
             if (type == CommandType.StoredProcedure)
             {
-                parseCommand
+                commandBuilder
                     .Append("select ")
-                    .Append(tText);
+                    .Append(commandText);
 
                 // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection.
-                if (! tText.EndsWith(")"))
+                if (! commandText.EndsWith(")"))
                 {
                     addProcedureParenthesis = true;
 
-                    parseCommand.Append("(");
+                    commandBuilder.Append("(");
                 }
             }
             else if (type == CommandType.TableDirect)
             {
-                parseCommand
+                commandBuilder
                     .Append("select * from ")
-                    .Append(tText);
+                    .Append(commandText);
 
-                return parseCommand.ToString();
+                return commandBuilder.ToString();
             }
             else
             {
-                parseCommand.Append(tText);
+                commandBuilder.Append(commandText);
             }
 
             if (!addProcedureParenthesis)
             {
                 // tText is now the command text, within which parameter replacement will be carried out.
                 // parseCommand is not used from here on out in this code path.
-                tText = parseCommand.ToString();
+                commandText = commandBuilder.ToString();
             }
 
             if (parameters.Count > 0)
@@ -1318,22 +1318,22 @@ namespace Npgsql
                             // Scanning the command string for each individual parameter is inefficient.  One scan should be used for all parameters if possible.
                             if (parameters[i].UseCast)
                             {
-                                tText = ReplaceParameterValue(tText, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
+                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
                             }
                             else
                             {
-                                tText = ReplaceParameterValue(tText, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
+                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
                             }
                         }
                         else
                         {
                             if (parameters[i].UseCast)
                             {
-                                parseCommand.AppendFormat("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
+                                commandBuilder.AppendFormat("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
                             }
                             else
                             {
-                                parseCommand.AppendFormat("${0}{1}", (i + 1), parameterSize);
+                                commandBuilder.AppendFormat("${0}{1}", (i + 1), parameterSize);
                             }
                         }
                     }
@@ -1342,14 +1342,12 @@ namespace Npgsql
 
             if (addProcedureParenthesis)
             {
-                parseCommand.Append(")");
+                commandBuilder.Append(")");
 
-                return parseCommand.ToString();
+                commandText = commandBuilder.ToString();
             }
-            else
-            {
-                return tText;
-            }
+
+            return commandText;
         }
 
 

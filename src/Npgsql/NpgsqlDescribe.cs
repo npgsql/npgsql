@@ -40,15 +40,13 @@ namespace Npgsql
     internal sealed class NpgsqlDescribe : ClientMessage
     {
         private readonly byte _whatToDescribe;
-        private readonly String _portalName;
         private readonly byte[] _bPortalName;
 
         public NpgsqlDescribe(byte whatToDescribe, String portalName)
         {
             _whatToDescribe = whatToDescribe;
 
-            _portalName = portalName;
-            _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
+            _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(portalName);
         }
 
         public override void WriteToStream(Stream outputStream)

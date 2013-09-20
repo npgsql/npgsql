@@ -40,14 +40,14 @@ namespace NpgsqlTypes
 {
     internal class ASCIIByteArrays
     {
-        internal static readonly byte[] Empty      = new byte[0];
-        internal static readonly byte[] NULL       = BackendEncoding.UTF8Encoding.GetBytes("NULL");
-        internal static readonly byte[] b0         = BackendEncoding.UTF8Encoding.GetBytes("0");
-        internal static readonly byte[] b1         = BackendEncoding.UTF8Encoding.GetBytes("1");
-        internal static readonly byte[] TRUE       = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
-        internal static readonly byte[] FALSE      = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
-        internal static readonly byte[] INFINITY   = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
-        internal static readonly byte[] _INFINITY  = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
+        internal static readonly byte[] Empty         = new byte[0];
+        internal static readonly byte[] NULL          = BackendEncoding.UTF8Encoding.GetBytes("NULL");
+        internal static readonly byte[] Byte_0        = BackendEncoding.UTF8Encoding.GetBytes("0");
+        internal static readonly byte[] Byte_1        = BackendEncoding.UTF8Encoding.GetBytes("1");
+        internal static readonly byte[] TRUE          = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
+        internal static readonly byte[] FALSE         = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
+        internal static readonly byte[] INFINITY      = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
+        internal static readonly byte[] NEG_INFINITY  = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
     }
 
     /// <summary>
@@ -370,7 +370,7 @@ namespace NpgsqlTypes
 				return DateTime.MaxValue;
 			}
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays._INFINITY))
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
 			{
 				return DateTime.MinValue;
 			}
@@ -392,7 +392,7 @@ namespace NpgsqlTypes
 				return DateTime.MaxValue;
 			}
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays._INFINITY))
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
 			{
 				return DateTime.MinValue;
 			}
@@ -554,7 +554,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] BooleanToBooleanBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-            return ((bool)NativeData) ? ASCIIByteArrays.b1 : ASCIIByteArrays.b0;
+            return ((bool)NativeData) ? ASCIIByteArrays.Byte_1 : ASCIIByteArrays.Byte_0;
         }
 
         /// <summary>
@@ -587,7 +587,7 @@ namespace NpgsqlTypes
         internal static byte[] ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is bool)
-                return ((bool)NativeData) ? ASCIIByteArrays.b1 : ASCIIByteArrays.b0;
+                return ((bool)NativeData) ? ASCIIByteArrays.Byte_1 : ASCIIByteArrays.Byte_0;
             // It may seem more sensible to just convert an integer to a BitString here and pass it on.
             // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
             // value smaller than the int.
@@ -622,7 +622,7 @@ namespace NpgsqlTypes
             }
             if (DateTime.MinValue.Equals(NativeData))
             {
-                return ASCIIByteArrays._INFINITY;
+                return ASCIIByteArrays.NEG_INFINITY;
             }
             return BackendEncoding.UTF8Encoding.GetBytes((((DateTime)NativeData).ToString("yyyy-MM-dd HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo)));
         }

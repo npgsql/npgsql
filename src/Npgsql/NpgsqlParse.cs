@@ -41,19 +41,14 @@ namespace Npgsql
         // Logging related values
         //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-        private readonly String _prepareName;
         private readonly byte[] _bPrepareName;
-        private readonly String _queryString;
         private readonly byte[] _bQueryString;
         private readonly Int32[] _parameterIDs;
 
         public NpgsqlParse(String prepareName, String queryString, Int32[] parameterIDs)
         {
-            _prepareName = prepareName;
-            _bPrepareName = BackendEncoding.UTF8Encoding.GetBytes(_prepareName);
-
-            _queryString = queryString;
-            _bQueryString = BackendEncoding.UTF8Encoding.GetBytes(_queryString);
+            _bPrepareName = BackendEncoding.UTF8Encoding.GetBytes(prepareName);
+            _bQueryString = BackendEncoding.UTF8Encoding.GetBytes(queryString);
 
             _parameterIDs = parameterIDs;
         }
