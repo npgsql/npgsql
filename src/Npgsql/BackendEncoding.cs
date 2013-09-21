@@ -1,10 +1,9 @@
-// created on 1/7/2003 at 20:03
-// Npgsql.NpgsqlExecute.cs
+// Npgsql.BackendEncoding.cs
 //
-// Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+// Authors:
+// 	Glen Parker         <glenebob@gmail.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
+//	Copyright (C) 2013 The Npgsql Development Team
 //	npgsql-general@gborg.postgresql.org
 //	http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
@@ -26,42 +25,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
-using System.IO;
 using System.Text;
 
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
-    /// server.
+    /// The globally available text encoding used for frontend/backend communication.
     /// </summary>
-    ///
-    internal sealed class NpgsqlExecute : ClientMessage
+    internal static class BackendEncoding
     {
-        private readonly String _portalName;
-        private readonly byte[] _bPortalName;
-        private readonly Int32 _maxRows;
-
-        public NpgsqlExecute(String portalName, Int32 maxRows)
-        {
-            _portalName = portalName;
-            _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
-
-            _maxRows = maxRows;
-        }
-
-        public String PortalName
-        {
-            get { return _portalName; }
-        }
-
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Execute)
-                .WriteInt32(4 + _bPortalName.Length + 1 + 4)
-                .WriteBytesNullTerminated(_bPortalName)
-                .WriteInt32(_maxRows);
-        }
+        internal static UTF8Encoding UTF8Encoding = new UTF8Encoding(false);
     }
 }

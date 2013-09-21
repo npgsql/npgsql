@@ -114,7 +114,7 @@ namespace Npgsql
 		{
 			Stream toServer = context.Stream;
 			toServer.WriteByte((byte) FrontEndMessageCode.CopyFail);
-			byte[] buf = ENCODING_UTF8.GetBytes((message ?? string.Empty) + '\x00');
+			byte[] buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
 			PGUtil.WriteInt32(toServer, 4 + buf.Length);
 			toServer.Write(buf, 0, buf.Length);
 			toServer.Flush();

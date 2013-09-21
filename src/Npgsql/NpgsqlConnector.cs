@@ -126,8 +126,6 @@ namespace Npgsql
         
         private Boolean _supportsSavepoint = false;
 
-        private NpgsqlBackendTypeMapping _oidToNameMapping = null;
-
         private Boolean _isInitialized;
 
         private readonly Boolean _pooled;
@@ -142,7 +140,7 @@ namespace Npgsql
         private const String _planNamePrefix = "npgsqlplan";
         private const String _portalNamePrefix = "npgsqlportal";
 
-        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone();
+        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
 
         private Thread _notificationThread;
@@ -198,7 +196,7 @@ namespace Npgsql
             _isInitialized = false;
             _state = NpgsqlClosedState.Instance;
             _mediator = new NpgsqlMediator();
-            _oidToNameMapping = new NpgsqlBackendTypeMapping();
+            _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
@@ -627,7 +625,7 @@ namespace Npgsql
 
         internal NpgsqlBackendTypeMapping OidToNameMapping
         {
-            get { return _oidToNameMapping; }
+            get { return _NativeToBackendTypeConverterOptions.OidToNameMapping; }
         }
         
         internal Version CompatVersion
@@ -903,7 +901,7 @@ namespace Npgsql
             // It is possible that the connector may add types to its private
             // mapping that will not be valid to another connector, even
             // if connected to the same backend version.
-            _oidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
+            NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
 
             ProcessServerVersion();
 

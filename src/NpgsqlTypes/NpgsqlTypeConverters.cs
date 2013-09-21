@@ -38,6 +38,18 @@ using Npgsql;
 
 namespace NpgsqlTypes
 {
+    internal class ASCIIByteArrays
+    {
+        internal static readonly byte[] Empty         = new byte[0];
+        internal static readonly byte[] NULL          = BackendEncoding.UTF8Encoding.GetBytes("NULL");
+        internal static readonly byte[] Byte_0        = BackendEncoding.UTF8Encoding.GetBytes("0");
+        internal static readonly byte[] Byte_1        = BackendEncoding.UTF8Encoding.GetBytes("1");
+        internal static readonly byte[] TRUE          = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
+        internal static readonly byte[] FALSE         = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
+        internal static readonly byte[] INFINITY      = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
+        internal static readonly byte[] NEG_INFINITY  = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
+    }
+
     /// <summary>
     /// Options that control certain aspects of native to backend conversions that depend
     /// on backend version and status.
@@ -50,10 +62,11 @@ namespace NpgsqlTypes
         private bool _UseConformantStrings;
         private bool _Supports_E_StringPrefix;
         private bool _SupportsHexByteFormat;
+        private NpgsqlBackendTypeMapping _oidToNameMapping;
 
         static NativeToBackendTypeConverterOptions()
         {
-            _default = new NativeToBackendTypeConverterOptions(true, false, true, false);
+            _default = new NativeToBackendTypeConverterOptions(true, false, true, false, null);
         }
 
         internal static NativeToBackendTypeConverterOptions Default
@@ -64,20 +77,18 @@ namespace NpgsqlTypes
             }
         }
 
-        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        private NativeToBackendTypeConverterOptions(bool Immutable, bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat, NpgsqlBackendTypeMapping oidToNameMapping)
         {
             this.IsImmutable = Immutable;
             this._UseConformantStrings = useConformantStrings;
             this._Supports_E_StringPrefix = supports_E_StringPrefix;
             this._SupportsHexByteFormat = supportsHexByteFormat;
+            this._oidToNameMapping = oidToNameMapping;
         }
 
-        internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat)
+        internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat, NpgsqlBackendTypeMapping oidToNameMapping)
+        : this(false, useConformantStrings, supports_E_StringPrefix, supportsHexByteFormat, oidToNameMapping)
         {
-            IsImmutable = false;
-            this._UseConformantStrings = useConformantStrings;
-            this._Supports_E_StringPrefix = supports_E_StringPrefix;
-            this._SupportsHexByteFormat = supportsHexByteFormat;
         }
 
         /// <summary>
@@ -90,12 +101,13 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Clone the current object.
+        /// Clone the current object with a different OID/Name mapping.
         /// </summary>
+        /// <param name="oidToNameMapping">OID/Name mapping object to use in the new instance.</param>
         /// <returns>A new NativeToBackendTypeConverterOptions object.</returns>
-        internal NativeToBackendTypeConverterOptions Clone()
+        internal NativeToBackendTypeConverterOptions Clone(NpgsqlBackendTypeMapping oidToNameMapping = null)
         {
-            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat);
+            return new NativeToBackendTypeConverterOptions(_UseConformantStrings, _Supports_E_StringPrefix, _SupportsHexByteFormat, oidToNameMapping);
         }
 
         internal bool UseConformantStrings
@@ -132,7 +144,6 @@ namespace NpgsqlTypes
             }
         }
 
-
         internal bool SupportsHexByteFormat
         {
             get { return _SupportsHexByteFormat; }
@@ -149,7 +160,25 @@ namespace NpgsqlTypes
                 }
             }
         }
+
+        internal NpgsqlBackendTypeMapping OidToNameMapping
+        {
+            get { return _oidToNameMapping; }
+
+            set
+            {
+                if (IsImmutable)
+                {
+                    throw new InvalidOperationException("Object is immutable");
+                }
+                else
+                {
+                    _oidToNameMapping = value;
+                }
+            }
+        }
     }
+
 	/// <summary>
 	/// Provide event handlers to convert all native supported basic data types from their backend
 	/// text representation to a .NET object.
@@ -162,8 +191,8 @@ namespace NpgsqlTypes
 		private static readonly String[] TimeFormats =
 			new String[]
 				{
-					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff"
-					, "HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
+					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
+					"HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
 					"HH:mm:ss.fzz", 
                     "HH:mm:ss.fffffzzz", "HH:mm:ss.ffffzzz", "HH:mm:ss.fffzzz", "HH:mm:ss.ffzzz",
                     "HH:mm:ss.fzzz", "HH:mm:sszzz",
@@ -180,12 +209,21 @@ namespace NpgsqlTypes
                     "yyyy-MM-dd HH:mm:ss.ffzzz", "yyyy-MM-dd HH:mm:ss.fzzz", "yyyy-MM-dd HH:mm:sszzz"
 				};
 
+        /// <summary>
+        /// Convert UTF8 encoded text a string.
+        /// </summary>
+        internal static Object TextBinaryToString(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            return BackendEncoding.UTF8Encoding.GetString(BackendData);
+        }
+
 		/// <summary>
-		/// Byte array from bytea encoded as text, escaped or hex format.
+		/// Byte array from bytea encoded as ASCII text, escaped or hex format.
 		/// </summary>
-		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
-			Int32 octalValue = 0;
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+   			Int32 octalValue = 0;
 			Int32 byteAPosition = 0;
 			Int32 byteAStringLength = BackendData.Length;
 			MemoryStream ms = new MemoryStream();
@@ -254,10 +292,10 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert a postgresql boolean to a System.Boolean.
         /// </summary>
-        internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+        internal static Object BooleanTextToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int16 TypeSize,
                                          Int32 TypeModifier)
         {
-            return (BackendData.ToLower() == "t" ? true : false);
+            return (BackendData[0] == (byte)ASCIIBytes.T || BackendData[0] == (byte)ASCIIBytes.t ? true : false);
         }
 
         /// <summary>
@@ -284,7 +322,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert a postgresql bit to a System.Boolean.
         /// </summary>
-        internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             // Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
             // 
@@ -295,61 +333,81 @@ namespace NpgsqlTypes
             // It means that IDataReader.GetValue() can't be used safely for bitstrings that
             // may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
             // below by reversing it, so if GetBitString() is used, no harm is done.
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
             BitString bs = BitString.Parse(BackendData);
             return bs.Length == 1 ? (object)bs[0] : bs;
+        }
+
+        private static bool ByteArrayEqual(byte[] l, byte[] r)
+        {
+            if (l.Length != r.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0 ; i < l.Length ; i++)
+            {
+                if (l[i] != r[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
 		/// <summary>
 		/// Convert a postgresql datetime to a System.DateTime.
 		/// </summary>
-		internal static Object ToDateTime(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+		internal static Object ToDateTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
 										  Int32 TypeModifier)
 		{
 			// Get the date time parsed in all expected formats for timestamp.
-
 			// First check for special values infinity and -infinity.
 
-			if (BackendData == "infinity")
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
 			{
 				return DateTime.MaxValue;
 			}
 
-			if (BackendData == "-infinity")
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
 			{
 				return DateTime.MinValue;
 			}
 
 			return
-				DateTime.ParseExact(BackendData, DateTimeFormats, DateTimeFormatInfo.InvariantInfo,
+				DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateTimeFormats, DateTimeFormatInfo.InvariantInfo,
 									DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
 		}
 
 		/// <summary>
 		/// Convert a postgresql date to a System.DateTime.
 		/// </summary>
-		internal static Object ToDate(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToDate(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
 		    // First check for special values infinity and -infinity.
 
-			if (BackendData == "infinity")
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
 			{
 				return DateTime.MaxValue;
 			}
 
-			if (BackendData == "-infinity")
+			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
 			{
 				return DateTime.MinValue;
 			}
             
 			return
-				DateTime.ParseExact(BackendData, DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
+				DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
 		}
 
 		/// <summary>
 		/// Convert a postgresql time to a System.DateTime.
 		/// </summary>
-		internal static Object ToTime(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return
 				DateTime.ParseExact(BackendData, TimeFormats, DateTimeFormatInfo.InvariantInfo,
 									DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
@@ -358,13 +416,28 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Convert a postgresql money to a System.Decimal.
 		/// </summary>
-		internal static Object ToMoney(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToMoney(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			// Will vary according to currency symbol, position of symbol and decimal and thousands separators, but will
 			// alwasy be two-decimal precision number using Arabic (0-9) digits, so we can extract just those digits and
 			// divide by 100.
 			return Convert.ToDecimal(EXCLUDE_DIGITS.Replace(BackendData, string.Empty), CultureInfo.InvariantCulture) / 100m;
 		}
+
+        /// <summary>
+        /// Convert a postgresql float4 or float8 to a System.Float or System.Double respectively.
+        /// </summary>
+        internal static Object Float4Float8BinaryToFloatDouble(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            switch (BackendData.Length)
+            {
+                case 4: return BitConverter.ToSingle(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
+                case 8: return BitConverter.ToDouble(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
+                default: throw new NpgsqlException("Unexpected float binary field length");
+            }
+        }
 	}
 
     /// <summary>
@@ -373,12 +446,24 @@ namespace NpgsqlTypes
     /// </summary>
     internal abstract class BasicNativeToBackendTypeConverter
     {
-        private static char[]           hexEncodingCharMap = "0123456789ABCDEF".ToCharArray();
+        private static byte[] byteaBackslashConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\");
+        private static byte[] byteaBackslashNonConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
+
+        private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456");
+        private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
+
+        /// <summary>
+        /// Convert a string to UTF8 encoded text.
+        /// </summary>
+        internal static byte[] StringToTextBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return BackendEncoding.UTF8Encoding.GetBytes((string)NativeData);
+        }
 
         /// <summary>
         /// Binary data, escaped as needed per options.
         /// </summary>
-        internal static String ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (! options.SupportsHexByteFormat)
             {
@@ -393,59 +478,59 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data with possible older style escapes.
         /// </summary>
-        private static String ByteArrayToByteaTextEscaped(Object NativeData, bool UseConformantStrings)
+        private static byte[] ByteArrayToByteaTextEscaped(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
-            StringBuilder res = new StringBuilder(byteArray.Length);
+            MemoryStream ret = new MemoryStream(byteArray.Length);
+            byte[] backSlash = UseConformantStrings ? byteaBackslashConforming : byteaBackslashNonConforming;
 
             foreach (byte b in byteArray)
             {
                 if (b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
                 {
-                    res.Append((char)b);
+                    ret.WriteByte(b);
                 }
                 else
                 {
-                    res
-                      .AppendFormat(@"\{0}", UseConformantStrings ? "" : @"\")
-                      .Append((char)('0' + (7 & (b >> 6))))
-                      .Append((char)('0' + (7 & (b >> 3))))
-                      .Append((char)('0' + (7 & b)));
+                    ret.Write(backSlash, 0, backSlash.Length);
+                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 6)]);
+                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 3)]);
+                    ret.WriteByte(escapeEncodingByteMap[7 & b]);
                 }
             }
 
-            return res.ToString();
+            return ret.ToArray();
         }
 
         /// <summary>
         /// Binary data in the new hex format (>= 9.0).
         /// </summary>
-        private static String ByteArrayToByteaTextHexFormat(Object NativeData, bool UseConformantStrings)
+        private static byte[] ByteArrayToByteaTextHexFormat(Object NativeData, bool UseConformantStrings)
         {
             Byte[] byteArray = (Byte[])NativeData;
 
             if (byteArray.Length == 0)
             {
-                return "";
+                return ASCIIByteArrays.Empty;
             }
 
-            char[] ret = new char[byteArray.Length * 2 + (UseConformantStrings ? 2 : 3)];
+            byte[] ret = new byte[byteArray.Length * 2 + (UseConformantStrings ? 2 : 3)];
             int i = 0;
 
-            for (; i < (UseConformantStrings ? 1 : 2); )
+            for ( ; i < (UseConformantStrings ? 1 : 2) ; )
             {
-                ret[i++] = '\\';
+                ret[i++] = (byte)ASCIIBytes.BackSlash;
             }
 
-            ret[i++] = 'x';
+            ret[i++] = (byte)ASCIIBytes.x;
 
             foreach (byte b in byteArray)
             {
-                ret[i++] = hexEncodingCharMap[(b >> 4) & 0xF];
-                ret[i++] = hexEncodingCharMap[b & 0xF];
+                ret[i++] = hexEncodingByteMap[(b >> 4) & 0x0F];
+                ret[i++] = hexEncodingByteMap[b & 0x0F];
             }
 
-            return new string(ret);
+            return ret;
         }
 
         /// <summary>
@@ -459,9 +544,9 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql boolean text format.
         /// </summary>
-        internal static String BooleanToBooleanText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] BooleanToBooleanText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
-            return ((bool)NativeData) ? "TRUE" : "FALSE";
+            return ((bool)NativeData) ? ASCIIByteArrays.TRUE : ASCIIByteArrays.FALSE;
         }
 
         /// <summary>
@@ -469,7 +554,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] BooleanToBooleanBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-            return ((bool)NativeData) ? new byte[] { 1 } : new byte[] { 0 };
+            return ((bool)NativeData) ? ASCIIByteArrays.Byte_1 : ASCIIByteArrays.Byte_0;
         }
 
         /// <summary>
@@ -499,10 +584,10 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
-        internal static String ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is bool)
-                return ((bool)NativeData) ? "1" : "0";
+                return ((bool)NativeData) ? ASCIIByteArrays.Byte_1 : ASCIIByteArrays.Byte_0;
             // It may seem more sensible to just convert an integer to a BitString here and pass it on.
             // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
             // value smaller than the int.
@@ -517,15 +602,15 @@ namespace NpgsqlTypes
             // set size) may happen, we don't know how to ensure expected behaviour. While passing a bitstring
             // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
             else if (NativeData is int)
-                return NativeData.ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
             else
-                return ((BitString)NativeData).ToString("E");
+                return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
         }
 
         /// <summary>
         /// Convert to a postgresql timestamp.
         /// </summary>
-        internal static String ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToDateTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
@@ -533,31 +618,31 @@ namespace NpgsqlTypes
             }
             if (DateTime.MaxValue.Equals(NativeData))
             {
-                return "infinity";
+                return ASCIIByteArrays.INFINITY;
             }
             if (DateTime.MinValue.Equals(NativeData))
             {
-                return "-infinity";
+                return ASCIIByteArrays.NEG_INFINITY;
             }
-            return ((DateTime)NativeData).ToString("yyyy-MM-dd HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
+            return BackendEncoding.UTF8Encoding.GetBytes((((DateTime)NativeData).ToString("yyyy-MM-dd HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo)));
         }
 
         /// <summary>
         /// Convert to a postgresql date.
         /// </summary>
-        internal static String ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToDate(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
                 return ExtendedNativeToBackendTypeConverter.ToDate(TypeInfo, NativeData, forExtendedQuery, options);
             }
-            return ((DateTime)NativeData).ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo);
+            return BackendEncoding.UTF8Encoding.GetBytes(((DateTime)NativeData).ToString("yyyy-MM-dd", DateTimeFormatInfo.InvariantInfo));
         }
 
         /// <summary>
         /// Convert to a postgresql time.
         /// </summary>
-        internal static String ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToTime(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (!(NativeData is DateTime))
             {
@@ -565,41 +650,53 @@ namespace NpgsqlTypes
             }
             else
             {
-                return ((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo);
+                return BackendEncoding.UTF8Encoding.GetBytes(((DateTime)NativeData).ToString("HH:mm:ss.ffffff", DateTimeFormatInfo.InvariantInfo));
             }
         }
 
         /// <summary>
         /// Convert to a postgres money.
         /// </summary>
-        internal static String ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToMoney(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            return ((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat);
+            return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
         }
 
+        internal static byte[] ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        {
+            // This double cast is needed in order to get the enum type handled correctly (IConvertible)
+            // and the decimal separator always as "." regardless of culture (IFormattable)
+            return BackendEncoding.UTF8Encoding.GetBytes((((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat)));
+        }
 
         /// <summary>
         /// Convert to a postgres double with maximum precision.
         /// </summary>
-        internal static String ToSingleDouble(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] SingleDoubleToFloat4Float8Text(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            return ((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat);
+            return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
 
-
-
-
-        internal static string ToBasicType<T>(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        /// <summary>
+        /// Convert a System.Float to a postgres float4.
+        /// </summary>
+        internal static byte[] SingleToFloat4Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
         {
-            // This double cast is needed in order to get the enum type handled correctly (IConvertible)
-            // and the decimal separator always as "." regardless of culture (IFormattable)
-            return (((IFormattable)((IConvertible)NativeData).ToType(typeof(T), null)).ToString(null, CultureInfo.InvariantCulture.NumberFormat));
+            return PGUtil.HostNetworkByteOrderSwap(BitConverter.GetBytes(Convert.ToSingle(NativeData)));
+        }
+
+        /// <summary>
+        /// Convert a System.Double to a postgres float8.
+        /// </summary>
+        internal static byte[] DoubleToFloat8Binary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            return PGUtil.HostNetworkByteOrderSwap(BitConverter.GetBytes(Convert.ToDouble(NativeData)));
         }
 	}
 
@@ -619,8 +716,9 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Convert a postgresql point to a System.NpgsqlPoint.
 		/// </summary>
-		internal static Object ToPoint(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToPoint(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = pointRegex.Match(BackendData);
 
 			return
@@ -631,8 +729,9 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Convert a postgresql point to a System.RectangleF.
 		/// </summary>
-		internal static Object ToBox(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToBox(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = boxlsegRegex.Match(BackendData);
 
 			return
@@ -646,8 +745,9 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// LDeg.
 		/// </summary>
-		internal static Object ToLSeg(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToLSeg(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = boxlsegRegex.Match(BackendData);
 
 			return
@@ -661,8 +761,9 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Path.
 		/// </summary>
-		internal static Object ToPath(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToPath(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = pathpolygonRegex.Match(BackendData);
 			Boolean open = (BackendData[0] == '[');
 			List<NpgsqlPoint> points = new List<NpgsqlPoint>();
@@ -707,9 +808,10 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Polygon.
 		/// </summary>
-		internal static Object ToPolygon(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize,
+		internal static Object ToPolygon(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
 										 Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = pathpolygonRegex.Match(BackendData);
 			List<NpgsqlPoint> points = new List<NpgsqlPoint>();
 
@@ -741,8 +843,9 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Circle.
 		/// </summary>
-		internal static Object ToCircle(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToCircle(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 			Match m = circleRegex.Match(BackendData);
 			return
 				new NpgsqlCircle(
@@ -754,57 +857,75 @@ namespace NpgsqlTypes
 		/// <summary>
 		/// Inet.
 		/// </summary>
-		internal static Object ToInet(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+		internal static Object ToInet(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
 		{
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return new NpgsqlInet(BackendData);
 		}
 
         /// <summary>
         /// MAC Address.
         /// </summary>
-        internal static Object ToMacAddress(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ToMacAddress(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
             return new NpgsqlMacAddress(BackendData);
         }
 		
-        internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, String BackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
+            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
             return new Guid(BackendData);
         }
 
 		/// <summary>
 		/// interval
 		/// </summary>
-		internal static object ToInterval(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize,
+		internal static object ToInterval(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
 										  Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlInterval.Parse(backendData);
 		}
 
-		internal static object ToTime(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+		internal static object ToTime(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlTime.Parse(backendData);
 		}
 
-		internal static object ToTimeTZ(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+		internal static object ToTimeTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlTimeTZ.Parse(backendData);
 		}
 
-		internal static object ToDate(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize, Int32 typeModifier)
+		internal static object ToDate(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlDate.Parse(backendData);
 		}
 
-		internal static object ToTimeStamp(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize,
+		internal static object ToTimeStamp(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
 										   Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlTimeStamp.Parse(backendData);
 		}
 
-		internal static object ToTimeStampTZ(NpgsqlBackendTypeInfo typeInfo, String backendData, Int16 typeSize,
+		internal static object ToTimeStampTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
 											 Int32 typeModifier)
 		{
+            string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
+
 			return NpgsqlTimeStampTZ.Parse(backendData);
 		}
 	}
@@ -818,12 +939,12 @@ namespace NpgsqlTypes
         /// <summary>
         /// Point.
         /// </summary>
-        internal static String ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToPoint(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlPoint)
             {
                 NpgsqlPoint P = (NpgsqlPoint)NativeData;
-                return String.Format(CultureInfo.InvariantCulture, "({0},{1})", P.X, P.Y);
+                return BackendEncoding.UTF8Encoding.GetBytes(String.Format(CultureInfo.InvariantCulture, "({0},{1})", P.X, P.Y));
             }
             else
             {
@@ -834,7 +955,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Box.
         /// </summary>
-        internal static String ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             /*if (NativeData.GetType() == typeof(Rectangle)) {
                 Rectangle       R = (Rectangle)NativeData;
@@ -847,8 +968,8 @@ namespace NpgsqlTypes
             {
                 NpgsqlBox box = (NpgsqlBox)NativeData;
                 return
-                    String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", box.LowerLeft.X, box.LowerLeft.Y,
-                                  box.UpperRight.X, box.UpperRight.Y);
+                    BackendEncoding.UTF8Encoding.GetBytes(String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", box.LowerLeft.X, box.LowerLeft.Y,
+                                  box.UpperRight.X, box.UpperRight.Y));
             }
             else
             {
@@ -859,16 +980,16 @@ namespace NpgsqlTypes
         /// <summary>
         /// LSeg.
         /// </summary>
-        internal static String ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToLSeg(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             NpgsqlLSeg S = (NpgsqlLSeg)NativeData;
-            return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", S.Start.X, S.Start.Y, S.End.X, S.End.Y);
+            return BackendEncoding.UTF8Encoding.GetBytes(String.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", S.Start.X, S.Start.Y, S.End.X, S.End.Y));
         }
 
         /// <summary>
         /// Open path.
         /// </summary>
-        internal static String ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToPath(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             StringBuilder B = null;
             try
@@ -880,7 +1001,7 @@ namespace NpgsqlTypes
                     B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
                 }
 
-                return String.Format("[{0}]", B);
+                return BackendEncoding.UTF8Encoding.GetBytes(String.Format("[{0}]", B));
             }
             finally
             {
@@ -893,7 +1014,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Polygon.
         /// </summary>
-        internal static String ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToPolygon(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             StringBuilder B = new StringBuilder();
 
@@ -902,55 +1023,55 @@ namespace NpgsqlTypes
                 B.AppendFormat(CultureInfo.InvariantCulture, "{0}({1},{2})", (B.Length > 0 ? "," : ""), P.X, P.Y);
             }
 
-            return String.Format("({0})", B);
+            return BackendEncoding.UTF8Encoding.GetBytes(String.Format("({0})", B));
         }
 
         /// <summary>
         /// Convert to a postgres MAC Address.
         /// </summary>
-        internal static String ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToMacAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlMacAddress)
             {
-                return ((NpgsqlMacAddress)NativeData).ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(((NpgsqlMacAddress)NativeData).ToString());
             }
-            return NativeData.ToString();
+            return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
         }
 
         /// <summary>
         /// Circle.
         /// </summary>
-        internal static String ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToCircle(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             NpgsqlCircle C = (NpgsqlCircle)NativeData;
-            return String.Format(CultureInfo.InvariantCulture, "{0},{1},{2}", C.Center.X, C.Center.Y, C.Radius);
+            return BackendEncoding.UTF8Encoding.GetBytes(String.Format(CultureInfo.InvariantCulture, "{0},{1},{2}", C.Center.X, C.Center.Y, C.Radius));
         }
 
         /// <summary>
         /// Convert to a postgres inet.
         /// </summary>
-        internal static String ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToIPAddress(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (NativeData is NpgsqlInet)
             {
-                return ((NpgsqlInet)NativeData).ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(((NpgsqlInet)NativeData).ToString());
             }
-            return NativeData.ToString();
+            return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
 
         }
 
         /// <summary>
         /// Convert to a postgres interval
         /// </summary>
-        internal static String ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToInterval(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             return
-                ((NativeData is TimeSpan)
+                BackendEncoding.UTF8Encoding.GetBytes(((NativeData is TimeSpan)
                     ? ((NpgsqlInterval)(TimeSpan)NativeData).ToString()
-                    : ((NpgsqlInterval)NativeData).ToString());
+                    : ((NpgsqlInterval)NativeData).ToString()));
         }
 
-        internal static string ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToTime(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -965,10 +1086,10 @@ namespace NpgsqlTypes
             {
                 time = (NpgsqlTime)nativeData;
             }
-            return time.ToString();
+            return BackendEncoding.UTF8Encoding.GetBytes(time.ToString());
         }
 
-        internal static string ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToTimeTZ(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -983,10 +1104,10 @@ namespace NpgsqlTypes
             {
                 time = (NpgsqlTimeTZ)nativeData;
             }
-            return time.ToString();
+            return BackendEncoding.UTF8Encoding.GetBytes(time.ToString());
         }
 
-        internal static string ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToDate(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -994,11 +1115,11 @@ namespace NpgsqlTypes
             }
             else
             {
-                return nativeData.ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(nativeData.ToString());
             }
         }
 
-        internal static string ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        internal static byte[] ToTimeStamp(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             if (nativeData is DateTime)
             {
@@ -1006,7 +1127,7 @@ namespace NpgsqlTypes
             }
             else
             {
-                return nativeData.ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(nativeData.ToString());
             }
         }
     }

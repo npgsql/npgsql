@@ -658,7 +658,7 @@ namespace Npgsql
         {
             if (parameters.Count != 0)
             {
-                Object[] parameterValues = new Object[parameters.Count];
+                byte[][] parameterValues = new byte[parameters.Count][];
                 Int16[] parameterFormatCodes = bind.ParameterFormatCodes;
 
                 for (Int32 i = 0; i < parameters.Count; i++)
@@ -668,7 +668,7 @@ namespace Npgsql
                     if (parameterValues[i] == null) {
                         parameterFormatCodes[i]= (Int16)FormatCode.Binary;
                     } else {
-                        parameterFormatCodes[i] = parameterValues[i].GetType() == typeof(byte[]) ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
+                        parameterFormatCodes[i] = parameters[i].TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
                     }
                 }
 
@@ -765,7 +765,7 @@ namespace Npgsql
 
 
                         // Description...
-                        NpgsqlDescribe describe = new NpgsqlDescribe('S', planName);
+                        NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
 
 
                         m_Connector.Describe(describe);
@@ -878,61 +878,67 @@ namespace Npgsql
         /// The parameter name format is <b>:ParameterName</b>.
         /// </summary>
         /// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
-        internal StringBuilder GetCommandText()
+        internal byte[] GetCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            StringBuilder ret = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
+            byte[] ret = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
             // In constructing the command text, we potentially called internal
             // queries.  Reset command timeout and SQL sent.
             m_Connector.Mediator.ResetResponses();
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             return ret;
-
         }
 
-        private void PassParam(StringBuilder query, NpgsqlParameter p)
+        private void PassParam(MemoryStream query, NpgsqlParameter p)
         {
-            string serialised = (string)p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
+            byte[] serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
             // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
             // See bug #1010543
             // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
             // only one pair of parentheses for the two purposes instead of two pairs.
-            query.AppendFormat("({0})", serialised);
+            query
+                .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                .WriteBytes(serialised)
+                .WriteBytes((byte)ASCIIBytes.ParenRight);
 
             if (p.UseCast)
             {
-                query.AppendFormat("::{0}", p.TypeInfo.CastName);
+                PGUtil.WriteString(query, "::{0}", p.TypeInfo.CastName);
 
                 if (p.TypeInfo.UseSize && (p.Size > 0))
                 {
-                    query.AppendFormat("({0})", p.Size);
+                    PGUtil.WriteString(query, "({0})", p.Size);
                 }
             }
         }
 
-        private StringBuilder GetClearCommandText()
+        private byte[] GetClearCommandText()
         {
             if (NpgsqlEventLog.Level == LogLevel.Debug)
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetClearCommandText");
             }
 
-            StringBuilder result = PGUtil.TrimStringBuilder(new StringBuilder(text));
+            MemoryStream result = new MemoryStream();
 
             switch(type)
             {
                 case CommandType.TableDirect:
-                    return result.Insert(0, "select * from "); // There is no parameter support on table direct.
+                    result
+                        .WriteString("SELECT * FROM ")
+                        .WriteString(text.Trim());
+
+                    return result.ToArray();
                 case CommandType.StoredProcedure:
                     if (!functionChecksDone)
                     {
                         functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
 
                         // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
-                        switch(result[result.Length - 1])
+                        switch(text[text.Length - 1])
                         {
                             case ')' : case ';':
                                 addProcedureParenthesis = false;
@@ -945,23 +951,34 @@ namespace Npgsql
                         functionChecksDone = true;
                     }
 
-                    result.Insert(0,
+                    PGUtil.WriteString(
+                        result,
                         Connector.SupportsPrepare
-                        ? "select * from " // This syntax is only available in 7.3+ as well SupportsPrepare.
-                        : "select " //Only a single result return supported. 7.2 and earlier.
-                       );
+                        ? "SELECT * FROM " // This syntax is only available in 7.3+ as well SupportsPrepare.
+                        : "SELECT " //Only a single result return supported. 7.2 and earlier.
+                    );
+
                     break;
+
             }
 
             if (parameters.Count == 0)
             {
+                PGUtil.WriteString(result, text.Trim());
+
                 if (addProcedureParenthesis)
-                    result.Append("()");
+                {
+                    result
+                        .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                        .WriteBytes((byte)ASCIIBytes.ParenRight);
+                }
 
                 if (functionNeedsColumnListDefinition)
+                {
                     AddFunctionColumnListSupport(result);
-               
-                return result;
+                }
+
+                return result.ToArray();
             }
 
             // Get parameters in query string to translate them to their actual values.
@@ -979,8 +996,7 @@ namespace Npgsql
                 foreach (NpgsqlParameter parameter in parameters)
                     parameterIndex[parameter.CleanName] = parameter;
 
-                StringBuilder sb = new StringBuilder();
-                foreach (String s in parameterReplace.Split(result.ToString()))
+                foreach (String s in parameterReplace.Split(text))
                     if (s.Length != 0)
                     {
                         NpgsqlParameter p = null;
@@ -1004,38 +1020,43 @@ namespace Npgsql
                                     //
                                     //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
 
-                                    sb.Append('('); PassParam(sb, p); sb.Append(')');
+                                    result.WriteByte((byte)ASCIIBytes.ParenLeft);
+                                    PassParam(result, p);
+                                    result.WriteByte((byte)ASCIIBytes.ParenRight);
+
                                     break;
                             }
                         }
                         else
                         {
-                            sb.Append(s);
+                            PGUtil.WriteString(result, s);
                         }
                     }
-                result = sb;
             }
 
             else
             {
-                result.Append('(');
-                
-                for (Int32 i = 0; i < parameters.Count; i++)
+                result
+                    .WriteString(text.Trim())
+                    .WriteBytes((byte)ASCIIBytes.ParenLeft);
+
+                for (Int32 i = 0 ; i < parameters.Count ; i++)
                 {
                     switch(parameters[i].Direction)
                     {
                         case ParameterDirection.Input: case ParameterDirection.InputOutput:
+                            if (i > 0)
+                            {
+                                result.WriteByte((byte)ASCIIBytes.Comma);
+                            }
+
                             PassParam(result, parameters[i]);
-                            result.Append(',');
+
                             break;
                     }
                 }
 
-                // Remove a trailing comma added from parameter handling above. If any.
-                // Maybe there are only output parameters. If so, there will be no comma.
-                if (result[result.Length - 1] == ',')
-                    result = result.Remove(result.Length - 1, 1);
-                result.Append(')');
+                result.WriteByte((byte)ASCIIBytes.ParenRight);
             }
 
             if (functionNeedsColumnListDefinition)
@@ -1043,7 +1064,7 @@ namespace Npgsql
                 AddFunctionColumnListSupport(result);
             }
 
-            return result;
+            return result.ToArray();
         }
 
         private Boolean CheckFunctionNeedsColumnDefinitionList()
@@ -1144,51 +1165,84 @@ namespace Npgsql
             return ret;
         }
 
-        private void AddFunctionColumnListSupport(StringBuilder sb)
+        private void AddFunctionColumnListSupport(Stream st)
         {
-            sb.Append(" as (");
-            foreach (NpgsqlParameter p in Parameters)
+            PGUtil.WriteString(st, " as (");
+
+            for (int i = 0 ; i < Parameters.Count ; i++)
+            {
+                var p = Parameters[i];
+
                 switch(p.Direction)
                 {
                     case ParameterDirection.Output: case ParameterDirection.InputOutput:
-                        sb.Append(p.CleanName).Append(" ").Append(p.TypeInfo.Name).Append(",");
+                        if (i > 0)
+                        {
+                            st.WriteByte((byte)ASCIIBytes.Comma);
+                        }
+
+                        st
+                            .WriteString(p.CleanName)
+                            .WriteBytes((byte)ASCIIBytes.Space)
+                            .WriteString(p.TypeInfo.Name);
+
                         break;
                 }
-            sb[sb.Length - 1] = ')';
+            }
+
+            st.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
 
-        private StringBuilder GetPreparedCommandText()
+        private byte[] GetPreparedCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
 
-            StringBuilder result = new StringBuilder("execute ").Append(planName);
+            MemoryStream result = new MemoryStream();
+
+            result.WriteString("EXECUTE {0}", planName);
 
             if(parameters.Count != 0)
             {
-                result.Append('(');
+                result.WriteByte((byte)ASCIIBytes.ParenLeft);
 
-                foreach(NpgsqlParameter p in parameters)
+                for (int i = 0 ; i < Parameters.Count ; i++)
                 {
+                    var p = Parameters[i];
+
+                    if (i > 0)
+                    {
+                        result.WriteByte((byte)ASCIIBytes.Comma);
+                    }
+
                     // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
                     // See bug #1010543
-                    result.Append('(');
-                    result.Append(p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions));
-                    result.Append(')');
+                    result.WriteByte((byte)ASCIIBytes.ParenLeft);
+
+                    byte[] serialization;
+
+                    serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
+
+                    result
+                        .WriteBytes(serialization)
+                        .WriteBytes((byte)ASCIIBytes.ParenRight);
+
                     if (p.UseCast)
                     {
-                        result.Append("::").Append(p.TypeInfo.CastName);
+                        PGUtil.WriteString(result, string.Format("::{0}", p.TypeInfo.CastName));
+
                         if (p.TypeInfo.UseSize && (p.Size > 0))
-                            result.Append('(').Append(p.Size).Append(')');
+                        {
+                            result.WriteString("({0})", p.Size);
+                        }
                     }
-                    result.Append(',');
                 }
 
-                result[result.Length - 1] = ')';
+                result.WriteByte((byte)ASCIIBytes.ParenRight);
             }
-            return result;
-        }
 
+            return result.ToArray();
+        }
 
         private String GetParseCommandText()
         {
@@ -1196,30 +1250,46 @@ namespace Npgsql
 
             Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
 
-            String parseCommand = text;
+            string commandText = text.Trim();
+            StringBuilder commandBuilder = new StringBuilder();
 
             if (type == CommandType.StoredProcedure)
             {
+                commandBuilder
+                    .Append("select ")
+                    .Append(commandText);
+
                 // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection.
-                if (!parseCommand.Trim().EndsWith(")"))
+                if (! commandText.EndsWith(")"))
                 {
                     addProcedureParenthesis = true;
-                    parseCommand += "(";
-                }
 
-                parseCommand = string.Format("select * from {0}", parseCommand); // This syntax is only available in 7.3+ as well SupportsPrepare.
+                    commandBuilder.Append("(");
+                }
+            }
+            else if (type == CommandType.TableDirect)
+            {
+                commandBuilder
+                    .Append("select * from ")
+                    .Append(commandText);
+
+                return commandBuilder.ToString();
             }
             else
             {
-                if (type == CommandType.TableDirect)
-                {
-                    return string.Format("select * from {0}", parseCommand); // There is no parameter support on TableDirect.
-                }
+                commandBuilder.Append(commandText);
             }
+
+            if (!addProcedureParenthesis)
+            {
+                // tText is now the command text, within which parameter replacement will be carried out.
+                // parseCommand is not used from here on out in this code path.
+                commandText = commandBuilder.ToString();
+            }
+
             if (parameters.Count > 0)
             {
                 // The ReplaceParameterValue below, also checks if the parameter is present.
-
                 String parameterName;
                 Int32 i;
 
@@ -1228,7 +1298,6 @@ namespace Npgsql
                     if ((parameters[i].Direction == ParameterDirection.Input) ||
                         (parameters[i].Direction == ParameterDirection.InputOutput))
                     {
-                        
                         string parameterSize = "";
 
                         if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
@@ -1244,36 +1313,41 @@ namespace Npgsql
                             //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
                             
                             // Just add typecast if needed.
+                            // TODO
+                            // Optimize.
+                            // Scanning the command string for each individual parameter is inefficient.  One scan should be used for all parameters if possible.
                             if (parameters[i].UseCast)
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
+                            {
+                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
+                            }
                             else
-                                parseCommand = ReplaceParameterValue(parseCommand, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
+                            {
+                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
+                            }
                         }
                         else
                         {
                             if (parameters[i].UseCast)
-                                parseCommand += string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
+                            {
+                                commandBuilder.AppendFormat("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
+                            }
                             else
-                                parseCommand += string.Format("${0}{1}", (i + 1), parameterSize);
+                            {
+                                commandBuilder.AppendFormat("${0}{1}", (i + 1), parameterSize);
+                            }
                         }
-                       
-                    
                     }
                 }
             }
 
+            if (addProcedureParenthesis)
+            {
+                commandBuilder.Append(")");
 
-            return string.Format("{0}{1}", parseCommand, addProcedureParenthesis ? ")" : string.Empty);
+                commandText = commandBuilder.ToString();
+            }
 
-
-            //if (addProcedureParenthesis)
-            //{
-            //    return parseCommand + ")";
-            //}
-            //else
-            //{
-            //    return parseCommand;
-            //}
+            return commandText;
         }
 
 

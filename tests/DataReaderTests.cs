@@ -672,7 +672,6 @@ namespace NpgsqlTests
             using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
             {
                 var metadata = dr.GetSchemaTable();
-                var identityfound = false;
 
                 foreach (DataRow r in metadata.Rows)
                 {

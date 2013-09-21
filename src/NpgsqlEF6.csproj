@@ -92,6 +92,8 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Npgsql\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
+    <Compile Include="Npgsql\BackendEncoding.cs" />
+    <Compile Include="Npgsql\ASCIIBytes.cs" />
     <Compile Include="Npgsql\HashAlgorithm.cs" />
     <Compile Include="Npgsql\MD5.cs" />
     <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
