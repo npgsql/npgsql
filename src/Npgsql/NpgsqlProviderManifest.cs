@@ -240,11 +240,11 @@ namespace Npgsql
                     if (edmType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
                         !facet.IsUnbounded && facet.Value != null)
                     {
-                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["interval"], (byte)facet.Value);
+                        return TypeUsage.CreateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["interval"], (byte)facet.Value);
                     }
                     else
                     {
-                        return TypeUsage.CreateDateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["interval"], null);
+                        return TypeUsage.CreateTimeTypeUsage(StoreTypeNameToStorePrimitiveType["interval"], null);
                     }
                 case PrimitiveTypeKind.Binary:
                     {
