@@ -1,4 +1,4 @@
-﻿// created on 27/12/2002 at 17:05
+// created on 27/12/2002 at 17:05
 //
 // Author:
 // 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
