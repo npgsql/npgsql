@@ -360,6 +360,6 @@ namespace NpgsqlTests
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override string ConnectionString { get { return ConnectionStringV2; } }
     }
 }
