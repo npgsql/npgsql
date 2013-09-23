@@ -65,7 +65,7 @@ namespace Npgsql
 
             if (isolation == IsolationLevel.RepeatableRead)
             {
-            	commandText.Append("REPEATABLE READ");
+                commandText.Append("REPEATABLE READ");
             }
             else if ((isolation == IsolationLevel.Serializable) ||
                 (isolation == IsolationLevel.Snapshot))

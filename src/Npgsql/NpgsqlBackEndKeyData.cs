@@ -3,11 +3,11 @@
 // Npgsql.NpgsqlBackEndKeyData.cs
 //
 // Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Francisco Jr. (fxjrlists@yahoo.com.br)
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 
 // Permission to use, copy, modify, and distribute this software and its
@@ -32,26 +32,26 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents a BackEndKeyData message received
-	/// from PostgreSQL
-	/// </summary>
-	internal sealed class NpgsqlBackEndKeyData
-	{
-		public readonly int ProcessID;
-		public readonly int SecretKey;
+    /// <summary>
+    /// This class represents a BackEndKeyData message received
+    /// from PostgreSQL
+    /// </summary>
+    internal sealed class NpgsqlBackEndKeyData
+    {
+        public readonly int ProcessID;
+        public readonly int SecretKey;
 
-		public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion, Stream stream)
-		{
-			// Read the BackendKeyData message contents. Two Int32 integers = 8 Bytes.
-			// For protocol version 3.0 they are three integers. The first one is just the size of message
-			// so, just read it.
-			if (protocolVersion >= ProtocolVersion.Version3)
-			{
-				PGUtil.EatStreamBytes(stream, 4);
-			}
-			ProcessID = PGUtil.ReadInt32(stream);
-			SecretKey = PGUtil.ReadInt32(stream);
-		}
-	}
+        public NpgsqlBackEndKeyData(ProtocolVersion protocolVersion, Stream stream)
+        {
+            // Read the BackendKeyData message contents. Two Int32 integers = 8 Bytes.
+            // For protocol version 3.0 they are three integers. The first one is just the size of message
+            // so, just read it.
+            if (protocolVersion >= ProtocolVersion.Version3)
+            {
+                PGUtil.EatStreamBytes(stream, 4);
+            }
+            ProcessID = PGUtil.ReadInt32(stream);
+            SecretKey = PGUtil.ReadInt32(stream);
+        }
+    }
 }

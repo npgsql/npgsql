@@ -10,8 +10,8 @@ using System.Data.Common.CommandTrees;
 
 namespace Npgsql.SqlGenerators
 {
-	internal class SqlSelectGenerator : SqlBaseGenerator
-	{
+    internal class SqlSelectGenerator : SqlBaseGenerator
+    {
         private DbQueryCommandTree _commandTree;
 
         public SqlSelectGenerator(DbQueryCommandTree commandTree)
@@ -56,6 +56,6 @@ namespace Npgsql.SqlGenerators
             }
             ((NpgsqlCommand)command).ExpectedTypes = expectedTypes.ToArray();
         }
-	}
+    }
 }
 #endif

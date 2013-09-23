@@ -28,16 +28,16 @@ using System.Transactions;
 
 namespace Npgsql
 {
-	internal interface INpgsqlResourceManager
-	{
-		void Enlist(INpgsqlTransactionCallbacks transactionCallbacks, byte[] txToken);
-		byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
-		void CommitWork(string txName);
+    internal interface INpgsqlResourceManager
+    {
+        void Enlist(INpgsqlTransactionCallbacks transactionCallbacks, byte[] txToken);
+        byte[] Promote(INpgsqlTransactionCallbacks transactionCallbacks);
+        void CommitWork(string txName);
         void RollbackWork(string txName);
-	}
+    }
 
-	internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
-	{
+    internal class NpgsqlResourceManager : MarshalByRefObject, INpgsqlResourceManager
+    {
         private readonly Dictionary<string, CommittableTransaction> _transactions = new Dictionary<string, CommittableTransaction>();
 
         #region INpgsqlTransactionManager Members
@@ -83,69 +83,69 @@ namespace Npgsql
 
         #endregion
 
-		private class DurableResourceManager : ISinglePhaseNotification
-		{
-			private CommittableTransaction _tx;
-			private NpgsqlResourceManager _rm;
-			private readonly INpgsqlTransactionCallbacks _callbacks;
-			private string _txName;
+        private class DurableResourceManager : ISinglePhaseNotification
+        {
+            private CommittableTransaction _tx;
+            private NpgsqlResourceManager _rm;
+            private readonly INpgsqlTransactionCallbacks _callbacks;
+            private string _txName;
 
-			public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks)
-				: this(rm, callbacks, null)
-			{
-			}
+            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks)
+                : this(rm, callbacks, null)
+            {
+            }
 
-			public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
-			                              CommittableTransaction tx)
-			{
-				_rm = rm;
-				_tx = tx;
-				_callbacks = callbacks;
-			}
+            public DurableResourceManager(NpgsqlResourceManager rm, INpgsqlTransactionCallbacks callbacks,
+                                          CommittableTransaction tx)
+            {
+                _rm = rm;
+                _tx = tx;
+                _callbacks = callbacks;
+            }
 
-			public string TxName
-			{
-				get
-				{
-					// delay initialize since callback methods may be expensive
-					if (_txName == null)
-					{
-						_txName = _callbacks.GetName();
-					}
-					return _txName;
-				}
-			}
+            public string TxName
+            {
+                get
+                {
+                    // delay initialize since callback methods may be expensive
+                    if (_txName == null)
+                    {
+                        _txName = _callbacks.GetName();
+                    }
+                    return _txName;
+                }
+            }
 
-			#region IEnlistmentNotification Members
+            #region IEnlistmentNotification Members
 
-			public void Commit(Enlistment enlistment)
-			{
-				_callbacks.CommitTransaction();
-				// TODO: remove record of prepared
-				enlistment.Done();
-				_callbacks.Dispose();
-			}
+            public void Commit(Enlistment enlistment)
+            {
+                _callbacks.CommitTransaction();
+                // TODO: remove record of prepared
+                enlistment.Done();
+                _callbacks.Dispose();
+            }
 
-			public void InDoubt(Enlistment enlistment)
-			{
-				// not going to happen when enlisted durably
-				throw new NotImplementedException();
-			}
+            public void InDoubt(Enlistment enlistment)
+            {
+                // not going to happen when enlisted durably
+                throw new NotImplementedException();
+            }
 
-			public void Prepare(PreparingEnlistment preparingEnlistment)
-			{
-				_callbacks.PrepareTransaction();
-				// TODO: record prepared
-				preparingEnlistment.Prepared();
-			}
+            public void Prepare(PreparingEnlistment preparingEnlistment)
+            {
+                _callbacks.PrepareTransaction();
+                // TODO: record prepared
+                preparingEnlistment.Prepared();
+            }
 
-			public void Rollback(Enlistment enlistment)
-			{
-				_callbacks.RollbackTransaction();
-				// TODO: remove record of prepared
-				enlistment.Done();
-				_callbacks.Dispose();
-			}
+            public void Rollback(Enlistment enlistment)
+            {
+                _callbacks.RollbackTransaction();
+                // TODO: remove record of prepared
+                enlistment.Done();
+                _callbacks.Dispose();
+            }
 
             #endregion
 
@@ -160,18 +160,18 @@ namespace Npgsql
 
             #endregion
 
-			private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
+            private static readonly Guid rmGuid = new Guid("9e1b6d2d-8cdb-40ce-ac37-edfe5f880716");
 
-			public Transaction Enlist(byte[] token)
-			{
-				return Enlist(TransactionInterop.GetTransactionFromTransmitterPropagationToken(token));
-			}
+            public Transaction Enlist(byte[] token)
+            {
+                return Enlist(TransactionInterop.GetTransactionFromTransmitterPropagationToken(token));
+            }
 
-			public Transaction Enlist(Transaction tx)
-			{
-				tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
+            public Transaction Enlist(Transaction tx)
+            {
+                tx.EnlistDurable(rmGuid, this, EnlistmentOptions.None);
                 return tx;
-			}
+            }
         }
     }
 }

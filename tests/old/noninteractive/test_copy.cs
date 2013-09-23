@@ -1,7 +1,7 @@
 // Author
 //  Kalle Hallivuori <kato@iki.fi>
 //
-//	Copyright (C) 2007 The Npgsql Development Team
+//    Copyright (C) 2007 The Npgsql Development Team
 //  npgsql-general@gborg.postgresql.org
 //  http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //

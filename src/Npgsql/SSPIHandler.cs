@@ -155,8 +155,8 @@ namespace Npgsql
 
             SecBuffer OutBuffer;
             SecBuffer InBuffer;
-	        SecBufferDesc inbuf;
-	        SecBufferDesc outbuf;
+            SecBufferDesc inbuf;
+            SecBufferDesc outbuf;
             SecHandle newContext;
             SecHandle expire;
             int contextAttr;

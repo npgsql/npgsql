@@ -28,52 +28,52 @@ using System.Transactions;
 
 namespace Npgsql
 {
-	internal class NpgsqlPromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
-	{
-		private readonly NpgsqlConnection _connection;
-		private IsolationLevel _isolationLevel;
-		private NpgsqlTransaction _npgsqlTx;
-		private NpgsqlTransactionCallbacks _callbacks;
+    internal class NpgsqlPromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
+    {
+        private readonly NpgsqlConnection _connection;
+        private IsolationLevel _isolationLevel;
+        private NpgsqlTransaction _npgsqlTx;
+        private NpgsqlTransactionCallbacks _callbacks;
         private INpgsqlResourceManager _rm;
         private bool _inTransaction;
         internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
 
-		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-		public NpgsqlPromotableSinglePhaseNotification(NpgsqlConnection connection)
-		{
-			_connection = connection;
-		}
+        public NpgsqlPromotableSinglePhaseNotification(NpgsqlConnection connection)
+        {
+            _connection = connection;
+        }
 
-		public void Enlist(Transaction tx)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Enlist");
-			if (tx != null)
-			{
-				_isolationLevel = tx.IsolationLevel;
-				if (!tx.EnlistPromotableSinglePhase(this))
-				{
-					// must already have a durable resource
-					// start transaction
-					_npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
+        public void Enlist(Transaction tx)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Enlist");
+            if (tx != null)
+            {
+                _isolationLevel = tx.IsolationLevel;
+                if (!tx.EnlistPromotableSinglePhase(this))
+                {
+                    // must already have a durable resource
+                    // start transaction
+                    _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
                     _inTransaction = true;
                     _rm = CreateResourceManager();
                     _callbacks = new NpgsqlTransactionCallbacks(_connection);
                     _rm.Enlist(_callbacks, TransactionInterop.GetTransmitterPropagationToken(tx));
-					// enlisted in distributed transaction
-					// disconnect and cleanup local transaction
-					_npgsqlTx.Cancel();
-					_npgsqlTx.Dispose();
-					_npgsqlTx = null;
-				}
-			}
-		}
+                    // enlisted in distributed transaction
+                    // disconnect and cleanup local transaction
+                    _npgsqlTx.Cancel();
+                    _npgsqlTx.Dispose();
+                    _npgsqlTx = null;
+                }
+            }
+        }
 
-		/// <summary>
-		/// Used when a connection is closed
-		/// </summary>
-		public void Prepare()
-		{
+        /// <summary>
+        /// Used when a connection is closed
+        /// </summary>
+        public void Prepare()
+        {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
             if (_inTransaction)
             {
@@ -93,31 +93,31 @@ namespace Npgsql
                     _connection.PromotableLocalTransactionEnded();
                 }
             }
-		}
+        }
 
-		#region IPromotableSinglePhaseNotification Members
+        #region IPromotableSinglePhaseNotification Members
 
-		public void Initialize()
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Initialize");
-			_npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
+        public void Initialize()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Initialize");
+            _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
             _inTransaction = true;
-		}
+        }
 
-		public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
+        public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
             // try to rollback the transaction with either the
             // ADO.NET transaction or the callbacks that managed the
             // two phase commit transaction.
-			if (_npgsqlTx != null)
-			{
-				_npgsqlTx.Rollback();
-				_npgsqlTx.Dispose();
+            if (_npgsqlTx != null)
+            {
+                _npgsqlTx.Rollback();
+                _npgsqlTx.Dispose();
                 _npgsqlTx = null;
                 singlePhaseEnlistment.Aborted();
                 _connection.PromotableLocalTransactionEnded();
-			}
+            }
             else if (_callbacks != null)
             {
                 if (_rm != null)
@@ -133,21 +133,21 @@ namespace Npgsql
                 _callbacks = null;
             }
             _inTransaction = false;
-		}
+        }
 
-		public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "SinglePhaseCommit");
-			if (_npgsqlTx != null)
-			{
-				_npgsqlTx.Commit();
-				_npgsqlTx.Dispose();
-				_npgsqlTx = null;
-				singlePhaseEnlistment.Committed();
+        public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "SinglePhaseCommit");
+            if (_npgsqlTx != null)
+            {
+                _npgsqlTx.Commit();
+                _npgsqlTx.Dispose();
+                _npgsqlTx = null;
+                singlePhaseEnlistment.Committed();
                 _connection.PromotableLocalTransactionEnded();
-			}
-			else if (_callbacks != null)
-			{
+            }
+            else if (_callbacks != null)
+            {
                 if (_rm != null)
                 {
                     _rm.CommitWork(_callbacks.GetName());
@@ -159,17 +159,17 @@ namespace Npgsql
                     singlePhaseEnlistment.Committed();
                 }
                 _callbacks = null;
-			}
+            }
             _inTransaction = false;
-		}
+        }
 
-		#endregion
+        #endregion
 
-		#region ITransactionPromoter Members
+        #region ITransactionPromoter Members
 
-		public byte[] Promote()
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Promote");
+        public byte[] Promote()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Promote");
             _rm = CreateResourceManager();
             // may not be null if Prepare or Enlist is called first
             if (_callbacks == null)
@@ -187,51 +187,51 @@ namespace Npgsql
                 _npgsqlTx = null;
                 _connection.PromotableLocalTransactionEnded();
             }
-			return token;
-		}
+            return token;
+        }
 
-		#endregion
+        #endregion
 
-		private static INpgsqlResourceManager _resourceManager;
+        private static INpgsqlResourceManager _resourceManager;
         private static System.Runtime.Remoting.Lifetime.ClientSponsor _sponser;
 
-		private static INpgsqlResourceManager CreateResourceManager()
-		{
-			// TODO: create network proxy for resource manager
-			if (_resourceManager == null)
-			{
+        private static INpgsqlResourceManager CreateResourceManager()
+        {
+            // TODO: create network proxy for resource manager
+            if (_resourceManager == null)
+            {
                 _sponser = new System.Runtime.Remoting.Lifetime.ClientSponsor();
-				AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
-				_resourceManager =
-					(INpgsqlResourceManager)
-					rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
-					                                 typeof (NpgsqlResourceManager).FullName);
+                AppDomain rmDomain = AppDomain.CreateDomain("NpgsqlResourceManager", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
+                _resourceManager =
+                    (INpgsqlResourceManager)
+                    rmDomain.CreateInstanceAndUnwrap(typeof (NpgsqlResourceManager).Assembly.FullName,
+                                                     typeof (NpgsqlResourceManager).FullName);
                 _sponser.Register((MarshalByRefObject)_resourceManager);
-			}
-			return _resourceManager;
-			//return new NpgsqlResourceManager();
-		}
+            }
+            return _resourceManager;
+            //return new NpgsqlResourceManager();
+        }
 
-		private static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel _isolationLevel)
-		{
-			switch (_isolationLevel)
-			{
-				case IsolationLevel.Chaos:
-					return System.Data.IsolationLevel.Chaos;
-				case IsolationLevel.ReadCommitted:
-					return System.Data.IsolationLevel.ReadCommitted;
-				case IsolationLevel.ReadUncommitted:
-					return System.Data.IsolationLevel.ReadUncommitted;
-				case IsolationLevel.RepeatableRead:
-					return System.Data.IsolationLevel.RepeatableRead;
-				case IsolationLevel.Serializable:
-					return System.Data.IsolationLevel.Serializable;
-				case IsolationLevel.Snapshot:
-					return System.Data.IsolationLevel.Snapshot;
-				case IsolationLevel.Unspecified:
-				default:
-					return System.Data.IsolationLevel.Unspecified;
-			}
-		}
-	}
+        private static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel _isolationLevel)
+        {
+            switch (_isolationLevel)
+            {
+                case IsolationLevel.Chaos:
+                    return System.Data.IsolationLevel.Chaos;
+                case IsolationLevel.ReadCommitted:
+                    return System.Data.IsolationLevel.ReadCommitted;
+                case IsolationLevel.ReadUncommitted:
+                    return System.Data.IsolationLevel.ReadUncommitted;
+                case IsolationLevel.RepeatableRead:
+                    return System.Data.IsolationLevel.RepeatableRead;
+                case IsolationLevel.Serializable:
+                    return System.Data.IsolationLevel.Serializable;
+                case IsolationLevel.Snapshot:
+                    return System.Data.IsolationLevel.Snapshot;
+                case IsolationLevel.Unspecified:
+                default:
+                    return System.Data.IsolationLevel.Unspecified;
+            }
+        }
+    }
 }

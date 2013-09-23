@@ -1,6 +1,6 @@
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -51,273 +51,273 @@ public class Test_Connection
 
 
 
-  	public void ParametersGetName()
-  	{
-  		NpgsqlCommand command = new NpgsqlCommand();
-  		
-  		// Add parameters.
-  		command.Parameters.Add(new NpgsqlParameter("Parameter1", DbType.Boolean));
-  		command.Parameters.Add(new NpgsqlParameter("Parameter2", DbType.Int32));
-  		command.Parameters.Add(new NpgsqlParameter("Parameter3", DbType.DateTime));
-  		
-  		
-  		// Get by indexers.
-  		
-  		Console.WriteLine(command.Parameters["Parameter1"].ParameterName);
-  		Console.WriteLine(command.Parameters["Parameter2"].ParameterName);
-  		Console.WriteLine(command.Parameters["Parameter3"].ParameterName);
-  		
-  		Console.WriteLine(command.Parameters[0].ParameterName);
-  		Console.WriteLine(command.Parameters[1].ParameterName);
-  		Console.WriteLine(command.Parameters[2].ParameterName);
-  		
-  		
-  		
-  		
-  	}
-  	
-  	
-  	public void NoNameParameterAdd()
-  	{
-  	  try
-  	  {
-  	  
-  		  NpgsqlCommand command = new NpgsqlCommand();
-  		
-  		  command.Parameters.Add(new NpgsqlParameter());
-  		} 
-  		catch( NpgsqlException e){}
-  		
-  		
-  	}
-  	
-  	
-  	public void FunctionCallFromSelect()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("select * from funcB()", _conn);
-  		
-  		NpgsqlDataReader reader = command.ExecuteReader();
-  		
-  		Console.WriteLine(reader == null);
-  		
-  		//Assertion.AssertNotNull(reader);
-  		//reader.FieldCount
-  		
-  		_conn.Close();
-  		
-  	}
-  	
-  	
-  	public void ExecuteScalar()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("select count(*) from tablea", _conn);
-  		
-  		Int64 result = (Int64)command.ExecuteScalar();
-  		
-  		Console.WriteLine(result);
-  		//Assertion.AssertEquals(4, result);
-  		//reader.FieldCount
-  		
-  		_conn.Close();
-  	}
+      public void ParametersGetName()
+      {
+          NpgsqlCommand command = new NpgsqlCommand();
+          
+          // Add parameters.
+          command.Parameters.Add(new NpgsqlParameter("Parameter1", DbType.Boolean));
+          command.Parameters.Add(new NpgsqlParameter("Parameter2", DbType.Int32));
+          command.Parameters.Add(new NpgsqlParameter("Parameter3", DbType.DateTime));
+          
+          
+          // Get by indexers.
+          
+          Console.WriteLine(command.Parameters["Parameter1"].ParameterName);
+          Console.WriteLine(command.Parameters["Parameter2"].ParameterName);
+          Console.WriteLine(command.Parameters["Parameter3"].ParameterName);
+          
+          Console.WriteLine(command.Parameters[0].ParameterName);
+          Console.WriteLine(command.Parameters[1].ParameterName);
+          Console.WriteLine(command.Parameters[2].ParameterName);
+          
+          
+          
+          
+      }
+      
+      
+      public void NoNameParameterAdd()
+      {
+        try
+        {
+        
+            NpgsqlCommand command = new NpgsqlCommand();
+          
+            command.Parameters.Add(new NpgsqlParameter());
+          } 
+          catch( NpgsqlException e){}
+          
+          
+      }
+      
+      
+      public void FunctionCallFromSelect()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("select * from funcB()", _conn);
+          
+          NpgsqlDataReader reader = command.ExecuteReader();
+          
+          Console.WriteLine(reader == null);
+          
+          //Assertion.AssertNotNull(reader);
+          //reader.FieldCount
+          
+          _conn.Close();
+          
+      }
+      
+      
+      public void ExecuteScalar()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("select count(*) from tablea", _conn);
+          
+          Int64 result = (Int64)command.ExecuteScalar();
+          
+          Console.WriteLine(result);
+          //Assertion.AssertEquals(4, result);
+          //reader.FieldCount
+          
+          _conn.Close();
+      }
   
-  	
-  	public void FunctionCallReturnSingleValue()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("funcC()", _conn);
-  		command.CommandType = CommandType.StoredProcedure;
-  					
-  		Int64 result = (Int64) command.ExecuteScalar();
-  		
-  		Console.WriteLine(result);
-  		
-  		//Assertion.AssertEquals(4, result);
-  		//reader.FieldCount
-  		_conn.Close();
-  	}
-  	
-  	
-  	
-  	public void FunctionCallReturnSingleValueWithPrepare()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("funcC()", _conn);
-  		command.CommandType = CommandType.StoredProcedure;
-  		
-  		command.Prepare();
-  		Int64 result = (Int64) command.ExecuteScalar();
-  		
-  		Console.WriteLine(result);
-  		
-  		//Assertion.AssertEquals(4, result);
-  		//reader.FieldCount
-  		_conn.Close();
-  	}
-  	
-  	
-  	public void FunctionCallWithParametersReturnSingleValue()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", _conn);
-  		command.CommandType = CommandType.StoredProcedure;
-  		
-  		command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-  					
-  		command.Parameters[0].Value = 4;
-  					
-  		Int64 result = (Int64) command.ExecuteScalar();
-  		
-  		Console.WriteLine(result);
-  		
-  		//Assertion.AssertEquals(1, result);
-  		
-  		_conn.Close();
-  	}
-  	
-  	
-  	
-  	public void FunctionCallWithParametersPrepareReturnSingleValue()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", _conn);
-  		command.CommandType = CommandType.StoredProcedure;
-  		
-  		
-  		command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-  		
-  		command.Prepare();
-  		
-  		
-  		command.Parameters[0].Value = 4;
-  					
-  		Int64 result = (Int64) command.ExecuteScalar();
-  		
-  		Console.WriteLine(result);
-  		
-  		//Assertion.AssertEquals(1, result);
-  		
-  		_conn.Close();
-  	}
-  	
-  	
-  	public void FunctionCallReturnResultSet()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("funcB()", _conn);
-  		command.CommandType = CommandType.StoredProcedure;
-  		
-  								
-  		NpgsqlDataReader dr = command.ExecuteReader();
-  		
-  		Console.WriteLine(dr == null);
-  		
-  		_conn.Close();
-  	}
-  	
-  	
-  	
-  	public void CursorStatement()
-  	{
-  		
-  		_conn.Open();
-  		
-  		Int32 i = 0;
-  		
-  		NpgsqlTransaction t = _conn.BeginTransaction();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("declare te cursor for select * from tablea;", _conn);
-  		
-  		command.ExecuteNonQuery();
-  		
-  		command.CommandText = "fetch forward 3 in te;";
-  		
-  		NpgsqlDataReader dr = command.ExecuteReader();
-  		
-  		
-  		while (dr.Read())
-  		{
-  			i++;
-  		}
-  		
-  		Console.WriteLine(i);
-  		//Assertion.AssertEquals(3, i);
-  		
-  		
-  		i = 0;
-  		
-  		command.CommandText = "fetch backward 1 in te;";
-  		
-  		NpgsqlDataReader dr2 = command.ExecuteReader();
-  		
-  		while (dr2.Read())
-  		{
-  			i++;
-  		}
-  		
-  		Console.WriteLine(i);
-  		//Assertion.AssertEquals(1, i);
-  		
-  		command.CommandText = "close te;";
-  		
-  		command.ExecuteNonQuery();
-  		
-  		t.Commit();
-  		
-  		
-  		_conn.Close();
-  	}
-  	
-  	
-  	public void PreparedStatementNoParameters()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("select * from tablea;", _conn);
-  		
-  		command.Prepare();
-  		
-  		command.Prepare();
-  		
-  		NpgsqlDataReader dr = command.ExecuteReader();
-  		
-  		Console.WriteLine(dr == null);
-  		
-  		_conn.Close();
-  	}
-  	
-  	
-  	public void PreparedStatementWithParameters()
-  	{
-  		_conn.Open();
-  		
-  		NpgsqlCommand command = new NpgsqlCommand("select * from tablea where field_int4 = :a and field_int8 = :b;", _conn);
-  		
-  		command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-  		command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
-  		
-  		command.Prepare();
-  		
-  		command.Parameters[0].Value = 3;
-  		command.Parameters[1].Value = 5;
-  		
-  		NpgsqlDataReader dr = command.ExecuteReader();
-  		
-  		Console.WriteLine(dr == null);
-  		
-  		_conn.Close();
-  		
-  		
-  	}
-  	
+      
+      public void FunctionCallReturnSingleValue()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("funcC()", _conn);
+          command.CommandType = CommandType.StoredProcedure;
+                      
+          Int64 result = (Int64) command.ExecuteScalar();
+          
+          Console.WriteLine(result);
+          
+          //Assertion.AssertEquals(4, result);
+          //reader.FieldCount
+          _conn.Close();
+      }
+      
+      
+      
+      public void FunctionCallReturnSingleValueWithPrepare()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("funcC()", _conn);
+          command.CommandType = CommandType.StoredProcedure;
+          
+          command.Prepare();
+          Int64 result = (Int64) command.ExecuteScalar();
+          
+          Console.WriteLine(result);
+          
+          //Assertion.AssertEquals(4, result);
+          //reader.FieldCount
+          _conn.Close();
+      }
+      
+      
+      public void FunctionCallWithParametersReturnSingleValue()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", _conn);
+          command.CommandType = CommandType.StoredProcedure;
+          
+          command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+                      
+          command.Parameters[0].Value = 4;
+                      
+          Int64 result = (Int64) command.ExecuteScalar();
+          
+          Console.WriteLine(result);
+          
+          //Assertion.AssertEquals(1, result);
+          
+          _conn.Close();
+      }
+      
+      
+      
+      public void FunctionCallWithParametersPrepareReturnSingleValue()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("funcC(:a)", _conn);
+          command.CommandType = CommandType.StoredProcedure;
+          
+          
+          command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+          
+          command.Prepare();
+          
+          
+          command.Parameters[0].Value = 4;
+                      
+          Int64 result = (Int64) command.ExecuteScalar();
+          
+          Console.WriteLine(result);
+          
+          //Assertion.AssertEquals(1, result);
+          
+          _conn.Close();
+      }
+      
+      
+      public void FunctionCallReturnResultSet()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("funcB()", _conn);
+          command.CommandType = CommandType.StoredProcedure;
+          
+                                  
+          NpgsqlDataReader dr = command.ExecuteReader();
+          
+          Console.WriteLine(dr == null);
+          
+          _conn.Close();
+      }
+      
+      
+      
+      public void CursorStatement()
+      {
+          
+          _conn.Open();
+          
+          Int32 i = 0;
+          
+          NpgsqlTransaction t = _conn.BeginTransaction();
+          
+          NpgsqlCommand command = new NpgsqlCommand("declare te cursor for select * from tablea;", _conn);
+          
+          command.ExecuteNonQuery();
+          
+          command.CommandText = "fetch forward 3 in te;";
+          
+          NpgsqlDataReader dr = command.ExecuteReader();
+          
+          
+          while (dr.Read())
+          {
+              i++;
+          }
+          
+          Console.WriteLine(i);
+          //Assertion.AssertEquals(3, i);
+          
+          
+          i = 0;
+          
+          command.CommandText = "fetch backward 1 in te;";
+          
+          NpgsqlDataReader dr2 = command.ExecuteReader();
+          
+          while (dr2.Read())
+          {
+              i++;
+          }
+          
+          Console.WriteLine(i);
+          //Assertion.AssertEquals(1, i);
+          
+          command.CommandText = "close te;";
+          
+          command.ExecuteNonQuery();
+          
+          t.Commit();
+          
+          
+          _conn.Close();
+      }
+      
+      
+      public void PreparedStatementNoParameters()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("select * from tablea;", _conn);
+          
+          command.Prepare();
+          
+          command.Prepare();
+          
+          NpgsqlDataReader dr = command.ExecuteReader();
+          
+          Console.WriteLine(dr == null);
+          
+          _conn.Close();
+      }
+      
+      
+      public void PreparedStatementWithParameters()
+      {
+          _conn.Open();
+          
+          NpgsqlCommand command = new NpgsqlCommand("select * from tablea where field_int4 = :a and field_int8 = :b;", _conn);
+          
+          command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+          command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
+          
+          command.Prepare();
+          
+          command.Parameters[0].Value = 3;
+          command.Parameters[1].Value = 5;
+          
+          NpgsqlDataReader dr = command.ExecuteReader();
+          
+          Console.WriteLine(dr == null);
+          
+          _conn.Close();
+          
+          
+      }
+      
   
 }

@@ -3,11 +3,11 @@
 // Npgsql.NpgsqlBind.cs
 //
 // Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Francisco Jr. (fxjrlists@yahoo.com.br)
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -61,35 +61,35 @@ namespace Npgsql
             _resultFormatCodes = resultFormatCodes;
         }
 
-		public String PortalName
-		{
-			get { return _portalName; }
-		}
+        public String PortalName
+        {
+            get { return _portalName; }
+        }
 
-		public String PreparedStatementName
-		{
-			get { return _preparedStatementName; }
-		}
+        public String PreparedStatementName
+        {
+            get { return _preparedStatementName; }
+        }
 
-		public Int16[] ResultFormatCodes
-		{
-			get { return _resultFormatCodes; }
-			set { _resultFormatCodes = value; }
-		}
+        public Int16[] ResultFormatCodes
+        {
+            get { return _resultFormatCodes; }
+            set { _resultFormatCodes = value; }
+        }
 
-		public Int16[] ParameterFormatCodes
-		{
-			get { return _parameterFormatCodes; }
+        public Int16[] ParameterFormatCodes
+        {
+            get { return _parameterFormatCodes; }
 
-			set { _parameterFormatCodes = value; }
-		}
+            set { _parameterFormatCodes = value; }
+        }
 
-		public byte[][] ParameterValues
-		{
-			get { return _parameterValues; }
+        public byte[][] ParameterValues
+        {
+            get { return _parameterValues; }
 
-			set { _parameterValues = value; }
-		}
+            set { _parameterValues = value; }
+        }
 
 
         public override void WriteToStream(Stream outputStream)

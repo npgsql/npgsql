@@ -1,11 +1,11 @@
 // NpgsqlTypes.NpgsqlTypesHelper.cs
 //
 // Author:
-//	Glen Parker <glenebob@nwlink.com>
+//    Glen Parker <glenebob@nwlink.com>
 //
-//	Copyright (C) 2004 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2004 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -179,35 +179,35 @@ namespace NpgsqlTypes
         }
     }
 
-	/// <summary>
-	/// Provide event handlers to convert all native supported basic data types from their backend
-	/// text representation to a .NET object.
-	/// </summary>
-	internal abstract class BasicBackendToNativeTypeConverter
-	{
-		private static readonly String[] DateFormats = new String[] { "yyyy-MM-dd", };
-		private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9\\-]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    /// <summary>
+    /// Provide event handlers to convert all native supported basic data types from their backend
+    /// text representation to a .NET object.
+    /// </summary>
+    internal abstract class BasicBackendToNativeTypeConverter
+    {
+        private static readonly String[] DateFormats = new String[] { "yyyy-MM-dd", };
+        private static readonly Regex EXCLUDE_DIGITS = new Regex("[^0-9\\-]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-		private static readonly String[] TimeFormats =
-			new String[]
-				{
-					"HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
-					"HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
-					"HH:mm:ss.fzz", 
+        private static readonly String[] TimeFormats =
+            new String[]
+                {
+                    "HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
+                    "HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
+                    "HH:mm:ss.fzz", 
                     "HH:mm:ss.fffffzzz", "HH:mm:ss.ffffzzz", "HH:mm:ss.fffzzz", "HH:mm:ss.ffzzz",
                     "HH:mm:ss.fzzz", "HH:mm:sszzz",
-				};
+                };
 
-		private static readonly String[] DateTimeFormats =
-			new String[]
-				{
-					"yyyy-MM-dd HH:mm:ss.ffffff", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.ffffffzz", "yyyy-MM-dd HH:mm:sszz",
-					"yyyy-MM-dd HH:mm:ss.fffff", "yyyy-MM-dd HH:mm:ss.ffff", "yyyy-MM-dd HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.ff",
-					"yyyy-MM-dd HH:mm:ss.f", "yyyy-MM-dd HH:mm:ss.fffffzz", "yyyy-MM-dd HH:mm:ss.ffffzz", "yyyy-MM-dd HH:mm:ss.fffzz",
-					"yyyy-MM-dd HH:mm:ss.ffzz", "yyyy-MM-dd HH:mm:ss.fzz",
+        private static readonly String[] DateTimeFormats =
+            new String[]
+                {
+                    "yyyy-MM-dd HH:mm:ss.ffffff", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.ffffffzz", "yyyy-MM-dd HH:mm:sszz",
+                    "yyyy-MM-dd HH:mm:ss.fffff", "yyyy-MM-dd HH:mm:ss.ffff", "yyyy-MM-dd HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.ff",
+                    "yyyy-MM-dd HH:mm:ss.f", "yyyy-MM-dd HH:mm:ss.fffffzz", "yyyy-MM-dd HH:mm:ss.ffffzz", "yyyy-MM-dd HH:mm:ss.fffzz",
+                    "yyyy-MM-dd HH:mm:ss.ffzz", "yyyy-MM-dd HH:mm:ss.fzz",
                     "yyyy-MM-dd HH:mm:ss.fffffzzz", "yyyy-MM-dd HH:mm:ss.ffffzzz", "yyyy-MM-dd HH:mm:ss.fffzzz",
                     "yyyy-MM-dd HH:mm:ss.ffzzz", "yyyy-MM-dd HH:mm:ss.fzzz", "yyyy-MM-dd HH:mm:sszzz"
-				};
+                };
 
         /// <summary>
         /// Convert UTF8 encoded text a string.
@@ -217,18 +217,18 @@ namespace NpgsqlTypes
             return BackendEncoding.UTF8Encoding.GetString(BackendData);
         }
 
-		/// <summary>
-		/// Byte array from bytea encoded as ASCII text, escaped or hex format.
-		/// </summary>
-		internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Byte array from bytea encoded as ASCII text, escaped or hex format.
+        /// </summary>
+        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-   			Int32 octalValue = 0;
-			Int32 byteAPosition = 0;
-			Int32 byteAStringLength = BackendData.Length;
-			MemoryStream ms = new MemoryStream();
+               Int32 octalValue = 0;
+            Int32 byteAPosition = 0;
+            Int32 byteAStringLength = BackendData.Length;
+            MemoryStream ms = new MemoryStream();
 
-			if (BackendData.StartsWith("\\x"))
+            if (BackendData.StartsWith("\\x"))
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
                 for (byteAPosition = 2; byteAPosition < byteAStringLength; byteAPosition += 2)
@@ -242,44 +242,44 @@ namespace NpgsqlTypes
             {
             
                 while (byteAPosition < byteAStringLength)
-    			{
-    				// The IsDigit is necessary in case we receive a \ as the octal value and not
-    				// as the indicator of a following octal value in decimal format.
-    				// i.e.: \201\301P\A
-    				if (BackendData[byteAPosition] == '\\')
-    				{
-    					if (byteAPosition + 1 == byteAStringLength)
-    					{
-    						octalValue = '\\';
-    						byteAPosition++;
-    					}
-    					else if (Char.IsDigit(BackendData[byteAPosition + 1]))
-    					{
+                {
+                    // The IsDigit is necessary in case we receive a \ as the octal value and not
+                    // as the indicator of a following octal value in decimal format.
+                    // i.e.: \201\301P\A
+                    if (BackendData[byteAPosition] == '\\')
+                    {
+                        if (byteAPosition + 1 == byteAStringLength)
+                        {
+                            octalValue = '\\';
+                            byteAPosition++;
+                        }
+                        else if (Char.IsDigit(BackendData[byteAPosition + 1]))
+                        {
                             octalValue = Convert.ToByte(BackendData.Substring(byteAPosition + 1, 3), 8);
                             //octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
                             //octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
                             //octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
-    						byteAPosition += 4;
-    					}
-    					else
-    					{
-    						octalValue = '\\';
-    						byteAPosition += 2;
-    					}
-    				}
-    				else
-    				{
-    					octalValue = (Byte)BackendData[byteAPosition];
-    					byteAPosition++;
-    				}
+                            byteAPosition += 4;
+                        }
+                        else
+                        {
+                            octalValue = '\\';
+                            byteAPosition += 2;
+                        }
+                    }
+                    else
+                    {
+                        octalValue = (Byte)BackendData[byteAPosition];
+                        byteAPosition++;
+                    }
     
     
-    				ms.WriteByte((Byte)octalValue);
-    			}
+                    ms.WriteByte((Byte)octalValue);
+                }
             }
             
-			return ms.ToArray();
-		}
+            return ms.ToArray();
+        }
 
         /// <summary>
         /// Byte array from bytea encoded as binary.
@@ -356,75 +356,75 @@ namespace NpgsqlTypes
             return true;
         }
 
-		/// <summary>
-		/// Convert a postgresql datetime to a System.DateTime.
-		/// </summary>
-		internal static Object ToDateTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
-										  Int32 TypeModifier)
-		{
-			// Get the date time parsed in all expected formats for timestamp.
-			// First check for special values infinity and -infinity.
+        /// <summary>
+        /// Convert a postgresql datetime to a System.DateTime.
+        /// </summary>
+        internal static Object ToDateTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
+                                          Int32 TypeModifier)
+        {
+            // Get the date time parsed in all expected formats for timestamp.
+            // First check for special values infinity and -infinity.
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
-			{
-				return DateTime.MaxValue;
-			}
+            if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
+            {
+                return DateTime.MaxValue;
+            }
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
-			{
-				return DateTime.MinValue;
-			}
+            if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
+            {
+                return DateTime.MinValue;
+            }
 
-			return
-				DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateTimeFormats, DateTimeFormatInfo.InvariantInfo,
-									DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
-		}
+            return
+                DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateTimeFormats, DateTimeFormatInfo.InvariantInfo,
+                                    DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
+        }
 
-		/// <summary>
-		/// Convert a postgresql date to a System.DateTime.
-		/// </summary>
-		internal static Object ToDate(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
-		    // First check for special values infinity and -infinity.
+        /// <summary>
+        /// Convert a postgresql date to a System.DateTime.
+        /// </summary>
+        internal static Object ToDate(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            // First check for special values infinity and -infinity.
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
-			{
-				return DateTime.MaxValue;
-			}
+            if (ByteArrayEqual(bBackendData, ASCIIByteArrays.INFINITY))
+            {
+                return DateTime.MaxValue;
+            }
 
-			if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
-			{
-				return DateTime.MinValue;
-			}
+            if (ByteArrayEqual(bBackendData, ASCIIByteArrays.NEG_INFINITY))
+            {
+                return DateTime.MinValue;
+            }
             
-			return
-				DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
-		}
+            return
+                DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
+        }
 
-		/// <summary>
-		/// Convert a postgresql time to a System.DateTime.
-		/// </summary>
-		internal static Object ToTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Convert a postgresql time to a System.DateTime.
+        /// </summary>
+        internal static Object ToTime(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return
-				DateTime.ParseExact(BackendData, TimeFormats, DateTimeFormatInfo.InvariantInfo,
-									DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
-		}
+            return
+                DateTime.ParseExact(BackendData, TimeFormats, DateTimeFormatInfo.InvariantInfo,
+                                    DateTimeStyles.NoCurrentDateDefault | DateTimeStyles.AllowWhiteSpaces);
+        }
 
-		/// <summary>
-		/// Convert a postgresql money to a System.Decimal.
-		/// </summary>
-		internal static Object ToMoney(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Convert a postgresql money to a System.Decimal.
+        /// </summary>
+        internal static Object ToMoney(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			// Will vary according to currency symbol, position of symbol and decimal and thousands separators, but will
-			// alwasy be two-decimal precision number using Arabic (0-9) digits, so we can extract just those digits and
-			// divide by 100.
-			return Convert.ToDecimal(EXCLUDE_DIGITS.Replace(BackendData, string.Empty), CultureInfo.InvariantCulture) / 100m;
-		}
+            // Will vary according to currency symbol, position of symbol and decimal and thousands separators, but will
+            // alwasy be two-decimal precision number using Arabic (0-9) digits, so we can extract just those digits and
+            // divide by 100.
+            return Convert.ToDecimal(EXCLUDE_DIGITS.Replace(BackendData, string.Empty), CultureInfo.InvariantCulture) / 100m;
+        }
 
         /// <summary>
         /// Convert a postgresql float4 or float8 to a System.Float or System.Double respectively.
@@ -438,7 +438,7 @@ namespace NpgsqlTypes
                 default: throw new NpgsqlException("Unexpected float binary field length");
             }
         }
-	}
+    }
 
     /// <summary>
     /// Provide event handlers to convert the basic native supported data types from
@@ -698,171 +698,171 @@ namespace NpgsqlTypes
         {
             return PGUtil.HostNetworkByteOrderSwap(BitConverter.GetBytes(Convert.ToDouble(NativeData)));
         }
-	}
+    }
 
 
-	/// <summary>
-	/// Provide event handlers to convert extended native supported data types from their backend
-	/// text representation to a .NET object.
-	/// </summary>
-	internal abstract class ExtendedBackendToNativeTypeConverter
-	{
-		private static readonly Regex pointRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-		private static readonly Regex boxlsegRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-		private static readonly Regex pathpolygonRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-		private static readonly Regex circleRegex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
+    /// <summary>
+    /// Provide event handlers to convert extended native supported data types from their backend
+    /// text representation to a .NET object.
+    /// </summary>
+    internal abstract class ExtendedBackendToNativeTypeConverter
+    {
+        private static readonly Regex pointRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
+        private static readonly Regex boxlsegRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
+        private static readonly Regex pathpolygonRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
+        private static readonly Regex circleRegex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
 
 
-		/// <summary>
-		/// Convert a postgresql point to a System.NpgsqlPoint.
-		/// </summary>
-		internal static Object ToPoint(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Convert a postgresql point to a System.NpgsqlPoint.
+        /// </summary>
+        internal static Object ToPoint(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = pointRegex.Match(BackendData);
+            Match m = pointRegex.Match(BackendData);
 
-			return
-				new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-								Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat));
-		}
+            return
+                new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat));
+        }
 
-		/// <summary>
-		/// Convert a postgresql point to a System.RectangleF.
-		/// </summary>
-		internal static Object ToBox(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Convert a postgresql point to a System.RectangleF.
+        /// </summary>
+        internal static Object ToBox(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = boxlsegRegex.Match(BackendData);
+            Match m = boxlsegRegex.Match(BackendData);
 
-			return
-				new NpgsqlBox(
-					new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
-					new NpgsqlPoint(Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
-		}
+            return
+                new NpgsqlBox(
+                    new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
+                    new NpgsqlPoint(Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
+        }
 
-		/// <summary>
-		/// LDeg.
-		/// </summary>
-		internal static Object ToLSeg(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// LDeg.
+        /// </summary>
+        internal static Object ToLSeg(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = boxlsegRegex.Match(BackendData);
+            Match m = boxlsegRegex.Match(BackendData);
 
-			return
-				new NpgsqlLSeg(
-					new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
-					new NpgsqlPoint(Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
-		}
+            return
+                new NpgsqlLSeg(
+                    new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
+                    new NpgsqlPoint(Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
+        }
 
-		/// <summary>
-		/// Path.
-		/// </summary>
-		internal static Object ToPath(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Path.
+        /// </summary>
+        internal static Object ToPath(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = pathpolygonRegex.Match(BackendData);
-			Boolean open = (BackendData[0] == '[');
-			List<NpgsqlPoint> points = new List<NpgsqlPoint>();
+            Match m = pathpolygonRegex.Match(BackendData);
+            Boolean open = (BackendData[0] == '[');
+            List<NpgsqlPoint> points = new List<NpgsqlPoint>();
 
-			while (m.Success)
-			{
-				if (open)
-				{
-					points.Add(
-						new NpgsqlPoint(
-							Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-							Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
-				}
-				else
-				{
-					// Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
-					// a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
-					// returned by backend. This gives parsing exception when converting to single. 
-					// I still don't know if this is a bug in mono or in my regular expression.
-					// Check if there is this character and remove it.
+            while (m.Success)
+            {
+                if (open)
+                {
+                    points.Add(
+                        new NpgsqlPoint(
+                            Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                            Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
+                }
+                else
+                {
+                    // Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
+                    // a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
+                    // returned by backend. This gives parsing exception when converting to single. 
+                    // I still don't know if this is a bug in mono or in my regular expression.
+                    // Check if there is this character and remove it.
 
-					String group2 = m.Groups[2].ToString();
-					if (group2.EndsWith(")"))
-					{
-						group2 = group2.Remove(group2.Length - 1, 1);
-					}
+                    String group2 = m.Groups[2].ToString();
+                    if (group2.EndsWith(")"))
+                    {
+                        group2 = group2.Remove(group2.Length - 1, 1);
+                    }
 
-					points.Add(
-						new NpgsqlPoint(
-							Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-							Single.Parse(group2, NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
-				}
+                    points.Add(
+                        new NpgsqlPoint(
+                            Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                            Single.Parse(group2, NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
+                }
 
-				m = m.NextMatch();
-			}
+                m = m.NextMatch();
+            }
 
-			NpgsqlPath result = new NpgsqlPath(points.ToArray());
-			result.Open = open;
-			return result;
-		}
+            NpgsqlPath result = new NpgsqlPath(points.ToArray());
+            result.Open = open;
+            return result;
+        }
 
-		/// <summary>
-		/// Polygon.
-		/// </summary>
-		internal static Object ToPolygon(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
-										 Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Polygon.
+        /// </summary>
+        internal static Object ToPolygon(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize,
+                                         Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = pathpolygonRegex.Match(BackendData);
-			List<NpgsqlPoint> points = new List<NpgsqlPoint>();
+            Match m = pathpolygonRegex.Match(BackendData);
+            List<NpgsqlPoint> points = new List<NpgsqlPoint>();
 
-			while (m.Success)
-			{
-				// Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
-				// a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
-				// returned by backend. This gives parsing exception when converting to single. 
-				// I still don't know if this is a bug in mono or in my regular expression.
-				// Check if there is this character and remove it.
+            while (m.Success)
+            {
+                // Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
+                // a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
+                // returned by backend. This gives parsing exception when converting to single. 
+                // I still don't know if this is a bug in mono or in my regular expression.
+                // Check if there is this character and remove it.
 
-				String group2 = m.Groups[2].ToString();
-				if (group2.EndsWith(")"))
-				{
-					group2 = group2.Remove(group2.Length - 1, 1);
-				}
+                String group2 = m.Groups[2].ToString();
+                if (group2.EndsWith(")"))
+                {
+                    group2 = group2.Remove(group2.Length - 1, 1);
+                }
 
-				points.Add(
-					new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(group2, NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
+                points.Add(
+                    new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(group2, NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
 
 
-				m = m.NextMatch();
-			}
+                m = m.NextMatch();
+            }
 
-			return new NpgsqlPolygon(points);
-		}
+            return new NpgsqlPolygon(points);
+        }
 
-		/// <summary>
-		/// Circle.
-		/// </summary>
-		internal static Object ToCircle(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Circle.
+        /// </summary>
+        internal static Object ToCircle(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-			Match m = circleRegex.Match(BackendData);
-			return
-				new NpgsqlCircle(
-					new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-									Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
-					Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat));
-		}
+            Match m = circleRegex.Match(BackendData);
+            return
+                new NpgsqlCircle(
+                    new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                                    Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
+                    Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat));
+        }
 
-		/// <summary>
-		/// Inet.
-		/// </summary>
-		internal static Object ToInet(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
-		{
+        /// <summary>
+        /// Inet.
+        /// </summary>
+        internal static Object ToInet(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return new NpgsqlInet(BackendData);
-		}
+            return new NpgsqlInet(BackendData);
+        }
 
         /// <summary>
         /// MAC Address.
@@ -873,7 +873,7 @@ namespace NpgsqlTypes
 
             return new NpgsqlMacAddress(BackendData);
         }
-		
+        
         internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
@@ -881,54 +881,54 @@ namespace NpgsqlTypes
             return new Guid(BackendData);
         }
 
-		/// <summary>
-		/// interval
-		/// </summary>
-		internal static object ToInterval(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
-										  Int32 typeModifier)
-		{
+        /// <summary>
+        /// interval
+        /// </summary>
+        internal static object ToInterval(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
+                                          Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlInterval.Parse(backendData);
-		}
+            return NpgsqlInterval.Parse(backendData);
+        }
 
-		internal static object ToTime(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
-		{
+        internal static object ToTime(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlTime.Parse(backendData);
-		}
+            return NpgsqlTime.Parse(backendData);
+        }
 
-		internal static object ToTimeTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
-		{
+        internal static object ToTimeTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlTimeTZ.Parse(backendData);
-		}
+            return NpgsqlTimeTZ.Parse(backendData);
+        }
 
-		internal static object ToDate(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
-		{
+        internal static object ToDate(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlDate.Parse(backendData);
-		}
+            return NpgsqlDate.Parse(backendData);
+        }
 
-		internal static object ToTimeStamp(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
-										   Int32 typeModifier)
-		{
+        internal static object ToTimeStamp(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
+                                           Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlTimeStamp.Parse(backendData);
-		}
+            return NpgsqlTimeStamp.Parse(backendData);
+        }
 
-		internal static object ToTimeStampTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
-											 Int32 typeModifier)
-		{
+        internal static object ToTimeStampTZ(NpgsqlBackendTypeInfo typeInfo, byte[] bBackendData, Int16 typeSize,
+                                             Int32 typeModifier)
+        {
             string backendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
 
-			return NpgsqlTimeStampTZ.Parse(backendData);
-		}
-	}
+            return NpgsqlTimeStampTZ.Parse(backendData);
+        }
+    }
 
     /// <summary>
     /// Provide event handlers to convert extended native supported data types from

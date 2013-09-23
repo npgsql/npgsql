@@ -1,6 +1,6 @@
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -24,29 +24,29 @@ public class test_executescalar
 {
   public static void Main(String[] args)
   {
-		NpgsqlConnection conn = null;
-		try
-		{
-			conn = new NpgsqlConnection(NpgsqlTests.getConnectionString());
-			conn.Open();
-			Console.WriteLine("Connection completed");
-			
-			NpgsqlCommand command = new NpgsqlCommand();
-			command.CommandText = "select count(*) from tablea";
-			command.Connection = conn;
-			Object result = command.ExecuteScalar();
-			Console.WriteLine(result.ToString());
-						
-		}
-		catch(NpgsqlException e)
-		{
-			Console.WriteLine(e.ToString());
-		}
-		finally
-		{
-			
-			if (conn != null)
-				conn.Close();
-		}
-	}
+        NpgsqlConnection conn = null;
+        try
+        {
+            conn = new NpgsqlConnection(NpgsqlTests.getConnectionString());
+            conn.Open();
+            Console.WriteLine("Connection completed");
+            
+            NpgsqlCommand command = new NpgsqlCommand();
+            command.CommandText = "select count(*) from tablea";
+            command.Connection = conn;
+            Object result = command.ExecuteScalar();
+            Console.WriteLine(result.ToString());
+                        
+        }
+        catch(NpgsqlException e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+        finally
+        {
+            
+            if (conn != null)
+                conn.Close();
+        }
+    }
 }

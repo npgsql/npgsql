@@ -1,9 +1,9 @@
 // Npgsql.NpgsqlFactory.cs
 //
 // Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Francisco Jr. (fxjrlists@yahoo.com.br)
 //
-//	Copyright (C) 2002-2006 The Npgsql Development Team
+//    Copyright (C) 2002-2006 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,66 +30,66 @@ using System.Data.Entity.Core.Common;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// A factory to create instances of various Npgsql objects.
-	/// </summary>
-	[Serializable]
-	public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
-	{
-		public static NpgsqlFactory Instance = new NpgsqlFactory();
+    /// <summary>
+    /// A factory to create instances of various Npgsql objects.
+    /// </summary>
+    [Serializable]
+    public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
+    {
+        public static NpgsqlFactory Instance = new NpgsqlFactory();
 
 
-		private NpgsqlFactory()
-		{
-		}
+        private NpgsqlFactory()
+        {
+        }
 
 
-		/// <summary>
-		/// Creates an NpgsqlCommand object.
-		/// </summary>
-		public override DbCommand CreateCommand()
-		{
-			return new NpgsqlCommand();
-		}
+        /// <summary>
+        /// Creates an NpgsqlCommand object.
+        /// </summary>
+        public override DbCommand CreateCommand()
+        {
+            return new NpgsqlCommand();
+        }
 
 
-		public override DbCommandBuilder CreateCommandBuilder()
-		{
-			return new NpgsqlCommandBuilder();
-		}
+        public override DbCommandBuilder CreateCommandBuilder()
+        {
+            return new NpgsqlCommandBuilder();
+        }
 
-		public override DbConnection CreateConnection()
-		{
-			return new NpgsqlConnection();
-		}
+        public override DbConnection CreateConnection()
+        {
+            return new NpgsqlConnection();
+        }
 
-		public override DbDataAdapter CreateDataAdapter()
-		{
-			return new NpgsqlDataAdapter();
-		}
+        public override DbDataAdapter CreateDataAdapter()
+        {
+            return new NpgsqlDataAdapter();
+        }
 
-		public override DbParameter CreateParameter()
-		{
-			return new NpgsqlParameter();
-		}
+        public override DbParameter CreateParameter()
+        {
+            return new NpgsqlParameter();
+        }
 
-		public override DbConnectionStringBuilder CreateConnectionStringBuilder()
-		{
-			return new NpgsqlConnectionStringBuilder();
-		}
+        public override DbConnectionStringBuilder CreateConnectionStringBuilder()
+        {
+            return new NpgsqlConnectionStringBuilder();
+        }
 
-		#region IServiceProvider Members
+        #region IServiceProvider Members
 
-		public object GetService(Type serviceType)
-		{
+        public object GetService(Type serviceType)
+        {
 #if ENTITIES
             if (serviceType == typeof(DbProviderServices))
                 return NpgsqlServices.Instance;
             else
 #endif
-			return null;
-		}
+            return null;
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

@@ -1,11 +1,11 @@
 // Npgsql.NpgsqlQuery.cs
 //
 // Author:
-// 	Dave Joyner <d4ljoyn@yahoo.com>
+//     Dave Joyner <d4ljoyn@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,19 +31,19 @@ using System.Text;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// Summary description for NpgsqlQuery
-	/// </summary>
-	internal sealed class NpgsqlQuery : ClientMessage
-	{
-		private readonly NpgsqlCommand _command;
-		private readonly ProtocolVersion _protocolVersion;
+    /// <summary>
+    /// Summary description for NpgsqlQuery
+    /// </summary>
+    internal sealed class NpgsqlQuery : ClientMessage
+    {
+        private readonly NpgsqlCommand _command;
+        private readonly ProtocolVersion _protocolVersion;
 
-		public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
-		{
-			_command = command;
-			_protocolVersion = protocolVersion;
-		}
+        public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
+        {
+            _command = command;
+            _protocolVersion = protocolVersion;
+        }
 
         public override void WriteToStream(Stream outputStream)
         {
@@ -78,5 +78,5 @@ namespace Npgsql
 
             outputStream.WriteBytesNullTerminated(commandText);
         }
-	}
+    }
 }

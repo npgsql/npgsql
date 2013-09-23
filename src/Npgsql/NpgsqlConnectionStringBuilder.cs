@@ -3,13 +3,13 @@
 // Npgsql.NpgsqlConnectionStringBuilder.cs
 //
 // Author:
-//	Glen Parker (glenebob@nwlink.com)
-//	Ben Sagal (bensagal@gmail.com)
-//	Tao Wang (dancefire@gmail.com)
+//    Glen Parker (glenebob@nwlink.com)
+//    Ben Sagal (bensagal@gmail.com)
+//    Tao Wang (dancefire@gmail.com)
 //
-//	Copyright (C) 2007 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2007 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -765,7 +765,7 @@ namespace Npgsql
         [Obsolete("UTF-8 is always used regardless of this setting.")] Encoding,
         Timeout,
         SearchPath,
-        //	These are for the connection pool
+        //    These are for the connection pool
         Pooling,
         ConnectionLifeTime,
         MinPoolSize,

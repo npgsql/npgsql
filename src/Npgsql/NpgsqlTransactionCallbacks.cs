@@ -28,79 +28,79 @@ using System.Reflection;
 
 namespace Npgsql
 {
-	internal interface INpgsqlTransactionCallbacks : IDisposable
-	{
-		string GetName();
-		void PrepareTransaction();
-		void CommitTransaction();
-		void RollbackTransaction();
-	}
+    internal interface INpgsqlTransactionCallbacks : IDisposable
+    {
+        string GetName();
+        void PrepareTransaction();
+        void CommitTransaction();
+        void RollbackTransaction();
+    }
 
-	internal class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
-	{
-		private NpgsqlConnection _connection;
-		private readonly string _connectionString;
-		private bool _closeConnectionRequired;
-		private bool _prepared;
-		private readonly string _txName = Guid.NewGuid().ToString();
+    internal class NpgsqlTransactionCallbacks : MarshalByRefObject, INpgsqlTransactionCallbacks
+    {
+        private NpgsqlConnection _connection;
+        private readonly string _connectionString;
+        private bool _closeConnectionRequired;
+        private bool _prepared;
+        private readonly string _txName = Guid.NewGuid().ToString();
 
-		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-		public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
-		{
-			_connection = connection;
-			_connectionString = _connection.ConnectionString;
-			_connection.Disposed += new EventHandler(_connection_Disposed);
-		}
+        public NpgsqlTransactionCallbacks(NpgsqlConnection connection)
+        {
+            _connection = connection;
+            _connectionString = _connection.ConnectionString;
+            _connection.Disposed += new EventHandler(_connection_Disposed);
+        }
 
-		private void _connection_Disposed(object sender, EventArgs e)
-		{
-			// TODO: what happens if this is called from another thread?
-			// connections should not be shared across threads while in a transaction
-			_connection.Disposed -= new EventHandler(_connection_Disposed);
-			_connection = null;
-		}
+        private void _connection_Disposed(object sender, EventArgs e)
+        {
+            // TODO: what happens if this is called from another thread?
+            // connections should not be shared across threads while in a transaction
+            _connection.Disposed -= new EventHandler(_connection_Disposed);
+            _connection = null;
+        }
 
-		private NpgsqlConnection GetConnection()
-		{
-			if (_connection == null || (_connection.FullState & ConnectionState.Open) != ConnectionState.Open)
-			{
-				_connection = new NpgsqlConnection(_connectionString);
-				_connection.Open();
-				_closeConnectionRequired = true;
-				return _connection;
-			}
-			else
-			{
-				return _connection;
-			}
-		}
+        private NpgsqlConnection GetConnection()
+        {
+            if (_connection == null || (_connection.FullState & ConnectionState.Open) != ConnectionState.Open)
+            {
+                _connection = new NpgsqlConnection(_connectionString);
+                _connection.Open();
+                _closeConnectionRequired = true;
+                return _connection;
+            }
+            else
+            {
+                return _connection;
+            }
+        }
 
-		#region INpgsqlTransactionCallbacks Members
+        #region INpgsqlTransactionCallbacks Members
 
-		public string GetName()
-		{
-			return _txName;
-		}
+        public string GetName()
+        {
+            return _txName;
+        }
 
-		public void CommitTransaction()
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CommitTransaction");
-			NpgsqlConnection connection = GetConnection();
-			NpgsqlCommand command = null;
-			if (_prepared)
-			{
-				command = new NpgsqlCommand(string.Format("COMMIT PREPARED '{0}'", _txName), connection);
-			}
-			else
-			{
-				command = new NpgsqlCommand("COMMIT", connection);
-			}
-			command.ExecuteBlind();
-		}
+        public void CommitTransaction()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CommitTransaction");
+            NpgsqlConnection connection = GetConnection();
+            NpgsqlCommand command = null;
+            if (_prepared)
+            {
+                command = new NpgsqlCommand(string.Format("COMMIT PREPARED '{0}'", _txName), connection);
+            }
+            else
+            {
+                command = new NpgsqlCommand("COMMIT", connection);
+            }
+            command.ExecuteBlind();
+        }
 
-		public void PrepareTransaction()
-		{
+        public void PrepareTransaction()
+        {
             if (!_prepared)
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
@@ -109,37 +109,37 @@ namespace Npgsql
                 command.ExecuteBlind();
                 _prepared = true;
             }
-		}
+        }
 
-		public void RollbackTransaction()
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RollbackTransaction");
-			NpgsqlConnection connection = GetConnection();
-			NpgsqlCommand command = null;
-			if (_prepared)
-			{
-				command = new NpgsqlCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName), connection);
-			}
-			else
-			{
-				command = new NpgsqlCommand("ROLLBACK", connection);
-			}
-			command.ExecuteBlind();
-		}
+        public void RollbackTransaction()
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RollbackTransaction");
+            NpgsqlConnection connection = GetConnection();
+            NpgsqlCommand command = null;
+            if (_prepared)
+            {
+                command = new NpgsqlCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName), connection);
+            }
+            else
+            {
+                command = new NpgsqlCommand("ROLLBACK", connection);
+            }
+            command.ExecuteBlind();
+        }
 
-		#endregion
+        #endregion
 
-		#region IDisposable Members
+        #region IDisposable Members
 
-		public void Dispose()
-		{
-			if (_closeConnectionRequired)
-			{
-				_connection.Close();
-			}
-			_closeConnectionRequired = false;
-		}
+        public void Dispose()
+        {
+            if (_closeConnectionRequired)
+            {
+                _connection.Close();
+            }
+            _closeConnectionRequired = false;
+        }
 
-		#endregion
-	}
+        #endregion
+    }
 }

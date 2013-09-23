@@ -2,11 +2,11 @@
 // Npgsql.NpgsqlAsciiRow.cs
 //
 // Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Francisco Jr. (fxjrlists@yahoo.com.br)
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -29,27 +29,27 @@ using System.IO;
 
 namespace Npgsql
 {
-	/// <summary>
-	/// This class represents the ParameterStatus message sent from PostgreSQL
-	/// server.
-	/// </summary>
-	///
-	internal sealed class NpgsqlParameterStatus
-	{
-		public readonly string Parameter;
-		public readonly string ParameterValue;
+    /// <summary>
+    /// This class represents the ParameterStatus message sent from PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlParameterStatus
+    {
+        public readonly string Parameter;
+        public readonly string ParameterValue;
 
-		public NpgsqlParameterStatus(Stream stream)
-		{
-			//Read message length
-			PGUtil.EatStreamBytes(stream, 4);
-			Parameter = PGUtil.ReadString(stream);
-			ParameterValue = PGUtil.ReadString(stream);
-		}
+        public NpgsqlParameterStatus(Stream stream)
+        {
+            //Read message length
+            PGUtil.EatStreamBytes(stream, 4);
+            Parameter = PGUtil.ReadString(stream);
+            ParameterValue = PGUtil.ReadString(stream);
+        }
         public NpgsqlParameterStatus(string parameter, string parameterValue)
         {
             Parameter = parameter;
             ParameterValue = parameterValue;
         }
-	}
+    }
 }

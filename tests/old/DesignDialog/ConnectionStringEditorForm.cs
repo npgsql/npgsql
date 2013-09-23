@@ -1,6 +1,6 @@
-//	Copyright (C) 2007 The Npgsql Development Team
-//	Npgsql-devel@pgfoundry.org
-//	http://npgsql.projects.postgresql.org/
+//    Copyright (C) 2007 The Npgsql Development Team
+//    Npgsql-devel@pgfoundry.org
+//    http://npgsql.projects.postgresql.org/
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,79 +34,79 @@ using Npgsql;
 
 namespace DesignDialog
 {
-	public class ConnectionStringEditorForm : System.Windows.Forms.Form {
-		private System.Windows.Forms.TabControl tc_main;
-		private System.Windows.Forms.TabPage tp_connection;
-		private System.Windows.Forms.Label lab_advise;
-		private System.Windows.Forms.Label lab_login;
-		private System.Windows.Forms.Label lab_username;
-		private System.Windows.Forms.TextBox tb_username;
-		private System.Windows.Forms.Label lab_select_db;
-		private System.Windows.Forms.ComboBox cb_select_db;
-		private System.Windows.Forms.GroupBox gb_add_parms;
-		private System.Windows.Forms.Label lab_timeout;
-		private System.Windows.Forms.TextBox tb_timeout;
-		private System.Windows.Forms.Button btn_check_connection;
-		private System.Windows.Forms.Button btn_ok;
-		private System.Windows.Forms.Button btn_cancel;
-		private System.Windows.Forms.Button btn_help;
-		private System.Windows.Forms.Label lab_port;
-		private System.Windows.Forms.TextBox tb_port;
-		private System.Windows.Forms.Label lab_server;
-		private System.Windows.Forms.TextBox tb_server;
-		private System.Windows.Forms.TextBox tb_password;
-		private System.Windows.Forms.Button btn_refresh;
-		private System.Windows.Forms.Label lab_password;
-		private System.Resources.ResourceManager resman;
-		private Npgsql.NpgsqlConnection pgconn;
+    public class ConnectionStringEditorForm : System.Windows.Forms.Form {
+        private System.Windows.Forms.TabControl tc_main;
+        private System.Windows.Forms.TabPage tp_connection;
+        private System.Windows.Forms.Label lab_advise;
+        private System.Windows.Forms.Label lab_login;
+        private System.Windows.Forms.Label lab_username;
+        private System.Windows.Forms.TextBox tb_username;
+        private System.Windows.Forms.Label lab_select_db;
+        private System.Windows.Forms.ComboBox cb_select_db;
+        private System.Windows.Forms.GroupBox gb_add_parms;
+        private System.Windows.Forms.Label lab_timeout;
+        private System.Windows.Forms.TextBox tb_timeout;
+        private System.Windows.Forms.Button btn_check_connection;
+        private System.Windows.Forms.Button btn_ok;
+        private System.Windows.Forms.Button btn_cancel;
+        private System.Windows.Forms.Button btn_help;
+        private System.Windows.Forms.Label lab_port;
+        private System.Windows.Forms.TextBox tb_port;
+        private System.Windows.Forms.Label lab_server;
+        private System.Windows.Forms.TextBox tb_server;
+        private System.Windows.Forms.TextBox tb_password;
+        private System.Windows.Forms.Button btn_refresh;
+        private System.Windows.Forms.Label lab_password;
+        private System.Resources.ResourceManager resman;
+        private Npgsql.NpgsqlConnection pgconn;
 
-		/// <summary>
-		/// Required designer variable.
-		/// </summary>
-		private System.ComponentModel.Container components = null;
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.Container components = null;
 
-		public ConnectionStringEditorForm()
+        public ConnectionStringEditorForm()
     : this("")
     {}
 
-		public ConnectionStringEditorForm(String ConnectionString) {
-			InitializeComponent();
-			// Attention: The localization-issues don't only affect the surface but also affect some
-			// MessageBoxes which have to be localized too - look for resman!
-			resman = new System.Resources.ResourceManager(typeof(ConnectionStringEditorForm));
+        public ConnectionStringEditorForm(String ConnectionString) {
+            InitializeComponent();
+            // Attention: The localization-issues don't only affect the surface but also affect some
+            // MessageBoxes which have to be localized too - look for resman!
+            resman = new System.Resources.ResourceManager(typeof(ConnectionStringEditorForm));
 
-			this.pgconn.ConnectionString = ConnectionString;
-			this.tb_server.Text = this.pgconn.Host;
-			this.tb_port.Text = this.pgconn.Port.ToString();
-			this.tb_timeout.Text = this.pgconn.ConnectionTimeout.ToString();
-			if (this.pgconn.Database != "") {
-				this.cb_select_db.Items.Add(this.pgconn.Database);
-				this.cb_select_db.SelectedIndex = 0;
-			}
+            this.pgconn.ConnectionString = ConnectionString;
+            this.tb_server.Text = this.pgconn.Host;
+            this.tb_port.Text = this.pgconn.Port.ToString();
+            this.tb_timeout.Text = this.pgconn.ConnectionTimeout.ToString();
+            if (this.pgconn.Database != "") {
+                this.cb_select_db.Items.Add(this.pgconn.Database);
+                this.cb_select_db.SelectedIndex = 0;
+            }
             /*
-			this.tb_username.Text = this.pgconn.UserName;
-			this.tb_password.Text = this.pgconn.Password;
+            this.tb_username.Text = this.pgconn.UserName;
+            this.tb_password.Text = this.pgconn.Password;
             */
-		}
+        }
 
-		/// <summary>
-		/// Clean up any resources being used.
-		/// </summary>
-		protected override void Dispose( bool disposing ) {
-			if( disposing ) {
-				if(components != null) {
-					components.Dispose();
-				}
-			}
-			base.Dispose( disposing );
-		}
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        protected override void Dispose( bool disposing ) {
+            if( disposing ) {
+                if(components != null) {
+                    components.Dispose();
+                }
+            }
+            base.Dispose( disposing );
+        }
 
-		#region Windows Form Designer generated code
-		/// <summary>
-		/// Required method for Designer support - do not modify
-		/// the contents of this method with the code editor.
-		/// </summary>
-		private void InitializeComponent() {
+        #region Windows Form Designer generated code
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent() {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ConnectionStringEditorForm));
             this.tc_main = new System.Windows.Forms.TabControl();
             this.tp_connection = new System.Windows.Forms.TabPage();
@@ -294,121 +294,121 @@ namespace DesignDialog
             this.gb_add_parms.PerformLayout();
             this.ResumeLayout(false);
 
-		}
-		#endregion
+        }
+        #endregion
 
-		private void btn_cancel_Click(object sender, System.EventArgs e) {
-			this.DialogResult = DialogResult.Cancel;
-			this.Close();
-		}
+        private void btn_cancel_Click(object sender, System.EventArgs e) {
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
+        }
 
-		private void btn_ok_Click(object sender, System.EventArgs e) {
-			if(connect(false) == true){
-				this.DialogResult = DialogResult.OK;
-				this.Close();
-			}
-		}
+        private void btn_ok_Click(object sender, System.EventArgs e) {
+            if(connect(false) == true){
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+        }
 
-		private void btn_help_Click(object sender, System.EventArgs e) {
-		
-		}
+        private void btn_help_Click(object sender, System.EventArgs e) {
+        
+        }
 
-		private void btn_check_connection_Click(object sender, System.EventArgs e) {
-			if(connect(false) == true){
-				MessageBox.Show(this, resman.GetString("MsgboxText_Success"), resman.GetString("MsgboxTitle_Success"), MessageBoxButtons.OK, MessageBoxIcon.None);
-			}
-		}
+        private void btn_check_connection_Click(object sender, System.EventArgs e) {
+            if(connect(false) == true){
+                MessageBox.Show(this, resman.GetString("MsgboxText_Success"), resman.GetString("MsgboxTitle_Success"), MessageBoxButtons.OK, MessageBoxIcon.None);
+            }
+        }
 
-		/// <summary>
-		/// Returns the generated ConnectionString
-		/// </summary>
-		public string ConnectionString {
-			get {
-				return this.pgconn.ConnectionString;
-			}
-		}
+        /// <summary>
+        /// Returns the generated ConnectionString
+        /// </summary>
+        public string ConnectionString {
+            get {
+                return this.pgconn.ConnectionString;
+            }
+        }
 
-		private bool connect(bool fillComboBox) {
-			try{
-				StringWriter sw = new StringWriter();
+        private bool connect(bool fillComboBox) {
+            try{
+                StringWriter sw = new StringWriter();
                 
-				if(this.tb_server.Text == String.Empty){
-					MessageBox.Show(this, resman.GetString("MsgboxText_NoServer"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return false;
-				}
-				if(this.tb_username.Text == String.Empty){
-					MessageBox.Show(this, resman.GetString("MsgboxText_NoUser"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return false;
-				}
-				sw.Write("Server={0};", this.tb_server.Text);
-				if(this.tb_port.Text != String.Empty && Convert.ToInt32(this.tb_port.Text) != 5432){
-					sw.Write("Port={0};", tb_port.Text);
-				}
-				// this happens if the user clicks Ok or Check Connection
-				// before selecting a database
-				if(fillComboBox == false && (String)this.cb_select_db.Text == String.Empty){
-					MessageBox.Show(this, resman.GetString("MsgboxText_NoDb"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return false;
-				}
-					// this happens if the user clicks the database-combobox
-					// in order to select a database
-				else if(fillComboBox == true && (String)this.cb_select_db.Text == String.Empty){
+                if(this.tb_server.Text == String.Empty){
+                    MessageBox.Show(this, resman.GetString("MsgboxText_NoServer"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+                if(this.tb_username.Text == String.Empty){
+                    MessageBox.Show(this, resman.GetString("MsgboxText_NoUser"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+                sw.Write("Server={0};", this.tb_server.Text);
+                if(this.tb_port.Text != String.Empty && Convert.ToInt32(this.tb_port.Text) != 5432){
+                    sw.Write("Port={0};", tb_port.Text);
+                }
+                // this happens if the user clicks Ok or Check Connection
+                // before selecting a database
+                if(fillComboBox == false && (String)this.cb_select_db.Text == String.Empty){
+                    MessageBox.Show(this, resman.GetString("MsgboxText_NoDb"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+                    // this happens if the user clicks the database-combobox
+                    // in order to select a database
+                else if(fillComboBox == true && (String)this.cb_select_db.Text == String.Empty){
                     sw.Write("Database=template1;", pgconn.Database);
-				}
-				else{
-					sw.Write("Database={0};", this.cb_select_db.Text);
-				}
+                }
+                else{
+                    sw.Write("Database={0};", this.cb_select_db.Text);
+                }
                 
-				try{
-					if(this.tb_timeout.Text != String.Empty && Convert.ToInt32(this.tb_timeout.Text) != 15){
+                try{
+                    if(this.tb_timeout.Text != String.Empty && Convert.ToInt32(this.tb_timeout.Text) != 15){
                         sw.Write("CommandTimeout={0};", this.tb_timeout.Text);
-					}
-				}
-					// don't mind if the value is nonsense - just don't put it into the string
-				catch(FormatException){
-					MessageBox.Show(this, resman.GetString("MsgboxText_TimeoutNaN"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return false;
-				}
-				catch(OverflowException){
-					MessageBox.Show(this, resman.GetString("MsgboxText_TimeoutOverflow"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return false;
-				}
+                    }
+                }
+                    // don't mind if the value is nonsense - just don't put it into the string
+                catch(FormatException){
+                    MessageBox.Show(this, resman.GetString("MsgboxText_TimeoutNaN"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+                catch(OverflowException){
+                    MessageBox.Show(this, resman.GetString("MsgboxText_TimeoutOverflow"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
                 
                 sw.Write("User Id={0};", this.tb_username.Text);
                 sw.Write("Password={0};", this.tb_password.Text);
 
-				this.pgconn.ConnectionString = sw.ToString();
+                this.pgconn.ConnectionString = sw.ToString();
                 this.pgconn.Open();
-				if(fillComboBox == true){
-					cb_select_db.Items.Clear();
-					NpgsqlCommand com = new NpgsqlCommand("SELECT datname FROM pg_database WHERE datallowconn = 't'", this.pgconn);
-					NpgsqlDataReader dr = com.ExecuteReader();
-					while(dr.Read()){
-						cb_select_db.Items.Add(dr["datname"]);
-						if(cb_select_db.Items.Count > 0){
-							cb_select_db.SelectedIndex = 0;
-						}
-					}
-				}
-				this.pgconn.Close();
-			}catch(Exception ex){
-				MessageBox.Show(this, ex.Message, resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-				return false;
-			}
-			return true;
-		}
+                if(fillComboBox == true){
+                    cb_select_db.Items.Clear();
+                    NpgsqlCommand com = new NpgsqlCommand("SELECT datname FROM pg_database WHERE datallowconn = 't'", this.pgconn);
+                    NpgsqlDataReader dr = com.ExecuteReader();
+                    while(dr.Read()){
+                        cb_select_db.Items.Add(dr["datname"]);
+                        if(cb_select_db.Items.Count > 0){
+                            cb_select_db.SelectedIndex = 0;
+                        }
+                    }
+                }
+                this.pgconn.Close();
+            }catch(Exception ex){
+                MessageBox.Show(this, ex.Message, resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            return true;
+        }
 
-		private void btn_refresh_Click(object sender, System.EventArgs e) {
-			connect(true);
-		}
+        private void btn_refresh_Click(object sender, System.EventArgs e) {
+            connect(true);
+        }
 
 
 
-		private void cb_select_db_DropDown(object sender, System.EventArgs e) {
+        private void cb_select_db_DropDown(object sender, System.EventArgs e) {
 
-			if(cb_select_db.Items.Count < 1){
-				connect(true);
-			}
-		}
-	}
+            if(cb_select_db.Items.Count < 1){
+                connect(true);
+            }
+        }
+    }
 }

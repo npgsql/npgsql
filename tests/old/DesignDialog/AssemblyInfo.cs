@@ -1,6 +1,6 @@
-//	Copyright (C) 2007 The Npgsql Development Team
-//	Npgsql-devel@pgfoundry.org
-//	http://npgsql.projects.postgresql.org/
+//    Copyright (C) 2007 The Npgsql Development Team
+//    Npgsql-devel@pgfoundry.org
+//    http://npgsql.projects.postgresql.org/
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,7 +30,7 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyProduct("")]
 [assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]		
+[assembly: AssemblyCulture("")]        
 
 //
 

@@ -11,7 +11,7 @@ using System.Data.Common.CommandTrees;
 namespace Npgsql.SqlGenerators
 {
     internal class SqlInsertGenerator : SqlBaseGenerator
-	{
+    {
         private DbInsertCommandTree _commandTree;
         private bool _processingReturning;
 
@@ -87,6 +87,6 @@ namespace Npgsql.SqlGenerators
             _projectVarName.Pop();
             command.CommandText = insert.ToString();
         }
-	}
+    }
 }
 #endif

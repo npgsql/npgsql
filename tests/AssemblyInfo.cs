@@ -1,10 +1,10 @@
 //
 // Author:
-// 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
+//     Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public

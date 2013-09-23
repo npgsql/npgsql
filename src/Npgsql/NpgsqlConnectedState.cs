@@ -1,11 +1,11 @@
 // Npgsql.NpgsqlConnectedState.cs
 //
 // Author:
-// 	Dave Joyner <d4ljoyn@yahoo.com>
+//     Dave Joyner <d4ljoyn@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 //
 // Permission to use, copy, modify, and distribute this software and its
@@ -29,35 +29,35 @@ using System.IO;
 
 namespace Npgsql
 {
-	internal sealed class NpgsqlConnectedState : NpgsqlState
-	{
-		public static readonly NpgsqlConnectedState Instance = new NpgsqlConnectedState();
+    internal sealed class NpgsqlConnectedState : NpgsqlState
+    {
+        public static readonly NpgsqlConnectedState Instance = new NpgsqlConnectedState();
 
-		private NpgsqlConnectedState()
-		{
-		}
+        private NpgsqlConnectedState()
+        {
+        }
 
-		public override void Startup(NpgsqlConnector context)
-		{
-			NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(296, //Not used.
-			                                                            context.BackendProtocolVersion, context.Database,
-			                                                            context.UserName, "", "", "");
+        public override void Startup(NpgsqlConnector context)
+        {
+            NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(296, //Not used.
+                                                                        context.BackendProtocolVersion, context.Database,
+                                                                        context.UserName, "", "", "");
 
-			startupPacket.WriteToStream(new BufferedStream(context.Stream));
-			context.RequireReadyForQuery = false;
-			// This still makes part of the connection stablishment handling. 
-			// So we use the connectiontimeout here too.
-			context.Mediator.CommandTimeout = context.ConnectionTimeout;
-			context.Stream.Flush();
-			ProcessBackendResponses(context);
-		}
+            startupPacket.WriteToStream(new BufferedStream(context.Stream));
+            context.RequireReadyForQuery = false;
+            // This still makes part of the connection stablishment handling. 
+            // So we use the connectiontimeout here too.
+            context.Mediator.CommandTimeout = context.ConnectionTimeout;
+            context.Stream.Flush();
+            ProcessBackendResponses(context);
+        }
 
-		public override void CancelRequest(NpgsqlConnector context)
-		{
-			NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
+        public override void CancelRequest(NpgsqlConnector context)
+        {
+            NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
 
 
-			CancelRequestMessage.WriteToStream(context.Stream);
-		}
-	}
+            CancelRequestMessage.WriteToStream(context.Stream);
+        }
+    }
 }

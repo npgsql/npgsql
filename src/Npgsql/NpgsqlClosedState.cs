@@ -1,12 +1,12 @@
 // Npgsql.NpgsqlClosedState.cs
 //
 // Authors:
-// 	Dave Joyner			<d4ljoyn@yahoo.com>
-//	Daniel Nauck		<dna(at)mono-project.de>
+//     Dave Joyner            <d4ljoyn@yahoo.com>
+//    Daniel Nauck        <dna(at)mono-project.de>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -66,195 +66,195 @@ namespace Npgsql
 
     }
 
-	internal sealed class NpgsqlClosedState : NpgsqlState
-	{
-		private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
-		private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+    internal sealed class NpgsqlClosedState : NpgsqlState
+    {
+        private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
 
-		private NpgsqlClosedState()
-			: base()
-		{
-		}
+        private NpgsqlClosedState()
+            : base()
+        {
+        }
 
-		public static NpgsqlClosedState Instance
-		{
-			get
-			{
-				NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Instance");
-				return _instance;
-			}
-		}
-
-
-		public override void Open(NpgsqlConnector context, Int32 timeout)
-		{
-			try
-			{
-				NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
-
-				/*TcpClient tcpc = new TcpClient();
-								tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-								Stream stream = tcpc.GetStream();*/
-
-				/*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
-
-				//socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+        public static NpgsqlClosedState Instance
+        {
+            get
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Instance");
+                return _instance;
+            }
+        }
 
 
-				/*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
+        public override void Open(NpgsqlConnector context, Int32 timeout)
+        {
+            try
+            {
+                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
+
+                /*TcpClient tcpc = new TcpClient();
+                                tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+                                Stream stream = tcpc.GetStream();*/
+
+                /*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
+
+                //socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
+
+
+                /*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
                 
-								IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
+                                IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
-								if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
-								{
-										socket.Close();
-										throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
-								}
+                                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
+                                {
+                                        socket.Close();
+                                        throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
+                                }
 
-								try
-								{
-										socket.EndConnect(result);
-								}
-								catch (Exception)
-								{
-										socket.Close();
-										throw;
-								}
-								*/
+                                try
+                                {
+                                        socket.EndConnect(result);
+                                }
+                                catch (Exception)
+                                {
+                                        socket.Close();
+                                        throw;
+                                }
+                                */
 
-				IAsyncResult result;
-				// Keep track of time remaining; Even though there may be multiple timeout-able calls,
-				// this allows us to still respect the caller's timeout expectation.
-				DateTime attemptStart;
+                IAsyncResult result;
+                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+                // this allows us to still respect the caller's timeout expectation.
+                DateTime attemptStart;
 
-				attemptStart = DateTime.Now;
+                attemptStart = DateTime.Now;
 
-				result = Dns.BeginGetHostAddresses(context.Host, null, null);
+                result = Dns.BeginGetHostAddresses(context.Host, null, null);
 
-				if (!result.AsyncWaitHandle.WaitOne(timeout, true))
-				{
-					// Timeout was used up attempting the Dns lookup
-					throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
-				}
+                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+                {
+                    // Timeout was used up attempting the Dns lookup
+                    throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
+                }
 
-				timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
 
-				IPAddress[] ips = Dns.EndGetHostAddresses(result);
-				Socket socket = null;
-				Exception lastSocketException = null;
+                IPAddress[] ips = Dns.EndGetHostAddresses(result);
+                Socket socket = null;
+                Exception lastSocketException = null;
 
-				// try every ip address of the given hostname, use the first reachable one
-				// make sure not to exceed the caller's timeout expectation by splitting the
-				// time we have left between all the remaining ip's in the list.
-				for (int i = 0 ; i < ips.Length ; i++)
-				{
-					NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
+                // try every ip address of the given hostname, use the first reachable one
+                // make sure not to exceed the caller's timeout expectation by splitting the
+                // time we have left between all the remaining ip's in the list.
+                for (int i = 0 ; i < ips.Length ; i++)
+                {
+                    NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
 
-					IPEndPoint ep = new IPEndPoint(ips[i], context.Port);
-					socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    IPEndPoint ep = new IPEndPoint(ips[i], context.Port);
+                    socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-					attemptStart = DateTime.Now;
+                    attemptStart = DateTime.Now;
 
-					try
-					{
-						result = socket.BeginConnect(ep, null, null);
+                    try
+                    {
+                        result = socket.BeginConnect(ep, null, null);
 
-						if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
-						{
-							throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
-						}
+                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
+                        {
+                            throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
+                        }
 
-						socket.EndConnect(result);
+                        socket.EndConnect(result);
 
-						// connect was successful, leave the loop
-						break;
-					}
-					catch (Exception e)
-					{
-						NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
+                        // connect was successful, leave the loop
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
 
-						timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-						lastSocketException = e;
+                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+                        lastSocketException = e;
 
-						socket.Close();
-						socket = null;
-					}
-				}
+                        socket.Close();
+                        socket = null;
+                    }
+                }
 
-				if (socket == null)
-				{
-					throw lastSocketException;
-				}
+                if (socket == null)
+                {
+                    throw lastSocketException;
+                }
 
-				//Stream stream = new NetworkStream(socket, true);
-								Stream stream = new NpgsqlNetworkStream(context, socket, true);
+                //Stream stream = new NetworkStream(socket, true);
+                                Stream stream = new NpgsqlNetworkStream(context, socket, true);
 
-				// If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-				if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
-				{
+                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
+                if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
+                {
                     stream
                         .WriteInt32(8)
                         .WriteInt32(80877103);
                     // Receive response
 
-					Char response = (Char) stream.ReadByte();
-					if (response == 'S')
-					{
-												//create empty collection
-												X509CertificateCollection clientCertificates = new X509CertificateCollection();
+                    Char response = (Char) stream.ReadByte();
+                    if (response == 'S')
+                    {
+                                                //create empty collection
+                                                X509CertificateCollection clientCertificates = new X509CertificateCollection();
                             
-												//trigger the callback to fetch some certificates
-												context.DefaultProvideClientCertificatesCallback(clientCertificates);
+                                                //trigger the callback to fetch some certificates
+                                                context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
-												if (context.UseMonoSsl)
-												{
-														stream = new SslClientStream(
-																stream,
-																context.Host,
-																true,
-																SecurityProtocolType.Default,
-																clientCertificates);
+                                                if (context.UseMonoSsl)
+                                                {
+                                                        stream = new SslClientStream(
+                                                                stream,
+                                                                context.Host,
+                                                                true,
+                                                                SecurityProtocolType.Default,
+                                                                clientCertificates);
 
-														((SslClientStream)stream).ClientCertSelectionDelegate =
-																new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
-														((SslClientStream)stream).ServerCertValidationDelegate =
-																new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
-														((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
-																new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
-												}
-												else
-												{
-														SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-														{
-																return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
-														});
-														sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-														stream = sstream;
-												}
-					}
-					else if (context.SslMode == SslMode.Require)
-					{
-						throw new InvalidOperationException(resman.GetString("Exception_Ssl_RequestError"));
-					}
-				}
+                                                        ((SslClientStream)stream).ClientCertSelectionDelegate =
+                                                                new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
+                                                        ((SslClientStream)stream).ServerCertValidationDelegate =
+                                                                new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
+                                                        ((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
+                                                                new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
+                                                }
+                                                else
+                                                {
+                                                        SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+                                                        {
+                                                                return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
+                                                        });
+                                                        sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                                                        stream = sstream;
+                                                }
+                    }
+                    else if (context.SslMode == SslMode.Require)
+                    {
+                        throw new InvalidOperationException(resman.GetString("Exception_Ssl_RequestError"));
+                    }
+                }
 
-				context.Stream = new BufferedStream(stream);
-				context.Socket = socket;
+                context.Stream = new BufferedStream(stream);
+                context.Socket = socket;
 
 
-				NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
-				ChangeState(context, NpgsqlConnectedState.Instance);
-			}
-			catch (Exception e)
-			{
-				throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e);
-			}
-		}
+                NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
+                ChangeState(context, NpgsqlConnectedState.Instance);
+            }
+            catch (Exception e)
+            {
+                throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), context.Host), e);
+            }
+        }
 
-		public override void Close(NpgsqlConnector context)
-		{
-			//DO NOTHING.
-		}
-	}
+        public override void Close(NpgsqlConnector context)
+        {
+            //DO NOTHING.
+        }
+    }
 }

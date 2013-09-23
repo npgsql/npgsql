@@ -861,16 +861,16 @@ namespace Npgsql
             }
             catch {}
 
-			
-			
-			/*
-			 * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
-			 * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
-			 * Check bug report #1010992 for more information.
-			 */
-			
-			
-			try
+            
+            
+            /*
+             * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
+             * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
+             * Check bug report #1010992 for more information.
+             */
+            
+            
+            try
             {
                 NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
                 commandSingleDoublePrecision.ExecuteBlind();

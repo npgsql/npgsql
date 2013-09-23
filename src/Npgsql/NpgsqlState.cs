@@ -361,7 +361,7 @@ namespace Npgsql
             // Process commandTimeout behavior.
 
             if ((context.Mediator.CommandTimeout > 0) &&
-				    (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
+                    (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
             {
                 // If timeout occurs when establishing the session with server then
                 // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
@@ -415,38 +415,38 @@ namespace Npgsql
         }
 
 
-		/// <summary>
-		/// Checks for context socket availability.
-		/// Socket.Poll supports integer as microseconds parameter.
-		/// This limits the usable command timeout value
-		/// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
-		/// In order to bypass this limit, the availability of
-		/// the socket is checked in 2,147 seconds cycles
-		/// </summary>
-		/// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
-		/// <param name="context">Context.</param>
-		/// <param name="selectMode">Select mode.</param>
-		internal bool CheckForContextSocketAvailability (NpgsqlConnector context, SelectMode selectMode)
-		{
-			/* Socket.Poll supports integer as microseconds parameter.
-			 * This limits the usable command timeout value
-			 * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
-			 */
-			const int limitOfSeconds = 2147;
-			
-			bool socketPoolResponse = false;
-			int secondsToWait = context.Mediator.CommandTimeout;
-			
-			/* In order to bypass this limit, the availability of
-			 * the socket is checked in 2,147 seconds cycles
-			 */
-			while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
-				socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
-				secondsToWait -= limitOfSeconds;
-			}
-			
-			return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
-		}
+        /// <summary>
+        /// Checks for context socket availability.
+        /// Socket.Poll supports integer as microseconds parameter.
+        /// This limits the usable command timeout value
+        /// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
+        /// In order to bypass this limit, the availability of
+        /// the socket is checked in 2,147 seconds cycles
+        /// </summary>
+        /// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
+        /// <param name="context">Context.</param>
+        /// <param name="selectMode">Select mode.</param>
+        internal bool CheckForContextSocketAvailability (NpgsqlConnector context, SelectMode selectMode)
+        {
+            /* Socket.Poll supports integer as microseconds parameter.
+             * This limits the usable command timeout value
+             * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
+             */
+            const int limitOfSeconds = 2147;
+            
+            bool socketPoolResponse = false;
+            int secondsToWait = context.Mediator.CommandTimeout;
+            
+            /* In order to bypass this limit, the availability of
+             * the socket is checked in 2,147 seconds cycles
+             */
+            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
+                socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
+                secondsToWait -= limitOfSeconds;
+            }
+            
+            return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
+        }
 
         protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_2(NpgsqlConnector context)
         {

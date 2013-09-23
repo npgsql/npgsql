@@ -1,11 +1,11 @@
 // Npgsql.NpgsqlMessageTypes.cs
 //
 // Author:
-// 	Dave Joyner <d4ljoyn@yahoo.com>
+//     Dave Joyner <d4ljoyn@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 //
 // Permission to use, copy, modify, and distribute this software and its
@@ -28,20 +28,20 @@
 
 namespace Npgsql
 {
-	public enum FrontEndMessageCode :byte
-	{
-		StartupPacket = (byte) ' ',
-		Termination = (byte) 'X',
-		CopyFail = (byte) 'f',
-		CopyData = (byte) 'd',
-		CopyDone = (byte) 'c',
-		Flush = (byte) 'H',
-		Query = (byte) 'Q',
-		Parse = (byte) 'P',
-		Bind = (byte) 'B',
-		Execute = (byte) 'E',
-		Describe = (byte) 'D',
-		Close = (byte) 'C',
-		Sync = (byte) 'S'
-	}
+    public enum FrontEndMessageCode :byte
+    {
+        StartupPacket = (byte) ' ',
+        Termination = (byte) 'X',
+        CopyFail = (byte) 'f',
+        CopyData = (byte) 'd',
+        CopyDone = (byte) 'c',
+        Flush = (byte) 'H',
+        Query = (byte) 'Q',
+        Parse = (byte) 'P',
+        Bind = (byte) 'B',
+        Execute = (byte) 'E',
+        Describe = (byte) 'D',
+        Close = (byte) 'C',
+        Sync = (byte) 'S'
+    }
 }

@@ -3,13 +3,13 @@
 // Npgsql.NpgsqlConnectionStringBuilder.cs
 //
 // Author:
-//	Glen Parker (glenebob@nwlink.com)
-//	Ben Sagal (bensagal@gmail.com)
-//	Tao Wang (dancefire@gmail.com)
+//    Glen Parker (glenebob@nwlink.com)
+//    Ben Sagal (bensagal@gmail.com)
+//    Tao Wang (dancefire@gmail.com)
 //
-//	Copyright (C) 2007 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2007 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,90 +34,90 @@ using System.Collections.Generic;
 
 namespace Npgsql
 {
-	internal class Cache<TEntity> : LinkedList<KeyValuePair<string, TEntity>>
-		where TEntity : class
-	{
-		private int _cache_size = 20;
-		private object locker = new object();
+    internal class Cache<TEntity> : LinkedList<KeyValuePair<string, TEntity>>
+        where TEntity : class
+    {
+        private int _cache_size = 20;
+        private object locker = new object();
 
-		/// <summary>
-		/// Set Cache Size. The default value is 20.
-		/// </summary>
-		public int CacheSize
-		{
-			get { return _cache_size; }
-			set
-			{
-				if (value < 0) { throw new ArgumentOutOfRangeException("CacheSize"); }
+        /// <summary>
+        /// Set Cache Size. The default value is 20.
+        /// </summary>
+        public int CacheSize
+        {
+            get { return _cache_size; }
+            set
+            {
+                if (value < 0) { throw new ArgumentOutOfRangeException("CacheSize"); }
 
-				_cache_size = value;
+                _cache_size = value;
 
-				if (this.Count > _cache_size)
-				{
-					lock (locker)
-					{
-						while (_cache_size < this.Count)
-						{
-							RemoveLast();
-						}
-					}
-				}
-			}
-		}
+                if (this.Count > _cache_size)
+                {
+                    lock (locker)
+                    {
+                        while (_cache_size < this.Count)
+                        {
+                            RemoveLast();
+                        }
+                    }
+                }
+            }
+        }
 
-		/// <summary>
-		/// Lookup cached entity. null will returned if not match.
-		/// For both get{} and set{} apply LRU rule.
-		/// </summary>
-		/// <param name="key">key</param>
-		/// <returns></returns>
-		public TEntity this[string key]
-		{
-			get
-			{
-				lock (locker)
-				{
-					for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
-					{
-						if (node.Value.Key == key)
-						{
-							this.Remove(node);
-							this.AddFirst(node);
-							return node.Value.Value;
-						}
-					}
-				}
-				return null;
-			}
-			set
-			{
-				lock (locker)
-				{
-					for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
-					{
-						if (node.Value.Key == key)
-						{
-							this.Remove(node);
-							this.AddFirst(node);
-							return;
-						}
-					}
-					if (this.CacheSize > 0)
-					{
-						this.AddFirst(new KeyValuePair<string, TEntity>(key, value));
-						if (this.Count > this.CacheSize)
-						{
-							this.RemoveLast();
-						}
-					}
-				}
-			}
-		}
+        /// <summary>
+        /// Lookup cached entity. null will returned if not match.
+        /// For both get{} and set{} apply LRU rule.
+        /// </summary>
+        /// <param name="key">key</param>
+        /// <returns></returns>
+        public TEntity this[string key]
+        {
+            get
+            {
+                lock (locker)
+                {
+                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
+                    {
+                        if (node.Value.Key == key)
+                        {
+                            this.Remove(node);
+                            this.AddFirst(node);
+                            return node.Value.Value;
+                        }
+                    }
+                }
+                return null;
+            }
+            set
+            {
+                lock (locker)
+                {
+                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
+                    {
+                        if (node.Value.Key == key)
+                        {
+                            this.Remove(node);
+                            this.AddFirst(node);
+                            return;
+                        }
+                    }
+                    if (this.CacheSize > 0)
+                    {
+                        this.AddFirst(new KeyValuePair<string, TEntity>(key, value));
+                        if (this.Count > this.CacheSize)
+                        {
+                            this.RemoveLast();
+                        }
+                    }
+                }
+            }
+        }
 
-		public Cache() : base() { }
-		public Cache(int cacheSize) : base()
-		{
-			this._cache_size = cacheSize;
-		}
-	}
+        public Cache() : base() { }
+        public Cache(int cacheSize) : base()
+        {
+            this._cache_size = cacheSize;
+        }
+    }
 }

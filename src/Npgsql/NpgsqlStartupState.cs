@@ -1,11 +1,11 @@
 // Npgsql.NpgsqlStartupState.cs
 //
 // Author:
-// 	Dave Joyner <d4ljoyn@yahoo.com>
+//     Dave Joyner <d4ljoyn@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,24 +31,24 @@ using System.Reflection;
 
 namespace Npgsql
 {
-	internal sealed class NpgsqlStartupState : NpgsqlState
-	{
-		public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
+    internal sealed class NpgsqlStartupState : NpgsqlState
+    {
+        public static readonly NpgsqlStartupState Instance = new NpgsqlStartupState();
 
-		private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-		private NpgsqlStartupState()
-			: base()
-		{
-		}
+        private NpgsqlStartupState()
+            : base()
+        {
+        }
 
-		public override void Authenticate(NpgsqlConnector context, byte[] password)
-		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
-			NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
-			BufferedStream stream = new BufferedStream(context.Stream);
-			pwpck.WriteToStream(stream);
-			stream.Flush();
-		}
-	}
+        public override void Authenticate(NpgsqlConnector context, byte[] password)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
+            NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
+            BufferedStream stream = new BufferedStream(context.Stream);
+            pwpck.WriteToStream(stream);
+            stream.Flush();
+        }
+    }
 }

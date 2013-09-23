@@ -1,11 +1,11 @@
 // Npgsql.BackendEncoding.cs
 //
 // Authors:
-// 	Glen Parker         <glenebob@gmail.com>
+//     Glen Parker         <glenebob@gmail.com>
 //
-//	Copyright (C) 2013 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2013 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
