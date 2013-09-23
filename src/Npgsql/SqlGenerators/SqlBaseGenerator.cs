@@ -1077,6 +1077,7 @@ namespace Npgsql.SqlGenerators
                     case "AddNanoseconds":
                     case "AddSeconds":
                     case "AddYears":
+                        return DateAdd(function.Name, args);
                     case "DiffDays":                                          
                     case "DiffHours":
                     case "DiffMicroseconds":
@@ -1086,7 +1087,7 @@ namespace Npgsql.SqlGenerators
                     case "DiffNanoseconds":
                     case "DiffSeconds":
                     case "DiffYears":   
-                        return DateAdd(function.Name, args);
+                        return DateDiff(function.Name, args);
                     //    return 
                     case "Day":
                     case "Hour":
@@ -1223,11 +1224,6 @@ namespace Npgsql.SqlGenerators
                 operation = "+";
                 part = functionName.Substring(3);
             }
-            else if (functionName.Contains("Diff"))
-            {
-                operation = "-";
-                part = functionName.Substring(4);
-            }
             else throw new NotSupportedException();
 
             if (part == "Nanoseconds")
@@ -1246,6 +1242,115 @@ namespace Npgsql.SqlGenerators
                                    : String.Format(" * INTERVAL '1 {0}'", part));
 
             return dateAddDiff;
+        }        /// <summary>
+        /// PostgreSQL has no direct functions to implements DateTime canonical functions
+        /// http://msdn.microsoft.com/en-us/library/bb738626.aspx
+        /// http://msdn.microsoft.com/en-us/library/bb738626.aspx
+        /// but we can use workaround:
+        /// http://www.sqlines.com/postgresql/how-to/datediff
+        /// </summary>
+        /// <param name="functionName"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private VisitedExpression DateDiff(string functionName, IList<DbExpression> args)
+        {
+            System.Diagnostics.Debug.Assert(args.Count == 2);
+            string part = functionName.Substring(4);
+            if (!functionName.Contains("Diff"))
+                 throw new NotSupportedException();
+            string operationAndFactor = null;
+            VisitedExpression dateDiff = null;
+
+            VisitedExpression start = DateDiffArg(args[0]);
+            VisitedExpression end = DateDiffArg(args[1]);
+
+            switch(part)
+            {
+                // DATE_PART('year', end) - DATE_PART('year', start)
+                case "Years":
+                    {
+                        dateDiff = new LiteralExpression("(DATE_PART(\'year\',");
+                        dateDiff.Append(end);
+                        dateDiff.Append(") - DATE_PART(\'year\',");
+                        dateDiff.Append(start);
+                        dateDiff.Append("))::INT");
+                    }
+                    break;
+                //years_diff * 12 + (DATE_PART('month', end) - DATE_PART('month', start))
+                case "Months":
+                    {
+                        dateDiff = new LiteralExpression("(DATE_PART(\'year\',");
+                        dateDiff.Append(end);
+                        dateDiff.Append(")*12 - DATE_PART(\'year\',");
+                        dateDiff.Append(start);
+                        dateDiff.Append(")*12+DATE_PART(\'month\',");
+                        dateDiff.Append(args[1].Accept(this));
+                        dateDiff.Append(") - DATE_PART(\'month\',");
+                        dateDiff.Append(start);
+                        dateDiff.Append("))::INT");
+                    }
+                    break;
+                 //DATE_PART('day', end - start)
+                 case "Days":
+                    {
+                        dateDiff = new LiteralExpression("DATE_PART('day',");
+                        dateDiff.Append(end);
+                        dateDiff.Append("-");
+                        dateDiff.Append(start);
+                        dateDiff.Append(")::INT");
+                    }
+                    break;
+                 //FLOOR(EXTRACT(EPOCH FROM end - start) operationAndFactor)::INT
+                 case "Hours":
+                    operationAndFactor = "/3600";
+                    break;
+                 case "Minutes":
+                    operationAndFactor = "/60";
+                    break;
+                 case "Seconds":
+                    //do nothing factor = "/1";
+                    break;
+                 case "Milliseconds":
+                    operationAndFactor = "*1000";
+                    break;
+                 case "Microseconds":
+                    operationAndFactor = "*1000000";
+                    break;
+                 case "Nanoseconds":
+                    operationAndFactor = "*1000000000";
+                    break;
+                 default:
+                    throw new NotSupportedException(); 
+            }
+            if(dateDiff == null)
+            {
+                dateDiff = new LiteralExpression("FLOOR(EXTRACT(EPOCH FROM ");
+                dateDiff.Append(end);
+                dateDiff.Append("-");
+                dateDiff.Append(start);
+                dateDiff.Append(")");
+                if (!string.IsNullOrEmpty(operationAndFactor))
+                    dateDiff.Append(operationAndFactor); 
+                dateDiff.Append(")::INT");
+            }
+            return dateDiff;
+        }
+        
+        private VisitedExpression DateDiffArg(DbExpression arg)
+        {
+            VisitedExpression expr = null;
+            if (arg is DbParameterReferenceExpression)
+            {
+                
+                expr = new LiteralExpression("");
+                expr.Append(arg.Accept(this));
+                expr.Append("::TIMESTAMP");
+            }
+            else
+            {
+                expr =  arg.Accept(this);
+            }
+            return expr;
         }
 
         private VisitedExpression BitwiseOperator(IList<DbExpression> args, string oper)
