@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -17,7 +17,7 @@ namespace Npgsql.Designer
   /// <summary>
   /// This class provides connectionstring editing support in the properties window when
   /// using a SQLiteConnection as a toolbox component on a form (for example).
-  /// 
+  ///
   /// In order to provide the dropdown list, unless someone knows a better way, I have to use
   /// the internal VsConnectionManager class since it utilizes some interfaces in the designer
   /// that are internal to the VSDesigner object.  We instantiate it and utilize it through reflection.
@@ -107,7 +107,7 @@ namespace Npgsql.Designer
           if (String.Compare(dataProvider, "Npgsql", true) == 0)
           {
             node = selector.AddNode(connectionName, connectionString, null);
-            
+
             if (String.Compare(connectionString, connection.ConnectionString, true) == 0)
               selector.SelectedNode = node;
           }

@@ -1,11 +1,11 @@
 // created on 3/5/2003 at 14:29
 //
 // Author:
-// 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
+//     Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,6 @@
 // You should have received a copy of the GNU Lesser General Public
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
 
 using System;
 using System.Data;
@@ -68,7 +67,7 @@ namespace NpgsqlTests
 
             var ds2 = ds.GetChanges();
             da.Update(ds2);
-            
+
             ds.Merge(ds2);
             ds.AcceptChanges();
 
@@ -79,7 +78,7 @@ namespace NpgsqlTests
             Assert.AreEqual(7.3000000M, dr2[1]);
             dr2.Close();
         }
-        
+
         [Test]
         public void DataAdapterUpdateReturnValue()
         {
@@ -108,7 +107,7 @@ namespace NpgsqlTests
             dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
             dr["field_numeric"] = 7.3M;
             dt.Rows.Add(dr);
-            
+
             dr = dt.NewRow();
             dr["field_int2"] = 4;
             dr["field_timestamp"] = new DateTime(2003, 01, 30, 14, 0, 0);
@@ -117,10 +116,10 @@ namespace NpgsqlTests
 
             var ds2 = ds.GetChanges();
             var daupdate = da.Update(ds2);
-            
+
             Assert.AreEqual(2, daupdate);
         }
-        
+
         [Test]
         [Ignore]
         public void DataAdapterUpdateReturnValue2()
@@ -270,13 +269,13 @@ namespace NpgsqlTests
             da.UpdateCommand.Parameters[3].SourceColumn = "field_serial";
 
             da.Fill(ds);
-            
+
             var dt = ds.Tables[0];
             Assert.IsNotNull(dt);
 
             var dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
             dr["field_int2"] = 4;
-            
+
             var ds2 = ds.GetChanges();
             da.Update(ds2);
             ds.Merge(ds2);
@@ -296,7 +295,7 @@ namespace NpgsqlTests
             var da = new NpgsqlDataAdapter("SELECT field_serial, field_serial FROM data", Conn);
             da.Fill(ds);
         }
-        
+
         [Test]
         [Ignore]
         public void UpdateWithDataSet()
@@ -313,16 +312,16 @@ namespace NpgsqlTests
             var da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", Conn);
             var cb = new NpgsqlCommandBuilder(da);
             Assert.IsNotNull(cb);
-            
+
             da.Fill(ds);
-            
+
             var dt = ds.Tables[0];
             Assert.IsNotNull(dt);
 
             var dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
-            
+
             dr["field_int2"] = 4;
-            
+
             var ds2 = ds.GetChanges();
             da.Update(ds2);
             ds.Merge(ds2);
@@ -332,9 +331,9 @@ namespace NpgsqlTests
             {
                 dr2.Read();
                 Assert.AreEqual(4, dr2["field_int2"]);
-            }   
+            }
         }
-        
+
         [Test]
         [Ignore]
         public void InsertWithCommandBuilderCaseSensitive()

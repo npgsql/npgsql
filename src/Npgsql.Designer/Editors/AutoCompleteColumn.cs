@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -76,7 +76,7 @@ namespace Npgsql.Designer.Editors
       }
       base.DropDownStyle = ComboBoxStyle.DropDown;
       base.Text = EditingControlDataGridView.CurrentCell.Value as string;
-      
+
       if (selectAll)
         base.SelectAll();
 
@@ -124,7 +124,7 @@ namespace Npgsql.Designer.Editors
             {
               int start = base.SelectionStart;
               inPrepare = true;
-              
+
               base.Text = base.Items[n] as string;
               base.SelectionStart = start;
               base.SelectionLength = base.Text.Length - start;

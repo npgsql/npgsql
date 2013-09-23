@@ -591,7 +591,7 @@ namespace Npgsql.SqlGenerators
                 // optimized query generation for inner joins
                 // just make filter part of join condition to avoid building extra
                 // nested queries
-                // 
+                //
                 if (partOfJoin && join.JoinType == DbExpressionKind.InnerJoin)
                 {
                     System.Diagnostics.Debug.Assert(join.Condition != null);
@@ -1067,8 +1067,8 @@ namespace Npgsql.SqlGenerators
                         return StringModifier("btrim", args);
 
                         // date functions
-                    // date functions                    
-                    case "AddDays":                    
+                    // date functions
+                    case "AddDays":
                     case "AddHours":
                     case "AddMicroseconds":
                     case "AddMilliseconds":
@@ -1077,7 +1077,7 @@ namespace Npgsql.SqlGenerators
                     case "AddNanoseconds":
                     case "AddSeconds":
                     case "AddYears":
-                    case "DiffDays":                                          
+                    case "DiffDays":
                     case "DiffHours":
                     case "DiffMicroseconds":
                     case "DiffMilliseconds":
@@ -1085,9 +1085,9 @@ namespace Npgsql.SqlGenerators
                     case "DiffMonths":
                     case "DiffNanoseconds":
                     case "DiffSeconds":
-                    case "DiffYears":   
+                    case "DiffYears":
                         return DateAdd(function.Name, args);
-                    //    return 
+                    //    return
                     case "Day":
                     case "Hour":
                     case "Minute":
@@ -1303,7 +1303,6 @@ namespace Npgsql.SqlGenerators
                 }
             }
         }
-
 
         //private Stack<Dictionary<string, string>> _varScopeStack = new Stack<Dictionary<string, string>>();
         //private Stack<Stack<string>> _projectScopeStack = new Stack<Stack<string>>();

@@ -3,25 +3,25 @@
 // Npgsql.NpgsqlConnectionStringBuilder.cs
 //
 // Author:
-//	Glen Parker (glenebob@nwlink.com)
-//	Ben Sagal (bensagal@gmail.com)
-//	Tao Wang (dancefire@gmail.com)
+//    Glen Parker (glenebob@nwlink.com)
+//    Ben Sagal (bensagal@gmail.com)
+//    Tao Wang (dancefire@gmail.com)
 //
-//	Copyright (C) 2007 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2007 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -405,7 +405,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Compatible), value); }
         }
 
-
         private string _application_name;
         public string ApplicationName
         {
@@ -737,7 +736,6 @@ namespace Npgsql
             }
         }
 
-
         /// <summary>
         /// Clear the member and assign them to the default value.
         /// </summary>
@@ -765,7 +763,7 @@ namespace Npgsql
         [Obsolete("UTF-8 is always used regardless of this setting.")] Encoding,
         Timeout,
         SearchPath,
-        //	These are for the connection pool
+        //    These are for the connection pool
         Pooling,
         ConnectionLifeTime,
         MinPoolSize,

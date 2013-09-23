@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -14,7 +14,7 @@ namespace Npgsql.Designer
   using Microsoft.VisualStudio.OLE.Interop;
 
   /// <summary>
-  /// This class is used to build identifier arrays and contract them.  Typically they are 
+  /// This class is used to build identifier arrays and contract them.  Typically they are
   /// passed to SQLiteConnection.GetSchema() or are contracted for display on the screen or in the
   /// properties window.
   /// </summary>

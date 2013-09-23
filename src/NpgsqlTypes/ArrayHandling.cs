@@ -11,13 +11,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -103,7 +103,7 @@ namespace NpgsqlTypes
             //an Ienumerable - in which case we call WriteEnumeration
             //an element - in which case we call the NpgsqlNativeTypeInfo for that type to serialise it.
             //an array - in which case we call WriteArray,
-            
+
             // Even an string being an IEnumerable, it shouldn't be processed. It will be processed on the last else.
             // See http://pgfoundry.org/tracker/?func=detail&atid=592&aid=1010514&group_id=1000140 for more info.
 
@@ -145,7 +145,7 @@ namespace NpgsqlTypes
 
                 return true;
             }
-            
+
         }
 
         private bool WriteArrayText(NpgsqlNativeTypeInfo TypeInfo, Array ar, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
@@ -191,7 +191,7 @@ namespace NpgsqlTypes
                     if (c%(curlength *= lengthTest) == 0)
                     {
                         array.WriteByte(openElement);
-                        
+
                     }
                     else
                     {
@@ -357,7 +357,7 @@ namespace NpgsqlTypes
             if (writtenSomething)
             {
                 array.WriteByte(closeElement);
-                
+
             }
 
             return writtenSomething;
@@ -469,9 +469,9 @@ namespace NpgsqlTypes
         /// <summary>
         /// Takes an array of ints and treats them like the limits of a set of counters.
         /// Retains a matching set of ints that is set to all zeros on the first ++
-        /// On a ++ it increments the "right-most" int. If that int reaches it's 
+        /// On a ++ it increments the "right-most" int. If that int reaches it's
         /// limit it is set to zero and the one before it is incremented, and so on.
-        /// 
+        ///
         /// Making this a more general purpose class is pretty straight-forward, but we'll just put what we need here.
         /// </summary>
         private class IntSetIterator
@@ -601,7 +601,7 @@ namespace NpgsqlTypes
 
         /// <summary>
         /// Creates an n-dimensional array from an ArrayList of ArrayLists or
-        /// a 1-dimensional array from something else. 
+        /// a 1-dimensional array from something else.
         /// </summary>
         /// <param name="list"><see cref="ArrayList"/> to convert</param>
         /// <param name="elementType">Type of the elements in the list</param>

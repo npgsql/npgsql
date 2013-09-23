@@ -11,13 +11,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -39,38 +39,38 @@ namespace NpgsqlTypes
     /// <para>BitStrings are often used as masks, and are commonly cast to and from other values.</para>
     /// </summary>
     public struct BitString : IList<bool>, IEquatable<BitString>, IComparable<BitString>, IComparable, IFormattable, IConvertible
-	{
+    {
         /// <summary>
         /// Represents the empty string.
         /// </summary>
         public static readonly BitString Empty = new BitString(new List<uint>(0), 0);
-	    private readonly List<uint> _chunks;
-	    private readonly int _lastChunkLen;
-	    /// <summary>
-	    /// Create a BitString from an enumeration of boolean values. The BitString will contain
-	    /// those booleans in the order they came in.
-	    /// </summary>
-	    /// <param name="bits">The boolean values.</param>
-		public BitString(IEnumerable<bool> bits)
-		{
-		    _chunks = new List<uint>();
-		    int curChunkLen = 0;
-		    uint curChunk = 0;
-		    foreach(bool bit in bits)
-		    {
-		        curChunk = (curChunk << 1) | (bit ? 1u : 0u);
-		        if(++curChunkLen == 32)
-		        {
-		            _chunks.Add(curChunk);
-		            curChunk = 0;
-		            curChunkLen = 0;
-		        }
-		    }
-		    if(curChunkLen != 0)
-		        _chunks.Add(curChunk << -curChunkLen);
-		    _lastChunkLen = curChunkLen;
-		}
-		//Used for optimised internal creation. The last chunk must be zero'd at bits less significant than lastChunkLen or comparisons will fail.
+        private readonly List<uint> _chunks;
+        private readonly int _lastChunkLen;
+        /// <summary>
+        /// Create a BitString from an enumeration of boolean values. The BitString will contain
+        /// those booleans in the order they came in.
+        /// </summary>
+        /// <param name="bits">The boolean values.</param>
+        public BitString(IEnumerable<bool> bits)
+        {
+            _chunks = new List<uint>();
+            int curChunkLen = 0;
+            uint curChunk = 0;
+            foreach(bool bit in bits)
+            {
+                curChunk = (curChunk << 1) | (bit ? 1u : 0u);
+                if(++curChunkLen == 32)
+                {
+                    _chunks.Add(curChunk);
+                    curChunk = 0;
+                    curChunkLen = 0;
+                }
+            }
+            if(curChunkLen != 0)
+                _chunks.Add(curChunk << -curChunkLen);
+            _lastChunkLen = curChunkLen;
+        }
+        //Used for optimised internal creation. The last chunk must be zero'd at bits less significant than lastChunkLen or comparisons will fail.
         private BitString(List<uint> chunks, int lastChunkLen)
         {
             _chunks = chunks;
@@ -81,109 +81,109 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">The value to fill the string with.</param>
         /// <param name="count">The number of bits to fill.</param>
-		public BitString(bool value, int count)
-		{
-		    if(value)
-		    {
-		        _chunks = new List<uint>((count + 31) / 32);
-		        for(int i = 0; i < count / 32; ++i)
-		            _chunks.Add(0xFFFFFFFFu);
+        public BitString(bool value, int count)
+        {
+            if(value)
+            {
+                _chunks = new List<uint>((count + 31) / 32);
+                for(int i = 0; i < count / 32; ++i)
+                    _chunks.Add(0xFFFFFFFFu);
                 if(count % 32 != 0)
                     _chunks.Add(0xFFFFFFFFu << - count);
-		    }
-		    else
-		        _chunks = new List<uint>(new uint[(count + 31) / 32]);
-	        _lastChunkLen = count % 32;
-		}
-		/// <summary>
-		/// Creats a bitstring from a <see cref="System.String">string</see>.
-		/// <param name="str">The <see cref="System.String">string to copy from</see>.</param>
-		/// <seealso cref="NpgsqlTypes.BitString.Parse(System.String)"/>
-		/// </summary>
-		public BitString(string str)
-		{
-		    BitString fromParse = Parse(str);
-		    _chunks = fromParse._chunks;
-		    _lastChunkLen = fromParse._lastChunkLen;
-		}
-		/// <summary>
-		/// Creates a single-bit element from a boolean value.
-		/// </summary>
-		/// <param name="boolean">The <see cref="System.Boolean">bool</see> value which determines whether
-		/// the bit is 1 or 0.</param>
-		public BitString(bool boolean)
-		    :this(boolean, 1){}
-		/// <summary>
-		/// Creates a bitstring from an unsigned integer value. The string will be the shortest required to
-		/// contain the integer (e.g. 1 bit for 0 or 1, 2 for 2 or 3, 3 for 4-7, and so on).
-		/// </summary>
-		/// <param name="integer">The <see cref="System.UInt32">integer</see>.</param>
-		/// <remarks>This method is not CLS Compliant, and may not be available to some languages.</remarks>
-		[CLSCompliant(false)]
-		public BitString(uint integer)
-		{
-		    int bitCount = 32;
-		    while(bitCount >= 1 && (integer & 0x80000000u) == 0)
-		    {
-		        integer <<= 1;
-		        --bitCount;
-		    }
-		    _chunks = new List<uint>(1);
-		    _chunks.Add(integer);
-		    _lastChunkLen = bitCount;
-		}
-		/// <summary>
-		/// Creates a bitstring from an integer value. The string will be the shortest required to
-		/// contain the integer (e.g. 1 bit for 0 or 1, 2 for 2 or 3, 3 for 4-7, and so on).
-		/// </summary>
-		/// <param name="integer">The <see cref="System.Int32">integer</see>.</param>
-		public BitString(int integer)
-		    :this((uint)integer){}
-		private IEnumerable<uint> AllChunksButLast
-		{
-		    get
-		    {
+            }
+            else
+                _chunks = new List<uint>(new uint[(count + 31) / 32]);
+            _lastChunkLen = count % 32;
+        }
+        /// <summary>
+        /// Creats a bitstring from a <see cref="System.String">string</see>.
+        /// <param name="str">The <see cref="System.String">string to copy from</see>.</param>
+        /// <seealso cref="NpgsqlTypes.BitString.Parse(System.String)"/>
+        /// </summary>
+        public BitString(string str)
+        {
+            BitString fromParse = Parse(str);
+            _chunks = fromParse._chunks;
+            _lastChunkLen = fromParse._lastChunkLen;
+        }
+        /// <summary>
+        /// Creates a single-bit element from a boolean value.
+        /// </summary>
+        /// <param name="boolean">The <see cref="System.Boolean">bool</see> value which determines whether
+        /// the bit is 1 or 0.</param>
+        public BitString(bool boolean)
+            :this(boolean, 1){}
+        /// <summary>
+        /// Creates a bitstring from an unsigned integer value. The string will be the shortest required to
+        /// contain the integer (e.g. 1 bit for 0 or 1, 2 for 2 or 3, 3 for 4-7, and so on).
+        /// </summary>
+        /// <param name="integer">The <see cref="System.UInt32">integer</see>.</param>
+        /// <remarks>This method is not CLS Compliant, and may not be available to some languages.</remarks>
+        [CLSCompliant(false)]
+        public BitString(uint integer)
+        {
+            int bitCount = 32;
+            while(bitCount >= 1 && (integer & 0x80000000u) == 0)
+            {
+                integer <<= 1;
+                --bitCount;
+            }
+            _chunks = new List<uint>(1);
+            _chunks.Add(integer);
+            _lastChunkLen = bitCount;
+        }
+        /// <summary>
+        /// Creates a bitstring from an integer value. The string will be the shortest required to
+        /// contain the integer (e.g. 1 bit for 0 or 1, 2 for 2 or 3, 3 for 4-7, and so on).
+        /// </summary>
+        /// <param name="integer">The <see cref="System.Int32">integer</see>.</param>
+        public BitString(int integer)
+            :this((uint)integer){}
+        private IEnumerable<uint> AllChunksButLast
+        {
+            get
+            {
                 for(int i = 0; i < _chunks.Count - 1; ++i)
                     yield return _chunks[i];
-		    }
-		}
-		private IEnumerable<uint> EnumChunks(bool includeLast)
-		{
-		    return includeLast ? _chunks : AllChunksButLast;
-		}
-		/// <summary>
-		/// The length of the string.
-		/// </summary>
-		public int Length
-		{
-		    get
-		    {
-		        return (_chunks.Count - (_lastChunkLen == 0 ? 0 : 1)) * 32 + _lastChunkLen;
-		    }
-		}
-		/// <summary>
-		/// Retrieves the value of the bit at the given index.
-		/// </summary>
-		public bool this[int index]
-		{
-		    get
-		    {
-		        if(index < 0 || index >= Length)
-		            throw new ArgumentOutOfRangeException();
-		        return (_chunks[index / 32] & (1 << (31 - index % 32))) != 0;
-		    }
-		}
-		bool IList<bool>.this[int idx]
-		{
-		    get
-		    {
-		        return this[idx];
-		    }
-		    set
-		    {
-		        throw new NotSupportedException();
-		    }
-		}
+            }
+        }
+        private IEnumerable<uint> EnumChunks(bool includeLast)
+        {
+            return includeLast ? _chunks : AllChunksButLast;
+        }
+        /// <summary>
+        /// The length of the string.
+        /// </summary>
+        public int Length
+        {
+            get
+            {
+                return (_chunks.Count - (_lastChunkLen == 0 ? 0 : 1)) * 32 + _lastChunkLen;
+            }
+        }
+        /// <summary>
+        /// Retrieves the value of the bit at the given index.
+        /// </summary>
+        public bool this[int index]
+        {
+            get
+            {
+                if(index < 0 || index >= Length)
+                    throw new ArgumentOutOfRangeException();
+                return (_chunks[index / 32] & (1 << (31 - index % 32))) != 0;
+            }
+        }
+        bool IList<bool>.this[int idx]
+        {
+            get
+            {
+                return this[idx];
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
+        }
         int ICollection<bool>.Count
         {
             get
@@ -1193,5 +1193,5 @@ namespace NpgsqlTypes
                     throw new InvalidCastException();
             }
         }
- 	}
+     }
 }

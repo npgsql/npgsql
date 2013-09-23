@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -19,12 +19,12 @@ namespace Npgsql.Designer
   using System.Runtime.Serialization;
 
   /// <summary>
-  /// Provides a toolboxitem for a SQLiteDataAdapter.  This is required in order for us to 
+  /// Provides a toolboxitem for a SQLiteDataAdapter.  This is required in order for us to
   /// pop up the connection wizard when you drop the tool on a form, and to create the hidden commands
   /// that are assigned to the data adapter and keep them hidden.  The hiding at runtime of the controls
   /// is accomplished both here during the creation of the components and in the SQLiteCommandDesigner
   /// which provides properties to hide the objects when they're supposed to be hidden.
-  /// 
+  ///
   /// The connection wizard is instantiated in the VSDesigner through reflection.
   /// </summary>
   [Serializable]
@@ -32,7 +32,7 @@ namespace Npgsql.Designer
   internal sealed class NpgsqlDataAdapterToolboxItem : ToolboxItem
   {
     private static Type _wizard = null;
-    
+
     internal static Assembly _vsdesigner = null;
 
     static NpgsqlDataAdapterToolboxItem()
@@ -66,7 +66,7 @@ namespace Npgsql.Designer
 
       DbDataAdapter dataAdapter = fact.CreateDataAdapter();
       IContainer container = host.Container;
-      
+
       using (DbCommand adapterCommand = fact.CreateCommand())
       {
         adapterCommand.DesignTimeVisible = false;
@@ -108,7 +108,7 @@ namespace Npgsql.Designer
       if (dataAdapter.DeleteCommand != null) list.Add(dataAdapter.DeleteCommand);
       if (dataAdapter.UpdateCommand != null) list.Add(dataAdapter.UpdateCommand);
 
-      return list.ToArray();      
+      return list.ToArray();
     }
 
     /// <summary>

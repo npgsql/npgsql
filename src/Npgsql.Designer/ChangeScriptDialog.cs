@@ -1,7 +1,7 @@
 ﻿/********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -76,7 +76,7 @@ namespace Npgsql.Designer
               writer.WriteLine(_original.Text.Replace("\r", "").TrimEnd('\n').Replace("\n", "\r\n"));
               if (_show.Visible == true) writer.WriteLine("*/");
             }
-            if (_show.Visible == true || _splitter.Panel2Collapsed == false) 
+            if (_show.Visible == true || _splitter.Panel2Collapsed == false)
               writer.WriteLine(_script.Text.Replace("\r", "").TrimEnd('\n').Replace("\n", "\r\n"));
           }
         }

@@ -44,6 +44,6 @@ namespace Npgsql.SqlGenerators
             _projectVarName.Pop();
             command.CommandText = update.ToString();
         }
-	}
+    }
 }
 #endif

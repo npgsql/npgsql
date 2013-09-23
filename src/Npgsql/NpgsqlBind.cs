@@ -3,23 +3,23 @@
 // Npgsql.NpgsqlBind.cs
 //
 // Author:
-//	Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Francisco Jr. (fxjrlists@yahoo.com.br)
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -46,7 +46,6 @@ namespace Npgsql
         private byte[][] _parameterValues;
         private Int16[] _resultFormatCodes;
 
-
         public NpgsqlBind(String portalName, String preparedStatementName, Int16[] parameterFormatCodes,
                           byte[][] parameterValues, Int16[] resultFormatCodes)
         {
@@ -61,36 +60,35 @@ namespace Npgsql
             _resultFormatCodes = resultFormatCodes;
         }
 
-		public String PortalName
-		{
-			get { return _portalName; }
-		}
+        public String PortalName
+        {
+            get { return _portalName; }
+        }
 
-		public String PreparedStatementName
-		{
-			get { return _preparedStatementName; }
-		}
+        public String PreparedStatementName
+        {
+            get { return _preparedStatementName; }
+        }
 
-		public Int16[] ResultFormatCodes
-		{
-			get { return _resultFormatCodes; }
-			set { _resultFormatCodes = value; }
-		}
+        public Int16[] ResultFormatCodes
+        {
+            get { return _resultFormatCodes; }
+            set { _resultFormatCodes = value; }
+        }
 
-		public Int16[] ParameterFormatCodes
-		{
-			get { return _parameterFormatCodes; }
+        public Int16[] ParameterFormatCodes
+        {
+            get { return _parameterFormatCodes; }
 
-			set { _parameterFormatCodes = value; }
-		}
+            set { _parameterFormatCodes = value; }
+        }
 
-		public byte[][] ParameterValues
-		{
-			get { return _parameterValues; }
+        public byte[][] ParameterValues
+        {
+            get { return _parameterValues; }
 
-			set { _parameterValues = value; }
-		}
-
+            set { _parameterValues = value; }
+        }
 
         public override void WriteToStream(Stream outputStream)
         {
