@@ -55,7 +55,7 @@ class Npsql {
         {
             url = args[0].Replace(":",";PORT=");
         }
-        
+
         if (args.Length == 2)
         {
             usr = args[1].Replace("/",";PWD=");
@@ -74,10 +74,10 @@ class Npsql {
                 String constr = "DATABASE=" + dbn + ";SERVER=" + url + ";UID=" + usr + ";Encoding=UNICODE;";
                 cnDB = new NpgsqlConnection(constr);
 
-        try 
+        try
         {
             cnDB.Open();
-        } 
+        }
         catch (NpgsqlException ex)
         {
             Console.WriteLine(ex.ToString());
@@ -168,7 +168,7 @@ class Npsql {
                 {
                 }
             }
-        } 
+        }
         return 1;
     }
 }

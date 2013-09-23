@@ -13,13 +13,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -75,11 +75,11 @@ namespace Npgsql
         private NpgsqlBind bind;
 
         private Int64 lastInsertedOID = 0;
-        
+
         // locals about function support so we don`t need to check it everytime a function is called.
-        
+
         private Boolean functionChecksDone = false;
-        
+
         private Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
 
         private Boolean functionNeedsColumnListDefinition = false; // Functions don't return record by default.
@@ -149,7 +149,6 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
-
             planName = String.Empty;
             text = cmdText;
             this.m_Connector = connector;
@@ -179,7 +178,7 @@ namespace Npgsql
                 planName = String.Empty;
                 parse = null;
                 bind = null;
-                
+
                 functionChecksDone = false;
             }
         }
@@ -321,7 +320,6 @@ namespace Npgsql
             }
         }
 
-
         protected override DbTransaction DbTransaction
         {
             get { return Transaction; }
@@ -381,7 +379,7 @@ namespace Npgsql
 
                 return updateRowSource;
             }
-            set 
+            set
             {
                 switch (value)
                 {
@@ -398,7 +396,6 @@ namespace Npgsql
             }
         }
 
-
         /// <summary>
         /// Returns oid of inserted row. This is only updated when using executenonQuery and when command inserts just a single row. If table is created without oids, this will always be 0.
         /// </summary>
@@ -406,7 +403,6 @@ namespace Npgsql
         {
             get { return lastInsertedOID; }
         }
-
 
         /// <summary>
         /// Attempts to cancel the execution of a <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
@@ -562,7 +558,7 @@ namespace Npgsql
         public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader", cb);
-            
+
             // Close connection if requested even when there is an error.
 
                     try
@@ -586,7 +582,7 @@ namespace Npgsql
             }
                         throw;
                     }
-                
+
         }
 
         internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
@@ -600,7 +596,6 @@ namespace Npgsql
 
                 // Set command timeout.
                 m_Connector.Mediator.CommandTimeout = CommandTimeout;
-
 
                 using (m_Connector.BlockNotificationThread())
                 {
@@ -754,7 +749,7 @@ namespace Npgsql
                         m_Connector.Parse(parse);
 
                         // We need that because Flush() doesn't cause backend to send
-                        // ReadyForQuery on error. Without ReadyForQuery, we don't return 
+                        // ReadyForQuery on error. Without ReadyForQuery, we don't return
                         // from query extended processing.
 
                         // We could have used Connector.Flush() which sends us back a
@@ -763,17 +758,14 @@ namespace Npgsql
                         m_Connector.RequireReadyForQuery = false;
                         m_Connector.Flush();
 
-
                         // Description...
                         NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
-
 
                         m_Connector.Describe(describe);
 
                         NpgsqlRowDescription returnRowDesc = m_Connector.Sync();
 
                         Int16[] resultFormatCodes;
-
 
                         if (returnRowDesc != null)
                         {
@@ -819,8 +811,6 @@ namespace Npgsql
 
                         // So, send a sync command if we get any problems.
 
-
-
                         m_Connector.Sync();
 
                         throw;
@@ -835,10 +825,10 @@ namespace Npgsql
         /// </summary>
         protected override void Dispose (bool disposing)
         {
-            
+
             if (disposing)
             {
-                // Only if explicitly calling Close or dispose we still have access to 
+                // Only if explicitly calling Close or dispose we still have access to
                 // managed resources.
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
                 if (connection != null)
@@ -846,7 +836,7 @@ namespace Npgsql
                     connection.Dispose();
                 }
                 base.Dispose(disposing);
-                
+
             }
         }*/
 
@@ -858,7 +848,6 @@ namespace Npgsql
         private void CheckConnectionState()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckConnectionState");
-
 
             // Check the connection state.
             if (Connector == null || Connector.State == ConnectionState.Closed)
@@ -947,7 +936,7 @@ namespace Npgsql
                                 addProcedureParenthesis = true;
                                 break;
                         }
-                        
+
                         functionChecksDone = true;
                     }
 
@@ -987,7 +976,6 @@ namespace Npgsql
             // and everythingelse.
             // This is only needed if query string has parameters. Else, just append the
             // parameter values in order they were put in parameter collection.
-
 
             // If parenthesis don't need to be added, they were added by user with parameter names. Replace them.
             if (!addProcedureParenthesis)
@@ -1083,7 +1071,6 @@ namespace Npgsql
 
             StringBuilder parameterTypes = new StringBuilder("");
 
-
             // Process parameters
 
             Boolean seenDef = false;
@@ -1099,18 +1086,16 @@ namespace Npgsql
                     seenDef = true;
                 }
             }
-            
+
             if (!seenDef)
             {
                 return false;
             }
 
-
             // Process schema name.
 
             String schemaName = String.Empty;
             String procedureName = String.Empty;
-
 
             String[] fullName = CommandText.Split('.');
 
@@ -1135,7 +1120,6 @@ namespace Npgsql
 
                 procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
             }
-
 
             bool ret;
 
@@ -1192,7 +1176,6 @@ namespace Npgsql
 
             st.WriteByte((byte)ASCIIBytes.ParenRight);
         }
-
 
         private byte[] GetPreparedCommandText()
         {
@@ -1304,14 +1287,13 @@ namespace Npgsql
                         {
                             parameterSize += string.Format("({0})", parameters[i].Size);
                         }
-                        
 
                         if (!addProcedureParenthesis)
                         {
                             //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
                             parameterName = parameters[i].CleanName;
                             //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
-                            
+
                             // Just add typecast if needed.
                             // TODO
                             // Optimize.
@@ -1350,7 +1332,6 @@ namespace Npgsql
             return commandText;
         }
 
-
         private String GetPrepareCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPrepareCommandText");
@@ -1378,7 +1359,6 @@ namespace Npgsql
             {
                 return "select * from " + textCommand; // There is no parameter support on TableDirect.
             }
-
 
             if (parameters.Count > 0)
             {
@@ -1436,10 +1416,8 @@ namespace Npgsql
             command.Append(" as ");
             command.Append(textCommand);
 
-
             return command.ToString();
         }
-
 
         private static String ReplaceParameterValue(String result, String parameterName, String paramVal)
         {

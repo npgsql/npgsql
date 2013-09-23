@@ -49,30 +49,30 @@ namespace Npgsql.Designer.Editors
       _splitter.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)(this._dataGrid)).BeginInit();
       this.SuspendLayout();
-      // 
+      //
       // _splitter
-      // 
+      //
       _splitter.BackColor = System.Drawing.SystemColors.Control;
       _splitter.Dock = System.Windows.Forms.DockStyle.Fill;
       _splitter.Location = new System.Drawing.Point(0, 0);
       _splitter.Name = "_splitter";
       _splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
-      // 
+      //
       // _splitter.Panel1
-      // 
+      //
       _splitter.Panel1.Controls.Add(this._dataGrid);
       _splitter.Panel1.Controls.Add(this._pg);
       _splitter.Panel1.Controls.Add(this._sqlText);
-      // 
+      //
       // _splitter.Panel2
-      // 
+      //
       _splitter.Panel2.Controls.Add(this._propertyGrid);
       _splitter.Size = new System.Drawing.Size(436, 631);
       _splitter.SplitterDistance = 383;
       _splitter.TabIndex = 0;
-      // 
+      //
       // _dataGrid
-      // 
+      //
       this._dataGrid.AllowDrop = true;
       this._dataGrid.AllowUserToResizeRows = false;
       this._dataGrid.BackgroundColor = System.Drawing.SystemColors.Window;
@@ -103,29 +103,29 @@ namespace Npgsql.Designer.Editors
       this._dataGrid.RowHeaderMouseClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this._dataGrid_RowHeaderMouseClick);
       this._dataGrid.SelectionChanged += new System.EventHandler(this._dataGrid_SelectionChanged);
       this._dataGrid.DragDrop += new System.Windows.Forms.DragEventHandler(this._dataGrid_DragDrop);
-      // 
+      //
       // name
-      // 
+      //
       this.name.Frozen = true;
       this.name.HeaderText = "Column Name";
       this.name.Name = "name";
       this.name.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-      // 
+      //
       // type
-      // 
+      //
       this.type.HeaderText = "Data Type";
       this.type.Name = "type";
-      // 
+      //
       // isnull
-      // 
+      //
       this.isnull.FalseValue = false;
       this.isnull.HeaderText = "Allow Nulls";
       this.isnull.IndeterminateValue = false;
       this.isnull.Name = "isnull";
       this.isnull.TrueValue = true;
-      // 
+      //
       // _pg
-      // 
+      //
       this._pg.Location = new System.Drawing.Point(3, 171);
       this._pg.Name = "_pg";
       this._pg.PropertySort = System.Windows.Forms.PropertySort.NoSort;
@@ -133,9 +133,9 @@ namespace Npgsql.Designer.Editors
       this._pg.TabIndex = 1;
       this._pg.ToolbarVisible = false;
       this._pg.Visible = false;
-      // 
+      //
       // _sqlText
-      // 
+      //
       this._sqlText.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
       this._sqlText.Location = new System.Drawing.Point(3, 3);
       this._sqlText.Name = "_sqlText";
@@ -144,30 +144,30 @@ namespace Npgsql.Designer.Editors
       this._sqlText.TabIndex = 0;
       this._sqlText.Text = "";
       this._sqlText.Visible = false;
-      // 
+      //
       // _propertyGrid
-      // 
+      //
       this._propertyGrid.Dock = System.Windows.Forms.DockStyle.Fill;
       this._propertyGrid.Location = new System.Drawing.Point(0, 0);
       this._propertyGrid.Name = "_propertyGrid";
       this._propertyGrid.Size = new System.Drawing.Size(436, 244);
       this._propertyGrid.TabIndex = 0;
-      // 
+      //
       // autoCompleteColumn1
-      // 
+      //
       this.autoCompleteColumn1.HeaderText = "Data Type";
       this.autoCompleteColumn1.Name = "autoCompleteColumn1";
       this.autoCompleteColumn1.Resizable = System.Windows.Forms.DataGridViewTriState.True;
       this.autoCompleteColumn1.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
-      // 
+      //
       // _imageList
-      // 
+      //
       this._imageList.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("_imageList.ImageStream")));
       this._imageList.TransparentColor = System.Drawing.Color.Magenta;
       this._imageList.Images.SetKeyName(0, "PrimaryKey.bmp");
-      // 
+      //
       // TableDesignerDoc
-      // 
+      //
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
       this.BackColor = System.Drawing.SystemColors.Window;

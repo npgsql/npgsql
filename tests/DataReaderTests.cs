@@ -41,7 +41,7 @@ namespace NpgsqlTests
             NpgsqlCommand command = new NpgsqlCommand("select * from data where field_serial = 4;", Conn);
 
             command.Prepare();
-            
+
             NpgsqlDataReaderNew dr = command.ExecuteReaderNew(CommandBehavior.Default);
 
             while(dr.Read());
@@ -96,7 +96,7 @@ namespace NpgsqlTests
                 Assert.AreEqual("Random", new String(result));
             }
         }
-           
+
         [Test]
         public void GetBytes1()
         {
@@ -161,8 +161,6 @@ namespace NpgsqlTests
                 Assert.AreEqual(0, b);
             }
         }
-        
-        
 
         [Test]
         public void GetInt32()
@@ -192,7 +190,6 @@ namespace NpgsqlTests
             }
         }
 
-
         [Test]
         public void GetDecimal()
         {
@@ -205,7 +202,6 @@ namespace NpgsqlTests
                 Assert.AreEqual(4.2300000M, result);
             }
         }
-
 
         [Test]
         public void GetDouble()
@@ -220,7 +216,6 @@ namespace NpgsqlTests
                 Assert.AreEqual(.123456789012345D, result);
             }
         }
-
 
         [Test]
         public void GetFloat()
@@ -309,7 +304,6 @@ namespace NpgsqlTests
             }
         }
 
-
         [Test]
         public void GetValueByName()
         {
@@ -356,7 +350,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(typeof(int[]), dr.GetFieldType(0));
             }
         }
-        
+
         [Test]
         public void TestMultiDimensionalArray()
         {
@@ -414,7 +408,7 @@ namespace NpgsqlTests
                 Assert.IsNotNull(dr);
             }
         }
-        
+
         [Test]
         public void TestOverlappedParameterNamesWithPrepare()
         {
@@ -481,7 +475,6 @@ namespace NpgsqlTests
             //ds.WriteXml("TestUseDataAdapterStringNpgsqlConnectionConstructor.xml");
         }
 
-
         [Test]
         public void UseDataAdapterStringStringConstructor()
         {
@@ -510,7 +503,6 @@ namespace NpgsqlTests
             dg.DataSource = dr;
             dg.DataBind();
         }
-
 
         [Test]
         [ExpectedException(typeof(InvalidOperationException))]
@@ -554,11 +546,11 @@ namespace NpgsqlTests
                 Assert.AreEqual("timestamp", dr.GetDataTypeName(6));
             }
         }
-        
+
         [Test]
         public void SingleRowCommandBehaviorSupport()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')"); 
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
             var command = new NpgsqlCommand(@"SELECT * FROM data", Conn);
             var dr = command.ExecuteReader(CommandBehavior.SingleRow);
@@ -590,8 +582,7 @@ namespace NpgsqlTests
 
             Assert.AreEqual(1, i);
         }
-        
-        
+
         [Test]
         public void SingleRowCommandBehaviorSupportFunctioncall()
         {
@@ -611,7 +602,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(1, i);
             }
         }
-        
+
         [Test]
         public void SingleRowCommandBehaviorSupportFunctioncallPrepare()
         {
@@ -635,7 +626,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(1, i);
             }
         }
-        
+
         [Test]
         public void PrimaryKeyFieldsMetadataSupport()
         {
@@ -658,7 +649,7 @@ namespace NpgsqlTests
                     Assert.Fail("No primary key found!");
             }
         }
-        
+
         [Test]
         public void IsIdentityMetadataSupport()
         {
@@ -683,7 +674,7 @@ namespace NpgsqlTests
                 }
             }
         }
-        
+
         [Test]
         public void HasRowsWithoutResultset()
         {
@@ -691,7 +682,7 @@ namespace NpgsqlTests
             var dr = command.ExecuteReader();
             Assert.IsFalse(dr.HasRows);
         }
-   
+
         [Test]
         public void ParameterAppearMoreThanOneTime()
         {
@@ -703,7 +694,7 @@ namespace NpgsqlTests
                 Assert.IsFalse(dr.HasRows);
             }
         }
-        
+
         [Test]
         public void SchemaOnlySingleRowCommandBehaviorSupport()
         {
@@ -716,7 +707,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(0, i);
             }
         }
-        
+
         [Test]
         public void SchemaOnlyCommandBehaviorSupport()
         {
@@ -729,7 +720,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(0, i);
             }
         }
-        
+
         [Test]
         public void SchemaOnlyCommandBehaviorSupportFunctioncall()
         {
@@ -746,7 +737,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(0, i);
             }
         }
-        
+
         [Test]
         [ExpectedException(typeof(IndexOutOfRangeException))]
         public void FieldNameDoesntExistOnGetOrdinal()
@@ -758,7 +749,7 @@ namespace NpgsqlTests
                 int idx =  dr.GetOrdinal("field_int");
             }
         }
-        
+
         [Test]
         public void FieldNameDoesntExistBackwardsCompat()
         {
@@ -770,7 +761,7 @@ namespace NpgsqlTests
                         Assert.AreEqual(rdr.GetOrdinal("field_int"), -1);
                 }
         }
-        
+
         [Test]
         [ExpectedException(typeof(IndexOutOfRangeException))]
         public void FieldNameDoesntExist()
@@ -784,7 +775,7 @@ namespace NpgsqlTests
                 Assert.IsNotNull(a);
             }
         }
-        
+
         [Test]
         public void FieldNameKanaWidthWideRequestForNarrowFieldName()
         {//Should ignore Kana width and hence find the first of these two fields
@@ -797,7 +788,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(dr["ヲァィゥェォャ"], 123);// Wide version.
             }
         }
-        
+
         [Test]
         public void FieldNameKanaWidthNarrowRequestForWideFieldName()
         {//Should ignore Kana width and hence find the first of these two fields
@@ -810,7 +801,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);// Narrow version.
             }
         }
-        
+
         [Test]
         [ExpectedException(typeof(IndexOutOfRangeException))]
         public void FieldIndexDoesntExist()
@@ -917,25 +908,25 @@ namespace NpgsqlTests
                 }
             }
         }
-        
+
         [Test]
         public void TestOutParameter2()
         {
             var command = new NpgsqlCommand("testoutparameter2", Conn);
             command.CommandType = CommandType.StoredProcedure;
-            
+
             command.Parameters.Add(new NpgsqlParameter("@x", NpgsqlDbType.Integer)).Value = 1;
             command.Parameters.Add(new NpgsqlParameter("@y", NpgsqlDbType.Integer)).Value = 2;
             command.Parameters.Add(new NpgsqlParameter("@sum", NpgsqlDbType.Integer));
             command.Parameters.Add(new NpgsqlParameter("@product", NpgsqlDbType.Refcursor));
-            
+
             command.Parameters["@sum"].Direction = ParameterDirection.Output;
             command.Parameters["@product"].Direction = ParameterDirection.Output;
-            
+
             using (var dr = command.ExecuteReader())
             {
                 dr.Read();
-                
+
                 Assert.AreEqual(3, command.Parameters["@sum"].Value);
                 Assert.AreEqual(2, command.Parameters["@product"].Value);
             }
@@ -953,7 +944,7 @@ namespace NpgsqlTests
                 Assert.IsTrue(result);
             }
         }
-        
+
         [Test]
         public void HasRowsGetValue()
         {
@@ -965,7 +956,7 @@ namespace NpgsqlTests
                 Assert.AreEqual(1, dr.GetValue(0));
             }
         }
-        
+
         [Test]
         public void IntervalAsTimeSpan()
         {
@@ -973,7 +964,7 @@ namespace NpgsqlTests
             command.CommandType = CommandType.Text;
             command.CommandText = "SELECT CAST('1 hour' AS interval) AS dauer";
             command.Connection = Conn;
-            
+
             using (var dr = command.ExecuteReader())
             {
                 Assert.IsTrue(dr.HasRows);

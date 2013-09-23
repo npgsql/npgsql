@@ -11,13 +11,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -193,7 +193,7 @@ namespace NpgsqlTypes
                 {
                     "HH:mm:ss.ffffff", "HH:mm:ss", "HH:mm:ss.ffffffzz", "HH:mm:sszz", "HH:mm:ss.fffff", "HH:mm:ss.ffff", "HH:mm:ss.fff",
                     "HH:mm:ss.ff", "HH:mm:ss.f", "HH:mm:ss.fffffzz", "HH:mm:ss.ffffzz", "HH:mm:ss.fffzz", "HH:mm:ss.ffzz",
-                    "HH:mm:ss.fzz", 
+                    "HH:mm:ss.fzz",
                     "HH:mm:ss.fffffzzz", "HH:mm:ss.ffffzzz", "HH:mm:ss.fffzzz", "HH:mm:ss.ffzzz",
                     "HH:mm:ss.fzzz", "HH:mm:sszzz",
                 };
@@ -237,10 +237,10 @@ namespace NpgsqlTypes
                     ms.WriteByte(value);
                 }
             }
-            
+
             else
             {
-            
+
                 while (byteAPosition < byteAStringLength)
                 {
                     // The IsDigit is necessary in case we receive a \ as the octal value and not
@@ -272,12 +272,11 @@ namespace NpgsqlTypes
                         octalValue = (Byte)BackendData[byteAPosition];
                         byteAPosition++;
                     }
-    
-    
+
                     ms.WriteByte((Byte)octalValue);
                 }
             }
-            
+
             return ms.ToArray();
         }
 
@@ -325,11 +324,11 @@ namespace NpgsqlTypes
         internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             // Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
-            // 
+            //
             // To ensure compatibility we return a bool if the bitstring is single-length.
             // Maybe we don't need to do this (why do we?) or maybe people used to some other,
             // but taking a conservative approach here.
-            // 
+            //
             // It means that IDataReader.GetValue() can't be used safely for bitstrings that
             // may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
             // below by reversing it, so if GetBitString() is used, no harm is done.
@@ -396,7 +395,7 @@ namespace NpgsqlTypes
             {
                 return DateTime.MinValue;
             }
-            
+
             return
                 DateTime.ParseExact(BackendEncoding.UTF8Encoding.GetString(bBackendData), DateFormats, DateTimeFormatInfo.InvariantInfo, DateTimeStyles.AllowWhiteSpaces);
         }
@@ -700,7 +699,6 @@ namespace NpgsqlTypes
         }
     }
 
-
     /// <summary>
     /// Provide event handlers to convert extended native supported data types from their backend
     /// text representation to a .NET object.
@@ -711,7 +709,6 @@ namespace NpgsqlTypes
         private static readonly Regex boxlsegRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
         private static readonly Regex pathpolygonRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
         private static readonly Regex circleRegex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
-
 
         /// <summary>
         /// Convert a postgresql point to a System.NpgsqlPoint.
@@ -781,7 +778,7 @@ namespace NpgsqlTypes
                 {
                     // Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
                     // a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
-                    // returned by backend. This gives parsing exception when converting to single. 
+                    // returned by backend. This gives parsing exception when converting to single.
                     // I still don't know if this is a bug in mono or in my regular expression.
                     // Check if there is this character and remove it.
 
@@ -819,7 +816,7 @@ namespace NpgsqlTypes
             {
                 // Here we have to do a little hack, because as of 2004-08-11 mono cvs version, the last group is returned with
                 // a trailling ')' only when the last character of the string is a ')' which is the case for closed paths
-                // returned by backend. This gives parsing exception when converting to single. 
+                // returned by backend. This gives parsing exception when converting to single.
                 // I still don't know if this is a bug in mono or in my regular expression.
                 // Check if there is this character and remove it.
 
@@ -832,7 +829,6 @@ namespace NpgsqlTypes
                 points.Add(
                     new NpgsqlPoint(Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
                                     Single.Parse(group2, NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)));
-
 
                 m = m.NextMatch();
             }
@@ -873,7 +869,7 @@ namespace NpgsqlTypes
 
             return new NpgsqlMacAddress(BackendData);
         }
-        
+
         internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);

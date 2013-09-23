@@ -13,13 +13,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -94,9 +94,8 @@ namespace Npgsql
         /// Called to provide client certificates for SSL handshake.
         /// </summary>
         public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-        
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
 
+        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
 
         /// <summary>
         /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
@@ -149,7 +148,6 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
 
-
         /// <summary>
         /// Initializes a new instance of the
         /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class.
@@ -170,7 +168,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
 
             LoadConnectionStringBuilder(ConnectionString);
-            
+
             NoticeDelegate = new NoticeEventHandler(OnNotice);
             NotificationDelegate = new NotificationEventHandler(OnNotification);
 
@@ -180,7 +178,7 @@ namespace Npgsql
             PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
             ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
 
-            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and 
+            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
 
@@ -420,7 +418,7 @@ namespace Npgsql
                 return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
             }
         }
-        
+
         public Version NpgsqlCompatibilityVersion
         {
             get
@@ -603,7 +601,7 @@ namespace Npgsql
             // Get a Connector, either from the pool or creating one ourselves.
             if (Pooling)
             {
-                connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);                
+                connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
             }
             else
             {
@@ -711,7 +709,7 @@ namespace Npgsql
 
             if (Pooling)
             {
-                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);                
+                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
             }
             else
             {
@@ -855,7 +853,6 @@ namespace Npgsql
             get { return connector; }
         }
 
-
         /// <summary>
         /// Gets the NpgsqlConnectionStringBuilder containing the parsed connection string values.
         /// </summary>
@@ -917,7 +914,6 @@ namespace Npgsql
             get { return settings.Enlist; }
         }
 
-
         //
         // Event handlers
         //
@@ -977,7 +973,7 @@ namespace Npgsql
             if (ProvideClientCertificatesCallback != null)
             {
                 ProvideClientCertificatesCallback(certificates);
-            }            
+            }
         }
 
         /// <summary>
@@ -1003,7 +999,6 @@ namespace Npgsql
         {
             get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
         }
-
 
         /// <summary>
         /// Write each key/value pair in the connection string to the log.
@@ -1093,7 +1088,6 @@ namespace Npgsql
                 throw new ObjectDisposedException(CLASSNAME);
             }
         }
-
 
         /// <summary>
         /// Returns the supported collections

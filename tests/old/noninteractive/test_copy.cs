@@ -6,15 +6,15 @@
 //  http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 //  Copyright (c) 2002-2007, The Npgsql Development Team
-//  
+//
 //  All rights reserved.
-//  
+//
 //  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-//  
+//
 //      * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 //      * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //      * Neither the name of the Npgsql Development Team nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-//  
+//
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 //  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 //  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -26,7 +26,6 @@
 //  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 //  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 //  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 
 using System;
 using System.Data;
@@ -293,7 +292,7 @@ public class Test_copy
     }
 
     // Serializer success test
-  
+
     static public void CopyInWithSerializer()
     {
         NpgsqlCopySerializer sink = new NpgsqlCopySerializer( conn );
@@ -317,9 +316,7 @@ public class Test_copy
         Console.Out.WriteLine("Copy through serializer ok");
     }
 
-
     // helper
-
 
     internal class CountStream : Stream
     {
@@ -346,7 +343,7 @@ public class Test_copy
                 return true;
             }
         }
-    
+
         override public bool CanSeek
         {
             get
@@ -362,7 +359,7 @@ public class Test_copy
                 return BytesPassed;
             }
         }
-    
+
         override public long Position
         {
             get
@@ -457,7 +454,7 @@ public class Test_copy
         {
             throw new NotSupportedException("Tried to set length of comparison stream " + this);
         }
-        
+
         private bool _skipNext = false;
         private void Count(byte[] buf, int off, int len)
         {
@@ -466,7 +463,7 @@ public class Test_copy
                 if(_skipNext)
                 {
                     _skipNext = false;
-                } 
+                }
                 else if( buf[off+i] < 32 || buf[off+i] == '\\' )
                 { // skip special characters and escape sequences mangled by transfer
                     _skipNext = buf[off+i] == '\\';

@@ -12,13 +12,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -43,14 +43,11 @@ namespace Npgsql
     {
         NpgsqlConnector mContext = null;
 
-        
         public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
             : base(socket, owner)
         {
             mContext = context;
         }
-
-        
 
         protected override void Dispose(bool disposing)
         {
@@ -71,7 +68,6 @@ namespace Npgsql
         private static readonly NpgsqlClosedState _instance = new NpgsqlClosedState();
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
-
         private NpgsqlClosedState()
             : base()
         {
@@ -85,7 +81,6 @@ namespace Npgsql
                 return _instance;
             }
         }
-
 
         public override void Open(NpgsqlConnector context, Int32 timeout)
         {
@@ -101,9 +96,8 @@ namespace Npgsql
 
                 //socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
 
-
                 /*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-                
+
                                 IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
 
                                 if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
@@ -203,7 +197,7 @@ namespace Npgsql
                     {
                                                 //create empty collection
                                                 X509CertificateCollection clientCertificates = new X509CertificateCollection();
-                            
+
                                                 //trigger the callback to fetch some certificates
                                                 context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
@@ -241,7 +235,6 @@ namespace Npgsql
 
                 context.Stream = new BufferedStream(stream);
                 context.Socket = socket;
-
 
                 NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
                 ChangeState(context, NpgsqlConnectedState.Instance);

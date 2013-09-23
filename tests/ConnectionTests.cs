@@ -151,7 +151,7 @@ namespace NpgsqlTests
         [Test]
         public void UseAllConnectionsInPool()
         {
-            // As this method uses a lot of connections, clear all connections from all pools before starting. 
+            // As this method uses a lot of connections, clear all connections from all pools before starting.
             // This is needed in order to not reach the max connections allowed and start to raise errors.
 
             NpgsqlConnection.ClearAllPools();
@@ -354,7 +354,6 @@ namespace NpgsqlTests
                 }
             }
         }
-
 
     }
     [TestFixture]

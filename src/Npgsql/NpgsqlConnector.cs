@@ -6,13 +6,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -46,7 +46,6 @@ namespace Npgsql
     /// </summary>
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
-
 
     /// <summary>
     /// Represents the method that is called to validate the certificate provided by the server during an SSL handshake
@@ -123,7 +122,7 @@ namespace Npgsql
         private NpgsqlTransaction _transaction = null;
 
         private Boolean _supportsPrepare = false;
-        
+
         private Boolean _supportsSavepoint = false;
 
         private Boolean _isInitialized;
@@ -133,7 +132,6 @@ namespace Npgsql
 
         private NpgsqlState _state;
 
-
         private Int32 _planIndex;
         private Int32 _portalIndex;
 
@@ -142,13 +140,12 @@ namespace Npgsql
 
         private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
-
         private Thread _notificationThread;
 
         // The AutoResetEvent to synchronize processing threads.
         internal AutoResetEvent _notificationAutoResetEvent;
 
-        // Counter of notification thread start/stop requests in order to 
+        // Counter of notification thread start/stop requests in order to
         internal Int16 _notificationThreadStopCount;
 
         private Exception _notificationException;
@@ -158,10 +155,10 @@ namespace Npgsql
         // Some kinds of messages only get one response, and do not
         // expect a ready_for_query response.
         private bool _requireReadyForQuery = true;
-        
+
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
-        
+
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
@@ -205,12 +202,11 @@ namespace Npgsql
 
         //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
         //case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
-        
+
         //~NpgsqlConnector()
         //{
         //    Close();
         //}
-
 
         internal String Host
         {
@@ -365,7 +361,6 @@ namespace Npgsql
             return CurrentState.ExecuteEnum(this, execute);
         }
 
-
         /// <summary>
         /// This method checks if the connector is still ok.
         /// We try to send a simple query text, select 1 as ConnectionTest;
@@ -375,26 +370,26 @@ namespace Npgsql
             try
             {
                 // Here we use a fake NpgsqlCommand, just to send the test query string.
-                
+
                 // Get random test value.
                 Byte[] testBytes = new Byte[2];
                 rng.GetNonZeroBytes(testBytes);
                 String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
-                
+
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
                 string compareValue = string.Empty;
                 using(NpgsqlCommand cmd = new NpgsqlCommand("select '" + testValue + "'", this))
                 {
                     compareValue = (string) cmd.ExecuteScalar();
                 }
-                
+
                 if (compareValue != testValue)
                     return false;
 
                 // Clear mediator.
                 Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
-                
+
             }
             catch
             {
@@ -444,7 +439,7 @@ namespace Npgsql
                             Query(cmd);
                         }
                     }
-                    
+
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch(Exception) {}
                 }
@@ -606,7 +601,6 @@ namespace Npgsql
             set { _state = value; }
         }
 
-
         internal bool Pooled
         {
             get { return _pooled; }
@@ -627,7 +621,7 @@ namespace Npgsql
         {
             get { return _NativeToBackendTypeConverterOptions.OidToNameMapping; }
         }
-        
+
         internal Version CompatVersion
         {
             get
@@ -666,11 +660,11 @@ namespace Npgsql
             get { return _supportsPrepare; }
             set { _supportsPrepare = value; }
         }
-        
+
         internal Boolean SupportsSavepoint
         {
             get { return _supportsSavepoint; }
-            set { _supportsSavepoint = value; } 
+            set { _supportsSavepoint = value; }
         }
 
         /// <summary>
@@ -798,7 +792,7 @@ namespace Npgsql
                 (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
               )
                 new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
-            
+
             if (!string.IsNullOrEmpty(settings.SearchPath))
             {
                 /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
@@ -822,11 +816,11 @@ namespace Npgsql
                     throw new InvalidOperationException();
                 }
 
-                // This is using string concatenation because set search_path doesn't allow type casting. ::text    
+                // This is using string concatenation because set search_path doesn't allow type casting. ::text
                 NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
                 commandSearchPath.ExecuteBlind();
             }
-            
+
             if (!string.IsNullOrEmpty(settings.ApplicationName))
              {
                  if (!SupportsApplicationName)
@@ -835,12 +829,12 @@ namespace Npgsql
                      //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
                      throw new InvalidOperationException("ApplicationName not supported.");
                  }
- 
+
                  if (settings.ApplicationName.Contains(";"))
                  {
                      throw new InvalidOperationException();
                  }
- 
+
                  NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
                  commandApplicationName.ExecuteBlind();
              }
@@ -861,15 +855,12 @@ namespace Npgsql
             }
             catch {}
 
-            
-            
             /*
              * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
              * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
              * Check bug report #1010992 for more information.
              */
-            
-            
+
             try
             {
                 NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
@@ -877,7 +868,6 @@ namespace Npgsql
 
             }
             catch {}
-
 
             /*
              * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
@@ -892,7 +882,7 @@ namespace Npgsql
                 commandMonetaryFormatC.ExecuteBlind();
 
             }
-            catch 
+            catch
             {
 
             }
@@ -909,7 +899,6 @@ namespace Npgsql
             // safe to release it back to the pool rather than closing it.
             IsInitialized = true;
         }
-
 
         /// <summary>
         /// Closes the physical connection to the server.
@@ -933,7 +922,7 @@ namespace Npgsql
 
         internal void CancelRequest()
         {
-            
+
             NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
 
             cancelConnector._backend_keydata = BackEndKeyData;
@@ -950,9 +939,8 @@ namespace Npgsql
             {
                 cancelConnector.CurrentState.Close(cancelConnector);
             }
-            
-        }
 
+        }
 
         ///<summary>
         /// Returns next portal index.
@@ -962,7 +950,6 @@ namespace Npgsql
             return _portalNamePrefix + Interlocked.Increment(ref _portalIndex).ToString();
         }
 
-
         ///<summary>
         /// Returns next plan index.
         ///</summary>
@@ -970,7 +957,6 @@ namespace Npgsql
         {
             return _planNamePrefix + Interlocked.Increment(ref _planIndex).ToString();
         }
-
 
         internal void RemoveNotificationThread()
         {
@@ -1064,7 +1050,6 @@ namespace Npgsql
         {
             get { return _notificationThreadStopCount <= 0; }
         }
-
 
         internal class NpgsqlContextHolder
         {

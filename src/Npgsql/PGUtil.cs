@@ -13,19 +13,18 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 
 using System;
 using System.Collections;
@@ -79,9 +78,6 @@ namespace Npgsql
 
         private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
 
-
-
-
         ///<summary>
         /// This method takes a ProtocolVersion and returns an integer
         /// version number that the Postgres backend will recognize in a
@@ -125,7 +121,7 @@ namespace Npgsql
                 ;
             }
 
-            // Deal with this here so that if there are 
+            // Deal with this here so that if there are
             // changes in a future backend version, we can handle it here in the
             // protocol handler and leave everybody else put of it.
 
@@ -186,7 +182,7 @@ namespace Npgsql
 
             if (NpgsqlEventLog.Level >= LogLevel.Debug)
                 NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, BackendEncoding.UTF8Encoding.GetString(buffer.ToArray()));
-                
+
             return BackendEncoding.UTF8Encoding.GetString(buffer.ToArray());
         }
 
@@ -706,7 +702,7 @@ namespace Npgsql
         {
             return (val << shift) | (val >> (sizeof (int) - shift));
         }
-        
+
         public static StringBuilder TrimStringBuilder(StringBuilder sb)
         {
             while(sb.Length != 0 && char.IsWhiteSpace(sb[0]))
@@ -719,7 +715,7 @@ namespace Npgsql
         internal static void LogStringWritten(string theString)
         {
             NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-            
+
         }
 
         /// <summary>
@@ -783,7 +779,7 @@ namespace Npgsql
     /// As this class offers no functionality beyond that offered by <see cref="System.Version"/> it has been
     /// deprecated in favour of that class.
     /// </summary>
-    /// 
+    ///
     [Obsolete("Use System.Version")]
     public sealed class ServerVersion : IEquatable<ServerVersion>, IComparable<ServerVersion>, IComparable, ICloneable
     {

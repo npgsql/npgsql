@@ -19,7 +19,7 @@
 // Generation date: 12/21/2009 7:46:26 PM
 namespace XmlTest
 {
-    
+
     /// <summary>
     /// There are no comments for XmlTestContext in the schema.
     /// </summary>
@@ -28,7 +28,7 @@ namespace XmlTest
         /// <summary>
         /// Initializes a new XmlTestContext object using the connection string found in the 'XmlTestContext' section of the application configuration file.
         /// </summary>
-        public XmlTestContext() : 
+        public XmlTestContext() :
                 base("name=XmlTestContext", "XmlTestContext")
         {
             this.OnContextCreated();
@@ -36,7 +36,7 @@ namespace XmlTest
         /// <summary>
         /// Initialize a new XmlTestContext object.
         /// </summary>
-        public XmlTestContext(string connectionString) : 
+        public XmlTestContext(string connectionString) :
                 base(connectionString, "XmlTestContext")
         {
             this.OnContextCreated();
@@ -44,7 +44,7 @@ namespace XmlTest
         /// <summary>
         /// Initialize a new XmlTestContext object.
         /// </summary>
-        public XmlTestContext(global::System.Data.EntityClient.EntityConnection connection) : 
+        public XmlTestContext(global::System.Data.EntityClient.EntityConnection connection) :
                 base(connection, "XmlTestContext")
         {
             this.OnContextCreated();

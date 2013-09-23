@@ -12,7 +12,6 @@
 // support of Npgsql MD5 authentication in platforms which don't have support for MD5 algorithm.
 //
 
-
 using System;
 using System.IO;
 
@@ -122,7 +121,6 @@ namespace Npgsql
         {
             return (HashAlgorithm) CryptoConfig.CreateFromName (hashName);
         }*/
-
 
         // Changed Exception type because it uses the CryptographicUnexpectedOperationException
         // which can't be available in all platforms.

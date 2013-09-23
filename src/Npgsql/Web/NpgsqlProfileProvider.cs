@@ -2,13 +2,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -29,7 +29,6 @@ using NpgsqlTypes;
 namespace Npgsql.Web
 {
     //using System.Web.DataAccess;
-
 
     /// <summary>
     /// custom Profile provider class
@@ -298,7 +297,6 @@ namespace Npgsql.Web
             return svc;
         }
 
-
         /// <summary>
         /// Sets property values
         /// </summary>
@@ -466,7 +464,7 @@ namespace Npgsql.Web
                     {
                         if (readerSelect.HasRows)
                         {
-                            // IF EXISTS (SELECT * FROM aspnet_users WHERE UserId = '') 
+                            // IF EXISTS (SELECT * FROM aspnet_users WHERE UserId = '')
                             IfExists = true;
                         }
                         else
@@ -542,7 +540,7 @@ namespace Npgsql.Web
 
                 cmd.ExecuteBlind();
 
-                // Need to close reader before we try to update 
+                // Need to close reader before we try to update
                 if (reader != null)
                 {
                     reader.Close();
@@ -567,7 +565,6 @@ namespace Npgsql.Web
                 }
             }
         }
-
 
         public override int DeleteProfiles(ProfileInfoCollection profiles)
         {
@@ -645,7 +642,6 @@ namespace Npgsql.Web
                         beginTranCalled = true;
                     }
 
-
                     cmd.CommandText =
                         string.Format(
                             "DELETE FROM {0} WHERE UserId IN ( SELECT u.UserId FROM vw_aspnet_Users u WHERE u.ApplicationId = '{1}' AND u.UserName IN ({2}))",
@@ -682,7 +678,6 @@ namespace Npgsql.Web
             return numProfilesDeleted;
         }
 
-
         /// <summary>
         /// Deletes inactive Profiles
         /// </summary>
@@ -718,7 +713,6 @@ namespace Npgsql.Web
                 }
             }
         }
-
 
         /// <summary>
         /// Gets number of inactive Profiles
@@ -761,7 +755,6 @@ namespace Npgsql.Web
             }
         }
 
-
         /// <summary>
         /// Gets all Profiles
         /// </summary>
@@ -776,7 +769,6 @@ namespace Npgsql.Web
             StringBuilder insertQuery = GenerateTempInsertQueryForGetProfiles(authenticationOption);
             return GetProfilesForQuery(null, pageIndex, pageSize, insertQuery, out totalRecords);
         }
-
 
         /// <summary>
         /// Gets all inactive Profiles
@@ -798,7 +790,6 @@ namespace Npgsql.Web
             return GetProfilesForQuery(args, pageIndex, pageSize, insertQuery, out totalRecords);
         }
 
-
         /// <summary>
         /// Finds Profiles by user name
         /// </summary>
@@ -818,7 +809,6 @@ namespace Npgsql.Web
             args[0] = CreateInputParam("@UserName", NpgsqlDbType.Text, usernameToMatch);
             return GetProfilesForQuery(args, pageIndex, pageSize, insertQuery, out totalRecords);
         }
-
 
         /// <summary>
         /// Finds inactive Profiles by user name

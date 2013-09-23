@@ -11,13 +11,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -48,7 +48,7 @@ namespace NpgsqlTypes
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
-        // This is used by the test suite to test both text and binary encodings on version 3 connections. 
+        // This is used by the test suite to test both text and binary encodings on version 3 connections.
         // See NpgsqlTests.BaseClassTests.TestFixtureSetup() and InitBinaryBackendSuppression().
         // If this field is changed or removed, some tests will become partially non-functional, and an error will be issued.
         internal static bool SuppressBinaryBackendEncoding = false;
@@ -95,8 +95,6 @@ namespace NpgsqlTypes
 
         private static readonly Dictionary<string, NpgsqlBackendTypeInfo> DefaultBackendInfoMapping = PrepareDefaultBackendInfoMapping();
 
-
-        
         private static Dictionary<string, NpgsqlBackendTypeInfo> PrepareDefaultBackendInfoMapping()
         {
             Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
@@ -104,15 +102,14 @@ namespace NpgsqlTypes
             foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("1000.0.0.0")))
             {
                 NameIndex.Add(TypeInfo.Name, TypeInfo);
-                
+
                 //do the same for the equivalent array type.
                 NameIndex.Add("_" + TypeInfo.Name, ArrayTypeInfo(TypeInfo));
-                
-            }
-             
-            return NameIndex;
-        } 
 
+            }
+
+            return NameIndex;
+        }
 
         /// <summary>
         /// Find a NpgsqlNativeTypeInfo in the default types map that can handle objects
@@ -121,9 +118,8 @@ namespace NpgsqlTypes
         public static bool TryGetBackendTypeInfo(String BackendTypeName, out NpgsqlBackendTypeInfo TypeInfo)
         {
             return DefaultBackendInfoMapping.TryGetValue(BackendTypeName, out TypeInfo);
-                
-        }
 
+        }
 
         /// <summary>
         /// Find a NpgsqlNativeTypeInfo in the default types map that can handle objects
@@ -173,7 +169,6 @@ namespace NpgsqlTypes
             return false;
         }
 
-
         /// <summary>
         /// Find a NpgsqlNativeTypeInfo in the default types map that can handle objects
         /// of the given System.Type.
@@ -205,13 +200,11 @@ namespace NpgsqlTypes
             return TryGetNativeTypeInfo(Type, out ret) ? ret : null;
         }
 
-
         public static bool DefinedType(Type type)
 
         {
             return NativeTypeMapping.ContainsType(type);
         }
-
 
         public static bool DefinedType(object item)
 
@@ -275,7 +268,7 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddType("oidvector", NpgsqlDbType.Oidvector, DbType.String, true, null);
 
             // Conflicting types should have mapped first the non default mappings.
-            // For example, char, varchar and text map to DbType.String. As the most 
+            // For example, char, varchar and text map to DbType.String. As the most
             // common is to use text with string, it has to be the last mapped, in order
             // to type mapping has the last entry, in this case, text, as the map value
             // for DbType.String.
@@ -316,7 +309,7 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Object, false,
                                       new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ToBit));
-            
+
             nativeTypeMapping.AddTypeAlias("bit", typeof(BitString));
 
             nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
@@ -392,17 +385,14 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("timestamptz", typeof(DateTimeOffset));
 
-
             nativeTypeMapping.AddType("abstime", NpgsqlDbType.Abstime, DbType.DateTime, true,
                                       new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
 
             nativeTypeMapping.AddType("timestamp", NpgsqlDbType.Timestamp, DbType.DateTime, true,
                                       new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToTimeStamp));
-            
+
             nativeTypeMapping.AddTypeAlias("timestamp", typeof (DateTime));
             nativeTypeMapping.AddTypeAlias("timestamp", typeof (NpgsqlTimeStamp));
-
-            
 
             nativeTypeMapping.AddType("point", NpgsqlDbType.Point, DbType.Object, true,
                                       new ConvertNativeToBackendTextHandler(ExtendedNativeToBackendTypeConverter.ToPoint));
@@ -534,7 +524,7 @@ namespace NpgsqlTypes
                 new NpgsqlBackendTypeInfo(0, "inet", NpgsqlDbType.Inet, DbType.Object, typeof (NpgsqlInet),
                                           new ConvertBackendTextToNativeHandler(ExtendedBackendToNativeTypeConverter.ToInet),
                                           typeof(IPAddress),
-                                          ipaddress => (IPAddress)(NpgsqlInet)ipaddress, 
+                                          ipaddress => (IPAddress)(NpgsqlInet)ipaddress,
                                           npgsqlinet => (npgsqlinet is IPAddress ? (NpgsqlInet)(IPAddress) npgsqlinet : npgsqlinet));
             yield return
                 new NpgsqlBackendTypeInfo(0, "macaddr", NpgsqlDbType.MacAddr, DbType.Object, typeof(NpgsqlMacAddress),
@@ -655,7 +645,7 @@ npgsqlTimestampTZ));
         }
 
         ///<summary>
-        /// This method creates (or retrieves from cache) a mapping between type and OID 
+        /// This method creates (or retrieves from cache) a mapping between type and OID
         /// of all natively supported postgresql data types.
         /// This is needed as from one version to another, this mapping can be changed and
         /// so we avoid hardcoding them.
@@ -936,7 +926,7 @@ npgsqlTimestampTZ));
         }
 
         /// <summary>
-        /// Perform a data conversion from a backend representation to 
+        /// Perform a data conversion from a backend representation to
         /// a native object.
         /// </summary>
         /// <param name="BackendData">Data sent from the backend.</param>
@@ -955,7 +945,7 @@ npgsqlTimestampTZ));
         }
 
         /// <summary>
-        /// Perform a data conversion from a backend representation to 
+        /// Perform a data conversion from a backend representation to
         /// a native object.
         /// </summary>
         /// <param name="BackendData">Data sent from the backend.</param>
@@ -1014,13 +1004,11 @@ npgsqlTimestampTZ));
             {
                 return _convertFrameworkToProvider(frameworkValue);
             }
-            
+
             return frameworkValue;
         }
-    
-    }
 
-    
+    }
 
     /// <summary>
     /// Represents a backend data type.
@@ -1154,7 +1142,6 @@ npgsqlTimestampTZ));
             get { return _DbType; }
         }
 
-
         /// <summary>
         /// Apply quoting.
         /// </summary>
@@ -1171,12 +1158,11 @@ npgsqlTimestampTZ));
             get { return _UseSize; }
         }
 
-
         /// <summary>
         /// Perform a data conversion from a native object to
         /// a backend representation.
         /// DBNull and null values are handled differently depending if a plain query is used
-        /// When 
+        /// When
         /// </summary>
         /// <param name="NativeData">Native .NET object to be converted.</param>
         /// <param name="forExtendedQuery">Options to guide serialization.  If null, a default options set is used.</param>
@@ -1275,7 +1261,7 @@ npgsqlTimestampTZ));
                 if (NativeData is Enum)
                 {
                     // Do a special handling of Enum values.
-                    // Translate enum value to its underlying type. 
+                    // Translate enum value to its underlying type.
                     return
                         BackendEncoding.UTF8Encoding.GetBytes((String)
                         Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof (String),
@@ -1509,7 +1495,6 @@ npgsqlTimestampTZ));
         }
     }
 
-
     /// <summary>
     /// Provide mapping between type Type, NpgsqlDbType and a NpgsqlNativeTypeInfo object that represents it.
     /// </summary>
@@ -1621,7 +1606,6 @@ npgsqlTimestampTZ));
             return DbTypeIndex.TryGetValue(dbType, out typeInfo);
         }
 
-
         /// <summary>
         /// Retrieve the NpgsqlNativeTypeInfo with the given Type.
         /// </summary>
@@ -1654,7 +1638,7 @@ npgsqlTimestampTZ));
             return TypeIndex.ContainsKey(Type);
         }
     }
-    
+
     internal static class ExpectedTypeConverter
     {
         internal static object ChangeType(object value, Type expectedType)

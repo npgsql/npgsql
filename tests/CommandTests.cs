@@ -116,7 +116,6 @@ namespace NpgsqlTests
             command.ExecuteNonQuery();
         }
 
-
         [Test]
         public void NoNameParameterAdd()
         {
@@ -126,7 +125,6 @@ namespace NpgsqlTests
             Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
             Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
         }
-
 
         [Test]
         public void FunctionCallFromSelect()
@@ -166,7 +164,6 @@ namespace NpgsqlTests
             }
         }
 
-
         [Test]
         public void UseStringParameterWithNoNpgsqlDbType()
         {
@@ -182,7 +179,6 @@ namespace NpgsqlTests
             Assert.AreEqual("test", result);
             //reader.FieldCount
         }
-
 
         [Test]
         public void UseIntegerParameterWithNoNpgsqlDbType()
@@ -200,7 +196,6 @@ namespace NpgsqlTests
             //reader.FieldCount
         }
 
-
         //[Test]
         public void UseSmallintParameterWithNoNpgsqlDbType()
         {
@@ -216,7 +211,6 @@ namespace NpgsqlTests
             Assert.AreEqual(5, result);
             //reader.FieldCount
         }
-
 
         [Test]
         public void FunctionCallReturnSingleValue()
@@ -277,7 +271,6 @@ namespace NpgsqlTests
             var result = (Int64) command.ExecuteScalar();
             Assert.AreEqual(1, result);
         }
-
 
         private void FunctionCallWithParametersPrepareReturnSingleValueInternal()
         {
@@ -421,7 +414,6 @@ namespace NpgsqlTests
             dr.Close();
         }
 
-
         [Test]
         public void PreparedStatementInsert()
         {
@@ -445,8 +437,6 @@ namespace NpgsqlTests
             var result = (String)new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data);", Conn).ExecuteScalar();
             Assert.AreEqual(@"{\rtf1\ansi\ansicpg1252\uc1 \deff0\deflang1033\deflangfe1033{", result);
         }
-
-
 
         [Test]
         public void PreparedStatementInsertNullValue()
@@ -727,7 +717,6 @@ namespace NpgsqlTests
             Assert.AreEqual(0, warnings);
         }
 
-
         [Test]
         public void ParameterAndOperatorUnclear()
         {
@@ -756,7 +745,6 @@ namespace NpgsqlTests
             var result = (Int64) command.ExecuteScalar();
             Assert.AreEqual(1, result);
         }
-
 
         [Test]
         public void StatementMappedOutputParameters()
@@ -922,7 +910,6 @@ namespace NpgsqlTests
             Assert.AreEqual(-1, result);
         }
 
-
         [Test]
         public void EnumSupport()
         {
@@ -1067,7 +1054,6 @@ namespace NpgsqlTests
 
             command.ExecuteScalar();
         }
-
 
         [Test]
         public void ProviderDateTimeSupportNpgsqlDbType()
@@ -1321,7 +1307,6 @@ namespace NpgsqlTests
             }
         }
 
-
         [Test]
         public void MultipleQueriesFirstResultsetEmpty()
         {
@@ -1418,7 +1403,7 @@ namespace NpgsqlTests
             command.ExecuteScalar();
         }
 
-        // The following two methods don't need checks because what is being tested is the 
+        // The following two methods don't need checks because what is being tested is the
         // execution of parameter replacing which happens on ExecuteNonQuery method. So, if these
         // methods don't throw exception, they are ok.
         [Test]
@@ -1590,7 +1575,6 @@ namespace NpgsqlTests
             var result = cmd.ExecuteScalar();
             Assert.AreEqual(DBNull.Value, result);
         }
-
 
         [Test]
         public void TestCharParameterLength()
@@ -2268,7 +2252,7 @@ namespace NpgsqlTests
         {
             const string createTable =
                 @"DROP TABLE if exists public.person;
-                  CREATE TABLE public.person ( 
+                  CREATE TABLE public.person (
                     person_id serial PRIMARY KEY NOT NULL,
                     person_uuid uuid NOT NULL
                   ) WITH(OIDS=FALSE);";
@@ -2315,7 +2299,6 @@ namespace NpgsqlTests
             Assert.AreEqual(3, command.Parameters[0].Value);
             Assert.AreEqual(true, command.Parameters[1].Value);
         }
-
 
         [Test]
         public void TestSavePoint()
@@ -2367,7 +2350,7 @@ namespace NpgsqlTests
         [Test]
         public void TestPreparedStatementParameterCastIsNotAdded()
         {
-            // Test by Waldemar Bergstreiser            
+            // Test by Waldemar Bergstreiser
 
             var cmd = new NpgsqlCommand("select field_int4 from data where :p0 is null or field_int4 = :p0 ", Conn);
 
@@ -2382,7 +2365,7 @@ namespace NpgsqlTests
         [ExpectedException(typeof (NpgsqlException))]
         public void TestErrorInPreparedStatementCausesReleaseConnectionToThrowException()
         {
-            // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.             
+            // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.
             var cmd = new NpgsqlCommand("sele", Conn);
             cmd.Prepare();
         }
@@ -2390,8 +2373,8 @@ namespace NpgsqlTests
         [Test]
         public void TestBug1010488ArrayParameterWithNullValue()
         {
-            // Test by Christ Akkermans       
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID                             
+            // Test by Christ Akkermans
+            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
             AS $$
             DECLARE
             BEGIN
@@ -2411,7 +2394,7 @@ namespace NpgsqlTests
         [Test]
         public void TestBug1010675ArrayParameterWithNullValue()
         {
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID                             
+            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
             AS $$
             DECLARE
             BEGIN
@@ -2925,7 +2908,7 @@ namespace NpgsqlTests
             //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
             //regardless of this setting, Npgsql will always use the E string prefix when possible,
             //therefore, this test is not fully functional on version 2.
- 
+
             var conn = new NpgsqlConnection(ConnectionString);
             conn.Open();
             try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
@@ -3047,7 +3030,7 @@ namespace NpgsqlTests
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (NpgsqlBox), result.GetType());
 
-            // bytea 
+            // bytea
             cmd.CommandText = @"SELECT E'\\xDEADBEEF'::bytea;";
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Byte[]), result.GetType());
@@ -3077,7 +3060,6 @@ namespace NpgsqlTests
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Int64), result.GetType());
 
-
             /*
             // time
             cmd.CommandText = "select current_time::time";
@@ -3098,4 +3080,3 @@ namespace NpgsqlTests
         protected override string ConnectionString { get { return CONN_STRING_V2; } }
     }
 }
-

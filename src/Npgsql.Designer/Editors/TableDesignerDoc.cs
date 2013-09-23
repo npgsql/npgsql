@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -31,7 +31,7 @@ namespace Npgsql.Designer.Editors
     IVsWindowFrameNotify
   {
     private static Dictionary<int, string> _editingTables = new Dictionary<int, string>();
-    
+
     internal DataConnection _connection;
     internal Microsoft.VisualStudio.Data.ServiceProvider _serviceProvider;
     internal Table _table;
@@ -537,7 +537,7 @@ namespace Npgsql.Designer.Editors
               newrow.SetValues(c.ColumnName, c.DataType, c.AllowNulls);
               _table.Columns.Insert(rowIndex, c);
             }
-            
+
             MakeDirty();
             _dataGrid.Invalidate();
 
@@ -566,7 +566,7 @@ namespace Npgsql.Designer.Editors
             ForeignKeyEditor fed = new ForeignKeyEditor(_table);
             fed.EditValue((ITypeDescriptorContext)_pg.SelectedGridItem, (System.IServiceProvider)_pg.SelectedGridItem, _pg.SelectedGridItem.Value);
             return VSConstants.S_OK;
-          
+
           case VSConstants.VSStd97CmdID.ManageConstraints:
             holder = new EditorHolder(_table);
             _pg.SelectedObject = holder;
@@ -958,7 +958,7 @@ namespace Npgsql.Designer.Editors
     private void _dataGrid_UserDeletedRow(object sender, DataGridViewRowEventArgs e)
     {
       if (_init == true) return;
-      
+
       if (e.Row.Tag is Column)
         MakeDirty();
 
@@ -990,7 +990,7 @@ namespace Npgsql.Designer.Editors
 
     private void _dataGrid_DragDrop(object sender, DragEventArgs e)
     {
-      // The mouse locations are relative to the screen, so they must be 
+      // The mouse locations are relative to the screen, so they must be
       // converted to client coordinates.
       Point clientPoint = _dataGrid.PointToClient(new Point(e.X, e.Y));
 
@@ -1020,11 +1020,11 @@ namespace Npgsql.Designer.Editors
 
     private void _dataGrid_DragOver(object sender, DragEventArgs e)
     {
-      // The mouse locations are relative to the screen, so they must be 
+      // The mouse locations are relative to the screen, so they must be
       // converted to client coordinates.
       Point clientPoint = _dataGrid.PointToClient(new Point(e.X, e.Y));
 
-      // Get the row index of the item the mouse is below. 
+      // Get the row index of the item the mouse is below.
       if (_rowIndexOfItemUnderMouseToDrop != -1)
         _dataGrid.Rows[_rowIndexOfItemUnderMouseToDrop].DividerHeight = 0;
 
@@ -1048,9 +1048,9 @@ namespace Npgsql.Designer.Editors
 
       if (_rowIndexFromMouseDown != -1)
       {
-        // Remember the point where the mouse down occurred. 
-        // The DragSize indicates the size that the mouse can move 
-        // before a drag event should be started. 
+        // Remember the point where the mouse down occurred.
+        // The DragSize indicates the size that the mouse can move
+        // before a drag event should be started.
         Size dragSize = SystemInformation.DragSize;
 
         // Create a rectangle using the DragSize, with the mouse position being
@@ -1071,7 +1071,7 @@ namespace Npgsql.Designer.Editors
         {
           _rowIndexOfItemUnderMouseToDrop = -1;
           _dataGrid.EndEdit();
-          // Proceed with the drag and drop, passing in the list item. 
+          // Proceed with the drag and drop, passing in the list item.
           DragDropEffects dropEffect = _dataGrid.DoDragDrop(SelectedRows, DragDropEffects.Move);
         }
       }

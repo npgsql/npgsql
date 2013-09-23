@@ -11,7 +11,6 @@
 // support of Npgsql MD5 authentication in platforms which don't have support for MD5 algorithm.
 //
 
-
 using System;
 
 namespace Npgsql
@@ -161,7 +160,6 @@ namespace Npgsql
             // This function was unrolled because it seems to be doubling our performance with current compiler/VM.
             // Possibly roll up if this changes.
 
-
             // ---- Round 1 --------
 
             a += (((c ^ d) & b) ^ d) + (uint) Constants.C0 + buff[0];
@@ -227,7 +225,6 @@ namespace Npgsql
             b += (((d ^ a) & c) ^ a) + (uint) Constants.C15 + buff[15];
             b = (b << 22) | (b >> 10);
             b += c;
-
 
             // ---- Round 2 --------
 
@@ -295,7 +292,6 @@ namespace Npgsql
             b = (b << 20) | (b >> 12);
             b += c;
 
-
             // ---- Round 3 --------
 
             a += (b ^ c ^ d) + (uint) Constants.C32 + buff[5];
@@ -361,7 +357,6 @@ namespace Npgsql
             b += (c ^ d ^ a) + (uint) Constants.C47 + buff[2];
             b = (b << 23) | (b >> 9);
             b += c;
-
 
             // ---- Round 4 --------
 
@@ -429,7 +424,6 @@ namespace Npgsql
             b = (b << 21) | (b >> 11);
             b += c;
 
-
             _H[0] += a;
             _H[1] += b;
             _H[2] += c;
@@ -455,7 +449,6 @@ namespace Npgsql
             {
                 paddingSize += BLOCK_SIZE_BYTES;
             }
-
 
             fooBuffer = new byte[inputCount + paddingSize + 8];
 

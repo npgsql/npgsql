@@ -10,19 +10,18 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 
 using System;
 using System.Data;
@@ -44,7 +43,6 @@ namespace Npgsql
         private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
         // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
-
 
         public NpgsqlCommandBuilder()
             : this(null)
@@ -233,15 +231,15 @@ namespace Npgsql
 
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, StatementType statementType, bool whereClause)
         {
-            
+
             NpgsqlParameter parameter = (NpgsqlParameter) p;
 
             /* TODO: Check if this is the right thing to do.
              * ADO.Net seems to set this property to true when creating the parameter for the following query:
-             * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR 
+             * ((@IsNull_FieldName = 1 AND FieldName IS NULL) OR
                   (FieldName = @Original_FieldName))
              * This parameter: @IsNull_FieldName was having its sourcecolumn set to the same name of FieldName.
-             * This was causing ADO.Net to try to set a value of different type of Int32. 
+             * This was causing ADO.Net to try to set a value of different type of Int32.
              * See bug 1010973 for more info.
              */
             if (parameter.SourceColumnNullMapping)
@@ -251,7 +249,7 @@ namespace Npgsql
             else
 
                 parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
-            
+
         }
 
         protected override string GetParameterName(int parameterOrdinal)
@@ -271,7 +269,7 @@ namespace Npgsql
 
         protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
         {
-            
+
             /* Disabling this handler makes the ado.net updating code works.
              * Check if this code is really necessary or how to implement it correctly.
              * By having this handler specified, ADO.Net was reusing strangely NpgsqlParameters when updating datasets.
@@ -284,7 +282,6 @@ namespace Npgsql
                 throw new InvalidOperationException("adapter needs to be a NpgsqlDataAdapter");
             }
 
-
             this.rowUpdatingHandler = new NpgsqlRowUpdatingEventHandler(this.RowUpdatingHandler);
 
             ((NpgsqlDataAdapter) adapter).RowUpdating += this.rowUpdatingHandler;
@@ -292,13 +289,11 @@ namespace Npgsql
 
         }
 
-
         private void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e)
 
         {
             base.RowUpdatingHandler(e);
         }
-
 
         public override string QuoteIdentifier(string unquotedIdentifier)
 
@@ -309,10 +304,8 @@ namespace Npgsql
                 throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
             }
 
-
             return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
         }
-
 
         public override string UnquoteIdentifier(string quotedIdentifier)
 
@@ -323,9 +316,7 @@ namespace Npgsql
                 throw new ArgumentNullException("Quoted identifier parameter cannot be null");
             }
 
-
             string unquotedIdentifier = quotedIdentifier.Trim();
-
 
             if (unquotedIdentifier.StartsWith(this.QuotePrefix))
 
@@ -338,7 +329,6 @@ namespace Npgsql
             {
                 unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
             }
-
 
             return unquotedIdentifier;
         }

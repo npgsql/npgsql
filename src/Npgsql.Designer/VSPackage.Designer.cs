@@ -10,8 +10,7 @@
 
 namespace Npgsql.Designer {
     using System;
-    
-    
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +22,15 @@ namespace Npgsql.Designer {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class VSPackage {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal VSPackage() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +44,7 @@ namespace Npgsql.Designer {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,7 +58,7 @@ namespace Npgsql.Designer {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to MHM2ZQETQKDTJEPTC1MTQCZ1R1KQEMAPZHETDZPZI9RPJ0E0DHAHKCHZPKQ8AQZICADHKIZ1JAQED8IDEHZPZKZEIKAQERHPRCQMAMRKDEZZQRDRDHJEZIKECZPDIIKC.
         /// </summary>
@@ -68,7 +67,7 @@ namespace Npgsql.Designer {
                 return ResourceManager.GetString("400", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The database and its metadata will be un-encrypted.  No password will be required to open the database and view its contents..
         /// </summary>
@@ -77,7 +76,7 @@ namespace Npgsql.Designer {
                 return ResourceManager.GetString("Decrypt", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The database and its metadata will be encrypted using the supplied password as a hash..
         /// </summary>
@@ -86,14 +85,14 @@ namespace Npgsql.Designer {
                 return ResourceManager.GetString("Encrypt", resourceCulture);
             }
         }
-        
+
         internal static System.Drawing.Bitmap info {
             get {
                 object obj = ResourceManager.GetObject("info", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The database and its metadata will be re-encrypted using the supplied password as a hash..
         /// </summary>
@@ -102,7 +101,7 @@ namespace Npgsql.Designer {
                 return ResourceManager.GetString("ReEncrypt", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to [SQLite]
         ///System.Data.SQLite.SQLiteConnection, System.Data.SQLite

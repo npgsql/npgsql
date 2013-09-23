@@ -2,19 +2,18 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 
 using System;
 using System.Collections.Specialized;
@@ -62,7 +61,6 @@ namespace Npgsql.Web
         private ConnectionStringSettings pConnectionStringSettings;
         private string connectionString;
 
-
         //
         // If false, exceptions are thrown to the caller. If true,
         // exceptions are written to the event log.
@@ -75,7 +73,6 @@ namespace Npgsql.Web
             get { return pWriteExceptionsToEventLog; }
             set { pWriteExceptionsToEventLog = value; }
         }
-
 
         //
         // System.Configuration.Provider.ProviderBase.Initialize Method
@@ -106,7 +103,6 @@ namespace Npgsql.Web
             // Initialize the abstract base class.
             base.Initialize(name, config);
 
-
             if (string.IsNullOrEmpty((config["applicationName"] ?? string.Empty).Trim()))
             //if (config["applicationName"] == null || config["applicationName"].Trim() == "")
             {
@@ -117,7 +113,6 @@ namespace Npgsql.Web
                 pApplicationName = config["applicationName"];
             }
 
-
             if (config["writeExceptionsToEventLog"] != null)
             {
                 if (config["writeExceptionsToEventLog"].ToUpper() == "TRUE")
@@ -125,7 +120,6 @@ namespace Npgsql.Web
                     pWriteExceptionsToEventLog = true;
                 }
             }
-
 
             //
             // Initialize NpgsqlConnection.
@@ -142,14 +136,11 @@ namespace Npgsql.Web
             connectionString = pConnectionStringSettings.ConnectionString;
         }
 
-
         //
         // System.Web.Security.RoleProvider properties.
         //
 
-
         private string pApplicationName;
-
 
         public override string ApplicationName
         {
@@ -190,7 +181,6 @@ namespace Npgsql.Web
                     }
                 }
             }
-
 
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             NpgsqlCommand cmd =
@@ -235,7 +225,6 @@ namespace Npgsql.Web
                 {
                 }
 
-
                 if (WriteExceptionsToEventLog)
                 {
                     WriteToEventLog(e, "AddUsersToRoles");
@@ -251,7 +240,6 @@ namespace Npgsql.Web
                 conn.Close();
             }
         }
-
 
         //
         // RoleProvider.CreateRole
@@ -302,7 +290,6 @@ namespace Npgsql.Web
             }
         }
 
-
         //
         // RoleProvider.DeleteRole
         //
@@ -326,7 +313,6 @@ namespace Npgsql.Web
 
             cmd.Parameters.Add("@role_name", NpgsqlDbType.Text, 255).Value = rolename;
             cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = ApplicationName;
-
 
             NpgsqlCommand cmd2 =
                 new NpgsqlCommand(
@@ -363,7 +349,6 @@ namespace Npgsql.Web
                 {
                 }
 
-
                 if (WriteExceptionsToEventLog)
                 {
                     WriteToEventLog(e, "DeleteRole");
@@ -383,7 +368,6 @@ namespace Npgsql.Web
 
             return true;
         }
-
 
         //
         // RoleProvider.GetAllRoles
@@ -444,7 +428,6 @@ namespace Npgsql.Web
 
             return new string[0];
         }
-
 
         //
         // RoleProvider.GetRolesForUser
@@ -509,7 +492,6 @@ namespace Npgsql.Web
             return new string[0];
         }
 
-
         //
         // RoleProvider.GetUsersInRole
         //
@@ -573,7 +555,6 @@ namespace Npgsql.Web
             return new string[0];
         }
 
-
         //
         // RoleProvider.IsUserInRole
         //
@@ -623,7 +604,6 @@ namespace Npgsql.Web
             return userIsInRole;
         }
 
-
         //
         // RoleProvider.RemoveUsersFromRoles
         //
@@ -648,7 +628,6 @@ namespace Npgsql.Web
                     }
                 }
             }
-
 
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             NpgsqlCommand cmd =
@@ -693,7 +672,6 @@ namespace Npgsql.Web
                 {
                 }
 
-
                 if (WriteExceptionsToEventLog)
                 {
                     WriteToEventLog(e, "RemoveUsersFromRoles");
@@ -709,7 +687,6 @@ namespace Npgsql.Web
                 conn.Close();
             }
         }
-
 
         //
         // RoleProvider.RoleExists
@@ -827,7 +804,7 @@ namespace Npgsql.Web
         //   A helper function that writes exception detail to the event log. Exceptions
         // are written to the event log as a security measure to avoid private database
         // details from being returned to the browser. If a method does not return a status
-        // or boolean indicating the action succeeded or failed, a generic exception is also 
+        // or boolean indicating the action succeeded or failed, a generic exception is also
         // thrown by the caller.
         //
 

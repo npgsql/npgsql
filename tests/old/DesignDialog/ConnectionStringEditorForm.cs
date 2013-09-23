@@ -6,13 +6,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -135,16 +135,16 @@ namespace DesignDialog
             this.tp_connection.SuspendLayout();
             this.gb_add_parms.SuspendLayout();
             this.SuspendLayout();
-            // 
+            //
             // tc_main
-            // 
+            //
             this.tc_main.Controls.Add(this.tp_connection);
             resources.ApplyResources(this.tc_main, "tc_main");
             this.tc_main.Name = "tc_main";
             this.tc_main.SelectedIndex = 0;
-            // 
+            //
             // tp_connection
-            // 
+            //
             this.tp_connection.Controls.Add(this.btn_refresh);
             this.tp_connection.Controls.Add(this.tb_server);
             this.tp_connection.Controls.Add(this.btn_check_connection);
@@ -160,26 +160,26 @@ namespace DesignDialog
             this.tp_connection.Controls.Add(this.lab_advise);
             resources.ApplyResources(this.tp_connection, "tp_connection");
             this.tp_connection.Name = "tp_connection";
-            // 
+            //
             // btn_refresh
-            // 
+            //
             resources.ApplyResources(this.btn_refresh, "btn_refresh");
             this.btn_refresh.Name = "btn_refresh";
             this.btn_refresh.Click += new System.EventHandler(this.btn_refresh_Click);
-            // 
+            //
             // tb_server
-            // 
+            //
             resources.ApplyResources(this.tb_server, "tb_server");
             this.tb_server.Name = "tb_server";
-            // 
+            //
             // btn_check_connection
-            // 
+            //
             resources.ApplyResources(this.btn_check_connection, "btn_check_connection");
             this.btn_check_connection.Name = "btn_check_connection";
             this.btn_check_connection.Click += new System.EventHandler(this.btn_check_connection_Click);
-            // 
+            //
             // gb_add_parms
-            // 
+            //
             this.gb_add_parms.Controls.Add(this.tb_port);
             this.gb_add_parms.Controls.Add(this.lab_port);
             this.gb_add_parms.Controls.Add(this.tb_timeout);
@@ -187,94 +187,94 @@ namespace DesignDialog
             resources.ApplyResources(this.gb_add_parms, "gb_add_parms");
             this.gb_add_parms.Name = "gb_add_parms";
             this.gb_add_parms.TabStop = false;
-            // 
+            //
             // tb_port
-            // 
+            //
             resources.ApplyResources(this.tb_port, "tb_port");
             this.tb_port.Name = "tb_port";
-            // 
+            //
             // lab_port
-            // 
+            //
             resources.ApplyResources(this.lab_port, "lab_port");
             this.lab_port.Name = "lab_port";
-            // 
+            //
             // tb_timeout
-            // 
+            //
             resources.ApplyResources(this.tb_timeout, "tb_timeout");
             this.tb_timeout.Name = "tb_timeout";
-            // 
+            //
             // lab_timeout
-            // 
+            //
             resources.ApplyResources(this.lab_timeout, "lab_timeout");
             this.lab_timeout.Name = "lab_timeout";
-            // 
+            //
             // cb_select_db
-            // 
+            //
             resources.ApplyResources(this.cb_select_db, "cb_select_db");
             this.cb_select_db.Name = "cb_select_db";
             this.cb_select_db.DropDown += new System.EventHandler(this.cb_select_db_DropDown);
-            // 
+            //
             // lab_select_db
-            // 
+            //
             resources.ApplyResources(this.lab_select_db, "lab_select_db");
             this.lab_select_db.Name = "lab_select_db";
-            // 
+            //
             // tb_password
-            // 
+            //
             resources.ApplyResources(this.tb_password, "tb_password");
             this.tb_password.Name = "tb_password";
-            // 
+            //
             // lab_password
-            // 
+            //
             resources.ApplyResources(this.lab_password, "lab_password");
             this.lab_password.Name = "lab_password";
-            // 
+            //
             // tb_username
-            // 
+            //
             resources.ApplyResources(this.tb_username, "tb_username");
             this.tb_username.Name = "tb_username";
-            // 
+            //
             // lab_username
-            // 
+            //
             resources.ApplyResources(this.lab_username, "lab_username");
             this.lab_username.Name = "lab_username";
-            // 
+            //
             // lab_login
-            // 
+            //
             resources.ApplyResources(this.lab_login, "lab_login");
             this.lab_login.Name = "lab_login";
-            // 
+            //
             // lab_server
-            // 
+            //
             resources.ApplyResources(this.lab_server, "lab_server");
             this.lab_server.Name = "lab_server";
-            // 
+            //
             // lab_advise
-            // 
+            //
             resources.ApplyResources(this.lab_advise, "lab_advise");
             this.lab_advise.Name = "lab_advise";
-            // 
+            //
             // btn_ok
-            // 
+            //
             resources.ApplyResources(this.btn_ok, "btn_ok");
             this.btn_ok.Name = "btn_ok";
             this.btn_ok.Click += new System.EventHandler(this.btn_ok_Click);
-            // 
+            //
             // btn_cancel
-            // 
+            //
             this.btn_cancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             resources.ApplyResources(this.btn_cancel, "btn_cancel");
             this.btn_cancel.Name = "btn_cancel";
             this.btn_cancel.Click += new System.EventHandler(this.btn_cancel_Click);
-            // 
+            //
             // btn_help
-            // 
+            //
             resources.ApplyResources(this.btn_help, "btn_help");
             this.btn_help.Name = "btn_help";
             this.btn_help.Click += new System.EventHandler(this.btn_help_Click);
-            // 
+            //
             // ConnectionStringEditorForm
-            // 
+            //
             this.AcceptButton = this.btn_ok;
             resources.ApplyResources(this, "$this");
             this.CancelButton = this.btn_cancel;
@@ -310,7 +310,7 @@ namespace DesignDialog
         }
 
         private void btn_help_Click(object sender, System.EventArgs e) {
-        
+
         }
 
         private void btn_check_connection_Click(object sender, System.EventArgs e) {
@@ -331,7 +331,7 @@ namespace DesignDialog
         private bool connect(bool fillComboBox) {
             try{
                 StringWriter sw = new StringWriter();
-                
+
                 if(this.tb_server.Text == String.Empty){
                     MessageBox.Show(this, resman.GetString("MsgboxText_NoServer"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
@@ -358,7 +358,7 @@ namespace DesignDialog
                 else{
                     sw.Write("Database={0};", this.cb_select_db.Text);
                 }
-                
+
                 try{
                     if(this.tb_timeout.Text != String.Empty && Convert.ToInt32(this.tb_timeout.Text) != 15){
                         sw.Write("CommandTimeout={0};", this.tb_timeout.Text);
@@ -373,7 +373,7 @@ namespace DesignDialog
                     MessageBox.Show(this, resman.GetString("MsgboxText_TimeoutOverflow"), resman.GetString("MsgboxTitle_Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
-                
+
                 sw.Write("User Id={0};", this.tb_username.Text);
                 sw.Write("Password={0};", this.tb_password.Text);
 
@@ -401,8 +401,6 @@ namespace DesignDialog
         private void btn_refresh_Click(object sender, System.EventArgs e) {
             connect(true);
         }
-
-
 
         private void cb_select_db_DropDown(object sender, System.EventArgs e) {
 

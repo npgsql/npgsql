@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -86,7 +86,6 @@ namespace Npgsql.Designer.Design
 
     #endregion
 
-
     [Browsable(false)]
     internal Table Table
     {
@@ -101,7 +100,7 @@ namespace Npgsql.Designer.Design
     internal DataGridViewRow Parent
     {
       get { return _parent; }
-      set 
+      set
       {
         _parent = value;
         _parent.Cells[0].Value = ColumnName;
@@ -166,7 +165,7 @@ namespace Npgsql.Designer.Design
         if (_collate != value)
         {
           _collate = value;
-          
+
           if (_table.PrimaryKey.Columns.Count == 1 && String.Compare(ColumnName, _table.PrimaryKey.Columns[0].Column, StringComparison.OrdinalIgnoreCase) == 0)
             _table.PrimaryKey.Columns[0].Collate = value;
 

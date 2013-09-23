@@ -12,13 +12,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -122,12 +122,12 @@ namespace Npgsql
         /// </summary>
         public override Int32 FieldCount
         {
-            get { 
+            get {
                     if (_connector.CompatVersion <= Npgsql205)
-                        return CurrentDescription == null ? -1 : CurrentDescription.NumFields; 
+                        return CurrentDescription == null ? -1 : CurrentDescription.NumFields;
                     else
                         // We read msdn documentation and bug report #1010649 that the common return value is 0.
-                        return CurrentDescription == null ? 0 : CurrentDescription.NumFields; 
+                        return CurrentDescription == null ? 0 : CurrentDescription.NumFields;
                 }
         }
 
@@ -158,7 +158,6 @@ namespace Npgsql
             return CurrentDescription[Index].TypeOID.ToString();
         }
 
-
         /// <summary>
         /// Gets the value of a column in its native format.
         /// </summary>
@@ -166,7 +165,7 @@ namespace Npgsql
         {
             get { return GetValue(i); }
         }
-        
+
         public bool HasOrdinal(string fieldName)
         {
             if(CurrentDescription == null)
@@ -183,7 +182,6 @@ namespace Npgsql
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             return CurrentDescription.FieldIndex(Name);
         }
-
 
         /// <summary>
         /// Gets the value of a column in its native format.
@@ -213,7 +211,7 @@ namespace Npgsql
             NpgsqlBackendTypeInfo TI;
             return TryGetTypeInfo(Index, out TI) ? TI.NpgsqlDbType : NpgsqlDbType.Text;
         }
-        
+
         public BitString GetBitString(int i)
         {
             object ret = GetValue(i);
@@ -332,7 +330,7 @@ namespace Npgsql
         {
             return (Decimal) GetValue(i);
         }
-        
+
         /// <summary>
         /// Gets the value of a column as TimeSpan.
         /// </summary>
@@ -340,8 +338,6 @@ namespace Npgsql
         {
             return (TimeSpan) GetValue(i);
         }
-        
-        
 
         /// <summary>
         /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
@@ -663,7 +659,6 @@ namespace Npgsql
             }
         }
 
-
         private static Boolean IsKey(String ColumnName, IEnumerable<string> ListOfKeys)
         {
             foreach (String s in ListOfKeys)
@@ -694,7 +689,6 @@ namespace Npgsql
                     c.Parameters.Add(new NpgsqlParameter("tablename", NpgsqlDbType.Text));
                     c.Parameters["tablename"].Value = tablename;
 
-
                     using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SingleResult | CommandBehavior.SequentialAccess))
                     {
                         while (dr.Read())
@@ -705,7 +699,6 @@ namespace Npgsql
                 }
             }
         }
-
 
         private static bool IsKey(KeyLookup keyLookup, string fieldName)
 
@@ -827,7 +820,6 @@ namespace Npgsql
                     : true;
         }
 
-
         ///<summary>
         /// This methods parses the command text and tries to get the tablename
         /// from it.
@@ -853,7 +845,6 @@ namespace Npgsql
                     return String.Empty;
                 }
             }
-
 
             return tableName;
         }
@@ -999,7 +990,7 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// This is the primary implementation of NpgsqlDataReader. It is the one used in normal cases (where the 
+    /// This is the primary implementation of NpgsqlDataReader. It is the one used in normal cases (where the
     /// preload-reader option is not set in the connection string to resolve some potential backwards-compatibility
     /// issues), the only implementation used internally, and in cases where CachingDataReader is used, it is still
     /// used to do the actual "leg-work" of turning a response stream from the server into a datareader-style
@@ -1203,14 +1194,12 @@ namespace Npgsql
             }
 
             _pendingDescription = null;
-            
+
             // If there were records affected before,  keep track of their values.
                         if (_recordsAffected != null)
                             _recordsAffected += (_nextRecordsAffected ?? 0);
                         else
                             _recordsAffected = _nextRecordsAffected;
-            
-                        
 
             _nextRecordsAffected = null;
             _lastInsertOID = _nextInsertOID;
@@ -1298,7 +1287,6 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
             base.Dispose(disposing);
         }
-
 
         /// <summary>
         /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
@@ -1410,7 +1398,7 @@ namespace Npgsql
             if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
             {
                 return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
-            }                       
+            }
             else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
                 return backendTypeInfo.ConvertToFrameworkType(providerValue);
             return providerValue;
@@ -1443,7 +1431,6 @@ namespace Npgsql
             return CurrentRow.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
         }
 
-
         /// <summary>
         /// Gets raw data from a column.
         /// </summary>
@@ -1451,7 +1438,6 @@ namespace Npgsql
         {
             return CurrentRow.GetChars(i, fieldoffset, buffer, bufferoffset, length);
         }
-
 
         /// <summary>
         /// Report whether the value in a column is DBNull.

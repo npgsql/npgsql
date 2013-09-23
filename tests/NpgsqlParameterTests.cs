@@ -927,7 +927,7 @@ namespace NpgsqlTests
             Assert.AreEqual (DbType.Int32, p2.DbType, "#11");
             Assert.AreEqual (NpgsqlDbType.Integer, p2.NpgsqlDbType, "#12");
 
-            //Although a NpgsqlDbType is specified, calling ResetSqlDbType resets 
+            //Although a NpgsqlDbType is specified, calling ResetSqlDbType resets
             //the NpgsqlDbType and DbType properties to default values
             p2.ResetSqlDbType ();
             Assert.AreEqual (DbType.String, p2.DbType, "#13 Resetting NpgsqlDbType must infer the type from the value");
@@ -1004,15 +1004,14 @@ namespace NpgsqlTests
             Assert.AreEqual(DbType.String, p.DbType, "#A:DbType");
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
 
-            // Now change parameter value. 
-            // Note that as we didn't explicitly specified a dbtype, the dbtype property should change when 
+            // Now change parameter value.
+            // Note that as we didn't explicitly specified a dbtype, the dbtype property should change when
             // the value changes...
 
             p.Value = 8;
 
             Assert.AreEqual(DbType.Int32, p.DbType, "#A:DbType");
             Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#A:NpgsqlDbType");
-
 
             //Assert.AreEqual(3510, p.Value, "#A:Value");
             //p.NpgsqlDbType = NpgsqlDbType.Varchar;
@@ -1722,7 +1721,7 @@ namespace NpgsqlTests
         public void XmlSchemaTest ()
         {
             NpgsqlParameter p1 = new NpgsqlParameter ();
-            
+
             //Testing default values
             Assert.AreEqual (String.Empty, p1.XmlSchemaCollectionDatabase,
                      "#1 Default value for XmlSchemaCollectionDatabase is an empty string");

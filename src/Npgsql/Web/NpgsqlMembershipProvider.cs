@@ -2,13 +2,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -89,7 +89,6 @@ namespace Npgsql.Web
             get { return pWriteExceptionsToEventLog; }
             set { pWriteExceptionsToEventLog = value; }
         }
-
 
         //
         // System.Configuration.Provider.ProviderBase.Initialize Method
@@ -174,7 +173,6 @@ namespace Npgsql.Web
             connectionString = ConnectionStringSettings.ConnectionString;
         }
 
-
         //
         // A helper function to retrieve config values from the configuration file.
         //
@@ -189,11 +187,9 @@ namespace Npgsql.Web
             return configValue;
         }
 
-
         //
         // System.Web.Security.MembershipProvider properties.
         //
-
 
         private string pApplicationName;
         private bool pEnablePasswordReset;
@@ -215,36 +211,30 @@ namespace Npgsql.Web
             get { return pEnablePasswordReset; }
         }
 
-
         public override bool EnablePasswordRetrieval
         {
             get { return pEnablePasswordRetrieval; }
         }
-
 
         public override bool RequiresQuestionAndAnswer
         {
             get { return pRequiresQuestionAndAnswer; }
         }
 
-
         public override bool RequiresUniqueEmail
         {
             get { return pRequiresUniqueEmail; }
         }
-
 
         public override int MaxInvalidPasswordAttempts
         {
             get { return pMaxInvalidPasswordAttempts; }
         }
 
-
         public override int PasswordAttemptWindow
         {
             get { return pPasswordAttemptWindow; }
         }
-
 
         public override MembershipPasswordFormat PasswordFormat
         {
@@ -287,7 +277,6 @@ namespace Npgsql.Web
                 return false;
             }
 
-
             ValidatePasswordEventArgs args = new ValidatePasswordEventArgs(username, newPwd, true);
 
             OnValidatingPassword(args);
@@ -304,7 +293,6 @@ namespace Npgsql.Web
                 }
             }
 
-
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             NpgsqlCommand cmd =
                 new NpgsqlCommand(
@@ -314,7 +302,6 @@ namespace Npgsql.Web
             cmd.Parameters.Add("@last_password_changed_date", NpgsqlDbType.Timestamp).Value = DateTime.Now;
             cmd.Parameters.Add("@user_name", NpgsqlDbType.Text, 255).Value = username;
             cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
-
 
             int rowsAffected = 0;
 
@@ -347,7 +334,6 @@ namespace Npgsql.Web
 
             return (rowsAffected > 0);        }
 
-
         //
         // MembershipProvider.ChangePasswordQuestionAndAnswer
         //
@@ -369,7 +355,6 @@ namespace Npgsql.Web
             cmd.Parameters.Add("@Answer", NpgsqlDbType.Text, 255).Value = EncodePassword(newPwdAnswer);
             cmd.Parameters.Add("@user_name", NpgsqlDbType.Text, 255).Value = username;
             cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
-
 
             int rowsAffected = 0;
 
@@ -403,7 +388,6 @@ namespace Npgsql.Web
             return (rowsAffected > 0);
         }
 
-
         //
         // MembershipProvider.CreateUser
         //
@@ -421,7 +405,6 @@ namespace Npgsql.Web
                 status = MembershipCreateStatus.InvalidPassword;
                 return null;
             }
-
 
             if (RequiresUniqueEmail && !string.IsNullOrEmpty(GetUserNameByEmail(email)))
             {
@@ -504,7 +487,6 @@ namespace Npgsql.Web
                     conn.Close();
                 }
 
-
                 return GetUser(username, false);
             }
             else
@@ -512,10 +494,8 @@ namespace Npgsql.Web
                 status = MembershipCreateStatus.DuplicateUserName;
             }
 
-
             return null;
         }
-
 
         //
         // MembershipProvider.DeleteUser
@@ -566,7 +546,6 @@ namespace Npgsql.Web
             }
 
             return (rowsAffected > 0);        }
-
 
         //
         // MembershipProvider.GetAllUsers
@@ -645,7 +624,6 @@ namespace Npgsql.Web
             return users;
         }
 
-
         //
         // MembershipProvider.GetNumberOfUsersOnline
         //
@@ -694,7 +672,6 @@ namespace Npgsql.Web
 
             return numOnline;
         }
-
 
         //
         // MembershipProvider.GetPassword
@@ -777,14 +754,12 @@ namespace Npgsql.Web
                 conn.Close();
             }
 
-
             if (RequiresQuestionAndAnswer && !CheckPassword(answer, passwordAnswer))
             {
                 UpdateFailureCount(username, "passwordAnswer");
 
                 throw new MembershipPasswordException("Incorrect password answer.");
             }
-
 
             if (PasswordFormat == MembershipPasswordFormat.Encrypted)
             {
@@ -795,7 +770,7 @@ namespace Npgsql.Web
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="Id"></param>
         /// <returns></returns>
@@ -851,9 +826,8 @@ namespace Npgsql.Web
             return UserName;
         }
 
-
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <returns></returns>
         public string GetUserId()
@@ -910,9 +884,8 @@ namespace Npgsql.Web
             return UserId;
         }
 
-
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
@@ -987,7 +960,6 @@ namespace Npgsql.Web
 
             return u;
         }
-
 
         /// <summary>
         /// MembershipProvider.GetUser(string, bool)
@@ -1066,7 +1038,6 @@ namespace Npgsql.Web
             return u;
         }
 
-
         //
         // MembershipProvider.GetUser(object, bool)
         //
@@ -1141,11 +1112,10 @@ namespace Npgsql.Web
             return u;
         }
 
-
         //
         // GetUserFromReader
         //    A helper function that takes the current row from the NpgsqlDataReader
-        // and hydrates a MembershiUser from the values. Called by the 
+        // and hydrates a MembershiUser from the values. Called by the
         // MembershipUser.GetUser implementation.
         //
 
@@ -1170,7 +1140,6 @@ namespace Npgsql.Web
 
             return u;
         }
-
 
         //
         // MembershipProvider.UnlockUser
@@ -1225,7 +1194,6 @@ namespace Npgsql.Web
             return false;
         }
 
-
         //
         // MembershipProvider.GetUserNameByEmail
         //
@@ -1277,7 +1245,6 @@ namespace Npgsql.Web
             return username;
         }
 
-
         //
         // MembershipProvider.ResetPassword
         //
@@ -1300,7 +1267,6 @@ namespace Npgsql.Web
 
             string newPassword = Membership.GeneratePassword(newPasswordLength, MinRequiredNonAlphanumericCharacters);
 
-
             ValidatePasswordEventArgs args = new ValidatePasswordEventArgs(username, newPassword, true);
 
             OnValidatingPassword(args);
@@ -1316,7 +1282,6 @@ namespace Npgsql.Web
                     throw new MembershipPasswordException("Reset password canceled due to password validation failure.");
                 }
             }
-
 
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             NpgsqlCommand cmd =
@@ -1409,7 +1374,6 @@ namespace Npgsql.Web
             }
         }
 
-
         //
         // MembershipProvider.UpdateUser
         //
@@ -1427,7 +1391,6 @@ namespace Npgsql.Web
             cmd.Parameters.Add("@is_approved", NpgsqlDbType.Boolean).Value = user.IsApproved;
             cmd.Parameters.Add("@user_name", NpgsqlDbType.Text, 255).Value = user.UserName;
             cmd.Parameters.Add("@application_name", NpgsqlDbType.Text, 255).Value = pApplicationName;
-
 
             try
             {
@@ -1456,7 +1419,6 @@ namespace Npgsql.Web
                 conn.Close();
             }
         }
-
 
         //
         // MembershipProvider.ValidateUser
@@ -1554,7 +1516,6 @@ namespace Npgsql.Web
             return isValid;
         }
 
-
         //
         // UpdateFailureCount
         //   A helper method that performs the checks and updates associated with
@@ -1604,7 +1565,7 @@ namespace Npgsql.Web
 
                 if (failureCount == 0 || DateTime.Now > windowEnd)
                 {
-                    // First password failure or outside of PasswordAttemptWindow. 
+                    // First password failure or outside of PasswordAttemptWindow.
                     // Start a new password failure count from 1 and a new window starting now.
 
                     if (failureType == "password")
@@ -1710,7 +1671,6 @@ namespace Npgsql.Web
             }
         }
 
-
         //
         // CheckPassword
         //   Compares password values based on the MembershipPasswordFormat.
@@ -1741,7 +1701,6 @@ namespace Npgsql.Web
             return false;
         }
 
-
         //
         // EncodePassword
         //   Encrypts, Hashes, or leaves the password clear based on the PasswordFormat.
@@ -1771,7 +1730,6 @@ namespace Npgsql.Web
 
             return encodedPassword;
         }
-
 
         //
         // UnEncodePassword
@@ -1817,7 +1775,6 @@ namespace Npgsql.Web
             }
             return returnBytes;
         }
-
 
         //
         // MembershipProvider.FindUsersByName
@@ -1991,7 +1948,7 @@ namespace Npgsql.Web
         //   A helper function that writes exception detail to the event log. Exceptions
         // are written to the event log as a security measure to avoid private database
         // details from being returned to the browser. If a method does not return a status
-        // or boolean indicating the action succeeded or failed, a generic exception is also 
+        // or boolean indicating the action succeeded or failed, a generic exception is also
         // thrown by the caller.
         //
 

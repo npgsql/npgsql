@@ -16,13 +16,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -141,7 +141,6 @@ namespace Npgsql
             {
                 value.ParameterName = ":" + "Parameter" + (IndexOf(value) + 1);
             }
-
 
             return value;
         }
@@ -316,7 +315,6 @@ namespace Npgsql
                 parameterName = parameterName.Remove(0, 1);
             }
 
-
             foreach (NpgsqlParameter parameter in this)
             {
                 // allow for optional use of ':' and '@' in the ParameterName property
@@ -395,7 +393,6 @@ namespace Npgsql
             return this.InternalList.Contains((NpgsqlParameter) value);
         }
 
-
         /// <summary>
         /// Gets a value indicating whether a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> with the specified parameter name exists in the collection.
         /// </summary>
@@ -422,7 +419,6 @@ namespace Npgsql
                 return false;
             }
         }
-
 
         /// <summary>
         /// Removes all items from the collection.

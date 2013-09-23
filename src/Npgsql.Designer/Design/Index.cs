@@ -1,7 +1,7 @@
 ﻿/********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -525,7 +525,7 @@ namespace Npgsql.Designer.Design
       foreach (IndexColumn c in Columns)
       {
         builder.AppendFormat("{0}[{1}]", separator, c.Column);
-        
+
         if (c.SortMode != ColumnSortMode.Ascending)
           builder.Append(" DESC");
 
@@ -703,7 +703,7 @@ namespace Npgsql.Designer.Design
       if (String.IsNullOrEmpty(value.ToString()) == true) value = String.Empty;
 
       string[] values = value.ToString().Split(',');
-      
+
       // populate the list
       _list.Items.Clear();
 
@@ -861,7 +861,7 @@ namespace Npgsql.Designer.Design
           if (design != null && (row[2].ToString() == design.OldName || row[2].ToString() == design.Name))
             add = false;
 
-          if (add) 
+          if (add)
             selector.AddNode(row[2].ToString(), row[2], null);
         }
       }

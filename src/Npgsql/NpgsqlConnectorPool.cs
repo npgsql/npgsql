@@ -6,13 +6,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -66,18 +66,17 @@ namespace Npgsql
 
         private object locker = new object();
 
-
         public NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
         }
-        
+
         private void StartTimer()
         {
             Timer = new Timer(1000);
             Timer.AutoReset = false;
             Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
-            Timer.Start();            
+            Timer.Start();
         }
 
         private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
@@ -145,7 +144,6 @@ namespace Npgsql
             }
         }
 
-
         /// <value>Map of index to unused pooled connectors, avaliable to the
         /// next RequestConnector() call.</value>
         /// <remarks>This hashmap will be indexed by connection string.
@@ -158,7 +156,6 @@ namespace Npgsql
         /// This key will hold a list of shared connectors available to be used.</remarks>
         // To be implemented
         //private Dictionary<?, ?> SharedConnectors;*/
-
 
         /// <value>Timer for tracking unused connections in pools.</value>
         // I used System.Timers.Timer because of bad experience with System.Threading.Timer
@@ -192,7 +189,6 @@ namespace Npgsql
                 Thread.Sleep(ST);
                 timeoutMilliseconds -= ST;
 
-                
                 //lock (this)
                 {
                     Connector = RequestPooledConnectorInternal(Connection);
@@ -235,7 +231,6 @@ namespace Npgsql
 
             }
             Connector = GetPooledConnector(Connection);
-
 
             return Connector;
         }
@@ -312,7 +307,6 @@ namespace Npgsql
             ConnectorQueue Queue;
             NpgsqlConnector Connector = null;
 
-
             // We only need to lock all pools when trying to get one pool or create one.
 
             lock (locker)
@@ -329,11 +323,9 @@ namespace Npgsql
                 }
             }
 
-
             // Now we can simply lock on the pool itself.
             lock (Queue)
             {
-
 
                 if (Queue.Available.Count > 0)
                 {
@@ -355,14 +347,12 @@ namespace Npgsql
                         Queue.Busy.Remove(Connector);
                     }
 
-
                     Connector.Close();
                     return GetPooledConnector(Connection); //Try again
                 }
 
                 return Connector;
             }
-
 
             lock (Queue)
             {
@@ -373,9 +363,8 @@ namespace Npgsql
                     Queue.Busy.Add(Connector, null);
 
                 }
-                
-            }
 
+            }
 
             if (Connector != null)
             {
@@ -401,7 +390,6 @@ namespace Npgsql
 
                     throw;
                 }
-
 
                 // Meet the MinPoolSize requirement if needed.
                 if (Connection.MinPoolSize > 1)
@@ -434,7 +422,6 @@ namespace Npgsql
                 }
             }
 
-            
             return Connector;
         }
 
@@ -467,7 +454,6 @@ namespace Npgsql
                 PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
             }
 
-            
             if (queue == null)
             {
                 Connector.Close(); // Release connection to postgres
@@ -488,7 +474,6 @@ namespace Npgsql
                 queue.Busy.Remove(Connector);
             }
             */
-
 
             if (!Connector.IsInitialized)
             {
@@ -514,10 +499,8 @@ namespace Npgsql
                 }
             }
 
-            
             bool inQueue = queue.Busy.ContainsKey(Connector);
 
-            
             if (Connector.State == ConnectionState.Open)
             {
                 //If thread is good
@@ -536,7 +519,6 @@ namespace Npgsql
                         Connector.Close();
                     }
 
-               
                 }
                 else
                 {
@@ -545,8 +527,7 @@ namespace Npgsql
                     Connector.Close();
                 }
             }
-            
-            
+
             // Check if Connector should return to the queue of available connectors. If not, this connector is invalid and should
             // only be removed from the busy queue which effectvely removes it from the pool.
             if (inQueue)
@@ -560,7 +541,6 @@ namespace Npgsql
                 {
                     queue.Busy.Remove(Connector);
                 }
-
 
         }
 
@@ -600,7 +580,6 @@ namespace Npgsql
             Queue.Busy.Clear();
         }
 
-
         internal void ClearPool(NpgsqlConnection Connection)
         {
             // Prevent multithread access to connection pool count.
@@ -616,8 +595,7 @@ namespace Npgsql
                 }
             }
         }
-        
-        
+
         internal void ClearAllPools()
         {
             lock (locker)

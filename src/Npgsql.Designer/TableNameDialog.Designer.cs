@@ -35,9 +35,9 @@
       _ok = new System.Windows.Forms.Button();
       _cancel = new System.Windows.Forms.Button();
       this.SuspendLayout();
-      // 
+      //
       // _ok
-      // 
+      //
       _ok.Location = new System.Drawing.Point(211, 51);
       _ok.Name = "_ok";
       _ok.Size = new System.Drawing.Size(75, 23);
@@ -45,9 +45,9 @@
       _ok.Text = "OK";
       _ok.UseVisualStyleBackColor = true;
       _ok.Click += new System.EventHandler(this._ok_Click);
-      // 
+      //
       // _cancel
-      // 
+      //
       _cancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
       _cancel.Location = new System.Drawing.Point(292, 51);
       _cancel.Name = "_cancel";
@@ -56,25 +56,25 @@
       _cancel.Text = "Cancel";
       _cancel.UseVisualStyleBackColor = true;
       _cancel.Click += new System.EventHandler(this._cancel_Click);
-      // 
+      //
       // label1
-      // 
+      //
       this.label1.AutoSize = true;
       this.label1.Location = new System.Drawing.Point(12, 9);
       this.label1.Name = "label1";
       this.label1.Size = new System.Drawing.Size(126, 13);
       this.label1.TabIndex = 0;
       this.label1.Text = "Choose a &name for this %";
-      // 
+      //
       // _name
-      // 
+      //
       this._name.Location = new System.Drawing.Point(12, 25);
       this._name.Name = "_name";
       this._name.Size = new System.Drawing.Size(355, 20);
       this._name.TabIndex = 1;
-      // 
+      //
       // TableNameDialog
-      // 
+      //
       this.AcceptButton = _ok;
       this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;

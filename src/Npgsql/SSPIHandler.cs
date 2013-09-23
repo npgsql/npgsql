@@ -150,7 +150,6 @@ namespace Npgsql
             if (authData == null && sspictx_set)
                 throw new InvalidOperationException("The authData parameter con only be null at the first call to continue!");
 
-
             int status;
 
             SecBuffer OutBuffer;
@@ -237,7 +236,6 @@ namespace Npgsql
                     sspictx_set = true;
                 }
 
-
                 if (outbuf.cBuffers > 0)
                 {
                     if (outbuf.cBuffers != 1)
@@ -245,7 +243,7 @@ namespace Npgsql
                         throw new InvalidOperationException("SSPI returned invalid number of output buffers");
                     }
                     // attention: OutBuffer is still our initially created struct but outbuf.pBuffer doesn't point to
-                    // it but to the copy of it we created on the unmanaged heap and passed to InitializeSecurityContext() 
+                    // it but to the copy of it we created on the unmanaged heap and passed to InitializeSecurityContext()
                     // we have to marshal it back to see the content change
                     OutBuffer = (SecBuffer)Marshal.PtrToStructure(outbuf.pBuffer, typeof(SecBuffer));
                     if (OutBuffer.cbBuffer > 0)
@@ -273,7 +271,6 @@ namespace Npgsql
                     Marshal.FreeHGlobal(outbuf.pBuffer);
             }
         }
-
 
         #region resource cleanup
 

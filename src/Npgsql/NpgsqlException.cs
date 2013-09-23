@@ -13,13 +13,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -67,7 +67,6 @@ namespace Npgsql
             this.errors = new ArrayList(errors);
         }
 
-
         internal NpgsqlException(String message)
             : this(message, null)
         {
@@ -79,7 +78,6 @@ namespace Npgsql
             errors = new ArrayList();
             errors.Add(new NpgsqlError(ProtocolVersion.Unknown, message));
         }
-
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
@@ -99,7 +97,6 @@ namespace Npgsql
         {
             get { return (NpgsqlError) errors[Index]; }
         }
-
 
         /// <summary>
         /// Severity code.  All versions.
@@ -228,7 +225,6 @@ namespace Npgsql
         {
             get { return this[0].ErrorSql; }
         }
-
 
         /// <summary>
         /// Returns the entire list of errors provided by the PostgreSQL backend.

@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -15,7 +15,7 @@ namespace Npgsql.Designer
   using System.Reflection;
 
   /// <summary>
-  /// The purpose of this class is to provide context menus and event support when designing a 
+  /// The purpose of this class is to provide context menus and event support when designing a
   /// SQLite DataSet.  Most of the functionality is implemented by MS's VSDesigner object which we
   /// instantiate through reflection since I don't really have a design-time reference to the object
   /// and many of the objects in VSDesigner are internal.
