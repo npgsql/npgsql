@@ -878,12 +878,11 @@ namespace Npgsql
 
                 try
                 {
-                    NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3", this);
+                    NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3;", this);
                     commandSingleDoublePrecision.ExecuteBlind();
 
                 }
                 catch { }
-
 
                 /*
                  * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
