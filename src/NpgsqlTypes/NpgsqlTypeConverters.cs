@@ -1,4 +1,4 @@
-// NpgsqlTypes.NpgsqlTypesHelper.cs
+// NpgsqlTypes.NpgsqlTypeConverters.cs
 //
 // Author:
 // Glen Parker <glenebob@nwlink.com>
