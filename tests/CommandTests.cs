@@ -2975,6 +2975,9 @@ namespace NpgsqlTests
         [Test]
         public void Bug1010788UpdateRowSource()
         {
+            if (BACKEND_PROTOCOL_VERSION < 3)
+                Assert.Ignore("Don't have the right metadata with protocol version 2");
+
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
@@ -3077,6 +3080,6 @@ namespace NpgsqlTests
     [TestFixture]
     public class CommandTestsV2 : CommandTests
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }
