@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -51,7 +51,6 @@ namespace Npgsql.Designer.Design
 
     #endregion
 
-
     [DefaultValue(false)]
     [DisplayName("Enabled")]
     [RefreshProperties(RefreshProperties.All)]
@@ -81,7 +80,7 @@ namespace Npgsql.Designer.Design
         if (_conflict != value)
         {
           _conflict = value;
-          
+
           if (_conflict != ConflictEnum.Abort && _isUnique == false)
             _isUnique = true;
 

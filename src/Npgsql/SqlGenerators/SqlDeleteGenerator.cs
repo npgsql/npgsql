@@ -40,6 +40,6 @@ namespace Npgsql.SqlGenerators
             _projectVarName.Pop();
             command.CommandText = delete.ToString();
         }
-	}
+    }
 }
 #endif

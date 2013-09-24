@@ -1,11 +1,11 @@
 // project created on 30/11/2002 at 22:00
 //
 // Author:
-// 	Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
+//     Francisco Figueiredo Jr. <fxjrlists@yahoo.com>
 //
-//	Copyright (C) 2002 The Npgsql Development Team
-//	npgsql-general@gborg.postgresql.org
-//	http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2002 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -49,14 +49,14 @@ namespace NpgsqlTests
             using (var conn1 = new NpgsqlConnection(ConnectionString))
             using (var conn2 = new NpgsqlConnection(ConnectionString))
             {
-                //	connection 1 change database
+                //    connection 1 change database
                 conn1.Open();
                 conn1.ChangeDatabase("template1");
                 var command = new NpgsqlCommand("select current_database()", conn1);
                 var db1 = (String)command.ExecuteScalar();
                 Assert.AreEqual("template1", db1);
 
-                //	connection 2 's database should not changed, so should different from conn1
+                //    connection 2 's database should not changed, so should different from conn1
                 conn2.Open();
                 command = new NpgsqlCommand("select current_database()", conn2);
                 var db2 = (String)command.ExecuteScalar();
@@ -151,7 +151,7 @@ namespace NpgsqlTests
         [Test]
         public void UseAllConnectionsInPool()
         {
-            // As this method uses a lot of connections, clear all connections from all pools before starting. 
+            // As this method uses a lot of connections, clear all connections from all pools before starting.
             // This is needed in order to not reach the max connections allowed and start to raise errors.
 
             NpgsqlConnection.ClearAllPools();
@@ -354,7 +354,6 @@ namespace NpgsqlTests
                 }
             }
         }
-
 
     }
     [TestFixture]

@@ -176,7 +176,7 @@ namespace NpgsqlTests
             using (var cmd = new NpgsqlCommand("select count(*) from pg_prepared_xacts where database = :database", Conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("database", Conn.Database));
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));                
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
             }
         }
 

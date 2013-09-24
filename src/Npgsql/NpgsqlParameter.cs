@@ -13,19 +13,18 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 
 using System;
 using System.ComponentModel;
@@ -132,7 +131,6 @@ namespace Npgsql
         {
         }
 
-
         public NpgsqlParameter(String parameterName, DbType parameterType)
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, 0, String.Empty)
         {
@@ -154,7 +152,6 @@ namespace Npgsql
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, String.Empty)
         {
         }
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
@@ -181,7 +178,6 @@ namespace Npgsql
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, sourceColumn)
         {
         }
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
@@ -262,7 +258,6 @@ namespace Npgsql
                 precision = value;
             }
         }
-
 
         public Boolean UseCast
         {
@@ -387,7 +382,6 @@ namespace Npgsql
                 }
             }
         }
-
 
         internal NpgsqlNativeTypeInfo TypeInfo
         {
@@ -556,25 +550,21 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "Value");
                 //return value;
 
-                
                 NpgsqlBackendTypeInfo backendTypeInfo;
-                
+
                 if (NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
                 {
                     return backendTypeInfo.ConvertToFrameworkType(NpgsqlValue);
                 }
-                
+
                 throw new NotSupportedException();
                 */
-
-
 
             } // [TODO] Check and validate data type.
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Value", value);
 
-                
                 if ((value == null) || (value == DBNull.Value))
                 {
                     // don't really know what to do - leave default and do further exploration
@@ -588,8 +578,6 @@ namespace Npgsql
                     //}
                     return;
                 }
-
-
 
                 if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
                 {
@@ -606,12 +594,6 @@ namespace Npgsql
                     this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
                     this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
                 }
-
-
-
-
-
-
 
             }
         }

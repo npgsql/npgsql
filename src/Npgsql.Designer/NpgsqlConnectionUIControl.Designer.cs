@@ -64,18 +64,18 @@ namespace Npgsql.Designer
       databaseGroup.SuspendLayout();
       syncGroup.SuspendLayout();
       this.SuspendLayout();
-      // 
+      //
       // labelPassword
-      // 
+      //
       labelPassword.AutoSize = true;
       labelPassword.Location = new System.Drawing.Point(6, 23);
       labelPassword.Name = "labelPassword";
       labelPassword.Size = new System.Drawing.Size(53, 13);
       labelPassword.TabIndex = 0;
       labelPassword.Text = "Password";
-      // 
+      //
       // securityGroup
-      // 
+      //
       securityGroup.Controls.Add(this.passwordTextBox);
       securityGroup.Controls.Add(labelPassword);
       securityGroup.Location = new System.Drawing.Point(3, 263);
@@ -84,18 +84,18 @@ namespace Npgsql.Designer
       securityGroup.TabIndex = 10;
       securityGroup.TabStop = false;
       securityGroup.Text = "Encryption";
-      // 
+      //
       // passwordTextBox
-      // 
+      //
       this.passwordTextBox.Location = new System.Drawing.Point(65, 20);
       this.passwordTextBox.Name = "passwordTextBox";
       this.passwordTextBox.Size = new System.Drawing.Size(235, 21);
       this.passwordTextBox.TabIndex = 1;
       this.passwordTextBox.UseSystemPasswordChar = true;
       this.passwordTextBox.Leave += new System.EventHandler(this.passwordTextBox_Leave);
-      // 
+      //
       // encodingGroup
-      // 
+      //
       encodingGroup.Controls.Add(this.utf16RadioButton);
       encodingGroup.Controls.Add(this.utf8RadioButton);
       encodingGroup.Location = new System.Drawing.Point(3, 159);
@@ -104,9 +104,9 @@ namespace Npgsql.Designer
       encodingGroup.TabIndex = 7;
       encodingGroup.TabStop = false;
       encodingGroup.Text = "Encoding";
-      // 
+      //
       // utf16RadioButton
-      // 
+      //
       this.utf16RadioButton.AutoSize = true;
       this.utf16RadioButton.Location = new System.Drawing.Point(6, 44);
       this.utf16RadioButton.Name = "utf16RadioButton";
@@ -116,9 +116,9 @@ namespace Npgsql.Designer
       this.utf16RadioButton.Text = "UTF-16";
       this.utf16RadioButton.UseVisualStyleBackColor = true;
       this.utf16RadioButton.CheckedChanged += new System.EventHandler(this.encoding_Changed);
-      // 
+      //
       // utf8RadioButton
-      // 
+      //
       this.utf8RadioButton.AutoSize = true;
       this.utf8RadioButton.Checked = true;
       this.utf8RadioButton.Location = new System.Drawing.Point(7, 21);
@@ -129,9 +129,9 @@ namespace Npgsql.Designer
       this.utf8RadioButton.Text = "UTF-8";
       this.utf8RadioButton.UseVisualStyleBackColor = true;
       this.utf8RadioButton.CheckedChanged += new System.EventHandler(this.encoding_Changed);
-      // 
+      //
       // dateTimeGroup
-      // 
+      //
       dateTimeGroup.Controls.Add(this.julianRadioButton);
       dateTimeGroup.Controls.Add(this.ticksRadioButton);
       dateTimeGroup.Controls.Add(this.iso8601RadioButton);
@@ -141,9 +141,9 @@ namespace Npgsql.Designer
       dateTimeGroup.TabIndex = 8;
       dateTimeGroup.TabStop = false;
       dateTimeGroup.Text = "Date/Time Format";
-      // 
+      //
       // ticksRadioButton
-      // 
+      //
       this.ticksRadioButton.AutoSize = true;
       this.ticksRadioButton.Location = new System.Drawing.Point(7, 66);
       this.ticksRadioButton.Name = "ticksRadioButton";
@@ -153,9 +153,9 @@ namespace Npgsql.Designer
       this.ticksRadioButton.Text = "Ticks";
       this.ticksRadioButton.UseVisualStyleBackColor = true;
       this.ticksRadioButton.CheckedChanged += new System.EventHandler(this.datetime_Changed);
-      // 
+      //
       // iso8601RadioButton
-      // 
+      //
       this.iso8601RadioButton.AutoSize = true;
       this.iso8601RadioButton.Checked = true;
       this.iso8601RadioButton.Location = new System.Drawing.Point(7, 21);
@@ -166,9 +166,9 @@ namespace Npgsql.Designer
       this.iso8601RadioButton.Text = "ISO-8601";
       this.iso8601RadioButton.UseVisualStyleBackColor = true;
       this.iso8601RadioButton.CheckedChanged += new System.EventHandler(this.datetime_Changed);
-      // 
+      //
       // databaseGroup
-      // 
+      //
       databaseGroup.Controls.Add(cacheSizeLabel);
       databaseGroup.Controls.Add(this.cacheSizeTextbox);
       databaseGroup.Controls.Add(pageSizeLabel);
@@ -182,53 +182,53 @@ namespace Npgsql.Designer
       databaseGroup.TabIndex = 8;
       databaseGroup.TabStop = false;
       databaseGroup.Text = "Database";
-      // 
+      //
       // cacheSizeLabel
-      // 
+      //
       cacheSizeLabel.AutoSize = true;
       cacheSizeLabel.Location = new System.Drawing.Point(7, 116);
       cacheSizeLabel.Name = "cacheSizeLabel";
       cacheSizeLabel.Size = new System.Drawing.Size(59, 13);
       cacheSizeLabel.TabIndex = 5;
       cacheSizeLabel.Text = "Cache Size";
-      // 
+      //
       // cacheSizeTextbox
-      // 
+      //
       this.cacheSizeTextbox.Location = new System.Drawing.Point(72, 113);
       this.cacheSizeTextbox.Name = "cacheSizeTextbox";
       this.cacheSizeTextbox.Size = new System.Drawing.Size(100, 21);
       this.cacheSizeTextbox.TabIndex = 6;
       this.cacheSizeTextbox.Text = "2000";
       this.cacheSizeTextbox.Leave += new System.EventHandler(this.cacheSizeTextbox_Leave);
-      // 
+      //
       // pageSizeLabel
-      // 
+      //
       pageSizeLabel.AutoSize = true;
       pageSizeLabel.Location = new System.Drawing.Point(13, 89);
       pageSizeLabel.Name = "pageSizeLabel";
       pageSizeLabel.Size = new System.Drawing.Size(53, 13);
       pageSizeLabel.TabIndex = 3;
       pageSizeLabel.Text = "Page Size";
-      // 
+      //
       // pageSizeTextBox
-      // 
+      //
       this.pageSizeTextBox.Location = new System.Drawing.Point(72, 86);
       this.pageSizeTextBox.Name = "pageSizeTextBox";
       this.pageSizeTextBox.Size = new System.Drawing.Size(100, 21);
       this.pageSizeTextBox.TabIndex = 4;
       this.pageSizeTextBox.Text = "1024";
       this.pageSizeTextBox.Leave += new System.EventHandler(this.pageSizeTextBox_Leave);
-      // 
+      //
       // fileTextBox
-      // 
+      //
       this.fileTextBox.Location = new System.Drawing.Point(6, 20);
       this.fileTextBox.Name = "fileTextBox";
       this.fileTextBox.Size = new System.Drawing.Size(294, 21);
       this.fileTextBox.TabIndex = 0;
       this.fileTextBox.Leave += new System.EventHandler(this.fileTextBox_Leave);
-      // 
+      //
       // browseButton
-      // 
+      //
       this.browseButton.Location = new System.Drawing.Point(6, 47);
       this.browseButton.Name = "browseButton";
       this.browseButton.Size = new System.Drawing.Size(75, 23);
@@ -236,9 +236,9 @@ namespace Npgsql.Designer
       this.browseButton.Text = "&Browse ...";
       this.browseButton.UseVisualStyleBackColor = true;
       this.browseButton.Click += new System.EventHandler(this.browseButton_Click);
-      // 
+      //
       // newDatabase
-      // 
+      //
       this.newDatabase.Location = new System.Drawing.Point(87, 47);
       this.newDatabase.Name = "newDatabase";
       this.newDatabase.Size = new System.Drawing.Size(75, 23);
@@ -246,9 +246,9 @@ namespace Npgsql.Designer
       this.newDatabase.Text = "&New ...";
       this.newDatabase.UseVisualStyleBackColor = true;
       this.newDatabase.Click += new System.EventHandler(this.newDatabase_Click);
-      // 
+      //
       // syncGroup
-      // 
+      //
       syncGroup.Controls.Add(this.offRadioButton);
       syncGroup.Controls.Add(this.normalRadioButton);
       syncGroup.Controls.Add(this.fullRadioButton);
@@ -258,9 +258,9 @@ namespace Npgsql.Designer
       syncGroup.TabIndex = 9;
       syncGroup.TabStop = false;
       syncGroup.Text = "Synchronization";
-      // 
+      //
       // offRadioButton
-      // 
+      //
       this.offRadioButton.AutoSize = true;
       this.offRadioButton.Location = new System.Drawing.Point(6, 66);
       this.offRadioButton.Name = "offRadioButton";
@@ -269,9 +269,9 @@ namespace Npgsql.Designer
       this.offRadioButton.Text = "Off";
       this.offRadioButton.UseVisualStyleBackColor = true;
       this.offRadioButton.CheckedChanged += new System.EventHandler(this.sync_Changed);
-      // 
+      //
       // normalRadioButton
-      // 
+      //
       this.normalRadioButton.AutoSize = true;
       this.normalRadioButton.Checked = true;
       this.normalRadioButton.Location = new System.Drawing.Point(6, 43);
@@ -282,9 +282,9 @@ namespace Npgsql.Designer
       this.normalRadioButton.Text = "Normal";
       this.normalRadioButton.UseVisualStyleBackColor = true;
       this.normalRadioButton.CheckedChanged += new System.EventHandler(this.sync_Changed);
-      // 
+      //
       // fullRadioButton
-      // 
+      //
       this.fullRadioButton.AutoSize = true;
       this.fullRadioButton.Location = new System.Drawing.Point(6, 20);
       this.fullRadioButton.Name = "fullRadioButton";
@@ -293,9 +293,9 @@ namespace Npgsql.Designer
       this.fullRadioButton.Text = "Full";
       this.fullRadioButton.UseVisualStyleBackColor = true;
       this.fullRadioButton.CheckedChanged += new System.EventHandler(this.sync_Changed);
-      // 
+      //
       // julianRadioButton
-      // 
+      //
       this.julianRadioButton.AutoSize = true;
       this.julianRadioButton.Location = new System.Drawing.Point(7, 44);
       this.julianRadioButton.Name = "julianRadioButton";
@@ -305,9 +305,9 @@ namespace Npgsql.Designer
       this.julianRadioButton.Text = "Julian Day";
       this.julianRadioButton.UseVisualStyleBackColor = true;
       this.julianRadioButton.CheckedChanged += new System.EventHandler(this.datetime_Changed);
-      // 
+      //
       // SQLiteConnectionUIControl
-      // 
+      //
       this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
       this.Controls.Add(syncGroup);
       this.Controls.Add(databaseGroup);

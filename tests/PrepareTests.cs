@@ -15,7 +15,7 @@ namespace NpgsqlTests
         protected override void SetUp()
         {
             base.SetUp();
-            const string sql = @"	CREATE TABLE public.preparetest
+            const string sql = @"    CREATE TABLE public.preparetest
                                (
                                testid serial NOT NULL,
                                varchar_notnull varchar(100) NOT NULL,
@@ -31,7 +31,7 @@ namespace NpgsqlTests
 
         protected override void TearDown()
         {
-            const string sql = @"	DROP TABLE public.preparetest;";
+            const string sql = @"    DROP TABLE public.preparetest;";
             var cmd = new NpgsqlCommand(sql, Conn);
             cmd.ExecuteNonQuery();
             base.TearDown();
@@ -88,7 +88,7 @@ namespace NpgsqlTests
 
         private NpgsqlCommand GetCommand()
         {
-            const string sql = @"	INSERT INTO preparetest(varchar_notnull, varchar_null, integer_notnull, integer_null, bigint_notnull, bigint_null)
+            const string sql = @"    INSERT INTO preparetest(varchar_notnull, varchar_null, integer_notnull, integer_null, bigint_notnull, bigint_null)
                                     VALUES(:param1, :param2, :param3, :param4, :param5, :param6)";
             var cmd = new NpgsqlCommand(sql, Conn);
 

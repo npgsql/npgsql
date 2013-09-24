@@ -12,14 +12,13 @@
 
 namespace Edm_EntityMappingGeneratedViews
 {
-    
-    
+
     /// <Summary>
     /// The type contains views for EntitySets and AssociationSets that were generated at design time.
     /// </Summary>
     public sealed class ViewsForBaseEntitySets32CD194B04BDC9F607C67C8FAB6BC4DC : System.Data.Mapping.EntityViewContainer
     {
-        
+
         /// <Summary>
         /// The constructor stores the views for the extents and also the hash values generated based on the metadata and mapping closure and views
         /// </Summary>
@@ -31,7 +30,7 @@ namespace Edm_EntityMappingGeneratedViews
             this.HashOverAllExtentViews = "b0c3118d79b4c037f19c708219fdab28";
             this.ViewCount = 19;
         }
-        
+
         // The method returns the view for the index given.
         protected override System.Collections.Generic.KeyValuePair<string, string> GetViewAt(int index)
         {
@@ -180,16 +179,16 @@ namespace Edm_EntityMappingGeneratedViews
         XmlTest.SalesOrderHeader_OrderID_fkey(T3.[SalesOrderHeader_OrderID_fkey.Customer], T3.[SalesOrderHeader_OrderID_fkey.SalesOrderHeader])
     FROM (
         SELECT -- Constructing Customer
-            CreateRef(XmlTestContext.Customer, row(T2.[SalesOrderHeader_OrderID_fkey.Customer.OrderID]),XmlTest.Customer) AS [SalesOrderHeader_OrderID_fkey.Customer], 
+            CreateRef(XmlTestContext.Customer, row(T2.[SalesOrderHeader_OrderID_fkey.Customer.OrderID]),XmlTest.Customer) AS [SalesOrderHeader_OrderID_fkey.Customer],
             T2.[SalesOrderHeader_OrderID_fkey.SalesOrderHeader]
         FROM (
             SELECT -- Constructing SalesOrderHeader
-                CreateRef(XmlTestContext.SalesOrderHeader, row(T1.[SalesOrderHeader_OrderID_fkey.SalesOrderHeader.ID]),XmlTest.SalesOrderHeader) AS [SalesOrderHeader_OrderID_fkey.SalesOrderHeader], 
+                CreateRef(XmlTestContext.SalesOrderHeader, row(T1.[SalesOrderHeader_OrderID_fkey.SalesOrderHeader.ID]),XmlTest.SalesOrderHeader) AS [SalesOrderHeader_OrderID_fkey.SalesOrderHeader],
                 T1.[SalesOrderHeader_OrderID_fkey.Customer.OrderID]
             FROM (
-                SELECT 
-                    T.OrderID AS [SalesOrderHeader_OrderID_fkey.Customer.OrderID], 
-                    T.ID AS [SalesOrderHeader_OrderID_fkey.SalesOrderHeader.ID], 
+                SELECT
+                    T.OrderID AS [SalesOrderHeader_OrderID_fkey.Customer.OrderID],
+                    T.ID AS [SalesOrderHeader_OrderID_fkey.SalesOrderHeader.ID],
                     True AS _from0
                 FROM XmlTestStoreContainer.SalesOrderHeader AS T
             ) AS T1
@@ -205,11 +204,11 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing User
         [XmlTest.Store].User(T1.User_UserId, T1.User_Name, T1.User_Login, T1.User_StatusId)
     FROM (
-        SELECT 
-            T.UserId AS User_UserId, 
-            T.Name AS User_Name, 
-            T.Login AS User_Login, 
-            T.StatusId AS User_StatusId, 
+        SELECT
+            T.UserId AS User_UserId,
+            T.Name AS User_Name,
+            T.Login AS User_Login,
+            T.StatusId AS User_StatusId,
             True AS _from0
         FROM XmlTestContext.User AS T
     ) AS T1");
@@ -223,9 +222,9 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing UserDetails
         [XmlTest.Store].UserDetails(T1.UserDetails_UserId, T1.UserDetails_Details)
     FROM (
-        SELECT 
-            T.UserId AS UserDetails_UserId, 
-            T.Details AS UserDetails_Details, 
+        SELECT
+            T.UserId AS UserDetails_UserId,
+            T.Details AS UserDetails_Details,
             True AS _from0
         FROM XmlTestContext.UserDetails AS T
     ) AS T1");
@@ -239,9 +238,9 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing UserToken
         [XmlTest.Store].UserToken(T1.UserToken_UserId, T1.UserToken_Token)
     FROM (
-        SELECT 
-            T.UserId AS UserToken_UserId, 
-            T.Token AS UserToken_Token, 
+        SELECT
+            T.UserId AS UserToken_UserId,
+            T.Token AS UserToken_Token,
             True AS _from0
         FROM XmlTestContext.UserToken AS T
     ) AS T1");
@@ -255,11 +254,11 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing User
         XmlTest.User(T1.User_UserId, T1.User_Name, T1.User_Login, T1.User_StatusId)
     FROM (
-        SELECT 
-            T.UserId AS User_UserId, 
-            T.Name AS User_Name, 
-            T.Login AS User_Login, 
-            T.StatusId AS User_StatusId, 
+        SELECT
+            T.UserId AS User_UserId,
+            T.Name AS User_Name,
+            T.Login AS User_Login,
+            T.StatusId AS User_StatusId,
             True AS _from0
         FROM XmlTestStoreContainer.User AS T
     ) AS T1");
@@ -273,10 +272,10 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing UserDetails
         XmlTest.UserDetails(T1.UserDetails_UserId, T1.UserDetails_Details)
     FROM (
-        SELECT 
-            T.UserId AS UserDetails_UserId, 
-            T.Details AS UserDetails_Details, 
-            True AS _from0, 
+        SELECT
+            T.UserId AS UserDetails_UserId,
+            T.Details AS UserDetails_Details,
+            True AS _from0,
             T.UserId AS [UserDetails_FK.UserDetails.UserId]
         FROM XmlTestStoreContainer.UserDetails AS T
     ) AS T1");
@@ -290,10 +289,10 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing UserToken
         XmlTest.UserToken(T1.UserToken_UserId, T1.UserToken_Token)
     FROM (
-        SELECT 
-            T.UserId AS UserToken_UserId, 
-            T.Token AS UserToken_Token, 
-            True AS _from0, 
+        SELECT
+            T.UserId AS UserToken_UserId,
+            T.Token AS UserToken_Token,
+            True AS _from0,
             T.UserId AS [UserToken_FK.UserToken.UserId]
         FROM XmlTestStoreContainer.UserToken AS T
     ) AS T1");
@@ -308,16 +307,16 @@ namespace Edm_EntityMappingGeneratedViews
         XmlTest.UserDetails_FK(T3.[UserDetails_FK.User], T3.[UserDetails_FK.UserDetails])
     FROM (
         SELECT -- Constructing User
-            CreateRef(XmlTestContext.User, row(T2.[UserDetails_FK.User.UserId]),XmlTest.User) AS [UserDetails_FK.User], 
+            CreateRef(XmlTestContext.User, row(T2.[UserDetails_FK.User.UserId]),XmlTest.User) AS [UserDetails_FK.User],
             T2.[UserDetails_FK.UserDetails]
         FROM (
             SELECT -- Constructing UserDetails
-                CreateRef(XmlTestContext.UserDetails, row(T1.[UserDetails_FK.UserDetails.UserId]),XmlTest.UserDetails) AS [UserDetails_FK.UserDetails], 
+                CreateRef(XmlTestContext.UserDetails, row(T1.[UserDetails_FK.UserDetails.UserId]),XmlTest.UserDetails) AS [UserDetails_FK.UserDetails],
                 T1.[UserDetails_FK.User.UserId]
             FROM (
-                SELECT 
-                    T.UserId AS [UserDetails_FK.User.UserId], 
-                    T.UserId AS [UserDetails_FK.UserDetails.UserId], 
+                SELECT
+                    T.UserId AS [UserDetails_FK.User.UserId],
+                    T.UserId AS [UserDetails_FK.UserDetails.UserId],
                     True AS _from0
                 FROM XmlTestStoreContainer.UserDetails AS T
             ) AS T1
@@ -334,16 +333,16 @@ namespace Edm_EntityMappingGeneratedViews
         XmlTest.UserToken_FK(T3.[UserToken_FK.User], T3.[UserToken_FK.UserToken])
     FROM (
         SELECT -- Constructing User
-            CreateRef(XmlTestContext.User, row(T2.[UserToken_FK.User.UserId]),XmlTest.User) AS [UserToken_FK.User], 
+            CreateRef(XmlTestContext.User, row(T2.[UserToken_FK.User.UserId]),XmlTest.User) AS [UserToken_FK.User],
             T2.[UserToken_FK.UserToken]
         FROM (
             SELECT -- Constructing UserToken
-                CreateRef(XmlTestContext.UserToken, row(T1.[UserToken_FK.UserToken.UserId]),XmlTest.UserToken) AS [UserToken_FK.UserToken], 
+                CreateRef(XmlTestContext.UserToken, row(T1.[UserToken_FK.UserToken.UserId]),XmlTest.UserToken) AS [UserToken_FK.UserToken],
                 T1.[UserToken_FK.User.UserId]
             FROM (
-                SELECT 
-                    T.UserId AS [UserToken_FK.User.UserId], 
-                    T.UserId AS [UserToken_FK.UserToken.UserId], 
+                SELECT
+                    T.UserId AS [UserToken_FK.User.UserId],
+                    T.UserId AS [UserToken_FK.UserToken.UserId],
                     True AS _from0
                 FROM XmlTestStoreContainer.UserToken AS T
             ) AS T1
@@ -359,9 +358,9 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing XmlTable
         [XmlTest.Store].XmlTable(T1.XmlTable_key, T1.[XmlTable.test_xml])
     FROM (
-        SELECT 
-            T.[key] AS XmlTable_key, 
-            T.test_xml AS [XmlTable.test_xml], 
+        SELECT
+            T.[key] AS XmlTable_key,
+            T.test_xml AS [XmlTable.test_xml],
             True AS _from0
         FROM XmlTestContext.XmlTable AS T
     ) AS T1");
@@ -375,9 +374,9 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing XmlTable
         XmlTest.XmlTable(T1.XmlTable_key, T1.[XmlTable.test_xml])
     FROM (
-        SELECT 
-            T.[key] AS XmlTable_key, 
-            T.test_xml AS [XmlTable.test_xml], 
+        SELECT
+            T.[key] AS XmlTable_key,
+            T.test_xml AS [XmlTable.test_xml],
             True AS _from0
         FROM XmlTestStoreContainer.XmlTable AS T
     ) AS T1");
@@ -391,11 +390,11 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing dispViews
         [XmlTest.Store].dispViews(T1.dispViews_ViewName, T1.dispViews_MdsIdPlatformId, T1.dispViews_DisplayName, T1.dispViews_ImageFileName)
     FROM (
-        SELECT 
-            T.ViewName AS dispViews_ViewName, 
-            T.MdsIdPlatformId AS dispViews_MdsIdPlatformId, 
-            T.DisplayName AS dispViews_DisplayName, 
-            T.ImageFileName AS dispViews_ImageFileName, 
+        SELECT
+            T.ViewName AS dispViews_ViewName,
+            T.MdsIdPlatformId AS dispViews_MdsIdPlatformId,
+            T.DisplayName AS dispViews_DisplayName,
+            T.ImageFileName AS dispViews_ImageFileName,
             True AS _from0
         FROM XmlTestContext.dispViews AS T
     ) AS T1");
@@ -409,11 +408,11 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing dispTargetViews
         [XmlTest.Store].dispTargetViews(T1.dispTargetViews_ViewName, T1.dispTargetViews_MdsIdPlatformId, T1.dispTargetViews_TargetViewName, T1.dispTargetViews_TargetMdsIdPlatformId)
     FROM (
-        SELECT 
-            Key(T.dispViews).ViewName AS dispTargetViews_ViewName, 
-            Key(T.dispViews).MdsIdPlatformId AS dispTargetViews_MdsIdPlatformId, 
-            Key(T.dispViews1).ViewName AS dispTargetViews_TargetViewName, 
-            Key(T.dispViews1).MdsIdPlatformId AS dispTargetViews_TargetMdsIdPlatformId, 
+        SELECT
+            Key(T.dispViews).ViewName AS dispTargetViews_ViewName,
+            Key(T.dispViews).MdsIdPlatformId AS dispTargetViews_MdsIdPlatformId,
+            Key(T.dispViews1).ViewName AS dispTargetViews_TargetViewName,
+            Key(T.dispViews1).MdsIdPlatformId AS dispTargetViews_TargetMdsIdPlatformId,
             True AS _from0
         FROM XmlTestContext.dispTargetViews AS T
     ) AS T1");
@@ -427,11 +426,11 @@ namespace Edm_EntityMappingGeneratedViews
     SELECT VALUE -- Constructing dispViews
         XmlTest.dispViews(T1.dispViews_ViewName, T1.dispViews_MdsIdPlatformId, T1.dispViews_DisplayName, T1.dispViews_ImageFileName)
     FROM (
-        SELECT 
-            T.ViewName AS dispViews_ViewName, 
-            T.MdsIdPlatformId AS dispViews_MdsIdPlatformId, 
-            T.DisplayName AS dispViews_DisplayName, 
-            T.ImageFileName AS dispViews_ImageFileName, 
+        SELECT
+            T.ViewName AS dispViews_ViewName,
+            T.MdsIdPlatformId AS dispViews_MdsIdPlatformId,
+            T.DisplayName AS dispViews_DisplayName,
+            T.ImageFileName AS dispViews_ImageFileName,
             True AS _from0
         FROM XmlTestStoreContainer.dispViews AS T
     ) AS T1");
@@ -446,18 +445,18 @@ namespace Edm_EntityMappingGeneratedViews
         XmlTest.dispTargetViews(T3.dispTargetViews_dispViews, T3.dispTargetViews_dispViews1)
     FROM (
         SELECT -- Constructing dispViews
-            CreateRef(XmlTestContext.dispViews, row(T2.dispTargetViews_dispViews_ViewName, T2.dispTargetViews_dispViews_MdsIdPlatformId),XmlTest.dispViews) AS dispTargetViews_dispViews, 
+            CreateRef(XmlTestContext.dispViews, row(T2.dispTargetViews_dispViews_ViewName, T2.dispTargetViews_dispViews_MdsIdPlatformId),XmlTest.dispViews) AS dispTargetViews_dispViews,
             T2.dispTargetViews_dispViews1
         FROM (
             SELECT -- Constructing dispViews1
-                CreateRef(XmlTestContext.dispViews, row(T1.dispTargetViews_dispViews1_ViewName, T1.dispTargetViews_dispViews1_MdsIdPlatformId),XmlTest.dispViews) AS dispTargetViews_dispViews1, 
+                CreateRef(XmlTestContext.dispViews, row(T1.dispTargetViews_dispViews1_ViewName, T1.dispTargetViews_dispViews1_MdsIdPlatformId),XmlTest.dispViews) AS dispTargetViews_dispViews1,
                 T1.dispTargetViews_dispViews_ViewName, T1.dispTargetViews_dispViews_MdsIdPlatformId
             FROM (
-                SELECT 
-                    T.ViewName AS dispTargetViews_dispViews_ViewName, 
-                    T.MdsIdPlatformId AS dispTargetViews_dispViews_MdsIdPlatformId, 
-                    T.TargetViewName AS dispTargetViews_dispViews1_ViewName, 
-                    T.TargetMdsIdPlatformId AS dispTargetViews_dispViews1_MdsIdPlatformId, 
+                SELECT
+                    T.ViewName AS dispTargetViews_dispViews_ViewName,
+                    T.MdsIdPlatformId AS dispTargetViews_dispViews_MdsIdPlatformId,
+                    T.TargetViewName AS dispTargetViews_dispViews1_ViewName,
+                    T.TargetMdsIdPlatformId AS dispTargetViews_dispViews1_MdsIdPlatformId,
                     True AS _from0
                 FROM XmlTestStoreContainer.dispTargetViews AS T
             ) AS T1

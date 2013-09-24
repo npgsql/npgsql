@@ -1,7 +1,7 @@
 /********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -250,7 +250,7 @@ namespace Npgsql.Designer
         {
           object ret;
           int prop = (int)__VSFPROPID.VSFPROPID_Caption;
-          
+
           code = frame.GetProperty(prop, out ret);
 
           code = frame.Show();

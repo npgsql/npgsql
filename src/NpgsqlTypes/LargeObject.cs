@@ -1,27 +1,27 @@
 /*-------------------------------------------------------------------------
- 
+
   LargeObject.cs
-      This class is a port of the class LargeObject.java implemented by 
+      This class is a port of the class LargeObject.java implemented by
       PostgreSQL Global Development Group
- 
+
   Copyright (c) 2004, Emiliano Necciari
   Original Code: Copyright (c) 2003, PostgreSQL Global Development Group
-  
+
   Note: (Francisco Figueiredo Jr.)
-  	Changed case of method names to conform to .Net names standard.
-  	Also changed type names to their true names. i.e. int -> Int32
- 
+      Changed case of method names to conform to .Net names standard.
+      Also changed type names to their true names. i.e. int -> Int32
+
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -34,30 +34,30 @@ using System;
 
 namespace NpgsqlTypes
 {
-	public class LargeObject
-	{
-		/*
+    public class LargeObject
+    {
+        /*
          * Indicates a seek from the begining of a file
          */
-		public const Int32 SEEK_SET = 0;
+        public const Int32 SEEK_SET = 0;
 
-		/*
+        /*
          * Indicates a seek from the current position
          */
-		public const Int32 SEEK_CUR = 1;
+        public const Int32 SEEK_CUR = 1;
 
-		/*
+        /*
          * Indicates a seek from the end of a file
          */
-		public const Int32 SEEK_END = 2;
+        public const Int32 SEEK_END = 2;
 
-		private readonly Fastpath fp; // Fastpath API to use
-		private readonly Int32 oid; // OID of this object
-		private readonly Int32 fd; // the descriptor of the open large object
+        private readonly Fastpath fp; // Fastpath API to use
+        private readonly Int32 oid; // OID of this object
+        private readonly Int32 fd; // the descriptor of the open large object
 
-		private Boolean closed = false; // true when we are closed
+        private Boolean closed = false; // true when we are closed
 
-		/*
+        /*
          * This opens a large object.
          *
          * <p>If the object does not exist, then an NpgsqlException is thrown.
@@ -70,46 +70,45 @@ namespace NpgsqlTypes
          * @see org.postgresql.largeobject.LargeObjectManager
          */
 
-		public LargeObject(Fastpath fp, Int32 oid, Int32 mode)
-		{
-			this.fp = fp;
-			this.oid = oid;
+        public LargeObject(Fastpath fp, Int32 oid, Int32 mode)
+        {
+            this.fp = fp;
+            this.oid = oid;
 
-			FastpathArg[] args = new FastpathArg[2];
-			args[0] = new FastpathArg(oid);
-			args[1] = new FastpathArg(mode);
-			this.fd = fp.GetInteger("lo_open", args);
-		}
+            FastpathArg[] args = new FastpathArg[2];
+            args[0] = new FastpathArg(oid);
+            args[1] = new FastpathArg(mode);
+            this.fd = fp.GetInteger("lo_open", args);
+        }
 
-
-		/*
+        /*
          * @return the OID of this LargeObject
          */
 
-		public Int32 GetOID()
-		{
-			return oid;
-		}
+        public Int32 GetOID()
+        {
+            return oid;
+        }
 
-		/*
+        /*
          * This method closes the object. You must not call methods in this
          * object after this is called.
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public void Close()
-		{
-			if (!closed)
-			{
-				// finally close
-				FastpathArg[] args = new FastpathArg[1];
-				args[0] = new FastpathArg(fd);
-				fp.FastpathCall("lo_close", false, args); // true here as we dont care!!
-				closed = true;
-			}
-		}
+        public void Close()
+        {
+            if (!closed)
+            {
+                // finally close
+                FastpathArg[] args = new FastpathArg[1];
+                args[0] = new FastpathArg(fd);
+                fp.FastpathCall("lo_close", false, args); // true here as we dont care!!
+                closed = true;
+            }
+        }
 
-		/*
+        /*
          * Reads some data from the object, and return as a byte[] array
          *
          * @param len number of bytes to read
@@ -117,41 +116,41 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public Byte[] Read(Int32 len)
-		{
-			// This is the original method, where the entire block (len bytes)
-			// is retrieved in one go.
-			FastpathArg[] args = new FastpathArg[2];
-			args[0] = new FastpathArg(fd);
-			args[1] = new FastpathArg(len);
-			return fp.GetData("loread", args);
+        public Byte[] Read(Int32 len)
+        {
+            // This is the original method, where the entire block (len bytes)
+            // is retrieved in one go.
+            FastpathArg[] args = new FastpathArg[2];
+            args[0] = new FastpathArg(fd);
+            args[1] = new FastpathArg(len);
+            return fp.GetData("loread", args);
 
-			// This version allows us to break this down Int32o 4k blocks
-			//if (len<=4048) {
-			//// handle as before, return the whole block in one go
-			//FastpathArg args[] = new FastpathArg[2];
-			//args[0] = new FastpathArg(fd);
-			//args[1] = new FastpathArg(len);
-			//return fp.getData("loread",args);
-			//} else {
-			//// return in 4k blocks
-			//byte[] buf=new byte[len];
-			//int off=0;
-			//while (len>0) {
-			//int bs=4048;
-			//len-=bs;
-			//if (len<0) {
-			//bs+=len;
-			//len=0;
-			//}
-			//read(buf,off,bs);
-			//off+=bs;
-			//}
-			//return buf;
-			//}
-		}
+            // This version allows us to break this down Int32o 4k blocks
+            //if (len<=4048) {
+            //// handle as before, return the whole block in one go
+            //FastpathArg args[] = new FastpathArg[2];
+            //args[0] = new FastpathArg(fd);
+            //args[1] = new FastpathArg(len);
+            //return fp.getData("loread",args);
+            //} else {
+            //// return in 4k blocks
+            //byte[] buf=new byte[len];
+            //int off=0;
+            //while (len>0) {
+            //int bs=4048;
+            //len-=bs;
+            //if (len<0) {
+            //bs+=len;
+            //len=0;
+            //}
+            //read(buf,off,bs);
+            //off+=bs;
+            //}
+            //return buf;
+            //}
+        }
 
-		/*
+        /*
          * Reads some data from the object into an existing array
          *
          * @param buf destination array
@@ -161,33 +160,33 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public Int32 Read(Byte[] buf, Int32 off, Int32 len)
-		{
-			Byte[] b = Read(len);
-			if (b.Length < len)
-			{
-				len = b.Length;
-			}
-			Array.Copy(b, 0, buf, off, len);
-			return len;
-		}
+        public Int32 Read(Byte[] buf, Int32 off, Int32 len)
+        {
+            Byte[] b = Read(len);
+            if (b.Length < len)
+            {
+                len = b.Length;
+            }
+            Array.Copy(b, 0, buf, off, len);
+            return len;
+        }
 
-		/*
+        /*
          * Writes an array to the object
          *
          * @param buf array to write
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public void Write(Byte[] buf)
-		{
-			FastpathArg[] args = new FastpathArg[2];
-			args[0] = new FastpathArg(fd);
-			args[1] = new FastpathArg(buf);
-			fp.FastpathCall("lowrite", false, args);
-		}
+        public void Write(Byte[] buf)
+        {
+            FastpathArg[] args = new FastpathArg[2];
+            args[0] = new FastpathArg(fd);
+            args[1] = new FastpathArg(buf);
+            fp.FastpathCall("lowrite", false, args);
+        }
 
-		/*
+        /*
          * Writes some data from an array to the object
          *
          * @param buf destination array
@@ -196,15 +195,15 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public void Write(Byte[] buf, Int32 off, Int32 len)
-		{
-			Byte[] data = new Byte[len];
+        public void Write(Byte[] buf, Int32 off, Int32 len)
+        {
+            Byte[] data = new Byte[len];
 
-			Array.Copy(buf, off, data, 0, len);
-			Write(data);
-		}
+            Array.Copy(buf, off, data, 0, len);
+            Write(data);
+        }
 
-		/*
+        /*
          * Sets the current position within the object.
          *
          * <p>This is similar to the fseek() call in the standard C library. It
@@ -215,16 +214,16 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public void Seek(Int32 pos, Int32 refi)
-		{
-			FastpathArg[] args = new FastpathArg[3];
-			args[0] = new FastpathArg(fd);
-			args[1] = new FastpathArg(pos);
-			args[2] = new FastpathArg(refi);
-			fp.FastpathCall("lo_lseek", false, args);
-		}
+        public void Seek(Int32 pos, Int32 refi)
+        {
+            FastpathArg[] args = new FastpathArg[3];
+            args[0] = new FastpathArg(fd);
+            args[1] = new FastpathArg(pos);
+            args[2] = new FastpathArg(refi);
+            fp.FastpathCall("lo_lseek", false, args);
+        }
 
-		/*
+        /*
          * Sets the current position within the object.
          *
          * <p>This is similar to the fseek() call in the standard C library. It
@@ -234,24 +233,24 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public void Seek(Int32 pos)
-		{
-			Seek(pos, SEEK_SET);
-		}
+        public void Seek(Int32 pos)
+        {
+            Seek(pos, SEEK_SET);
+        }
 
-		/*
+        /*
          * @return the current position within the object
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public Int32 Tell()
-		{
-			FastpathArg[] args = new FastpathArg[1];
-			args[0] = new FastpathArg(fd);
-			return fp.GetInteger("lo_tell", args);
-		}
+        public Int32 Tell()
+        {
+            FastpathArg[] args = new FastpathArg[1];
+            args[0] = new FastpathArg(fd);
+            return fp.GetInteger("lo_tell", args);
+        }
 
-		/*
+        /*
          * This method is inefficient, as the only way to find out the size of
          * the object is to seek to the end, record the current position, then
          * return to the original position.
@@ -262,13 +261,13 @@ namespace NpgsqlTypes
          * @exception NpgsqlException if a database-access error occurs.
          */
 
-		public Int32 Size()
-		{
-			Int32 cp = Tell();
-			Seek(0, SEEK_END);
-			Int32 sz = Tell();
-			Seek(cp, SEEK_SET);
-			return sz;
-		}
-	}
+        public Int32 Size()
+        {
+            Int32 cp = Tell();
+            Seek(0, SEEK_END);
+            Int32 sz = Tell();
+            Seek(cp, SEEK_SET);
+            return sz;
+        }
+    }
 }

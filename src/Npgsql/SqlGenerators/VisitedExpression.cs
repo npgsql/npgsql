@@ -15,8 +15,8 @@ using System.Data;
 
 namespace Npgsql.SqlGenerators
 {
-	internal abstract class VisitedExpression
-	{
+    internal abstract class VisitedExpression
+    {
         protected VisitedExpression()
         {
             ExpressionList = new List<VisitedExpression>();
@@ -58,7 +58,7 @@ namespace Npgsql.SqlGenerators
         {
             return ExpressionList.Aggregate(Enumerable.Empty<PropertyExpression>(), (list, ve) => list.Concat(ve.GetAccessedProperties()));
         }
-	}
+    }
 
     internal class LiteralExpression : VisitedExpression
     {

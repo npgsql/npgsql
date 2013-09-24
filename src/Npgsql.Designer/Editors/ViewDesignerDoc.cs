@@ -1,7 +1,7 @@
 ﻿/********************************************************
  * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
- * 
+ *
  * Released to the public domain, use at your own risk!
  ********************************************************/
 
@@ -162,7 +162,7 @@ namespace Npgsql.Designer.Editors
       {
         if (_view != null)
           return _view.Name;
-        else 
+        else
         return base.Name;
       }
       set
@@ -397,7 +397,7 @@ namespace Npgsql.Designer.Editors
         _qbsql = hwnd;
         return false;
       }
-      
+
       EnumChildWindows(hwnd, new EnumWindowsCallback(EnumWindows), IntPtr.Zero);
 
       return true;
@@ -436,7 +436,6 @@ namespace Npgsql.Designer.Editors
         }
       }
 
-
       if (_qbole != null) return _qbole.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
 
       return (int)(Microsoft.VisualStudio.OLE.Interop.Constants.OLECMDERR_E_NOTSUPPORTED);
@@ -454,9 +453,8 @@ namespace Npgsql.Designer.Editors
         }
       }
 
-
       int retval = (int)(Microsoft.VisualStudio.OLE.Interop.Constants.OLECMDERR_E_NOTSUPPORTED);
-      
+
       if (_qbole != null)
         retval = _qbole.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
 
@@ -465,7 +463,7 @@ namespace Npgsql.Designer.Editors
         // 0x83 -- show SQL pane
         // 0x84 -- show diagram pane
         // 0x0f --
-        // 0x10 -- 
+        // 0x10 --
         // 0x1a --
         // 0xc9 -- execute SQL
         // 0x86 -- show criteria pane

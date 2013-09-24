@@ -13,19 +13,18 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
 
 using System;
 using System.Collections.Generic;
@@ -101,7 +100,7 @@ namespace Npgsql
         public void TestNotify(NpgsqlConnector context)
         {
             //ZA  Hnotifytest CNOTIFY Z
-            //Qlisten notifytest;notify notifytest; 
+            //Qlisten notifytest;notify notifytest;
             Stream stm = context.Stream;
 //            string uuidString = "uuid" + Guid.NewGuid().ToString("N");
             string uuidString = string.Format("uuid{0:N}", Guid.NewGuid());
@@ -286,7 +285,6 @@ namespace Npgsql
             get { throw new InvalidOperationException("Internal Error! " + this); }
         }
 
-
         public virtual void Close(NpgsqlConnector context)
         {
             try
@@ -361,7 +359,7 @@ namespace Npgsql
             // Process commandTimeout behavior.
 
             if ((context.Mediator.CommandTimeout > 0) &&
-				    (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
+                    (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
             {
                 // If timeout occurs when establishing the session with server then
                 // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
@@ -397,9 +395,9 @@ namespace Npgsql
                 default:
                     throw new NpgsqlException(resman.GetString("Exception_UnknownProtocol"));
             }
-            
+
             }
-            
+
             catch(ThreadAbortException)
             {
                 try
@@ -408,45 +406,44 @@ namespace Npgsql
                     context.Close();
                 }
                 catch {}
-                
+
                 throw;
             }
-                
+
         }
 
+        /// <summary>
+        /// Checks for context socket availability.
+        /// Socket.Poll supports integer as microseconds parameter.
+        /// This limits the usable command timeout value
+        /// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
+        /// In order to bypass this limit, the availability of
+        /// the socket is checked in 2,147 seconds cycles
+        /// </summary>
+        /// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
+        /// <param name="context">Context.</param>
+        /// <param name="selectMode">Select mode.</param>
+        internal bool CheckForContextSocketAvailability (NpgsqlConnector context, SelectMode selectMode)
+        {
+            /* Socket.Poll supports integer as microseconds parameter.
+             * This limits the usable command timeout value
+             * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
+             */
+            const int limitOfSeconds = 2147;
 
-		/// <summary>
-		/// Checks for context socket availability.
-		/// Socket.Poll supports integer as microseconds parameter.
-		/// This limits the usable command timeout value
-		/// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
-		/// In order to bypass this limit, the availability of
-		/// the socket is checked in 2,147 seconds cycles
-		/// </summary>
-		/// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
-		/// <param name="context">Context.</param>
-		/// <param name="selectMode">Select mode.</param>
-		internal bool CheckForContextSocketAvailability (NpgsqlConnector context, SelectMode selectMode)
-		{
-			/* Socket.Poll supports integer as microseconds parameter.
-			 * This limits the usable command timeout value
-			 * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
-			 */
-			const int limitOfSeconds = 2147;
-			
-			bool socketPoolResponse = false;
-			int secondsToWait = context.Mediator.CommandTimeout;
-			
-			/* In order to bypass this limit, the availability of
-			 * the socket is checked in 2,147 seconds cycles
-			 */
-			while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
-				socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
-				secondsToWait -= limitOfSeconds;
-			}
-			
-			return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
-		}
+            bool socketPoolResponse = false;
+            int secondsToWait = context.Mediator.CommandTimeout;
+
+            /* In order to bypass this limit, the availability of
+             * the socket is checked in 2,147 seconds cycles
+             */
+            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
+                socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
+                secondsToWait -= limitOfSeconds;
+            }
+
+            return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
+        }
 
         protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_2(NpgsqlConnector context)
         {
@@ -489,7 +486,6 @@ namespace Npgsql
 
                             break;
 
-
                         case BackEndMessageCode.AuthenticationRequest:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "AuthenticationRequest");
                             AuthenticationRequestType authType = (AuthenticationRequestType) PGUtil.ReadInt32(stream);
@@ -511,9 +507,7 @@ namespace Npgsql
                                     // 1. md5-hashed with the username as salt
                                     // 2. md5-hashed again with the salt we get from the backend
 
-
                                     MD5 md5 = MD5.Create();
-
 
                                     // 1.
                                     byte[] passwd = context.Password;
@@ -524,7 +518,6 @@ namespace Npgsql
                                     passwd.CopyTo(crypt_buf, 0);
                                     saltUserName.CopyTo(crypt_buf, passwd.Length);
 
-
                                     StringBuilder sb = new StringBuilder();
                                     byte[] hashResult = md5.ComputeHash(crypt_buf);
                                     foreach (byte b in hashResult)
@@ -532,17 +525,14 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-
                                     String prehash = sb.ToString();
 
                                     byte[] prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
-
 
                                     byte[] saltServer = new byte[4];
                                     stream.Read(saltServer, 0, 4);
                                     // Send the PasswordPacket.
                                     ChangeState(context, NpgsqlStartupState.Instance);
-
 
                                     // 2.
 
@@ -732,7 +722,7 @@ namespace Npgsql
 
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "AuthenticationRequest");
 
-                            // Get the length in case we're getting AuthenticationGSSContinue 
+                            // Get the length in case we're getting AuthenticationGSSContinue
                             int authDataLength = PGUtil.ReadInt32(stream) - 8;
 
                             AuthenticationRequestType authType = (AuthenticationRequestType) PGUtil.ReadInt32(stream);
@@ -757,9 +747,7 @@ namespace Npgsql
                                     // 1. md5-hashed with the username as salt
                                     // 2. md5-hashed again with the salt we get from the backend
 
-
                                     MD5 md5 = MD5.Create();
-
 
                                     // 1.
                                     byte[] passwd = context.Password;
@@ -770,7 +758,6 @@ namespace Npgsql
                                     passwd.CopyTo(crypt_buf, 0);
                                     saltUserName.CopyTo(crypt_buf, passwd.Length);
 
-
                                     StringBuilder sb = new StringBuilder();
                                     byte[] hashResult = md5.ComputeHash(crypt_buf);
                                     foreach (byte b in hashResult)
@@ -778,17 +765,14 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-
                                     String prehash = sb.ToString();
 
                                     byte[] prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
                                     crypt_buf = new byte[prehashbytes.Length + 4];
 
-
                                     stream.Read(crypt_buf, prehashbytes.Length, 4);
                                     // Send the PasswordPacket.
                                     ChangeState(context, NpgsqlStartupState.Instance);
-
 
                                     // 2.
                                     prehashbytes.CopyTo(crypt_buf, 0);
@@ -822,7 +806,6 @@ namespace Npgsql
                                             throw new Exception();
                                         }
                                     }
-
 
                                 case AuthenticationRequestType.AuthenticationGSSContinue:
                                     {
@@ -893,7 +876,6 @@ namespace Npgsql
                             NpgsqlBackEndKeyData backend_keydata = new NpgsqlBackEndKeyData(context.BackendProtocolVersion, stream);
                             context.BackEndKeyData = backend_keydata;
 
-
                             // Wait for ReadForQuery message
                             break;
 
@@ -941,7 +923,7 @@ namespace Npgsql
 
                             if (parameterStatus.Parameter == "server_version")
                             {
-                                // Deal with this here so that if there are 
+                                // Deal with this here so that if there are
                                 // changes in a future backend version, we can handle it here in the
                                 // protocol handler and leave everybody else put of it.
                                 string versionString = parameterStatus.ParameterValue.Trim();
@@ -1014,7 +996,6 @@ namespace Npgsql
             }
         }
 
-
         private static NpgsqlCopyFormat ReadCopyHeader(Stream stream)
         {
             byte copyFormat = (byte) stream.ReadByte();
@@ -1046,7 +1027,7 @@ namespace Npgsql
                     _rowsAffected = rowsAffected;
                 else
                     _rowsAffected = null;
-                
+
             }
             _lastInsertedOID = (tokens.Length > 2 && tokens[0].Trim().ToUpperInvariant() == "INSERT")
                                    ? long.Parse(tokens[1])
@@ -1083,9 +1064,9 @@ namespace Npgsql
     /// <summary>
     /// Marker interface which identifies a class which may take possession of a stream for the duration of
     /// it's lifetime (possibly temporarily giving that possession to another class for part of that time.
-    /// 
+    ///
     /// It inherits from IDisposable, since any such class must make sure it leaves the stream in a valid state.
-    /// 
+    ///
     /// The most important such class is that compiler-generated from ProcessBackendResponsesEnum. Of course
     /// we can't make that inherit from this interface, alas.
     /// </summary>

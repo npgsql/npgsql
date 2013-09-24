@@ -11,13 +11,13 @@
 // documentation for any purpose, without fee, and without a written
 // agreement is hereby granted, provided that the above copyright notice
 // and this paragraph and the following two paragraphs appear in all copies.
-// 
+//
 // IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
 // FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 // INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 // DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 // INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -49,33 +49,32 @@ namespace NpgsqlTypes
             _x = x;
             _y = y;
         }
-        
+
         public Single X
         {
             get
             {
                 return _x;
             }
-            
+
             set
             {
                 _x = value;
             }
         }
-        
+
         public Single Y
         {
             get
             {
                 return _y;
             }
-            
+
             set
             {
                 _y = value;
             }
         }
-
 
         public bool Equals(NpgsqlPoint other)
         {
@@ -105,10 +104,10 @@ namespace NpgsqlTypes
 
     public struct NpgsqlBox : IEquatable<NpgsqlBox>
     {
-        
+
         private NpgsqlPoint _upperRight;
         private NpgsqlPoint _lowerLeft;
-        
+
         public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
         {
             _upperRight = upperRight;
@@ -126,28 +125,28 @@ namespace NpgsqlTypes
             {
                 return _upperRight;
             }
-            
+
             set
             {
                 _upperRight = value;
             }
-            
+
         }
-        
+
         public NpgsqlPoint LowerLeft
         {
             get
             {
                 return _lowerLeft;
             }
-            
+
             set
             {
                 _lowerLeft = value;
             }
-            
+
         }
-        
+
         public float Left
         {
             get { return LowerLeft.X; }
@@ -211,7 +210,6 @@ namespace NpgsqlTypes
                 PGUtil.RotateShift(LowerLeft.GetHashCode(), sizeof (int)*3/4);
         }
     }
-
 
     /// <summary>
     /// Represents a PostgreSQL Line Segment type.
@@ -278,7 +276,7 @@ namespace NpgsqlTypes
             : this(points, false)
         {
         }
-        
+
         public NpgsqlPath(NpgsqlPoint[] points) : this((IEnumerable<NpgsqlPoint>)points, false)
         {
         }
@@ -299,14 +297,14 @@ namespace NpgsqlTypes
             : this(capacity, false)
         {
         }
-        
+
         public bool Open
         {
             get
             {
                 return _open;
             }
-            
+
             set
             {
                 _open = value;
@@ -435,7 +433,7 @@ namespace NpgsqlTypes
         {
             _points = new List<NpgsqlPoint>(points);
         }
-        
+
         public NpgsqlPolygon(NpgsqlPoint[] points) : this ((IEnumerable<NpgsqlPoint>) points)
         {
         }
@@ -598,7 +596,6 @@ namespace NpgsqlTypes
         }
     }
 
-
     /// <summary>
     /// Represents a PostgreSQL inet type.
     /// </summary>
@@ -645,7 +642,7 @@ namespace NpgsqlTypes
                 return string.Format("{0}/{1}", addr, mask);
             }
                 return addr.ToString();
-            
+
         }
 
         public static explicit operator IPAddress(NpgsqlInet x)
@@ -655,13 +652,13 @@ namespace NpgsqlTypes
                 throw new InvalidCastException("Cannot cast CIDR network to address");
             }
                 return x.addr;
-            
+
         }
-        
+
         public static implicit operator NpgsqlInet(IPAddress ipaddress)
         {
             return new NpgsqlInet(ipaddress);
-            
+
         }
 
         public bool Equals(NpgsqlInet other)
@@ -703,7 +700,7 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="macAddr">The macAddr parameter must contain a string that can only consist of numbers
         /// and upper-case letters as hexadecimal digits. (See PhysicalAddress.Parse method on MSDN)</param>
