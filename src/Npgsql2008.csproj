@@ -76,25 +76,45 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Npgsql\Npgsql.snk" />
+    <EmbeddedResource Include="Npgsql\Messages.de.resx">
+      <DependentUpon>Messages.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\Messages.ja.resx">
+      <DependentUpon>Messages.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\Messages.resx">
+      <DependentUpon>Messages.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\Messages.zh-CN.resx">
+      <DependentUpon>Messages.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.msl" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.ssdl" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoBackend.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoNative.cs" />
+    <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlNativeToBackendOptions.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvBackendToNative.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvNativeToBackend.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
+    <Compile Include="NpgsqlTypes\FastConverter.cs" />
     <Compile Include="NpgsqlTypes\FastPath.cs" />
     <Compile Include="NpgsqlTypes\FastPathArg.cs" />
     <Compile Include="NpgsqlTypes\LargeObject.cs" />
     <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeConverters.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Npgsql\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
     <Compile Include="Npgsql\BackendEncoding.cs" />
     <Compile Include="Npgsql\ASCIIBytes.cs" />
+    <Compile Include="Npgsql\Messages.cs" />
     <Compile Include="Npgsql\HashAlgorithm.cs" />
     <Compile Include="Npgsql\MD5.cs" />
     <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
@@ -168,22 +188,6 @@
     <Compile Include="Npgsql\SSPIHandler.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.de.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.ja.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.zh-CN.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlClosedState.resx">
       <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
       <SubType>Designer</SubType>
