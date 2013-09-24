@@ -982,11 +982,11 @@ namespace NpgsqlTypes
         internal static byte[] ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             /*if (NativeData.GetType() == typeof(Rectangle)) {
-Rectangle R = (Rectangle)NativeData;
-return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
-} else if (NativeData.GetType() == typeof(RectangleF)) {
-RectangleF R = (RectangleF)NativeData;
-return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
+                Rectangle       R = (Rectangle)NativeData;
+                return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
+            } else if (NativeData.GetType() == typeof(RectangleF)) {
+                RectangleF      R = (RectangleF)NativeData;
+                return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
 
             if (NativeData is NpgsqlBox)
             {
