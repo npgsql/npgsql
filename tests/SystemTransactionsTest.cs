@@ -236,6 +236,6 @@ namespace NpgsqlTests
 
     public class SystemTransactionsTestV2 : SystemTransactionsTest
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }

@@ -422,7 +422,7 @@ namespace NpgsqlTests
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
         public override void DoInsertWithCommandBuilderCaseSensitive()
         {
             //Not possible with V2?
