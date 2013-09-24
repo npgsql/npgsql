@@ -24,8 +24,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-// This file provides implementations of PostgreSQL specific data types that cannot
-// be mapped to standard .NET classes.
 using System;
 using System.IO;
 
