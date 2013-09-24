@@ -136,6 +136,7 @@ namespace Npgsql
         // Used when the connection is closed but an TransactionScope is still active
         // (the actual close is postponed until the scope ends)
         private bool _postponingClose;
+        private bool _postponingDispose;
 
         // Strong-typed ConnectionString values
         private NpgsqlConnectionStringBuilder settings;
@@ -730,7 +731,6 @@ namespace Npgsql
             connector = null;
 
             this.OnStateChange (new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
-
         }
 
         /// <summary>
@@ -740,7 +740,9 @@ namespace Npgsql
         internal void PromotableLocalTransactionEnded()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
-            if (_postponingClose)
+            if (_postponingDispose)
+                Dispose(true);
+            else if (_postponingClose)
                 ReallyClose();
         }
 
@@ -779,10 +781,16 @@ namespace Npgsql
             if (disposed)
                 return;
 
+            _postponingDispose = false;
             if (disposing)
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
                 Close();
+                if (_postponingClose)
+                {
+                    _postponingDispose = true;
+                    return;
+                }
             }
 
             base.Dispose(disposing);
