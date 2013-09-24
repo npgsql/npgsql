@@ -977,7 +977,7 @@ namespace NpgsqlTests
     [TestFixture]
     public class DataReaderTestsV2 : DataReaderTests
     {
-        protected override string ConnectionString { get { return CONN_STRING_V2; } }
+        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
         public override void DoIsIdentityMetadataSupport()
         {
             //Not possible with V2?

@@ -45,11 +45,11 @@ namespace NpgsqlTests
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures (e.g. for protocol v2)
         /// </summary>
-        protected virtual string ConnectionString { get { return CONN_STRING_V3; } }
+        protected virtual string ConnectionString { get { return CONN_STRING_BASE + ";protocol=" + BACKEND_PROTOCOL_VERSION; } }
 
         private const string CONN_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
-        protected const string CONN_STRING_V3 = CONN_STRING_BASE + ";protocol=3";
-        protected const string CONN_STRING_V2 = CONN_STRING_BASE + ";protocol=2";
+
+        protected virtual int BACKEND_PROTOCOL_VERSION { get { return 3; } }
 
         /// <summary>
         /// Indicates whether the database schema has already been created in this unit test session.
