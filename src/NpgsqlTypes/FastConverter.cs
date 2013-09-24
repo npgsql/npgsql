@@ -95,6 +95,19 @@ namespace NpgsqlTypes
             return (byte)(b1 | b2);
         }
 
+        public static byte ToByte(byte[] str, int index)
+        {
+            byte b1 = LookupTableHigh[str[index]];
+            if (b1 == 255)
+                throw new IOException(string.Format("Expected a hex character, got {0}", str[index]));
+
+            byte b2 = LookupTableLow[str[++index]];
+            if (b2 == 255)
+                throw new IOException(string.Format("Expected a hex character, got {0}", str[index]));
+
+            return (byte)(b1 | b2);
+        }
+
 #if UNSAFE
         public static unsafe byte ToByte(char* ch)
         {
@@ -108,6 +121,19 @@ namespace NpgsqlTypes
           byte b2 = LookupTableLow[*tmp];
           if (b2 == 255)
             throw new IOException("Expected a hex character, got " + 'c');
+
+          return (byte)(b1 | b2);
+        }
+
+        public static unsafe byte ToByte(byte* ch)
+        {
+          byte b1 = LookupTableHigh[*ch];
+          if (b1 == 255)
+            throw new IOException(string.Format("Expected a hex character, got {0}", *ch));
+
+          byte b2 = LookupTableLow[*(ch + 1)];
+          if (b2 == 255)
+            throw new IOException(string.Format("Expected a hex character, got {0}", *(ch + 1)));
 
           return (byte)(b1 | b2);
         }
