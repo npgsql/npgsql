@@ -1,7 +1,7 @@
 // NpgsqlTypes.NpgsqlTypeConverters.cs
 //
 // Author:
-//    Glen Parker <glenebob@nwlink.com>
+//    Glen Parker <glenebob@gmail.com>
 //
 //    Copyright (C) 2004 The Npgsql Development Team
 //    npgsql-general@gborg.postgresql.org
@@ -220,32 +220,30 @@ namespace NpgsqlTypes
         /// <summary>
         /// Byte array from bytea encoded as ASCII text, escaped or hex format.
         /// </summary>
-        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
-            char[] charBuffer = BackendEncoding.UTF8Encoding.GetChars(bBackendData);
-            Int32 byteALength = charBuffer.Length;
+            Int32 byteALength = BackendData.Length;
             Int32 byteAPosition = 0;
 
-            if (charBuffer[0] == '\\' && charBuffer[1] == 'x')
+            if (byteALength > 2 && BackendData[0] == (byte)ASCIIBytes.BackSlash && BackendData[1] == (byte)ASCIIBytes.x)
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
-                byte[] result = new byte[byteALength / 2];
+                byte[] result = new byte[(byteALength - 2) / 2];
 #if UNSAFE
                 unsafe
                 {
-                    fixed (char* chr = &charBuffer[0])
+                    fixed (byte* pBackendData = &BackendData[2])
                     {
-                        fixed (byte* p = &result[0])
+                        fixed (byte* pResult = &result[0])
                         {
-                            byte* ptr = p;
-                            char* ch = chr;
-                            ch += 2;
+                            byte* pBackendData2 = pBackendData;
+                            byte* pResult2 = pResult;
                             
-                            for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                            for (byteAPosition = 2 ; byteAPosition < byteALength ; byteAPosition += 2)
                             {
-                                *ptr = FastConverter.ToByte(ch);
-                                ptr++;
-                                ch += 2;
+                                *pResult2 = FastConverter.ToByte(pBackendData2);
+                                pBackendData2 += 2;
+                                pResult2++;
                             }
                         }
                     }
@@ -253,9 +251,9 @@ namespace NpgsqlTypes
 #else
                 Int32 k = 0;
 
-                for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                for (byteAPosition = 2 ; byteAPosition < byteALength ; byteAPosition += 2)
                 {
-                    result[k] = FastConverter.ToByte(charBuffer, byteAPosition);
+                    result[k] = FastConverter.ToByte(BackendData, byteAPosition);
                     k++;
                 }
 #endif
@@ -264,8 +262,10 @@ namespace NpgsqlTypes
             }
             else
             {
+                // TODO
+                // Optimize this path to operate on the byte[] as well.
                 Int32 octalValue = 0;
-                string strBackendData = new string(charBuffer);
+                string strBackendData = BackendEncoding.UTF8Encoding.GetString(BackendData);
                 MemoryStream ms = new MemoryStream();
 
                 while (byteAPosition < byteALength)
