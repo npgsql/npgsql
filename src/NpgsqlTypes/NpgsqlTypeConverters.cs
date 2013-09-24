@@ -1,11 +1,11 @@
 // NpgsqlTypes.NpgsqlTypesHelper.cs
 //
 // Author:
-//    Glen Parker <glenebob@nwlink.com>
+// Glen Parker <glenebob@nwlink.com>
 //
-//    Copyright (C) 2004 The Npgsql Development Team
-//    npgsql-general@gborg.postgresql.org
-//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
+// Copyright (C) 2004 The Npgsql Development Team
+// npgsql-general@gborg.postgresql.org
+// http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -40,14 +40,14 @@ namespace NpgsqlTypes
 {
     internal class ASCIIByteArrays
     {
-        internal static readonly byte[] Empty         = new byte[0];
-        internal static readonly byte[] NULL          = BackendEncoding.UTF8Encoding.GetBytes("NULL");
-        internal static readonly byte[] Byte_0        = BackendEncoding.UTF8Encoding.GetBytes("0");
-        internal static readonly byte[] Byte_1        = BackendEncoding.UTF8Encoding.GetBytes("1");
-        internal static readonly byte[] TRUE          = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
-        internal static readonly byte[] FALSE         = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
-        internal static readonly byte[] INFINITY      = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
-        internal static readonly byte[] NEG_INFINITY  = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
+        internal static readonly byte[] Empty = new byte[0];
+        internal static readonly byte[] NULL = BackendEncoding.UTF8Encoding.GetBytes("NULL");
+        internal static readonly byte[] Byte_0 = BackendEncoding.UTF8Encoding.GetBytes("0");
+        internal static readonly byte[] Byte_1 = BackendEncoding.UTF8Encoding.GetBytes("1");
+        internal static readonly byte[] TRUE = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
+        internal static readonly byte[] FALSE = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
+        internal static readonly byte[] INFINITY = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
+        internal static readonly byte[] NEG_INFINITY = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
     }
 
     /// <summary>
@@ -87,7 +87,7 @@ namespace NpgsqlTypes
         }
 
         internal NativeToBackendTypeConverterOptions(bool useConformantStrings, bool supports_E_StringPrefix, bool supportsHexByteFormat, NpgsqlBackendTypeMapping oidToNameMapping)
-        : this(false, useConformantStrings, supports_E_StringPrefix, supportsHexByteFormat, oidToNameMapping)
+            : this(false, useConformantStrings, supports_E_StringPrefix, supportsHexByteFormat, oidToNameMapping)
         {
         }
 
@@ -222,40 +222,67 @@ namespace NpgsqlTypes
         /// </summary>
         internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
-            string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-               Int32 octalValue = 0;
+            char[] charBuffer = BackendEncoding.UTF8Encoding.GetChars(bBackendData);
+            Int32 byteALength = charBuffer.Length;
             Int32 byteAPosition = 0;
-            Int32 byteAStringLength = BackendData.Length;
-            MemoryStream ms = new MemoryStream();
 
-            if (BackendData.StartsWith("\\x"))
+            if (charBuffer[0] == '\\' && charBuffer[1] == 'x')
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
-                for (byteAPosition = 2; byteAPosition < byteAStringLength; byteAPosition += 2)
+                byte[] result = new byte[byteALength / 2];
+#if UNSAFE
+                unsafe
                 {
-                    byte value = Convert.ToByte(BackendData.Substring(byteAPosition, 2), 16);
-                    ms.WriteByte(value);
+                    fixed (char* chr = &charBuffer[0])
+                    {
+                        fixed (byte* p = &result[0])
+                        {
+                            byte* ptr = p;
+                            char* ch = chr;
+                            ch += 2;
+                            
+                            for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                            {
+                                *ptr = FastConverter.ToByte(ch);
+                                ptr++;
+                                ch += 2;
+                            }
+                        }
+                    }
                 }
-            }
+#else
+                Int32 k = 0;
 
+                for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                {
+                    result[k] = FastConverter.ToByte(charBuffer, byteAPosition);
+                    k++;
+                }
+#endif
+
+                return result;
+            }
             else
             {
+                Int32 octalValue = 0;
+                string strBackendData = new string(charBuffer);
+                MemoryStream ms = new MemoryStream();
 
-                while (byteAPosition < byteAStringLength)
+                while (byteAPosition < byteALength)
                 {
                     // The IsDigit is necessary in case we receive a \ as the octal value and not
                     // as the indicator of a following octal value in decimal format.
                     // i.e.: \201\301P\A
-                    if (BackendData[byteAPosition] == '\\')
+                    if (strBackendData[byteAPosition] == '\\')
                     {
-                        if (byteAPosition + 1 == byteAStringLength)
+                        if (byteAPosition + 1 == byteALength)
                         {
                             octalValue = '\\';
                             byteAPosition++;
                         }
-                        else if (Char.IsDigit(BackendData[byteAPosition + 1]))
+                        else if (Char.IsDigit(strBackendData[byteAPosition + 1]))
                         {
-                            octalValue = Convert.ToByte(BackendData.Substring(byteAPosition + 1, 3), 8);
+                            octalValue = Convert.ToByte(strBackendData.Substring(byteAPosition + 1, 3), 8);
                             //octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
                             //octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
                             //octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
@@ -269,15 +296,16 @@ namespace NpgsqlTypes
                     }
                     else
                     {
-                        octalValue = (Byte)BackendData[byteAPosition];
+                        octalValue = (Byte)strBackendData[byteAPosition];
                         byteAPosition++;
                     }
 
+
                     ms.WriteByte((Byte)octalValue);
                 }
-            }
 
-            return ms.ToArray();
+                return ms.ToArray();
+            }
         }
 
         /// <summary>
@@ -344,7 +372,7 @@ namespace NpgsqlTypes
                 return false;
             }
 
-            for (int i = 0 ; i < l.Length ; i++)
+            for (int i = 0; i < l.Length; i++)
             {
                 if (l[i] != r[i])
                 {
@@ -464,7 +492,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
-            if (! options.SupportsHexByteFormat)
+            if (!options.SupportsHexByteFormat)
             {
                 return ByteArrayToByteaTextEscaped(NativeData, options.UseConformantStrings);
             }
@@ -516,7 +544,7 @@ namespace NpgsqlTypes
             byte[] ret = new byte[byteArray.Length * 2 + (UseConformantStrings ? 2 : 3)];
             int i = 0;
 
-            for ( ; i < (UseConformantStrings ? 1 : 2) ; )
+            for (; i < (UseConformantStrings ? 1 : 2); )
             {
                 ret[i++] = (byte)ASCIIBytes.BackSlash;
             }
@@ -954,11 +982,11 @@ namespace NpgsqlTypes
         internal static byte[] ToBox(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
             /*if (NativeData.GetType() == typeof(Rectangle)) {
-                Rectangle       R = (Rectangle)NativeData;
-                return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
-            } else if (NativeData.GetType() == typeof(RectangleF)) {
-                RectangleF      R = (RectangleF)NativeData;
-                return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
+Rectangle R = (Rectangle)NativeData;
+return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);
+} else if (NativeData.GetType() == typeof(RectangleF)) {
+RectangleF R = (RectangleF)NativeData;
+return String.Format(CultureInfo.InvariantCulture, "({0},{1}),({2},{3})", R.Left, R.Top, R.Left + R.Width, R.Top + R.Height);*/
 
             if (NativeData is NpgsqlBox)
             {
