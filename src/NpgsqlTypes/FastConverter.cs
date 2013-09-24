@@ -31,7 +31,7 @@ namespace NpgsqlTypes
 {
     internal class FastConverter
     {
-        private static readonly byte[] LookupTableLow = new byte[] {
+        private static readonly byte[] HexFormatLookupTableLow = new byte[] {
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -41,7 +41,7 @@ namespace NpgsqlTypes
           0xff, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
         };
-        private static readonly byte[] LookupTableHigh = new byte[] {
+        private static readonly byte[] HexFormatLookupTableHigh = new byte[] {
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -51,30 +51,40 @@ namespace NpgsqlTypes
           0xff, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
         };
+        private static readonly byte[] EscapeFormatLookupTable = new byte[] {
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        };
 
-        private static byte LookupLow(char c)
+        private static byte LookupLowHexFormat(char c)
         {
-            var b = LookupTableLow[c];
+            var b = HexFormatLookupTableLow[c];
             if (b == 255)
                 throw new IOException("Expected a hex character, got " + c);
             return b;
         }
 
-        private static byte LookupHigh(char c)
+        private static byte LookupHighHexFormat(char c)
         {
-            var b = LookupTableHigh[c];
+            var b = HexFormatLookupTableHigh[c];
             if (b == 255)
                 throw new IOException("Expected a hex character, got " + c);
             return b;
         }
 
-        public static byte ToByte(string str, int index)
+        public static byte ToByteHexFormat(string str, int index)
         {
-            byte b1 = LookupTableHigh[str[index++]];
+            byte b1 = HexFormatLookupTableHigh[str[index++]];
             if (b1 == 255)
                 throw new IOException("Expected a hex character, got " + 'c');
 
-            byte b2 = LookupTableLow[str[index]];
+            byte b2 = HexFormatLookupTableLow[str[index]];
             if (b2 == 255)
                 throw new IOException("Expected a hex character, got " + 'c');
 
@@ -82,56 +92,73 @@ namespace NpgsqlTypes
         }
 
 
-        public static byte ToByte(char[] str, int index)
+        public static byte ToByteHexFormat(char[] str, int index)
         {
-            byte b1 = LookupTableHigh[str[index++]];
+            byte b1 = HexFormatLookupTableHigh[str[index++]];
             if (b1 == 255)
                 throw new IOException("Expected a hex character, got " + 'c');
 
-            byte b2 = LookupTableLow[str[index]];
+            byte b2 = HexFormatLookupTableLow[str[index]];
             if (b2 == 255)
                 throw new IOException("Expected a hex character, got " + 'c');
 
             return (byte)(b1 | b2);
         }
 
-        public static byte ToByte(byte[] str, int index)
+        public static byte ToByteHexFormat(byte[] str, int index)
         {
-            byte b1 = LookupTableHigh[str[index]];
+            byte b1 = HexFormatLookupTableHigh[str[index]];
             if (b1 == 255)
                 throw new IOException(string.Format("Expected a hex character, got {0}", str[index]));
 
-            byte b2 = LookupTableLow[str[++index]];
+            byte b2 = HexFormatLookupTableLow[str[++index]];
             if (b2 == 255)
                 throw new IOException(string.Format("Expected a hex character, got {0}", str[index]));
 
             return (byte)(b1 | b2);
+        }
+
+        public static byte ToByteEscapeFormat(byte[] str, int index)
+        {
+            byte b1 = (byte)(EscapeFormatLookupTable[str[index]] << 6);
+            if (b1 == 255)
+                throw new IOException(string.Format("Expected an octal character, got {0}", str[index]));
+
+            byte b2 = (byte)(EscapeFormatLookupTable[str[++index]] << 3);
+            if (b2 == 255)
+                throw new IOException(string.Format("Expected an octal character, got {0}", str[index]));
+
+            byte b3 = EscapeFormatLookupTable[str[++index]];
+            if (b3 == 255)
+                throw new IOException(string.Format("Expected an octal character, got {0}", str[index]));
+
+            return (byte)(b1 | b2 | b3);
         }
 
 #if UNSAFE
-        public static unsafe byte ToByte(char* ch)
+        public static unsafe byte ToByteHexFormat(char* ch)
         {
           char* tmp = ch;
           tmp++;
 
-          byte b1 = LookupTableHigh[*ch];
+          byte b1 = HexFormatLookupTableHigh[*ch];
           if (b1 == 255)
             throw new IOException("Expected a hex character, got " + 'c');
 
-          byte b2 = LookupTableLow[*tmp];
+          byte b2 = HexFormatLookupTableLow[*tmp];
           if (b2 == 255)
             throw new IOException("Expected a hex character, got " + 'c');
 
           return (byte)(b1 | b2);
         }
 
-        public static unsafe byte ToByte(byte* ch)
+        public static unsafe byte ToByteHexFormat(byte* ch)
         {
-          byte b1 = LookupTableHigh[*ch];
+          byte b1 = HexFormatLookupTableHigh[*ch];
           if (b1 == 255)
             throw new IOException(string.Format("Expected a hex character, got {0}", *ch));
 
-          byte b2 = LookupTableLow[*(ch + 1)];
+          byte b2 = HexFormatLookupTableLow[*(ch + 1)];
           if (b2 == 255)
             throw new IOException(string.Format("Expected a hex character, got {0}", *(ch + 1)));
 
