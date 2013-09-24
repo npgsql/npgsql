@@ -1,11 +1,11 @@
 ﻿// NpgsqlTypes.FastConverter.cs
 //
 // Author:
-// Maxim Rylov
+//    Maxim Rylov
 //
-// Copyright (C) 2004 The Npgsql Development Team
-// npgsql-general@gborg.postgresql.org
-// http://gborg.postgresql.org/project/npgsql/projdisplay.php
+//    Copyright (C) 2004 The Npgsql Development Team
+//    npgsql-general@gborg.postgresql.org
+//    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,8 +24,8 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-// This file provides data type converters between PostgreSQL representations
-// and .NET objects.
+// This file provides implementations of PostgreSQL specific data types that cannot
+// be mapped to standard .NET classes.
 using System;
 using System.IO;
 
