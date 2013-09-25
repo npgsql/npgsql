@@ -1,4 +1,4 @@
-// NpgsqlTypes.NpgsqlTypesHelper.cs
+// NpgsqlTypes.NpgsqlTypeMappings.cs
 //
 // Author:
 //    Francisco Jr. (fxjrlists@yahoo.com.br)
