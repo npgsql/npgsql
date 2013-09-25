@@ -1,9 +1,9 @@
-﻿// NpgsqlTypes.FastConverter.cs
+// NpgsqlTypes.FastConverter.cs
 //
 // Author:
 //    Maxim Rylov
 //
-//    Copyright (C) 2004 The Npgsql Development Team
+//    Copyright (C) 2013 The Npgsql Development Team
 //    npgsql-general@gborg.postgresql.org
 //    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
