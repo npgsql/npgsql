@@ -117,6 +117,36 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ConnectionMinPoolSize()
+        {
+            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=30;MaxPoolSize=30");
+            conn.Open();
+            conn.Close();
+
+            conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=30;MinPoolSize=30");
+            conn.Open();
+            conn.Close();
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void ConnectionMinPoolSizeLargeThanMaxPoolSize()
+        {
+            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=2;MaxPoolSize=1");
+            conn.Open();
+            conn.Close();
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
+        public void ConnectionMinPoolSizeLargeThanPoolSizeLimit()
+        {
+            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=1025;");
+            conn.Open();
+            conn.Close();
+        }
+
+        [Test]
         public void SearchPathSupport()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";searchpath=public"))
