@@ -1,7 +1,7 @@
 // NpgsqlTypes.NpgsqlTypeConverters.cs
 //
 // Author:
-//    Glen Parker <glenebob@nwlink.com>
+//    Glen Parker <glenebob@gmail.com>
 //
 //    Copyright (C) 2004 The Npgsql Development Team
 //    npgsql-general@gborg.postgresql.org
@@ -220,32 +220,30 @@ namespace NpgsqlTypes
         /// <summary>
         /// Byte array from bytea encoded as ASCII text, escaped or hex format.
         /// </summary>
-        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ByteaTextToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
-            char[] charBuffer = BackendEncoding.UTF8Encoding.GetChars(bBackendData);
-            Int32 byteALength = charBuffer.Length;
+            Int32 byteALength = BackendData.Length;
             Int32 byteAPosition = 0;
 
-            if (charBuffer[0] == '\\' && charBuffer[1] == 'x')
+            if (byteALength > 2 && BackendData[0] == (byte)ASCIIBytes.BackSlash && BackendData[1] == (byte)ASCIIBytes.x)
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
-                byte[] result = new byte[byteALength / 2];
+                byte[] result = new byte[(byteALength - 2) / 2];
 #if UNSAFE
                 unsafe
                 {
-                    fixed (char* chr = &charBuffer[0])
+                    fixed (byte* pBackendData = &BackendData[2])
                     {
-                        fixed (byte* p = &result[0])
+                        fixed (byte* pResult = &result[0])
                         {
-                            byte* ptr = p;
-                            char* ch = chr;
-                            ch += 2;
+                            byte* pBackendData2 = pBackendData;
+                            byte* pResult2 = pResult;
                             
-                            for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                            for (byteAPosition = 2 ; byteAPosition < byteALength ; byteAPosition += 2)
                             {
-                                *ptr = FastConverter.ToByte(ch);
-                                ptr++;
-                                ch += 2;
+                                *pResult2 = FastConverter.ToByteHexFormat(pBackendData2);
+                                pBackendData2 += 2;
+                                pResult2++;
                             }
                         }
                     }
@@ -253,9 +251,9 @@ namespace NpgsqlTypes
 #else
                 Int32 k = 0;
 
-                for (byteAPosition = 2; byteAPosition < byteALength; byteAPosition += 2)
+                for (byteAPosition = 2 ; byteAPosition < byteALength ; byteAPosition += 2)
                 {
-                    result[k] = FastConverter.ToByte(charBuffer, byteAPosition);
+                    result[k] = FastConverter.ToByteHexFormat(BackendData, byteAPosition);
                     k++;
                 }
 #endif
@@ -264,8 +262,7 @@ namespace NpgsqlTypes
             }
             else
             {
-                Int32 octalValue = 0;
-                string strBackendData = new string(charBuffer);
+                byte octalValue = 0;
                 MemoryStream ms = new MemoryStream();
 
                 while (byteAPosition < byteALength)
@@ -273,33 +270,29 @@ namespace NpgsqlTypes
                     // The IsDigit is necessary in case we receive a \ as the octal value and not
                     // as the indicator of a following octal value in decimal format.
                     // i.e.: \201\301P\A
-                    if (strBackendData[byteAPosition] == '\\')
+                    if (BackendData[byteAPosition] == (byte)ASCIIBytes.BackSlash)
                     {
                         if (byteAPosition + 1 == byteALength)
                         {
-                            octalValue = '\\';
+                            octalValue = (byte)ASCIIBytes.BackSlash;
                             byteAPosition++;
                         }
-                        else if (Char.IsDigit(strBackendData[byteAPosition + 1]))
+                        else if (BackendData[byteAPosition + 1] >= (byte)ASCIIBytes.b0 && BackendData[byteAPosition + 1] <= (byte)ASCIIBytes.b7)
                         {
-                            octalValue = Convert.ToByte(strBackendData.Substring(byteAPosition + 1, 3), 8);
-                            //octalValue = (Byte.Parse(BackendData[byteAPosition + 1].ToString()) << 6);
-                            //octalValue |= (Byte.Parse(BackendData[byteAPosition + 2].ToString()) << 3);
-                            //octalValue |= Byte.Parse(BackendData[byteAPosition + 3].ToString());
+                            octalValue = FastConverter.ToByteEscapeFormat(BackendData, byteAPosition + 1);
                             byteAPosition += 4;
                         }
                         else
                         {
-                            octalValue = '\\';
+                            octalValue = (byte)ASCIIBytes.BackSlash;
                             byteAPosition += 2;
                         }
                     }
                     else
                     {
-                        octalValue = (Byte)strBackendData[byteAPosition];
+                        octalValue = BackendData[byteAPosition];
                         byteAPosition++;
                     }
-
 
                     ms.WriteByte((Byte)octalValue);
                 }
@@ -476,7 +469,7 @@ namespace NpgsqlTypes
         private static byte[] byteaBackslashConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\");
         private static byte[] byteaBackslashNonConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
 
-        private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456");
+        private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
         private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
 
         /// <summary>
@@ -492,7 +485,7 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
-            if (!options.SupportsHexByteFormat)
+            if (! options.SupportsHexByteFormat)
             {
                 return ByteArrayToByteaTextEscaped(NativeData, options.UseConformantStrings);
             }
