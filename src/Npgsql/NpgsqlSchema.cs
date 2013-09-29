@@ -36,19 +36,8 @@ namespace Npgsql
     /// <summary>
     /// Provides the underlying mechanism for reading schema information.
     /// </summary>
-    internal sealed class NpgsqlSchema
+    internal static class NpgsqlSchema
     {
-        private readonly NpgsqlConnection _connection;
-
-        /// <summary>
-        /// Creates an NpgsqlSchema that can read schema information from the database.
-        /// </summary>
-        /// <param name="connection">An open database connection for reading metadata.</param>
-        internal NpgsqlSchema(NpgsqlConnection connection)
-        {
-            _connection = connection;
-        }
-
         /// <summary>
         /// Returns the MetaDataCollections that lists all possible collections.
         /// </summary>
@@ -79,12 +68,12 @@ namespace Npgsql
             return ds.Tables["Restrictions"].Copy();
         }
 
-        private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, params string[] names)
+        private static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string[] restrictions, params string[] names)
         {
-            return BuildCommand(query, restrictions, true, names);
+            return BuildCommand(conn, query, restrictions, true, names);
         }
 
-        private NpgsqlCommand BuildCommand(StringBuilder query, string[] restrictions, bool addWhere, params string[] names)
+        private static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string[] restrictions, bool addWhere, params string[] names)
         {
             NpgsqlCommand command = new NpgsqlCommand();
 
@@ -113,12 +102,12 @@ namespace Npgsql
                 }
             }
             command.CommandText = query.ToString();
-            command.Connection = _connection;
+            command.Connection = conn;
 
             return command;
         }
 
-        private string RemoveSpecialChars(string paramName)
+        private static string RemoveSpecialChars(string paramName)
         {
             return paramName.Replace("(", "").Replace(")", "").Replace(".", "");
         }
@@ -126,9 +115,10 @@ namespace Npgsql
         /// <summary>
         /// Returns the Databases that contains a list of all accessable databases.
         /// </summary>
+        /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Databases</returns>
-        internal DataTable GetDatabases(string[] restrictions)
+        internal static DataTable GetDatabases(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable databases = new DataTable("Databases");
             databases.Locale = CultureInfo.InvariantCulture;
@@ -141,7 +131,7 @@ namespace Npgsql
             getDatabases.Append(
                 "SELECT d.datname AS database_name, u.usename AS owner, pg_catalog.pg_encoding_to_char(d.encoding) AS encoding FROM pg_catalog.pg_database d LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid");
 
-            using (NpgsqlCommand command = BuildCommand(getDatabases, restrictions, "datname"))
+            using (NpgsqlCommand command = BuildCommand(conn, getDatabases, restrictions, "datname"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -155,9 +145,10 @@ namespace Npgsql
         /// <summary>
         /// Returns the Tables that contains table and view names and the database and schema they come from.
         /// </summary>
+        /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Tables</returns>
-        internal DataTable GetTables(string[] restrictions)
+        internal static DataTable GetTables(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable tables = new DataTable("Tables");
             tables.Locale = CultureInfo.InvariantCulture;
@@ -175,7 +166,7 @@ namespace Npgsql
 
             using (
                 NpgsqlCommand command =
-                    BuildCommand(getTables, restrictions, "table_catalog", "table_schema", "table_name", "table_type"))
+                    BuildCommand(conn, getTables, restrictions, "table_catalog", "table_schema", "table_name", "table_type"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -189,9 +180,10 @@ namespace Npgsql
         /// <summary>
         /// Returns the Columns that contains information about columns in tables.
         /// </summary>
+        /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Columns.</returns>
-        internal DataTable GetColumns(string[] restrictions)
+        internal static DataTable GetColumns(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable columns = new DataTable("Columns");
             columns.Locale = CultureInfo.InvariantCulture;
@@ -216,7 +208,7 @@ namespace Npgsql
 
             using (
                 NpgsqlCommand command =
-                    BuildCommand(getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name"))
+                    BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -230,9 +222,10 @@ namespace Npgsql
         /// <summary>
         /// Returns the Views that contains view names and the database and schema they come from.
         /// </summary>
+        /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Views</returns>
-        internal DataTable GetViews(string[] restrictions)
+        internal static DataTable GetViews(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable views = new DataTable("Views");
             views.Locale = CultureInfo.InvariantCulture;
@@ -249,7 +242,7 @@ namespace Npgsql
             getViews.Append(
                 "SELECT table_catalog, table_schema, table_name, check_option, is_updatable FROM information_schema.views");
 
-            using (NpgsqlCommand command = BuildCommand(getViews, restrictions, "table_catalog", "table_schema", "table_name"))
+            using (NpgsqlCommand command = BuildCommand(conn, getViews, restrictions, "table_catalog", "table_schema", "table_name"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -263,9 +256,10 @@ namespace Npgsql
         /// <summary>
         /// Returns the Users containing user names and the sysid of those users.
         /// </summary>
+        /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Users.</returns>
-        internal DataTable GetUsers(string[] restrictions)
+        internal static DataTable GetUsers(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable users = new DataTable("Users");
             users.Locale = CultureInfo.InvariantCulture;
@@ -276,7 +270,7 @@ namespace Npgsql
 
             getUsers.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
 
-            using (NpgsqlCommand command = BuildCommand(getUsers, restrictions, "usename"))
+            using (NpgsqlCommand command = BuildCommand(conn, getUsers, restrictions, "usename"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -287,7 +281,7 @@ namespace Npgsql
             return users;
         }
 
-        internal DataTable GetIndexes(string[] restrictions)
+        internal static DataTable GetIndexes(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable indexes = new DataTable("Indexes");
             indexes.Locale = CultureInfo.InvariantCulture;
@@ -322,7 +316,7 @@ where
 
             using (
                 NpgsqlCommand command =
-                    BuildCommand(getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
+                    BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -333,7 +327,7 @@ where
             return indexes;
         }
 
-        internal DataTable GetIndexColumns(string[] restrictions)
+        internal static DataTable GetIndexColumns(NpgsqlConnection conn, string[] restrictions)
         {
             DataTable indexColumns = new DataTable("IndexColumns");
             indexColumns.Locale = CultureInfo.InvariantCulture;
@@ -368,7 +362,7 @@ where
 
             using (
                 NpgsqlCommand command =
-                    BuildCommand(getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
+                    BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
@@ -379,7 +373,7 @@ where
             return indexColumns;
         }
 
-        internal DataTable GetForeignKeys(string[] restrictions)
+        internal static DataTable GetForeignKeys(NpgsqlConnection conn, string[] restrictions)
         {
             StringBuilder getForeignKeys = new StringBuilder();
 
@@ -403,7 +397,7 @@ where pgc.contype='f'
 
             using (
                 NpgsqlCommand command =
-                    BuildCommand(getForeignKeys, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
+                    BuildCommand(conn, getForeignKeys, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
             {
                 using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
                 {
