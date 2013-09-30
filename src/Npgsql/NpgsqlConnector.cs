@@ -1066,6 +1066,13 @@ namespace Npgsql
                 {
                     while (true)
                     {
+#if ! WINDOWS
+                        // Mono's implementation of System.Threading.Monitor does not appear to give threads
+                        // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
+                        // under mono, this loop may execute many times even after another thread has attempted
+                        //  to lock on _socket.  A short Sleep() seems to solve the problem effectively.
+                        Thread.Sleep(1);
+#endif
                         lock (connector._socket)
                         {
                             // 20 millisecond timeout
