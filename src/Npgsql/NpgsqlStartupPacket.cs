@@ -177,13 +177,13 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
-            int length = 4 + 4 + 1;
+            int packet_size = 4 + 4 + 1;
             for (int i = 0; i < parameterNames.Count; i++)
             {
-                length += (parameterNames[i].Length + parameterValues[i].Length + 2);
+                packet_size += (parameterNames[i].Length + parameterValues[i].Length + 2);
             }
 
-            output_stream.WriteInt32(length);
+            output_stream.WriteInt32(packet_size);
             output_stream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
 
             for (int i = 0; i < parameterNames.Count; i++)
