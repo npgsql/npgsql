@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
+  <metadata>
+    <id>EntityFramework</id>
+    <version>6.0.0-rc1</version>
+    <title>EntityFramework</title>
+    <authors>Microsoft</authors>
+    <owners>Microsoft</owners>
+    <licenseUrl>http://go.microsoft.com/fwlink/?LinkId=316838</licenseUrl>
+    <projectUrl>http://go.microsoft.com/fwlink/?LinkID=316837</projectUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <description>Entity Framework is Microsoft's recommended data access technology for new applications.</description>
+    <summary>Entity Framework is Microsoft's recommended data access technology for new applications.</summary>
+    <releaseNotes />
+    <copyright />
+    <language>en-US</language>
+    <tags>Microsoft EF Database Data O/RM ADO.NET</tags>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.ComponentModel.DataAnnotations" targetFramework="" />
+    </frameworkAssemblies>
+  </metadata>
+</package>
