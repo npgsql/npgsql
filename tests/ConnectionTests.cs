@@ -281,6 +281,42 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug1011241_DiscardAll()
+        {
+
+            var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=sc1");
+            connection.Open();
+
+            if (connection.PostgreSqlVersion < new Version(8, 3, 0)
+                || new NpgsqlConnectionStringBuilder(ConnectionString).Protocol == ProtocolVersion.Version2)
+            {
+                connection.Close();
+                return;
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("sc1",command.ExecuteScalar());
+
+                command.CommandText = "SET SEARCH_PATH = sc2";
+                command.ExecuteNonQuery();
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("sc2",command.ExecuteScalar());
+            }
+            connection.Close();
+
+            connection.Open();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("sc1", command.ExecuteScalar());
+            }
+            connection.Close();
+
+        }
+
+        [Test]
         public void NpgsqlErrorRepro2()
         {
             var connection = new NpgsqlConnection(ConnectionString);
