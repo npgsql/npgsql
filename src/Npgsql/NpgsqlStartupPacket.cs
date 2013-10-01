@@ -96,11 +96,11 @@ namespace Npgsql
 
         // Private fields.
         private readonly ProtocolVersion protocol_version;
-        private readonly String database_name;
-        private readonly String user_name;
-        private readonly String arguments;
-        private readonly String unused;
-        private readonly String optional_tty;
+        private readonly byte[] database_name;
+        private readonly byte[] user_name;
+        private readonly byte[] arguments;
+        private readonly byte[] unused;
+        private readonly byte[] optional_tty;
 
         public NpgsqlStartupPacketV2(String database_name, String user_name,
                                    String arguments, String unused, String optional_tty)
@@ -113,11 +113,11 @@ namespace Npgsql
 
             this.protocol_version = ProtocolVersion.Version2;
 
-            this.database_name = database_name;
-            this.user_name = user_name;
-            this.arguments = arguments;
-            this.unused = unused;
-            this.optional_tty = optional_tty;
+            this.database_name = BackendEncoding.UTF8Encoding.GetBytes(database_name);
+            this.user_name = BackendEncoding.UTF8Encoding.GetBytes(user_name);
+            this.arguments = BackendEncoding.UTF8Encoding.GetBytes(arguments);
+            this.unused = BackendEncoding.UTF8Encoding.GetBytes(unused);
+            this.optional_tty = BackendEncoding.UTF8Encoding.GetBytes(optional_tty);
         }
 
 
@@ -127,13 +127,13 @@ namespace Npgsql
 
             // Packet length = 296
             output_stream
-                .WriteBytes(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(296)))
-                .WriteBytes(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(PGUtil.ConvertProtocolVersion(this.protocol_version))))
-                .WriteLimBytes(BackendEncoding.UTF8Encoding.GetBytes(database_name), 64)
-                .WriteLimBytes(BackendEncoding.UTF8Encoding.GetBytes(user_name), 32)
-                .WriteLimBytes(BackendEncoding.UTF8Encoding.GetBytes(arguments), 64)
-                .WriteLimBytes(BackendEncoding.UTF8Encoding.GetBytes(unused), 64)
-                .WriteLimBytes(BackendEncoding.UTF8Encoding.GetBytes(optional_tty), 64)
+                .WriteInt32(296)
+                .WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version))
+                .WriteLimBytes(database_name, 64)
+                .WriteLimBytes(user_name, 32)
+                .WriteLimBytes(arguments, 64)
+                .WriteLimBytes(unused, 64)
+                .WriteLimBytes(optional_tty, 64)
                 .Flush();
         }
 
@@ -147,54 +147,51 @@ namespace Npgsql
 
         // Private fields.
         private readonly ProtocolVersion protocol_version;
-        private readonly String database_name;
-        private readonly String user_name;
-        private readonly Dictionary<String, String> parameters;
+        private readonly List<byte[]> parameterNames = new List<byte[]>();
+        private readonly List<byte[]> parameterValues = new List<byte[]>();
 
         public NpgsqlStartupPacketV3(String database_name, String user_name,
                                    Dictionary<String, String> parameters)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-            // Just copy the values.
-
-            // [FIXME] Validate params? We are the only clients, so, hopefully, we
-            // know what to send.
 
             this.protocol_version = ProtocolVersion.Version3;
 
-            this.database_name = database_name;
-            this.user_name = user_name;
-            this.parameters = parameters;
+            //database
+            parameterNames.Add(BackendEncoding.UTF8Encoding.GetBytes("database"));
+            parameterValues.Add(BackendEncoding.UTF8Encoding.GetBytes(database_name));
+
+            //user
+            parameterNames.Add(BackendEncoding.UTF8Encoding.GetBytes("user"));
+            parameterValues.Add(BackendEncoding.UTF8Encoding.GetBytes(user_name));
+
+            //parameters
+            foreach (KeyValuePair<String, String> param in parameters)
+            {
+                parameterNames.Add(BackendEncoding.UTF8Encoding.GetBytes(param.Key));
+                parameterValues.Add(BackendEncoding.UTF8Encoding.GetBytes(param.Value));
+            }
         }
 
         public override void WriteToStream(Stream output_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
-            // write data to a temp stream
-            MemoryStream stream = new MemoryStream();
-            stream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
-
-            stream.WriteStringNullTerminated("user");
-            stream.WriteBytesNullTerminated(BackendEncoding.UTF8Encoding.GetBytes(user_name));
-
-            stream.WriteStringNullTerminated("database");
-            stream.WriteBytesNullTerminated(BackendEncoding.UTF8Encoding.GetBytes(database_name));
-
-
-            foreach(string param_name in parameters.Keys)
+            int length = 4 + 4 + 1;
+            for (int i = 0; i < parameterNames.Count; i++)
             {
-                stream.WriteBytesNullTerminated(BackendEncoding.UTF8Encoding.GetBytes(param_name));
-                stream.WriteBytesNullTerminated(BackendEncoding.UTF8Encoding.GetBytes(parameters[param_name]));
+                length += (parameterNames[i].Length + parameterValues[i].Length + 2);
             }
-            stream.WriteByte(0);
 
-            byte[] data = stream.ToArray();
+            output_stream.WriteInt32(length);
+            output_stream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
 
-            // write data to socket
-            output_stream.WriteInt32(4 + data.Length);
-            output_stream.Write(data, 0,data.Length);
-
+            for (int i = 0; i < parameterNames.Count; i++)
+            {
+                output_stream.WriteBytesNullTerminated(parameterNames[i]);
+                output_stream.WriteBytesNullTerminated(parameterValues[i]);
+            }
+            output_stream.WriteByte(0);
             output_stream.Flush();
         }
     }
