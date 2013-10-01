@@ -406,23 +406,8 @@ namespace Npgsql
         {
             if (_connection_state != ConnectionState.Closed)
             {
-                if (SupportsDiscard && BackendProtocolVersion != ProtocolVersion.Version2)
-                {
-                    DiscardAll();
-                }
-                else
-                {
-                    ReleasePlansPortals();
-                    ReleaseRegisteredListen();
-                }
-            }
-        }
-
-        internal void DiscardAll()
-        {
-            using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this))
-            {
-                Query(cmd);
+                ReleasePlansPortals();
+                ReleaseRegisteredListen();
             }
         }
 
@@ -682,11 +667,6 @@ namespace Npgsql
             set { _supportsSavepoint = value; }
         }
 
-        internal Boolean SupportsDiscard
-        {
-            get { return ServerVersion >= new Version(8, 3, 0); }
-        }
-
         /// <summary>
         /// Options that control certain aspects of native to backend conversions that depend
         /// on backend version and status.
@@ -751,7 +731,7 @@ namespace Npgsql
             try
             {
                 // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this,settings);
+                CurrentState.Startup(this);
             }
             catch (NpgsqlException ne)
             {
@@ -785,122 +765,126 @@ namespace Npgsql
                 // Get a raw connection, possibly SSL...
                 CurrentState.Open(this, connectTimeRemaining);
                 // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this,this.settings);
+                CurrentState.Startup(this);
             }
 
             // Change the state of connection to open and ready.
             _connection_state = ConnectionState.Open;
             CurrentState = NpgsqlReadyState.Instance;
 
-            // session configuration for ProtocolVersion 2
-            if (BackendProtocolVersion == ProtocolVersion.Version2)
+            // Fall back to the old way, SELECT VERSION().
+            // This should not happen for protocol version 3+.
+            if (ServerVersion == null)
             {
-                // Fall back to the old way, SELECT VERSION().
-                // This should not happen for protocol version 3+.
-                if (ServerVersion == null)
+                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
+                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                using(NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
                 {
-                    //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                    //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                    using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
-                    {
-                        ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
-                    }
+                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                }
+            }
+
+            // Adjust client encoding.
+
+            NpgsqlParameterStatus clientEncodingParam = null;
+            if(
+                !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
+                (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
+              )
+                new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+
+            if (!string.IsNullOrEmpty(settings.SearchPath))
+            {
+                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+                p.Value = settings.SearchPath;
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
+                commandSearchPath.Parameters.Add(p);
+                commandSearchPath.ExecuteNonQuery();*/
+
+                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
+                p.Value = settings.SearchPath;
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
+                commandSearchPath.Parameters.Add(p);
+                commandSearchPath.ExecuteNonQuery();*/
+
+                // TODO: Add proper message when finding a semicolon in search_path.
+                // This semicolon could lead to a sql injection security hole as someone could write in connection string:
+                // searchpath=public;delete from table; and it would be executed.
+
+                if (settings.SearchPath.Contains(";"))
+                {
+                    throw new InvalidOperationException();
                 }
 
-                // Adjust client encoding.
+                // This is using string concatenation because set search_path doesn't allow type casting. ::text
+                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
+                commandSearchPath.ExecuteBlind();
+            }
 
-                NpgsqlParameterStatus clientEncodingParam = null;
-                if (
-                    !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
-                    (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
-                  )
-                    new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+            if (!string.IsNullOrEmpty(settings.ApplicationName))
+             {
+                 if (!SupportsApplicationName)
+                 {
+                     //TODO
+                     //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
+                     throw new InvalidOperationException("ApplicationName not supported.");
+                 }
 
-                if (!string.IsNullOrEmpty(settings.SearchPath))
-                {
+                 if (settings.ApplicationName.Contains(";"))
+                 {
+                     throw new InvalidOperationException();
+                 }
 
-                    // TODO: Add proper message when finding a semicolon in search_path.
-                    // This semicolon could lead to a sql injection security hole as someone could write in connection string:
-                    // searchpath=public;delete from table; and it would be executed.
+                 NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
+                 commandApplicationName.ExecuteBlind();
+             }
 
-                    if (settings.SearchPath.Contains(";"))
-                    {
-                        throw new InvalidOperationException();
-                    }
+            /*
+             * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
+             * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
+             * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
+             * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
+             * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
+             */
 
-                    // This is using string concatenation because set search_path doesn't allow type casting. ::text    
-                    NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
-                    commandSearchPath.ExecuteBlind();
-                }
+            try
+            {
+                NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
+                commandSslrenegotiation.ExecuteBlind();
 
-                if (!string.IsNullOrEmpty(settings.ApplicationName))
-                {
-                    if (!SupportsApplicationName)
-                    {
-                        //TODO
-                        //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
-                        throw new InvalidOperationException("ApplicationName not supported.");
-                    }
+            }
+            catch {}
 
-                    if (settings.ApplicationName.Contains(";"))
-                    {
-                        throw new InvalidOperationException();
-                    }
+            /*
+             * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
+             * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
+             * Check bug report #1010992 for more information.
+             */
 
-                    NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
-                    commandApplicationName.ExecuteBlind();
-                }
+            try
+            {
+                NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
+                commandSingleDoublePrecision.ExecuteBlind();
 
-                /*
-                 * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
-                 * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
-                 * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
-                 * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
-                 * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
-                 */
+            }
+            catch {}
 
-                try
-                {
-                    NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
-                    commandSslrenegotiation.ExecuteBlind();
+            /*
+             * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
+             * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
+             * money is formatted as ($value) with parentheses to indicate negative value.
+             * By going with a culture agnostic format, we get a consistent behavior.
+             */
 
-                }
-                catch { }
+            try
+            {
+                NpgsqlCommand commandMonetaryFormatC = new NpgsqlCommand("SET lc_monetary='C';", this);
+                commandMonetaryFormatC.ExecuteBlind();
 
+            }
+            catch
+            {
 
-
-                /*
-                 * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
-                 * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
-                 * Check bug report #1010992 for more information.
-                 */
-
-
-                try
-                {
-                    NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3;", this);
-                    commandSingleDoublePrecision.ExecuteBlind();
-
-                }
-                catch { }
-
-                /*
-                 * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
-                 * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
-                 * money is formatted as ($value) with parentheses to indicate negative value.
-                 * By going with a culture agnostic format, we get a consistent behavior.
-                 */
-
-                try
-                {
-                    NpgsqlCommand commandMonetaryFormatC = new NpgsqlCommand("SET lc_monetary='C';", this);
-                    commandMonetaryFormatC.ExecuteBlind();
-
-                }
-                catch
-                {
-
-                }
             }
 
             // Make a shallow copy of the type mapping that the connector will own.

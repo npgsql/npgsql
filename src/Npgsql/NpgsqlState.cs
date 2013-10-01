@@ -57,7 +57,7 @@ namespace Npgsql
             throw new InvalidOperationException("Internal Error! " + this);
         }
 
-        public virtual void Startup(NpgsqlConnector context,NpgsqlConnectionStringBuilder settings)
+        public virtual void Startup(NpgsqlConnector context)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
