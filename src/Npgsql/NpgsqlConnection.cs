@@ -1126,37 +1126,40 @@ namespace Npgsql
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema(string collectionName, string[] restrictions)
         {
-            switch (collectionName)
+            using (var tempConn = new NpgsqlConnection(ConnectionString))
             {
-                case "MetaDataCollections":
-                    return NpgsqlSchema.GetMetaDataCollections();
-                case "Restrictions":
-                    return NpgsqlSchema.GetRestrictions();
-                case "DataSourceInformation":
-                    return NpgsqlSchema.GetDataSourceInformation();
-                case "DataTypes":
-                    throw new NotSupportedException();
-                case "ReservedWords":
-                    return NpgsqlSchema.GetReservedWords();
-                // custom collections for npgsql
-                case "Databases":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetDatabases(restrictions);
-                case "Tables":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetTables(restrictions);
-                case "Columns":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetColumns(restrictions);
-                case "Views":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetViews(restrictions);
-                case "Users":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetUsers(restrictions);
-                case "Indexes":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexes(restrictions);
-                case "IndexColumns":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetIndexColumns(restrictions);
-                case "ForeignKeys":
-                    return new NpgsqlSchema(new NpgsqlConnection(ConnectionString)).GetForeignKeys(restrictions);
-                default:
-                    throw new NotSupportedException();
+                switch (collectionName)
+                {
+                    case "MetaDataCollections":
+                        return NpgsqlSchema.GetMetaDataCollections();
+                    case "Restrictions":
+                        return NpgsqlSchema.GetRestrictions();
+                    case "DataSourceInformation":
+                        return NpgsqlSchema.GetDataSourceInformation();
+                    case "DataTypes":
+                        throw new NotSupportedException();
+                    case "ReservedWords":
+                        return NpgsqlSchema.GetReservedWords();
+                        // custom collections for npgsql
+                    case "Databases":
+                        return NpgsqlSchema.GetDatabases(tempConn, restrictions);
+                    case "Tables":
+                        return NpgsqlSchema.GetTables(tempConn, restrictions);
+                    case "Columns":
+                        return NpgsqlSchema.GetColumns(tempConn, restrictions);
+                    case "Views":
+                        return NpgsqlSchema.GetViews(tempConn, restrictions);
+                    case "Users":
+                        return NpgsqlSchema.GetUsers(tempConn, restrictions);
+                    case "Indexes":
+                        return NpgsqlSchema.GetIndexes(tempConn, restrictions);
+                    case "IndexColumns":
+                        return NpgsqlSchema.GetIndexColumns(tempConn, restrictions);
+                    case "ForeignKeys":
+                        return NpgsqlSchema.GetForeignKeys(tempConn, restrictions);
+                    default:
+                        throw new ArgumentOutOfRangeException("collectionName", collectionName);
+                }
             }
         }
 
