@@ -108,6 +108,8 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net20\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <NoWarn>
+    </NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net20|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -172,18 +174,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Npgsql\Npgsql.snk" />
-    <EmbeddedResource Include="Npgsql\Messages.de.resx">
-      <DependentUpon>Messages.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\Messages.ja.resx">
-      <DependentUpon>Messages.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\Messages.resx">
-      <DependentUpon>Messages.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\Messages.zh-CN.resx">
-      <DependentUpon>Messages.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.msl" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.ssdl" />
     <None Include="packages.config" />
@@ -214,7 +204,6 @@
     <Compile Include="Npgsql\HashAlgorithm.cs" />
     <Compile Include="Npgsql\MD5.cs" />
     <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
-    <Compile Include="Npgsql\Messages.cs" />
     <Compile Include="Npgsql\NpgsqlAsciiRow.cs" />
     <Compile Include="Npgsql\NpgsqlBackEndKeyData.cs" />
     <Compile Include="Npgsql\NpgsqlBind.cs" />
