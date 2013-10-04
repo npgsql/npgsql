@@ -467,6 +467,7 @@ namespace Npgsql
         /// </summary>
         public string Password
         {
+            get { return String.Empty; }
             set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
         }
 

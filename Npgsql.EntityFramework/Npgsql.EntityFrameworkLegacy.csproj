@@ -110,6 +110,7 @@
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlSchema.msl" />
     <EmbeddedResource Include="NpgsqlSchema.ssdl" />
+    <EmbeddedResource Include="NpgsqlSchemaV3.ssdl" />
     <EmbeddedResource Include="NpgsqlProviderManifest.Manifest.xml" />
     <None Include="packages.config" />
   </ItemGroup>
