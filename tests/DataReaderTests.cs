@@ -100,7 +100,7 @@ namespace NpgsqlTests
         [Test]
         public void GetBytes1()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_bytea) VALUES ('\123\056')");
+            ExecuteNonQuery(string.Format(@"INSERT INTO data (field_bytea) VALUES ({0}'\{1}123\{1}056')", ! Conn.UseConformantStrings && Conn.Supports_E_StringPrefix ? "E" : "", Conn.UseConformantStrings ? "" : @"\"));
             var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
             using (var dr = command.ExecuteReader())
             {
@@ -120,7 +120,7 @@ namespace NpgsqlTests
         [Test]
         public void GetBytes2()
         {
-            var command = new NpgsqlCommand("select '\\001\\002\\003'::bytea;", Conn);
+            var command = new NpgsqlCommand(string.Format(@"select {0}'\{1}001\{1}002\{1}003'::bytea;", ! Conn.UseConformantStrings && Conn.Supports_E_StringPrefix ? "E" : "", Conn.UseConformantStrings ? "" : @"\"), Conn);
             using (var dr = command.ExecuteReader())
             {
                 dr.Read();

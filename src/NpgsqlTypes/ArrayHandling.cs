@@ -113,7 +113,7 @@ namespace NpgsqlTypes
 
                 element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
-                if (forExtendedQuery)
+                if (forExtendedQuery && _elementConverter.Quote)
                 {
                     element = QuoteAndEscapeASCIIArrayElement(element);
                 }
@@ -136,7 +136,7 @@ namespace NpgsqlTypes
 
                 element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
-                if (forExtendedQuery)
+                if (forExtendedQuery && _elementConverter.Quote)
                 {
                     element = QuoteAndEscapeASCIIArrayElement(element);
                 }
@@ -155,6 +155,10 @@ namespace NpgsqlTypes
             int c = ar.Rank;
             List<int> lengths = new List<int>(c);
             bool firstItem = true;
+            // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
+            // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
+            byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
+            byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
 
             do
             {
@@ -174,11 +178,6 @@ namespace NpgsqlTypes
                 {
                     array.WriteByte((byte)ASCIIBytes.Comma);
                 }
-
-                // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
-                // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
-                byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
-                byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
 
                 //to work out how many [ characters we need we need to work where we are compared to the dimensions.
                 //Say we are at position 24 in a 3 * 4 * 5 array.

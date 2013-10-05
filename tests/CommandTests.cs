@@ -799,7 +799,7 @@ namespace NpgsqlTests
         [Test]
         public void ByteaSupport()
         {
-            ExecuteNonQuery(@"INSERT INTO data(field_bytea) VALUES ('\123\056')");
+            ExecuteNonQuery(string.Format(@"INSERT INTO data(field_bytea) VALUES ({0}'\123\056')", Conn.Supports_E_StringPrefix ? "E" : ""));
             var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
             var result = (Byte[]) command.ExecuteScalar();
             Assert.AreEqual(2, result.Length);
@@ -1681,6 +1681,12 @@ namespace NpgsqlTests
         [Test]
         public void ReturnRecordSupportWithResultset()
         {
+            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
+            {
+                // RETURNS TABLE is not supported prior to 8.4
+                return;
+            }
+
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testreturnrecordresultset(x int4, y int4) returns table (a int4, b int4) as
                               $BODY$
                               begin
@@ -2781,6 +2787,12 @@ namespace NpgsqlTests
         [Test]
         public void SelectInfinityValueDateDataType()
         {
+            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
+            {
+                // INFINITY is not supported prior to 8.4
+                return;
+            }
+
             ExecuteNonQuery(@"INSERT INTO data (field_date) VALUES ('-infinity'::date)");
             using (var cmd = new NpgsqlCommand(@"SELECT field_date FROM data", Conn))
             using (var dr = cmd.ExecuteReader())
@@ -3024,17 +3036,33 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof (BitString), result.GetType());
 
             // boolean
-            cmd.CommandText = "select 1::boolean";
+            cmd.CommandText = "select 'true'::boolean";
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Boolean), result.GetType());
+
+            if (Conn.PostgreSqlVersion >= new Version(8, 1, 0))
+            {
+                // boolean
+                cmd.CommandText = "select 1::boolean";
+                result = cmd.ExecuteScalar();
+                Assert.AreEqual(typeof (Boolean), result.GetType());
+            }
 
             // box
             cmd.CommandText = "select '((7,4),(8,3))'::box";
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (NpgsqlBox), result.GetType());
 
+            if (Conn.SupportsHexByteFormat)
+            {
+                // bytea
+                cmd.CommandText = string.Format(@"SELECT {0}'\{1}xDEADBEEF'::bytea;", Conn.UseConformantStrings ? "" : "E", Conn.UseConformantStrings ? "" : @"\");
+                result = cmd.ExecuteScalar();
+                Assert.AreEqual(typeof (Byte[]), result.GetType());
+            }
+
             // bytea
-            cmd.CommandText = @"SELECT E'\\xDEADBEEF'::bytea;";
+            cmd.CommandText = string.Format(@"SELECT {0}'\{1}001\{1}002\{1}003\{1}377\{1}376\{1}375'::bytea;", ! Conn.UseConformantStrings && Conn.Supports_E_StringPrefix ? "E" : "", Conn.UseConformantStrings ? "" : @"\");
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Byte[]), result.GetType());
 
