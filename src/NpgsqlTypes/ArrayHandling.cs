@@ -113,7 +113,7 @@ namespace NpgsqlTypes
 
                 element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
-                if (forExtendedQuery)
+                if (forExtendedQuery && _elementConverter.Quote)
                 {
                     element = QuoteAndEscapeASCIIArrayElement(element);
                 }
@@ -136,7 +136,7 @@ namespace NpgsqlTypes
 
                 element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
 
-                if (forExtendedQuery)
+                if (forExtendedQuery && _elementConverter.Quote)
                 {
                     element = QuoteAndEscapeASCIIArrayElement(element);
                 }
