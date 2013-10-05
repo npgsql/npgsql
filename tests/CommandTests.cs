@@ -1681,6 +1681,12 @@ namespace NpgsqlTests
         [Test]
         public void ReturnRecordSupportWithResultset()
         {
+            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
+            {
+                // RETURNS TABLE is not supported prior to 8.4
+                return;
+            }
+
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testreturnrecordresultset(x int4, y int4) returns table (a int4, b int4) as
                               $BODY$
                               begin
@@ -2781,6 +2787,12 @@ namespace NpgsqlTests
         [Test]
         public void SelectInfinityValueDateDataType()
         {
+            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
+            {
+                // INFINITY is not supported prior to 8.4
+                return;
+            }
+
             ExecuteNonQuery(@"INSERT INTO data (field_date) VALUES ('-infinity'::date)");
             using (var cmd = new NpgsqlCommand(@"SELECT field_date FROM data", Conn))
             using (var dr = cmd.ExecuteReader())
