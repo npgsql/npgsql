@@ -65,11 +65,11 @@ namespace NpgsqlTypes
         {
             if (! options.SupportsHexByteFormat)
             {
-                return ByteArrayToByteaTextEscaped(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextEscaped(NativeData, forExtendedQuery || options.UseConformantStrings);
             }
             else
             {
-                return ByteArrayToByteaTextHexFormat(NativeData, options.UseConformantStrings);
+                return ByteArrayToByteaTextHexFormat(NativeData, forExtendedQuery || options.UseConformantStrings);
             }
         }
 
