@@ -274,15 +274,15 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddType("refcursor", NpgsqlDbType.Refcursor, DbType.String, true, null);
 
-            nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, true,
-                                            null,
-                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
+            nativeTypeMapping.AddType("char", NpgsqlDbType.Char, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
             nativeTypeMapping.AddTypeAlias("char", typeof(Char));
 
-            nativeTypeMapping.AddType("varchar", NpgsqlDbType.Varchar, DbType.String, true,
-                                            null,
-                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
+            nativeTypeMapping.AddType("varchar", NpgsqlDbType.Varchar, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
             // Dummy type that facilitates non-binary string conversions for types that are treated as
             // text but which are not really text.  Those types cause problems if they are encoded as binary.
@@ -290,9 +290,9 @@ namespace NpgsqlTypes
             // DBType.Object will be re-mapped to this type at the end.
             nativeTypeMapping.AddType("text_nonbinary", NpgsqlDbType.Text, DbType.Object, true);
 
-            nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, true,
-                                            null,
-                                            new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.StringToTextBinary));
+            nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
             nativeTypeMapping.AddDbTypeAlias("text", DbType.StringFixedLength);
             nativeTypeMapping.AddDbTypeAlias("text", DbType.AnsiString);
@@ -300,7 +300,7 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("text", typeof(String));
 
-            nativeTypeMapping.AddType("bytea", NpgsqlDbType.Bytea, DbType.Binary, true,
+            nativeTypeMapping.AddType("bytea", NpgsqlDbType.Bytea, DbType.Binary, false,
                                             new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaText),
                                             new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.ByteArrayToByteaBinary));
 
@@ -341,19 +341,20 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("int8", typeof(Int64));
 
-            nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, true,
+            nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, false,
                                             new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text),
                                             new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.SingleToFloat4Binary));
 
             nativeTypeMapping.AddTypeAlias("float4", typeof(Single));
 
-            nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, true,
+            nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, false,
                                             new ConvertNativeToBackendTextHandler(BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text),
                                             new ConvertNativeToBackendBinaryHandler(BasicNativeToBackendTypeConverter.DoubleToFloat8Binary));
 
             nativeTypeMapping.AddTypeAlias("float8", typeof(Double));
 
-            nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, true, BasicNativeToBackendTypeConverter.ToBasicType<decimal>);
+            nativeTypeMapping.AddType("numeric", NpgsqlDbType.Numeric, DbType.Decimal, false,
+                                            BasicNativeToBackendTypeConverter.ToBasicType<decimal>);
 
             nativeTypeMapping.AddTypeAlias("numeric", typeof (Decimal));
 

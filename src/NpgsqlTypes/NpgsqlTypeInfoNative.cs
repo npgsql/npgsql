@@ -41,7 +41,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Delegate called to convert the given native data to its backand representation.
     /// </summary>
-    internal delegate byte[] ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options);
+    internal delegate byte[] ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement);
     internal delegate byte[] ConvertNativeToBackendBinaryHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options);
 
     internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
@@ -80,19 +80,20 @@ namespace NpgsqlTypes
             }
 
             NpgsqlNativeTypeInfo copy = null;
+            ArrayNativeToBackendTypeConverter converter = new ArrayNativeToBackendTypeConverter(elementType);
 
             if (elementType._ConvertNativeToBackendBinary != null)
             {
                 copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
-                                             false,
-                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText),
-                                             new ConvertNativeToBackendBinaryHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayBinary));
+                                                false,
+                                                converter.ArrayToArrayText,
+                                                converter.ArrayToArrayBinary);
             }
             else
             {
                 copy = new NpgsqlNativeTypeInfo("_" + elementType.Name, NpgsqlDbType.Array | elementType.NpgsqlDbType, elementType.DbType,
-                                             false,
-                                             new ConvertNativeToBackendTextHandler(new ArrayNativeToBackendTypeConverter(elementType).ArrayToArrayText));
+                                                false,
+                                                converter.ArrayToArrayText);
             }
 
             copy._IsArray = true;
@@ -203,9 +204,10 @@ namespace NpgsqlTypes
         /// When
         /// </summary>
         /// <param name="NativeData">Native .NET object to be converted.</param>
-        /// <param name="forExtendedQuery">Options to guide serialization.  If null, a default options set is used.</param>
-        /// <param name="options">Connection specific options.</param>
-        public byte[] ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null)
+        /// <param name="forExtendedQuery">Specifies that the value should be formatted for the extended query syntax.</param>
+        /// <param name="options">Options to guide serialization.  If null, a default options set is used.</param>
+        /// <param name="arrayElement">Specifies that the value should be formatted as an extended query array element.</param>
+        public byte[] ConvertToBackend(Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options = null, bool arrayElement = false)
         {
             if (options == null)
             {
@@ -214,15 +216,15 @@ namespace NpgsqlTypes
 
             if (forExtendedQuery)
             {
-                return ConvertToBackendExtendedQuery(NativeData, options);
+                return ConvertToBackendExtendedQuery(NativeData, options, arrayElement);
             }
             else
             {
-                return ConvertToBackendPlainQuery(NativeData, options);
+                return ConvertToBackendPlainQuery(NativeData, options, arrayElement);
             }
         }
 
-        private byte[] ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+        private byte[] ConvertToBackendPlainQuery(Object NativeData, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             if ((NativeData == DBNull.Value) || (NativeData == null))
             {
@@ -233,53 +235,57 @@ namespace NpgsqlTypes
             {
                 byte[] backendSerialization;
 
-                // This route escapes output strings as needed.
-                backendSerialization = (_ConvertNativeToBackendText(this, NativeData, false, options));
+                // This path is responsible for escaping, and may also add quoting and the E prefix.
+                backendSerialization = (_ConvertNativeToBackendText(this, NativeData, false, options, arrayElement));
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, ! options.UseConformantStrings && options.Supports_E_StringPrefix);
+                    backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
                 }
 
                 return backendSerialization;
             }
             else if (NativeData is Enum)
             {
-                string backendSerialization;
+                byte[] backendSerialization;
 
                 // Do a special handling of Enum values.
                 // Translate enum value to its underlying type.
-                backendSerialization = (String)Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof(String), CultureInfo.InvariantCulture);
+                backendSerialization =
+                    BackendEncoding.UTF8Encoding.GetBytes(
+                        (String)Convert.ChangeType(
+                            Enum.Format(NativeData.GetType(), NativeData, "d"),
+                            typeof(String), CultureInfo.InvariantCulture
+                        )
+                    );
 
-                // Wrap the string in quotes.  No 'E' is needed here.
-                backendSerialization = QuoteString(backendSerialization, false);
+                backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
 
-                return BackendEncoding.UTF8Encoding.GetBytes(backendSerialization);
+                return backendSerialization;
             }
             else
             {
-                string backendSerialization;
-                bool escaped = false;
+                byte[] backendSerialization;
 
                 if (NativeData is IFormattable)
                 {
-                    backendSerialization = ((IFormattable)NativeData).ToString(null, ni);
+                    backendSerialization = BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString(null, ni));
                 }
-
-                // Do special handling of strings when in simple query. Escape quotes and possibly backslashes, depending on options.
-                backendSerialization = EscapeString(NativeData.ToString(), options.UseConformantStrings, out escaped);
+                else
+                {
+                    backendSerialization = BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
+                }
 
                 if (Quote)
                 {
-                    // Wrap the string in quotes and possibly prepend with 'E', depending on options and escaping.
-                    backendSerialization = QuoteString(backendSerialization, escaped && options.Supports_E_StringPrefix);
+                    backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
                 }
 
-                return BackendEncoding.UTF8Encoding.GetBytes(backendSerialization);
+                return backendSerialization;
             }
         }
 
-        private byte[] ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options)
+        private byte[] ConvertToBackendExtendedQuery(Object NativeData, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             if ((NativeData == DBNull.Value) || (NativeData == null))
             {
@@ -292,7 +298,7 @@ namespace NpgsqlTypes
             }
             else if (_ConvertNativeToBackendText != null)
             {
-                return _ConvertNativeToBackendText(this, NativeData, true, options);
+                return _ConvertNativeToBackendText(this, NativeData, true, options, arrayElement);
             }
             else
             {
@@ -309,100 +315,31 @@ namespace NpgsqlTypes
                 {
                     return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable) NativeData).ToString(null, ni));
                 }
-
-                return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
-            }
-        }
-
-        internal static string EscapeString(string src, bool StandardsConformingStrings, out bool backslashEscaped)
-        {
-            StringBuilder ret = new StringBuilder();
-
-            backslashEscaped = false;
-
-            foreach (Char ch in src)
-            {
-                switch (ch)
+                else
                 {
-                    case '\'':
-                        ret.AppendFormat("{0}{0}", ch);
-
-                        break;
-
-                    case '\\':
-                        if (! StandardsConformingStrings)
-                        {
-                            backslashEscaped = true;
-                            ret.AppendFormat("{0}{0}", ch);
-                        }
-                        else
-                        {
-                            ret.Append(ch);
-                        }
-
-                        break;
-
-                    default:
-                        ret.Append(ch);
-
-                        break;
-
+                    return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
                 }
             }
-
-            return ret.ToString();
         }
 
-        internal static byte[] EscapeASCIIString(byte[] src, bool StandardsConformingStrings, out bool backslashEscaped)
+        private static byte[] QuoteASCIIString(byte[] src, bool arrayElement)
         {
-            MemoryStream ret = new MemoryStream();
+            byte[] ret = new byte[src.Length + 2];
 
-            backslashEscaped = false;
-
-            foreach (byte ch in src)
+            if (! arrayElement)
             {
-                switch (ch)
-                {
-                    case (byte)ASCIIBytes.SingleQuote :
-                        ret.WriteByte(ch);
-
-                        break;
-
-                    case (byte)ASCIIBytes.BackSlash :
-                        if (! StandardsConformingStrings)
-                        {
-                            backslashEscaped = true;
-                            ret.WriteByte(ch);
-                        }
-
-                        break;
-                }
-
-                ret.WriteByte(ch);
+                ret[0] = (byte)ASCIIBytes.SingleQuote;
+                src.CopyTo(ret, 1);
+                ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
+            }
+            else
+            {
+                ret[0] = (byte)ASCIIBytes.DoubleQuote;
+                src.CopyTo(ret, 1);
+                ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
             }
 
-            return ret.ToArray();
-        }
-
-        internal static String QuoteString(String S, bool use_E_Prefix)
-        {
-            return String.Format("{0}'{1}'", use_E_Prefix ? "E" : "", S);
-        }
-
-        internal static byte[] QuoteASCIIString(byte[] S, bool use_E_Prefix)
-        {
-            MemoryStream ret = new MemoryStream();
-
-            if (use_E_Prefix)
-            {
-                ret.WriteByte((byte)ASCIIBytes.E);
-            }
-
-            ret.WriteByte((byte)ASCIIBytes.SingleQuote);
-            ret.Write(S, 0, S.Length);
-            ret.WriteByte((byte)ASCIIBytes.SingleQuote);
-
-            return ret.ToArray();
+            return ret;
         }
 
         /// <summary>
