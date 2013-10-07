@@ -2646,6 +2646,22 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ByteaArrayHandling()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { new byte[] { 1, 2, 3, 4, 5 }, new byte[] { 255, 254, 253, 252, 251 } };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                var retVal = (byte[][])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
         public void Bug1010521NpgsqlIntervalShouldBeQuoted()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
