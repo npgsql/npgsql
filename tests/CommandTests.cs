@@ -633,7 +633,7 @@ namespace NpgsqlTests
             string cmdTxt = "select :par";
             var command = new NpgsqlCommand(cmdTxt, Conn);
             var arrCommand = new NpgsqlCommand(cmdTxt, Conn);
-            string testStrPar = "This string has a single quote: '', a double quote: \", and a backslash: \\";
+            string testStrPar = "This string has a single quote: ', a double quote: \", and a backslash: \\";
             string[,] testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
             command.Parameters.AddWithValue(":par", testStrPar);
             using (var rdr = command.ExecuteReader())
