@@ -55,75 +55,75 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
-            byte[] utf8;
+            byte[] retRawUTF8;
 
-            utf8 = BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
+            retRawUTF8 = BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
 
             if (forExtendedQuery && ! arrayElement)
             {
-                return utf8;
+                return retRawUTF8;
             }
 
-            MemoryStream ret = new MemoryStream();
+            MemoryStream retQuotedEscaped = new MemoryStream();
 
             if (! arrayElement)
             {
                 if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
                 {
-                    ret.WriteByte((byte)ASCIIBytes.E);
+                    retQuotedEscaped.WriteByte((byte)ASCIIBytes.E);
                 }
 
-                ret.WriteByte((byte)ASCIIBytes.SingleQuote);
+                retQuotedEscaped.WriteByte((byte)ASCIIBytes.SingleQuote);
 
-                foreach (byte ch in utf8)
+                foreach (byte ch in retRawUTF8)
                 {
                     switch (ch)
                     {
                         case (byte)ASCIIBytes.SingleQuote :
-                            ret.WriteByte(ch);
+                            retQuotedEscaped.WriteByte(ch);
 
                             break;
 
                         case (byte)ASCIIBytes.BackSlash :
                             if (! options.UseConformantStrings)
                             {
-                                ret.WriteByte(ch);
+                                retQuotedEscaped.WriteByte(ch);
                             }
 
                             break;
                     }
 
-                    ret.WriteByte(ch);
+                    retQuotedEscaped.WriteByte(ch);
                 }
 
-                ret.WriteByte((byte)ASCIIBytes.SingleQuote);
+                retQuotedEscaped.WriteByte((byte)ASCIIBytes.SingleQuote);
             }
             else
             {
-                ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
+                retQuotedEscaped.WriteByte((byte)ASCIIBytes.DoubleQuote);
 
-                foreach (byte ch in utf8)
+                foreach (byte ch in retRawUTF8)
                 {
                     switch (ch)
                     {
                         case (byte)ASCIIBytes.DoubleQuote :
-                            ret.WriteByte((byte)ASCIIBytes.BackSlash);
+                            retQuotedEscaped.WriteByte((byte)ASCIIBytes.BackSlash);
 
                             break;
 
                         case (byte)ASCIIBytes.BackSlash :
-                            ret.WriteByte((byte)ASCIIBytes.BackSlash);
+                            retQuotedEscaped.WriteByte((byte)ASCIIBytes.BackSlash);
 
                             break;
                     }
 
-                    ret.WriteByte(ch);
+                    retQuotedEscaped.WriteByte(ch);
                 }
 
-                ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
+                retQuotedEscaped.WriteByte((byte)ASCIIBytes.DoubleQuote);
             }
 
-            return ret.ToArray();
+            return retQuotedEscaped.ToArray();
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace NpgsqlTypes
         private static byte[] ByteArrayToByteaTextEscaped(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             MemoryStream ret = new MemoryStream(nativeData.Length);
-            byte[] backSlash = forExtendedQuery || options.UseConformantStrings ? byteaBackslashConforming : byteaBackslashNonConforming;
+            byte[] backSlash = (forExtendedQuery && ! arrayElement) || options.UseConformantStrings ? byteaBackslashConforming : byteaBackslashNonConforming;
 
             if (! arrayElement)
             {
@@ -168,8 +168,6 @@ namespace NpgsqlTypes
 
                     ret.WriteByte((byte)ASCIIBytes.SingleQuote);
                 }
-
-                ret.WriteByte((byte)ASCIIBytes.SingleQuote);
             }
             else
             {
@@ -178,16 +176,17 @@ namespace NpgsqlTypes
 
             foreach (byte b in nativeData)
             {
-                if (b >= 0x20 && b < 0x7F && b != 0x27 && b != 0x5C)
+                if (b >= 0x20 && b < 0x7F && b != 0x22 && b != 0x27 && b != 0x5C)
                 {
                     ret.WriteByte(b);
                 }
                 else
                 {
-                    ret.Write(backSlash, 0, backSlash.Length);
-                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 6)]);
-                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 3)]);
-                    ret.WriteByte(escapeEncodingByteMap[7 & b]);
+                    ret
+                        .WriteBytes(backSlash)
+                        .WriteBytes(escapeEncodingByteMap[7 & (b >> 6)])
+                        .WriteBytes(escapeEncodingByteMap[7 & (b >> 3)])
+                        .WriteBytes(escapeEncodingByteMap[7 & b]);
                 }
             }
 

@@ -817,6 +817,32 @@ namespace NpgsqlTests
             Assert.AreEqual(buff, result);
         }
 
+        private void ByteaLargeWithPrepareSupport_Internal()
+        {
+            var buff = new byte[100000];
+            new Random().NextBytes(buff);
+            var command = new NpgsqlCommand("select :val", Conn);
+            command.Parameters.Add("val", NpgsqlDbType.Bytea);
+            command.Parameters["val"].Value = buff;
+            var result = (Byte[]) command.ExecuteScalar();
+            Assert.AreEqual(buff, result);
+        }
+
+        [Test]
+        public void ByteaLargeWithPrepareSupport()
+        {
+            ByteaLargeWithPrepareSupport_Internal();
+        }
+
+        [Test]
+        public void ByteaLargeWithPrepareSupport_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                ByteaLargeWithPrepareSupport_Internal();
+            }
+        }
+
         [Test]
         public void ByteaInsertSupport1()
         {
@@ -890,9 +916,21 @@ namespace NpgsqlTests
         public void ByteaParameterSupport()
         {
             var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
-            var bytes = new Byte[] {45, 44};
+            var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
             command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
             command.Parameters[":bytesData"].Value = bytes;
+            Object result = command.ExecuteNonQuery();
+            Assert.AreEqual(-1, result);
+        }
+
+        private void ByteaParameterWithPrepareSupport_Internal()
+        {
+            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
+
+            var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
+            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
+            command.Parameters[":bytesData"].Value = bytes;
+            command.Prepare();
             Object result = command.ExecuteNonQuery();
             Assert.AreEqual(-1, result);
         }
@@ -900,14 +938,16 @@ namespace NpgsqlTests
         [Test]
         public void ByteaParameterWithPrepareSupport()
         {
-            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
+            ByteaParameterWithPrepareSupport_Internal();
+        }
 
-            var bytes = new Byte[] {45, 44};
-            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-            command.Parameters[":bytesData"].Value = bytes;
-            command.Prepare();
-            Object result = command.ExecuteNonQuery();
-            Assert.AreEqual(-1, result);
+        [Test]
+        public void ByteaParameterWithPrepareSupport_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                ByteaParameterWithPrepareSupport_Internal();
+            }
         }
 
         [Test]
@@ -2576,7 +2616,8 @@ namespace NpgsqlTests
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] {new byte[] {1,2,3,4,5}, new byte[] {255,254,253,252,251}};
+                var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
+                var inVal = new[] {bytes, bytes};
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
