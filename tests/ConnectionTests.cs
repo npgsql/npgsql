@@ -385,6 +385,17 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void CheckExtraFloatingDigitsHigherThanTwo()
+        {
+
+            using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
+            {
+                string extraDigits = (string) c.ExecuteScalar();
+                Assert.GreaterOrEqual(extraDigits, "2");
+            }
+        }
+
     }
     [TestFixture]
     public class ConnectionTestsV2 : ConnectionTests
