@@ -806,6 +806,44 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ByteaEmptySupport()
+        {
+            var buff = new byte[0];
+            var command = new NpgsqlCommand("select :val", Conn);
+            command.Parameters.Add("val", NpgsqlDbType.Bytea);
+            command.Parameters["val"].Value = buff;
+            var result = (Byte[]) command.ExecuteScalar();
+            Assert.AreEqual(buff, result);
+        }
+
+        private void ByteaEmptyWithPrepareSupport_Internal()
+        {
+            var buff = new byte[0];
+            new Random().NextBytes(buff);
+            var command = new NpgsqlCommand("select :val", Conn);
+            command.Parameters.Add("val", NpgsqlDbType.Bytea);
+            command.Parameters["val"].Value = buff;
+            command.Prepare();
+            var result = (Byte[]) command.ExecuteScalar();
+            Assert.AreEqual(buff, result);
+        }
+
+        [Test]
+        public void ByteaEmptyWithPrepareSupport()
+        {
+            ByteaEmptyWithPrepareSupport_Internal();
+        }
+
+        [Test]
+        public void ByteaEmptyWithPrepareSupport_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                ByteaEmptyWithPrepareSupport_Internal();
+            }
+        }
+
+        [Test]
         public void ByteaLargeSupport()
         {
             var buff = new byte[100000];
