@@ -633,7 +633,7 @@ namespace NpgsqlTests
             string cmdTxt = "select :par";
             var command = new NpgsqlCommand(cmdTxt, Conn);
             var arrCommand = new NpgsqlCommand(cmdTxt, Conn);
-            string testStrPar = "This string has a single quote: '', a double quote: \", and a backslash: \\";
+            string testStrPar = "This string has a single quote: ', a double quote: \", and a backslash: \\";
             string[,] testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
             command.Parameters.AddWithValue(":par", testStrPar);
             using (var rdr = command.ExecuteReader())
@@ -2500,11 +2500,28 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void TextArrayHandling()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] {"Array element", "Array element with a '", "Array element with a \"", "Array element with a ,", "Array element with a \\"};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                var retVal = (string[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
         private void TextArrayHandlingPreparedInternal()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] {"Array element", "Array element with a '", "Array element with a ,", "Array element with a \\"};
+                var inVal = new[] {"Array element", "Array element with a '", "Array element with a \"", "Array element with a ,", "Array element with a \\"};
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -2612,6 +2629,23 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void ByteaArrayHandling()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
+                var inVal = new[] {bytes, bytes};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                var retVal = (byte[][])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
         private void ByteaArrayHandlingPreparedInternal()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
@@ -2642,22 +2676,6 @@ namespace NpgsqlTests
             using (this.SuppressBackendBinary())
             {
                 ByteaArrayHandlingPreparedInternal();
-            }
-        }
-
-        [Test]
-        public void ByteaArrayHandling()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] { new byte[] { 1, 2, 3, 4, 5 }, new byte[] { 255, 254, 253, 252, 251 } };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                var retVal = (byte[][])cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
             }
         }
 
