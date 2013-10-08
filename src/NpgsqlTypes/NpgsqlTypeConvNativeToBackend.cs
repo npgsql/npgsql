@@ -44,86 +44,139 @@ namespace NpgsqlTypes
     /// </summary>
     internal abstract class BasicNativeToBackendTypeConverter
     {
-        private static byte[] byteaBackslashConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\");
-        private static byte[] byteaBackslashNonConforming = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
+        private static byte[] backslashSingle = BackendEncoding.UTF8Encoding.GetBytes(@"\");
+        private static byte[] backslashDouble = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
 
         private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
         private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
+
+        private static byte? DetermineQuote(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            if (forExtendedQuery)
+            {
+                if (arrayElement)
+                {
+                    // Array elements sent via Bind require double-quotes
+                    return (byte)ASCIIBytes.DoubleQuote;
+                }
+                else
+                {
+                    // Other values sent via Bind are not quoted
+                    return null;
+                }
+            }
+            else
+            {
+                // All quotable values sent via non-extended query require single-quotes
+                return (byte)ASCIIBytes.SingleQuote;
+            }
+        }
+
+        private static byte? DetermineEPrefix(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            if (forExtendedQuery)
+            {
+                // Quoted values sent via Bind never require the E prefix
+                return null;
+            }
+            else
+            {
+                // Quoted values sent via non-extended query may require the E prefix depending on server version and current options
+                if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
+                {
+                    return (byte)ASCIIBytes.E;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
 
         /// <summary>
         /// Convert a string to UTF8 encoded text, escaped and quoted as required.
         /// </summary>
         internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
-            byte[] retRawUTF8;
+            char? quote;
 
-            retRawUTF8 = BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
+            quote = (char?)DetermineQuote(forExtendedQuery, options, arrayElement);
 
-            if (forExtendedQuery && ! arrayElement)
+            if (! quote.HasValue)
             {
-                return retRawUTF8;
+                // No quoting or escaping needed.
+                return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
             }
 
-            MemoryStream retQuotedEscaped = new MemoryStream();
+            char? ePrefix;
+            StringBuilder retQuotedEscaped = new StringBuilder();
 
-            if (! arrayElement)
+            ePrefix = (char?)DetermineEPrefix(forExtendedQuery, options, arrayElement);
+
+            if (ePrefix.HasValue)
             {
-                if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
-                {
-                    retQuotedEscaped.WriteByte((byte)ASCIIBytes.E);
-                }
+                retQuotedEscaped.Append(ePrefix.Value);
+            }
 
-                retQuotedEscaped.WriteByte((byte)ASCIIBytes.SingleQuote);
+            retQuotedEscaped.Append(quote.Value);
 
-                foreach (byte ch in retRawUTF8)
+            // Build a new string value, escaping characters as needed.
+            // Each possible escape style gets its own distinct code path to reduce
+            // decision making on each character.
+            if (! forExtendedQuery)
+            {
+                // For non-extended, escapes work the same for array elements and regular values.
+                if (options.UseConformantStrings)
                 {
-                    switch (ch)
+                    // Escape only quotes by doubling.
+                    foreach (char ch in NativeData.ToString())
                     {
-                        case (byte)ASCIIBytes.SingleQuote :
-                            retQuotedEscaped.WriteByte(ch);
+                        if (ch == quote.Value)
+                        {
+                            retQuotedEscaped.Append(ch);
+                        }
 
-                            break;
-
-                        case (byte)ASCIIBytes.BackSlash :
-                            if (! options.UseConformantStrings)
-                            {
-                                retQuotedEscaped.WriteByte(ch);
-                            }
-
-                            break;
+                        retQuotedEscaped.Append(ch);
                     }
-
-                    retQuotedEscaped.WriteByte(ch);
                 }
+                else
+                {
+                    // Escape quotes and backslashes by doubling.
+                    foreach (char ch in NativeData.ToString())
+                    {
+                        if (
+                            ch == quote.Value ||
+                            ch == '\\'
+                        )
+                        {
+                            retQuotedEscaped.Append(ch);
+                        }
 
-                retQuotedEscaped.WriteByte((byte)ASCIIBytes.SingleQuote);
+                        retQuotedEscaped.Append(ch);
+                    }
+                }
             }
             else
             {
-                retQuotedEscaped.WriteByte((byte)ASCIIBytes.DoubleQuote);
-
-                foreach (byte ch in retRawUTF8)
+                // If we get here. value must be an extended query array element.
+                // Escape quotes and backslashes with a backslash.
+                foreach (char ch in NativeData.ToString())
                 {
-                    switch (ch)
+                    if (
+                        ch == quote.Value ||
+                        ch == '\\'
+                    )
                     {
-                        case (byte)ASCIIBytes.DoubleQuote :
-                            retQuotedEscaped.WriteByte((byte)ASCIIBytes.BackSlash);
-
-                            break;
-
-                        case (byte)ASCIIBytes.BackSlash :
-                            retQuotedEscaped.WriteByte((byte)ASCIIBytes.BackSlash);
-
-                            break;
+                        retQuotedEscaped.Append('\\');
                     }
 
-                    retQuotedEscaped.WriteByte(ch);
+                    retQuotedEscaped.Append(ch);
                 }
-
-                retQuotedEscaped.WriteByte((byte)ASCIIBytes.DoubleQuote);
             }
 
-            return retQuotedEscaped.ToArray();
+            retQuotedEscaped.Append(quote.Value);
+
+            return BackendEncoding.UTF8Encoding.GetBytes(retQuotedEscaped.ToString());
         }
 
         /// <summary>
@@ -149,29 +202,57 @@ namespace NpgsqlTypes
             }
         }
 
-        /// <summary>
-        /// Binary data with possible older style escapes, quoted.
-        /// </summary>
-        private static byte[] ByteArrayToByteaTextEscaped(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        private static byte[] DetermineByteaEscapeBackSlashes(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
-            MemoryStream ret = new MemoryStream(nativeData.Length);
-            byte[] backSlash = (forExtendedQuery && ! arrayElement) || options.UseConformantStrings ? byteaBackslashConforming : byteaBackslashNonConforming;
-
-            if (! arrayElement)
+            if (forExtendedQuery)
             {
-                if (! forExtendedQuery)
+                if (arrayElement)
                 {
-                    if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
-                    {
-                        ret.WriteByte((byte)ASCIIBytes.E);
-                    }
-
-                    ret.WriteByte((byte)ASCIIBytes.SingleQuote);
+                    return backslashDouble;
+                }
+                else
+                {
+                    return backslashSingle;
                 }
             }
             else
             {
-                ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
+                if (options.UseConformantStrings)
+                {
+                    return backslashSingle;
+                }
+                else
+                {
+                    return backslashDouble;
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// Binary data with possible older style octal escapes, quoted.
+        /// </summary>
+        private static byte[] ByteArrayToByteaTextEscaped(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            byte? quote;
+            byte? ePrefix;
+            byte[] backSlash;
+
+            quote = DetermineQuote(forExtendedQuery, options, arrayElement);
+            ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
+            backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
+
+            // Minimum length for output is input bytes + e-prefix + two quotes.
+            MemoryStream ret = new MemoryStream(nativeData.Length + (ePrefix.HasValue ? 1 : 0) + (quote.HasValue ? 2 : 0));
+
+            if (quote.HasValue)
+            {
+                if (ePrefix.HasValue)
+                {
+                    ret.WriteByte(ePrefix.Value);
+                }
+
+                ret.WriteByte(quote.Value);
             }
 
             foreach (byte b in nativeData)
@@ -190,16 +271,9 @@ namespace NpgsqlTypes
                 }
             }
 
-            if (! arrayElement)
+            if (quote.HasValue)
             {
-                if (! forExtendedQuery)
-                {
-                    ret.WriteByte((byte)ASCIIBytes.SingleQuote);
-                }
-            }
-            else
-            {
-                ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
+                ret.WriteByte(quote.Value);
             }
 
             return ret.ToArray();
@@ -211,53 +285,49 @@ namespace NpgsqlTypes
         private static byte[] ByteArrayToByteaTextHexFormat(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             bool useConformantStrings = (forExtendedQuery || options.UseConformantStrings);
+            byte? quote;
+            byte? ePrefix;
+            byte[] backSlash;
+
+            quote = DetermineQuote(forExtendedQuery, options, arrayElement);
 
             if (nativeData.Length == 0)
             {
-                if (forExtendedQuery)
+                if (! quote.HasValue)
                 {
-                    return new byte[0];
+                    return ASCIIByteArrays.Empty;
                 }
                 else
                 {
-                    return new byte[] { (byte)ASCIIBytes.SingleQuote, (byte)ASCIIBytes.SingleQuote };
+                    return new byte[] { quote.Value, quote.Value };
                 }
             }
 
-            byte[] ret = null;
+            ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
+            backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
+
             int i = 0;
+            byte[] ret = new byte[
+                (ePrefix.HasValue ? 1 : 0) + // E prefix
+                (quote.HasValue ? 2 : 0) + // quotes
+                backSlash.Length + // backslash[es]
+                1 + // x
+                (nativeData.Length * 2) // data
+            ];
 
-            if (! arrayElement)
+            if (quote.HasValue)
             {
-                ret = new byte[
-                    (! forExtendedQuery && ! useConformantStrings && options.Supports_E_StringPrefix ? 1 : 0) +
-                    (! forExtendedQuery ? 2 : 0) +
-                    (nativeData.Length * 2) +
-                    (useConformantStrings ? 2 : 3)
-                ];
-
-                if (! forExtendedQuery)
+                if (ePrefix.HasValue)
                 {
-                    if (! useConformantStrings && options.Supports_E_StringPrefix)
-                    {
-                        ret[i++] = (byte)ASCIIBytes.E;
-                    }
-
-                    ret[i++] = (byte)ASCIIBytes.SingleQuote;
+                    ret[i++] = ePrefix.Value;
                 }
-            }
-            else
-            {
-                ret = new byte[(nativeData.Length * 2) + 5];
 
-                ret[i++] = (byte)ASCIIBytes.DoubleQuote;
+                ret[i++] = quote.Value;
             }
 
-            ret[i++] = (byte)ASCIIBytes.BackSlash;
-
-            if (! useConformantStrings || arrayElement)
+            foreach (byte bs in backSlash)
             {
-                ret[i++] = (byte)ASCIIBytes.BackSlash;
+                ret[i++] = bs;
             }
 
             ret[i++] = (byte)ASCIIBytes.x;
@@ -268,16 +338,9 @@ namespace NpgsqlTypes
                 ret[i++] = hexEncodingByteMap[b & 0x0F];
             }
 
-            if (! arrayElement)
+            if (quote.HasValue)
             {
-                if (! forExtendedQuery)
-                {
-                    ret[i++] = (byte)ASCIIBytes.SingleQuote;
-                }
-            }
-            else
-            {
-                ret[i++] = (byte)ASCIIBytes.DoubleQuote;
+                ret[i++] = quote.Value;
             }
 
             return ret;

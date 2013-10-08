@@ -111,7 +111,7 @@ namespace NpgsqlTypes
             {
                 byte[] element;
 
-                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, forExtendedQuery);
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, true);
 
                 array.Write(element, 0, element.Length);
 
@@ -129,7 +129,7 @@ namespace NpgsqlTypes
             {//This shouldn't really be reachable.
                 byte[] element;
 
-                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, forExtendedQuery);
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, true);
 
                 array.Write(element, 0, element.Length);
 
