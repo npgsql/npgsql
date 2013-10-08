@@ -37,11 +37,10 @@ namespace Npgsql
         {
         }
 
-        public override void Startup(NpgsqlConnector context)
+        public override void Startup(NpgsqlConnector context,NpgsqlConnectionStringBuilder settings)
         {
-            NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(296, //Not used.
-                                                                        context.BackendProtocolVersion, context.Database,
-                                                                        context.UserName, "", "", "");
+            NpgsqlStartupPacket startupPacket = NpgsqlStartupPacket.BuildStartupPacket(context.BackendProtocolVersion,
+                                                                                       context.Database, context.UserName, settings);
 
             startupPacket.WriteToStream(new BufferedStream(context.Stream));
             context.RequireReadyForQuery = false;

@@ -281,6 +281,42 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug1011241_DiscardAll()
+        {
+
+            var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
+            connection.Open();
+
+            if (connection.PostgreSqlVersion < new Version(8, 3, 0)
+                || new NpgsqlConnectionStringBuilder(ConnectionString).Protocol == ProtocolVersion.Version2)
+            {
+                connection.Close();
+                return;
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("public", command.ExecuteScalar());
+
+                command.CommandText = "SET SEARCH_PATH = \"$user\"";
+                command.ExecuteNonQuery();
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("\"$user\"", command.ExecuteScalar());
+            }
+            connection.Close();
+
+            connection.Open();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SHOW SEARCH_PATH";
+                Assert.AreEqual("public", command.ExecuteScalar());
+            }
+            connection.Close();
+
+        }
+
+        [Test]
         public void NpgsqlErrorRepro2()
         {
             var connection = new NpgsqlConnection(ConnectionString);
@@ -388,11 +424,18 @@ namespace NpgsqlTests
         [Test]
         public void CheckExtraFloatingDigitsHigherThanTwo()
         {
-
+            
             using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
             {
                 string extraDigits = (string) c.ExecuteScalar();
-                Assert.GreaterOrEqual(extraDigits, "2");
+                if (Conn.PostgreSqlVersion >= new Version(9, 0, 0))
+                {
+                    Assert.AreEqual(extraDigits, "3");
+                }
+                else
+                {
+                    Assert.AreEqual(extraDigits, "2");
+                }
             }
         }
 
