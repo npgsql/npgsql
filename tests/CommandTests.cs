@@ -824,6 +824,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand("select :val", Conn);
             command.Parameters.Add("val", NpgsqlDbType.Bytea);
             command.Parameters["val"].Value = buff;
+            command.Prepare();
             var result = (Byte[]) command.ExecuteScalar();
             Assert.AreEqual(buff, result);
         }
