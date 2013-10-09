@@ -302,6 +302,130 @@ namespace NpgsqlTests
             }
         }
 
+        private void ParameterizedSelectByteaArrayRoundTripPrepared_Internal(bool prepare)
+        {
+            using (var command = Conn.CreateCommand())
+            {
+                command.CommandType = CommandType.Text;
+                command.CommandText = "SELECT :data";
+
+                byte[] bytes = new byte[50000];
+                for (int i = 0  ; i < bytes.Length ; i++)
+                {
+                    bytes[i] = (byte)(i % 255);
+                }
+                byte[][] data = new byte[][] { bytes, bytes };
+
+                NpgsqlParameter dataParameter = command.CreateParameter();
+                dataParameter.Direction = ParameterDirection.Input;
+                dataParameter.NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Bytea | NpgsqlTypes.NpgsqlDbType.Array;
+                dataParameter.ParameterName = "data";
+                command.Parameters.Add(dataParameter);
+                dataParameter.Value = data;
+
+                if (prepare)
+                {
+                    command.Prepare();
+                }
+                var sw = Stopwatch.StartNew();
+                int count = 0;
+                while (sw.Elapsed < TestRunTime)
+                {
+                try
+                {
+                    command.ExecuteScalar();
+                }
+                catch (NpgsqlException e)
+                {
+                    if (e.Message.Length > 500)
+                    {
+                        throw new Exception(e.Message.Substring(0, 500));
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                    count++;
+                }
+                sw.Stop();
+                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
+            }
+        }
+
+        [Test, Description("A bytea array roundtrip test")]
+        public void ParameterizedSelectByteaArrayRoundTrip()
+        {
+            ParameterizedSelectByteaArrayRoundTripPrepared_Internal(false);
+        }
+
+        [Test, Description("A bytea array roundtrip test, prepared")]
+        public void ParameterizedSelectByteaArrayRoundTripPrepared()
+        {
+            ParameterizedSelectByteaArrayRoundTripPrepared_Internal(true);
+        }
+
+        [Test, Description("A bytea array roundtrip test, prepared, binary suppressed")]
+        public void ParameterizedSelectByteaArrayRoundTripPrepared_SuppressBinary()
+        {
+            if (SuppressBinaryBackendEncoding != null)
+            {
+                using (SuppressBackendBinary())
+                {
+                    ParameterizedSelectByteaArrayRoundTripPrepared_Internal(true);
+                }
+            }
+        }
+
+        private void ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(bool prepare)
+        {
+            using (var command = Conn.CreateCommand())
+            {
+                command.CommandType = CommandType.Text;
+                command.CommandText = "SELECT :data";
+
+                decimal[] data = new decimal[1000];
+
+                for (int i = 0 ; i < 1000 ; i++)
+                {
+                    data[i] = i;
+                }
+
+                NpgsqlParameter dataParameter = command.CreateParameter();
+                dataParameter.Direction = ParameterDirection.Input;
+                dataParameter.NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Numeric | NpgsqlTypes.NpgsqlDbType.Array;
+                dataParameter.ParameterName = "data";
+                command.Parameters.Add(dataParameter);
+                dataParameter.Value = data;
+
+                if (prepare)
+                {
+                    command.Prepare();
+                }
+                var sw = Stopwatch.StartNew();
+                int count = 0;
+                while (sw.Elapsed < TestRunTime)
+                {
+                    command.ExecuteScalar();
+                    count++;
+                }
+                sw.Stop();
+                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
+            }
+        }
+
+        [Test, Description("A decimal array roundtrip test")]
+        public void ParameterizedSelectDecimalArrayRoundTrip()
+        {
+            ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(false);
+        }
+
+        [Test, Description("A timestamp array roundtrip test, prepared")]
+        public void ParameterizedSelectDecimalArrayRoundTripPrepared()
+        {
+            ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(true);
+        }
+
         #region Setup / Teardown / Utils
 
         private Stopwatch _watch;
