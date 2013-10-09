@@ -2539,6 +2539,39 @@ namespace NpgsqlTests
             }
         }
 
+        private void DecimalArrayHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { 1d, 1000d, 1000000d };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Numeric | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (decimal[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void DecimalArrayHandling()
+        {
+            DecimalArrayHandlingInternal(false);
+        }
+
+        [Test]
+        public void DecimalArrayHandlingPrepared()
+        {
+            DecimalArrayHandlingInternal(true);
+        }
+
         [Test]
         public void TextArrayHandling()
         {
