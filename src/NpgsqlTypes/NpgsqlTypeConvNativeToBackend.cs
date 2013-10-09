@@ -291,18 +291,6 @@ namespace NpgsqlTypes
 
             quote = DetermineQuote(forExtendedQuery, options, arrayElement);
 
-            if (nativeData.Length == 0)
-            {
-                if (! quote.HasValue)
-                {
-                    return ASCIIByteArrays.Empty;
-                }
-                else
-                {
-                    return new byte[] { quote.Value, quote.Value };
-                }
-            }
-
             ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
             backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
 
