@@ -240,7 +240,7 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
+                    backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
                 }
 
                 return backendSerialization;
@@ -259,7 +259,7 @@ namespace NpgsqlTypes
                         )
                     );
 
-                backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
+                backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
 
                 return backendSerialization;
             }
@@ -278,7 +278,7 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, arrayElement);
+                    backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
                 }
 
                 return backendSerialization;
@@ -298,45 +298,76 @@ namespace NpgsqlTypes
             }
             else if (_ConvertNativeToBackendText != null)
             {
-                return _ConvertNativeToBackendText(this, NativeData, true, options, arrayElement);
+                byte[] backendSerialization;
+
+                backendSerialization = _ConvertNativeToBackendText(this, NativeData, true, options, arrayElement);
+
+                if (Quote)
+                {
+                    backendSerialization = QuoteASCIIString(backendSerialization, true, arrayElement);
+                }
+
+                return backendSerialization;
             }
             else
             {
+                byte[] backendSerialization;
+
                 if (NativeData is Enum)
                 {
                     // Do a special handling of Enum values.
                     // Translate enum value to its underlying type.
-                    return
-                        BackendEncoding.UTF8Encoding.GetBytes((String)
+                    backendSerialization = BackendEncoding.UTF8Encoding.GetBytes((String)
                         Convert.ChangeType(Enum.Format(NativeData.GetType(), NativeData, "d"), typeof (String),
                                            CultureInfo.InvariantCulture));
                 }
                 else if (NativeData is IFormattable)
                 {
-                    return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable) NativeData).ToString(null, ni));
+                    backendSerialization = BackendEncoding.UTF8Encoding.GetBytes(((IFormattable) NativeData).ToString(null, ni));
                 }
                 else
                 {
-                    return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
+                    backendSerialization = BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
                 }
+
+                if (Quote)
+                {
+                    backendSerialization = QuoteASCIIString(backendSerialization, true, arrayElement);
+                }
+
+                return backendSerialization;
             }
         }
 
-        private static byte[] QuoteASCIIString(byte[] src, bool arrayElement)
+        private static byte[] QuoteASCIIString(byte[] src, bool forExtendedQuery, bool arrayElement)
         {
-            byte[] ret = new byte[src.Length + 2];
+            byte[] ret = null;
 
-            if (! arrayElement)
+            if (forExtendedQuery)
             {
-                ret[0] = (byte)ASCIIBytes.SingleQuote;
-                src.CopyTo(ret, 1);
-                ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
+                if (arrayElement)
+                {
+                    // Array elements sent via Bind require double-quotes
+                    ret = new byte[src.Length + 2];
+
+                    ret[0] = (byte)ASCIIBytes.DoubleQuote;
+                    src.CopyTo(ret, 1);
+                    ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
+                }
+                else
+                {
+                    // Other values sent via Bind are not quoted
+                    ret = src;
+                }
             }
             else
             {
-                ret[0] = (byte)ASCIIBytes.DoubleQuote;
+                // All quotable values sent via non-extended query require single-quotes
+                ret = new byte[src.Length + 2];
+
+                ret[0] = (byte)ASCIIBytes.SingleQuote;
                 src.CopyTo(ret, 1);
-                ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
+                ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
             }
 
             return ret;

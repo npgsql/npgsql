@@ -50,7 +50,7 @@ namespace NpgsqlTypes
         private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
         private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
 
-        private static byte? DetermineQuote(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        private static byte? DetermineQuote(bool forExtendedQuery, bool arrayElement)
         {
             if (forExtendedQuery)
             {
@@ -100,7 +100,7 @@ namespace NpgsqlTypes
         {
             char? quote;
 
-            quote = (char?)DetermineQuote(forExtendedQuery, options, arrayElement);
+            quote = (char?)DetermineQuote(forExtendedQuery, arrayElement);
 
             if (! quote.HasValue)
             {
@@ -238,7 +238,7 @@ namespace NpgsqlTypes
             byte? ePrefix;
             byte[] backSlash;
 
-            quote = DetermineQuote(forExtendedQuery, options, arrayElement);
+            quote = DetermineQuote(forExtendedQuery, arrayElement);
             ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
             backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
 
@@ -289,7 +289,7 @@ namespace NpgsqlTypes
             byte? ePrefix;
             byte[] backSlash;
 
-            quote = DetermineQuote(forExtendedQuery, options, arrayElement);
+            quote = DetermineQuote(forExtendedQuery, arrayElement);
 
             ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
             backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
