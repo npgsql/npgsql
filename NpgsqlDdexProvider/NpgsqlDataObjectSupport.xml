@@ -438,11 +438,11 @@
       <Properties>
         <Property name="Name" isIdentifierPart="true" />
         <Property name="Ordinal" underlyingMember="ordinal_position" />
-        <Property name="ReferencedColumn">
+        <!--Property name="ReferencedColumn">
           <Conversion>
             <CallMapper implementationType="" />
           </Conversion>
-        </Property>
+        </Property-->
       </Properties>
     </MappedType>
     <MappedType name="View" underlyingType="Views">

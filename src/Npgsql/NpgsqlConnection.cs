@@ -596,7 +596,7 @@ namespace Npgsql
             if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
             {
                 throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            Keywords.Host.ToString());
+                                            Keywords.UserName.ToString());
             }
 
             // Get a Connector, either from the pool or creating one ourselves.
