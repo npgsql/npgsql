@@ -64,6 +64,8 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <NoWarn>
+    </NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -106,6 +108,8 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net20\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <NoWarn>
+    </NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net20|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -179,13 +183,19 @@
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
+    <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
     <Compile Include="NpgsqlTypes\FastConverter.cs" />
     <Compile Include="NpgsqlTypes\FastPath.cs" />
     <Compile Include="NpgsqlTypes\FastPathArg.cs" />
     <Compile Include="NpgsqlTypes\LargeObject.cs" />
     <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeConverters.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlNativeToBackendOptions.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvBackendToNative.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvNativeToBackend.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoBackend.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoNative.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Npgsql\AssemblyInfo.cs" />
@@ -268,22 +278,6 @@
     <Compile Include="Npgsql\LinqBridge-1.3.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.de.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.ja.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NpgsqlTypes\NpgsqlTypesHelper.zh-CN.resx">
-      <DependentUpon>NpgsqlTypesHelper.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="Npgsql\NpgsqlClosedState.resx">
       <DependentUpon>NpgsqlClosedState.cs</DependentUpon>
       <SubType>Designer</SubType>

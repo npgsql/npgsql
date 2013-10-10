@@ -648,6 +648,11 @@ namespace Npgsql
             get { return ServerVersion >= new Version(9, 0, 0); }
         }
 
+        internal Boolean SupportsExtraFloatDigits3
+        {
+            get { return ServerVersion >= new Version(9, 0, 0); }
+        }
+
         /// <summary>
         /// Report whether the current connection can support prepare functionality.
         /// </summary>
@@ -853,13 +858,19 @@ namespace Npgsql
 
             /*
              * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
-             * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
              * Check bug report #1010992 for more information.
              */
 
             try
             {
-                NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
+
+                NpgsqlCommand commandSingleDoublePrecision;
+
+                if (SupportsExtraFloatDigits3)
+                    commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3", this);
+                else
+                    commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2", this);
+
                 commandSingleDoublePrecision.ExecuteBlind();
 
             }

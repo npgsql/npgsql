@@ -147,7 +147,7 @@ namespace Npgsql.SqlGenerators
                     // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
                     // NativeToBackendTypeConverterOptions.Default should provide the correct
                     // formatting rules for any backend >= 8.0.
-                    sqlText.Append(System.Text.Encoding.ASCII.GetChars(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
