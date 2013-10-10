@@ -84,7 +84,7 @@ namespace NpgsqlTypes
             Int32 byteALength = BackendData.Length;
             Int32 byteAPosition = 0;
 
-            if (byteALength > 2 && BackendData[0] == (byte)ASCIIBytes.BackSlash && BackendData[1] == (byte)ASCIIBytes.x)
+            if (byteALength >= 2 && BackendData[0] == (byte)ASCIIBytes.BackSlash && BackendData[1] == (byte)ASCIIBytes.x)
             {
                 // PostgreSQL 8.5+'s bytea_output=hex format
                 byte[] result = new byte[(byteALength - 2) / 2];
