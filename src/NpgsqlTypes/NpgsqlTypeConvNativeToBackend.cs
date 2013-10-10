@@ -96,8 +96,9 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert a string to UTF8 encoded text, escaped and quoted as required.
         /// </summary>
-        internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object oNativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
+            string NativeData = oNativeData.ToString();
             char? quote;
 
             quote = (char?)DetermineQuote(forExtendedQuery, arrayElement);
@@ -105,11 +106,13 @@ namespace NpgsqlTypes
             if (! quote.HasValue)
             {
                 // No quoting or escaping needed.
-                return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
+                return BackendEncoding.UTF8Encoding.GetBytes(NativeData);
             }
 
             char? ePrefix;
-            StringBuilder retQuotedEscaped = new StringBuilder();
+            // Give the output string builder enough room to start for the string, quotes, E-prefix,
+            // and 1 in 10 characters needing to be escaped; a WAG.
+            StringBuilder retQuotedEscaped = new StringBuilder(NativeData.Length + 3 + NativeData.Length / 10);
 
             ePrefix = (char?)DetermineEPrefix(forExtendedQuery, options, arrayElement);
 
@@ -129,7 +132,7 @@ namespace NpgsqlTypes
                 if (options.UseConformantStrings)
                 {
                     // Escape only quotes by doubling.
-                    foreach (char ch in NativeData.ToString())
+                    foreach (char ch in NativeData)
                     {
                         if (ch == quote.Value)
                         {
