@@ -99,16 +99,17 @@ namespace NpgsqlTypes
         internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object oNativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             string NativeData = oNativeData.ToString();
-            char? quote;
+            char? nQuote;
 
-            quote = (char?)DetermineQuote(forExtendedQuery, arrayElement);
+            nQuote = (char?)DetermineQuote(forExtendedQuery, arrayElement);
 
-            if (! quote.HasValue)
+            if (! nQuote.HasValue)
             {
                 // No quoting or escaping needed.
                 return BackendEncoding.UTF8Encoding.GetBytes(NativeData);
             }
 
+            char quote = nQuote.Value;
             char? ePrefix;
             // Give the output string builder enough room to start for the string, quotes, E-prefix,
             // and 1 in 10 characters needing to be escaped; a WAG.
@@ -121,7 +122,7 @@ namespace NpgsqlTypes
                 retQuotedEscaped.Append(ePrefix.Value);
             }
 
-            retQuotedEscaped.Append(quote.Value);
+            retQuotedEscaped.Append(quote);
 
             // Build a new string value, escaping characters as needed.
             // Each possible escape style gets its own distinct code path to reduce
@@ -134,7 +135,7 @@ namespace NpgsqlTypes
                     // Escape only quotes by doubling.
                     foreach (char ch in NativeData)
                     {
-                        if (ch == quote.Value)
+                        if (ch == quote)
                         {
                             retQuotedEscaped.Append(ch);
                         }
@@ -145,10 +146,10 @@ namespace NpgsqlTypes
                 else
                 {
                     // Escape quotes and backslashes by doubling.
-                    foreach (char ch in NativeData.ToString())
+                    foreach (char ch in NativeData)
                     {
                         if (
-                            ch == quote.Value ||
+                            ch == quote ||
                             ch == '\\'
                         )
                         {
@@ -163,10 +164,10 @@ namespace NpgsqlTypes
             {
                 // If we get here. value must be an extended query array element.
                 // Escape quotes and backslashes with a backslash.
-                foreach (char ch in NativeData.ToString())
+                foreach (char ch in NativeData)
                 {
                     if (
-                        ch == quote.Value ||
+                        ch == quote ||
                         ch == '\\'
                     )
                     {
@@ -177,7 +178,7 @@ namespace NpgsqlTypes
                 }
             }
 
-            retQuotedEscaped.Append(quote.Value);
+            retQuotedEscaped.Append(quote);
 
             return BackendEncoding.UTF8Encoding.GetBytes(retQuotedEscaped.ToString());
         }
