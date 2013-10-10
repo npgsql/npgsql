@@ -191,7 +191,7 @@ namespace Npgsql
 
             StringBuilder getTables = new StringBuilder();
 
-            getTables.Append("SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables");
+            getTables.Append("SELECT * FROM (SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_type = 'BASE TABLE') tmp");
 
             using (
                 NpgsqlCommand command =

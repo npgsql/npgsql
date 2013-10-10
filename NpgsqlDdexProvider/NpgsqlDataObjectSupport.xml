@@ -7,7 +7,11 @@
         <Property name="Database" type="System.String"/>
       </Properties>
       <Services>
-        <Service type="IVsDataObjectSelector" implementationType="Npgsql.VisualStudio.Provider.NpgsqlDataObjectSelector" />
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetRootObjectSelector">
+          <Parameters method="SelectObjects">
+            <Parameter />
+          </Parameters>
+        </Service>
       </Services>
     </RootType>
     <Type name="Schemata" preferredOrdering="catalog_name,schema_name">
@@ -325,7 +329,7 @@
   </Types>
   <MappedTypes>
     <MappedType name="Table" underlyingType="Tables">
-      <Selection restrictions="{Catalog},{Schema},{Name}" filter="table_type = 'BASE TABLE'" />
+      <Selection restrictions="{Catalog},{Schema},{Name}"/>
       <Identifier>
         <Part name="Catalog" underlyingMember="table_catalog" />
         <Part name="Schema" underlyingMember="table_schema" />
@@ -434,11 +438,11 @@
       <Properties>
         <Property name="Name" isIdentifierPart="true" />
         <Property name="Ordinal" underlyingMember="ordinal_position" />
-        <!--Property name="ReferencedColumn">
+        <Property name="ReferencedColumn">
           <Conversion>
             <CallMapper implementationType="" />
           </Conversion>
-        </Property-->
+        </Property>
       </Properties>
     </MappedType>
     <MappedType name="View" underlyingType="Views">

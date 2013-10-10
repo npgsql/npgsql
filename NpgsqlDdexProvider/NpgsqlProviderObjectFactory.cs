@@ -10,7 +10,7 @@ namespace Npgsql.VisualStudio.Provider
     class NpgsqlProviderObjectFactory : DataProviderObjectFactory
     {
         public override object CreateObject(Type objType)
-        {   
+        {
             if (objType == typeof(IVsDataConnectionProperties) || objType == typeof(IVsDataConnectionUIProperties))
                 return new AdoDotNetConnectionProperties();
             else if (objType == typeof(IVsDataConnectionSupport))
