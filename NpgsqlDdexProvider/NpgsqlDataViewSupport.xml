@@ -25,7 +25,7 @@
                         <Command guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="0x3528" provider="884DD964-5327-461f-9F06-6484DD540F8F" />
                       </Commands>
                       <Children>
-                        <Selection type="Tables" restrictions="{Root.Database},{Schema.schema_name}" filter="table_type = 'BASE TABLE'">
+                        <Selection type="Tables" restrictions="{Root.Database},{Schema.schema_name}">
                           <SelectionNode nodeId="Table">
                             <DisplayName>{table_name}</DisplayName>
                             <Icon name="Table" />
@@ -70,7 +70,7 @@
                       <Icon name="Folder" />
                       <Children>
                         <Selection type="Views" restrictions="{Root.Database},{Schema.schema_name}">
-                          <SelectionNode nodeId="Table">
+                          <SelectionNode nodeId="View">
                             <DisplayName>{table_name}</DisplayName>
                             <Icon name="View" />
                             <Commands>
@@ -81,7 +81,7 @@
                                 <DisplayName resource="Node_Columns" />
                                 <Icon name="Folder" />
                                 <Children>
-                                  <Selection type="ViewColumns" restrictions="{Root.Database},{Table.table_schema},{Table.table_name}">
+                                  <Selection type="ViewColumns" restrictions="{Root.Database},{View.table_schema},{View.table_name}">
                                     <SelectionNode>
                                       <DisplayName>{column_name}</DisplayName>
                                       <Icon name="Column" />

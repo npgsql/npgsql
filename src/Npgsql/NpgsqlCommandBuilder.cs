@@ -303,31 +303,25 @@ namespace Npgsql
             {
                 throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
             }
+            if (this.QuotePrefix != this.QuoteSuffix)
+                throw new ArgumentException("Specified QuotePrefix and QuoteSuffix values do not match");
 
-            return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
+            return this.QuotePrefix + unquotedIdentifier.Replace(this.QuotePrefix, this.QuotePrefix + this.QuotePrefix) + this.QuoteSuffix;
         }
 
         public override string UnquoteIdentifier(string quotedIdentifier)
-
         {
             if (quotedIdentifier == null)
-
-            {
                 throw new ArgumentNullException("Quoted identifier parameter cannot be null");
-            }
+            if (this.QuotePrefix != this.QuoteSuffix)
+                throw new ArgumentException("Specified QuotePrefix and QuoteSuffix values do not match");
 
             string unquotedIdentifier = quotedIdentifier.Trim();
 
-            if (unquotedIdentifier.StartsWith(this.QuotePrefix))
-
+            if (unquotedIdentifier.Length > 2 && unquotedIdentifier.StartsWith(this.QuotePrefix) && unquotedIdentifier.EndsWith(this.QuoteSuffix))
             {
-                unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
-            }
-
-            if (unquotedIdentifier.EndsWith(this.QuoteSuffix))
-
-            {
-                unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
+                unquotedIdentifier = unquotedIdentifier.Substring(1, unquotedIdentifier.Length - 2);
+                unquotedIdentifier = unquotedIdentifier.Replace(this.QuotePrefix + this.QuotePrefix, this.QuotePrefix);
             }
 
             return unquotedIdentifier;

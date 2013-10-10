@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.Shell;
+﻿using Microsoft.VisualStudio.Data.Services.SupportEntities;
+using Microsoft.VisualStudio.Shell;
 using System;
 
 namespace Npgsql.VisualStudio.Provider
@@ -22,11 +23,11 @@ namespace Npgsql.VisualStudio.Provider
                 providerKey.SetValue("Technology", "{77AB9A9D-78B9-4ba7-91AC-873F5338F1D2}");
                 
                 providerKey = providerKey.CreateSubkey("SupportedObjects");
-                providerKey.CreateSubkey("IVsDataConnectionProperties");
-                providerKey.CreateSubkey("IVsDataConnectionUIProperties");
-                providerKey.CreateSubkey("IVsDataConnectionSupport");
-                providerKey.CreateSubkey("IVsDataObjectSupport");
-                providerKey.CreateSubkey("IVsDataViewSupport");
+                providerKey.CreateSubkey(typeof(IVsDataConnectionProperties).Name);
+                providerKey.CreateSubkey(typeof(IVsDataConnectionUIProperties).Name);
+                providerKey.CreateSubkey(typeof(IVsDataConnectionSupport).Name);
+                providerKey.CreateSubkey(typeof(IVsDataObjectSupport).Name);
+                providerKey.CreateSubkey(typeof(IVsDataViewSupport).Name);
 
                 providerKey = context.CreateKey(@"DataSources\{" + GuidList.guidNpgsqlDdexProviderDataSourceString + @"}");
                 providerKey.SetValue(null, "PostgreSQL Database");
