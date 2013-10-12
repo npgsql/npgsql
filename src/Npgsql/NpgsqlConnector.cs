@@ -929,6 +929,9 @@ namespace Npgsql
             }
             else
             {
+                // All connection parameters for protocol 3 had been sent in the startup packet.
+                // But extra_float_digits was setted to 2,so we need set extra_float_digits to 3 again when found
+                // the backend is 9.0+ .
                 if (SupportsExtraFloatDigits3)
                 {
                     NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3;", this);
