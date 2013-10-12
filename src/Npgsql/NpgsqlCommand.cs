@@ -198,7 +198,7 @@ namespace Npgsql
             {
                 if (value < 0)
                 {
-                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_CommandTimeoutLessZero"));
+                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_CommandTimeoutLessZero"), (Exception)null);
                 }
 
                 timeout = value;
