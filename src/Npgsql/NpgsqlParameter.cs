@@ -76,6 +76,8 @@ namespace Npgsql
 
         private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
 
+        private bool bound = false;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
@@ -256,6 +258,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Precision", value);
                 precision = value;
+                bound = false;
             }
         }
 
@@ -298,6 +301,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Scale", value);
                 scale = value;
+                bound = false;
             }
         }
 
@@ -319,6 +323,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Size", value);
                 size = value;
+                bound = false;
             }
         }
 
@@ -344,6 +349,7 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
 
                 useCast = value != DbType.Object;
+                bound = false;
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
@@ -372,6 +378,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
                 useCast = true;
+                bound = false;
                 if (value == NpgsqlDbType.Array)
                 {
                     throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
@@ -466,6 +473,8 @@ namespace Npgsql
                 // no longer prefix with : so that the m_Name returned is the m_Name set
 
                 m_Name = m_Name.Trim();
+
+                bound = false;
 
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", m_Name);
             }
@@ -572,6 +581,8 @@ namespace Npgsql
                     this.value = value;
                     this.npgsqlValue = value;
 
+                    bound = false;
+
                     //if (type_info == null)
                     //{
                     //    type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
@@ -593,6 +604,8 @@ namespace Npgsql
                 {
                     this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
                     this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+
+                    bound = false;
                 }
 
             }
@@ -618,6 +631,7 @@ namespace Npgsql
 
                 Value = value;
 
+                bound = false;
             }
         }
 
@@ -626,6 +640,7 @@ namespace Npgsql
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             type_info = null;
             this.Value = Value;
+            bound = false;
         }
 
         public override bool SourceColumnNullMapping
@@ -661,6 +676,12 @@ namespace Npgsql
         object ICloneable.Clone()
         {
             return Clone();
+        }
+
+        internal bool Bound
+        {
+            get { return bound; }
+            set { bound = value; }
         }
     }
 }

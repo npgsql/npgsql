@@ -45,6 +45,7 @@ namespace Npgsql
         private Int16[] _parameterFormatCodes;
         private byte[][] _parameterValues;
         private Int16[] _resultFormatCodes;
+        private int _messageLength = 0;
 
         public NpgsqlBind(String portalName, String preparedStatementName, Int16[] parameterFormatCodes,
                           byte[][] parameterValues, Int16[] resultFormatCodes)
@@ -73,63 +74,83 @@ namespace Npgsql
         public Int16[] ResultFormatCodes
         {
             get { return _resultFormatCodes; }
-            set { _resultFormatCodes = value; }
+
+            set
+            {
+                _resultFormatCodes = value;
+                _messageLength = 0;
+            }
         }
 
         public Int16[] ParameterFormatCodes
         {
             get { return _parameterFormatCodes; }
 
-            set { _parameterFormatCodes = value; }
+            set
+            {
+                _parameterFormatCodes = value;
+                _messageLength = 0;
+            }
         }
 
         public byte[][] ParameterValues
         {
             get { return _parameterValues; }
 
-            set { _parameterValues = value; }
+            set
+            {
+                _parameterValues = value;
+                _messageLength = 0;
+            }
         }
 
         public override void WriteToStream(Stream outputStream)
         {
-            Int32 messageLength = 4 + _bPortalName.Length + 1 +
-                                  _bPreparedStatementName.Length + 1 + 2 + (_parameterFormatCodes.Length * 2) +
-                                  2;
-
-            // Get size of parameter values.
-            Int32 i;
-
-            if (_parameterValues != null)
+            if (_messageLength == 0)
             {
-                for (i = 0; i < _parameterValues.Length; i++)
+                _messageLength =
+                    4 + // Message length (32 bits)
+                    _bPortalName.Length + 1 + // Portal name + null terminator
+                    _bPreparedStatementName.Length + 1 + // Statement name + null terminator
+                    2 + // Parameter format code array length (16 bits)
+                    _parameterFormatCodes.Length * 2 + // Parameter format code array (16 bits per code)
+                    2; // Parameter va;ue array length (16 bits)
+
+                if (_parameterValues != null)
                 {
-                    messageLength += 4;
-                    if (_parameterValues[i] != null)
+                    for (int i = 0; i < _parameterValues.Length; i++)
                     {
-                        messageLength += _parameterValues[i].Length;
+                        _messageLength += 4; // Parameter value length (32 bits)
+
+                        if (_parameterValues[i] != null)
+                        {
+                            _messageLength += _parameterValues[i].Length; // Parameter value
+                        }
                     }
                 }
-            }
 
-            messageLength += 2 + (_resultFormatCodes.Length * 2);
+                _messageLength +=
+                    2 + // Result format code array length (16 bits)
+                    _resultFormatCodes.Length * 2; // Result format code array (16 bits per code)
+            }
 
             outputStream
                 .WriteBytes((byte)FrontEndMessageCode.Bind)
-                .WriteInt32(messageLength)
+                .WriteInt32(_messageLength)
                 .WriteBytesNullTerminated(_bPortalName)
                 .WriteBytesNullTerminated(_bPreparedStatementName)
                 .WriteInt16((Int16)_parameterFormatCodes.Length);
 
-            for (i = 0 ; i < _parameterFormatCodes.Length ; i++)
+            foreach (short code in _parameterFormatCodes)
             {
-                PGUtil.WriteInt16(outputStream, _parameterFormatCodes[i]);
+                PGUtil.WriteInt16(outputStream, code);
             }
 
             if (_parameterValues != null)
             {
                 PGUtil.WriteInt16(outputStream, (Int16)_parameterValues.Length);
 
-                for (i = 0 ; i < _parameterValues.Length ; i++)
+                for (int i = 0 ; i < _parameterValues.Length ; i++)
                 {
                     Byte[] parameterValue = _parameterValues[i];
 
@@ -152,9 +173,9 @@ namespace Npgsql
 
             PGUtil.WriteInt16(outputStream, (Int16)_resultFormatCodes.Length);
 
-            for (i = 0 ; i < _resultFormatCodes.Length ; i++)
+            foreach (short code in  _resultFormatCodes)
             {
-                PGUtil.WriteInt16(outputStream, _resultFormatCodes[i]);
+                PGUtil.WriteInt16(outputStream, code);
             }
         }
     }

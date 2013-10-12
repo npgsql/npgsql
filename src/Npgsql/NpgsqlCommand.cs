@@ -653,12 +653,28 @@ namespace Npgsql
         {
             if (parameters.Count != 0)
             {
-                byte[][] parameterValues = new byte[parameters.Count][];
+                byte[][] parameterValues = bind.ParameterValues;
                 Int16[] parameterFormatCodes = bind.ParameterFormatCodes;
+                bool bindAll = false;
+                bool bound = false;
+
+                if (parameterValues == null || parameterValues.Length != parameters.Count)
+                {
+                    parameterValues = new byte[parameters.Count][];
+                    bindAll = true;
+                }
 
                 for (Int32 i = 0; i < parameters.Count; i++)
                 {
+                    if (! bindAll && parameters[i].Bound)
+                    {
+                        continue;
+                    }
+
                     parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
+
+                    bound = true;
+                    parameters[i].Bound = true;
 
                     if (parameterValues[i] == null) {
                         parameterFormatCodes[i]= (Int16)FormatCode.Binary;
@@ -667,8 +683,11 @@ namespace Npgsql
                     }
                 }
 
-                bind.ParameterValues = parameterValues;
-                bind.ParameterFormatCodes = parameterFormatCodes;
+                if (bound)
+                {
+                    bind.ParameterValues = parameterValues;
+                    bind.ParameterFormatCodes = parameterFormatCodes;
+                }
             }
 
             try
@@ -679,8 +698,6 @@ namespace Npgsql
                 Connector.RequireReadyForQuery = false;
 
                 Connector.Bind(bind);
-
-                Connector.Flush();
             }
             catch
             {
