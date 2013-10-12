@@ -59,12 +59,6 @@ namespace Npgsql
             // Tell to mediator what command is being sent.
             _command.Connector.Mediator.SetSqlSent(commandText);
 
-            // Workaround for seek exceptions when running under ms.net. TODO: Check why Npgsql may be letting behind data in the stream.
-            // Whatever issue there was here seems to be rectified.  Leaving it active, per Francisco.
-            // The problem is not well understood.  Needs more checking.
-            // glenebob@gmail.com       09/20/2013
-            outputStream.Flush();
-
             // Send the query to server.
             // Write the byte 'Q' to identify a query message.
             outputStream.WriteByte((byte)FrontEndMessageCode.Query);

@@ -893,7 +893,7 @@ namespace Npgsql
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ParseComplete");
                             // Just read up the message length.
                             PGUtil.ReadInt32(stream);
-                            yield break;
+                            break;
                         case BackEndMessageCode.BindComplete:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "BindComplete");
                             // Just read up the message length.

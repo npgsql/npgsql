@@ -765,16 +765,6 @@ namespace Npgsql
 
                         m_Connector.Parse(parse);
 
-                        // We need that because Flush() doesn't cause backend to send
-                        // ReadyForQuery on error. Without ReadyForQuery, we don't return
-                        // from query extended processing.
-
-                        // We could have used Connector.Flush() which sends us back a
-                        // ReadyForQuery, but on postgresql server below 8.1 there is an error
-                        // with extended query processing which hinders us from using it.
-                        m_Connector.RequireReadyForQuery = false;
-                        m_Connector.Flush();
-
                         // Description...
                         NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
 
