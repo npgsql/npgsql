@@ -41,6 +41,7 @@ namespace Npgsql
         private readonly String _portalName;
         private readonly byte[] _bPortalName;
         private readonly Int32 _maxRows;
+        private readonly int _messageLength;
 
         public NpgsqlExecute(String portalName, Int32 maxRows)
         {
@@ -48,6 +49,8 @@ namespace Npgsql
             _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
 
             _maxRows = maxRows;
+
+            _messageLength = 4 + _bPortalName.Length + 1 + 4;
         }
 
         public String PortalName
@@ -59,7 +62,7 @@ namespace Npgsql
         {
             outputStream
                 .WriteBytes((byte)FrontEndMessageCode.Execute)
-                .WriteInt32(4 + _bPortalName.Length + 1 + 4)
+                .WriteInt32(_messageLength)
                 .WriteBytesNullTerminated(_bPortalName)
                 .WriteInt32(_maxRows);
         }

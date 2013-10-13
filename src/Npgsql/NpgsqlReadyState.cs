@@ -35,11 +35,6 @@ namespace Npgsql
     {
         public static readonly NpgsqlReadyState Instance = new NpgsqlReadyState();
 
-        // Flush and Sync messages. It doesn't need to be created every time it is called.
-        private static readonly NpgsqlFlush _flushMessage = new NpgsqlFlush();
-
-        private static readonly NpgsqlSync _syncMessage = new NpgsqlSync();
-
         private readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         private NpgsqlReadyState()
@@ -68,24 +63,30 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Parse");
 
-            Stream stream = context.Stream;
-            parse.WriteToStream(stream);
-            //stream.Flush();
+            parse.WriteToStream(context.Stream);
         }
 
         public override IEnumerable<IServerResponseObject> SyncEnum(NpgsqlConnector context)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Sync");
-            _syncMessage.WriteToStream(context.Stream);
-            context.Stream.Flush();
+
+            Stream stream = context.Stream;
+
+            NpgsqlSync.Default.WriteToStream(stream);
+            stream.Flush();
+
             return ProcessBackendResponsesEnum(context, false);
         }
 
         public override void Flush(NpgsqlConnector context)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Flush");
-            _flushMessage.WriteToStream(context.Stream);
-            context.Stream.Flush();
+
+            Stream stream = context.Stream;
+
+            NpgsqlFlush.Default.WriteToStream(stream);
+            stream.Flush();
+
             ProcessBackendResponses(context);
         }
 
@@ -93,38 +94,30 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Bind");
 
-            Stream stream = context.Stream;
-
-            bind.WriteToStream(stream);
-            //stream.Flush();
+            bind.WriteToStream(context.Stream);
         }
 
         public override void Describe(NpgsqlConnector context, NpgsqlDescribe describe)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Describe");
+
             describe.WriteToStream(context.Stream);
-            //context.Stream.Flush();
         }
 
         public override void Execute(NpgsqlConnector context, NpgsqlExecute execute)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
             NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.P, execute.PortalName);
-            Stream stream = context.Stream;
-            describe.WriteToStream(stream);
-            execute.WriteToStream(stream);
-            //stream.Flush();
-            Sync(context);
+
+            execute.WriteToStream(context.Stream);
         }
 
         public override IEnumerable<IServerResponseObject> ExecuteEnum(NpgsqlConnector context, NpgsqlExecute execute)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
-            NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.P, execute.PortalName);
-            Stream stream = context.Stream;
-            describe.WriteToStream(stream);
-            execute.WriteToStream(stream);
-            //stream.Flush();
+
+            execute.WriteToStream(context.Stream);
+
             return SyncEnum(context);
         }
 

@@ -40,6 +40,11 @@ namespace Npgsql
         // Logging related values
         //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
+        internal static readonly NpgsqlFlush Default = new NpgsqlFlush();
+
+        private NpgsqlFlush()
+        {}
+
         public override void WriteToStream(Stream outputStream)
         {
             outputStream

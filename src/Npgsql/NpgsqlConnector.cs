@@ -351,9 +351,14 @@ namespace Npgsql
             CurrentState.TestConnector(this);
         }
 
-        internal NpgsqlRowDescription Sync()
+        internal IServerResponseObject Sync()
         {
             return CurrentState.Sync(this);
+        }
+
+        internal IEnumerable<IServerResponseObject> SyncEnum()
+        {
+            return CurrentState.SyncEnum(this);
         }
 
         internal void Bind(NpgsqlBind bind)

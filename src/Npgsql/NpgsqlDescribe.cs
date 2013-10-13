@@ -41,19 +41,22 @@ namespace Npgsql
     {
         private readonly byte _whatToDescribe;
         private readonly byte[] _bPortalName;
+        private readonly int _messageLength;
 
         public NpgsqlDescribe(byte whatToDescribe, String portalName)
         {
             _whatToDescribe = whatToDescribe;
 
             _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(portalName);
+
+            _messageLength = 4 + 1 + _bPortalName.Length + 1;
         }
 
         public override void WriteToStream(Stream outputStream)
         {
             outputStream
                 .WriteBytes((byte)FrontEndMessageCode.Describe)
-                .WriteInt32(4 + 1 + _bPortalName.Length + 1)
+                .WriteInt32(_messageLength)
                 .WriteBytes(_whatToDescribe)
                 .WriteBytesNullTerminated(_bPortalName);
         }

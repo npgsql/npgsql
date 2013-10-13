@@ -40,6 +40,12 @@ namespace Npgsql
         // Logging related values
         //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
+        internal static readonly NpgsqlSync Default = new NpgsqlSync();
+
+        private NpgsqlSync()
+        {}
+
+
         public override void WriteToStream(Stream outputStream)
         {
             outputStream

@@ -71,8 +71,9 @@ namespace Npgsql
         private String planName;
         private Boolean designTimeVisible;
 
-        private NpgsqlParse parse;
         private NpgsqlBind bind;
+        private NpgsqlDescribe portalDescribe;
+        private NpgsqlExecute execute;
 
         private Int64 lastInsertedOID = 0;
 
@@ -176,8 +177,9 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandText", value);
                 text = value;
                 planName = String.Empty;
-                parse = null;
                 bind = null;
+                portalDescribe = null;
+                execute = null;
 
                 functionChecksDone = false;
             }
@@ -600,7 +602,7 @@ namespace Npgsql
                 using (m_Connector.BlockNotificationThread())
                 {
                     ForwardsOnlyDataReader reader;
-                    if (parse == null)
+                    if (bind == null)
                     {
                         reader = new ForwardsOnlyDataReader(m_Connector.QueryEnum(this), cb, this,
                                                             m_Connector.BlockNotificationThread(), false);
@@ -632,10 +634,25 @@ namespace Npgsql
                     }
                     else
                     {
+                        // Update the Bind object with current parameter data as needed.
                         BindParameters();
-                        reader = new ForwardsOnlyDataReader(m_Connector.ExecuteEnum(new NpgsqlExecute(bind.PortalName, 0)), cb, this,
-                                                            m_Connector.BlockNotificationThread(), true);
+
+                        // Write Bind, Describe, and Exceute messages to the wire.
+                        m_Connector.Bind(bind);
+                        m_Connector.Describe(portalDescribe);
+                        m_Connector.Execute(execute);
+
+                        // Sync and wait for response.
+                        reader =
+                            new ForwardsOnlyDataReader(
+                                (IEnumerable<IServerResponseObject>)m_Connector.SyncEnum(),
+                                cb,
+                                this,
+                                m_Connector.BlockNotificationThread(),
+                                true
+                            );
                     }
+
                     return reader;
                 }
             }
@@ -688,22 +705,6 @@ namespace Npgsql
                     bind.ParameterValues = parameterValues;
                     bind.ParameterFormatCodes = parameterFormatCodes;
                 }
-            }
-
-            try
-            {
-                // In case of error when binding parameters, the ReadyForQuery isn't returned.
-                // According to docs: "[...] The response is either BindComplete or ErrorResponse."
-
-                Connector.RequireReadyForQuery = false;
-
-                Connector.Bind(bind);
-            }
-            catch
-            {
-                // Check catch{} of Preapre method for discussion about that.
-                Connector.Sync();
-                throw;
             }
         }
 
@@ -759,18 +760,19 @@ namespace Npgsql
                     {
                         // Use the extended query parsing...
                         planName = m_Connector.NextPlanName();
-                        String portalName = m_Connector.NextPortalName();
+                        String portalName = "";
+                        NpgsqlParse parse;
 
                         parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] { });
 
                         m_Connector.Parse(parse);
 
                         // Description...
-                        NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
+                        NpgsqlDescribe statementDescribe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
 
-                        m_Connector.Describe(describe);
+                        m_Connector.Describe(statementDescribe);
 
-                        NpgsqlRowDescription returnRowDesc = m_Connector.Sync();
+                        NpgsqlRowDescription returnRowDesc = (NpgsqlRowDescription)m_Connector.Sync();
 
                         Int16[] resultFormatCodes;
 
@@ -799,7 +801,11 @@ namespace Npgsql
                             resultFormatCodes = new Int16[] { 0 };
                         }
 
-                        bind = new NpgsqlBind("", planName, new Int16[Parameters.Count], null, resultFormatCodes);
+                        // The Bind, Describe, and Execute message objects live through multiple Executes.
+                        // Only Bind changes at all between Executes, which is done in BindParameters().
+                        bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
+                        portalDescribe = new NpgsqlDescribe((byte)ASCIIBytes.P, portalName);
+                        execute = new NpgsqlExecute(portalName, 0);
                     }
                     catch (IOException e)
                     {
@@ -807,17 +813,11 @@ namespace Npgsql
                     }
                     catch
                     {
-
                         // As per documentation:
-
                         // "[...] When an error is detected while processing any extended-query message,
-
                         // the backend issues ErrorResponse, then reads and discards messages until a
-
                         // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
-
                         // So, send a sync command if we get any problems.
-
                         m_Connector.Sync();
 
                         throw;

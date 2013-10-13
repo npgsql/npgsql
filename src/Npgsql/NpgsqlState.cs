@@ -164,7 +164,7 @@ namespace Npgsql
         public void EmptySync(NpgsqlConnector context)
         {
             Stream stm = context.Stream;
-            new NpgsqlSync().WriteToStream(stm);
+            NpgsqlSync.Default.WriteToStream(stm);
             stm.Flush();
             Queue<int> buffer = new Queue<int>();
             //byte[] compareBuffer = new byte[6];
@@ -208,7 +208,7 @@ namespace Npgsql
             }
         }
 
-        public NpgsqlRowDescription Sync(NpgsqlConnector context)
+        public IServerResponseObject Sync(NpgsqlConnector context)
         {
             NpgsqlRowDescription lastDescription = null;
             foreach (IServerResponseObject obj in SyncEnum(context))
