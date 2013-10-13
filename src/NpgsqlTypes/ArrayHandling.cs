@@ -66,7 +66,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Serialise the enumeration or array.
         /// </summary>
-        public byte[] ArrayToArrayText(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
+        public byte[] ArrayToArrayText(NpgsqlNativeTypeInfo TypeInfo, object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             MemoryStream array = new MemoryStream();
 
@@ -111,12 +111,7 @@ namespace NpgsqlTypes
             {
                 byte[] element;
 
-                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
-
-                if (forExtendedQuery && _elementConverter.Quote)
-                {
-                    element = QuoteAndEscapeASCIIArrayElement(element);
-                }
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, true);
 
                 array.Write(element, 0, element.Length);
 
@@ -134,12 +129,7 @@ namespace NpgsqlTypes
             {//This shouldn't really be reachable.
                 byte[] element;
 
-                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options);
-
-                if (forExtendedQuery && _elementConverter.Quote)
-                {
-                    element = QuoteAndEscapeASCIIArrayElement(element);
-                }
+                element = _elementConverter.ConvertToBackend(item, forExtendedQuery, options, true);
 
                 array.Write(element, 0, element.Length);
 
@@ -218,31 +208,6 @@ namespace NpgsqlTypes
             }
 
             return writtenSomething;
-        }
-
-        internal static byte[] QuoteAndEscapeASCIIArrayElement(byte[] src)
-        {
-            MemoryStream ret = new MemoryStream();
-
-            ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
-
-            foreach (byte ch in src)
-            {
-                switch (ch)
-                {
-                    case (byte)ASCIIBytes.DoubleQuote :
-                    case (byte)ASCIIBytes.BackSlash :
-                        ret.WriteByte((byte)ASCIIBytes.BackSlash);
-
-                        break;
-                }
-
-                ret.WriteByte(ch);
-            }
-
-            ret.WriteByte((byte)ASCIIBytes.DoubleQuote);
-
-            return ret.ToArray();
         }
 
         /// <summary>
