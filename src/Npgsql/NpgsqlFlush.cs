@@ -31,15 +31,12 @@ using System.IO;
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
+    /// This class represents the Flush message sent to PostgreSQL
     /// server.
     /// </summary>
     ///
     internal sealed class NpgsqlFlush : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         internal static readonly NpgsqlFlush Default = new NpgsqlFlush();
 
         private NpgsqlFlush()

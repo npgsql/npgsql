@@ -642,7 +642,7 @@ namespace Npgsql
                         m_Connector.Describe(portalDescribe);
                         m_Connector.Execute(execute);
 
-                        // Sync and wait for response.
+                        // Write Sync message, flush, and wait for response.
                         reader =
                             new ForwardsOnlyDataReader(
                                 (IEnumerable<IServerResponseObject>)m_Connector.SyncEnum(),
@@ -768,7 +768,7 @@ namespace Npgsql
                         m_Connector.Parse(parse);
 
                         // Description...
-                        NpgsqlDescribe statementDescribe = new NpgsqlDescribe((byte)ASCIIBytes.S, planName);
+                        NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
 
                         m_Connector.Describe(statementDescribe);
 
@@ -804,7 +804,7 @@ namespace Npgsql
                         // The Bind, Describe, and Execute message objects live through multiple Executes.
                         // Only Bind changes at all between Executes, which is done in BindParameters().
                         bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
-                        portalDescribe = new NpgsqlDescribe((byte)ASCIIBytes.P, portalName);
+                        portalDescribe = new NpgsqlDescribePortal(portalName);
                         execute = new NpgsqlExecute(portalName, 0);
                     }
                     catch (IOException e)

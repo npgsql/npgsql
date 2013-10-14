@@ -107,7 +107,7 @@ namespace Npgsql
         public override void Execute(NpgsqlConnector context, NpgsqlExecute execute)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
-            NpgsqlDescribe describe = new NpgsqlDescribe((byte)ASCIIBytes.P, execute.PortalName);
+            NpgsqlDescribe describe = new NpgsqlDescribePortal(execute.PortalName);
 
             execute.WriteToStream(context.Stream);
         }

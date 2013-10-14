@@ -32,7 +32,7 @@ using System.Text;
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
+    /// This class represents the Execute message sent to PostgreSQL
     /// server.
     /// </summary>
     ///

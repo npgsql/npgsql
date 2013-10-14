@@ -31,20 +31,16 @@ using System.IO;
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
+    /// This class represents the Sync message sent to PostgreSQL
     /// server.
     /// </summary>
     ///
     internal sealed class NpgsqlSync : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         internal static readonly NpgsqlSync Default = new NpgsqlSync();
 
         private NpgsqlSync()
         {}
-
 
         public override void WriteToStream(Stream outputStream)
         {

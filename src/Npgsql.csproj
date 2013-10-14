@@ -201,6 +201,8 @@
     <Compile Include="Npgsql\Cache.cs" />
     <Compile Include="Npgsql\BackendEncoding.cs" />
     <Compile Include="Npgsql\ASCIIBytes.cs" />
+    <Compile Include="Npgsql\NpgsqlState.BackendResponseV2.cs" />
+    <Compile Include="Npgsql\NpgsqlState.BackendResponseV3.cs" />
     <Compile Include="Npgsql\HashAlgorithm.cs" />
     <Compile Include="Npgsql\MD5.cs" />
     <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
