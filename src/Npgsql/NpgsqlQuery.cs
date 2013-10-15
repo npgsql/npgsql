@@ -35,21 +35,23 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlQuery : ClientMessage
     {
-        private readonly NpgsqlCommand _command;
-        private readonly ProtocolVersion _protocolVersion;
+        private readonly NpgsqlConnector _connector;
+        private readonly byte[] commandText;
 
-        public NpgsqlQuery(NpgsqlCommand command, ProtocolVersion protocolVersion)
+        public NpgsqlQuery(NpgsqlConnector connector, byte[] command)
         {
-            _command = command;
-            _protocolVersion = protocolVersion;
+            _connector = connector;
+            commandText = command;
+        }
+
+        public NpgsqlQuery(NpgsqlConnector connector, string command)
+        {
+            _connector = connector;
+            commandText = BackendEncoding.UTF8Encoding.GetBytes(command);
         }
 
         public override void WriteToStream(Stream outputStream)
         {
-            //NpgsqlEventLog.LogMsg( this.ToString() + _commandText, LogLevel.Debug  );
-
-            byte[] commandText = _command.GetCommandText();
-
             if (NpgsqlEventLog.Level >= LogLevel.Debug)
             {
                 // Log the string being sent.
@@ -57,13 +59,13 @@ namespace Npgsql
             }
 
             // Tell to mediator what command is being sent.
-            _command.Connector.Mediator.SetSqlSent(commandText);
+            _connector.Mediator.SetSqlSent(commandText);
 
             // Send the query to server.
             // Write the byte 'Q' to identify a query message.
             outputStream.WriteByte((byte)FrontEndMessageCode.Query);
 
-            if (_protocolVersion == ProtocolVersion.Version3)
+            if (_connector.BackendProtocolVersion == ProtocolVersion.Version3)
             {
                 // Write message length. Int32 + string length + null terminator.
                 PGUtil.WriteInt32(outputStream, 4 + commandText.Length + 1);

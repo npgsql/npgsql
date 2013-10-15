@@ -42,13 +42,12 @@ namespace Npgsql
             NpgsqlStartupPacket startupPacket = NpgsqlStartupPacket.BuildStartupPacket(context.BackendProtocolVersion,
                                                                                        context.Database, context.UserName, settings);
 
-            startupPacket.WriteToStream(new BufferedStream(context.Stream));
+            startupPacket.WriteToStream(context.Stream);
             context.RequireReadyForQuery = false;
             // This still makes part of the connection stablishment handling.
             // So we use the connectiontimeout here too.
             context.Mediator.CommandTimeout = context.ConnectionTimeout;
-            context.Stream.Flush();
-            ProcessBackendResponses(context);
+            ProcessAndDiscardBackendResponses(context);
         }
 
         public override void CancelRequest(NpgsqlConnector context)
@@ -56,6 +55,7 @@ namespace Npgsql
             NpgsqlCancelRequest CancelRequestMessage = new NpgsqlCancelRequest(context.BackEndKeyData);
 
             CancelRequestMessage.WriteToStream(context.Stream);
+            context.Stream.Flush();
         }
     }
 }

@@ -99,6 +99,8 @@ namespace Npgsql
                                     // Send the PasswordPacket.
                                     ChangeState(context, NpgsqlStartupState.Instance);
                                     context.Authenticate(context.Password);
+                                    context.Stream.Flush();
+
                                     break;
                                 case AuthenticationRequestType.AuthenticationMD5Password:
                                     NpgsqlEventLog.LogMsg(resman, "Log_AuthenticationMD5Request", LogLevel.Debug);
@@ -148,6 +150,7 @@ namespace Npgsql
                                     }
 
                                     context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                                    context.Stream.Flush();
 
                                     break;
                                 default:

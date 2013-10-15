@@ -122,8 +122,7 @@ namespace Npgsql
                 .WriteLimBytes(user_name, 32)
                 .WriteLimBytes(arguments, 64)
                 .WriteLimBytes(unused, 64)
-                .WriteLimBytes(optional_tty, 64)
-                .Flush();
+                .WriteLimBytes(optional_tty, 64);
         }
 
     }
@@ -181,7 +180,6 @@ namespace Npgsql
                 output_stream.WriteBytesNullTerminated(parameterValues[i]);
             }
             output_stream.WriteByte(0);
-            output_stream.Flush();
         }
     }
 

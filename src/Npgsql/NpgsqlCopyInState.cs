@@ -99,8 +99,7 @@ namespace Npgsql
             Stream toServer = context.Stream;
             toServer.WriteByte((byte) FrontEndMessageCode.CopyDone);
             PGUtil.WriteInt32(toServer, 4); // message without data
-            toServer.Flush();
-            ProcessBackendResponses(context);
+            ProcessAndDiscardBackendResponses(context);
         }
 
         /// <summary>
@@ -116,8 +115,7 @@ namespace Npgsql
             byte[] buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
             PGUtil.WriteInt32(toServer, 4 + buf.Length);
             toServer.Write(buf, 0, buf.Length);
-            toServer.Flush();
-            ProcessBackendResponses(context);
+            ProcessAndDiscardBackendResponses(context);
         }
     }
 }

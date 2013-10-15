@@ -63,14 +63,9 @@ namespace Npgsql
             throw new InvalidOperationException("Internal Error! " + this);
         }
 
-        public virtual IEnumerable<IServerResponseObject> QueryEnum(NpgsqlConnector context, NpgsqlCommand command)
+        public virtual void Query(NpgsqlConnector context, NpgsqlQuery query)
         {
             throw new InvalidOperationException("Internal Error! " + this);
-        }
-
-        public void Query(NpgsqlConnector context, NpgsqlCommand command)
-        {
-            IterateThroughAllResponses(QueryEnum(context, command));
         }
 
         public virtual void FunctionCall(NpgsqlConnector context, NpgsqlCommand command)
@@ -79,16 +74,6 @@ namespace Npgsql
         }
 
         public virtual void Parse(NpgsqlConnector context, NpgsqlParse parse)
-        {
-            throw new InvalidOperationException("Internal Error! " + this);
-        }
-
-        public virtual void Flush(NpgsqlConnector context)
-        {
-            throw new InvalidOperationException("Internal Error! " + this);
-        }
-
-        public virtual IEnumerable<IServerResponseObject> SyncEnum(NpgsqlConnector context)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
@@ -128,7 +113,7 @@ namespace Npgsql
                                     //context.Query(new NpgsqlCommand("UNLISTEN *", context));
                                     using(NpgsqlCommand cmd = new NpgsqlCommand("UNLISTEN *", context))
                                     {
-                                        context.Query(cmd);
+                                        cmd.ExecuteBlind();
                                     }
                                     return;
                             }
@@ -204,24 +189,9 @@ namespace Npgsql
             }
         }
 
-        public IServerResponseObject Sync(NpgsqlConnector context)
+        public virtual void Sync(NpgsqlConnector context)
         {
-            NpgsqlRowDescription lastDescription = null;
-            foreach (IServerResponseObject obj in SyncEnum(context))
-            {
-                if (obj is NpgsqlRowDescription)
-                {
-                    lastDescription = obj as NpgsqlRowDescription;
-                }
-                else
-                {
-                    if (obj is IDisposable)
-                    {
-                        (obj as IDisposable).Dispose();
-                    }
-                }
-            }
-            return lastDescription;
+            throw new InvalidOperationException("Internal Error! " + this);
         }
 
         public virtual void Bind(NpgsqlConnector context, NpgsqlBind bind)
@@ -230,11 +200,6 @@ namespace Npgsql
         }
 
         public virtual void Execute(NpgsqlConnector context, NpgsqlExecute execute)
-        {
-            throw new InvalidOperationException("Internal Error! " + this);
-        }
-
-        public virtual IEnumerable<IServerResponseObject> ExecuteEnum(NpgsqlConnector context, NpgsqlExecute execute)
         {
             throw new InvalidOperationException("Internal Error! " + this);
         }
@@ -302,29 +267,6 @@ namespace Npgsql
             context.CurrentState = newState;
         }
 
-        ///<summary>
-        /// This method is responsible to handle all protocol messages sent from the backend.
-        /// It holds all the logic to do it.
-        /// To exchange data, it uses a Mediator object from which it reads/writes information
-        /// to handle backend requests.
-        /// </summary>
-        ///
-        internal void ProcessBackendResponses(NpgsqlConnector context)
-        {
-            IterateThroughAllResponses(ProcessBackendResponsesEnum(context, false));
-        }
-
-        private static void IterateThroughAllResponses(IEnumerable<IServerResponseObject> ienum)
-        {
-            foreach (IServerResponseObject obj in ienum) //iterate until finished.
-            {
-                if (obj is IDisposable)
-                {
-                    (obj as IDisposable).Dispose();
-                }
-            }
-        }
-
         private class ContextResetter : IDisposable
         {
             private readonly NpgsqlConnector _connector;
@@ -340,6 +282,26 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Call ProcessBackendResponsesEnum(), and scan and discard all results.
+        /// </summary>
+        public void ProcessAndDiscardBackendResponses(NpgsqlConnector context)
+        {
+            IEnumerable<IServerResponseObject> responseEnum;
+
+            // Flush and wait for responses.
+            responseEnum = ProcessBackendResponsesEnum(context);
+
+            // Discard each response.
+            foreach (IServerResponseObject response in responseEnum)
+            {
+                if (response is IDisposable)
+                {
+                    (response as IDisposable).Dispose();
+                }
+            }
+        }
+
         ///<summary>
         /// This method is responsible to handle all protocol messages sent from the backend.
         /// It holds all the logic to do it.
@@ -347,53 +309,51 @@ namespace Npgsql
         /// to handle backend requests.
         /// </summary>
         ///
-        internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum(NpgsqlConnector context,
-            bool cancelRequestCalled)
+        internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum(NpgsqlConnector context)
         {
             try
             {
-            // Process commandTimeout behavior.
+                // Flush buffers to the wire.
+                context.Stream.Flush();
 
-            if ((context.Mediator.CommandTimeout > 0) &&
-                    (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
-            {
-                // If timeout occurs when establishing the session with server then
-                // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
-                if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState || cancelRequestCalled)))
+                // Process commandTimeout behavior.
+
+                if ((context.Mediator.CommandTimeout > 0) &&
+                        (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
                 {
-                    try
+                    // If timeout occurs when establishing the session with server then
+                    // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
+                    if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState)))
                     {
-                        context.CancelRequest();
-                        foreach (IServerResponseObject obj in ProcessBackendResponsesEnum(context, true))
+                        try
                         {
-                            if (obj is IDisposable)
-                            {
-                                (obj as IDisposable).Dispose();
-                            }
+                            context.CancelRequest();
+
+                            ProcessAndDiscardBackendResponses(context);
                         }
+                        catch(Exception)
+                        {
+                        }
+                        //We should have gotten an error from CancelRequest(). Whether we did or not, what we
+                        //really have is a timeout exception, and that will be less confusing to the user than
+                        //"operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
+                        // Changed message again to report about the two possible timeouts: connection or command as the establishment timeout only was confusing users when the timeout was a command timeout.
                     }
-                    catch(Exception)
-                    {
-                    }
-                    //We should have gotten an error from CancelRequest(). Whether we did or not, what we
-                    //really have is a timeout exception, and that will be less confusing to the user than
-                    //"operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
-                    // Changed message again to report about the two possible timeouts: connection or command as the establishment timeout only was confusing users when the timeout was a command timeout.
+
+                    throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
                 }
-                throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
-            }
-            switch (context.BackendProtocolVersion)
-            {
-                case ProtocolVersion.Version2:
-                    return ProcessBackendResponses_Ver_2(context);
-                case ProtocolVersion.Version3:
-                    return ProcessBackendResponses_Ver_3(context);
-                default:
-                    throw new NpgsqlException(resman.GetString("Exception_UnknownProtocol"));
-            }
+
+                switch (context.BackendProtocolVersion)
+                {
+                    case ProtocolVersion.Version2:
+                        return ProcessBackendResponses_Ver_2(context);
+                    case ProtocolVersion.Version3:
+                        return ProcessBackendResponses_Ver_3(context);
+                    default:
+                        throw new NpgsqlException(resman.GetString("Exception_UnknownProtocol"));
+                }
 
             }
-
             catch(ThreadAbortException)
             {
                 try
