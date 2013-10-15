@@ -141,7 +141,7 @@ namespace Npgsql
                 foreach (PropertyInfo prop in typeof(NpgsqlConnectionStringBuilder).GetProperties(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public))
                 {
                     NpgsqlConnectionStringKeywordAttribute current_keywordattr = null;
-                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringKeywordAttribute)))
+                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringKeywordAttribute), false))
                         current_keywordattr = (NpgsqlConnectionStringKeywordAttribute)attr;
                     if (current_keywordattr == null)
                         continue;
@@ -154,14 +154,14 @@ namespace Npgsql
                     keyword_mappings[current_keywordattr.UnderlyingConnectionKeyword.ToUpperInvariant()] = current_keywordattr.Keyword;
                     keyword_mappings[current_keywordattr.UnderlyingConnectionKeyword.ToLowerInvariant()] = current_keywordattr.Keyword;
                     underlying_keywords[current_keywordattr.Keyword] = current_keywordattr.UnderlyingConnectionKeyword;
-                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringAcceptableKeywordAttribute)))
+                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringAcceptableKeywordAttribute), false))
                         keyword_mappings[((NpgsqlConnectionStringAcceptableKeywordAttribute)attr).Keyword] = current_keywordattr.Keyword;
-                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringDisplayNameAttribute)))
+                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(NpgsqlConnectionStringDisplayNameAttribute), false))
                     {
                         keyword_mappings[((NpgsqlConnectionStringDisplayNameAttribute)attr).DisplayName] = current_keywordattr.Keyword;
                         prop_key[current_keywordattr.UnderlyingConnectionKeyword] = ((NpgsqlConnectionStringDisplayNameAttribute)attr).DisplayName;
                     }
-                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(DefaultValueAttribute)))
+                    foreach (Attribute attr in prop.GetCustomAttributes(typeof(DefaultValueAttribute), true))
                         defaults[current_keywordattr.Keyword] = ((DefaultValueAttribute)attr).Value;
                 }
                 defaults[Keywords.Protocol] = ProtocolVersion.Version3.ToString();
@@ -267,7 +267,7 @@ namespace Npgsql
         public string ProtocolAsString
         {
             get { return (string)base[underlying_keywords[Keywords.Protocol]]; }
-            set { SetValue(Keywords.Protocol, value); }
+            set { SetValue(Keywords.Protocol, Enum.Parse(typeof(ProtocolVersion), value).ToString()); }
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Source")]
@@ -354,7 +354,7 @@ namespace Npgsql
         public string SslModeAsString
         {
             get { return (string)base[underlying_keywords[Keywords.SslMode]]; }
-            set { SetValue(Keywords.SslMode, value); }
+            set { SetValue(Keywords.SslMode, Enum.Parse(typeof(SslMode), value).ToString()); }
         }
 
         [Browsable(false)]
@@ -521,7 +521,7 @@ namespace Npgsql
         [Browsable(false)]
         internal Version Compatible
         {
-            get { return Version.Parse(CompatibleAsString); }
+            get { return new Version(CompatibleAsString); }
             set { CompatibleAsString = value.ToString(); }
         }
         
@@ -534,7 +534,7 @@ namespace Npgsql
         internal string CompatibleAsString
         {
             get { return (string)base[underlying_keywords[Keywords.Compatible]]; }
-            set { SetValue(Keywords.Compatible, value); }
+            set { SetValue(Keywords.Compatible, new Version(value).ToString()); }
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Context")]
@@ -578,14 +578,14 @@ namespace Npgsql
 
         public object this[Keywords keyword]
         {
-            get { return props[keyword].GetValue(this); }
+            get { return props[keyword].GetValue(this, null); }
             set {
                 try
                 {
                     if (props[keyword].PropertyType == value.GetType())
-                        props[keyword].SetValue(this, value);
+                        props[keyword].SetValue(this, value, null);
                     else
-                        props[keyword].SetValue(this, TypeDescriptor.GetConverter(props[keyword].PropertyType).ConvertFrom(value));
+                        props[keyword].SetValue(this, TypeDescriptor.GetConverter(props[keyword].PropertyType).ConvertFrom(value), null);
                 }
                 catch (Exception ex)
                 {
@@ -618,17 +618,6 @@ namespace Npgsql
         {
             return base.ContainsKey(underlying_keywords[keyword]);
         }
-
-        /*public override ICollection Keys
-        {
-            get
-            {
-                ICollection<string> list = new List<string>();
-                foreach (object o in base.Keys)
-                    list.Add(prop_key[o.ToString()]);
-                return (ICollection) list;
-            }
-        }*/
 
         public override bool TryGetValue(string keyword, out object value)
         {
