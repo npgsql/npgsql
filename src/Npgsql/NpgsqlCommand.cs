@@ -614,6 +614,7 @@ namespace Npgsql
                 // Set command timeout.
                 m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
+                // Block the notification thread before writing anything to the wire.
                 using (m_Connector.BlockNotificationThread())
                 {
                     IEnumerable<IServerResponseObject> responseEnum;
@@ -625,24 +626,20 @@ namespace Npgsql
 
                         query = new NpgsqlQuery(m_Connector, GetCommandText());
 
-                        // Block the notification thread before writing anything to the wire.
-                        using (var blocker = m_Connector.BlockNotificationThread())
-                        {
-                            // Write the Query message to the wire.
-                            m_Connector.Query(query);
+                        // Write the Query message to the wire.
+                        m_Connector.Query(query);
 
-                            // Flush and wait for responses.
-                            responseEnum = m_Connector.ProcessBackendResponsesEnum();
+                        // Flush and wait for responses.
+                        responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
-                            // Construct the return reader.
-                            reader = new ForwardsOnlyDataReader(
-                                responseEnum,
-                                cb,
-                                this,
-                                m_Connector.BlockNotificationThread(),
-                                true
-                            );
-                        }
+                        // Construct the return reader.
+                        reader = new ForwardsOnlyDataReader(
+                            responseEnum,
+                            cb,
+                            this,
+                            m_Connector.BlockNotificationThread(),
+                            true
+                        );
 
                         if (
                             type == CommandType.StoredProcedure
@@ -674,39 +671,8 @@ namespace Npgsql
 
                             query = new NpgsqlQuery(m_Connector, queryText);
 
-                            // Block the notification thread before writing anything to the wire.
-                            using (var blocker = m_Connector.BlockNotificationThread())
-                            {
-                                // Write the Query message to the wire.
-                                m_Connector.Query(query);
-
-                                // Flush and wait for responses.
-                                responseEnum = m_Connector.ProcessBackendResponsesEnum();
-
-                                // Construct the return reader.
-                                reader = new ForwardsOnlyDataReader(
-                                    responseEnum,
-                                    cb,
-                                    this,
-                                    m_Connector.BlockNotificationThread(),
-                                    true
-                                );
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Update the Bind object with current parameter data as needed.
-                        BindParameters();
-
-                        // Block the notification thread before writing anything to the wire.
-                        using (var blocker = m_Connector.BlockNotificationThread())
-                        {
-                            // Write Bind, Describe, Execute, and Sync messages to the wire.
-                            m_Connector.Bind(bind);
-                            m_Connector.Describe(portalDescribe);
-                            m_Connector.Execute(execute);
-                            m_Connector.Sync();
+                            // Write the Query message to the wire.
+                            m_Connector.Query(query);
 
                             // Flush and wait for responses.
                             responseEnum = m_Connector.ProcessBackendResponsesEnum();
@@ -720,6 +686,29 @@ namespace Npgsql
                                 true
                             );
                         }
+                    }
+                    else
+                    {
+                        // Update the Bind object with current parameter data as needed.
+                        BindParameters();
+
+                        // Write Bind, Describe, Execute, and Sync messages to the wire.
+                        m_Connector.Bind(bind);
+                        m_Connector.Describe(portalDescribe);
+                        m_Connector.Execute(execute);
+                        m_Connector.Sync();
+
+                        // Flush and wait for responses.
+                        responseEnum = m_Connector.ProcessBackendResponsesEnum();
+
+                        // Construct the return reader.
+                        reader = new ForwardsOnlyDataReader(
+                            responseEnum,
+                            cb,
+                            this,
+                            m_Connector.BlockNotificationThread(),
+                            true
+                        );
                     }
 
                     return reader;
@@ -823,6 +812,7 @@ namespace Npgsql
             }
             else
             {
+                // Block the notification thread before writing anything to the wire.
                 using (m_Connector.BlockNotificationThread())
                 {
                     try
@@ -835,28 +825,24 @@ namespace Npgsql
                         IEnumerable<IServerResponseObject> responseEnum;
                         NpgsqlRowDescription returnRowDesc = null;
 
-                        // Block the notification thread before writing anything to the wire.
-                        using (var blocker = m_Connector.BlockNotificationThread())
+                        // Write Parse, Describe, and Sync messages to the wire.
+                        m_Connector.Parse(parse);
+                        m_Connector.Describe(statementDescribe);
+                        m_Connector.Sync();
+
+                        // Flush and wait for response.
+                        responseEnum = m_Connector.ProcessBackendResponsesEnum();
+
+                        // Look for a NpgsqlRowDescription in the responses, discarding everything else.
+                        foreach (IServerResponseObject response in responseEnum)
                         {
-                            // Write Parse, Describe, and Sync messages to the wire.
-                            m_Connector.Parse(parse);
-                            m_Connector.Describe(statementDescribe);
-                            m_Connector.Sync();
-
-                            // Flush and wait for response.
-                            responseEnum = m_Connector.ProcessBackendResponsesEnum();
-
-                            // Look for a NpgsqlRowDescription in the responses, discarding everything else.
-                            foreach (IServerResponseObject response in responseEnum)
+                            if (response is NpgsqlRowDescription)
                             {
-                                if (response is NpgsqlRowDescription)
-                                {
-                                    returnRowDesc = (NpgsqlRowDescription)response;
-                                }
-                                else if (response is IDisposable)
-                                {
-                                    (response as IDisposable).Dispose();
-                                }
+                                returnRowDesc = (NpgsqlRowDescription)response;
+                            }
+                            else if (response is IDisposable)
+                            {
+                                (response as IDisposable).Dispose();
                             }
                         }
 
