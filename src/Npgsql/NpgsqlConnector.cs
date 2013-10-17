@@ -288,6 +288,11 @@ namespace Npgsql
             get { return settings.IntegratedSecurity; }
         }
 
+        internal Boolean AlwaysPrepare
+        {
+            get { return SupportsPrepare && settings.AlwaysPrepare; }
+        }
+
         /// <summary>
         /// Gets the current state of the connection.
         /// </summary>

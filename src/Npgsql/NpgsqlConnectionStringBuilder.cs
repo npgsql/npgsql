@@ -149,6 +149,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
+            valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -517,6 +518,13 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.ApplicationName), Keywords.ApplicationName, value); }
         }
 
+        private bool _always_prepare;
+        public bool AlwaysPrepare
+        {
+            get { return _always_prepare; }
+            set { SetValue(GetKeyName(Keywords.AlwaysPrepare), Keywords.AlwaysPrepare, value); }
+        }
+
         #endregion
 
         private static Keywords GetKey(string key)
@@ -582,6 +590,8 @@ namespace Npgsql
                     return Keywords.Compatible;
                 case "APPLICATIONNAME":
                     return Keywords.ApplicationName;
+                case "ALWAYSPREPARE":
+                    return Keywords.AlwaysPrepare;
                 default:
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
             }
@@ -637,6 +647,10 @@ namespace Npgsql
                     return "INTEGRATED SECURITY";
                 case Keywords.Compatible:
                     return "COMPATIBLE";
+                case Keywords.ApplicationName:
+                    return "APPLICATIONNAME";
+                case Keywords.AlwaysPrepare:
+                    return "ALWAYSPREPARE";
                 default:
                     return keyword.ToString().ToUpperInvariant();
             }
@@ -782,6 +796,8 @@ namespace Npgsql
                         return _compatible = ver;
                     case Keywords.ApplicationName:
                         return this._application_name = Convert.ToString(value);
+                    case Keywords.AlwaysPrepare:
+                        return this._always_prepare = Convert.ToBoolean(value);
                 }
             }
             catch (InvalidCastException exception)
@@ -878,6 +894,8 @@ namespace Npgsql
                     return _compatible;
                 case Keywords.ApplicationName:
                     return this._application_name;
+                case Keywords.AlwaysPrepare:
+                    return this._always_prepare;
                 default:
                     return null;
 
@@ -966,7 +984,8 @@ namespace Npgsql
         UseExtendedTypes,
         IntegratedSecurity,
         Compatible,
-        ApplicationName
+        ApplicationName,
+        AlwaysPrepare
     }
 
     public enum SslMode

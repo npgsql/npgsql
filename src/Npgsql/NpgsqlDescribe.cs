@@ -32,18 +32,18 @@ using System.Text;
 
 namespace Npgsql
 {
-    internal enum DescribeTypeCode : byte
-    {
-        Statement = ASCIIBytes.S,
-        Portal = ASCIIBytes.P
-    }
-
     /// <summary>
     /// This is the base class for NpgsqlDescribeStatement and NpgsqlDescribePortal.
     /// </summary>
     ///
     internal abstract class NpgsqlDescribe : ClientMessage
     {
+        protected enum DescribeTypeCode : byte
+        {
+            Statement = ASCIIBytes.S,
+            Portal = ASCIIBytes.P
+        }
+
         private readonly DescribeTypeCode _whatToDescribe;
         private readonly byte[] _bPortalName;
         private readonly int _messageLength;

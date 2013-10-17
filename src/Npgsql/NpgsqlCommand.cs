@@ -54,6 +54,14 @@ namespace Npgsql
 
     public sealed class NpgsqlCommand : DbCommand, ICloneable
     {
+        private enum PrepareStatus
+        {
+            NotPrepared,
+            NeedsPrepare,
+            V2Prepared,
+            V3Prepared
+        }
+
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
@@ -71,6 +79,7 @@ namespace Npgsql
         private String planName;
         private Boolean designTimeVisible;
 
+        private PrepareStatus prepared = PrepareStatus.NotPrepared;
         private NpgsqlBind bind;
         private NpgsqlDescribe portalDescribe;
         private NpgsqlExecute execute;
@@ -135,6 +144,11 @@ namespace Npgsql
             if (this.connection != null)
             {
                 this.m_Connector = connection.Connector;
+
+                if (m_Connector != null && m_Connector.AlwaysPrepare)
+                {
+                    prepared = PrepareStatus.NeedsPrepare;
+                }
             }
 
             type = CommandType.Text;
@@ -176,10 +190,19 @@ namespace Npgsql
                 // [TODO] Validate commandtext.
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandText", value);
                 text = value;
-                planName = String.Empty;
-                bind = null;
-                portalDescribe = null;
-                execute = null;
+
+                if (prepared == PrepareStatus.V3Prepared)
+                {
+                    bind = null;
+                    portalDescribe = null;
+                    execute = null;
+                    prepared = PrepareStatus.NeedsPrepare;
+                }
+                else if (prepared == PrepareStatus.V2Prepared)
+                {
+                    planName = String.Empty;
+                    prepared = PrepareStatus.NeedsPrepare;
+                }
 
                 functionChecksDone = false;
             }
@@ -490,10 +513,15 @@ namespace Npgsql
         /// <summary>
         /// Slightly optimised version of ExecuteNonQuery() for internal ues in cases where the number
         /// of affected rows is of no interest.
-        /// This function must not be called with a SELECT query.
+        /// This function must not be called with a query that returns result rows, or after calling Prepare().
         /// </summary>
         internal void ExecuteBlind()
         {
+            if (prepared == PrepareStatus.V2Prepared || prepared == PrepareStatus.V3Prepared)
+            {
+                throw new InvalidOperationException("Cannot call ExecuteBlind() on a prepared command");
+            }
+
             NpgsqlQuery query;
 
             query = new NpgsqlQuery(m_Connector, GetCommandText());
@@ -620,7 +648,12 @@ namespace Npgsql
                     IEnumerable<IServerResponseObject> responseEnum;
                     ForwardsOnlyDataReader reader;
 
-                    if (bind == null)
+                    if (prepared == PrepareStatus.NeedsPrepare)
+                    {
+                        PrepareInternal();
+                    }
+
+                    if (prepared == PrepareStatus.NotPrepared || prepared == PrepareStatus.V2Prepared)
                     {
                         NpgsqlQuery query;
 
@@ -792,108 +825,112 @@ namespace Npgsql
             // Check the connection state.
             CheckConnectionState();
 
+            if (! m_Connector.SupportsPrepare)
+            {
+                return; // Do nothing.
+            }
+
             // reset any responses just before getting new ones
             Connector.Mediator.ResetResponses();
 
             // Set command timeout.
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
-            if (!m_Connector.SupportsPrepare)
-            {
-                return; // Do nothing.
-            }
+            PrepareInternal();
+        }
 
+        private void PrepareInternal()
+        {
             if (m_Connector.BackendProtocolVersion == ProtocolVersion.Version2)
             {
                 using (NpgsqlCommand command = new NpgsqlCommand(GetPrepareCommandText(), m_Connector))
                 {
                     command.ExecuteBlind();
+                    prepared = PrepareStatus.V2Prepared;
                 }
             }
             else
             {
-                // Block the notification thread before writing anything to the wire.
-                using (m_Connector.BlockNotificationThread())
+                try
                 {
-                    try
+                    // Use the extended query parsing...
+                    planName = m_Connector.NextPlanName();
+                    String portalName = "";
+                    NpgsqlParse parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] { });
+                    NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
+                    IEnumerable<IServerResponseObject> responseEnum;
+                    NpgsqlRowDescription returnRowDesc = null;
+
+                    // Write Parse, Describe, and Sync messages to the wire.
+                    m_Connector.Parse(parse);
+                    m_Connector.Describe(statementDescribe);
+                    m_Connector.Sync();
+
+                    // Flush and wait for response.
+                    responseEnum = m_Connector.ProcessBackendResponsesEnum();
+
+                    // Look for a NpgsqlRowDescription in the responses, discarding everything else.
+                    foreach (IServerResponseObject response in responseEnum)
                     {
-                        // Use the extended query parsing...
-                        planName = m_Connector.NextPlanName();
-                        String portalName = "";
-                        NpgsqlParse parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] { });
-                        NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
-                        IEnumerable<IServerResponseObject> responseEnum;
-                        NpgsqlRowDescription returnRowDesc = null;
-
-                        // Write Parse, Describe, and Sync messages to the wire.
-                        m_Connector.Parse(parse);
-                        m_Connector.Describe(statementDescribe);
-                        m_Connector.Sync();
-
-                        // Flush and wait for response.
-                        responseEnum = m_Connector.ProcessBackendResponsesEnum();
-
-                        // Look for a NpgsqlRowDescription in the responses, discarding everything else.
-                        foreach (IServerResponseObject response in responseEnum)
+                        if (response is NpgsqlRowDescription)
                         {
-                            if (response is NpgsqlRowDescription)
-                            {
-                                returnRowDesc = (NpgsqlRowDescription)response;
-                            }
-                            else if (response is IDisposable)
-                            {
-                                (response as IDisposable).Dispose();
-                            }
+                            returnRowDesc = (NpgsqlRowDescription)response;
                         }
-
-                        Int16[] resultFormatCodes;
-
-                        if (returnRowDesc != null)
+                        else if (response is IDisposable)
                         {
-                            resultFormatCodes = new Int16[returnRowDesc.NumFields];
+                            (response as IDisposable).Dispose();
+                        }
+                    }
 
-                            for (int i = 0; i < returnRowDesc.NumFields; i++)
+                    Int16[] resultFormatCodes;
+
+                    if (returnRowDesc != null)
+                    {
+                        resultFormatCodes = new Int16[returnRowDesc.NumFields];
+
+                        for (int i = 0; i < returnRowDesc.NumFields; i++)
+                        {
+                            NpgsqlRowDescription.FieldData returnRowDescData = returnRowDesc[i];
+
+                            if (returnRowDescData.TypeInfo != null)
                             {
-                                NpgsqlRowDescription.FieldData returnRowDescData = returnRowDesc[i];
-
-                                if (returnRowDescData.TypeInfo != null)
-                                {
-                                    // Binary format?
-                                    resultFormatCodes[i] = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
-                                }
-                                else
-                                {
-                                    // Text Format
-                                    resultFormatCodes[i] = (Int16)FormatCode.Text;
-                                }
+                                // Binary format?
+                                resultFormatCodes[i] = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
+                            }
+                            else
+                            {
+                                // Text Format
+                                resultFormatCodes[i] = (Int16)FormatCode.Text;
                             }
                         }
-                        else
-                        {
-                            resultFormatCodes = new Int16[] { 0 };
-                        }
-
-                        // The Bind, Describe, and Execute message objects live through multiple Executes.
-                        // Only Bind changes at all between Executes, which is done in BindParameters().
-                        bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
-                        portalDescribe = new NpgsqlDescribePortal(portalName);
-                        execute = new NpgsqlExecute(portalName, 0);
                     }
-                    catch (IOException e)
+                    else
                     {
-                        throw ClearPoolAndCreateException(e);
+                        resultFormatCodes = new Int16[] { 0 };
                     }
-                    catch
-                    {
-                        // As per documentation:
-                        // "[...] When an error is detected while processing any extended-query message,
-                        // the backend issues ErrorResponse, then reads and discards messages until a
-                        // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
-                        // So, send a sync command if we get any problems.
-                        m_Connector.Sync();
 
-                        throw;
-                    }
+                    // The Bind, Describe, and Execute message objects live through multiple Executes.
+                    // Only Bind changes at all between Executes, which is done in BindParameters().
+                    bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
+                    portalDescribe = new NpgsqlDescribePortal(portalName);
+                    execute = new NpgsqlExecute(portalName, 0);
+                    prepared = PrepareStatus.V3Prepared;
+                }
+                catch (IOException e)
+                {
+                    throw ClearPoolAndCreateException(e);
+                }
+                catch
+                {
+                    // As per documentation:
+                    // "[...] When an error is detected while processing any extended-query message,
+                    // the backend issues ErrorResponse, then reads and discards messages until a
+                    // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
+                    // So, send a sync command if we get any problems.
+                    m_Connector.Sync();
+                    m_Connector.ProcessAndDiscardBackendResponses();
+
+                    throw;
                 }
             }
         }
