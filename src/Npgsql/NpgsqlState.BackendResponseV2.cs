@@ -53,7 +53,6 @@ namespace Npgsql
             {
                 Stream stream = context.Stream;
                 NpgsqlMediator mediator = context.Mediator;
-                NpgsqlRowDescription lastRowDescription = null;
                 List<NpgsqlError> errors = new List<NpgsqlError>();
 
                 for (;;)
@@ -162,12 +161,13 @@ namespace Npgsql
                             }
                             break;
                         case BackEndMessageCode.RowDescription:
-                            yield return lastRowDescription = new NpgsqlRowDescriptionV2(stream, context.OidToNameMapping, context.CompatVersion);
-                            ;
+                            yield return new NpgsqlRowDescriptionV2(stream, context.OidToNameMapping, context.CompatVersion);
                             break;
+
                         case BackEndMessageCode.DataRow:
-                            yield return new ForwardsOnlyRow(new StringRowReaderV2(lastRowDescription, stream));
+                            yield return new StringRowReaderV2(stream);
                             break;
+
                         case BackEndMessageCode.BinaryRow:
                             throw new NotSupportedException();
                         case BackEndMessageCode.ReadyForQuery:

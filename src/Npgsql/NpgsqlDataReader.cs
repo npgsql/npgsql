@@ -1015,13 +1015,14 @@ namespace Npgsql
         //to Read(), so we need to be able to cache one of each.
         private NpgsqlRowDescription _pendingDescription = null;
         private NpgsqlRow _pendingRow = null;
+        private readonly bool _preparedStatement;
 
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
                                         NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-                                        bool synchOnReadError)
+                                        bool synchOnReadError, bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
             : base(command, behavior)
         {
             _dataEnumerator = dataEnumeration.GetEnumerator();
@@ -1029,7 +1030,16 @@ namespace Npgsql
             _threadBlock = threadBlock;
             _synchOnReadError = synchOnReadError;
             //DataReaders always start prepared to read from the first Resultset (if any).
-            NextResult();
+            _preparedStatement = preparedStatement;
+            _currentDescription = rowDescription;
+
+            // For un-prepared statements, the first response is always a row description.
+            // For prepared statements, we may be recycling a row description from a previous Execute.
+            if (CurrentDescription == null)
+            {
+                NextResultInternal();
+            }
+
             UpdateOutputParameters();
         }
 
@@ -1085,13 +1095,18 @@ namespace Npgsql
             {
                 return null;
             }
-            else if ((_behavior & CommandBehavior.SequentialAccess) == CommandBehavior.SequentialAccess)
-            {
-                return fo;
-            }
             else
             {
-                return new CachingRow(fo);
+                fo.SetRowDescription(CurrentDescription);
+
+                if ((_behavior & CommandBehavior.SequentialAccess) == CommandBehavior.SequentialAccess)
+                {
+                    return fo;
+                }
+                else
+                {
+                    return new CachingRow(fo);
+                }
             }
         }
 
@@ -1115,7 +1130,7 @@ namespace Npgsql
         /// rows if appropriate).
         /// </summary>
         /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
-        private IServerResponseObject GetNextResponseObject()
+        private IServerResponseObject GetNextResponseObject(bool cleanup = false)
         {
             try
             {
@@ -1128,7 +1143,38 @@ namespace Npgsql
                 while (_dataEnumerator.MoveNext())
                 {
                     IServerResponseObject respNext = _dataEnumerator.Current;
-                    if (respNext is CompletedResponse)
+
+                    if (respNext is RowReader)
+                    {
+                        RowReader reader = respNext as RowReader;
+
+                        if (cleanup)
+                        {
+                            if (reader is StringRowReaderV2)
+                            {
+                                // V2 rows need to step through their data to dispose, so we have
+                                // to finish construction.
+                                NpgsqlRow row;
+
+                                row = BuildRow(new ForwardsOnlyRow(reader));
+                                row.Dispose();
+
+                                return row;
+                            }
+                            else
+                            {
+                                // V3 rows can dispose by simply reading MessageLength bytes.
+                                reader.Dispose();
+
+                                return reader;
+                            }
+                        }
+                        else
+                        {
+                            return _pendingRow = BuildRow(new ForwardsOnlyRow(reader));
+                        }
+                    }
+                    else if (respNext is CompletedResponse)
                     {
                         CompletedResponse cr = respNext as CompletedResponse;
                         if (cr.RowsAffected.HasValue)
@@ -1136,10 +1182,6 @@ namespace Npgsql
                             _nextRecordsAffected = (_nextRecordsAffected ?? 0) + cr.RowsAffected.Value;
                         }
                         _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
-                    }
-                    else if (respNext is ForwardsOnlyRow)
-                    {
-                        return _pendingRow = BuildRow((ForwardsOnlyRow) respNext);
                     }
                     else
                     {
@@ -1333,7 +1375,7 @@ namespace Npgsql
                         return;
                     }
                 }
-                while (GetNextResponseObject() != null);
+                while (GetNextResponseObject(true) != null);
             }
             _connector.CurrentReader = null;
             _threadBlock.Dispose();
@@ -1358,6 +1400,17 @@ namespace Npgsql
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
         public override Boolean NextResult()
+        {
+            if (_preparedStatement)
+            {
+                // Prepared statements can never have multiple results.
+                return false;
+            }
+
+            return NextResultInternal();
+        }
+
+        private Boolean NextResultInternal()
         {
             try
             {

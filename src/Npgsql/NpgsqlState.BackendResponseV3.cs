@@ -54,8 +54,6 @@ namespace Npgsql
                 Stream stream = context.Stream;
                 NpgsqlMediator mediator = context.Mediator;
 
-                NpgsqlRowDescription lastRowDescription = null;
-
                 List<NpgsqlError> errors = new List<NpgsqlError>();
 
                 for (;;)
@@ -198,8 +196,9 @@ namespace Npgsql
                             }
                             break;
                         case BackEndMessageCode.RowDescription:
-                            yield return lastRowDescription = new NpgsqlRowDescriptionV3(stream, context.OidToNameMapping, context.CompatVersion);
+                            yield return new NpgsqlRowDescriptionV3(stream, context.OidToNameMapping, context.CompatVersion);
                             break;
+
                         case BackEndMessageCode.ParameterDescription:
 
                             // Do nothing,for instance,  just read...
@@ -213,12 +212,12 @@ namespace Npgsql
                             break;
 
                         case BackEndMessageCode.DataRow:
-                            yield return new ForwardsOnlyRow(new StringRowReaderV3(lastRowDescription, stream));
+                            yield return new StringRowReaderV3(stream);
                             break;
 
                         case BackEndMessageCode.ReadyForQuery:
 
-                            NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ReadyForQuery");
+//                            NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ReadyForQuery");
 
                             // Possible status bytes returned:
                             //   I = Idle (no transaction active).
@@ -263,7 +262,7 @@ namespace Npgsql
                             PGUtil.ReadInt32(stream);
                             break;
                         case BackEndMessageCode.BindComplete:
-                            NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "BindComplete");
+//                            NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "BindComplete");
                             // Just read up the message length.
                             PGUtil.ReadInt32(stream);
                             break;

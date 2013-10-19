@@ -141,6 +141,11 @@ namespace Npgsql
             _lastIndex = index;
         }
 
+        public void SetRowDescription(NpgsqlRowDescription rowDescr)
+        {
+            _reader.SetRowDescription(rowDescr);
+        }
+
         public override object this[int index]
         {
             get
@@ -311,15 +316,19 @@ namespace Npgsql
         }
 
         protected static readonly Encoding UTF8Encoding = Encoding.UTF8;
-        private readonly NpgsqlRowDescription _rowDesc;
+        protected NpgsqlRowDescription _rowDesc;
         private readonly Stream _stream;
         private Streamer _streamer;
-        private int _currentField = -1;
+        protected int _currentField = -1;
 
-        public RowReader(NpgsqlRowDescription rowDesc, Stream stream)
+        public RowReader(Stream stream)
+        {
+            _stream = stream;
+        }
+
+        public virtual void SetRowDescription(NpgsqlRowDescription rowDesc)
         {
             _rowDesc = rowDesc;
-            _stream = stream;
         }
 
         protected Streamer CurrentStreamer
@@ -472,10 +481,7 @@ namespace Npgsql
             CurrentCharStreamer.SkipTo(position);
         }
 
-        public void Dispose()
-        {
-            CurrentStreamer = null;
-            Skip(_rowDesc.NumFields - _currentField - 1);
-        }
+        public virtual void Dispose()
+        {}
     }
 }

@@ -151,8 +151,8 @@ namespace Npgsql
         private Int32 _planIndex;
         private Int32 _portalIndex;
 
-        private const String _planNamePrefix = "npgsqlplan";
-        private const String _portalNamePrefix = "npgsqlportal";
+        private const String _planNamePrefix = "s";
+        private const String _portalNamePrefix = "p";
 
         private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
@@ -1036,7 +1036,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPortalName()
         {
-            return _portalNamePrefix + Interlocked.Increment(ref _portalIndex).ToString();
+            return _portalNamePrefix + (++_portalIndex).ToString();
         }
 
         ///<summary>
@@ -1044,7 +1044,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPlanName()
         {
-            return _planNamePrefix + Interlocked.Increment(ref _planIndex).ToString();
+            return _planNamePrefix + (++_planIndex).ToString();
         }
 
         internal void RemoveNotificationThread()

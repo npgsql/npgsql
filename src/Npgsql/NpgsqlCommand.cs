@@ -80,9 +80,9 @@ namespace Npgsql
         private Boolean designTimeVisible;
 
         private PrepareStatus prepared = PrepareStatus.NotPrepared;
-        private NpgsqlBind bind;
-        private NpgsqlDescribe portalDescribe;
-        private NpgsqlExecute execute;
+        private NpgsqlBind bind = null;
+        private NpgsqlExecute execute = null;
+        private NpgsqlRowDescription currentRowDescription = null;
 
         private Int64 lastInsertedOID = 0;
 
@@ -191,18 +191,7 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandText", value);
                 text = value;
 
-                if (prepared == PrepareStatus.V3Prepared)
-                {
-                    bind = null;
-                    portalDescribe = null;
-                    execute = null;
-                    prepared = PrepareStatus.NeedsPrepare;
-                }
-                else if (prepared == PrepareStatus.V2Prepared)
-                {
-                    planName = String.Empty;
-                    prepared = PrepareStatus.NeedsPrepare;
-                }
+                UnPrepare();
 
                 functionChecksDone = false;
             }
@@ -725,23 +714,41 @@ namespace Npgsql
                         // Update the Bind object with current parameter data as needed.
                         BindParameters();
 
-                        // Write Bind, Describe, Execute, and Sync messages to the wire.
+                        // Write the Bind message to the wire.
                         m_Connector.Bind(bind);
-                        m_Connector.Describe(portalDescribe);
+
+                        if (currentRowDescription == null)
+                        {
+                            NpgsqlDescribe portalDescribe = new NpgsqlDescribePortal(bind.PortalName);
+
+                            // We don't have a row description yet, so write a Describe message to the wire.
+                            m_Connector.Describe(portalDescribe);
+                        }
+
+                        // Finally, write the Execute and Sync messages to the wire.
                         m_Connector.Execute(execute);
                         m_Connector.Sync();
 
                         // Flush and wait for responses.
                         responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
-                        // Construct the return reader.
+                        // Construct the return reader, possibly with a saved row description.
                         reader = new ForwardsOnlyDataReader(
                             responseEnum,
                             cb,
                             this,
                             m_Connector.BlockNotificationThread(),
-                            true
+                            true,
+                            true,
+                            currentRowDescription
                         );
+
+                        if (currentRowDescription == null)
+                        {
+                            // The reader has pulled our row description off the wire.
+                            // Save it for subsequent Executes.
+                            currentRowDescription = reader.CurrentDescription;
+                        }
                     }
 
                     return reader;
@@ -815,6 +822,22 @@ namespace Npgsql
             }
         }
 
+        private void UnPrepare()
+        {
+            if (prepared == PrepareStatus.V3Prepared)
+            {
+                bind = null;
+                execute = null;
+                currentRowDescription = null;
+                prepared = PrepareStatus.NeedsPrepare;
+            }
+            else if (prepared == PrepareStatus.V2Prepared)
+            {
+                planName = String.Empty;
+                prepared = PrepareStatus.NeedsPrepare;
+            }
+        }
+
         /// <summary>
         /// Creates a prepared version of the command on a PostgreSQL server.
         /// </summary>
@@ -829,6 +852,8 @@ namespace Npgsql
             {
                 return; // Do nothing.
             }
+
+            UnPrepare();
 
             // reset any responses just before getting new ones
             Connector.Mediator.ResetResponses();
@@ -909,10 +934,9 @@ namespace Npgsql
                         resultFormatCodes = new Int16[] { 0 };
                     }
 
-                    // The Bind, Describe, and Execute message objects live through multiple Executes.
+                    // The Bind and Execute message objects live through multiple Executes.
                     // Only Bind changes at all between Executes, which is done in BindParameters().
                     bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
-                    portalDescribe = new NpgsqlDescribePortal(portalName);
                     execute = new NpgsqlExecute(portalName, 0);
                     prepared = PrepareStatus.V3Prepared;
                 }
