@@ -1007,7 +1007,6 @@ namespace Npgsql
         private long? _nextInsertOID = null;
         internal bool _cleanedUp = false;
         private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
-        private readonly bool _synchOnReadError; //maybe this should always be done?
 
         //Unfortunately we sometimes don't know we're going to be dealing with
         //a description until it comes when we look for a row or a message, and
@@ -1022,14 +1021,12 @@ namespace Npgsql
 
         internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
                                         NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-                                        bool synchOnReadError, bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
+                                        bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
             : base(command, behavior)
         {
             _dataEnumerator = dataEnumeration.GetEnumerator();
             _connector.CurrentReader = this;
             _threadBlock = threadBlock;
-            _synchOnReadError = synchOnReadError;
-            //DataReaders always start prepared to read from the first Resultset (if any).
             _preparedStatement = preparedStatement;
             _currentDescription = rowDescription;
 
@@ -1194,16 +1191,6 @@ namespace Npgsql
             catch
             {
                 CleanUp(true);
-                if (_synchOnReadError) //Should we always do this?
-                {
-                    // As per documentation:
-                    // "[...] When an error is detected while processing any extended-query message,
-                    // the backend issues ErrorResponse, then reads and discards messages until a
-                    // Sync is reached, then issues ReadyForQuery and returns to normal message processing.[...]"
-                    // So, send a sync command if we get any problems.
-
-                    _connector.Sync();
-                }
                 throw;
             }
         }
