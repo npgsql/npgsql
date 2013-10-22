@@ -60,46 +60,6 @@ namespace NpgsqlTypes
             }
         }
 
-        private class ThreeBitHashKey : IEquatable<ThreeBitHashKey>
-        {
-            private int hashValue;
-
-            internal ThreeBitHashKey(bool bitOne, bool bitTwo, bool bitThree)
-            {
-                hashValue = 0;
-
-                if (bitOne)
-                {
-                    hashValue |= 1 << 2;
-                }
-
-                if (bitTwo)
-                {
-                    hashValue |= 1 << 1;
-                }
-
-                if (bitThree)
-                {
-                    hashValue |= 1;
-                }
-            }
-
-            public override int GetHashCode()
-            {
-                return hashValue;
-            }
-
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as ThreeBitHashKey);
-            }
-
-            public bool Equals(ThreeBitHashKey obj)
-            {
-                return obj.hashValue == this.hashValue;
-            }
-        }
-
         private static readonly byte[] backslashSingle = BackendEncoding.UTF8Encoding.GetBytes(@"\");
         private static readonly byte[] backslashDouble = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
         private static readonly byte[] backslashQuad = BackendEncoding.UTF8Encoding.GetBytes(@"\\\\");
@@ -111,20 +71,42 @@ namespace NpgsqlTypes
         // extended query, conformant strings, and array value.
         // Make them efficiently available using a hash table, avoiding the need for a
         // long, nested, cpnfusing if/then construct.
-        private static readonly Dictionary<ThreeBitHashKey, StringEscapeInfo> stringEscapeInfoTable;
+        private static readonly StringEscapeInfo[] stringEscapeInfoTable;
 
         static BasicNativeToBackendTypeConverter()
         {
-            stringEscapeInfoTable = new Dictionary<ThreeBitHashKey,StringEscapeInfo>();
+            stringEscapeInfoTable = new StringEscapeInfo[8];
 
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, true, false), new StringEscapeInfo("'", "", ""));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, true, true), new StringEscapeInfo("", @"\", @"\"));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, false, false), new StringEscapeInfo("'", "", @"\"));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, false, true), new StringEscapeInfo("", @"\", @"\"));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, true, false), new StringEscapeInfo("'", "", ""));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, true, true), new StringEscapeInfo("'", @"\", @"\"));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, false, false), new StringEscapeInfo("'", "", @"\"));
-            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, false, true), new StringEscapeInfo("'", @"\\", @"\\\"));
+            stringEscapeInfoTable[ThreeBitHashValue(true, true, false)] = new StringEscapeInfo("'", "", "");
+            stringEscapeInfoTable[ThreeBitHashValue(true, true, true)] = new StringEscapeInfo("", @"\", @"\");
+            stringEscapeInfoTable[ThreeBitHashValue(true, false, false)] = new StringEscapeInfo("'", "", @"\");
+            stringEscapeInfoTable[ThreeBitHashValue(true, false, true)] = new StringEscapeInfo("", @"\", @"\");
+            stringEscapeInfoTable[ThreeBitHashValue(false, true, false)] = new StringEscapeInfo("'", "", "");
+            stringEscapeInfoTable[ThreeBitHashValue(false, true, true)] = new StringEscapeInfo("'", @"\", @"\");
+            stringEscapeInfoTable[ThreeBitHashValue(false, false, false)] = new StringEscapeInfo("'", "", @"\");
+            stringEscapeInfoTable[ThreeBitHashValue(false, false, true)] = new StringEscapeInfo("'", @"\\", @"\\\");
+        }
+
+        private static int ThreeBitHashValue(bool bitOne, bool bitTwo, bool bitThree)
+        {
+            int hashValue = 0;
+
+            if (bitOne)
+            {
+                hashValue |= 1 << 2;
+            }
+
+            if (bitTwo)
+            {
+                hashValue |= 1 << 1;
+            }
+
+            if (bitThree)
+            {
+                hashValue |= 1;
+            }
+
+            return hashValue;
         }
 
         private static byte? DetermineQuote(bool forExtendedQuery, bool arrayElement)
@@ -205,7 +187,7 @@ namespace NpgsqlTypes
             // Using a three bit hash key derived from the options at hand,
             // find the correct string escape info object.
             escapes = stringEscapeInfoTable[
-                new ThreeBitHashKey(
+                ThreeBitHashValue(
                     forExtendedQuery,
                     options.UseConformantStrings,
                     arrayElement
