@@ -44,12 +44,88 @@ namespace NpgsqlTypes
     /// </summary>
     internal abstract class BasicNativeToBackendTypeConverter
     {
-        private static byte[] backslashSingle = BackendEncoding.UTF8Encoding.GetBytes(@"\");
-        private static byte[] backslashDouble = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
-        private static byte[] backslashQuad = BackendEncoding.UTF8Encoding.GetBytes(@"\\\\");
+        // Encapulate the three escapable characters in plan text strings, and their
+        // escape sequence.
+        private struct StringEscapeInfo
+        {
+            internal readonly string SingleQuoteEscape;
+            internal readonly string DoubleQuoteEscape;
+            internal readonly string BackSlashEscape;
 
-        private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
-        private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
+            internal StringEscapeInfo(string SingleQuoteEscape, string DoubleQuoteEscape, string BackSlashEscape)
+            {
+                this.SingleQuoteEscape = SingleQuoteEscape;
+                this.DoubleQuoteEscape = DoubleQuoteEscape;
+                this.BackSlashEscape = BackSlashEscape;
+            }
+        }
+
+        private class ThreeBitHashKey : IEquatable<ThreeBitHashKey>
+        {
+            private int hashValue;
+
+            internal ThreeBitHashKey(bool bitOne, bool bitTwo, bool bitThree)
+            {
+                hashValue = 0;
+
+                if (bitOne)
+                {
+                    hashValue |= 1 << 2;
+                }
+
+                if (bitTwo)
+                {
+                    hashValue |= 1 << 1;
+                }
+
+                if (bitThree)
+                {
+                    hashValue |= 1;
+                }
+            }
+
+            public override int GetHashCode()
+            {
+                return hashValue;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as ThreeBitHashKey);
+            }
+
+            public bool Equals(ThreeBitHashKey obj)
+            {
+                return obj.hashValue == this.hashValue;
+            }
+        }
+
+        private static readonly byte[] backslashSingle = BackendEncoding.UTF8Encoding.GetBytes(@"\");
+        private static readonly byte[] backslashDouble = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
+        private static readonly byte[] backslashQuad = BackendEncoding.UTF8Encoding.GetBytes(@"\\\\");
+
+        private static readonly byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
+        private static readonly byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
+
+        // There are five possible string escape schemes for the eight possible combinations of the booleans
+        // extended query, conformant strings, and array value.
+        // Make them efficiently available using a hash table, avoiding the need for a
+        // long, nested, cpnfusing if/then construct.
+        private static readonly Dictionary<ThreeBitHashKey, StringEscapeInfo> stringEscapeInfoTable;
+
+        static BasicNativeToBackendTypeConverter()
+        {
+            stringEscapeInfoTable = new Dictionary<ThreeBitHashKey,StringEscapeInfo>();
+
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, true, false), new StringEscapeInfo("'", "", ""));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, true, true), new StringEscapeInfo("", @"\", @"\"));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, false, false), new StringEscapeInfo("'", "", @"\"));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(true, false, true), new StringEscapeInfo("", @"\", @"\"));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, true, false), new StringEscapeInfo("'", "", ""));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, true, true), new StringEscapeInfo("'", @"\", @"\"));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, false, false), new StringEscapeInfo("'", "", @"\"));
+            stringEscapeInfoTable.Add(new ThreeBitHashKey(false, false, true), new StringEscapeInfo("'", @"\\", @"\\\"));
+        }
 
         private static byte? DetermineQuote(bool forExtendedQuery, bool arrayElement)
         {
@@ -115,6 +191,7 @@ namespace NpgsqlTypes
             // Give the output string builder enough room to start for the string, quotes, E-prefix,
             // and 1 in 10 characters needing to be escaped; a WAG.
             StringBuilder retQuotedEscaped = new StringBuilder(NativeData.Length + 3 + NativeData.Length / 10);
+            StringEscapeInfo escapes;
 
             ePrefix = (char?)DetermineEPrefix(forExtendedQuery, options, arrayElement);
 
@@ -125,231 +202,38 @@ namespace NpgsqlTypes
 
             retQuotedEscaped.Append(quote);
 
-            // Build a new string value, escaping characters as needed.
-            // Each possible escape style gets its own distinct code path to reduce
-            // decision making on each character.
-            if (forExtendedQuery)
+            // Using a three bit hash key derived from the options at hand,
+            // find the correct string escape info object.
+            escapes = stringEscapeInfoTable[
+                new ThreeBitHashKey(
+                    forExtendedQuery,
+                    options.UseConformantStrings,
+                    arrayElement
+                )
+            ];
+
+            // Escape the string using the escape characters from the lookup.
+            foreach (char ch in NativeData)
             {
-                if (options.UseConformantStrings)
+                switch (ch)
                 {
-                    if (! arrayElement)
-                    {
-                        // Escape single quotes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (ch == '\'')
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
+                    case '\'' :
+                        retQuotedEscaped.Append(escapes.SingleQuoteEscape);
+                        break;
 
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                    else
-                    {
-                        // Escape double quotes and backslashes with a backslash.
-                        foreach (char ch in NativeData)
-                        {
-                            if (
-                                ch == '"' ||
-                                ch == '\\'
-                            )
-                            {
-                                retQuotedEscaped.Append(@"\");
-                            }
+                    case '\"' :
+                        retQuotedEscaped.Append(escapes.DoubleQuoteEscape);
+                        break;
 
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
+                    case '\\' :
+                        retQuotedEscaped.Append(escapes.BackSlashEscape);
+                        break;
+
                 }
-                else
-                {
-                    if (! arrayElement)
-                    {
-                        // Escape single quotes and backslashes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (
-                                ch == '\'' ||
-                                ch == '\\'
-                            )
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
 
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                    else
-                    {
-                        // Escape double quotes and backslashes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (
-                                ch == '"' ||
-                                ch == '\\'
-                            )
-                            {
-                                retQuotedEscaped.Append(@"\");
-                            }
-
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                }
+                retQuotedEscaped.Append(ch);
             }
-            else
-            {
-                if (options.UseConformantStrings)
-                {
-                    if (! arrayElement)
-                    {
-                        // Escape single quotes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (ch == '\'')
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
 
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                    else
-                    {
-                        // Escape double quotes and backslashes with a backslash,
-                        // single quotes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (
-                                ch == '"' ||
-                                ch == '\\'
-                            )
-                            {
-                                retQuotedEscaped.Append(@"\");
-                            }
-                            else if (ch == '\'')
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
-
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                }
-                else
-                {
-                    if (! arrayElement)
-                    {
-                        // Escape single quotes and backslashes by doubling.
-                        foreach (char ch in NativeData)
-                        {
-                            if (
-                                ch == '\'' ||
-                                ch == '\\'
-                            )
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
-
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                    else
-                    {
-                        // Escape double quotes with double backslashes,
-                        // single quotes by doubling,
-                        // backslashes with triple backslashes.
-                        foreach (char ch in NativeData)
-                        {
-                            if (ch == '"')
-                            {
-                                retQuotedEscaped.Append(@"\\");
-                            }
-                            else if (ch == '\'')
-                            {
-                                retQuotedEscaped.Append(ch);
-                            }
-                            else if (ch == '\\')
-                            {
-                                retQuotedEscaped.Append(@"\\\");
-                            }
-
-                            retQuotedEscaped.Append(ch);
-                        }
-                    }
-                }
-            }
-/*
-            // Build a new string value, escaping characters as needed.
-            // Each possible escape style gets its own distinct code path to reduce
-            // decision making on each character.
-            if (arrayElement)
-            {
-                foreach (char ch in NativeData)
-                {
-                    if (
-                        ch == quote ||
-                        ch == '\\'
-                    )
-                    {
-                        retQuotedEscaped.Append('\\');
-                    }
-
-                    retQuotedEscaped.Append(ch);
-                }
-            }
-            else if (! forExtendedQuery)
-            {
-                // For non-extended, escapes work the same for array elements and regular values.
-                if (options.UseConformantStrings)
-                {
-                    // Escape only quotes by doubling.
-                    foreach (char ch in NativeData)
-                    {
-                        if (ch == quote)
-                        {
-                            retQuotedEscaped.Append(ch);
-                        }
-
-                        retQuotedEscaped.Append(ch);
-                    }
-                }
-                else
-                {
-                    // Escape quotes and backslashes by doubling.
-                    foreach (char ch in NativeData)
-                    {
-                        if (
-                            ch == quote ||
-                            ch == '\\'
-                        )
-                        {
-                            retQuotedEscaped.Append(ch);
-                        }
-
-                        retQuotedEscaped.Append(ch);
-                    }
-                }
-            }
-            else
-            {
-                // If we get here. value must be an extended query array element.
-                // Escape quotes and backslashes with a backslash.
-                foreach (char ch in NativeData)
-                {
-                    if (
-                        ch == quote ||
-                        ch == '\\'
-                    )
-                    {
-                        retQuotedEscaped.Append('\\');
-                    }
-
-                    retQuotedEscaped.Append(ch);
-                }
-            }
-*/
             retQuotedEscaped.Append(quote);
 
             return BackendEncoding.UTF8Encoding.GetBytes(retQuotedEscaped.ToString());
