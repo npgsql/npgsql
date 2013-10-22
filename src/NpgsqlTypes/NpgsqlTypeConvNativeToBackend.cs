@@ -46,29 +46,30 @@ namespace NpgsqlTypes
     {
         private static byte[] backslashSingle = BackendEncoding.UTF8Encoding.GetBytes(@"\");
         private static byte[] backslashDouble = BackendEncoding.UTF8Encoding.GetBytes(@"\\");
+        private static byte[] backslashQuad = BackendEncoding.UTF8Encoding.GetBytes(@"\\\\");
 
         private static byte[] escapeEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("01234567");
         private static byte[] hexEncodingByteMap = BackendEncoding.UTF8Encoding.GetBytes("0123456789ABCDEF");
 
         private static byte? DetermineQuote(bool forExtendedQuery, bool arrayElement)
         {
-            if (forExtendedQuery)
+            if (arrayElement)
             {
-                if (arrayElement)
-                {
-                    // Array elements sent via Bind require double-quotes
-                    return (byte)ASCIIBytes.DoubleQuote;
-                }
-                else
-                {
-                    // Other values sent via Bind are not quoted
-                    return null;
-                }
+                // Array elements always require double-quotes
+                return (byte)ASCIIBytes.DoubleQuote;
             }
             else
             {
-                // All quotable values sent via non-extended query require single-quotes
-                return (byte)ASCIIBytes.SingleQuote;
+                if (forExtendedQuery)
+                {
+                    // Non-array values sent via Bind are not quoted
+                    return null;
+                }
+                else
+                {
+                    // Non-array values sent via non-extended require single-quotes
+                    return (byte)ASCIIBytes.SingleQuote;
+                }
             }
         }
 
@@ -82,7 +83,7 @@ namespace NpgsqlTypes
             else
             {
                 // Quoted values sent via non-extended query may require the E prefix depending on server version and current options
-                if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
+                if (! arrayElement && ! options.UseConformantStrings && options.Supports_E_StringPrefix)
                 {
                     return (byte)ASCIIBytes.E;
                 }
@@ -127,7 +128,178 @@ namespace NpgsqlTypes
             // Build a new string value, escaping characters as needed.
             // Each possible escape style gets its own distinct code path to reduce
             // decision making on each character.
-            if (! forExtendedQuery)
+            if (forExtendedQuery)
+            {
+                if (options.UseConformantStrings)
+                {
+                    if (! arrayElement)
+                    {
+                        // Escape single quotes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (ch == '\'')
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                    else
+                    {
+                        // Escape double quotes and backslashes with a backslash.
+                        foreach (char ch in NativeData)
+                        {
+                            if (
+                                ch == '"' ||
+                                ch == '\\'
+                            )
+                            {
+                                retQuotedEscaped.Append(@"\");
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                }
+                else
+                {
+                    if (! arrayElement)
+                    {
+                        // Escape single quotes and backslashes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (
+                                ch == '\'' ||
+                                ch == '\\'
+                            )
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                    else
+                    {
+                        // Escape double quotes and backslashes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (
+                                ch == '"' ||
+                                ch == '\\'
+                            )
+                            {
+                                retQuotedEscaped.Append(@"\");
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (options.UseConformantStrings)
+                {
+                    if (! arrayElement)
+                    {
+                        // Escape single quotes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (ch == '\'')
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                    else
+                    {
+                        // Escape double quotes and backslashes with a backslash,
+                        // single quotes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (
+                                ch == '"' ||
+                                ch == '\\'
+                            )
+                            {
+                                retQuotedEscaped.Append(@"\");
+                            }
+                            else if (ch == '\'')
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                }
+                else
+                {
+                    if (! arrayElement)
+                    {
+                        // Escape single quotes and backslashes by doubling.
+                        foreach (char ch in NativeData)
+                        {
+                            if (
+                                ch == '\'' ||
+                                ch == '\\'
+                            )
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                    else
+                    {
+                        // Escape double quotes with double backslashes,
+                        // single quotes by doubling,
+                        // backslashes with triple backslashes.
+                        foreach (char ch in NativeData)
+                        {
+                            if (ch == '"')
+                            {
+                                retQuotedEscaped.Append(@"\\");
+                            }
+                            else if (ch == '\'')
+                            {
+                                retQuotedEscaped.Append(ch);
+                            }
+                            else if (ch == '\\')
+                            {
+                                retQuotedEscaped.Append(@"\\\");
+                            }
+
+                            retQuotedEscaped.Append(ch);
+                        }
+                    }
+                }
+            }
+/*
+            // Build a new string value, escaping characters as needed.
+            // Each possible escape style gets its own distinct code path to reduce
+            // decision making on each character.
+            if (arrayElement)
+            {
+                foreach (char ch in NativeData)
+                {
+                    if (
+                        ch == quote ||
+                        ch == '\\'
+                    )
+                    {
+                        retQuotedEscaped.Append('\\');
+                    }
+
+                    retQuotedEscaped.Append(ch);
+                }
+            }
+            else if (! forExtendedQuery)
             {
                 // For non-extended, escapes work the same for array elements and regular values.
                 if (options.UseConformantStrings)
@@ -177,7 +349,7 @@ namespace NpgsqlTypes
                     retQuotedEscaped.Append(ch);
                 }
             }
-
+*/
             retQuotedEscaped.Append(quote);
 
             return BackendEncoding.UTF8Encoding.GetBytes(retQuotedEscaped.ToString());
@@ -221,7 +393,18 @@ namespace NpgsqlTypes
             }
             else
             {
-                if (options.UseConformantStrings)
+                if (arrayElement)
+                {
+                    if (options.UseConformantStrings)
+                    {
+                        return backslashDouble;
+                    }
+                    else
+                    {
+                        return backslashQuad;
+                    }
+                }
+                else if (options.UseConformantStrings)
                 {
                     return backslashSingle;
                 }
