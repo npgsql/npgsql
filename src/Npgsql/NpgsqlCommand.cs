@@ -82,6 +82,7 @@ namespace Npgsql
         private PrepareStatus prepared = PrepareStatus.NotPrepared;
         private NpgsqlBind bind = null;
         private NpgsqlExecute execute = null;
+        private bool portalDescribeSent = false;
         private NpgsqlRowDescription currentRowDescription = null;
 
         private Int64 lastInsertedOID = 0;
@@ -707,18 +708,22 @@ namespace Npgsql
                 }
                 else
                 {
+                    bool sendPortalDescribe = ! portalDescribeSent;
+
                     // Update the Bind object with current parameter data as needed.
                     BindParameters();
 
                     // Write the Bind message to the wire.
                     m_Connector.Bind(bind);
 
-                    if (currentRowDescription == null)
+                    if (sendPortalDescribe)
                     {
                         NpgsqlDescribe portalDescribe = new NpgsqlDescribePortal(bind.PortalName);
 
-                        // We don't have a row description yet, so write a Describe message to the wire.
+                        // Write a Describe message to the wire.
                         m_Connector.Describe(portalDescribe);
+
+                        portalDescribeSent = true;
                     }
 
                     // Finally, write the Execute and Sync messages to the wire.
@@ -738,10 +743,10 @@ namespace Npgsql
                         currentRowDescription
                     );
 
-                    if (currentRowDescription == null)
+                    if (sendPortalDescribe)
                     {
-                        // The reader has pulled our row description off the wire.
-                        // Save it for subsequent Executes.
+                        // We sent a Describe message. If the query produces a result set,
+                        // PG sent a row description, and the reader has now found it,
                         currentRowDescription = reader.CurrentDescription;
                     }
                 }
@@ -818,6 +823,7 @@ namespace Npgsql
             {
                 bind = null;
                 execute = null;
+                portalDescribeSent = false;
                 currentRowDescription = null;
                 prepared = PrepareStatus.NeedsPrepare;
             }
