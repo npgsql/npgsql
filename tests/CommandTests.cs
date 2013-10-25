@@ -2780,6 +2780,45 @@ namespace NpgsqlTests
             }
         }
 
+        // Type coersion in the native to backend converters does not work so
+        // well for arrays.  The rules for type coersion of array elements
+        // does not work the same as for non-arrays.  This test demonstrates
+        // the problem.
+        private void DateTimeArrayHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { DateTime.Now, DateTime.Now.AddDays(7) };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (DateTime[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        [Ignore]
+        public void DateTimeArrayHandling()
+        {
+            DateTimeArrayHandlingInternal(false);
+        }
+
+        [Test]
+        [Ignore]
+        public void DateTimeArrayHandlingPrepared()
+        {
+            DateTimeArrayHandlingInternal(true);
+        }
+
         private void ByteaArrayHandlingPreparedInternal()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
