@@ -28,6 +28,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Net;
 
 namespace Npgsql
 {
@@ -39,18 +40,21 @@ namespace Npgsql
     internal sealed class NpgsqlExecute : ClientMessage
     {
         private readonly String _portalName;
-        private readonly byte[] _bPortalName;
-        private readonly Int32 _maxRows;
-        private readonly int _messageLength;
+        private readonly byte[] _messageData;
 
         public NpgsqlExecute(String portalName, Int32 maxRows)
         {
+            int messageLength = 4 + portalName.Length + 1 + 4;
+            _messageData = new byte[messageLength + 1];
+            MemoryStream messageBuilder = new MemoryStream(_messageData);
+
             _portalName = portalName;
-            _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
 
-            _maxRows = maxRows;
-
-            _messageLength = 4 + _bPortalName.Length + 1 + 4;
+            messageBuilder
+                .WriteBytes((byte)FrontEndMessageCode.Execute)
+                .WriteInt32(messageLength)
+                .WriteStringNullTerminated(_portalName)
+                .WriteInt32(maxRows);
         }
 
         public String PortalName
@@ -60,11 +64,7 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Execute)
-                .WriteInt32(_messageLength)
-                .WriteBytesNullTerminated(_bPortalName)
-                .WriteInt32(_maxRows);
+            outputStream.WriteBytes(_messageData);
         }
     }
 }
