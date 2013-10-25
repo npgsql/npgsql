@@ -343,31 +343,31 @@ namespace NpgsqlTypes
         {
             byte[] ret = null;
 
-            if (forExtendedQuery)
+            if (arrayElement)
             {
-                if (arrayElement)
-                {
-                    // Array elements sent via Bind require double-quotes
-                    ret = new byte[src.Length + 2];
+                // Array elements always require double-quotes
+                ret = new byte[src.Length + 2];
 
-                    ret[0] = (byte)ASCIIBytes.DoubleQuote;
-                    src.CopyTo(ret, 1);
-                    ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
-                }
-                else
-                {
-                    // Other values sent via Bind are not quoted
-                    ret = src;
-                }
+                ret[0] = (byte)ASCIIBytes.DoubleQuote;
+                src.CopyTo(ret, 1);
+                ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
             }
             else
             {
-                // All quotable values sent via non-extended query require single-quotes
-                ret = new byte[src.Length + 2];
+                if (forExtendedQuery)
+                {
+                    // Non-array-element values sent via Bind are not quoted
+                    ret = src;
+                }
+                else
+                {
+                    // Non-array-element values sent via simple query require single-quotes
+                    ret = new byte[src.Length + 2];
 
-                ret[0] = (byte)ASCIIBytes.SingleQuote;
-                src.CopyTo(ret, 1);
-                ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
+                    ret[0] = (byte)ASCIIBytes.SingleQuote;
+                    src.CopyTo(ret, 1);
+                    ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
+                }
             }
 
             return ret;

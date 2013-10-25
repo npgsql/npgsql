@@ -2332,6 +2332,68 @@ namespace NpgsqlTests
             a.ExecuteScalar();
         }
 
+        private void MoneyHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                decimal inVal = 12345.12m;
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Money);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (decimal) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal, retVal);
+            }
+        }
+
+        [Test]
+        public void MoneyHandling()
+        {
+            MoneyHandlingInternal(false);
+        }
+
+        [Test]
+        public void MoneyHandlingPrepared()
+        {
+            MoneyHandlingInternal(true);
+        }
+
+        private void TimeStampHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                DateTime inVal = DateTime.Parse("02/28/2000 02:20:20 PM");
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (DateTime) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal, retVal);
+            }
+        }
+
+        [Test]
+        public void TimeStampHandling()
+        {
+            TimeStampHandlingInternal(false);
+        }
+
+        [Test]
+        public void TimeStampHandlingPrepared()
+        {
+            TimeStampHandlingInternal(true);
+        }
+
         [Test]
         public void TestUUIDDataType()
         {
@@ -2749,6 +2811,39 @@ namespace NpgsqlTests
             {
                 ByteaArrayHandlingPreparedInternal();
             }
+        }
+
+        private void MoneyArrayHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                decimal[] inVal = new[] {12345.12m, 98765.98m};
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Money | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (decimal[]) cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void MoneyArrayHandling()
+        {
+            MoneyArrayHandlingInternal(false);
+        }
+
+        [Test]
+        public void MoneyArrayHandlingPrepared()
+        {
+            MoneyArrayHandlingInternal(true);
         }
 
         [Test]
