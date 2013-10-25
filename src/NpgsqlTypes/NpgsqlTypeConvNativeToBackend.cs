@@ -46,17 +46,25 @@ namespace NpgsqlTypes
     {
         // Encapulate the three escapable characters in plan text strings, and their
         // escape sequence.
-        private struct StringEscapeInfo
+        private struct StringEncodingInfo
         {
+            internal readonly byte Quote;
             internal readonly string SingleQuoteEscape;
             internal readonly string DoubleQuoteEscape;
             internal readonly string BackSlashEscape;
+            internal readonly bool UseConformantStrings;
+            internal readonly bool UseEPrefix;
+            internal readonly byte[] ByteaEscape;
 
-            internal StringEscapeInfo(string SingleQuoteEscape, string DoubleQuoteEscape, string BackSlashEscape)
+            internal StringEncodingInfo(byte Quote, string SingleQuoteEscape, string DoubleQuoteEscape, string BackSlashEscape, bool UseConformantStrings, bool UseEPrefix, byte[] ByteaEscape)
             {
+                this.Quote = Quote;
                 this.SingleQuoteEscape = SingleQuoteEscape;
                 this.DoubleQuoteEscape = DoubleQuoteEscape;
                 this.BackSlashEscape = BackSlashEscape;
+                this.UseConformantStrings = UseConformantStrings;
+                this.UseEPrefix = UseEPrefix;
+                this.ByteaEscape = ByteaEscape;
             }
         }
 
@@ -71,85 +79,57 @@ namespace NpgsqlTypes
         // extended query, conformant strings, and array value.
         // Make them efficiently available using a hash table, avoiding the need for a
         // long, nested, cpnfusing if/then construct.
-        private static readonly StringEscapeInfo[] stringEscapeInfoTable;
+        private static readonly StringEncodingInfo[] stringEncodingInfoTable;
 
         static BasicNativeToBackendTypeConverter()
         {
-            stringEscapeInfoTable = new StringEscapeInfo[8];
+            stringEncodingInfoTable = new StringEncodingInfo[16];
 
-            stringEscapeInfoTable[ThreeBitHashValue(true, true, false)] = new StringEscapeInfo("'", "", "");
-            stringEscapeInfoTable[ThreeBitHashValue(true, true, true)] = new StringEscapeInfo("", @"\", @"\");
-            stringEscapeInfoTable[ThreeBitHashValue(true, false, false)] = new StringEscapeInfo("'", "", @"\");
-            stringEscapeInfoTable[ThreeBitHashValue(true, false, true)] = new StringEscapeInfo("", @"\", @"\");
-            stringEscapeInfoTable[ThreeBitHashValue(false, true, false)] = new StringEscapeInfo("'", "", "");
-            stringEscapeInfoTable[ThreeBitHashValue(false, true, true)] = new StringEscapeInfo("'", @"\", @"\");
-            stringEscapeInfoTable[ThreeBitHashValue(false, false, false)] = new StringEscapeInfo("'", "", @"\");
-            stringEscapeInfoTable[ThreeBitHashValue(false, false, true)] = new StringEscapeInfo("'", @"\\", @"\\\");
+            // Hash value args: forExtendedQuery, UseConformantStrings, Supports_E_StringPrefix, arrayElement
+            // Note that a combination of UseConformantStrings == true and Supports_E_StringPrefix == false is not possible,
+            // so those combinations are left out of the table.
+            stringEncodingInfoTable[StringEncodingInfoHash(true, true, true, false)] = new StringEncodingInfo(0, "", "", "", true, false, backslashSingle);
+            stringEncodingInfoTable[StringEncodingInfoHash(true, true, true, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "", @"\", @"\", true, false, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(true, false, false, false)] = new StringEncodingInfo(0, "", "", "", false, false, backslashSingle);
+            stringEncodingInfoTable[StringEncodingInfoHash(true, false, false, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "", @"\", @"\", false, false, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(true, false, true, false)] = new StringEncodingInfo(0, "", "", "", false, false, backslashSingle);
+            stringEncodingInfoTable[StringEncodingInfoHash(true, false, true, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "", @"\", @"\", false, false, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, true, true, false)] = new StringEncodingInfo((byte)ASCIIBytes.SingleQuote, "'", "", "", true, false, backslashSingle);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, true, true, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "'", @"\", @"\", true, false, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, false, false, false)] = new StringEncodingInfo((byte)ASCIIBytes.SingleQuote, "'", "", @"\", false, false, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, false, false, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "'", @"\\", @"\\\", false, false, backslashQuad);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, false, true, false)] = new StringEncodingInfo((byte)ASCIIBytes.SingleQuote, "'", "", @"\", false, true, backslashDouble);
+            stringEncodingInfoTable[StringEncodingInfoHash(false, false, true, true)] = new StringEncodingInfo((byte)ASCIIBytes.DoubleQuote, "'", @"\\", @"\\\", false, false, backslashQuad);
         }
 
-        private static int ThreeBitHashValue(bool bitOne, bool bitTwo, bool bitThree)
+        private static int StringEncodingInfoHash(bool forExtendedQuery, bool useConformantStrings, bool supports_E_StringPrefix, bool arrayElement)
         {
-            int hashValue = 0;
+            // Default hash indicating simple query, conformant strings, supports e string prefix, and non-array-element.
+            // This should be the most common combination with current PG backend.
+            int hashValue = 6; // 0110
 
-            if (bitOne)
+            if (forExtendedQuery)
             {
-                hashValue |= 1 << 2;
+                // Shouldn't happen in the real world because binary encoding will be used.
+                hashValue |= 1 << 3;
             }
 
-            if (bitTwo)
+            if (! useConformantStrings)
             {
-                hashValue |= 1 << 1;
+                hashValue ^= 1 << 2;
+
+                if (! supports_E_StringPrefix)
+                {
+                    hashValue ^= 1 << 1;
+                }
             }
 
-            if (bitThree)
+            if (arrayElement)
             {
                 hashValue |= 1;
             }
 
             return hashValue;
-        }
-
-        private static byte? DetermineQuote(bool forExtendedQuery, bool arrayElement)
-        {
-            if (arrayElement)
-            {
-                // Array elements always require double-quotes
-                return (byte)ASCIIBytes.DoubleQuote;
-            }
-            else
-            {
-                if (forExtendedQuery)
-                {
-                    // Non-array values sent via Bind are not quoted
-                    return null;
-                }
-                else
-                {
-                    // Non-array values sent via non-extended require single-quotes
-                    return (byte)ASCIIBytes.SingleQuote;
-                }
-            }
-        }
-
-        private static byte? DetermineEPrefix(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
-        {
-            if (forExtendedQuery)
-            {
-                // Quoted values sent via Bind never require the E prefix
-                return null;
-            }
-            else
-            {
-                // Quoted values sent via non-extended query may require the E prefix depending on server version and current options
-                if (! arrayElement && ! options.UseConformantStrings && options.Supports_E_StringPrefix)
-                {
-                    return (byte)ASCIIBytes.E;
-                }
-                else
-                {
-                    return null;
-                }
-            }
         }
 
         /// <summary>
@@ -158,41 +138,35 @@ namespace NpgsqlTypes
         internal static byte[] StringToTextText(NpgsqlNativeTypeInfo TypeInfo, Object oNativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             string NativeData = oNativeData.ToString();
-            char? nQuote;
+            StringEncodingInfo encodingInfo;
 
-            nQuote = (char?)DetermineQuote(forExtendedQuery, arrayElement);
+            // Using a four bit hash key derived from the options at hand,
+            // find the correct string encoding info object.
+            encodingInfo = stringEncodingInfoTable[
+                StringEncodingInfoHash(
+                    forExtendedQuery,
+                    options.UseConformantStrings,
+                    options.Supports_E_StringPrefix,
+                    arrayElement
+                )
+            ];
 
-            if (! nQuote.HasValue)
+            if (encodingInfo.Quote == 0)
             {
                 // No quoting or escaping needed.
                 return BackendEncoding.UTF8Encoding.GetBytes(NativeData);
             }
 
-            char quote = nQuote.Value;
-            char? ePrefix;
             // Give the output string builder enough room to start for the string, quotes, E-prefix,
             // and 1 in 10 characters needing to be escaped; a WAG.
             StringBuilder retQuotedEscaped = new StringBuilder(NativeData.Length + 3 + NativeData.Length / 10);
-            StringEscapeInfo escapes;
 
-            ePrefix = (char?)DetermineEPrefix(forExtendedQuery, options, arrayElement);
-
-            if (ePrefix.HasValue)
+            if (encodingInfo.UseEPrefix)
             {
-                retQuotedEscaped.Append(ePrefix.Value);
+                retQuotedEscaped.Append('E');
             }
 
-            retQuotedEscaped.Append(quote);
-
-            // Using a three bit hash key derived from the options at hand,
-            // find the correct string escape info object.
-            escapes = stringEscapeInfoTable[
-                ThreeBitHashValue(
-                    forExtendedQuery,
-                    options.UseConformantStrings,
-                    arrayElement
-                )
-            ];
+            retQuotedEscaped.Append((char)encodingInfo.Quote);
 
             // Escape the string using the escape characters from the lookup.
             foreach (char ch in NativeData)
@@ -200,15 +174,15 @@ namespace NpgsqlTypes
                 switch (ch)
                 {
                     case '\'' :
-                        retQuotedEscaped.Append(escapes.SingleQuoteEscape);
+                        retQuotedEscaped.Append(encodingInfo.SingleQuoteEscape);
                         break;
 
                     case '\"' :
-                        retQuotedEscaped.Append(escapes.DoubleQuoteEscape);
+                        retQuotedEscaped.Append(encodingInfo.DoubleQuoteEscape);
                         break;
 
                     case '\\' :
-                        retQuotedEscaped.Append(escapes.BackSlashEscape);
+                        retQuotedEscaped.Append(encodingInfo.BackSlashEscape);
                         break;
 
                 }
@@ -216,7 +190,7 @@ namespace NpgsqlTypes
                 retQuotedEscaped.Append(ch);
             }
 
-            retQuotedEscaped.Append(quote);
+            retQuotedEscaped.Append((char)encodingInfo.Quote);
 
             return BackendEncoding.UTF8Encoding.GetBytes(retQuotedEscaped.ToString());
         }
@@ -234,78 +208,45 @@ namespace NpgsqlTypes
         /// </summary>
         internal static byte[] ByteArrayToByteaText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
+            StringEncodingInfo encodingInfo;
+
+            // Using a four bit hash key derived from the options at hand,
+            // find the correct string encoding info object.
+            encodingInfo = stringEncodingInfoTable[
+                StringEncodingInfoHash(
+                    forExtendedQuery,
+                    options.UseConformantStrings,
+                    options.Supports_E_StringPrefix,
+                    arrayElement
+                )
+            ];
+
             if (! options.SupportsHexByteFormat)
             {
-                return ByteArrayToByteaTextEscaped((byte[])NativeData, forExtendedQuery, options, arrayElement);
+                return ByteArrayToByteaTextEscaped((byte[])NativeData, encodingInfo);
             }
             else
             {
-                return ByteArrayToByteaTextHexFormat((byte[])NativeData, forExtendedQuery, options, arrayElement);
+                return ByteArrayToByteaTextHexFormat((byte[])NativeData, encodingInfo);
             }
-        }
-
-        private static byte[] DetermineByteaEscapeBackSlashes(bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
-        {
-            if (forExtendedQuery)
-            {
-                if (arrayElement)
-                {
-                    return backslashDouble;
-                }
-                else
-                {
-                    return backslashSingle;
-                }
-            }
-            else
-            {
-                if (arrayElement)
-                {
-                    if (options.UseConformantStrings)
-                    {
-                        return backslashDouble;
-                    }
-                    else
-                    {
-                        return backslashQuad;
-                    }
-                }
-                else if (options.UseConformantStrings)
-                {
-                    return backslashSingle;
-                }
-                else
-                {
-                    return backslashDouble;
-                }
-            }
-
         }
 
         /// <summary>
         /// Binary data with possible older style octal escapes, quoted.
         /// </summary>
-        private static byte[] ByteArrayToByteaTextEscaped(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        private static byte[] ByteArrayToByteaTextEscaped(byte[] nativeData, StringEncodingInfo encodingInfo)
         {
-            byte? quote;
-            byte? ePrefix;
-            byte[] backSlash;
-
-            quote = DetermineQuote(forExtendedQuery, arrayElement);
-            ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
-            backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
-
             // Minimum length for output is input bytes + e-prefix + two quotes.
-            MemoryStream ret = new MemoryStream(nativeData.Length + (ePrefix.HasValue ? 1 : 0) + (quote.HasValue ? 2 : 0));
+            MemoryStream ret = new MemoryStream(nativeData.Length + (encodingInfo.UseEPrefix ? 1 : 0) + (encodingInfo.Quote != 0 ? 2 : 0));
 
-            if (quote.HasValue)
+            if (encodingInfo.Quote != 0)
             {
-                if (ePrefix.HasValue)
+                if (encodingInfo.UseEPrefix)
                 {
-                    ret.WriteByte(ePrefix.Value);
+                    ret.WriteByte((byte)ASCIIBytes.E);
                 }
 
-                ret.WriteByte(quote.Value);
+                ret.WriteByte(encodingInfo.Quote);
             }
 
             foreach (byte b in nativeData)
@@ -317,16 +258,16 @@ namespace NpgsqlTypes
                 else
                 {
                     ret
-                        .WriteBytes(backSlash)
+                        .WriteBytes(encodingInfo.ByteaEscape)
                         .WriteBytes(escapeEncodingByteMap[7 & (b >> 6)])
                         .WriteBytes(escapeEncodingByteMap[7 & (b >> 3)])
                         .WriteBytes(escapeEncodingByteMap[7 & b]);
                 }
             }
 
-            if (quote.HasValue)
+            if (encodingInfo.Quote != 0)
             {
-                ret.WriteByte(quote.Value);
+                ret.WriteByte(encodingInfo.Quote);
             }
 
             return ret.ToArray();
@@ -335,38 +276,28 @@ namespace NpgsqlTypes
         /// <summary>
         /// Binary data in the new hex format (>= 9.0), quoted.
         /// </summary>
-        private static byte[] ByteArrayToByteaTextHexFormat(byte[] nativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        private static byte[] ByteArrayToByteaTextHexFormat(byte[] nativeData, StringEncodingInfo encodingInfo)
         {
-            bool useConformantStrings = (forExtendedQuery || options.UseConformantStrings);
-            byte? quote;
-            byte? ePrefix;
-            byte[] backSlash;
-
-            quote = DetermineQuote(forExtendedQuery, arrayElement);
-
-            ePrefix = DetermineEPrefix(forExtendedQuery, options, arrayElement);
-            backSlash = DetermineByteaEscapeBackSlashes(forExtendedQuery, options, arrayElement);
-
             int i = 0;
             byte[] ret = new byte[
-                (ePrefix.HasValue ? 1 : 0) + // E prefix
-                (quote.HasValue ? 2 : 0) + // quotes
-                backSlash.Length + // backslash[es]
+                (encodingInfo.UseEPrefix ? 1 : 0) + // E prefix
+                (encodingInfo.Quote != 0 ? 2 : 0) + // quotes
+                encodingInfo.ByteaEscape.Length + // backslash[es]
                 1 + // x
                 (nativeData.Length * 2) // data
             ];
 
-            if (quote.HasValue)
+            if (encodingInfo.Quote != 0)
             {
-                if (ePrefix.HasValue)
+                if (encodingInfo.UseEPrefix)
                 {
-                    ret[i++] = ePrefix.Value;
+                    ret[i++] = (byte)ASCIIBytes.E;
                 }
 
-                ret[i++] = quote.Value;
+                ret[i++] = encodingInfo.Quote;
             }
 
-            foreach (byte bs in backSlash)
+            foreach (byte bs in encodingInfo.ByteaEscape)
             {
                 ret[i++] = bs;
             }
@@ -379,9 +310,9 @@ namespace NpgsqlTypes
                 ret[i++] = hexEncodingByteMap[b & 0x0F];
             }
 
-            if (quote.HasValue)
+            if (encodingInfo.Quote != 0)
             {
-                ret[i++] = quote.Value;
+                ret[i++] = encodingInfo.Quote;
             }
 
             return ret;
