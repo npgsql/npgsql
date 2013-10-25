@@ -36,9 +36,7 @@ namespace NpgsqlTypes
 {
     internal class ASCIIArrayByteArrays
     {
-        internal static readonly byte[] ArrayPrefix        = BackendEncoding.UTF8Encoding.GetBytes("array");
-        internal static readonly byte[] EmptyArray         = BackendEncoding.UTF8Encoding.GetBytes("'{}'");
-        internal static readonly byte[] EmptyArrayExtended = BackendEncoding.UTF8Encoding.GetBytes("{}");
+        internal static readonly byte[] EmptyArray = BackendEncoding.UTF8Encoding.GetBytes("{}");
     }
 
     /// <summary>
@@ -70,31 +68,27 @@ namespace NpgsqlTypes
         {
             MemoryStream array = new MemoryStream();
 
-            if (forExtendedQuery)
+            if (! forExtendedQuery)
             {
-                if (WriteItemText(TypeInfo, NativeData, array, forExtendedQuery, options))
+                if (! options.UseConformantStrings && options.Supports_E_StringPrefix)
                 {
-                    return array.ToArray();
+                    array.WriteByte((byte)ASCIIBytes.E);
                 }
-                else
-                {
-                    return ASCIIArrayByteArrays.EmptyArrayExtended;
-                }
-            }
-            else
-            {
-                //just prepend "array" and then pass to WriteItem.
-                array.Write(ASCIIArrayByteArrays.ArrayPrefix, 0, ASCIIArrayByteArrays.ArrayPrefix.Length);
 
-                if (WriteItemText(TypeInfo, NativeData, array, forExtendedQuery, options))
-                {
-                    return array.ToArray();
-                }
-                else
-                {
-                    return ASCIIArrayByteArrays.EmptyArray;
-                }
+                array.WriteByte((byte)ASCIIBytes.SingleQuote);
             }
+
+            if (! WriteItemText(TypeInfo, NativeData, array, forExtendedQuery, options))
+            {
+                array.Write(ASCIIArrayByteArrays.EmptyArray, 0, ASCIIArrayByteArrays.EmptyArray.Length);
+            }
+
+            if (! forExtendedQuery)
+            {
+                array.WriteByte((byte)ASCIIBytes.SingleQuote);
+            }
+
+            return array.ToArray();
         }
 
         private bool WriteItemText(NpgsqlNativeTypeInfo TypeInfo, object item, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
@@ -145,10 +139,6 @@ namespace NpgsqlTypes
             int c = ar.Rank;
             List<int> lengths = new List<int>(c);
             bool firstItem = true;
-            // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
-            // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
-            byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
-            byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
 
             do
             {
@@ -179,8 +169,7 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        array.WriteByte(openElement);
-
+                        array.WriteByte((byte)ASCIIBytes.BraceCurlyLeft);
                     }
                     else
                     {
@@ -198,7 +187,7 @@ namespace NpgsqlTypes
                 {
                     if (c%(curlength *= lengthTest) == 0)
                     {
-                        array.WriteByte(closeElement);
+                        array.WriteByte((byte)ASCIIBytes.BraceCurlyRight);
                     }
                     else
                     {
