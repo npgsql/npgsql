@@ -29,16 +29,15 @@ namespace NpgsqlTests
 
                 command.Parameters.Add(dataParameter);
 
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    dataParameter.Value = "yo";
-                    command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        dataParameter.Value = "yo";
+                        command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
@@ -58,20 +57,61 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 command.Prepare();
 
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    dataParameter.Value = "yo";
-                    command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        dataParameter.Value = "yo";
+                        command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
-        private void ParameterizedSelectByteaRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectDecimalRoundTrip_Internal(bool prepare)
+        {
+            using (var command = Conn.CreateCommand())
+            {
+                command.CommandType = CommandType.Text;
+                command.CommandText = "SELECT :data";
+
+                NpgsqlParameter dataParameter = command.CreateParameter();
+                dataParameter.Direction = ParameterDirection.Input;
+                dataParameter.NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Numeric;
+                dataParameter.ParameterName = "data";
+                command.Parameters.Add(dataParameter);
+                dataParameter.Value = 12345678.12345678;
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
+                {
+                    while (! metrics.TimesUp)
+                    {
+                        if (prepare)
+                        {
+                            command.Prepare();
+                        }
+
+                        var data2 = (decimal)command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
+                }
+            }
+        }
+
+        [Test, Description("A single decimal roundtrip test")]
+        public void ParameterizedSelectDecimalRoundTrip()
+        {
+            ParameterizedSelectDecimalRoundTrip_Internal(false);
+        }
+
+        [Test, Description("A single decimal roundtrip test, prepared")]
+        public void ParameterizedSelectDecimalRoundTripPrepared()
+        {
+            ParameterizedSelectDecimalRoundTrip_Internal(true);
+        }
+
+        private void ParameterizedSelectByteaRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -95,40 +135,46 @@ namespace NpgsqlTests
                     command.Prepare();
                 }
 
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    var data2 = (byte[])command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        var data2 = (byte[])command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A large bytea roundtrip test")]
         public void ParameterizedSelectByteaRoundTrip()
         {
-            ParameterizedSelectByteaRoundTripPrepared_Internal(false);
+            ParameterizedSelectByteaRoundTrip_Internal(false);
         }
 
         [Test, Description("A large bytea roundtrip test, prepared")]
         public void ParameterizedSelectByteaRoundTripPrepared()
         {
-            ParameterizedSelectByteaRoundTripPrepared_Internal(true);
+            ParameterizedSelectByteaRoundTrip_Internal(true);
         }
 
         [Test, Description("A large bytea roundtrip test, prepared, binary suppressed")]
         public void ParameterizedSelectByteaRoundTripPrepared_SuppressBinary()
         {
-            using (SuppressBackendBinary())
+            if (SuppressBinaryBackendEncoding != null)
             {
-                ParameterizedSelectByteaRoundTripPrepared_Internal(true);
+                using (SuppressBackendBinary())
+                {
+                    ParameterizedSelectByteaRoundTrip_Internal(true);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
             }
         }
 
-        private void ParameterizedSelectBigIntRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectBigIntRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -149,44 +195,51 @@ namespace NpgsqlTests
                 {
                     command.Prepare();
                 }
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    using (IDataReader r = command.ExecuteReader())
+                    while (! metrics.TimesUp)
                     {
-                        r.Read();
-                        Int64 r10 = (Int64)r[9];
+                        using (IDataReader r = command.ExecuteReader())
+                        {
+                            r.Read();
+                            Int64 r10 = (Int64)r[9];
+                        }
+                        metrics.IncrementIterations();
                     }
-                    count++;
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A bigint roundtrip test")]
         public void ParameterizedSelectBigIntRoundTrip()
         {
-            ParameterizedSelectBigIntRoundTripPrepared_Internal(false);
+            ParameterizedSelectBigIntRoundTrip_Internal(false);
         }
 
         [Test, Description("A bigint roundtrip test, prepared")]
         public void ParameterizedSelectBigIntRoundTripPrepared()
         {
-            ParameterizedSelectBigIntRoundTripPrepared_Internal(true);
+            ParameterizedSelectBigIntRoundTrip_Internal(true);
         }
 
         [Test, Description("A bigint roundtrip test, prepared, binary suppressed")]
         public void ParameterizedSelectBigIntRoundTripPrepared_SuppressBinary()
         {
-            using (SuppressBackendBinary())
+            if (SuppressBinaryBackendEncoding != null)
             {
-                ParameterizedSelectBigIntRoundTripPrepared_Internal(true);
+                using (SuppressBackendBinary())
+                {
+                    ParameterizedSelectBigIntRoundTrip_Internal(true);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
             }
         }
 
-        private void ParameterizedSelectBigIntArrayRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectBigIntArrayRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -211,40 +264,47 @@ namespace NpgsqlTests
                 {
                     command.Prepare();
                 }
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A bigint array roundtrip test")]
         public void ParameterizedSelectBigIntArrayRoundTrip()
         {
-            ParameterizedSelectBigIntArrayRoundTripPrepared_Internal(false);
+            ParameterizedSelectBigIntArrayRoundTrip_Internal(false);
         }
 
         [Test, Description("A bigint array roundtrip test, prepared")]
         public void ParameterizedSelectBigIntArrayRoundTripPrepared()
         {
-            ParameterizedSelectBigIntArrayRoundTripPrepared_Internal(true);
+            ParameterizedSelectBigIntArrayRoundTrip_Internal(true);
         }
 
         [Test, Description("A bigint array roundtrip test, prepared, binary suppressed")]
         public void ParameterizedSelectBigIntArrayRoundTripPrepared_SuppressBinary()
         {
-            using (SuppressBackendBinary())
+            if (SuppressBinaryBackendEncoding != null)
             {
-                ParameterizedSelectBigIntArrayRoundTripPrepared_Internal(true);
+                using (SuppressBackendBinary())
+                {
+                    ParameterizedSelectBigIntArrayRoundTrip_Internal(true);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
             }
         }
 
-        private void ParameterizedSelectTextArrayRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectTextArrayRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -269,40 +329,62 @@ namespace NpgsqlTests
                 {
                     command.Prepare();
                 }
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        try
+                        {
+                            command.ExecuteScalar();
+                        }
+                        catch (NpgsqlException e)
+                        {
+                            if (e.Message.Length > 500)
+                            {
+                                Console.WriteLine(string.Format("Error: {0}", e.Message.Substring(0, 100)));
+                                throw new Exception(e.Message.Substring(0, 500));
+                            }
+                            else
+                            {
+                                throw;
+                            }
+                        }
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A text array roundtrip test")]
         public void ParameterizedSelectTextArrayRoundTrip()
         {
-            ParameterizedSelectTextArrayRoundTripPrepared_Internal(false);
+            ParameterizedSelectTextArrayRoundTrip_Internal(false);
         }
 
         [Test, Description("A text array roundtrip test, prepared")]
         public void ParameterizedSelectTextArrayRoundTripPrepared()
         {
-            ParameterizedSelectTextArrayRoundTripPrepared_Internal(true);
+            ParameterizedSelectTextArrayRoundTrip_Internal(true);
         }
 
         [Test, Description("A text array roundtrip test, prepared, binary suppressed")]
         public void ParameterizedSelectTextArrayRoundTripPrepared_SuppressBinary()
         {
-            using (SuppressBackendBinary())
+            if (SuppressBinaryBackendEncoding != null)
             {
-                ParameterizedSelectTextArrayRoundTripPrepared_Internal(true);
+                using (SuppressBackendBinary())
+                {
+                    ParameterizedSelectTextArrayRoundTrip_Internal(true);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
             }
         }
 
-        private void ParameterizedSelectByteaArrayRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectByteaArrayRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -327,42 +409,43 @@ namespace NpgsqlTests
                 {
                     command.Prepare();
                 }
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                try
-                {
-                    command.ExecuteScalar();
-                }
-                catch (NpgsqlException e)
-                {
-                    if (e.Message.Length > 500)
+                    while (! metrics.TimesUp)
                     {
-                        throw new Exception(e.Message.Substring(0, 500));
-                    }
-                    else
-                    {
-                        throw;
+                        try
+                        {
+                            command.ExecuteScalar();
+                        }
+                        catch (NpgsqlException e)
+                        {
+                            if (e.Message.Length > 500)
+                            {
+                                Console.WriteLine(string.Format("Error: {0}", e.Message.Substring(0, 100)));
+                                throw new Exception(e.Message.Substring(0, 500));
+                            }
+                            else
+                            {
+                                throw;
+                            }
+                        }
+                        metrics.IncrementIterations();
                     }
                 }
-                    count++;
-                }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A bytea array roundtrip test")]
         public void ParameterizedSelectByteaArrayRoundTrip()
         {
-            ParameterizedSelectByteaArrayRoundTripPrepared_Internal(false);
+            ParameterizedSelectByteaArrayRoundTrip_Internal(false);
         }
 
         [Test, Description("A bytea array roundtrip test, prepared")]
         public void ParameterizedSelectByteaArrayRoundTripPrepared()
         {
-            ParameterizedSelectByteaArrayRoundTripPrepared_Internal(true);
+            ParameterizedSelectByteaArrayRoundTrip_Internal(true);
         }
 
         [Test, Description("A bytea array roundtrip test, prepared, binary suppressed")]
@@ -372,12 +455,16 @@ namespace NpgsqlTests
             {
                 using (SuppressBackendBinary())
                 {
-                    ParameterizedSelectByteaArrayRoundTripPrepared_Internal(true);
+                    ParameterizedSelectByteaArrayRoundTrip_Internal(true);
                 }
+            }
+            else
+            {
+                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
             }
         }
 
-        private void ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(bool prepare)
+        private void ParameterizedSelectDecimalArrayRoundTrip_Internal(bool prepare)
         {
             using (var command = Conn.CreateCommand())
             {
@@ -402,28 +489,77 @@ namespace NpgsqlTests
                 {
                     command.Prepare();
                 }
-                var sw = Stopwatch.StartNew();
-                int count = 0;
-                while (sw.Elapsed < TestRunTime)
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    command.ExecuteScalar();
-                    count++;
+                    while (! metrics.TimesUp)
+                    {
+                        command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
                 }
-                sw.Stop();
-                Console.WriteLine("Elapsed: {0}, Queries: {1}; {2:0.00}/second", sw.Elapsed, count, (double)count / ((double)sw.Elapsed.TotalMilliseconds / (double)1000));
             }
         }
 
         [Test, Description("A decimal array roundtrip test")]
         public void ParameterizedSelectDecimalArrayRoundTrip()
         {
-            ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(false);
+            ParameterizedSelectDecimalArrayRoundTrip_Internal(false);
         }
 
         [Test, Description("A timestamp array roundtrip test, prepared")]
         public void ParameterizedSelectDecimalArrayRoundTripPrepared()
         {
-            ParameterizedSelectDecimalArrayRoundTripPrepared_Internal(true);
+            ParameterizedSelectDecimalArrayRoundTrip_Internal(true);
+        }
+
+        private void ParameterizedSelectMoneyArrayRoundTrip_Internal(bool prepare)
+        {
+            using (var command = Conn.CreateCommand())
+            {
+                command.CommandType = CommandType.Text;
+                command.CommandText = "SELECT :data";
+
+                decimal[] data = new decimal[1000];
+
+                for (int i = 0 ; i < 1000 ; i++)
+                {
+                    data[i] = i;
+                }
+
+                NpgsqlParameter dataParameter = command.CreateParameter();
+                dataParameter.Direction = ParameterDirection.Input;
+                dataParameter.NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Money | NpgsqlTypes.NpgsqlDbType.Array;
+                dataParameter.ParameterName = "data";
+                command.Parameters.Add(dataParameter);
+                dataParameter.Value = data;
+
+                if (prepare)
+                {
+                    command.Prepare();
+                }
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
+                {
+                    while (! metrics.TimesUp)
+                    {
+                        command.ExecuteScalar();
+                        metrics.IncrementIterations();
+                    }
+                }
+            }
+        }
+
+        [Test, Description("A money array roundtrip test")]
+        public void ParameterizedSelectMoneyArrayRoundTrip()
+        {
+            ParameterizedSelectMoneyArrayRoundTrip_Internal(false);
+        }
+
+        [Test, Description("A money array roundtrip test, prepared")]
+        public void ParameterizedSelectMoneyArrayRoundTripPrepared()
+        {
+            ParameterizedSelectMoneyArrayRoundTrip_Internal(true);
         }
 
         #region Setup / Teardown / Utils
