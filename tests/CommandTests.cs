@@ -2367,7 +2367,7 @@ namespace NpgsqlTests
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                DateTime inVal = DateTime.Parse("02/28/2000 02:20:20 PM");
+                DateTime inVal = DateTime.Parse("02/28/2000 02:20:20 PM", CultureInfo.InvariantCulture);
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
