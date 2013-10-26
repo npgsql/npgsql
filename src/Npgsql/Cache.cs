@@ -1,9 +1,9 @@
 // created on 29/11/2007
 
-// Npgsql.NpgsqlConnectionStringBuilder.cs
+// Npgsql.Cache.cs
 //
 // Author:
-//    Glen Parker (glenebob@nwlink.com)
+//    Glen Parker (glenebob@gmail.com)
 //    Ben Sagal (bensagal@gmail.com)
 //    Tao Wang (dancefire@gmail.com)
 //
@@ -30,15 +30,15 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Text;
 
 namespace Npgsql
 {
-    internal class Cache<TEntity> : LinkedList<KeyValuePair<string, TEntity>>
-        where TEntity : class
+    internal class Cache<TEntity>
     {
-        private int _cache_size = 20;
-        private object locker = new object();
+        private int _cache_size;
+        private Dictionary<string, KeyValuePair<int, TEntity>> table;
+        private SortedDictionary<int, string> lru;
+        private int nextLRUKey = 0;
 
         /// <summary>
         /// Set Cache Size. The default value is 20.
@@ -50,16 +50,20 @@ namespace Npgsql
             {
                 if (value < 0) { throw new ArgumentOutOfRangeException("CacheSize"); }
 
-                _cache_size = value;
-
-                if (this.Count > _cache_size)
+                lock (this)
                 {
-                    lock (locker)
+                    _cache_size = value;
+
+                    while (_cache_size < this.Count)
                     {
-                        while (_cache_size < this.Count)
-                        {
-                            RemoveLast();
-                        }
+                        SortedDictionary<int, string>.KeyCollection.Enumerator it = lru.Keys.GetEnumerator();
+
+                        it.MoveNext();
+
+                        int lruKey = it.Current;
+
+                        table.Remove(lru[lruKey]);
+                        lru.Remove(lruKey);
                     }
                 }
             }
@@ -75,49 +79,96 @@ namespace Npgsql
         {
             get
             {
-                lock (locker)
+                TEntity existing;
+
+                if (TryGetValue(key, out existing))
                 {
-                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
-                    {
-                        if (node.Value.Key == key)
-                        {
-                            this.Remove(node);
-                            this.AddFirst(node);
-                            return node.Value.Value;
-                        }
-                    }
+                    return existing;
                 }
-                return null;
+
+                throw new KeyNotFoundException();
             }
             set
             {
-                lock (locker)
+                lock (this)
                 {
-                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
+                    KeyValuePair<int, TEntity> existing;
+
+                    if (table.TryGetValue(key, out existing))
                     {
-                        if (node.Value.Key == key)
+                        if (existing.Key < nextLRUKey - 1)
                         {
-                            this.Remove(node);
-                            this.AddFirst(node);
-                            return;
+                            lru.Remove(existing.Key);
+                            lru.Add(nextLRUKey, key);
+                            nextLRUKey++;
                         }
                     }
-                    if (this.CacheSize > 0)
+                    else
                     {
-                        this.AddFirst(new KeyValuePair<string, TEntity>(key, value));
-                        if (this.Count > this.CacheSize)
+                        if (this.CacheSize > 0)
                         {
-                            this.RemoveLast();
+                            if (table.Count == this.CacheSize)
+                            {
+                                SortedDictionary<int, string>.KeyCollection.Enumerator it = lru.Keys.GetEnumerator();
+
+                                it.MoveNext();
+
+                                int lruKey = it.Current;
+
+                                table.Remove(lru[lruKey]);
+                                lru.Remove(lruKey);
+                            }
                         }
+
+                        table.Add(key, new KeyValuePair<int,TEntity>(nextLRUKey, value));
+                        lru.Add(nextLRUKey, key);
+                        nextLRUKey++;
                     }
                 }
             }
         }
 
-        public Cache() : base() { }
-        public Cache(int cacheSize) : base()
+        public bool TryGetValue(string key, out TEntity value)
+        {
+            lock (this)
+            {
+                KeyValuePair<int, TEntity> existing;
+
+                if (table.TryGetValue(key, out existing))
+                {
+                    if (existing.Key < nextLRUKey - 1)
+                    {
+                        lru.Remove(existing.Key);
+                        lru.Add(nextLRUKey, key);
+                        nextLRUKey++;
+                    }
+
+                    value = existing.Value;
+
+                    return true;
+                }
+            }
+
+            value = default(TEntity);
+
+            return false;
+        }
+
+        public int Count
+        {
+            get { return table.Count; }
+        }
+
+        public Cache()
+        : this(20)
+        {
+        }
+
+        public Cache(int cacheSize)
         {
             this._cache_size = cacheSize;
+            table = new Dictionary<string,KeyValuePair<int,TEntity>>();
+            lru = new SortedDictionary<int,string>();
         }
     }
 }

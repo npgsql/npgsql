@@ -51,7 +51,7 @@ namespace Npgsql
         {
             defaults.Add(Keywords.Host, string.Empty);
             defaults.Add(Keywords.Port, 5432);
-            defaults.Add(Keywords.Protocol, ProtocolVersion.Version3);
+            defaults.Add(Keywords.Protocol, ProtocolVersion.Unknown);
             defaults.Add(Keywords.Database, string.Empty);
             defaults.Add(Keywords.UserName, string.Empty);
             defaults.Add(Keywords.Password, string.Empty);
@@ -613,7 +613,21 @@ namespace Npgsql
             SetValue(key, value);
             if (key == Keywords.Protocol)
             {
-                base[GetKeyName(key)] = ToString(this.Protocol);
+                if (value is ProtocolVersion)
+                {
+                    if ((ProtocolVersion)value == ProtocolVersion.Unknown)
+                    {
+                        base.Remove(GetKeyName(key));
+                    }
+                    else
+                    {
+                        base[GetKeyName(key)] = ToString(this.Protocol);
+                    }
+                }
+                else if (value is string)
+                {
+                    base[GetKeyName(key)] = value as string;
+                }
             }
             else if (key == Keywords.Compatible)
             {
