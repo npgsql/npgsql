@@ -427,11 +427,11 @@ select 'FOREIGN KEY' ""CONSTRAINT_TYPE"", 'f' as ""contype"" union all
 select 'UNIQUE KEY' ""CONSTRAINT_TYPE"", 'u' as ""contype""
 ) mapping_table on mapping_table.contype = pgc.contype");
             if ("ForeignKeys".Equals(constraint_type))
-                getConstraints.Append("where pgc.contype='f'");
+                getConstraints.Append(" and pgc.contype='f'");
             else if ("PrimaryKey".Equals(constraint_type))
-                getConstraints.Append("where pgc.contype='p'");
+                getConstraints.Append(" and pgc.contype='p'");
             else if ("UniqueKeys".Equals(constraint_type))
-                getConstraints.Append("where pgc.contype='u'");
+                getConstraints.Append(" and pgc.contype='u'");
             else
                 constraint_type = "Constraints";
             using (
@@ -470,7 +470,7 @@ select 'PRIMARY KEY' constraint_type, 'p' as contype union all
 select 'FOREIGN KEY' constraint_type, 'f' as contype union all
 select 'UNIQUE KEY' constraint_type, 'u' as contype
 ) mapping_table on mapping_table.contype = c.contype
-where n.nspname not in ('pg_catalog', 'pg_toast')");
+and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             using (
                 NpgsqlCommand command =
