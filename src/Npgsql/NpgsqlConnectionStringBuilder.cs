@@ -51,6 +51,8 @@ namespace Npgsql
         private const int POOL_SIZE_LIMIT = 1024;
         private const int TIMEOUT_LIMIT = 1024;
 
+        private bool SuppressCheckValues = false;
+
         [AttributeUsage(AttributeTargets.Property)]
         private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute
         {
@@ -181,8 +183,19 @@ namespace Npgsql
         public NpgsqlConnectionStringBuilder(string connectionString)
         {
             this.Clear();
-            base.ConnectionString = connectionString;
-            CheckValues();
+            this.ConnectionString = connectionString;
+        }
+
+        new public string ConnectionString
+        {
+            get { return base.ConnectionString; }
+            set
+            {
+                SuppressCheckValues = true;
+                base.ConnectionString = value;
+                SuppressCheckValues = false;
+                CheckValues();
+            }
         }
 
         /// <summary>
@@ -195,6 +208,10 @@ namespace Npgsql
 
         private void CheckValues()
         {
+            // At Initialization, not all default properties are set, ignore for the moment
+            if (SuppressCheckValues || !ContainsKey(Keywords.MinPoolSize) || !ContainsKey(Keywords.MaxPoolSize))
+                return;
+
             if ((MaxPoolSize > 0) && (MinPoolSize > MaxPoolSize))
             {
                 string key = underlying_keywords[Keywords.MinPoolSize];
@@ -421,7 +438,7 @@ namespace Npgsql
         public int MinPoolSize
         {
             get { return (int)GetValue(Keywords.MinPoolSize); }
-            set { SetValue(Keywords.MinPoolSize, ToInt32(value, 0, POOL_SIZE_LIMIT, Keywords.MinPoolSize.ToString())); }
+            set { SetValue(Keywords.MinPoolSize, ToInt32(value, 0, POOL_SIZE_LIMIT, Keywords.MinPoolSize.ToString())); CheckValues(); }
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
@@ -433,7 +450,7 @@ namespace Npgsql
         public int MaxPoolSize
         {
             get { return (int)GetValue(Keywords.MaxPoolSize); }
-            set { SetValue(Keywords.MaxPoolSize, ToInt32(value, 0, POOL_SIZE_LIMIT, Keywords.MaxPoolSize.ToString())); }
+            set { SetValue(Keywords.MaxPoolSize, ToInt32(value, 0, POOL_SIZE_LIMIT, Keywords.MaxPoolSize.ToString())); CheckValues(); }
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
@@ -564,22 +581,23 @@ namespace Npgsql
         {
             get
             {
-                if (!keyword_mappings.ContainsKey(keyword))
+                if (!keyword_mappings.ContainsKey(keyword.ToUpperInvariant()))
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), keyword);
-                return this[keyword_mappings[keyword]];
+                return this[keyword_mappings[keyword.ToUpperInvariant()]];
             }
             set
             {
-                if (!keyword_mappings.ContainsKey(keyword))
+                if (!keyword_mappings.ContainsKey(keyword.ToUpperInvariant()))
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), keyword);
-                this[keyword_mappings[keyword]] = value;
+                this[keyword_mappings[keyword.ToUpperInvariant()]] = value;
             }
         }
 
         public object this[Keywords keyword]
         {
             get { return props[keyword].GetValue(this, null); }
-            set {
+            set
+            {
                 try
                 {
                     if (props[keyword].PropertyType == value.GetType())
@@ -587,9 +605,9 @@ namespace Npgsql
                     else
                         props[keyword].SetValue(this, TypeDescriptor.GetConverter(props[keyword].PropertyType).ConvertFrom(value), null);
                 }
-                catch (Exception ex)
+                catch (TargetInvocationException ex)
                 {
-                    ex = ex;
+                    throw ex.InnerException;
                 }
             }
         }
@@ -597,8 +615,8 @@ namespace Npgsql
         public override bool Remove(string keyword)
         {
             Keywords k;
-            if (keyword_mappings.TryGetValue(keyword, out k))
-                Remove(k);
+            if (keyword_mappings.TryGetValue(keyword.ToUpperInvariant(), out k))
+                return Remove(k);
             return false;
         }
 
@@ -609,8 +627,8 @@ namespace Npgsql
 
         public override bool ContainsKey(string keyword)
         {
-            if (keyword_mappings.ContainsKey(keyword))
-                return ContainsKey(keyword_mappings[keyword]);
+            if (keyword_mappings.ContainsKey(keyword.ToUpperInvariant()))
+                return ContainsKey(keyword_mappings[keyword.ToUpperInvariant()]);
             return false;
         }
 
@@ -622,8 +640,8 @@ namespace Npgsql
         public override bool TryGetValue(string keyword, out object value)
         {
             value = null;
-            if (keyword_mappings.ContainsKey(keyword))
-                return base.TryGetValue(underlying_keywords[keyword_mappings[keyword]], out value);
+            if (keyword_mappings.ContainsKey(keyword.ToUpperInvariant()))
+                return base.TryGetValue(underlying_keywords[keyword_mappings[keyword.ToUpperInvariant()]], out value);
             return false;
         }
 
