@@ -1,9 +1,9 @@
 // created on 29/11/2007
 
-// Npgsql.NpgsqlConnectionStringBuilder.cs
+// Npgsql.Cache.cs
 //
 // Author:
-//    Glen Parker (glenebob@nwlink.com)
+//    Glen Parker (glenebob@gmail.com)
 //    Ben Sagal (bensagal@gmail.com)
 //    Tao Wang (dancefire@gmail.com)
 //
@@ -30,15 +30,26 @@
 
 using System;
 using System.Collections.Generic;
-//using System.Text;
 
 namespace Npgsql
 {
-    internal class Cache<TEntity> : LinkedList<KeyValuePair<string, TEntity>>
-        where TEntity : class
+    internal class Cache<TEntity>
     {
-        private int _cache_size = 20;
-        private object locker = new object();
+        private class LRUNodeEntityPair
+        {
+            internal LinkedListNode<string> LRUNode;
+            internal readonly TEntity Entity;
+
+            internal LRUNodeEntityPair(LinkedListNode<string> lruNode, TEntity entity)
+            {
+                this.LRUNode = lruNode;
+                this.Entity = entity;
+            }
+        }
+
+        private int _cache_size;
+        private Dictionary<string, LRUNodeEntityPair> table;
+        private LinkedList<string> lru;
 
         /// <summary>
         /// Set Cache Size. The default value is 20.
@@ -50,16 +61,16 @@ namespace Npgsql
             {
                 if (value < 0) { throw new ArgumentOutOfRangeException("CacheSize"); }
 
-                _cache_size = value;
-
-                if (this.Count > _cache_size)
+                lock (this)
                 {
-                    lock (locker)
+                    _cache_size = value;
+
+                    while (_cache_size < this.Count)
                     {
-                        while (_cache_size < this.Count)
-                        {
-                            RemoveLast();
-                        }
+                        LinkedListNode<string> last = lru.Last;
+
+                        table.Remove(last.Value);
+                        lru.Remove(last);
                     }
                 }
             }
@@ -75,49 +86,88 @@ namespace Npgsql
         {
             get
             {
-                lock (locker)
+                TEntity existing;
+
+                if (TryGetValue(key, out existing))
                 {
-                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
-                    {
-                        if (node.Value.Key == key)
-                        {
-                            this.Remove(node);
-                            this.AddFirst(node);
-                            return node.Value.Value;
-                        }
-                    }
+                    return existing;
                 }
-                return null;
+
+                throw new KeyNotFoundException();
             }
             set
             {
-                lock (locker)
+                lock (this)
                 {
-                    for (LinkedListNode<KeyValuePair<string, TEntity>> node = this.First; node != null; node = node.Next)
+                    LRUNodeEntityPair existing;
+
+                    if (table.TryGetValue(key, out existing))
                     {
-                        if (node.Value.Key == key)
+                        if (existing.LRUNode != lru.First)
                         {
-                            this.Remove(node);
-                            this.AddFirst(node);
-                            return;
+                            lru.Remove(existing.LRUNode);
+                            lru.AddFirst(key);
                         }
                     }
-                    if (this.CacheSize > 0)
+                    else
                     {
-                        this.AddFirst(new KeyValuePair<string, TEntity>(key, value));
-                        if (this.Count > this.CacheSize)
+                        if (this.CacheSize > 0)
                         {
-                            this.RemoveLast();
+                            if (table.Count == this.CacheSize)
+                            {
+                                LinkedListNode<string> lastNode = lru.Last;
+
+                                table.Remove(lastNode.Value);
+                                lru.Remove(lastNode);
+                            }
                         }
+
+                        table.Add(key, new LRUNodeEntityPair(lru.AddFirst(key), value));
                     }
                 }
             }
         }
 
-        public Cache() : base() { }
-        public Cache(int cacheSize) : base()
+        public bool TryGetValue(string key, out TEntity value)
+        {
+            lock (this)
+            {
+                LRUNodeEntityPair existing;
+
+                if (table.TryGetValue(key, out existing))
+                {
+                    if (existing.LRUNode != lru.First)
+                    {
+                        lru.Remove(existing.LRUNode);
+                        existing.LRUNode = lru.AddFirst(key);
+                    }
+
+                    value = existing.Entity;
+
+                    return true;
+                }
+            }
+
+            value = default(TEntity);
+
+            return false;
+        }
+
+        public int Count
+        {
+            get { return table.Count; }
+        }
+
+        public Cache()
+        : this(20)
+        {
+        }
+
+        public Cache(int cacheSize)
         {
             this._cache_size = cacheSize;
+            table = new Dictionary<string, LRUNodeEntityPair>();
+            lru = new LinkedList<string>();
         }
     }
 }

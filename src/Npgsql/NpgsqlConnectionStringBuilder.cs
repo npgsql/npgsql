@@ -49,28 +49,14 @@ namespace Npgsql
 
         static NpgsqlConnectionStringBuilder()
         {
-            defaults.Add(Keywords.Host, string.Empty);
             defaults.Add(Keywords.Port, 5432);
-            defaults.Add(Keywords.Protocol, ProtocolVersion.Version3);
-            defaults.Add(Keywords.Database, string.Empty);
-            defaults.Add(Keywords.UserName, string.Empty);
-            defaults.Add(Keywords.Password, string.Empty);
-            defaults.Add(Keywords.SSL, false);
-            defaults.Add(Keywords.SslMode, SslMode.Disable);
             defaults.Add(Keywords.Timeout, 15);
-            defaults.Add(Keywords.SearchPath, string.Empty);
             defaults.Add(Keywords.Pooling, true);
             defaults.Add(Keywords.ConnectionLifeTime, 15);
             defaults.Add(Keywords.MinPoolSize, 1);
             defaults.Add(Keywords.MaxPoolSize, 20);
-            defaults.Add(Keywords.SyncNotification, false);
             defaults.Add(Keywords.CommandTimeout, 20);
-            defaults.Add(Keywords.Enlist, false);
-            defaults.Add(Keywords.PreloadReader, false);
-            defaults.Add(Keywords.UseExtendedTypes, false);
-            defaults.Add(Keywords.IntegratedSecurity, false);
             defaults.Add(Keywords.Compatible, THIS_VERSION);
-            defaults.Add(Keywords.ApplicationName, string.Empty);
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -80,7 +66,6 @@ namespace Npgsql
 
         public NpgsqlConnectionStringBuilder(string connectionString)
         {
-            this.Clear();
             this.originalConnectionString = connectionString;
             base.ConnectionString = connectionString;
             CheckValues();
@@ -161,17 +146,21 @@ namespace Npgsql
             }
         }
 
-        private static int ToInt32(object value, int min, int max, string key)
+        private static int ToInt32(object value, int min, int max, Keywords keyword)
         {
             int v = Convert.ToInt32(value);
 
             if (v < min)
             {
+                string key = GetKeyName(keyword);
+
                 throw new ArgumentOutOfRangeException(
                     key, String.Format(resman.GetString("Exception_IntegerKeyValMin"), key, min));
             }
             else if (v > max)
             {
+                string key = GetKeyName(keyword);
+
                 throw new ArgumentOutOfRangeException(
                     key, String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, max));
             }
@@ -241,7 +230,7 @@ namespace Npgsql
 
         #region Properties
 
-        private string _host;
+        private string _host = "";
         public string Host
         {
             get { return _host; }
@@ -262,14 +251,14 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Protocol), value); }
         }
 
-        private string _database;
+        private string _database = "";
         public string Database
         {
             get { return _database; }
             set { SetValue(GetKeyName(Keywords.Database), value); }
         }
 
-        private string _username;
+        private string _username = "";
         public string UserName
         {
             get
@@ -286,11 +275,11 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.UserName), value); }
         }
 
-        private byte[] _password;
+        private PasswordBytes _password = new PasswordBytes();
         public byte[] PasswordAsByteArray
         {
-            get { return _password; }
-            set { _password = value; }
+            get { return _password.PasswordAsByteArray; }
+            set { _password.PasswordAsByteArray = value; }
         }
         public string Password
         {
@@ -314,7 +303,7 @@ namespace Npgsql
         [Obsolete("UTF-8 is always used regardless of this setting.")]
         public string Encoding
         {
-            get { return "UNICODE"; }
+            get { return "UTF8"; }
             //set { }
         }
 
@@ -325,7 +314,7 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Timeout), value); }
         }
 
-        private string _searchpath;
+        private string _searchpath = "";
         public string SearchPath
         {
             get { return _searchpath; }
@@ -418,7 +407,7 @@ namespace Npgsql
         }
 
 
-        private string _application_name;
+        private string _application_name = "";
         public string ApplicationName
         {
             get { return _application_name; }
@@ -567,6 +556,7 @@ namespace Npgsql
         public object this[Keywords keyword]
         {
             get { return base[GetKeyName(keyword)]; }
+//            get { return GetValue(keyword); }
             set { SetValue(GetKeyName(keyword), value); }
         }
 
@@ -582,47 +572,78 @@ namespace Npgsql
             return base.ContainsKey(GetKeyName(keyword));
         }
 
+        private static object TypeDefaultValue(Type t)
+        {
+            if (t.IsValueType)
+            {
+                return Activator.CreateInstance(t);
+            }
+            else if (t == typeof(string))
+            {
+                return "";
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// This function will set value for known key, both private member and base[key].
         /// </summary>
         /// <param name="keyword"></param>
         /// <param name="value"></param>
-        private void SetValue(string keyword, object value)
+        private object SetValue(string keyword, object value)
         {
             if (value == null)
             {
                 Remove(keyword);
-                return;
+                return value;
             }
 
+            Keywords key = GetKey(keyword);
             string strValue = value as string;
+
             if (strValue != null)
             {
                 // .NET's DbConnectionStringBuilder trims whitespace and discards empty values,
                 // so we do the same
                 strValue = strValue.Trim();
-                if (strValue.Length == 0)
-                {
-                    Remove(keyword);
-                    return;
-                }
                 value = strValue;
-            }
-
-            Keywords key = GetKey(keyword);
-            SetValue(key, value);
-            if (key == Keywords.Protocol)
-            {
-                base[GetKeyName(key)] = ToString(this.Protocol);
-            }
-            else if (key == Keywords.Compatible)
-            {
-                base[GetKeyName(key)] = ((Version) this.Compatible).ToString();
             }
             else
             {
-                base[GetKeyName(key)] = value;
+                strValue = value.ToString();
             }
+
+            value = SetValue(key, value);
+
+            IComparable cValue = value as IComparable;
+            bool putInBase = false;
+            object paramDefaultValue;
+
+            // If the value matches both the parameter's default and the type's default, remove it from base.
+            if (defaults.TryGetValue(key, out paramDefaultValue))
+            {
+                putInBase =
+                    (cValue.CompareTo(paramDefaultValue) != 0) ||
+                    (cValue.CompareTo(TypeDefaultValue(value.GetType())) != 0);
+            }
+            else
+            {
+                putInBase = (cValue.CompareTo(TypeDefaultValue(value.GetType())) != 0);
+            }
+
+            if (putInBase)
+            {
+                base[keyword] = strValue;
+            }
+            else
+            {
+                base.Remove(keyword);
+            }
+
+            return value;
         }
 
         /// <summary>
@@ -630,88 +651,65 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword"></param>
         /// <param name="value"></param>
-        private void SetValue(Keywords keyword, object value)
+        private object SetValue(Keywords keyword, object value)
         {
-            string key_name = GetKeyName(keyword);
-
             try
             {
                 switch (keyword)
                 {
                     case Keywords.Host:
-                        this._host = Convert.ToString(value);
-                        break;
+                        return this._host = Convert.ToString(value);
                     case Keywords.Port:
-                        this._port = Convert.ToInt32(value);
-                        break;
+                        return this._port = Convert.ToInt32(value);
                     case Keywords.Protocol:
-                        this._protocol = ToProtocolVersion(value);
-                        break;
+                        return this._protocol = ToProtocolVersion(value);
                     case Keywords.Database:
-                        this._database = Convert.ToString(value);
-                        break;
+                        return this._database = Convert.ToString(value);
                     case Keywords.UserName:
-                        this._username = Convert.ToString(value);
-                        break;
+                        return this._username = Convert.ToString(value);
                     case Keywords.Password:
-                        this._password = System.Text.Encoding.UTF8.GetBytes(Convert.ToString(value));
-                        break;
+                        this._password.Password = value as string;
+                        return value as string;
                     case Keywords.SSL:
-                        this._ssl = ToBoolean(value);
-                        break;
+                        return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
-                        this._sslmode = ToSslMode(value);
-                        break;
+                        return this._sslmode = ToSslMode(value);
 #pragma warning disable 618
                     case Keywords.Encoding:
-                        break;
+                        return "UTF8";
 #pragma warning restore 618
                     case Keywords.Timeout:
-                        this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, key_name);
-                        break;
+                        return this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, keyword);
                     case Keywords.SearchPath:
-                        this._searchpath = Convert.ToString(value);
-                        break;
+                        return this._searchpath = Convert.ToString(value);
                     case Keywords.Pooling:
-                        this._pooling = ToBoolean(value);
-                        break;
+                        return this._pooling = ToBoolean(value);
                     case Keywords.ConnectionLifeTime:
-                        this._connection_life_time = Convert.ToInt32(value);
-                        break;
+                        return this._connection_life_time = Convert.ToInt32(value);
                     case Keywords.MinPoolSize:
-                        this._min_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, key_name);
-                        break;
+                        return this._min_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, keyword);
                     case Keywords.MaxPoolSize:
-                        this._max_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, key_name);
-                        break;
+                        return this._max_pool_size = ToInt32(value, 0, POOL_SIZE_LIMIT, keyword);
                     case Keywords.SyncNotification:
-                        this._sync_notification = ToBoolean(value);
-                        break;
+                        return this._sync_notification = ToBoolean(value);
                     case Keywords.CommandTimeout:
-                        this._command_timeout = Convert.ToInt32(value);
-                        break;
+                        return this._command_timeout = Convert.ToInt32(value);
                     case Keywords.Enlist:
-                        this._enlist = ToBoolean(value);
-                        break;
+                        return this._enlist = ToBoolean(value);
                     case Keywords.PreloadReader:
-                        this._preloadReader = ToBoolean(value);
-                        break;
+                        return this._preloadReader = ToBoolean(value);
                     case Keywords.UseExtendedTypes:
-                        this._useExtendedTypes = ToBoolean(value);
-                        break;
+                        return this._useExtendedTypes = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
-                        this._integrated_security = ToIntegratedSecurity(value);
-                        break;
+                        return this._integrated_security = ToIntegratedSecurity(value);
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
                             throw new ArgumentException("Attempt to set compatibility with version " + value +
                                                         " when using version " + THIS_VERSION);
-                        _compatible = ver;
-                        break;
+                        return _compatible = ver;
                     case Keywords.ApplicationName:
-                        this._application_name = Convert.ToString(value);
-                        break;
+                        return this._application_name = Convert.ToString(value);
                 }
             }
             catch (InvalidCastException exception)
@@ -740,11 +738,15 @@ namespace Npgsql
 
                 if (!string.IsNullOrEmpty(exception_template))
                 {
+                    string key_name = GetKeyName(keyword);
+
                     throw new ArgumentException(string.Format(exception_template, key_name), key_name, exception);
                 }
 
                 throw;
             }
+
+            return null;
         }
 
 
@@ -758,6 +760,41 @@ namespace Npgsql
             foreach (Keywords keyword in defaults.Keys)
             {
                 SetValue(GetKeyName(keyword), defaults[keyword]);
+            }
+        }
+
+        // Store a password as a byte[].  On update, first wipe the old password value.
+        private class PasswordBytes
+        {
+            private byte[] password = new byte[0];
+
+            private void Wipe()
+            {
+                for (int i = 0 ; i < password.Length ; i++)
+                {
+                    password[i] = 0;
+                }
+            }
+
+            internal byte[] PasswordAsByteArray
+            {
+                set
+                {
+                    Wipe();
+                    password = new byte[value.Length];
+                    value.CopyTo(password, 0);
+                }
+
+                get { return password; }
+            }
+
+            internal string Password
+            {
+                set
+                {
+                    Wipe();
+                    password = BackendEncoding.UTF8Encoding.GetBytes(value);
+                }
             }
         }
     }
