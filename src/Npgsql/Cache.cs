@@ -35,8 +35,20 @@ namespace Npgsql
 {
     internal class Cache<TEntity>
     {
+        private class LRUKeyEntityPair
+        {
+            internal int LRUKey;
+            internal readonly TEntity Entity;
+
+            internal LRUKeyEntityPair(int lruKey, TEntity entity)
+            {
+                this.LRUKey = lruKey;
+                this.Entity = entity;
+            }
+        }
+
         private int _cache_size;
-        private Dictionary<string, KeyValuePair<int, TEntity>> table;
+        private Dictionary<string, LRUKeyEntityPair> table;
         private SortedDictionary<int, string> lru;
         private int nextLRUKey = 0;
 
@@ -92,14 +104,15 @@ namespace Npgsql
             {
                 lock (this)
                 {
-                    KeyValuePair<int, TEntity> existing;
+                    LRUKeyEntityPair existing;
 
                     if (table.TryGetValue(key, out existing))
                     {
-                        if (existing.Key < nextLRUKey - 1)
+                        if (existing.LRUKey < nextLRUKey - 1)
                         {
-                            lru.Remove(existing.Key);
-                            lru.Add(nextLRUKey, key);
+                            lru.Remove(existing.LRUKey);
+                            existing.LRUKey = nextLRUKey;
+                            lru.Add(existing.LRUKey, key);
                             nextLRUKey++;
                         }
                     }
@@ -120,7 +133,7 @@ namespace Npgsql
                             }
                         }
 
-                        table.Add(key, new KeyValuePair<int,TEntity>(nextLRUKey, value));
+                        table.Add(key, new LRUKeyEntityPair(nextLRUKey, value));
                         lru.Add(nextLRUKey, key);
                         nextLRUKey++;
                     }
@@ -132,18 +145,19 @@ namespace Npgsql
         {
             lock (this)
             {
-                KeyValuePair<int, TEntity> existing;
+                LRUKeyEntityPair existing;
 
                 if (table.TryGetValue(key, out existing))
                 {
-                    if (existing.Key < nextLRUKey - 1)
+                    if (existing.LRUKey < nextLRUKey - 1)
                     {
-                        lru.Remove(existing.Key);
+                        lru.Remove(existing.LRUKey);
+                        existing.LRUKey = nextLRUKey;
                         lru.Add(nextLRUKey, key);
                         nextLRUKey++;
                     }
 
-                    value = existing.Value;
+                    value = existing.Entity;
 
                     return true;
                 }
@@ -167,7 +181,7 @@ namespace Npgsql
         public Cache(int cacheSize)
         {
             this._cache_size = cacheSize;
-            table = new Dictionary<string,KeyValuePair<int,TEntity>>();
+            table = new Dictionary<string, LRUKeyEntityPair>();
             lru = new SortedDictionary<int,string>();
         }
     }
