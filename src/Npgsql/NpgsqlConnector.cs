@@ -794,7 +794,7 @@ namespace Npgsql
               )
                 new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
 
-            if (!string.IsNullOrEmpty(settings.SearchPath))
+            if (settings.ContainsKey(Keywords.SearchPath))
             {
                 /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
                 p.Value = settings.SearchPath;
@@ -822,7 +822,7 @@ namespace Npgsql
                 commandSearchPath.ExecuteBlind();
             }
 
-            if (!string.IsNullOrEmpty(settings.ApplicationName))
+            if (settings.ContainsKey(Keywords.ApplicationName))
              {
                  if (!SupportsApplicationName)
                  {

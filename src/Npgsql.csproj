@@ -176,6 +176,7 @@
     <None Include="Npgsql\Npgsql.snk" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.msl" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.ssdl" />
+    <EmbeddedResource Include="Npgsql\NpgsqlSchemaV3.ssdl" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
