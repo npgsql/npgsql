@@ -99,7 +99,30 @@ namespace Npgsql
 
         private UpdateRowSource updateRowSource = UpdateRowSource.Both;
 
+        private static readonly Array ParamNameCharTable = null;
+
         // Constructors
+        static NpgsqlCommand()
+        {
+            ParamNameCharTable = Array.CreateInstance(typeof(byte), new int[] {'z' - '0' + 1}, new int[] {'0'});
+
+            for (int i = '0' ; i <= '9' ; i++)
+            {
+                ParamNameCharTable.SetValue((byte)i, i);
+            }
+
+            for (int i = 'A' ; i <= 'Z' ; i++)
+            {
+                ParamNameCharTable.SetValue((byte)i, i);
+            }
+
+            ParamNameCharTable.SetValue((byte)'_', (int)'_');
+
+            for (int i = 'a' ; i <= 'z' ; i++)
+            {
+                ParamNameCharTable.SetValue((byte)i, i);
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see> class.
@@ -1348,245 +1371,307 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetParseCommandText");
 
-            Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
-
             string commandText = text.Trim();
             StringBuilder commandBuilder = new StringBuilder();
 
             if (type == CommandType.StoredProcedure)
             {
-                commandBuilder
-                    .Append("select ")
-                    .Append(commandText);
+                commandBuilder.Append("SELECT ");
 
-                // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection.
-                if (! commandText.EndsWith(")"))
+                if (commandText.EndsWith(")"))
                 {
-                    addProcedureParenthesis = true;
+                    AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
+                }
+                else
+                {
+                    commandBuilder
+                        .Append(commandText)
+                        .Append("(");
 
-                    commandBuilder.Append("(");
+                    AppendParameterPlaceHolders(commandBuilder);
+
+                    commandBuilder.Append(")");
                 }
             }
             else if (type == CommandType.TableDirect)
             {
                 commandBuilder
-                    .Append("select * from ")
+                    .Append("SELECT * FROM ")
                     .Append(commandText);
-
-                return commandBuilder.ToString();
             }
             else
             {
-                commandBuilder.Append(commandText);
+                AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
             }
 
-            if (!addProcedureParenthesis)
-            {
-                // tText is now the command text, within which parameter replacement will be carried out.
-                // parseCommand is not used from here on out in this code path.
-                commandText = commandBuilder.ToString();
-            }
-
-            if (parameters.Count > 0)
-            {
-                // The ReplaceParameterValue below, also checks if the parameter is present.
-                String parameterName;
-                Int32 i;
-
-                for (i = 0; i < parameters.Count; i++)
-                {
-                    if ((parameters[i].Direction == ParameterDirection.Input) ||
-                        (parameters[i].Direction == ParameterDirection.InputOutput))
-                    {
-                        string parameterSize = "";
-
-                        if (parameters[i].TypeInfo.UseSize && (parameters[i].Size > 0))
-                        {
-                            parameterSize += string.Format("({0})", parameters[i].Size);
-                        }
-
-                        if (!addProcedureParenthesis)
-                        {
-                            //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
-                            parameterName = parameters[i].CleanName;
-                            //textCommand = textCommand.Replace(':' + parameterName, "$" + (i+1));
-
-                            // Just add typecast if needed.
-                            // TODO
-                            // Optimize.
-                            // Scanning the command string for each individual parameter is inefficient.  One scan should be used for all parameters if possible.
-                            if (parameters[i].UseCast)
-                            {
-                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize));
-                            }
-                            else
-                            {
-                                commandText = ReplaceParameterValue(commandText, parameterName, string.Format("${0}{1}", (i + 1), parameterSize));
-                            }
-                        }
-                        else
-                        {
-                            if (parameters[i].UseCast)
-                            {
-                                commandBuilder.AppendFormat("${0}::{1}{2}", (i + 1), parameters[i].TypeInfo.CastName, parameterSize);
-                            }
-                            else
-                            {
-                                commandBuilder.AppendFormat("${0}{1}", (i + 1), parameterSize);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (addProcedureParenthesis)
-            {
-                commandBuilder.Append(")");
-
-                commandText = commandBuilder.ToString();
-            }
-
-            return commandText;
+            return commandBuilder.ToString();
         }
 
         private String GetPrepareCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPrepareCommandText");
 
-            Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
+            string commandText = text.Trim();
+            StringBuilder commandBuilder = new StringBuilder();
 
             planName = Connector.NextPlanName();
 
-            StringBuilder command = new StringBuilder("prepare " + planName);
-
-            String textCommand = text;
+            commandBuilder
+                .Append("PREPARE ")
+                .Append(planName)
+                .Append(" AS ");
 
             if (type == CommandType.StoredProcedure)
             {
-                // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection.
-                if (!textCommand.Trim().EndsWith(")"))
+                commandBuilder.Append("SELECT ");
+
+                if (commandText.EndsWith(")"))
                 {
-                    addProcedureParenthesis = true;
-                    textCommand += "(";
-                }
-
-                textCommand = "select * from " + textCommand;
-            }
-            else if (type == CommandType.TableDirect)
-            {
-                return "select * from " + textCommand; // There is no parameter support on TableDirect.
-            }
-
-            if (parameters.Count > 0)
-            {
-                // The ReplaceParameterValue below, also checks if the parameter is present.
-
-                String parameterName;
-                Int32 i;
-
-                for (i = 0; i < parameters.Count; i++)
-                {
-                    if ((parameters[i].Direction == ParameterDirection.Input) ||
-                        (parameters[i].Direction == ParameterDirection.InputOutput))
-                    {
-                        if (!addProcedureParenthesis)
-                        {
-                            //result = result.Replace(":" + parameterName, parameters[i].Value.ToString());
-                            parameterName = parameters[i].CleanName;
-                            // The space in front of '$' fixes a parsing problem in 7.3 server
-                            // which gives errors of operator when finding the caracters '=$' in
-                            // prepare text
-                            textCommand = ReplaceParameterValue(textCommand, parameterName, " $" + (i + 1).ToString());
-                        }
-                        else
-                        {
-                            textCommand += " $" + (i + 1).ToString();
-                        }
-                    }
-                }
-
-                //[TODO] Check if there are any missing parameters in the query.
-                // For while, an error is thrown saying about the ':' char.
-
-                command.Append('(');
-
-                for (i = 0; i < parameters.Count; i++)
-                {
-                    //                    command.Append(NpgsqlTypesHelper.GetDefaultTypeInfo(parameters[i].DbType));
-                    if (parameters[i].UseCast)
-                        command.Append(parameters[i].TypeInfo.Name);
-                    else
-                        command.Append("unknown");
-
-                    command.Append(',');
-                }
-
-                command = command.Remove(command.Length - 1, 1);
-                command.Append(')');
-            }
-
-            if (addProcedureParenthesis)
-            {
-                textCommand += ")";
-            }
-
-            command.Append(" as ");
-            command.Append(textCommand);
-
-            return command.ToString();
-        }
-
-        private static String ReplaceParameterValue(String result, String parameterName, String paramVal)
-        {
-            String quote_pattern = @"['][^']*[']";
-            string parameterMarker = string.Empty;
-            // search parameter marker since it is not part of the name
-            String pattern = "[- |\n\r\t,)(;=+/<>][:|@]" + parameterMarker + parameterName + "([- |\n\r\t,)(;=+/<>]|$)";
-            Int32 start, end;
-            String withoutquote = result;
-            Boolean found = false;
-            // First of all
-            // Suppress quoted string from query (because we ave to ignore them)
-            MatchCollection results = Regex.Matches(result, quote_pattern);
-            foreach (Match match in results)
-            {
-                start = match.Index;
-                end = match.Index + match.Length;
-                String spaces = new String(' ', match.Length - 2);
-                withoutquote = withoutquote.Substring(0, start + 1) + spaces + withoutquote.Substring(end - 1);
-            }
-            do
-            {
-                // Now we look for the searched parameters on the "withoutquote" string
-                results = Regex.Matches(withoutquote, pattern);
-                if (results.Count == 0)
-                {
-                    // If no parameter is found, go out!
-                    break;
-                }
-                // We take the first parameter found
-                found = true;
-                Match match = results[0];
-                start = match.Index;
-                if ((match.Length - parameterName.Length) == 3)
-                {
-                    // If the found string is not the end of the string
-                    end = match.Index + match.Length - 1;
+                    AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
                 }
                 else
                 {
-                    // If the found string is the end of the string
-                    end = match.Index + match.Length;
+                    commandBuilder
+                        .Append(commandText)
+                        .Append("(");
+
+                    AppendParameterPlaceHolders(commandBuilder);
+
+                    commandBuilder.Append(")");
                 }
-                result = result.Substring(0, start + 1) + paramVal + result.Substring(end);
-                withoutquote = withoutquote.Substring(0, start + 1) + paramVal + withoutquote.Substring(end);
             }
-            while (true);
-            if (!found)
+            else if (type == CommandType.TableDirect)
             {
-                throw new IndexOutOfRangeException(String.Format(resman.GetString("Exception_ParamNotInQuery"), parameterName));
+                commandBuilder
+                    .Append("SELECT * FROM ")
+                    .Append(commandText);
             }
-            return result;
+            else
+            {
+                AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
+            }
+
+            return commandBuilder.ToString();
+        }
+
+        private void AppendParameterPlaceHolders(StringBuilder dest)
+        {
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                NpgsqlParameter parameter = parameters[i];
+
+                if (
+                    (parameter.Direction == ParameterDirection.Input) ||
+                    (parameter.Direction == ParameterDirection.InputOutput)
+                )
+                {
+                    AppendParameterPlaceHolder(dest, parameter, i + 1);
+                }
+            }
+        }
+
+        private void AppendParameterPlaceHolder(StringBuilder dest, NpgsqlParameter parameter, int paramNumber)
+        {
+            string parameterSize = "";
+
+            if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
+            {
+                parameterSize = string.Format("({0})", parameter.Size);
+            }
+
+            if (parameter.UseCast)
+            {
+                dest.AppendFormat("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
+            }
+            else
+            {
+                dest.AppendFormat("${0}{1}", paramNumber, parameterSize);
+            }
+        }
+
+        private static bool IsParamNameChar(char ch)
+        {
+            if (ch < '0' || ch > 'z')
+            {
+                return false;
+            }
+            else
+            {
+                return ((byte)ParamNameCharTable.GetValue(ch) != 0);
+            }
+        }
+
+        private void AppendCommandReplacingParameterValues(StringBuilder dest, string src, bool forServerPrepared)
+        {
+            StringBuilder currParamName = new StringBuilder();
+            bool inQuote = false;
+            bool inParam = false;
+            bool quoteEscape = false;
+            Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
+
+            if (forServerPrepared)
+            {
+                paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
+
+                for (int i = 0 ; i < parameters.Count ; i++)
+                {
+                    paramOrdinalMap[parameters[i]] = i + 1;
+                }
+            }
+
+            foreach (char ch in src)
+            {
+            ProcessCharacter:
+
+                if (!inQuote)
+                {
+                    if (!inParam)
+                    {
+                        switch (ch)
+                        {
+                            case '\'':
+                                inQuote = true;
+                                dest.Append(ch);
+
+                                break;
+
+                            case ':':
+                                inParam = true;
+
+                                break;
+
+                            default:
+                                dest.Append(ch);
+
+                                break;
+
+                        }
+                    }
+                    else
+                    {
+                        if (IsParamNameChar(ch))
+                        {
+                            currParamName.Append(ch);
+                        }
+                        else
+                        {
+                            inParam = false;
+
+                            string paramName = currParamName.ToString();
+
+                            if (paramName.Length > 0)
+                            {
+                                NpgsqlParameter parameter;
+
+                                if (!parameters.TryGetValue(paramName, out parameter))
+                                {
+                                    throw new Exception("Parameter not found");
+                                }
+
+                                if (
+                                    (parameter.Direction == ParameterDirection.Input) ||
+                                    (parameter.Direction == ParameterDirection.InputOutput)
+                                )
+                                {
+                                    if (forServerPrepared)
+                                    {
+                                        AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                                    }
+                                    else
+                                    {
+// TODO
+//                                        dest.AppendFormat("{0}", parameter.Value);
+                                    }
+                                }
+                                else
+                                {
+                                    dest.AppendFormat(":{0}", paramName);
+                                }
+                            }
+                            else
+                            {
+                                dest.Append(':');
+                            }
+
+                            currParamName.Length = 0;
+
+                            // Reprocess this character
+                            goto ProcessCharacter;
+                        }
+                    }
+                }
+                else
+                {
+                    dest.Append(ch);
+
+                    switch (ch)
+                    {
+                        case '\'':
+                            if (!quoteEscape)
+                            {
+                                quoteEscape = true;
+                            }
+                            else
+                            {
+                                quoteEscape = false;
+                            }
+
+                            break;
+
+                        default:
+                            if (quoteEscape)
+                            {
+                                quoteEscape = false;
+                                inQuote = false;
+
+                                // Reprocess this character
+                                goto ProcessCharacter;
+                            }
+
+                            break;
+
+                    }
+                }
+            }
+
+            if (inParam)
+            {
+                string paramName = currParamName.ToString();
+
+                if (paramName.Length > 0)
+                {
+                    NpgsqlParameter parameter;
+
+                    if (!parameters.TryGetValue(paramName, out parameter))
+                    {
+                        throw new Exception("Parameter not found");
+                    }
+
+                    if (
+                        (parameter.Direction == ParameterDirection.Input) ||
+                        (parameter.Direction == ParameterDirection.InputOutput)
+                    )
+                    {
+                        if (forServerPrepared)
+                        {
+                            AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                        }
+                        else
+                        {
+// TODO
+//                            dest.AppendFormat("{0}", parameter.Value);
+                        }
+                    }
+                    else
+                    {
+                        dest.AppendFormat(":{0}", paramName);
+                    }
+                }
+                else
+                {
+                    dest.Append(':');
+                }
+            }
         }
 
         private void SetCommandTimeout()

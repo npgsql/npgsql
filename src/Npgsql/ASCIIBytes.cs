@@ -54,6 +54,8 @@ namespace Npgsql
         b8 = (byte)'8',
         b9 = (byte)'9',
 
+        Colon = (byte)':',
+
         A = (byte)'A',
         B = (byte)'B',
         C = (byte)'C',
