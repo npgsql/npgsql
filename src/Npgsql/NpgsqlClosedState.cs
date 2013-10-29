@@ -159,7 +159,6 @@ namespace Npgsql
                     throw lastSocketException;
                 }
 
-                //Stream stream = new NetworkStream(socket, true);
                 NpgsqlNetworkStream baseStream = new NpgsqlNetworkStream(socket, true);
                 Stream sslStream = null;
 
@@ -169,9 +168,10 @@ namespace Npgsql
                     baseStream
                         .WriteInt32(8)
                         .WriteInt32(80877103);
-                    // Receive response
 
+                    // Receive response
                     Char response = (Char) baseStream.ReadByte();
+
                     if (response == 'S')
                     {
                         //create empty collection
@@ -203,10 +203,7 @@ namespace Npgsql
                         {
                             SslStream sslStreamPriv;
 
-                            sslStreamPriv = new SslStream(baseStream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-                            {
-                                return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
-                            });
+                            sslStreamPriv = new SslStream(baseStream, true, context.DefaultValidateRemoteCertificateCallback);
 
                             sslStreamPriv.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
                             sslStream = sslStreamPriv;
@@ -219,7 +216,7 @@ namespace Npgsql
                 }
 
                 context.Socket = socket;
-                context.Basetream = baseStream;
+                context.BaseStream = baseStream;
                 context.Stream = new BufferedStream(sslStream == null ? baseStream : sslStream);
 
                 NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);

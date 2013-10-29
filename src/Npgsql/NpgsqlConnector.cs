@@ -111,7 +111,7 @@ namespace Npgsql
         // This is a BufferedStream.
         // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
         // Otherwise, this stream sits directly on top of _baseStream.
-        private Stream _stream;
+        private BufferedStream _stream;
 
         // Mediator which will hold data generated from backend.
         private readonly NpgsqlMediator _mediator;
@@ -540,7 +540,7 @@ namespace Npgsql
         /// <summary>
         /// Default SSL ValidateRemoteCertificateCallback implementation.
         /// </summary>
-        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        internal bool DefaultValidateRemoteCertificateCallback(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
         {
             if (ValidateRemoteCertificateCallback != null)
             {
@@ -582,7 +582,7 @@ namespace Npgsql
         /// <summary>
         /// The physical connection stream to the backend.
         /// </summary>
-        internal NpgsqlNetworkStream Basetream
+        internal NpgsqlNetworkStream BaseStream
         {
             get { return _baseStream; }
             set { _baseStream = value; }
@@ -591,7 +591,7 @@ namespace Npgsql
         /// <summary>
         /// The top level stream to the backend.
         /// </summary>
-        internal Stream Stream
+        internal BufferedStream Stream
         {
             get { return _stream; }
             set { _stream = value; }
