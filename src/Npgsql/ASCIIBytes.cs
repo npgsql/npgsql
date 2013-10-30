@@ -31,6 +31,9 @@ namespace Npgsql
 {
     internal enum ASCIIBytes : byte
     {
+        LineFeed = (byte)'\n',
+        CarriageReturn = (Byte)'\r',
+
         Space = (byte)' ',
 
         DoubleQuote = (byte)'"',
@@ -55,6 +58,7 @@ namespace Npgsql
         b9 = (byte)'9',
 
         Colon = (byte)':',
+        SemiColon = (byte)';',
 
         A = (byte)'A',
         B = (byte)'B',

@@ -91,8 +91,6 @@ namespace Npgsql
 
         private Boolean functionChecksDone = false;
 
-        private Boolean addProcedureParenthesis = false; // Do not add procedure parenthesis by default.
-
         private Boolean functionNeedsColumnListDefinition = false; // Functions don't return record by default.
 
         private Boolean commandTimeoutSet = false;
@@ -104,7 +102,10 @@ namespace Npgsql
         // Constructors
         static NpgsqlCommand()
         {
-            ParamNameCharTable = Array.CreateInstance(typeof(byte), new int[] {'z' - '0' + 1}, new int[] {'0'});
+            // Table has lower bound of (int)'.';
+            ParamNameCharTable = Array.CreateInstance(typeof(byte), new int[] {'z' - '.' + 1}, new int[] {'.'});
+
+            ParamNameCharTable.SetValue((byte)'.', (int)'.');
 
             for (int i = '0' ; i <= '9' ; i++)
             {
@@ -887,7 +888,11 @@ namespace Npgsql
         {
             if (m_Connector.BackendProtocolVersion == ProtocolVersion.Version2)
             {
-                using (NpgsqlCommand command = new NpgsqlCommand(GetPrepareCommandText(), m_Connector))
+                planName = Connector.NextPlanName();
+
+                // BackendEncoding.UTF8Encoding.GetString() is temporary.  A new optimization for
+                // ExecuteBlind() will negate the need.
+                using (NpgsqlCommand command = new NpgsqlCommand(BackendEncoding.UTF8Encoding.GetString(GetCommandText(true, false)), m_Connector))
                 {
                     command.ExecuteBlind();
                     prepared = PrepareStatus.V2Prepared;
@@ -898,7 +903,7 @@ namespace Npgsql
                 // Use the extended query parsing...
                 planName = m_Connector.NextPlanName();
                 String portalName = "";
-                NpgsqlParse parse = new NpgsqlParse(planName, GetParseCommandText(), new Int32[] { });
+                NpgsqlParse parse = new NpgsqlParse(planName,  GetCommandText(true, true), new Int32[] { });
                 NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
                 IEnumerable<IServerResponseObject> responseEnum;
                 NpgsqlRowDescription returnRowDesc = null;
@@ -1011,188 +1016,13 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            byte[] ret = string.IsNullOrEmpty(planName) ? GetClearCommandText() : GetPreparedCommandText();
+            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false, false) : GetExecuteCommandText();
             // In constructing the command text, we potentially called internal
             // queries.  Reset command timeout and SQL sent.
             m_Connector.Mediator.ResetResponses();
             m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             return ret;
-        }
-
-        private void PassParam(MemoryStream query, NpgsqlParameter p)
-        {
-            byte[] serialised = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
-
-            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
-            // See bug #1010543
-            // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
-            // only one pair of parentheses for the two purposes instead of two pairs.
-            query
-                .WriteBytes((byte)ASCIIBytes.ParenLeft)
-                .WriteBytes(serialised)
-                .WriteBytes((byte)ASCIIBytes.ParenRight);
-
-            if (p.UseCast)
-            {
-                PGUtil.WriteString(query, "::{0}", p.TypeInfo.CastName);
-
-                if (p.TypeInfo.UseSize && (p.Size > 0))
-                {
-                    PGUtil.WriteString(query, "({0})", p.Size);
-                }
-            }
-        }
-
-        private byte[] GetClearCommandText()
-        {
-            if (NpgsqlEventLog.Level == LogLevel.Debug)
-            {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetClearCommandText");
-            }
-
-            MemoryStream result = new MemoryStream();
-
-            switch(type)
-            {
-                case CommandType.TableDirect:
-                    result
-                        .WriteString("SELECT * FROM ")
-                        .WriteString(text.Trim());
-
-                    return result.ToArray();
-                case CommandType.StoredProcedure:
-                    if (!functionChecksDone)
-                    {
-                        functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
-
-                        // Check if just procedure name was passed. If so, does not replace parameter names and just pass parameter values in order they were added in parameters collection. Also check if command text finishes in a ";" which would make Npgsql incorrectly append a "()" when executing this command text.
-                        switch(text[text.Length - 1])
-                        {
-                            case ')' : case ';':
-                                addProcedureParenthesis = false;
-                                break;
-                            default:
-                                addProcedureParenthesis = true;
-                                break;
-                        }
-
-                        functionChecksDone = true;
-                    }
-
-                    PGUtil.WriteString(
-                        result,
-                        Connector.SupportsPrepare
-                        ? "SELECT * FROM " // This syntax is only available in 7.3+ as well SupportsPrepare.
-                        : "SELECT " //Only a single result return supported. 7.2 and earlier.
-                    );
-
-                    break;
-
-            }
-
-            if (parameters.Count == 0)
-            {
-                PGUtil.WriteString(result, text.Trim());
-
-                if (addProcedureParenthesis)
-                {
-                    result
-                        .WriteBytes((byte)ASCIIBytes.ParenLeft)
-                        .WriteBytes((byte)ASCIIBytes.ParenRight);
-                }
-
-                if (functionNeedsColumnListDefinition)
-                {
-                    AddFunctionColumnListSupport(result);
-                }
-
-                return result.ToArray();
-            }
-
-            // Get parameters in query string to translate them to their actual values.
-
-            // This regular expression gets all the parameters in format :param or @param
-            // and everythingelse.
-            // This is only needed if query string has parameters. Else, just append the
-            // parameter values in order they were put in parameter collection.
-
-            // If parenthesis don't need to be added, they were added by user with parameter names. Replace them.
-            if (!addProcedureParenthesis)
-            {
-                Dictionary<string, NpgsqlParameter> parameterIndex = new Dictionary<string, NpgsqlParameter>(parameters.Count, StringComparer.InvariantCultureIgnoreCase);
-                foreach (NpgsqlParameter parameter in parameters)
-                    parameterIndex[parameter.CleanName] = parameter;
-
-                foreach (String s in parameterReplace.Split(text))
-                    if (s.Length != 0)
-                    {
-                        NpgsqlParameter p = null;
-                        string parameterName = s;
-                        if ((parameterName[0] == ':') || (parameterName[0] == '@'))
-                        {
-                            parameterName = parameterName.Remove(0, 1);
-                            parameterIndex.TryGetValue(parameterName, out p);
-                        }
-
-                        if (p != null)
-                        {
-                            switch(p.Direction)
-                            {
-                                case ParameterDirection.Input: case ParameterDirection.InputOutput:
-                                    //Wrap in probably-redundant parentheses. Queries should operate much as if they were in the a parameter or
-                                    //variable in a postgres function. Generally this is the case without the parentheses (hence "probably redundant")
-                                    //but there are exceptions to this rule. E.g. consider the postgres function:
-                                    //
-                                    //CREATE FUNCTION first_param(integer[])RETURNS int AS'select $1[1]'LANGUAGE 'sql' STABLE STRICT;
-                                    //
-                                    //The equivalent commandtext would be "select :param[1]", but this fails without the parentheses.
-
-                                    result.WriteByte((byte)ASCIIBytes.ParenLeft);
-                                    PassParam(result, p);
-                                    result.WriteByte((byte)ASCIIBytes.ParenRight);
-
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            PGUtil.WriteString(result, s);
-                        }
-                    }
-            }
-
-            else
-            {
-                result
-                    .WriteString(text.Trim())
-                    .WriteBytes((byte)ASCIIBytes.ParenLeft);
-
-                for (Int32 i = 0 ; i < parameters.Count ; i++)
-                {
-                    switch(parameters[i].Direction)
-                    {
-                        case ParameterDirection.Input: case ParameterDirection.InputOutput:
-                            if (i > 0)
-                            {
-                                result.WriteByte((byte)ASCIIBytes.Comma);
-                            }
-
-                            PassParam(result, parameters[i]);
-
-                            break;
-                    }
-                }
-
-                result.WriteByte((byte)ASCIIBytes.ParenRight);
-            }
-
-            if (functionNeedsColumnListDefinition)
-            {
-                AddFunctionColumnListSupport(result);
-            }
-
-            return result.ToArray();
         }
 
         private Boolean CheckFunctionNeedsColumnDefinitionList()
@@ -1291,7 +1121,7 @@ namespace Npgsql
 
         private void AddFunctionColumnListSupport(Stream st)
         {
-            PGUtil.WriteString(st, " as (");
+            PGUtil.WriteString(st, " AS (");
 
             for (int i = 0 ; i < Parameters.Count ; i++)
             {
@@ -1302,7 +1132,7 @@ namespace Npgsql
                     case ParameterDirection.Output: case ParameterDirection.InputOutput:
                         if (i > 0)
                         {
-                            st.WriteByte((byte)ASCIIBytes.Comma);
+                            st.WriteString(", ");
                         }
 
                         st
@@ -1317,7 +1147,613 @@ namespace Npgsql
             st.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
-        private byte[] GetPreparedCommandText()
+        private byte[] GetCommandText(bool prepare, bool forExtendQuery)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
+
+            MemoryStream commandBuilder = new MemoryStream();
+            string[] commands;
+
+            commands = GetDistinctTrimmedCommands(text);
+
+            if (commands.Length > 1)
+            {
+                if (prepare || type == CommandType.StoredProcedure)
+                {
+                    throw new NpgsqlException("Multiple queries not supported for this command type");
+                }
+            }
+
+            foreach (string commandText in commands)
+            {
+                if (commandBuilder.Length > 0)
+                {
+                    commandBuilder
+                        .WriteBytes((byte)ASCIIBytes.SemiColon)
+                        .WriteBytes((byte)ASCIIBytes.CarriageReturn)
+                        .WriteBytes((byte)ASCIIBytes.LineFeed);
+                }
+
+                if (prepare && ! forExtendQuery)
+                {
+                    commandBuilder
+                        .WriteString("PREPARE ")
+                        .WriteString(planName)
+                        .WriteString(" AS ");
+                }
+
+                if (type == CommandType.StoredProcedure)
+                {
+                    if (! prepare && ! functionChecksDone)
+                    {
+                        functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
+
+                        functionChecksDone = true;
+                    }
+
+                    commandBuilder.WriteString(
+                        Connector.SupportsPrepare
+                        ? "SELECT * FROM " // This syntax is only available in 7.3+ as well SupportsPrepare.
+                        : "SELECT " //Only a single result return supported. 7.2 and earlier.
+                    );
+
+                    if (commandText.EndsWith(")"))
+                    {
+                        AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, forExtendQuery);
+                    }
+                    else
+                    {
+                        commandBuilder
+                            .WriteString(commandText)
+                            .WriteBytes((byte)ASCIIBytes.ParenLeft);
+
+                        if (prepare)
+                        {
+                            AppendParameterPlaceHolders(commandBuilder);
+                        }
+                        else
+                        {
+                            AppendParameterValues(commandBuilder);
+                        }
+
+                        commandBuilder.WriteBytes((byte)ASCIIBytes.ParenRight);
+                    }
+
+                    if (! prepare && functionNeedsColumnListDefinition)
+                    {
+                        AddFunctionColumnListSupport(commandBuilder);
+                    }
+                }
+                else if (type == CommandType.TableDirect)
+                {
+                    commandBuilder
+                        .WriteString("SELECT * FROM ")
+                        .WriteString(commandText);
+                }
+                else
+                {
+                    AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, forExtendQuery);
+                }
+            }
+
+            return commandBuilder.ToArray();
+        }
+
+        private class StringChunk
+        {
+            public int Begin;
+            public int Length;
+
+            public StringChunk(int begin, int length)
+            {
+                this.Begin = begin;
+                this.Length = length;
+            }
+        }
+
+        private string[] GetDistinctTrimmedCommands(string src)
+        {
+            bool inQuote = false;
+            bool quoteEscape = false;
+            int currCharOfs = -1;
+            int currChunkBeg = 0;
+            int currChunkRawLen = 0;
+            int currChunkTrimLen = 0;
+            List<StringChunk> chunks = new List<StringChunk>();
+
+            foreach (char ch in src)
+            {
+                currCharOfs++;
+
+                ProcessCharacter:
+
+                if (! inQuote)
+                {
+                    switch (ch)
+                    {
+                        case '\'' :
+                            inQuote = true;
+
+                            currChunkRawLen++;
+                            currChunkTrimLen = currChunkRawLen;
+
+                            break;
+
+                        case ';' :
+                            if (currChunkTrimLen > 0)
+                            {
+                                chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
+                            }
+
+                            currChunkBeg = currCharOfs + 1;
+                            currChunkRawLen = 0;
+                            currChunkTrimLen = 0;
+
+                            break;
+
+                        case ' ' :
+                        case '\t' :
+                        case '\r' :
+                        case '\n' :
+                            if (currChunkTrimLen == 0)
+                            {
+                                currChunkBeg++;
+                            }
+                            else
+                            {
+                                currChunkRawLen++;
+                            }
+
+                            break;
+
+                        default :
+                            currChunkRawLen++;
+                            currChunkTrimLen = currChunkRawLen;
+
+                            break;
+
+                    }
+                }
+                else
+                {
+                    switch (ch)
+                    {
+                        case '\'' :
+                            if (quoteEscape)
+                            {
+                                quoteEscape = false;
+                            }
+                            else
+                            {
+                                quoteEscape = true;
+                            }
+
+                            currChunkRawLen++;
+                            currChunkTrimLen = currChunkRawLen;
+
+                            break;
+
+                        default :
+                            if (quoteEscape)
+                            {
+                                quoteEscape = false;
+                                inQuote = false;
+
+                                goto ProcessCharacter;
+                            }
+                            else
+                            {
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+                            }
+
+                            break;
+
+                    }
+                }
+            }
+
+            if (currChunkTrimLen > 0)
+            {
+                chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
+            }
+
+            string[] ret = new string[chunks.Count];
+
+            if (chunks.Count == 1 && chunks[0].Begin == 0 && chunks[0].Length == src.Length)
+            {
+                ret[0] = src;
+            }
+            else
+            {
+                for (int i = 0 ; i < chunks.Count ; i++)
+                {
+                    ret[i] = src.Substring(chunks[i].Begin, chunks[i].Length);
+                }
+            }
+
+            return ret;
+        }
+
+        private void AppendParameterPlaceHolders(Stream dest)
+        {
+            bool first = true;
+
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                NpgsqlParameter parameter = parameters[i];
+
+                if (
+                    (parameter.Direction == ParameterDirection.Input) ||
+                    (parameter.Direction == ParameterDirection.InputOutput)
+                )
+                {
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        dest.WriteString(", ");
+                    }
+
+                    AppendParameterPlaceHolder(dest, parameter, i + 1);
+                }
+            }
+        }
+
+        private void AppendParameterPlaceHolder(Stream dest, NpgsqlParameter parameter, int paramNumber)
+        {
+            string parameterSize = "";
+
+            dest.WriteBytes((byte)ASCIIBytes.ParenLeft);
+
+            if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
+            {
+                parameterSize = string.Format("({0})", parameter.Size);
+            }
+
+            if (parameter.UseCast)
+            {
+                dest.WriteString("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
+            }
+            else
+            {
+                dest.WriteString("${0}{1}", paramNumber, parameterSize);
+            }
+
+            dest.WriteBytes((byte)ASCIIBytes.ParenRight);
+        }
+
+        private void AppendParameterValues(Stream dest)
+        {
+            bool first = true;
+
+            for (int i = 0 ; i < parameters.Count ; i++)
+            {
+                NpgsqlParameter parameter = parameters[i];
+
+                if (
+                    (parameter.Direction == ParameterDirection.Input) ||
+                    (parameter.Direction == ParameterDirection.InputOutput)
+                )
+                {
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        dest.WriteString(", ");
+                    }
+
+                    AppendParameterValue(dest, parameter);
+                }
+            }
+        }
+
+        private void AppendParameterValue(Stream dest, NpgsqlParameter parameter)
+        {
+            byte[] serialised = parameter.TypeInfo.ConvertToBackend(parameter.Value, false, Connector.NativeToBackendTypeConverterOptions);
+
+            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
+            // See bug #1010543
+            // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
+            // only one pair of parentheses for the two purposes instead of two pairs.
+            dest
+                .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                .WriteBytes((byte)ASCIIBytes.ParenLeft)
+                .WriteBytes(serialised)
+                .WriteBytes((byte)ASCIIBytes.ParenRight);
+
+            if (parameter.UseCast)
+            {
+                dest.WriteString("::{0}", parameter.TypeInfo.CastName);
+
+                if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
+                {
+                    dest.WriteString("({0})", parameter.Size);
+                }
+            }
+
+            dest.WriteBytes((byte)ASCIIBytes.ParenRight);
+        }
+
+        private static bool IsParamNameChar(char ch)
+        {
+            if (ch < '.' || ch > 'z')
+            {
+                return false;
+            }
+            else
+            {
+                return ((byte)ParamNameCharTable.GetValue(ch) != 0);
+            }
+        }
+
+        private enum TokenType
+        {
+            None,
+            Quoted,
+            Param,
+            Colon
+        }
+
+        private void AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool forExtendedQuery)
+        {
+            char lastChar = '\0';
+            TokenType currTokenType = TokenType.None;
+            char paramMarker = '\0';
+            int currCharOfs = -1;
+            int currTokenBeg = 0;
+            int currTokenLen = 0;
+
+            Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
+
+            if (prepare)
+            {
+                paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
+
+                for (int i = 0 ; i < parameters.Count ; i++)
+                {
+                    paramOrdinalMap[parameters[i]] = i + 1;
+                }
+            }
+
+            foreach (char ch in src)
+            {
+                currCharOfs++;
+
+                ProcessCharacter:
+
+                switch (currTokenType)
+                {
+                    case TokenType.None :
+                        switch (ch)
+                        {
+                            case '\'':
+                                if (currTokenLen > 0)
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                                }
+
+                                currTokenType = TokenType.Quoted;
+
+                                currTokenBeg = currCharOfs;
+                                currTokenLen = 1;
+
+                                break;
+
+                            case ':':
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                                }
+
+                                currTokenType = TokenType.Colon;
+
+                                currTokenBeg = currCharOfs;
+                                currTokenLen = 1;
+
+                                break;
+
+                            case '@':
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                                }
+
+                                currTokenType = TokenType.Param;
+
+                                currTokenBeg = currCharOfs + 1;
+                                currTokenLen = 0;
+                                paramMarker = '@';
+
+                                break;
+
+                            default:
+                                currTokenLen++;
+
+                                break;
+
+                        }
+
+                        break;
+
+                    case TokenType.Param :
+                        if (IsParamNameChar(ch))
+                        {
+                            currTokenLen++;
+                        }
+                        else
+                        {
+                            if (currTokenLen == 0)
+                            {
+                                dest.WriteBytes((byte)ASCIIBytes.Colon);
+                            }
+                            else
+                            {
+                                string paramName = src.Substring(currTokenBeg, currTokenLen);
+                                NpgsqlParameter parameter;
+                                bool wroteParam = false;
+
+                                if (parameters.TryGetValue(paramName, out parameter))
+                                {
+                                    if (
+                                        (parameter.Direction == ParameterDirection.Input) ||
+                                        (parameter.Direction == ParameterDirection.InputOutput)
+                                    )
+                                    {
+                                        if (prepare)
+                                        {
+                                            AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                                        }
+                                        else
+                                        {
+                                            AppendParameterValue(dest, parameter);
+                                        }
+                                    }
+
+                                    wroteParam = true;
+                                }
+
+                                if (! wroteParam)
+                                {
+                                    dest.WriteString("{0}{1}", paramMarker, paramName);
+                                }
+                            }
+
+                            currTokenType = TokenType.None;
+                            currTokenBeg = currCharOfs;
+                            currTokenLen = 0;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
+                        }
+
+                        break;
+
+                    case TokenType.Quoted :
+                        switch (ch)
+                        {
+                            case '\'':
+                                currTokenLen++;
+
+                                break;
+
+                            default:
+                                if (currTokenLen > 1 && lastChar == '\'')
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+
+                                    currTokenType = TokenType.None;
+                                    currTokenBeg = currCharOfs;
+                                    currTokenLen = 0;
+
+                                    // Re-evaluate this character
+                                    goto ProcessCharacter;
+                                }
+                                else
+                                {
+                                    currTokenLen++;
+                                }
+
+                                break;
+
+                        }
+
+                        break;
+
+                    case TokenType.Colon :
+                        switch (ch)
+                        {
+                            case ':':
+                                currTokenLen++;
+
+                                break;
+
+                            default:
+                                if (currTokenLen == 1)
+                                {
+                                    currTokenType = TokenType.Param;
+
+                                    currTokenBeg = currCharOfs;
+                                    currTokenLen = 0;
+                                    paramMarker = ':';
+                                }
+                                else
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+
+                                    currTokenType = TokenType.None;
+
+                                    currTokenBeg = currCharOfs;
+                                    currTokenLen = 0;
+                                }
+
+                                goto ProcessCharacter;
+
+                        }
+
+                        break;
+
+
+                }
+
+                lastChar = ch;
+            }
+
+            switch (currTokenType)
+            {
+                case TokenType.Param :
+                    if (currTokenLen == 0)
+                    {
+                        dest.WriteBytes((byte)ASCIIBytes.Colon);
+                    }
+                    else
+                    {
+                        string paramName = src.Substring(currTokenBeg, currTokenLen);
+                        NpgsqlParameter parameter;
+                        bool wroteParam = false;
+
+                        if (parameters.TryGetValue(paramName, out parameter))
+                        {
+                            if (
+                                (parameter.Direction == ParameterDirection.Input) ||
+                                (parameter.Direction == ParameterDirection.InputOutput)
+                            )
+                            {
+                                if (prepare)
+                                {
+                                    AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                                }
+                                else
+                                {
+                                    AppendParameterValue(dest, parameter);
+                                }
+                            }
+
+                            wroteParam = true;
+                        }
+
+                        if (! wroteParam)
+                        {
+                            dest.WriteString("{0}{1}", paramMarker, paramName);
+                        }
+                    }
+
+                    break;
+
+                default :
+                    if (currTokenLen > 0)
+                    {
+                        dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                    }
+
+                    break;
+
+            }
+        }
+
+        private byte[] GetExecuteCommandText()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
 
@@ -1365,313 +1801,6 @@ namespace Npgsql
             }
 
             return result.ToArray();
-        }
-
-        private String GetParseCommandText()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetParseCommandText");
-
-            string commandText = text.Trim();
-            StringBuilder commandBuilder = new StringBuilder();
-
-            if (type == CommandType.StoredProcedure)
-            {
-                commandBuilder.Append("SELECT ");
-
-                if (commandText.EndsWith(")"))
-                {
-                    AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
-                }
-                else
-                {
-                    commandBuilder
-                        .Append(commandText)
-                        .Append("(");
-
-                    AppendParameterPlaceHolders(commandBuilder);
-
-                    commandBuilder.Append(")");
-                }
-            }
-            else if (type == CommandType.TableDirect)
-            {
-                commandBuilder
-                    .Append("SELECT * FROM ")
-                    .Append(commandText);
-            }
-            else
-            {
-                AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
-            }
-
-            return commandBuilder.ToString();
-        }
-
-        private String GetPrepareCommandText()
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPrepareCommandText");
-
-            string commandText = text.Trim();
-            StringBuilder commandBuilder = new StringBuilder();
-
-            planName = Connector.NextPlanName();
-
-            commandBuilder
-                .Append("PREPARE ")
-                .Append(planName)
-                .Append(" AS ");
-
-            if (type == CommandType.StoredProcedure)
-            {
-                commandBuilder.Append("SELECT ");
-
-                if (commandText.EndsWith(")"))
-                {
-                    AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
-                }
-                else
-                {
-                    commandBuilder
-                        .Append(commandText)
-                        .Append("(");
-
-                    AppendParameterPlaceHolders(commandBuilder);
-
-                    commandBuilder.Append(")");
-                }
-            }
-            else if (type == CommandType.TableDirect)
-            {
-                commandBuilder
-                    .Append("SELECT * FROM ")
-                    .Append(commandText);
-            }
-            else
-            {
-                AppendCommandReplacingParameterValues(commandBuilder, commandText, true);
-            }
-
-            return commandBuilder.ToString();
-        }
-
-        private void AppendParameterPlaceHolders(StringBuilder dest)
-        {
-            for (int i = 0; i < parameters.Count; i++)
-            {
-                NpgsqlParameter parameter = parameters[i];
-
-                if (
-                    (parameter.Direction == ParameterDirection.Input) ||
-                    (parameter.Direction == ParameterDirection.InputOutput)
-                )
-                {
-                    AppendParameterPlaceHolder(dest, parameter, i + 1);
-                }
-            }
-        }
-
-        private void AppendParameterPlaceHolder(StringBuilder dest, NpgsqlParameter parameter, int paramNumber)
-        {
-            string parameterSize = "";
-
-            if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
-            {
-                parameterSize = string.Format("({0})", parameter.Size);
-            }
-
-            if (parameter.UseCast)
-            {
-                dest.AppendFormat("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
-            }
-            else
-            {
-                dest.AppendFormat("${0}{1}", paramNumber, parameterSize);
-            }
-        }
-
-        private static bool IsParamNameChar(char ch)
-        {
-            if (ch < '0' || ch > 'z')
-            {
-                return false;
-            }
-            else
-            {
-                return ((byte)ParamNameCharTable.GetValue(ch) != 0);
-            }
-        }
-
-        private void AppendCommandReplacingParameterValues(StringBuilder dest, string src, bool forServerPrepared)
-        {
-            StringBuilder currParamName = new StringBuilder();
-            bool inQuote = false;
-            bool inParam = false;
-            bool quoteEscape = false;
-            Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
-
-            if (forServerPrepared)
-            {
-                paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
-
-                for (int i = 0 ; i < parameters.Count ; i++)
-                {
-                    paramOrdinalMap[parameters[i]] = i + 1;
-                }
-            }
-
-            foreach (char ch in src)
-            {
-            ProcessCharacter:
-
-                if (!inQuote)
-                {
-                    if (!inParam)
-                    {
-                        switch (ch)
-                        {
-                            case '\'':
-                                inQuote = true;
-                                dest.Append(ch);
-
-                                break;
-
-                            case ':':
-                                inParam = true;
-
-                                break;
-
-                            default:
-                                dest.Append(ch);
-
-                                break;
-
-                        }
-                    }
-                    else
-                    {
-                        if (IsParamNameChar(ch))
-                        {
-                            currParamName.Append(ch);
-                        }
-                        else
-                        {
-                            inParam = false;
-
-                            string paramName = currParamName.ToString();
-
-                            if (paramName.Length > 0)
-                            {
-                                NpgsqlParameter parameter;
-
-                                if (!parameters.TryGetValue(paramName, out parameter))
-                                {
-                                    throw new Exception("Parameter not found");
-                                }
-
-                                if (
-                                    (parameter.Direction == ParameterDirection.Input) ||
-                                    (parameter.Direction == ParameterDirection.InputOutput)
-                                )
-                                {
-                                    if (forServerPrepared)
-                                    {
-                                        AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
-                                    }
-                                    else
-                                    {
-// TODO
-//                                        dest.AppendFormat("{0}", parameter.Value);
-                                    }
-                                }
-                                else
-                                {
-                                    dest.AppendFormat(":{0}", paramName);
-                                }
-                            }
-                            else
-                            {
-                                dest.Append(':');
-                            }
-
-                            currParamName.Length = 0;
-
-                            // Reprocess this character
-                            goto ProcessCharacter;
-                        }
-                    }
-                }
-                else
-                {
-                    dest.Append(ch);
-
-                    switch (ch)
-                    {
-                        case '\'':
-                            if (!quoteEscape)
-                            {
-                                quoteEscape = true;
-                            }
-                            else
-                            {
-                                quoteEscape = false;
-                            }
-
-                            break;
-
-                        default:
-                            if (quoteEscape)
-                            {
-                                quoteEscape = false;
-                                inQuote = false;
-
-                                // Reprocess this character
-                                goto ProcessCharacter;
-                            }
-
-                            break;
-
-                    }
-                }
-            }
-
-            if (inParam)
-            {
-                string paramName = currParamName.ToString();
-
-                if (paramName.Length > 0)
-                {
-                    NpgsqlParameter parameter;
-
-                    if (!parameters.TryGetValue(paramName, out parameter))
-                    {
-                        throw new Exception("Parameter not found");
-                    }
-
-                    if (
-                        (parameter.Direction == ParameterDirection.Input) ||
-                        (parameter.Direction == ParameterDirection.InputOutput)
-                    )
-                    {
-                        if (forServerPrepared)
-                        {
-                            AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
-                        }
-                        else
-                        {
-// TODO
-//                            dest.AppendFormat("{0}", parameter.Value);
-                        }
-                    }
-                    else
-                    {
-                        dest.AppendFormat(":{0}", paramName);
-                    }
-                }
-                else
-                {
-                    dest.Append(':');
-                }
-            }
         }
 
         private void SetCommandTimeout()
