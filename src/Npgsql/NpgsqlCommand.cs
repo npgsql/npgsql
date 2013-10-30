@@ -1147,16 +1147,28 @@ namespace Npgsql
             st.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
+        private class StringChunk
+        {
+            public int Begin;
+            public int Length;
+
+            public StringChunk(int begin, int length)
+            {
+                this.Begin = begin;
+                this.Length = length;
+            }
+        }
+
         private byte[] GetCommandText(bool prepare, bool forExtendQuery)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
             MemoryStream commandBuilder = new MemoryStream();
-            string[] commands;
+            StringChunk[] chunks;
 
-            commands = GetDistinctTrimmedCommands(text);
+            chunks = GetDistinctTrimmedCommands(text);
 
-            if (commands.Length > 1)
+            if (chunks.Length > 1)
             {
                 if (prepare || type == CommandType.StoredProcedure)
                 {
@@ -1164,7 +1176,7 @@ namespace Npgsql
                 }
             }
 
-            foreach (string commandText in commands)
+            foreach (StringChunk chunk in chunks)
             {
                 if (commandBuilder.Length > 0)
                 {
@@ -1197,14 +1209,14 @@ namespace Npgsql
                         : "SELECT " //Only a single result return supported. 7.2 and earlier.
                     );
 
-                    if (commandText.EndsWith(")"))
+                    if (text[chunk.Begin + chunk.Length - 1] == ')')
                     {
-                        AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, forExtendQuery);
+                        AppendCommandReplacingParameterValues(commandBuilder, text, chunk.Begin, chunk.Length, prepare, forExtendQuery);
                     }
                     else
                     {
                         commandBuilder
-                            .WriteString(commandText)
+                            .WriteString(text.Substring(chunk.Begin, chunk.Length))
                             .WriteBytes((byte)ASCIIBytes.ParenLeft);
 
                         if (prepare)
@@ -1228,30 +1240,18 @@ namespace Npgsql
                 {
                     commandBuilder
                         .WriteString("SELECT * FROM ")
-                        .WriteString(commandText);
+                        .WriteString(text.Substring(chunk.Begin, chunk.Length));
                 }
                 else
                 {
-                    AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, forExtendQuery);
+                    AppendCommandReplacingParameterValues(commandBuilder, text, chunk.Begin, chunk.Length, prepare, forExtendQuery);
                 }
             }
 
             return commandBuilder.ToArray();
         }
 
-        private class StringChunk
-        {
-            public int Begin;
-            public int Length;
-
-            public StringChunk(int begin, int length)
-            {
-                this.Begin = begin;
-                this.Length = length;
-            }
-        }
-
-        private string[] GetDistinctTrimmedCommands(string src)
+        private StringChunk[] GetDistinctTrimmedCommands(string src)
         {
             bool inQuote = false;
             bool quoteEscape = false;
@@ -1358,21 +1358,7 @@ namespace Npgsql
                 chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
             }
 
-            string[] ret = new string[chunks.Count];
-
-            if (chunks.Count == 1 && chunks[0].Begin == 0 && chunks[0].Length == src.Length)
-            {
-                ret[0] = src;
-            }
-            else
-            {
-                for (int i = 0 ; i < chunks.Count ; i++)
-                {
-                    ret[i] = src.Substring(chunks[i].Begin, chunks[i].Length);
-                }
-            }
-
-            return ret;
+            return chunks.ToArray();
         }
 
         private void AppendParameterPlaceHolders(Stream dest)
@@ -1499,13 +1485,12 @@ namespace Npgsql
             Colon
         }
 
-        private void AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool forExtendedQuery)
+        private void AppendCommandReplacingParameterValues(Stream dest, string src, int begin, int length, bool prepare, bool forExtendedQuery)
         {
             char lastChar = '\0';
             TokenType currTokenType = TokenType.None;
             char paramMarker = '\0';
-            int currCharOfs = -1;
-            int currTokenBeg = 0;
+            int currTokenBeg = begin;
             int currTokenLen = 0;
 
             Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
@@ -1520,9 +1505,9 @@ namespace Npgsql
                 }
             }
 
-            foreach (char ch in src)
+            for (int currCharOfs = begin ; currCharOfs < begin + length ; currCharOfs++)
             {
-                currCharOfs++;
+                char ch = src[currCharOfs];
 
                 ProcessCharacter:
 
