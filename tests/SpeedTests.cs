@@ -562,6 +562,41 @@ namespace NpgsqlTests
             ParameterizedSelectMoneyArrayRoundTrip_Internal(true);
         }
 
+        [Test, Description("connect and disconnect with pool")]
+        public void ConnectWithPool()
+        {
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(Conn.ConnectionString);
+            csb.Pooling = true;
+            String conStr = csb.ConnectionString;
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    var con = new NpgsqlConnection(conStr);
+                    con.Open();
+                    con.Dispose();
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+
+        [Test, Description("connect and disconnect without pool")]
+        public void ConnectWithoutPool()
+        {
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(Conn.ConnectionString);
+            csb.Pooling = false;
+            String conStr = csb.ConnectionString;
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    var con = new NpgsqlConnection(conStr);
+                    con.Open();
+                    con.Dispose();
+                    metrics.IncrementIterations();
+                }
+            }
+        }
         #region Setup / Teardown / Utils
 
         private Stopwatch _watch;
