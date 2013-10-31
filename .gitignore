@@ -9,3 +9,4 @@
 /src/[Oo]bj/
 /tests/[Oo]bj/
 /packages
+/.nuget/NuGet.exe
