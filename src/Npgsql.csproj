@@ -175,7 +175,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
     <None Include="Npgsql\Npgsql.snk" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.msl" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.ssdl" />
