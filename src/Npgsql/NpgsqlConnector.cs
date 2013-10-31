@@ -38,6 +38,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
+using System.Text;
 
 namespace Npgsql
 {
@@ -127,6 +128,14 @@ namespace Npgsql
 
         private Boolean _supportsDiscard = false;
 
+        private Boolean _supportsApplicationName = false;
+
+        private Boolean _supportsExtraFloatDigits3 = false;
+
+        private Boolean _supportsExtraFloatDigits = false;
+
+        private Boolean _supportsSslRenegotiationLimit = false;
+
         private Boolean _isInitialized;
 
         private readonly Boolean _pooled;
@@ -160,6 +169,8 @@ namespace Npgsql
 
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+
+        private string initQueries;
 
 #if WINDOWS && UNMANAGED
 
@@ -376,7 +387,13 @@ namespace Npgsql
 
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
                 string compareValue = string.Empty;
-                using(NpgsqlCommand cmd = new NpgsqlCommand("select '" + testValue + "'", this))
+                string sql = "select '" + testValue + "'";
+                // restore initial connection parameters resetted by "Discard ALL"
+                if (SupportsDiscard)
+                {
+                    sql = this.initQueries + sql;
+                }
+                using(NpgsqlCommand cmd = new NpgsqlCommand(sql, this))
                 {
                     compareValue = (string) cmd.ExecuteScalar();
                 }
@@ -404,9 +421,9 @@ namespace Npgsql
         {
             if (_connection_state != ConnectionState.Closed)
             {
-                if (SupportsDiscard && BackendProtocolVersion != ProtocolVersion.Version2)
+                if (SupportsDiscard)
                 {
-                    DiscardAll();
+                    ReleaseWithDiscard();
                 }
                 else
                 {
@@ -416,20 +433,14 @@ namespace Npgsql
             }
         }
 
-        internal void DiscardAll()
+        internal void ReleaseWithDiscard()
         {
             using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this))
             {
                 Query(cmd);
             }
 
-            if (SupportsExtraFloatDigits3)
-            {
-                using (NpgsqlCommand cmd = new NpgsqlCommand("SET extra_float_digits=3", this))
-                {
-                    Query(cmd);
-                }
-            }
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
@@ -670,12 +681,22 @@ namespace Npgsql
 
         internal Boolean SupportsApplicationName
         {
-            get { return ServerVersion >= new Version(9, 0, 0); }
+            get { return _supportsApplicationName; }
         }
 
         internal Boolean SupportsExtraFloatDigits3
         {
-            get { return ServerVersion >= new Version(9, 0, 0); }
+            get { return _supportsExtraFloatDigits3; }
+        }
+
+        internal Boolean SupportsExtraFloatDigits
+        {
+            get { return _supportsExtraFloatDigits; }
+        }
+
+        internal Boolean SupportsSslRenegotiationLimit
+        {
+            get { return _supportsSslRenegotiationLimit; }
         }
 
         /// <summary>
@@ -719,6 +740,15 @@ namespace Npgsql
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
             this._supportsDiscard = (ServerVersion >= new Version(8, 3, 0));
+            this._supportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
+            this._supportsExtraFloatDigits3 =(ServerVersion >= new Version(9, 0, 0));
+            this._supportsExtraFloatDigits = (ServerVersion >= new Version(7, 4, 0)); 
+            this._supportsSslRenegotiationLimit = ((ServerVersion >= new Version(8, 4, 3)) ||
+                     (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
+                     (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
+                     (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
+                     (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
+                     (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)) );
 
             // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
             // Note that it is possible that support for this prefix will vanish in some future version
@@ -804,19 +834,27 @@ namespace Npgsql
             _connection_state = ConnectionState.Open;
             CurrentState = NpgsqlReadyState.Instance;
 
+            // Fall back to the old way, SELECT VERSION().
+            // This should not happen for protocol version 3+.
+            if (ServerVersion == null)
+            {
+                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
+                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
+                {
+                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
+                }
+            }
+
+            ProcessServerVersion();
+
+            StringBuilder sbInitQueries = new StringBuilder();
+
             if (BackendProtocolVersion == ProtocolVersion.Version2)
             {
-                // Fall back to the old way, SELECT VERSION().
-                // This should not happen for protocol version 3+.
-                if (ServerVersion == null)
-                {
-                    //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                    //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                    using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
-                    {
-                        ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
-                    }
-                }
+
+
+                sbInitQueries.Append("set DATESTYLE TO ISO;");
 
                 // Adjust client encoding.
 
@@ -825,22 +863,10 @@ namespace Npgsql
                     !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
                     (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
                   )
-                    new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+                    sbInitQueries.Append("SET CLIENT_ENCODING TO UTF8;"); 
 
                 if (!string.IsNullOrEmpty(settings.SearchPath))
                 {
-                    /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-                    p.Value = settings.SearchPath;
-                    NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-                    commandSearchPath.Parameters.Add(p);
-                    commandSearchPath.ExecuteNonQuery();*/
-
-                    /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-                    p.Value = settings.SearchPath;
-                    NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-                    commandSearchPath.Parameters.Add(p);
-                    commandSearchPath.ExecuteNonQuery();*/
-
                     // TODO: Add proper message when finding a semicolon in search_path.
                     // This semicolon could lead to a sql injection security hole as someone could write in connection string:
                     // searchpath=public;delete from table; and it would be executed.
@@ -851,8 +877,9 @@ namespace Npgsql
                     }
 
                     // This is using string concatenation because set search_path doesn't allow type casting. ::text
-                    NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
-                    commandSearchPath.ExecuteBlind();
+                    sbInitQueries.Append("SET SEARCH_PATH=")
+                                .Append(settings.SearchPath)
+                                .Append(";");
                 }
 
                 if (!string.IsNullOrEmpty(settings.ApplicationName))
@@ -869,8 +896,9 @@ namespace Npgsql
                         throw new InvalidOperationException();
                     }
 
-                    NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
-                    commandApplicationName.ExecuteBlind();
+                    sbInitQueries.Append("SET APPLICATION_NAME='")
+                                .Append(settings.ApplicationName)
+                                .Append("';");
                 }
 
                 /*
@@ -881,71 +909,61 @@ namespace Npgsql
                  * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
                  */
 
-                try
+                if (SupportsSslRenegotiationLimit)
                 {
-                    NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
-                    commandSslrenegotiation.ExecuteBlind();
-
+                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
                 }
-                catch { }
 
                 /*
                  * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
                  * Check bug report #1010992 for more information.
                  */
 
-                try
+                if (SupportsExtraFloatDigits3)
                 {
-
-                    NpgsqlCommand commandSingleDoublePrecision;
-
-                    if (SupportsExtraFloatDigits3)
-                        commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3", this);
-                    else
-                        commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2", this);
-
-                    commandSingleDoublePrecision.ExecuteBlind();
-
+                    sbInitQueries.Append("SET extra_float_digits=3;");
                 }
-                catch { }
+                else if (SupportsExtraFloatDigits)
+                {
+                    sbInitQueries.Append("SET extra_float_digits=2;");
+                }
 
                 /*
-                 * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
+                 * Set lc_monetary format to 'C' in order to get a culture agnostic representation of money.
                  * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
                  * money is formatted as ($value) with parentheses to indicate negative value.
                  * By going with a culture agnostic format, we get a consistent behavior.
                  */
 
-                try
-                {
-                    NpgsqlCommand commandMonetaryFormatC = new NpgsqlCommand("SET lc_monetary='C';", this);
-                    commandMonetaryFormatC.ExecuteBlind();
+                sbInitQueries.Append("SET lc_monetary='C';");
 
-                }
-                catch
-                {
-
-                }
             }
             else
             {
-                // All connection parameters for protocol 3 had been sent in the startup packet.
-                // But extra_float_digits was setted to 2,so we need set extra_float_digits to 3 again when found
-                // the backend is 9.0+ .
+                // Some connection parameters for protocol 3 had been sent in the startup packet.
+                // The rest will be setted here.
                 if (SupportsExtraFloatDigits3)
                 {
-                    NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3;", this);
-                    commandSingleDoublePrecision.ExecuteBlind();
+                    sbInitQueries.Append("SET extra_float_digits=3;");
                 }
+
+                if (SupportsSslRenegotiationLimit)
+                {
+                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
+                }
+
             }
+
+            initQueries = sbInitQueries.ToString();
+
+            NpgsqlCommand initCommand = new NpgsqlCommand(initQueries, this);
+            initCommand.ExecuteBlind();
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
             // mapping that will not be valid to another connector, even
             // if connected to the same backend version.
             NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
-
-            ProcessServerVersion();
 
             // The connector is now fully initialized. Beyond this point, it is
             // safe to release it back to the pool rather than closing it.

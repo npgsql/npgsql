@@ -62,15 +62,6 @@ namespace Npgsql
                 parameters.Add("extra_float_digits", "2");
                 parameters.Add("lc_monetary", "C");
 
-                /*
-                 * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
-                 * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
-                 * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
-                 * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
-                 * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
-                 */
-                parameters.Add("ssl_renegotiation_limit", "0");
-
                 if (!string.IsNullOrEmpty(settings.ApplicationName))
                 {
                     parameters.Add("application_name", settings.ApplicationName);
