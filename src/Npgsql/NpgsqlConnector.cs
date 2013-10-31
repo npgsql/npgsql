@@ -38,6 +38,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
+using System.Text;
 
 namespace Npgsql
 {
@@ -125,6 +126,16 @@ namespace Npgsql
 
         private Boolean _supportsSavepoint = false;
 
+        private Boolean _supportsDiscard = false;
+
+        private Boolean _supportsApplicationName = false;
+
+        private Boolean _supportsExtraFloatDigits3 = false;
+
+        private Boolean _supportsExtraFloatDigits = false;
+
+        private Boolean _supportsSslRenegotiationLimit = false;
+
         private Boolean _isInitialized;
 
         private readonly Boolean _pooled;
@@ -158,6 +169,8 @@ namespace Npgsql
 
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+
+        private string initQueries;
 
 #if WINDOWS && UNMANAGED
 
@@ -374,7 +387,13 @@ namespace Npgsql
 
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
                 string compareValue = string.Empty;
-                using(NpgsqlCommand cmd = new NpgsqlCommand("select '" + testValue + "'", this))
+                string sql = "select '" + testValue + "'";
+                // restore initial connection parameters resetted by "Discard ALL"
+                if (SupportsDiscard)
+                {
+                    sql = this.initQueries + sql;
+                }
+                using(NpgsqlCommand cmd = new NpgsqlCommand(sql, this))
                 {
                     compareValue = (string) cmd.ExecuteScalar();
                 }
@@ -402,9 +421,26 @@ namespace Npgsql
         {
             if (_connection_state != ConnectionState.Closed)
             {
-                ReleasePlansPortals();
-                ReleaseRegisteredListen();
+                if (SupportsDiscard)
+                {
+                    ReleaseWithDiscard();
+                }
+                else
+                {
+                    ReleasePlansPortals();
+                    ReleaseRegisteredListen();
+                }
             }
+        }
+
+        internal void ReleaseWithDiscard()
+        {
+            using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this))
+            {
+                Query(cmd);
+            }
+
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
@@ -645,12 +681,22 @@ namespace Npgsql
 
         internal Boolean SupportsApplicationName
         {
-            get { return ServerVersion >= new Version(9, 0, 0); }
+            get { return _supportsApplicationName; }
         }
 
         internal Boolean SupportsExtraFloatDigits3
         {
-            get { return ServerVersion >= new Version(9, 0, 0); }
+            get { return _supportsExtraFloatDigits3; }
+        }
+
+        internal Boolean SupportsExtraFloatDigits
+        {
+            get { return _supportsExtraFloatDigits; }
+        }
+
+        internal Boolean SupportsSslRenegotiationLimit
+        {
+            get { return _supportsSslRenegotiationLimit; }
         }
 
         /// <summary>
@@ -666,6 +712,11 @@ namespace Npgsql
         {
             get { return _supportsSavepoint; }
             set { _supportsSavepoint = value; }
+        }
+
+        internal Boolean SupportsDiscard
+        {
+            get { return _supportsDiscard; }
         }
 
         /// <summary>
@@ -688,6 +739,16 @@ namespace Npgsql
         {
             this._supportsPrepare = (ServerVersion >= new Version(7, 3, 0));
             this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
+            this._supportsDiscard = (ServerVersion >= new Version(8, 3, 0));
+            this._supportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
+            this._supportsExtraFloatDigits3 =(ServerVersion >= new Version(9, 0, 0));
+            this._supportsExtraFloatDigits = (ServerVersion >= new Version(7, 4, 0)); 
+            this._supportsSslRenegotiationLimit = ((ServerVersion >= new Version(8, 4, 3)) ||
+                     (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
+                     (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
+                     (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
+                     (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
+                     (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)) );
 
             // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
             // Note that it is possible that support for this prefix will vanish in some future version
@@ -732,7 +793,7 @@ namespace Npgsql
             try
             {
                 // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this);
+                CurrentState.Startup(this,settings);
             }
             catch (NpgsqlException ne)
             {
@@ -766,7 +827,7 @@ namespace Npgsql
                 // Get a raw connection, possibly SSL...
                 CurrentState.Open(this, connectTimeRemaining);
                 // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this);
+                CurrentState.Startup(this,this.settings);
             }
 
             // Change the state of connection to open and ready.
@@ -779,128 +840,130 @@ namespace Npgsql
             {
                 //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
                 //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                using(NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
+                using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
                 {
-                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
                 }
             }
 
-            // Adjust client encoding.
+            ProcessServerVersion();
 
-            NpgsqlParameterStatus clientEncodingParam = null;
-            if(
-                !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
-                (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
-              )
-                new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+            StringBuilder sbInitQueries = new StringBuilder();
 
-            if (!string.IsNullOrEmpty(settings.SearchPath))
+            if (BackendProtocolVersion == ProtocolVersion.Version2)
             {
-                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-                p.Value = settings.SearchPath;
-                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-                commandSearchPath.Parameters.Add(p);
-                commandSearchPath.ExecuteNonQuery();*/
 
-                /*NpgsqlParameter p = new NpgsqlParameter("p", DbType.String);
-                p.Value = settings.SearchPath;
-                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH TO :p,public", this);
-                commandSearchPath.Parameters.Add(p);
-                commandSearchPath.ExecuteNonQuery();*/
 
-                // TODO: Add proper message when finding a semicolon in search_path.
-                // This semicolon could lead to a sql injection security hole as someone could write in connection string:
-                // searchpath=public;delete from table; and it would be executed.
+                sbInitQueries.Append("set DATESTYLE TO ISO;");
 
-                if (settings.SearchPath.Contains(";"))
+                // Adjust client encoding.
+
+                NpgsqlParameterStatus clientEncodingParam = null;
+                if (
+                    !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
+                    (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
+                  )
+                    sbInitQueries.Append("SET CLIENT_ENCODING TO UTF8;"); 
+
+                if (!string.IsNullOrEmpty(settings.SearchPath))
                 {
-                    throw new InvalidOperationException();
+                    // TODO: Add proper message when finding a semicolon in search_path.
+                    // This semicolon could lead to a sql injection security hole as someone could write in connection string:
+                    // searchpath=public;delete from table; and it would be executed.
+
+                    if (settings.SearchPath.Contains(";"))
+                    {
+                        throw new InvalidOperationException();
+                    }
+
+                    // This is using string concatenation because set search_path doesn't allow type casting. ::text
+                    sbInitQueries.Append("SET SEARCH_PATH=")
+                                .Append(settings.SearchPath)
+                                .Append(";");
                 }
 
-                // This is using string concatenation because set search_path doesn't allow type casting. ::text
-                NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
-                commandSearchPath.ExecuteBlind();
-            }
+                if (!string.IsNullOrEmpty(settings.ApplicationName))
+                {
+                    if (!SupportsApplicationName)
+                    {
+                        //TODO
+                        //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
+                        throw new InvalidOperationException("ApplicationName not supported.");
+                    }
 
-            if (!string.IsNullOrEmpty(settings.ApplicationName))
-             {
-                 if (!SupportsApplicationName)
-                 {
-                     //TODO
-                     //throw new InvalidOperationException(resman.GetString("Exception_ApplicationNameNotSupported"));
-                     throw new InvalidOperationException("ApplicationName not supported.");
-                 }
+                    if (settings.ApplicationName.Contains(";"))
+                    {
+                        throw new InvalidOperationException();
+                    }
 
-                 if (settings.ApplicationName.Contains(";"))
-                 {
-                     throw new InvalidOperationException();
-                 }
+                    sbInitQueries.Append("SET APPLICATION_NAME='")
+                                .Append(settings.ApplicationName)
+                                .Append("';");
+                }
 
-                 NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
-                 commandApplicationName.ExecuteBlind();
-             }
+                /*
+                 * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
+                 * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
+                 * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
+                 * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
+                 * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
+                 */
 
-            /*
-             * Try to set SSL negotiation to 0. As of 2010-03-29, recent problems in SSL library implementations made
-             * postgresql to add a parameter to set a value when to do this renegotiation or 0 to disable it.
-             * Currently, Npgsql has a problem with renegotiation so, we are trying to disable it here.
-             * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
-             * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
-             */
+                if (SupportsSslRenegotiationLimit)
+                {
+                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
+                }
 
-            try
-            {
-                NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
-                commandSslrenegotiation.ExecuteBlind();
-
-            }
-            catch {}
-
-            /*
-             * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
-             * Check bug report #1010992 for more information.
-             */
-
-            try
-            {
-
-                NpgsqlCommand commandSingleDoublePrecision;
+                /*
+                 * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
+                 * Check bug report #1010992 for more information.
+                 */
 
                 if (SupportsExtraFloatDigits3)
-                    commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=3", this);
-                else
-                    commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2", this);
+                {
+                    sbInitQueries.Append("SET extra_float_digits=3;");
+                }
+                else if (SupportsExtraFloatDigits)
+                {
+                    sbInitQueries.Append("SET extra_float_digits=2;");
+                }
 
-                commandSingleDoublePrecision.ExecuteBlind();
+                /*
+                 * Set lc_monetary format to 'C' in order to get a culture agnostic representation of money.
+                 * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
+                 * money is formatted as ($value) with parentheses to indicate negative value.
+                 * By going with a culture agnostic format, we get a consistent behavior.
+                 */
+
+                sbInitQueries.Append("SET lc_monetary='C';");
 
             }
-            catch {}
-
-            /*
-             * Set lc_monetary format to 'C' ir order to get a culture agnostic representation of money.
-             * I noticed that on Windows, even when the lc_monetary is English_United States.UTF-8, negative
-             * money is formatted as ($value) with parentheses to indicate negative value.
-             * By going with a culture agnostic format, we get a consistent behavior.
-             */
-
-            try
+            else
             {
-                NpgsqlCommand commandMonetaryFormatC = new NpgsqlCommand("SET lc_monetary='C';", this);
-                commandMonetaryFormatC.ExecuteBlind();
+                // Some connection parameters for protocol 3 had been sent in the startup packet.
+                // The rest will be setted here.
+                if (SupportsExtraFloatDigits3)
+                {
+                    sbInitQueries.Append("SET extra_float_digits=3;");
+                }
+
+                if (SupportsSslRenegotiationLimit)
+                {
+                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
+                }
 
             }
-            catch
-            {
 
-            }
+            initQueries = sbInitQueries.ToString();
+
+            NpgsqlCommand initCommand = new NpgsqlCommand(initQueries, this);
+            initCommand.ExecuteBlind();
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
             // mapping that will not be valid to another connector, even
             // if connected to the same backend version.
             NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
-
-            ProcessServerVersion();
 
             // The connector is now fully initialized. Beyond this point, it is
             // safe to release it back to the pool rather than closing it.
