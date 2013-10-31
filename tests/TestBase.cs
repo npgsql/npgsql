@@ -47,7 +47,7 @@ namespace NpgsqlTests
         /// </summary>
         protected virtual string ConnectionString { get { return CONN_STRING_BASE + ";protocol=" + BACKEND_PROTOCOL_VERSION; } }
 
-        private const string CONN_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
+        private readonly string CONN_STRING_BASE = ConfigurationManager.AppSettings["ConnectionStringBase"];
 
         protected virtual int BACKEND_PROTOCOL_VERSION { get { return 3; } }
 
