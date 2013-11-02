@@ -45,9 +45,27 @@ namespace NpgsqlTests
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures (e.g. for protocol v2)
         /// </summary>
-        protected virtual string ConnectionString { get { return CONN_STRING_BASE + ";protocol=" + BACKEND_PROTOCOL_VERSION; } }
+        protected virtual string ConnectionString { get { return ConnectionStringBase + ";protocol=" + BACKEND_PROTOCOL_VERSION; } }
 
-        private const string CONN_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
+        /// <summary>
+        /// Returns the base connection string for the test database. Note that the protocol is added later.
+        /// </summary>
+        private static string ConnectionStringBase
+        {
+            get
+            {
+                var s = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DEFAULT_CONNECTION_STRING_BASE;
+                if (s.Contains("protocol"))
+                    throw new Exception("Connection string base cannot contain protocol - it's added automatically in the tests");
+                return s;
+            }
+        }
+
+        /// <summary>
+        /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
+        /// test database.
+        /// </summary>
+        private const string DEFAULT_CONNECTION_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
 
         protected virtual int BACKEND_PROTOCOL_VERSION { get { return 3; } }
 
