@@ -27,6 +27,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Globalization;
 
 namespace Npgsql
 {
@@ -42,6 +43,8 @@ namespace Npgsql
                              DEFAULT_QUOTE = "\"";
 
         public static int DEFAULT_BUFFER_SIZE = 8192;
+
+        private static readonly CultureInfo _cultureInfo = CultureInfo.InvariantCulture;    // PostgreSQL currently only supports SQL notation for decimal point (which is the same as InvariantCulture)
 
         private readonly NpgsqlConnector _context;
         private Stream _toStream;
@@ -456,17 +459,17 @@ namespace Npgsql
 
         public void AddInt32(Int32 fieldValue)
         {
-            AddString(string.Format("{0}", fieldValue));
+            AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
         public void AddInt64(Int64 fieldValue)
         {
-            AddString(string.Format("{0}", fieldValue));
+            AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
         public void AddNumber(double fieldValue)
         {
-            AddString(string.Format("{0}", fieldValue));
+            AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
         public void AddBool(bool fieldValue)
