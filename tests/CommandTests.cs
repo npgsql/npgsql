@@ -1553,8 +1553,7 @@ namespace NpgsqlTests
             command.ExecuteScalar();
         }
 
-        [Test]
-        public void TestBoolParameterPrepared()
+        private void TestBoolParameter_Internal(bool prepare)
         {
             // Add test for prepared queries with bool parameter.
             // This test was created based on a report from Andrus Moor in the help forum:
@@ -1562,13 +1561,45 @@ namespace NpgsqlTests
 
             var command = new NpgsqlCommand("select :boolValue", Conn);
 
-            command.Parameters.Add(":boolValue", NpgsqlDbType.Boolean).Value = false;
-            command.Prepare();
+            command.Parameters.Add(":boolValue", NpgsqlDbType.Boolean);
+
+            if (prepare)
+            {
+                command.Prepare();
+            }
+
+            command.Parameters["boolvalue"].Value = false;
 
             Assert.IsFalse((bool)command.ExecuteScalar());
+
+            command.Parameters["boolvalue"].Value = true;
+
+            Assert.IsTrue((bool)command.ExecuteScalar());
         }
 
         [Test]
+        public void TestBoolParameter()
+        {
+            TestBoolParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared()
+        {
+            TestBoolParameter_Internal(true);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                TestBoolParameter_Internal(true);
+            }
+        }
+
+        [Test]
+        [Ignore]
         public void TestBoolParameterPrepared2()
         {
             // will throw exception if bool parameter can't be used as boolean expression

@@ -372,7 +372,7 @@ namespace NpgsqlTypes
         internal static byte[] ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             if (NativeData is bool)
-                return ((bool)NativeData) ? ASCIIByteArrays.Byte_1 : ASCIIByteArrays.Byte_0;
+                return ((bool)NativeData) ? ASCIIByteArrays.AsciiDigit_1 : ASCIIByteArrays.AsciiDigit_0;
             // It may seem more sensible to just convert an integer to a BitString here and pass it on.
             // However behaviour varies in terms of how this is interpretted if being passed to a bitstring
             // value smaller than the int.
