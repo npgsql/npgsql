@@ -89,9 +89,11 @@ namespace Npgsql
     internal class ASCIIByteArrays
     {
         internal static readonly byte[] Empty           = new byte[0];
+        internal static readonly byte[] Byte_0          = new byte[] { 0 };
+        internal static readonly byte[] Byte_1          = new byte[] { 1 };
         internal static readonly byte[] NULL            = BackendEncoding.UTF8Encoding.GetBytes("NULL");
-        internal static readonly byte[] Byte_0          = BackendEncoding.UTF8Encoding.GetBytes("0");
-        internal static readonly byte[] Byte_1          = BackendEncoding.UTF8Encoding.GetBytes("1");
+        internal static readonly byte[] AsciiDigit_0    = BackendEncoding.UTF8Encoding.GetBytes("0");
+        internal static readonly byte[] AsciiDigit_1    = BackendEncoding.UTF8Encoding.GetBytes("1");
         internal static readonly byte[] TRUE            = BackendEncoding.UTF8Encoding.GetBytes("TRUE");
         internal static readonly byte[] FALSE           = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
         internal static readonly byte[] INFINITY        = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
