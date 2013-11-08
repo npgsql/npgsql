@@ -1553,6 +1553,65 @@ namespace NpgsqlTests
             command.ExecuteScalar();
         }
 
+        private void TestBoolParameter_Internal(bool prepare)
+        {
+            // Add test for prepared queries with bool parameter.
+            // This test was created based on a report from Andrus Moor in the help forum:
+            // http://pgfoundry.org/forum/forum.php?thread_id=15672&forum_id=519&group_id=1000140
+
+            var command = new NpgsqlCommand("select :boolValue", Conn);
+
+            command.Parameters.Add(":boolValue", NpgsqlDbType.Boolean);
+
+            if (prepare)
+            {
+                command.Prepare();
+            }
+
+            command.Parameters["boolvalue"].Value = false;
+
+            Assert.IsFalse((bool)command.ExecuteScalar());
+
+            command.Parameters["boolvalue"].Value = true;
+
+            Assert.IsTrue((bool)command.ExecuteScalar());
+        }
+
+        [Test]
+        public void TestBoolParameter()
+        {
+            TestBoolParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared()
+        {
+            TestBoolParameter_Internal(true);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                TestBoolParameter_Internal(true);
+            }
+        }
+
+        [Test]
+        [Ignore]
+        public void TestBoolParameterPrepared2()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            var command = new NpgsqlCommand("select :boolValue", Conn);
+            var p0 = new NpgsqlParameter(":boolValue", false);
+            // not setting parameter type
+            command.Parameters.Add(p0);
+            command.Prepare();
+
+            Assert.IsFalse((bool)command.ExecuteScalar());
+        }
+
         [Test]
         public void TestPointSupport()
         {
