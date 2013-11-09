@@ -7,11 +7,13 @@ using NUnit.Framework;
 namespace NpgsqlTests
 {
     /// <summary>
-    /// Summary description for PrepareTest.
+    /// Summary description for PrepareTests.
     /// </summary>
     [TestFixture]
-    public class PrepareTest : TestBase
+    public class PrepareTests : TestBase
     {
+        public PrepareTests(string backendVersion) : base(backendVersion) { }
+
         protected override void SetUp()
         {
             base.SetUp();
@@ -127,11 +129,5 @@ namespace NpgsqlTests
             cmd.Prepare(); // Fails
             cmd.ExecuteNonQuery();
         }
-    }
-
-    [TestFixture]
-    public class PrepareTestV2 : PrepareTest
-    {
-        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }

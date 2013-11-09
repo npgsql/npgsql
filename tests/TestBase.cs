@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
 using System.Reflection;
@@ -34,8 +35,28 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    [TestFixture("9.3")]
+    [TestFixture("9.2")]
+    [TestFixture("9.1")]
+    [TestFixture("9.0")]
+    [TestFixture("8.4")]
     public abstract class TestBase
     {
+        protected Version BackendVersion { get; private set; }
+        protected ProtocolVersion BackendProtocolVersion = ProtocolVersion.Version3;
+
+        /// <summary>
+        /// Constructs the parameterized test fixture
+        /// </summary>
+        /// <param name="backendVersion">
+        ///   The version of the Postgres backend to be used, major and minor veresions (e.g. 9.3).
+        ///   Used to select the conn string environment variable to be used.
+        /// </param>
+        protected TestBase(string backendVersion)
+        {
+            BackendVersion = new Version(backendVersion);
+        }
+
         /// <summary>
         /// A connection to the test database, set up prior to running each test.
         /// </summary>
@@ -43,43 +64,50 @@ namespace NpgsqlTests
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
-        /// May be overridden in fixtures (e.g. for protocol v2)
+        /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
-        protected virtual string ConnectionString { get { return ConnectionStringBase + ";protocol=" + BACKEND_PROTOCOL_VERSION; } }
-
-        /// <summary>
-        /// Returns the base connection string for the test database. Note that the protocol is added later.
-        /// </summary>
-        private static string ConnectionStringBase
-        {
-            get
-            {
-                var s = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DEFAULT_CONNECTION_STRING_BASE;
-                if (s.Contains("protocol"))
-                    throw new Exception("Connection string base cannot contain protocol - it's added automatically in the tests");
-                return s;
-            }
-        }
+        protected virtual string ConnectionString { get { return _connectionString; } }
+        private string _connectionString;
 
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        private const string DEFAULT_CONNECTION_STRING_BASE = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
-
-        protected virtual int BACKEND_PROTOCOL_VERSION { get { return 3; } }
+        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
 
         /// <summary>
         /// Indicates whether the database schema has already been created in this unit test session.
         /// Multiple fixtures may run in the same session but we only want to create the schema once.
         /// </summary>
-        private static bool _schemaCreated;
+        private bool _schemaCreated;
 
         #region Setup / Teardown
 
         [TestFixtureSetUp]
         public void TestFixtureSetup()
         {
+            var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion;
+            _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
+            if (_connectionString == null)
+            {
+                if (BackendVersion == LatestBackendVersion)
+                {
+                    _connectionString = DEFAULT_CONNECTION_STRING;
+                    Console.WriteLine("Using internal default connection string: " + _connectionString);
+                }
+                else
+                {
+                    Assert.Ignore("Skipping tests for backend version {0}, environment variable {1} isn't defined", BackendVersion, connStringEnvVar);
+                    return;
+                }
+            }
+            else
+                Console.WriteLine("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
+
+            if (_connectionString.Contains("protocol"))
+                throw new Exception("Connection string base cannot contain protocol");
+            _connectionString += ";protocol=" + (int)BackendProtocolVersion;
+
             if (!_schemaCreated)
             {
                 try
@@ -87,9 +115,16 @@ namespace NpgsqlTests
                     Conn = new NpgsqlConnection(ConnectionString);
                     Conn.Open();
                     CreateSchema();
+                    Console.WriteLine("Schema created successfully. Backend version is " + Conn.PostgreSqlVersion);
                 }
                 catch (NpgsqlException e)
                 {
+                    try
+                    {
+                        if (Conn != null && Conn.State == ConnectionState.Open)
+                            Conn.Close();
+                    }
+                    catch { }
                     if (e.Code == "3D000")
                         Assert.Inconclusive("Please create a database npgsql_tests, owned by user npgsql_tests");
                     else if (e.Code == "28P01")
@@ -180,6 +215,22 @@ namespace NpgsqlTests
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
             _schemaCreated = true;
+        }
+
+        /// <summary>
+        /// Uses reflection to read the [TextFixture] attributes on this class and extract the latest
+        /// Postgres backend version specified within them.
+        /// </summary>
+        private Version LatestBackendVersion
+        {
+            get
+            {
+                return typeof(TestBase)
+                    .GetCustomAttributes(typeof (TestFixtureAttribute), false)
+                    .Cast<TestFixtureAttribute>()
+                    .Select(a => new Version((string) a.Arguments[0]))
+                    .Max();
+            }
         }
 
         #endregion

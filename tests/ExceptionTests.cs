@@ -35,6 +35,8 @@ namespace NpgsqlTests
     [TestFixture]
     public class ExceptionTests : TestBase
     {
+        public ExceptionTests(string backendVersion) : base(backendVersion) { }
+
         [Test]
         public void ProblemSqlInsideException()
         {

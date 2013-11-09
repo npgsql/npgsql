@@ -49,6 +49,8 @@ namespace NpgsqlTests
     [TestFixture]
     public class CommandTests : TestBase
     {
+        public CommandTests(string backendVersion) : base(backendVersion) { }
+
         // Make sure SuppressBinaryBackendEncoding is initialized.
         // Try to make this test run first by prepending '__' for sorting.  This test should run before any other tests
         // that use binary backend suppression.
@@ -3327,7 +3329,7 @@ namespace NpgsqlTests
         [Test]
         public void Bug1010788UpdateRowSource()
         {
-            if (BACKEND_PROTOCOL_VERSION < 3)
+            if (((int)BackendProtocolVersion) < 3)
                 Assert.Ignore("Don't have the right metadata with protocol version 2");
 
             using (var conn = new NpgsqlConnection(ConnectionString))
@@ -3358,8 +3360,9 @@ namespace NpgsqlTests
         [SetCulture("nl-BE")]
         public void InvariantCultureNpgsqlCopySerializer()
         {
-            if (BACKEND_PROTOCOL_VERSION < 3)
-                Assert.Ignore("This test hangs when running with protocol version 2");
+            //if (BACKEND_PROTOCOL_VERSION < 3)
+            //    Assert.Ignore("This test hangs when running with protocol version 2");
+
             // Test for https://github.com/npgsql/Npgsql/pull/92
             // SetCulture is used to set a culture where a comma is used to separate decimal values (0,5) which will cause problems if Npgsql 
             // doesn't convert correctly to use a point. (0.5)
@@ -3478,11 +3481,5 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
             */
         }
-    }
-
-    [TestFixture]
-    public class CommandTestsV2 : CommandTests
-    {
-        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }
