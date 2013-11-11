@@ -43,8 +43,12 @@ namespace Npgsql
     {
         NpgsqlConnector mContext = null;
 
-        public NpgsqlNetworkStream(NpgsqlConnector context, Socket socket, Boolean owner)
+        public NpgsqlNetworkStream(Socket socket, Boolean owner)
             : base(socket, owner)
+        {
+        }
+
+        public void AttachConnector(NpgsqlConnector context)
         {
             mContext = context;
         }
@@ -53,8 +57,11 @@ namespace Npgsql
         {
             if (!disposing)
             {
-                mContext.Close();
-                mContext = null;
+                if (mContext != null)
+                {
+                    mContext.Close();
+                    mContext = null;
+                }
             }
 
             base.Dispose(disposing);
@@ -87,35 +94,6 @@ namespace Npgsql
             try
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
-
-                /*TcpClient tcpc = new TcpClient();
-                                tcpc.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-                                Stream stream = tcpc.GetStream();*/
-
-                /*socket.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.SendTimeout, context.ConnectionTimeout*1000);*/
-
-                //socket.Connect(new IPEndPoint(ResolveIPHost(context.Host), context.Port));
-
-                /*Socket socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-
-                                IAsyncResult result = socket.BeginConnect(new IPEndPoint(ResolveIPHost(context.Host), context.Port), null, null);
-
-                                if (!result.AsyncWaitHandle.WaitOne(context.ConnectionTimeout*1000, false))
-                                {
-                                        socket.Close();
-                                        throw new Exception(resman.GetString("Exception_ConnectionTimeout"));
-                                }
-
-                                try
-                                {
-                                        socket.EndConnect(result);
-                                }
-                                catch (Exception)
-                                {
-                                        socket.Close();
-                                        throw;
-                                }
-                                */
 
                 IAsyncResult result;
                 // Keep track of time remaining; Even though there may be multiple timeout-able calls,
@@ -181,51 +159,55 @@ namespace Npgsql
                     throw lastSocketException;
                 }
 
-                //Stream stream = new NetworkStream(socket, true);
-                                Stream stream = new NpgsqlNetworkStream(context, socket, true);
+                NpgsqlNetworkStream baseStream = new NpgsqlNetworkStream(socket, true);
+                Stream sslStream = null;
 
                 // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
                 if (context.SSL || (context.SslMode == SslMode.Require) || (context.SslMode == SslMode.Prefer))
                 {
-                    stream
+                    baseStream
                         .WriteInt32(8)
                         .WriteInt32(80877103);
-                    // Receive response
 
-                    Char response = (Char) stream.ReadByte();
+                    // Receive response
+                    Char response = (Char) baseStream.ReadByte();
+
                     if (response == 'S')
                     {
-                                                //create empty collection
-                                                X509CertificateCollection clientCertificates = new X509CertificateCollection();
+                        //create empty collection
+                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
 
-                                                //trigger the callback to fetch some certificates
-                                                context.DefaultProvideClientCertificatesCallback(clientCertificates);
+                        //trigger the callback to fetch some certificates
+                        context.DefaultProvideClientCertificatesCallback(clientCertificates);
 
-                                                if (context.UseMonoSsl)
-                                                {
-                                                        stream = new SslClientStream(
-                                                                stream,
-                                                                context.Host,
-                                                                true,
-                                                                SecurityProtocolType.Default,
-                                                                clientCertificates);
+                        if (context.UseMonoSsl)
+                        {
+                            SslClientStream sslStreamPriv;
 
-                                                        ((SslClientStream)stream).ClientCertSelectionDelegate =
-                                                                new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
-                                                        ((SslClientStream)stream).ServerCertValidationDelegate =
-                                                                new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
-                                                        ((SslClientStream)stream).PrivateKeyCertSelectionDelegate =
-                                                                new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
-                                                }
-                                                else
-                                                {
-                                                        SslStream sstream = new SslStream(stream, true, delegate(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
-                                                        {
-                                                                return context.DefaultValidateRemoteCertificateCallback(cert, chain, errors);
-                                                        });
-                                                        sstream.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                                                        stream = sstream;
-                                                }
+                            sslStreamPriv = new SslClientStream(
+                                    baseStream,
+                                    context.Host,
+                                    true,
+                                    SecurityProtocolType.Default,
+                                    clientCertificates);
+
+                            sslStreamPriv.ClientCertSelectionDelegate =
+                                    new CertificateSelectionCallback(context.DefaultCertificateSelectionCallback);
+                            sslStreamPriv.ServerCertValidationDelegate =
+                                    new CertificateValidationCallback(context.DefaultCertificateValidationCallback);
+                            sslStreamPriv.PrivateKeyCertSelectionDelegate =
+                                    new PrivateKeySelectionCallback(context.DefaultPrivateKeySelectionCallback);
+                            sslStream = sslStreamPriv;
+                        }
+                        else
+                        {
+                            SslStream sslStreamPriv;
+
+                            sslStreamPriv = new SslStream(baseStream, true, context.DefaultValidateRemoteCertificateCallback);
+
+                            sslStreamPriv.AuthenticateAsClient(context.Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                            sslStream = sslStreamPriv;
+                        }
                     }
                     else if (context.SslMode == SslMode.Require)
                     {
@@ -233,8 +215,9 @@ namespace Npgsql
                     }
                 }
 
-                context.Stream = new BufferedStream(stream);
                 context.Socket = socket;
+                context.BaseStream = baseStream;
+                context.Stream = new BufferedStream(sslStream == null ? baseStream : sslStream);
 
                 NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
                 ChangeState(context, NpgsqlConnectedState.Instance);

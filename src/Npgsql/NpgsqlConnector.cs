@@ -104,10 +104,15 @@ namespace Npgsql
 
         private ConnectionState _connection_state;
 
-        // The physical network connection to the backend.
-        private Stream _stream;
-
+        // The physical network connection socket and stream to the backend.
         private Socket _socket;
+        private NpgsqlNetworkStream _baseStream;
+
+        // The top level stream to the backend.
+        // This is a BufferedStream.
+        // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
+        // Otherwise, this stream sits directly on top of _baseStream.
+        private BufferedStream _stream;
 
         // Mediator which will hold data generated from backend.
         private readonly NpgsqlMediator _mediator;
@@ -208,6 +213,7 @@ namespace Npgsql
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
         }
+
 
         //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
         //case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
@@ -570,7 +576,7 @@ namespace Npgsql
         /// <summary>
         /// Default SSL ValidateRemoteCertificateCallback implementation.
         /// </summary>
-        internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
+        internal bool DefaultValidateRemoteCertificateCallback(object sender, X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
         {
             if (ValidateRemoteCertificateCallback != null)
             {
@@ -601,21 +607,30 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// The physical connection stream to the backend.
-        /// </summary>
-        internal Stream Stream
-        {
-            get { return _stream; }
-            set { _stream = value; }
-        }
-
-        /// <summary>
         /// The physical connection socket to the backend.
         /// </summary>
         internal Socket Socket
         {
             get { return _socket; }
             set { _socket = value; }
+        }
+
+        /// <summary>
+        /// The physical connection stream to the backend.
+        /// </summary>
+        internal NpgsqlNetworkStream BaseStream
+        {
+            get { return _baseStream; }
+            set { _baseStream = value; }
+        }
+
+        /// <summary>
+        /// The top level stream to the backend.
+        /// </summary>
+        internal BufferedStream Stream
+        {
+            get { return _stream; }
+            set { _stream = value; }
         }
 
         /// <summary>
@@ -797,6 +812,17 @@ namespace Npgsql
             }
             catch (NpgsqlException ne)
             {
+                if (_stream != null)
+                {
+                    try
+                    {
+                        _stream.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
+
                 connectTimeRemaining -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
 
                 // Check for protocol not supported.  If we have been told what protocol to use,
@@ -833,6 +859,9 @@ namespace Npgsql
             // Change the state of connection to open and ready.
             _connection_state = ConnectionState.Open;
             CurrentState = NpgsqlReadyState.Instance;
+
+            // After attachment, the stream will close the connector (this) when the stream gets disposed.
+            _baseStream.AttachConnector(this);
 
             // Fall back to the old way, SELECT VERSION().
             // This should not happen for protocol version 3+.
