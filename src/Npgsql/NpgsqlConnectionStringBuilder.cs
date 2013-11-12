@@ -49,6 +49,11 @@ namespace Npgsql
 
         static NpgsqlConnectionStringBuilder()
         {
+            // Set up explicit value defaults.
+            // All connection string values derive their default implicitly from their type's
+            // default value (int = 0, string = "" *, bool = false, etc.)  Only defaults that
+            // differ from the implicit default need to be declared explicitly.
+            // * See TypeDefaultValue() for clarification on string default value.
             defaults.Add(Keywords.Port, 5432);
             defaults.Add(Keywords.Timeout, 15);
             defaults.Add(Keywords.Pooling, true);
@@ -572,6 +577,11 @@ namespace Npgsql
             return base.ContainsKey(GetKeyName(keyword));
         }
 
+        /// <summary>
+        /// Report the default value for the given type.  Strings explicitly default to "" rather than null.
+        /// </summary>
+        /// <param name="t">Type.</param>
+        /// <returns>Default value.</returns>
         private static object TypeDefaultValue(Type t)
         {
             if (t.IsValueType)
@@ -593,6 +603,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword"></param>
         /// <param name="value"></param>
+        /// <returns>value, coerced as needed to the stored type.</returns>
         private object SetValue(string keyword, object value)
         {
             if (value == null)
@@ -651,6 +662,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword"></param>
         /// <param name="value"></param>
+        /// <returns>value, coerced as needed to the stored type.</returns>
         private object SetValue(Keywords keyword, object value)
         {
             try
