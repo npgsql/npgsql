@@ -31,6 +31,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.DirectoryServices.AccountManagement;
 using System.Reflection;
 using System.Resources;
 using System.Text;
@@ -69,6 +70,7 @@ namespace Npgsql
             defaults.Add(Keywords.PreloadReader, false);
             defaults.Add(Keywords.UseExtendedTypes, false);
             defaults.Add(Keywords.IntegratedSecurity, false);
+            defaults.Add(Keywords.IncludeRealm, false);
             defaults.Add(Keywords.Compatible, THIS_VERSION);
             defaults.Add(Keywords.ApplicationName, string.Empty);
         }
@@ -276,9 +278,17 @@ namespace Npgsql
             {
                 if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
                 {
-                    System.Security.Principal.WindowsIdentity identity =
-                        System.Security.Principal.WindowsIdentity.GetCurrent();
-                    _username = identity.Name.Split('\\')[1];
+                    string[] usernameParts = UserPrincipal.Current.UserPrincipalName.Split('@');
+
+                    // With the realm split out, decide whether to add it back
+                    if (_includeRealm)
+                    {
+                        _username = usernameParts[0] + "@" + usernameParts[1].ToUpperInvariant();
+                    }
+                    else
+                    {
+                        _username = usernameParts[0];
+                    }
                 }
                 return _username;
             }
@@ -402,6 +412,13 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.IntegratedSecurity), value); }
         }
 
+        private bool _includeRealm;
+        public bool IncludeRealm
+        {
+            get { return _includeRealm; }
+            set { SetValue(GetKeyName(Keywords.IncludeRealm), value); }
+        }
+
         private Version _compatible;
 
         private static readonly Version THIS_VERSION =
@@ -486,6 +503,8 @@ namespace Npgsql
                     return Keywords.UseExtendedTypes;
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
+                case "INCLUDEREALM":
+                    return Keywords.IncludeRealm;
                 case "COMPATIBLE":
                     return Keywords.Compatible;
                 case "APPLICATIONNAME":
@@ -543,6 +562,8 @@ namespace Npgsql
                     return "USEEXTENDEDTYPES";
                 case Keywords.IntegratedSecurity:
                     return "INTEGRATED SECURITY";
+                case Keywords.IncludeRealm:
+                    return "INCLUDEREALM";
                 case Keywords.Compatible:
                     return "COMPATIBLE";
                 default:
@@ -702,6 +723,9 @@ namespace Npgsql
                     case Keywords.IntegratedSecurity:
                         this._integrated_security = ToIntegratedSecurity(value);
                         break;
+                    case Keywords.IncludeRealm:
+                        this._includeRealm = ToBoolean(value);
+                        break;
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
@@ -731,6 +755,7 @@ namespace Npgsql
                     case Keywords.SSL:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
+                    case Keywords.IncludeRealm:
                         exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
                     case Keywords.Protocol:
@@ -789,7 +814,8 @@ namespace Npgsql
         UseExtendedTypes,
         IntegratedSecurity,
         Compatible,
-        ApplicationName
+        ApplicationName,
+        IncludeRealm
     }
 
     public enum SslMode
