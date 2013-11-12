@@ -97,6 +97,14 @@ namespace Npgsql
             AuthenticationSSPI = 9
         }
 
+        static byte[] NullTerminateArray(byte[] input)
+        {
+            byte[] output = new byte[input.Length + 1];
+            input.CopyTo(output, 0);
+
+            return output;
+        }
+
         protected IEnumerable<IServerResponseObject> ProcessBackendResponses(NpgsqlConnector context)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ProcessBackendResponses");
@@ -155,7 +163,7 @@ namespace Npgsql
                                     // Send the PasswordPacket.
 
                                     ChangeState(context, NpgsqlStartupState.Instance);
-                                    context.Authenticate(context.Password);
+                                    context.Authenticate(NullTerminateArray(context.Password));
 
                                     break;
                                 case AuthenticationRequestType.AuthenticationMD5Password:
@@ -202,7 +210,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                                    context.Authenticate(NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
 
                                     break;
 #if WINDOWS && UNMANAGED
