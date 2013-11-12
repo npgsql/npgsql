@@ -61,19 +61,19 @@ namespace Npgsql
             {
                 case ProtocolVersion.Version2:
                     // Write the size of the packet.
-                    // 4 + (passwordlength + 1) -> Int32 + NULL terminated string.
-                    // output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length + 1))), 0, 4);
+                    // 4 + (passwordlength) -> Int32 + Byte string. Null termination is done before we get here.
+                    // output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length))), 0, 4);
                     outputStream
-                        .WriteInt32(4 + password.Length + 1)
-                        .WriteBytesNullTerminated(password);
+                        .WriteInt32(4 + password.Length)
+                        .WriteBytes(password);
 
                     break;
 
                 case ProtocolVersion.Version3:
                     outputStream
                         .WriteBytes((Byte)ASCIIBytes.p)
-                        .WriteInt32(4 + password.Length + 1)
-                        .WriteBytesNullTerminated(password);
+                        .WriteInt32(4 + password.Length)
+                        .WriteBytes(password);
 
                     break;
             }
