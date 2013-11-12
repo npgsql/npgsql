@@ -1035,6 +1035,13 @@ namespace Npgsql
                 cache[connectionString] = settings;
             }
 
+            // Clone the settings, because if Integrated Security is enabled, user ID can be different
+            settings = settings.Clone();
+
+            // Set the UserName explicitly to freeze any Integrated Security-determined names
+            if(settings.IntegratedSecurity)
+                settings.UserName = settings.UserName;
+
             RefreshConnectionString();
             LogConnectionString();
         }
