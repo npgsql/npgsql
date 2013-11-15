@@ -215,7 +215,7 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException(typeof(Exception))]
+        [ExpectedException]
         public void ExceedConnectionsInPool()
         {
             var openedConnections = new List<NpgsqlConnection>();
@@ -224,7 +224,7 @@ namespace NpgsqlTests
                 // exceed default pool size of 20
                 for (var i = 0; i < 21; ++i)
                 {
-                    var connection = new NpgsqlConnection(ConnectionString);
+                    var connection = new NpgsqlConnection(ConnectionString + ";Timeout=1");
                     connection.Open();
                     openedConnections.Add(connection);
                 }
