@@ -158,18 +158,8 @@ namespace Npgsql
         {
         }
 
-        /// <summary>
-        /// Initializes a new instance of the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class
-        /// and sets the <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
-        /// </summary>
-        /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(String ConnectionString)
+        private void Init()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
-
-            LoadConnectionStringBuilder(ConnectionString);
-
             NoticeDelegate = new NoticeEventHandler(OnNotice);
             NotificationDelegate = new NotificationEventHandler(OnNotification);
 
@@ -184,6 +174,36 @@ namespace Npgsql
             RSACryptoServiceProvider.UseMachineKeyStore = true;
 
             promotable = new NpgsqlPromotableSinglePhaseNotification(this);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the
+        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class
+        /// and sets the <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// </summary>
+        /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
+        public NpgsqlConnection(String ConnectionString)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
+
+            LoadConnectionStringBuilder(ConnectionString);
+
+            Init();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the
+        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class
+        /// and sets the <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// </summary>
+        /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
+        public NpgsqlConnection(NpgsqlConnectionStringBuilder ConnectionString)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
+
+            LoadConnectionStringBuilder(ConnectionString);
+
+            Init();
         }
 
         /// <summary>
@@ -1035,6 +1055,17 @@ namespace Npgsql
                 cache[connectionString] = settings;
             }
 
+            RefreshConnectionString();
+            LogConnectionString();
+        }
+
+        /// <summary>
+        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
+        /// </summary>
+        /// <param name="connectionString">The connection string to load the builder from</param>
+        private void LoadConnectionStringBuilder(NpgsqlConnectionStringBuilder connectionString)
+        {
+            settings = connectionString;
             RefreshConnectionString();
             LogConnectionString();
         }
