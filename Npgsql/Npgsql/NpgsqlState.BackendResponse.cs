@@ -215,13 +215,30 @@ namespace Npgsql
                                     break;
 #if WINDOWS && UNMANAGED
 
+                                case AuthenticationRequestType.AuthenticationGSS:
+                                    {
+                                        if (context.IntegratedSecurity)
+                                        {
+                                            // For GSSAPI we have to use the supplied hostname
+                                            context.SSPI = new SSPIHandler(context.Host, "POSTGRES", true);
+                                            ChangeState(context, NpgsqlStartupState.Instance);
+                                            context.Authenticate(context.SSPI.Continue(null));
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            // TODO: correct exception
+                                            throw new Exception();
+                                        }
+                                    }
+
                                 case AuthenticationRequestType.AuthenticationSSPI:
                                     {
                                         if (context.IntegratedSecurity)
                                         {
                                             // For SSPI we have to get the IP-Address (hostname doesn't work)
                                             string ipAddressString = ((IPEndPoint)context.Socket.RemoteEndPoint).Address.ToString();
-                                            context.SSPI = new SSPIHandler(ipAddressString, "POSTGRES");
+                                            context.SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
                                             ChangeState(context, NpgsqlStartupState.Instance);
                                             context.Authenticate(context.SSPI.Continue(null));
                                             break;
