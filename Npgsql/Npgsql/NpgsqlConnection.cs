@@ -1057,15 +1057,14 @@ namespace Npgsql
         /// <param name="connectionString">The connection string to load the builder from</param>
         private void LoadConnectionStringBuilder(string connectionString)
         {
-            settings = cache[connectionString];
-            if (settings == null)
+            NpgsqlConnectionStringBuilder newSettings = cache[connectionString];
+            if (newSettings == null)
             {
-                settings = new NpgsqlConnectionStringBuilder(connectionString);
-                cache[connectionString] = settings;
+                newSettings = new NpgsqlConnectionStringBuilder(connectionString);
+                cache[connectionString] = newSettings;
             }
 
-            RefreshConnectionString();
-            LogConnectionString();
+            LoadConnectionStringBuilder(newSettings);
         }
 
         /// <summary>
@@ -1074,7 +1073,13 @@ namespace Npgsql
         /// <param name="connectionString">The connection string to load the builder from</param>
         private void LoadConnectionStringBuilder(NpgsqlConnectionStringBuilder connectionString)
         {
-            settings = connectionString;
+            // Clone the settings, because if Integrated Security is enabled, user ID can be different
+            settings = connectionString.Clone();
+
+            // Set the UserName explicitly to freeze any Integrated Security-determined names
+            if (settings.IntegratedSecurity)
+               settings.UserName = settings.UserName;
+
             RefreshConnectionString();
             LogConnectionString();
         }
