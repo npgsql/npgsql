@@ -149,6 +149,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
+            valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
         }
 
         public NpgsqlConnectionStringBuilder()
