@@ -32,9 +32,11 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.DirectoryServices;
 using System.Reflection;
 using System.Resources;
 using System.Runtime.Versioning;
+using System.Security.Principal;
 using System.Text;
 
 // Keep the xml comment warning quiet for this file.
@@ -157,6 +159,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
         }
@@ -331,6 +334,63 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Database), Keywords.Database, value); }
         }
 
+        private string GetIntegratedUserName()
+        {
+            // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
+            // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
+            // which doesn't exist in mono, and calling a WindowsIdentity method bombs.
+            // The workaround is that this function that actually deals with WindowsIdentity never
+            // gets called on mono, so never gets JITted and the problem goes away.
+
+            // Gets the current user's username for integrated security purposes
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+
+            try
+            {
+                // Try to get the user's UPN in its correct case; this is what the
+                // server will need to verify against a Kerberos/SSPI ticket
+
+                // First, find a domain server we can talk to
+                string domainHostName;
+
+                using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
+                {
+                    domainHostName = (string) rootDse.Properties["dnsHostName"].Value;
+                }
+
+                // Query the domain server by the current user's SID
+                string upn;
+
+                using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
+                {
+                    DirectorySearcher search = new DirectorySearcher(entry,
+                        "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
+
+                    SearchResult result = search.FindOne();
+
+                    upn = (string) result.Properties["userPrincipalName"][0];
+                }
+
+                string[] upnParts = upn.Split('@');
+
+                if(_includeRealm)
+                {
+                    // Make it Kerberos-y by uppercasing the realm part
+                    return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
+                }
+                else
+                {
+                    return upnParts[0];
+                }
+            }
+            catch
+            {
+                // Querying the directory failed, so return the SAM name
+                // (which probably won't work, but it's better than nothing)
+                return identity.Name.Split('\\')[1];
+            }
+        }
+
         private string _username;
         /// <summary>
         /// Gets or sets the login user name.
@@ -340,7 +400,10 @@ namespace Npgsql
             get
             {
                 if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
-                    _username = WindowsIdentityUserName;
+                {
+                    _username = GetIntegratedUserName();
+                }
+
                 return _username;
             }
 
@@ -547,6 +610,13 @@ namespace Npgsql
                 throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
         }
 
+        private bool _includeRealm;
+        public bool IncludeRealm
+        {
+            get { return _includeRealm; }
+            set { SetValue(GetKeyName(Keywords.IncludeRealm), Keywords.IncludeRealm, value); }
+        }
+
         private Version _compatible;
 
         private static readonly Version THIS_VERSION =
@@ -670,6 +740,8 @@ namespace Npgsql
                     return Keywords.UseExtendedTypes;
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
+                case "INCLUDEREALM":
+                    return Keywords.IncludeRealm;
                 case "COMPATIBLE":
                     return Keywords.Compatible;
                 case "APPLICATIONNAME":
@@ -731,6 +803,8 @@ namespace Npgsql
                     return "USEEXTENDEDTYPES";
                 case Keywords.IntegratedSecurity:
                     return "INTEGRATED SECURITY";
+                case Keywords.IncludeRealm:
+                    return "INCLUDEREALM";
                 case Keywords.Compatible:
                     return "COMPATIBLE";
                 case Keywords.ApplicationName:
@@ -883,6 +957,8 @@ namespace Npgsql
 
                         return this._integrated_security = ToIntegratedSecurity(iS);
 
+                    case Keywords.IncludeRealm:
+                        return this._includeRealm = ToBoolean(value);
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
@@ -989,6 +1065,8 @@ namespace Npgsql
                     return this._useExtendedTypes;
                 case Keywords.IntegratedSecurity:
                     return this._integrated_security;
+                case Keywords.IncludeRealm:
+                    return this._includeRealm;
                 case Keywords.Compatible:
                     return _compatible;
                 case Keywords.ApplicationName:
@@ -1086,7 +1164,8 @@ namespace Npgsql
         IntegratedSecurity,
         Compatible,
         ApplicationName,
-        AlwaysPrepare
+        AlwaysPrepare,
+        IncludeRealm,
     }
 
     public enum SslMode
