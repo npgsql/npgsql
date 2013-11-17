@@ -942,6 +942,8 @@ namespace Npgsql
                     return this._useExtendedTypes;
                 case Keywords.IntegratedSecurity:
                     return this._integrated_security;
+                case Keywords.IncludeRealm:
+                    return this._includeRealm;
                 case Keywords.Compatible:
                     return _compatible;
                 case Keywords.ApplicationName:
