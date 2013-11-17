@@ -26,8 +26,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System.IO;
-
 namespace Npgsql
 {
     /// <summary>
@@ -35,18 +33,14 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlFlush : ClientMessage
+    internal sealed class NpgsqlFlush : SimpleClientMessage
     {
-        internal static readonly NpgsqlFlush Default = new NpgsqlFlush();
+        // This class is currently not used.  To put it back into service, simply
+        // un-comment this line.
+        // internal static readonly NpgsqlFlush Default = new NpgsqlFlush();
 
         private NpgsqlFlush()
+        : base(FrontEndMessageCode.Flush)
         {}
-
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Flush)
-                .WriteInt32(4);
-        }
     }
 }

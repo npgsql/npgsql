@@ -513,6 +513,32 @@ namespace Npgsql
     }
 
     /// <summary>
+    /// For classes representing simple messages,
+    /// consisting only of a message code and length identifier,
+    /// sent from the client to the server.
+    /// </summary>
+    internal abstract class SimpleClientMessage : ClientMessage
+    {
+        private readonly byte[] _messageData;
+
+        protected SimpleClientMessage(FrontEndMessageCode MessageCode)
+        {
+            _messageData = new byte[5];
+            MemoryStream messageBuilder = new MemoryStream(_messageData);
+
+            messageBuilder
+                .WriteBytes((byte)MessageCode)
+                .WriteInt32(4);
+        }
+
+        public override void WriteToStream(Stream outputStream)
+        {
+            outputStream.WriteBytes(_messageData);
+        }
+    }
+
+
+    /// <summary>
     /// Marker interface which identifies a class which represents part of
     /// a response from the server.
     /// </summary>
