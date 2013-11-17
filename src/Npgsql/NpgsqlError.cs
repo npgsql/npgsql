@@ -352,6 +352,11 @@ namespace Npgsql
                                     _constraintName = PGUtil.ReadString(stream);
                                     ;
                                     break;
+                                default:
+                                    // Unknown error field; consume and discard.
+                                    PGUtil.ReadString(stream);
+                                    ;
+                                    break;
 
                             }
                         }
