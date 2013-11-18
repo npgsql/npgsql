@@ -33,29 +33,61 @@ using System.Text;
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
-    /// server.
+    /// This is the base class for NpgsqlDescribeStatement and NpgsqlDescribePortal.
     /// </summary>
     ///
-    internal sealed class NpgsqlDescribe : ClientMessage
+    internal abstract class NpgsqlDescribe : ClientMessage
     {
-        private readonly byte _whatToDescribe;
-        private readonly byte[] _bPortalName;
+        protected enum DescribeTypeCode : byte
+        {
+            Statement = ASCIIBytes.S,
+            Portal = ASCIIBytes.P
+        }
 
-        public NpgsqlDescribe(byte whatToDescribe, String portalName)
+        private readonly DescribeTypeCode _whatToDescribe;
+        private readonly byte[] _bPortalName;
+        private readonly int _messageLength;
+
+        protected NpgsqlDescribe(DescribeTypeCode whatToDescribe, String portalName)
         {
             _whatToDescribe = whatToDescribe;
 
             _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(portalName);
+
+            _messageLength = 4 + 1 + _bPortalName.Length + 1;
         }
 
         public override void WriteToStream(Stream outputStream)
         {
             outputStream
                 .WriteBytes((byte)FrontEndMessageCode.Describe)
-                .WriteInt32(4 + 1 + _bPortalName.Length + 1)
-                .WriteBytes(_whatToDescribe)
+                .WriteInt32(_messageLength)
+                .WriteBytes((byte)_whatToDescribe)
                 .WriteBytesNullTerminated(_bPortalName);
         }
+    }
+
+    /// <summary>
+    /// This class represents the Statement Describe message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlDescribeStatement : NpgsqlDescribe
+    {
+        public NpgsqlDescribeStatement(String statementName)
+        : base(DescribeTypeCode.Statement, statementName)
+        {}
+    }
+
+    /// <summary>
+    /// This class represents the Portal Describe message sent to PostgreSQL
+    /// server.
+    /// </summary>
+    ///
+    internal sealed class NpgsqlDescribePortal : NpgsqlDescribe
+    {
+        public NpgsqlDescribePortal(String portalName)
+        : base(DescribeTypeCode.Portal, portalName)
+        {}
     }
 }

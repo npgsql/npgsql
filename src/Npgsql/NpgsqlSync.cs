@@ -26,25 +26,19 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System.IO;
-
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
+    /// This class represents the Sync message sent to PostgreSQL
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlSync : ClientMessage
+    internal sealed class NpgsqlSync : SimpleClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        internal static readonly NpgsqlSync Default = new NpgsqlSync();
 
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Sync)
-                .WriteInt32(4);
-        }
+        private NpgsqlSync()
+        : base(FrontEndMessageCode.Sync)
+        {}
     }
 }

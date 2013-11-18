@@ -27,27 +27,32 @@
 
 using System;
 using System.IO;
-using System.Text;
 
 namespace Npgsql
 {
     /// <summary>
-    /// This class represents the Parse message sent to PostgreSQL
+    /// This class represents the Execute message sent to PostgreSQL
     /// server.
     /// </summary>
     ///
     internal sealed class NpgsqlExecute : ClientMessage
     {
         private readonly String _portalName;
-        private readonly byte[] _bPortalName;
-        private readonly Int32 _maxRows;
+        private readonly byte[] _messageData;
 
         public NpgsqlExecute(String portalName, Int32 maxRows)
         {
-            _portalName = portalName;
-            _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
+            int messageLength = 4 + portalName.Length + 1 + 4;
+            _messageData = new byte[messageLength + 1];
+            MemoryStream messageBuilder = new MemoryStream(_messageData);
 
-            _maxRows = maxRows;
+            _portalName = portalName;
+
+            messageBuilder
+                .WriteBytes((byte)FrontEndMessageCode.Execute)
+                .WriteInt32(messageLength)
+                .WriteStringNullTerminated(_portalName)
+                .WriteInt32(maxRows);
         }
 
         public String PortalName
@@ -57,11 +62,7 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Execute)
-                .WriteInt32(4 + _bPortalName.Length + 1 + 4)
-                .WriteBytesNullTerminated(_bPortalName)
-                .WriteInt32(_maxRows);
+            outputStream.WriteBytes(_messageData);
         }
     }
 }

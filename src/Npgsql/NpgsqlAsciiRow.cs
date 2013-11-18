@@ -41,14 +41,20 @@ namespace Npgsql
         private readonly int _messageSize;
         private int? _nextFieldSize = null;
 
-        public StringRowReaderV3(NpgsqlRowDescription rowDesc, Stream inputStream)
-            : base(rowDesc, inputStream)
+        public StringRowReaderV3(Stream inputStream)
+            : base(inputStream)
         {
             _messageSize = PGUtil.ReadInt32(inputStream);
-            if (PGUtil.ReadInt16(inputStream) != rowDesc.NumFields)
+        }
+
+        public override void SetRowDescription(NpgsqlRowDescription rowDesc)
+        {
+            if (PGUtil.ReadInt16(Stream) != rowDesc.NumFields)
             {
                 throw new DataException();
             }
+
+            _rowDesc = rowDesc;
         }
 
         protected override object ReadNext()
@@ -150,6 +156,21 @@ namespace Npgsql
             _nextFieldSize = null;
             return ret;
         }
+
+        public override void Dispose()
+        {
+            if (_rowDesc == null)
+            {
+                // If _rowdesc is null, then only the message length integer has been read;
+                // read the entire message and disgard it.
+                PGUtil.EatStreamBytes(Stream, this._messageSize - 4);
+            }
+            else
+            {
+                CurrentStreamer = null;
+                Skip(_rowDesc.NumFields - _currentField - 1);
+            }
+        }
     }
 
     /// <summary>
@@ -181,12 +202,17 @@ namespace Npgsql
             }
         }
 
-        private readonly NullMap _nullMap;
+        private NullMap _nullMap;
 
-        public StringRowReaderV2(NpgsqlRowDescription rowDesc, Stream inputStream)
-            : base(rowDesc, inputStream)
+        public StringRowReaderV2(Stream inputStream)
+            : base(inputStream)
         {
-            _nullMap = new NullMap(rowDesc, inputStream);
+        }
+
+        public override void SetRowDescription(NpgsqlRowDescription rowDesc)
+        {
+            _rowDesc = rowDesc;
+            _nullMap = new NullMap(rowDesc, Stream);
         }
 
         protected override object ReadNext()
@@ -233,6 +259,12 @@ namespace Npgsql
         protected override int GetNextFieldCount()
         {
             return _nullMap.IsNull(CurrentField) ? -1 : PGUtil.ReadInt32(Stream) - 4;
+        }
+
+        public override void Dispose()
+        {
+            CurrentStreamer = null;
+            Skip(_rowDesc.NumFields - _currentField - 1);
         }
     }
 }

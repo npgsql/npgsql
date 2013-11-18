@@ -151,8 +151,8 @@ namespace Npgsql
         private Int32 _planIndex;
         private Int32 _portalIndex;
 
-        private const String _planNamePrefix = "npgsqlplan";
-        private const String _portalNamePrefix = "npgsqlportal";
+        private const String _planNamePrefix = "s";
+        private const String _portalNamePrefix = "p";
 
         private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
 
@@ -288,6 +288,11 @@ namespace Npgsql
             get { return settings.IntegratedSecurity; }
         }
 
+        internal Boolean AlwaysPrepare
+        {
+            get { return SupportsPrepare && settings.AlwaysPrepare; }
+        }
+
         /// <summary>
         /// Gets the current state of the connection.
         /// </summary>
@@ -311,24 +316,9 @@ namespace Npgsql
             get { return settings.ConnectionString; }
         }
 
-        // State
-        internal void Query(NpgsqlCommand queryCommand)
+        internal void Query(NpgsqlQuery query)
         {
-            CurrentState.Query(this, queryCommand);
-        }
-
-        internal IEnumerable<IServerResponseObject> QueryEnum(NpgsqlCommand queryCommand)
-        {
-            if (CurrentReader != null)
-            {
-                if (!CurrentReader._cleanedUp)
-                {
-                    throw new InvalidOperationException(
-                        "There is already an open DataReader associated with this Command which must be closed first.");
-                }
-                CurrentReader.Close();
-            }
-            return CurrentState.QueryEnum(this, queryCommand);
+            CurrentState.Query(this, query);
         }
 
         internal void Authenticate(byte[] password)
@@ -341,19 +331,14 @@ namespace Npgsql
             CurrentState.Parse(this, parse);
         }
 
-        internal void Flush()
-        {
-            CurrentState.Flush(this);
-        }
-
         internal void TestConnector()
         {
             CurrentState.TestConnector(this);
         }
 
-        internal NpgsqlRowDescription Sync()
+        internal void Sync()
         {
-            return CurrentState.Sync(this);
+            CurrentState.Sync(this);
         }
 
         internal void Bind(NpgsqlBind bind)
@@ -371,9 +356,14 @@ namespace Npgsql
             CurrentState.Execute(this, execute);
         }
 
-        internal IEnumerable<IServerResponseObject> ExecuteEnum(NpgsqlExecute execute)
+        internal void ProcessAndDiscardBackendResponses()
         {
-            return CurrentState.ExecuteEnum(this, execute);
+            CurrentState.ProcessAndDiscardBackendResponses(this);
+        }
+
+        internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum()
+        {
+            return CurrentState.ProcessBackendResponsesEnum(this);
         }
 
         /// <summary>
@@ -443,7 +433,7 @@ namespace Npgsql
         {
             using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this))
             {
-                Query(cmd);
+                cmd.ExecuteBlind();
             }
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
@@ -454,7 +444,7 @@ namespace Npgsql
             //Query(new NpgsqlCommand("unlisten *", this));
             using(NpgsqlCommand cmd = new NpgsqlCommand("unlisten *", this))
             {
-                Query(cmd);
+                cmd.ExecuteBlind();
             }
         }
 
@@ -474,7 +464,7 @@ namespace Npgsql
                         //Query(new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i), this));
                         using(NpgsqlCommand cmd = new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i.ToString()), this))
                         {
-                            Query(cmd);
+                            cmd.ExecuteBlind();
                         }
                     }
 
@@ -1046,7 +1036,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPortalName()
         {
-            return _portalNamePrefix + Interlocked.Increment(ref _portalIndex).ToString();
+            return _portalNamePrefix + (++_portalIndex).ToString();
         }
 
         ///<summary>
@@ -1054,7 +1044,7 @@ namespace Npgsql
         ///</summary>
         internal String NextPlanName()
         {
-            return _planNamePrefix + Interlocked.Increment(ref _planIndex).ToString();
+            return _planNamePrefix + (++_planIndex).ToString();
         }
 
         internal void RemoveNotificationThread()
@@ -1183,7 +1173,7 @@ namespace Npgsql
                             {
                                 // reset any responses just before getting new ones
                                 this.connector.Mediator.ResetResponses();
-                                this.state.ProcessBackendResponses(this.connector);
+                                this.connector.ProcessAndDiscardBackendResponses();
                             }
                         }
                     }

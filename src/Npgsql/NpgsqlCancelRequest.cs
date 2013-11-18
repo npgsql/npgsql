@@ -54,8 +54,6 @@ namespace Npgsql
             PGUtil.WriteInt32(outputStream, CancelRequestCode);
             PGUtil.WriteInt32(outputStream, BackendKeydata.ProcessID);
             PGUtil.WriteInt32(outputStream, BackendKeydata.SecretKey);
-
-            outputStream.Flush();
         }
     }
 }

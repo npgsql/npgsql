@@ -34,6 +34,6 @@ namespace Npgsql
     /// </summary>
     internal static class BackendEncoding
     {
-        internal static UTF8Encoding UTF8Encoding = new UTF8Encoding(false);
+        internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false);
     }
 }
