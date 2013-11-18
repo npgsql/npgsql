@@ -56,6 +56,7 @@ namespace Npgsql
             DbInsertCommandTree insert;
             DbUpdateCommandTree update;
             DbDeleteCommandTree delete;
+            DbFunctionCommandTree function;
             if ((select = commandTree as DbQueryCommandTree) != null)
             {
                 sqlGenerator = new SqlSelectGenerator(select);
@@ -72,8 +73,11 @@ namespace Npgsql
             {
                 sqlGenerator = new SqlDeleteGenerator(delete);
             }
-            else
+            else if ((function = commandTree as DbFunctionCommandTree) != null)
             {
+                sqlGenerator = new SqlFunctionGenerator(function);
+            }
+            else {
                 // TODO: get a message (unsupported DbCommandTree type)
                 throw new ArgumentException();
             }

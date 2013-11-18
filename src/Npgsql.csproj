@@ -267,6 +267,7 @@
     <Compile Include="Npgsql\PGUtil.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlBaseGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlDeleteGenerator.cs" />
+    <Compile Include="Npgsql\SqlGenerators\SqlFunctionGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlInsertGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlSelectGenerator.cs" />
     <Compile Include="Npgsql\SqlGenerators\SqlUpdateGenerator.cs" />
