@@ -138,7 +138,7 @@ namespace Npgsql
 #pragma warning restore 618
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
             valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.Pooling, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.Pooling, new ValueDescription(true));
             valueDescriptions.Add(Keywords.ConnectionLifeTime, new ValueDescription(typeof(Int32)));
             valueDescriptions.Add(Keywords.MinPoolSize, new ValueDescription((Int32)1));
             valueDescriptions.Add(Keywords.MaxPoolSize, new ValueDescription((Int32)20));
