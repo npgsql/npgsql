@@ -65,16 +65,14 @@ namespace Npgsql
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline|RegexOptions.Compiled);
-        private static readonly Regex POSTGRES_TEXT_ARRAY = new Regex(@"^array\[+'", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private NpgsqlConnection connection;
         private NpgsqlConnector m_Connector; //renamed to account for hiding it in a local function
         //if all locals were named with this prefix, it would solve LOTS of issues.
         private NpgsqlTransaction transaction;
-        private String text;
+        private String commandText;
         private Int32 timeout;
-        private CommandType type;
+        private CommandType commandType;
         private readonly NpgsqlParameterCollection parameters = new NpgsqlParameterCollection();
         private String planName;
         private Boolean designTimeVisible;
@@ -88,41 +86,48 @@ namespace Npgsql
         private Int64 lastInsertedOID = 0;
 
         // locals about function support so we don`t need to check it everytime a function is called.
-
         private Boolean functionChecksDone = false;
-
         private Boolean functionNeedsColumnListDefinition = false; // Functions don't return record by default.
 
         private Boolean commandTimeoutSet = false;
 
         private UpdateRowSource updateRowSource = UpdateRowSource.Both;
 
-        private static readonly Array ParamNameCharTable = null;
+        private static readonly Array ParamNameCharTable;
 
         // Constructors
         static NpgsqlCommand()
         {
-            // Table has lower bound of (int)'.';
-            ParamNameCharTable = Array.CreateInstance(typeof(byte), new int[] {'z' - '.' + 1}, new int[] {'.'});
+            ParamNameCharTable = BuildParameterNameCharacterTable();
+        }
 
-            ParamNameCharTable.SetValue((byte)'.', (int)'.');
+        private static Array BuildParameterNameCharacterTable()
+        {
+            Array paramNameCharTable;
+
+            // Table has lower bound of (int)'.';
+            paramNameCharTable = Array.CreateInstance(typeof(byte), new int[] {'z' - '.' + 1}, new int[] {'.'});
+
+            paramNameCharTable.SetValue((byte)'.', (int)'.');
 
             for (int i = '0' ; i <= '9' ; i++)
             {
-                ParamNameCharTable.SetValue((byte)i, i);
+                paramNameCharTable.SetValue((byte)i, i);
             }
 
             for (int i = 'A' ; i <= 'Z' ; i++)
             {
-                ParamNameCharTable.SetValue((byte)i, i);
+                paramNameCharTable.SetValue((byte)i, i);
             }
 
-            ParamNameCharTable.SetValue((byte)'_', (int)'_');
+            paramNameCharTable.SetValue((byte)'_', (int)'_');
 
             for (int i = 'a' ; i <= 'z' ; i++)
             {
-                ParamNameCharTable.SetValue((byte)i, i);
+                paramNameCharTable.SetValue((byte)i, i);
             }
+
+            return paramNameCharTable;
         }
 
         /// <summary>
@@ -163,7 +168,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             planName = String.Empty;
-            text = cmdText;
+            commandText = cmdText;
             this.connection = connection;
 
             if (this.connection != null)
@@ -176,7 +181,7 @@ namespace Npgsql
                 }
             }
 
-            type = CommandType.Text;
+            commandType = CommandType.Text;
             this.Transaction = transaction;
 
             SetCommandTimeout();
@@ -190,9 +195,9 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             planName = String.Empty;
-            text = cmdText;
+            commandText = cmdText;
             this.m_Connector = connector;
-            type = CommandType.Text;
+            commandType = CommandType.Text;
 
             // Removed this setting. It was causing too much problem.
             // Do internal commands really need different timeout setting?
@@ -208,13 +213,13 @@ namespace Npgsql
         [Category("Data"), DefaultValue("")]
         public override String CommandText
         {
-            get { return text; }
+            get { return commandText; }
 
             set
             {
                 // [TODO] Validate commandtext.
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandText", value);
-                text = value;
+                commandText = value;
 
                 UnPrepare();
 
@@ -256,11 +261,11 @@ namespace Npgsql
         [Category("Data"), DefaultValue(CommandType.Text)]
         public override CommandType CommandType
         {
-            get { return type; }
+            get { return commandType; }
 
             set
             {
-                type = value;
+                commandType = value;
                 NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandType", value);
             }
         }
@@ -686,7 +691,7 @@ namespace Npgsql
                     );
 
                     if (
-                        type == CommandType.StoredProcedure
+                        commandType == CommandType.StoredProcedure
                         && reader.FieldCount == 1
                         && reader.GetDataTypeName(0) == "refcursor"
                     )
@@ -1166,11 +1171,11 @@ namespace Npgsql
             MemoryStream commandBuilder = new MemoryStream();
             StringChunk[] chunks;
 
-            chunks = GetDistinctTrimmedCommands(text);
+            chunks = GetDistinctTrimmedCommands(commandText);
 
             if (chunks.Length > 1)
             {
-                if (prepare || type == CommandType.StoredProcedure)
+                if (prepare || commandType == CommandType.StoredProcedure)
                 {
                     throw new NpgsqlException("Multiple queries not supported for this command type");
                 }
@@ -1194,7 +1199,7 @@ namespace Npgsql
                         .WriteString(" AS ");
                 }
 
-                if (type == CommandType.StoredProcedure)
+                if (commandType == CommandType.StoredProcedure)
                 {
                     if (! prepare && ! functionChecksDone)
                     {
@@ -1209,14 +1214,14 @@ namespace Npgsql
                         : "SELECT " //Only a single result return supported. 7.2 and earlier.
                     );
 
-                    if (text[chunk.Begin + chunk.Length - 1] == ')')
+                    if (commandText[chunk.Begin + chunk.Length - 1] == ')')
                     {
-                        AppendCommandReplacingParameterValues(commandBuilder, text, chunk.Begin, chunk.Length, prepare, forExtendQuery);
+                        AppendCommandReplacingParameterValues(commandBuilder, commandText, chunk.Begin, chunk.Length, prepare, forExtendQuery);
                     }
                     else
                     {
                         commandBuilder
-                            .WriteString(text.Substring(chunk.Begin, chunk.Length))
+                            .WriteString(commandText.Substring(chunk.Begin, chunk.Length))
                             .WriteBytes((byte)ASCIIBytes.ParenLeft);
 
                         if (prepare)
@@ -1236,15 +1241,15 @@ namespace Npgsql
                         AddFunctionColumnListSupport(commandBuilder);
                     }
                 }
-                else if (type == CommandType.TableDirect)
+                else if (commandType == CommandType.TableDirect)
                 {
                     commandBuilder
                         .WriteString("SELECT * FROM ")
-                        .WriteString(text.Substring(chunk.Begin, chunk.Length));
+                        .WriteString(commandText.Substring(chunk.Begin, chunk.Length));
                 }
                 else
                 {
-                    AppendCommandReplacingParameterValues(commandBuilder, text, chunk.Begin, chunk.Length, prepare, forExtendQuery);
+                    AppendCommandReplacingParameterValues(commandBuilder, commandText, chunk.Begin, chunk.Length, prepare, forExtendQuery);
                 }
             }
 
