@@ -224,41 +224,91 @@ namespace NpgsqlTypes
 
         internal object ConvertToFrameworkType(object providerValue)
         {
-            if (providerValue == DBNull.Value)
+            Type pvType = providerValue.GetType();
+
+            if (pvType == FrameworkType || providerValue == null || providerValue == DBNull.Value)
             {
+                return providerValue;
+            }
+            else if (pvType.IsArray)
+            {
+                if (!FrameworkType.IsArray || pvType.GetElementType() != Type.GetElementType())
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), pvType));
+                }
+
                 return providerValue;
             }
             else if (_convertProviderToFramework != null)
             {
                 return _convertProviderToFramework(providerValue);
             }
-            else if (Type != FrameworkType)
+            else
             {
-                try
+                if (
+                    pvType == typeof(String) || FrameworkType == typeof(String) ||
+                    (IsTypeNumeric(pvType) && IsTypeNumeric(FrameworkType))
+                )
                 {
-                    return Convert.ChangeType(providerValue, FrameworkType, CultureInfo.InvariantCulture);
+                    return Convert.ChangeType(providerValue, FrameworkType);
                 }
-                catch
+                else
                 {
-                    return providerValue;
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), pvType));
                 }
             }
-            return providerValue;
+
         }
 
         internal object ConvertToProviderType(object frameworkValue)
         {
-            if (frameworkValue == DBNull.Value)
+            Type fvType = frameworkValue.GetType();
+
+            if (fvType == Type || frameworkValue == null || frameworkValue == DBNull.Value)
             {
                 return frameworkValue;
             }
-            else if (_convertFrameworkToProvider!= null)
+            else if (fvType.IsArray)
+            {
+                if (!Type.IsArray || fvType.GetElementType() != Type.GetElementType())
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), fvType));
+                }
+
+                return frameworkValue;
+            }
+            else if (_convertFrameworkToProvider != null)
             {
                 return _convertFrameworkToProvider(frameworkValue);
             }
-
-            return frameworkValue;
+            else
+            {
+                if (
+                    fvType == typeof(String) || Type == typeof(String) ||
+                    (IsTypeNumeric(fvType) && IsTypeNumeric(Type))
+                )
+                {
+                    return Convert.ChangeType(frameworkValue, Type);
+                }
+                else
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), fvType));
+                }
+            }
         }
 
+        private bool IsTypeNumeric(Type type)
+        {
+            return (
+                type.IsEnum ||
+                type == typeof(Boolean) ||
+                type == typeof(SByte) || type == typeof(Byte) ||
+                type == typeof(Int16) || type == typeof(UInt16) ||
+                type == typeof(Int32) || type == typeof(UInt32) ||
+                type == typeof(Int64) || type == typeof(UInt64) ||
+                type == typeof(float) || type == typeof(double) ||
+                type == typeof(decimal)
+            );
+        }
     }
 }
