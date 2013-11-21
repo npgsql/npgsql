@@ -3296,6 +3296,39 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [SetCulture("nl-BE")]
+        public void InvariantCultureNpgsqlCopySerializer()
+        {
+            // Test for https://github.com/npgsql/Npgsql/pull/92
+            // SetCulture is used to set a culture where a comma is used to separate decimal values (0,5) which will cause problems if Npgsql 
+            // doesn't convert correctly to use a point. (0.5)
+
+            var cmd = new NpgsqlCommand("COPY data (field_int4, field_int8, field_float4) FROM STDIN", Conn);
+            var npgsqlCopySerializer = new NpgsqlCopySerializer(Conn);
+            var npgsqlCopyIn = new NpgsqlCopyIn(cmd, Conn, npgsqlCopySerializer.ToStream);
+
+            npgsqlCopyIn.Start();
+            npgsqlCopySerializer.AddInt32(300000);
+            npgsqlCopySerializer.AddInt64(1000000);
+            npgsqlCopySerializer.AddNumber(0.5);
+            npgsqlCopySerializer.EndRow();
+            npgsqlCopySerializer.Flush();
+            npgsqlCopyIn.End();
+
+
+
+            NpgsqlDataReader dr = new NpgsqlCommand("select field_int4, field_int8, field_float4 from data", Conn).ExecuteReader();
+            dr.Read();
+
+            Assert.AreEqual(300000, dr[0]);
+            Assert.AreEqual(1000000, dr[1]);
+            Assert.AreEqual(0.5, dr[2]);
+
+
+
+        }
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:
