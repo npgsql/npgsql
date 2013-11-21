@@ -3358,6 +3358,8 @@ namespace NpgsqlTests
         [SetCulture("nl-BE")]
         public void InvariantCultureNpgsqlCopySerializer()
         {
+            if (BACKEND_PROTOCOL_VERSION < 3)
+                Assert.Ignore("This test hangs when running with protocol version 2");
             // Test for https://github.com/npgsql/Npgsql/pull/92
             // SetCulture is used to set a culture where a comma is used to separate decimal values (0,5) which will cause problems if Npgsql 
             // doesn't convert correctly to use a point. (0.5)
