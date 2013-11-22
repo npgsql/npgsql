@@ -213,8 +213,9 @@ namespace NpgsqlTypes
             // may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
             // below by reversing it, so if GetBitString() is used, no harm is done.
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-            BitString bs = BitString.Parse(BackendData);
-            return bs.Length == 1 ? (object)bs[0] : bs;
+            return BitString.Parse(BackendData);
+//            BitString bs = BitString.Parse(BackendData);
+//            return bs.Length == 1 ? (object)bs[0] : bs;
         }
 
         private static bool ByteArrayEqual(byte[] l, byte[] r)

@@ -49,6 +49,10 @@ namespace NpgsqlTypes
     internal delegate Object ConvertBackendBinaryToNativeHandler(
         NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier);
 
+    internal delegate object ConvertProviderTypeToFrameworkTypeHandler(object value);
+
+    internal delegate object ConvertFrameworkTypeToProviderTypeHandler(object value);
+
     /// <summary>
     /// Represents a backend data type.
     /// This class can be called upon to convert a backend field representation to a native object.
@@ -57,8 +61,8 @@ namespace NpgsqlTypes
     {
         private readonly ConvertBackendTextToNativeHandler _ConvertBackendTextToNative;
         private readonly ConvertBackendBinaryToNativeHandler _ConvertBackendBinaryToNative;
-        private readonly ConvertProviderTypeToFrameworkTypeHander _convertProviderToFramework;
-        private readonly ConvertFrameworkTypeToProviderTypeHander _convertFrameworkToProvider;
+        private readonly ConvertProviderTypeToFrameworkTypeHandler _convertProviderToFramework;
+        private readonly ConvertFrameworkTypeToProviderTypeHandler _convertFrameworkToProvider;
 
         internal Int32 _OID;
         private readonly String _Name;
@@ -100,21 +104,9 @@ namespace NpgsqlTypes
                                         ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
                                         ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative,
                                         Type frameworkType,
-                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
-                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
+                                        ConvertProviderTypeToFrameworkTypeHandler convertProviderToFramework,
+                                        ConvertFrameworkTypeToProviderTypeHandler convertFrameworkToProvider)
             : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, ConvertBackendBinaryToNative)
-        {
-            _frameworkType = frameworkType;
-            _convertProviderToFramework = convertProviderToFramework;
-            _convertFrameworkToProvider = convertFrameworkToProvider;
-        }
-
-        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-                                        ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
-                                        Type frameworkType,
-                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
-                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
-            : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, null)
         {
             _frameworkType = frameworkType;
             _convertProviderToFramework = convertProviderToFramework;
@@ -246,7 +238,7 @@ namespace NpgsqlTypes
             else
             {
                 if (
-                    pvType == typeof(String) || FrameworkType == typeof(String) ||
+                    FrameworkType == typeof(String) ||
                     (IsTypeNumeric(pvType) && IsTypeNumeric(FrameworkType))
                 )
                 {
@@ -284,7 +276,7 @@ namespace NpgsqlTypes
             else
             {
                 if (
-                    fvType == typeof(String) || Type == typeof(String) ||
+                    Type == typeof(String) ||
                     (IsTypeNumeric(fvType) && IsTypeNumeric(Type))
                 )
                 {

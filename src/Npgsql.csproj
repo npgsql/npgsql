@@ -202,6 +202,7 @@
   <ItemGroup>
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvProviderToNative.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
     <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
     <Compile Include="NpgsqlTypes\FastConverter.cs" />
@@ -213,6 +214,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlNativeToBackendOptions.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeConvBackendToNative.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeConvNativeToBackend.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTypeConvNativeToProvider.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeInfoBackend.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeInfoNative.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
