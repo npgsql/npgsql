@@ -45,10 +45,10 @@ namespace Npgsql
         private readonly byte[] _bQueryString;
         private readonly Int32[] _parameterIDs;
 
-        public NpgsqlParse(String prepareName, String queryString, Int32[] parameterIDs)
+        public NpgsqlParse(String prepareName, byte[] queryString, Int32[] parameterIDs)
         {
             _bPrepareName = BackendEncoding.UTF8Encoding.GetBytes(prepareName);
-            _bQueryString = BackendEncoding.UTF8Encoding.GetBytes(queryString);
+            _bQueryString = queryString;
 
             _parameterIDs = parameterIDs;
         }

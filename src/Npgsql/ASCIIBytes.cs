@@ -31,6 +31,9 @@ namespace Npgsql
 {
     internal enum ASCIIBytes : byte
     {
+        LineFeed = (byte)'\n',
+        CarriageReturn = (Byte)'\r',
+
         Space = (byte)' ',
 
         DoubleQuote = (byte)'"',
@@ -53,6 +56,9 @@ namespace Npgsql
         b7 = (byte)'7',
         b8 = (byte)'8',
         b9 = (byte)'9',
+
+        Colon = (byte)':',
+        SemiColon = (byte)';',
 
         A = (byte)'A',
         B = (byte)'B',
@@ -98,5 +104,6 @@ namespace Npgsql
         internal static readonly byte[] FALSE           = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
         internal static readonly byte[] INFINITY        = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
         internal static readonly byte[] NEG_INFINITY    = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
+        internal static readonly byte[] LineTerminator  = BackendEncoding.UTF8Encoding.GetBytes("\r\n");
     }
 }

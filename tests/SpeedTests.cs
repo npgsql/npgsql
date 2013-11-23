@@ -4,8 +4,11 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.IO;
 using NUnit.Framework;
+
 using Npgsql;
+using NpgsqlTypes;
 
 namespace NpgsqlTests
 {
@@ -597,6 +600,36 @@ namespace NpgsqlTests
                 }
             }
         }
+
+        [Test, Description("Many parameter substitution test")]
+        public void ParameterizedPrepareManyFields()
+        {
+            using (var command = Conn.CreateCommand())
+            {
+                StringWriter sql = new StringWriter();
+
+                sql.WriteLine("SELECT");
+                sql.WriteLine(":p01, :p02, :p03, :p04, :p05, :p06, :p07, :p08, :p09, :p10,");
+                sql.WriteLine(":p11, :p12, :p13, :p14, :p15, :p16, :p17, :p18, :p19, :p20");
+
+                command.CommandText = sql.ToString();
+
+                for (int i = 0 ; i < 20 ; i++)
+                {
+                    command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
+                }
+
+                using (var metrics = TestMetrics.Start(TestRunTime, true))
+                {
+                    while (! metrics.TimesUp)
+                    {
+                        command.Prepare();
+                        metrics.IncrementIterations();
+                    }
+                }
+            }
+        }
+
         #region Setup / Teardown / Utils
 
         private Stopwatch _watch;
