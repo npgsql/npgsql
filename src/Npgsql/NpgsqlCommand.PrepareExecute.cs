@@ -254,32 +254,18 @@ namespace Npgsql
                 }
                 else
                 {
-                    bool sendPortalDescribe = ! portalDescribeSent;
-
                     // Update the Bind object with current parameter data as needed.
                     BindParameters();
 
-                    // Write the Bind message to the wire.
+                    // Write the Bind, Execute, and Sync message to the wire.
                     m_Connector.Bind(bind);
-
-                    if (sendPortalDescribe)
-                    {
-                        NpgsqlDescribe portalDescribe = new NpgsqlDescribePortal(bind.PortalName);
-
-                        // Write a Describe message to the wire.
-                        m_Connector.Describe(portalDescribe);
-
-                        portalDescribeSent = true;
-                    }
-
-                    // Finally, write the Execute and Sync messages to the wire.
                     m_Connector.Execute(execute);
                     m_Connector.Sync();
 
                     // Flush and wait for responses.
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
-                    // Construct the return reader, possibly with a saved row description.
+                    // Construct the return reader, possibly with a saved row description from Prepare().
                     reader = new ForwardsOnlyDataReader(
                         responseEnum,
                         cb,
@@ -288,13 +274,6 @@ namespace Npgsql
                         true,
                         currentRowDescription
                     );
-
-                    if (sendPortalDescribe)
-                    {
-                        // We sent a Describe message. If the query produces a result set,
-                        // PG sent a row description, and the reader has now found it,
-                        currentRowDescription = reader.CurrentDescription;
-                    }
                 }
 
                 return reader;
@@ -369,7 +348,6 @@ namespace Npgsql
             {
                 bind = null;
                 execute = null;
-                portalDescribeSent = false;
                 currentRowDescription = null;
                 prepared = PrepareStatus.NeedsPrepare;
             }
@@ -464,11 +442,15 @@ namespace Npgsql
                         if (returnRowDescData.TypeInfo != null)
                         {
                             // Binary format?
-                            resultFormatCodes[i] = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
+                            // PG always defaults to text encoding.  We can fix up the row description
+                            // here based on support for binary encoding.  Once this is done,
+                            // there is no need to request another row description after Bind.
+                            returnRowDescData.FormatCode = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? FormatCode.Binary : FormatCode.Text;
+                            resultFormatCodes[i] = (Int16)returnRowDescData.FormatCode;
                         }
                         else
                         {
-                            // Text Format
+                            // Text format (default).
                             resultFormatCodes[i] = (Int16)FormatCode.Text;
                         }
                     }
@@ -478,10 +460,14 @@ namespace Npgsql
                     resultFormatCodes = new Int16[] { 0 };
                 }
 
+                // Save the row description for use with all future Executes.
+                currentRowDescription = returnRowDesc;
+
                 // The Bind and Execute message objects live through multiple Executes.
                 // Only Bind changes at all between Executes, which is done in BindParameters().
                 bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
                 execute = new NpgsqlExecute(portalName, 0);
+
                 prepared = PrepareStatus.V3Prepared;
             }
         }

@@ -80,7 +80,6 @@ namespace Npgsql
         private PrepareStatus prepared = PrepareStatus.NotPrepared;
         private NpgsqlBind bind = null;
         private NpgsqlExecute execute = null;
-        private bool portalDescribeSent = false;
         private NpgsqlRowDescription currentRowDescription = null;
 
         private Int64 lastInsertedOID = 0;
