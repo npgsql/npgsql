@@ -125,7 +125,7 @@ namespace Npgsql
             public FormatCode FormatCode
             {
                 get { return _formatCode; }
-                protected set { _formatCode = value; }
+                internal set { _formatCode = value; }
             }
 
             public NpgsqlBackendTypeInfo TypeInfo
