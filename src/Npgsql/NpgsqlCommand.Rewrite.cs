@@ -210,8 +210,8 @@ namespace Npgsql
 
         private class StringChunk
         {
-            public int Begin;
-            public int Length;
+            public readonly int Begin;
+            public readonly int Length;
 
             public StringChunk(int begin, int length)
             {
@@ -220,6 +220,13 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Process this.commandText, trimming each distinct command and substituting paramater
+        /// tokens.
+        /// </summary>
+        /// <param name="prepare"></param>
+        /// <param name="forExtendQuery"></param>
+        /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
         private byte[] GetCommandText(bool prepare, bool forExtendQuery)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
@@ -243,8 +250,7 @@ namespace Npgsql
                 {
                     commandBuilder
                         .WriteBytes((byte)ASCIIBytes.SemiColon)
-                        .WriteBytes((byte)ASCIIBytes.CarriageReturn)
-                        .WriteBytes((byte)ASCIIBytes.LineFeed);
+                        .WriteBytes(ASCIIByteArrays.LineTerminator);
                 }
 
                 if (prepare && ! forExtendQuery)
@@ -312,7 +318,14 @@ namespace Npgsql
             return commandBuilder.ToArray();
         }
 
-        private StringChunk[] GetDistinctTrimmedCommands(string src)
+        /// <summary>
+        /// Find the beginning and end of each distinct SQL command and produce
+        /// a list of descriptors, one for each command.  Commands described are trimmed of
+        /// leading and trailing white space and their terminating semi-colons.
+        /// </summary>
+        /// <param name="src">Raw command text.</param>
+        /// <returns>List of chunk descriptors.</returns>
+        private static StringChunk[] GetDistinctTrimmedCommands(string src)
         {
             bool inQuote = false;
             bool quoteEscape = false;
@@ -326,6 +339,7 @@ namespace Npgsql
             {
                 currCharOfs++;
 
+                // goto label for character re-evaluation:
                 ProcessCharacter:
 
                 if (! inQuote)
@@ -400,6 +414,7 @@ namespace Npgsql
                                 quoteEscape = false;
                                 inQuote = false;
 
+                                // Re-evaluate this character
                                 goto ProcessCharacter;
                             }
                             else
@@ -546,6 +561,16 @@ namespace Npgsql
             Colon
         }
 
+        /// <summary>
+        /// Append a region of a source command text to an output command, performing parameter token
+        /// substitutions.
+        /// </summary>
+        /// <param name="dest">Stream to which to append output.</param>
+        /// <param name="src">Command text.</param>
+        /// <param name="begin">Starting index within src.</param>
+        /// <param name="length">Length of region to be processed.</param>
+        /// <param name="prepare"></param>
+        /// <param name="forExtendedQuery"></param>
         private void AppendCommandReplacingParameterValues(Stream dest, string src, int begin, int length, bool prepare, bool forExtendedQuery)
         {
             char lastChar = '\0';
@@ -553,7 +578,6 @@ namespace Npgsql
             char paramMarker = '\0';
             int currTokenBeg = begin;
             int currTokenLen = 0;
-
             Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
 
             if (prepare)
@@ -570,6 +594,7 @@ namespace Npgsql
             {
                 char ch = src[currCharOfs];
 
+                // goto label for character re-evaluation:
                 ProcessCharacter:
 
                 switch (currTokenType)
@@ -735,6 +760,7 @@ namespace Npgsql
                                     currTokenLen = 0;
                                 }
 
+                                // Re-evaluate this character
                                 goto ProcessCharacter;
 
                         }
