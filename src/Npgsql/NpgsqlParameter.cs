@@ -381,7 +381,7 @@ namespace Npgsql
                 bound = false;
                 if (value == NpgsqlDbType.Array)
                 {
-                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"), (Exception)null);
                 }
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {

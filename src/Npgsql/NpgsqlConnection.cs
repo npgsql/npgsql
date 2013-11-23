@@ -672,7 +672,7 @@ namespace Npgsql
 
             if (string.IsNullOrEmpty(dbName))
             {
-                throw new ArgumentOutOfRangeException(String.Format(resman.GetString("Exception_InvalidDbName"), dbName), "dbName");
+                throw new ArgumentOutOfRangeException("dbName", String.Format(resman.GetString("Exception_InvalidDbName"), dbName));
             }
 
             String oldDatabaseName = Database;
@@ -1189,7 +1189,7 @@ namespace Npgsql
                     case "ForeignKeys":
                         return NpgsqlSchema.GetForeignKeys(tempConn, restrictions);
                     default:
-                        throw new ArgumentOutOfRangeException("collectionName", collectionName);
+                        throw new ArgumentOutOfRangeException("collectionName", collectionName, null);
                 }
             }
         }
