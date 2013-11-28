@@ -62,7 +62,9 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteBytes(_messageData);
+            outputStream
+                .WriteBytes(_messageData)
+                .Flush();
         }
     }
 }

@@ -63,7 +63,8 @@ namespace Npgsql
                 .WriteBytes((byte)FrontEndMessageCode.Describe)
                 .WriteInt32(_messageLength)
                 .WriteBytes((byte)_whatToDescribe)
-                .WriteBytesNullTerminated(_bPortalName);
+                .WriteBytesNullTerminated(_bPortalName)
+                .Flush();
         }
     }
 
