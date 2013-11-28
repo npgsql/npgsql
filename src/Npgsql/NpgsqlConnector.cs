@@ -109,8 +109,9 @@ namespace Npgsql
         private NpgsqlNetworkStream _baseStream;
 
         // The top level stream to the backend.
-        // With SSL, this stream is the SSL stream, which sits on top of _baseStream.
-        // Otherwise, this stream is the _baseStream.
+        // A special buffered stream is used: Write operations are buffered, read operations are unbuffered (already buffered in network stream).
+        // With SSL, this stream uses the SSL stream, which sits on top of _baseStream.
+        // Otherwise, this stream uses the _baseStream.
         private Stream _stream;
 
         // Mediator which will hold data generated from backend.
