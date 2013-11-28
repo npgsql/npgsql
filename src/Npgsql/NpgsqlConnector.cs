@@ -109,10 +109,9 @@ namespace Npgsql
         private NpgsqlNetworkStream _baseStream;
 
         // The top level stream to the backend.
-        // This is a BufferedStream.
-        // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
-        // Otherwise, this stream sits directly on top of _baseStream.
-        private BufferedStream _stream;
+        // With SSL, this stream is the SSL stream, which sits on top of _baseStream.
+        // Otherwise, this stream is the _baseStream.
+        private Stream _stream;
 
         // Mediator which will hold data generated from backend.
         private readonly NpgsqlMediator _mediator;
@@ -617,7 +616,7 @@ namespace Npgsql
         /// <summary>
         /// The top level stream to the backend.
         /// </summary>
-        internal BufferedStream Stream
+        internal Stream Stream
         {
             get { return _stream; }
             set { _stream = value; }
