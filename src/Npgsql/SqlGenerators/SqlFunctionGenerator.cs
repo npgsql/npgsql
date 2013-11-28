@@ -27,18 +27,18 @@ namespace Npgsql.SqlGenerators {
                 String text = "";
                 if (false) { }
 #if ENTITIES6
-                else if (!String.IsNullOrEmpty(edmFunc.Schema)) text += EUt.Escape(edmFunc.Schema);
+                else if (!String.IsNullOrEmpty(edmFunc.Schema)) text += QuoteIdentifier(edmFunc.Schema);
 #endif
-                else if (!String.IsNullOrEmpty(edmFunc.NamespaceName)) text += EUt.Escape(edmFunc.NamespaceName);
+                else if (!String.IsNullOrEmpty(edmFunc.NamespaceName)) text += QuoteIdentifier(edmFunc.NamespaceName);
 
                 if (!String.IsNullOrEmpty(text))
                     text += ".";
 
                 if (false) { }
 #if ENTITIES6
-                else if (!String.IsNullOrEmpty(edmFunc.StoreFunctionNameAttribute)) text += EUt.Escape(edmFunc.StoreFunctionNameAttribute);
+                else if (!String.IsNullOrEmpty(edmFunc.StoreFunctionNameAttribute)) text += QuoteIdentifier(edmFunc.StoreFunctionNameAttribute);
 #endif
-                else if (!String.IsNullOrEmpty(edmFunc.Name)) text += EUt.Escape(edmFunc.Name);
+                else if (!String.IsNullOrEmpty(edmFunc.Name)) text += QuoteIdentifier(edmFunc.Name);
 
                 command.CommandType = System.Data.CommandType.StoredProcedure;
                 command.CommandText = text;
@@ -87,12 +87,6 @@ namespace Npgsql.SqlGenerators {
 
                     command.Parameters.Add(pgParm);
                 }
-            }
-        }
-
-        class EUt {
-            internal static string Escape(string p) {
-                return p;
             }
         }
 
