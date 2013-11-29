@@ -44,10 +44,6 @@ namespace NpgsqlTypes
     internal delegate byte[] ConvertNativeToBackendTextHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement);
     internal delegate byte[] ConvertNativeToBackendBinaryHandler(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options);
 
-    internal delegate object ConvertProviderTypeToFrameworkTypeHander(object value);
-
-    internal delegate object ConvertFrameworkTypeToProviderTypeHander(object value);
-
     /// <summary>
     /// Represents a backend data type.
     /// This class can be called upon to convert a native object to its backend field representation,

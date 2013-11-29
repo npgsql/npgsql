@@ -1,9 +1,9 @@
-// NpgsqlTypes.NpgsqlDbType.cs
+// NpgsqlTypes.NpgsqlTypeConvProviderToNative.cs
 //
 // Author:
-//    Francisco Jr. (fxjrlists@yahoo.com.br)
+//    Glen Parker <glenebob@gmail.com>
 //
-//    Copyright (C) 2002 The Npgsql Development Team
+//    Copyright (C) 2013 The Npgsql Development Team
 //    npgsql-general@gborg.postgresql.org
 //    http://gborg.postgresql.org/project/npgsql/projdisplay.php
 //
@@ -24,52 +24,26 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+// This file provides data type converters between PostgreSQL representations
+// and .NET objects.
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
+using Npgsql;
+
 namespace NpgsqlTypes
 {
-    public enum NpgsqlDbType
+    /// <summary>
+    /// Provide event handlers to convert the basic native supported data types from
+    /// provider type to native form.
+    /// </summary>
+    internal static class ProviderToNativeTypeConverter
     {
-        // This list used to be ordered. But this ordering would break compiled applications
-        // as enum values would change after each insertion. Now, just append new types.
-
-        // Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
-
-        Array = int.MinValue,
-
-        Bigint = 1,
-
-        Boolean,
-        Box,
-        Bytea,
-        Circle,
-        Char,
-        Date,
-        Double,
-        Integer,
-        Line,
-        LSeg,
-        Money,
-        Numeric,
-        Path,
-        Point,
-        Polygon,
-        Real,
-        Smallint,
-        Text,
-        Time,
-        Timestamp,
-        Varchar,
-        Refcursor,
-        Inet,
-        Bit,
-        TimestampTZ,
-        Uuid,
-        Xml,
-        Oidvector,
-        Interval,
-        TimeTZ,
-        Name,
-        Abstime,
-        MacAddr,
-        Object
+        // Placeholder.
     }
 }

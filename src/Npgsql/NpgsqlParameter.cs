@@ -70,9 +70,9 @@ namespace Npgsql
         private Object value = null;
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Boolean useCast = false;
+        private bool floatingType = true;
 
         private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
 
@@ -115,7 +115,7 @@ namespace Npgsql
                 this.value = DBNull.Value;
                 type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             }
-            else if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+            else if (! NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
             {
                 throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
             }*/
@@ -132,6 +132,7 @@ namespace Npgsql
             : this(parameterName, parameterType, 0, String.Empty)
         {
         }
+
 
         public NpgsqlParameter(String parameterName, DbType parameterType)
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, 0, String.Empty)
@@ -151,9 +152,18 @@ namespace Npgsql
         }
 
         public NpgsqlParameter(String parameterName, DbType parameterType, Int32 size)
-            : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, String.Empty)
+        //            : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, String.Empty)
         {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, parameterType, size, source_column);
+
+            this.ParameterName = parameterName;
+
+            this.DbType = parameterType;
+
+            this.size = size;
+            this.source_column = String.Empty;
         }
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
@@ -170,7 +180,7 @@ namespace Npgsql
 
             this.ParameterName = parameterName;
 
-            NpgsqlDbType = parameterType; //Allow the setter to catch any exceptions.
+            this.NpgsqlDbType = parameterType;
 
             this.size = size;
             source_column = sourceColumn;
@@ -180,6 +190,7 @@ namespace Npgsql
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, sourceColumn)
         {
         }
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
@@ -206,6 +217,7 @@ namespace Npgsql
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
         {
+            this.floatingType = false;
             this.ParameterName = parameterName;
             this.Size = size;
             this.SourceColumn = sourceColumn;
@@ -214,7 +226,14 @@ namespace Npgsql
             this.Precision = precision;
             this.Scale = scale;
             this.SourceVersion = sourceVersion;
-            this.Value = value;
+
+            NpgsqlDbType = parameterType;
+            NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlDbType, out type_info);
+
+            DbType = type_info.DbType;
+            NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo);
+
+            Value = value;
 
             if (this.value == null)
             {
@@ -262,13 +281,14 @@ namespace Npgsql
             }
         }
 
+
         public Boolean UseCast
         {
             get
             {
 
                 // Prevents casts to be added for null values when they aren't needed.
-                if (!useCast && (value == DBNull.Value || value == null))
+                if (! useCast && (value == DBNull.Value || value == null))
                     return false;
                 //return useCast; //&& (value != DBNull.Value);
                 // This check for Datetime.minvalue and maxvalue is needed in order to
@@ -278,7 +298,7 @@ namespace Npgsql
                 // Josh's solution to add cast is documented here:
                 // http://pgfoundry.org/forum/message.php?msg_id=1004118
 
-                return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
+                return useCast || /* DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || */ ! NpgsqlTypesHelper.DefinedType(Value) || size > 0;
             }
         }
 
@@ -348,13 +368,75 @@ namespace Npgsql
 
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
 
-                useCast = value != DbType.Object;
+                if (type_info != null && value == type_info.DbType)
+                {
+                    return;
+                }
+
+                NpgsqlNativeTypeInfo new_type_info;
+                NpgsqlBackendTypeInfo newBackendTypeInfo;
+                object newNpgsqlValue = null;
+                object newProviderValue = null;
+
+                NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out new_type_info);
+                NpgsqlTypesHelper.TryGetBackendTypeInfo(new_type_info.Name, out newBackendTypeInfo);
+
+                if (this.value == null || this.value == DBNull.Value)
+                {
+                    type_info = new_type_info;
+                    backendTypeInfo = newBackendTypeInfo;
+
+                    floatingType = false;
+                    useCast = (DbType != DbType.Object && DbType != DbType.String);
+
+                    return;
+                }
+
+                try
+                {
+                    newProviderValue = newBackendTypeInfo.ConvertToProviderType(this.NpgsqlValue);
+                }
+                catch (InvalidCastException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value.GetType()), e);
+                }
+
+                try
+                {
+                    newNpgsqlValue = newBackendTypeInfo.ConvertToFrameworkType(newProviderValue);
+                }
+                catch (InvalidCastException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), newNpgsqlValue.GetType()), e);
+                }
+
+                this.type_info = new_type_info;
+                this.backendTypeInfo = newBackendTypeInfo;
+                this.value = newProviderValue;
+                this.npgsqlValue = newNpgsqlValue;
+
+                floatingType = false;
+                useCast = (DbType != DbType.Object && DbType != DbType.String);
                 bound = false;
 
-                if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
-                {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
-                }
+
+
+                /*
+                                useCast = value != DbType.Object;
+
+                                if (! NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
+                                {
+                                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value));
+                                }
+                */
             }
         }
 
@@ -377,18 +459,79 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
-                useCast = true;
-                bound = false;
+
                 if (value == NpgsqlDbType.Array)
                 {
-                    throw new ArgumentOutOfRangeException(resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                    throw new ArgumentOutOfRangeException(Messages.GetString("Exception_ParameterTypeIsOnlyArray"));
                 }
-                if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
+                /*
+                                if (! NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
+                                {
+                                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value));
+                                }
+                */
+
+                if (type_info != null && value == type_info.NpgsqlDbType)
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                    return;
                 }
+
+                NpgsqlNativeTypeInfo new_type_info;
+                NpgsqlBackendTypeInfo newBackendTypeInfo;
+                object newNpgsqlValue = null;
+                object newProviderValue = null;
+
+                NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out new_type_info);
+                NpgsqlTypesHelper.TryGetBackendTypeInfo(new_type_info.Name, out newBackendTypeInfo);
+
+                if (this.value == null || this.value == DBNull.Value)
+                {
+                    type_info = new_type_info;
+                    backendTypeInfo = newBackendTypeInfo;
+
+                    floatingType = false;
+//                    useCast = true;
+
+                    return;
+                }
+
+                try
+                {
+                    newProviderValue = newBackendTypeInfo.ConvertToProviderType(this.value);
+                }
+                catch (InvalidCastException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value.GetType()), e);
+                }
+
+                try
+                {
+                    newNpgsqlValue = newBackendTypeInfo.ConvertToFrameworkType(newProviderValue);
+                }
+                catch (InvalidCastException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), newNpgsqlValue.GetType()), e);
+                }
+
+                this.type_info = new_type_info;
+                this.backendTypeInfo = newBackendTypeInfo;
+                this.value = newProviderValue;
+                this.npgsqlValue = newNpgsqlValue;
+
+                floatingType = false;
+                useCast = (DbType != DbType.Object && DbType != DbType.String);
+                bound = false;
             }
         }
+
 
         internal NpgsqlNativeTypeInfo TypeInfo
         {
@@ -422,6 +565,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Direction", value);
                 direction = value;
+                bound = false;
             }
         }
 
@@ -446,6 +590,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "IsNullable", value);
                 is_nullable = value;
+                bound = false;
             }
         }
 
@@ -473,7 +618,6 @@ namespace Npgsql
                 // no longer prefix with : so that the m_Name returned is the m_Name set
 
                 m_Name = m_Name.Trim();
-
                 bound = false;
 
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", m_Name);
@@ -492,8 +636,8 @@ namespace Npgsql
                 {
                     return name.Length > 1 ? name.Substring(1) : string.Empty;
                 }
-                return name;
 
+                return name;
             }
         }
 
@@ -517,6 +661,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "SourceColumn", value);
                 source_column = value;
+                bound = false;
             }
         }
 
@@ -538,6 +683,7 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "SourceVersion", value);
+                bound = false;
                 source_version = value;
             }
         }
@@ -559,6 +705,7 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "Value");
                 //return value;
 
+
                 NpgsqlBackendTypeInfo backendTypeInfo;
 
                 if (NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
@@ -569,45 +716,88 @@ namespace Npgsql
                 throw new NotSupportedException();
                 */
 
+
+
             } // [TODO] Check and validate data type.
+
             set
             {
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Value", value);
 
-                if ((value == null) || (value == DBNull.Value))
+
+                if (value == null || value == DBNull.Value)
                 {
                     // don't really know what to do - leave default and do further exploration
                     // Default type for null values is String.
                     this.value = value;
                     this.npgsqlValue = value;
 
-                    bound = false;
+                    if (type_info == null)
+                    {
+                        type_info = NpgsqlTypesHelper.GetNativeTypeInfo(DbType.Object);
+
+                        NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo);
+                    }
+
 
                     //if (type_info == null)
                     //{
-                    //    type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+                    //    new_type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
                     //}
                     return;
                 }
 
-                if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
+                NpgsqlNativeTypeInfo new_type_info = this.type_info;
+                NpgsqlBackendTypeInfo newBackendTypeInfo = this.backendTypeInfo;
+                object newNpgsqlValue = null;
+                object newProviderValue = null;
+
+                if (new_type_info == null || (floatingType && this.backendTypeInfo.FrameworkType != value.GetType()))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    if (! NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out new_type_info))
+                    {
+                        throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    }
+
+                    if (! NpgsqlTypesHelper.TryGetBackendTypeInfo(new_type_info.Name, out newBackendTypeInfo))
+                    {
+                        throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    }
                 }
 
-                if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
+                try
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-
+                    newProviderValue = newBackendTypeInfo.ConvertToProviderType(value);
                 }
-                else
+                catch (InvalidCastException)
                 {
-                    this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
-                    this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
-
-                    bound = false;
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), value.GetType()), e);
                 }
 
+                try
+                {
+                    newNpgsqlValue = newBackendTypeInfo.ConvertToFrameworkType(newProviderValue);
+                }
+                catch (InvalidCastException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), newNpgsqlValue.GetType()), e);
+                }
+
+                this.type_info = new_type_info;
+                this.backendTypeInfo = newBackendTypeInfo;
+                this.value = newProviderValue;
+                this.npgsqlValue = newNpgsqlValue;
+
+                useCast = (DbType != DbType.Object && DbType != DbType.String);
+                bound = false;
             }
         }
 
@@ -630,8 +820,6 @@ namespace Npgsql
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlValue", value);
 
                 Value = value;
-
-                bound = false;
             }
         }
 
@@ -639,6 +827,7 @@ namespace Npgsql
         {
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             type_info = null;
+            backendTypeInfo = null;
             this.Value = Value;
             bound = false;
         }
@@ -663,6 +852,7 @@ namespace Npgsql
             clone.scale = scale;
             clone.size = size;
             clone.type_info = type_info;
+            clone.backendTypeInfo = backendTypeInfo;
             clone.direction = direction;
             clone.is_nullable = is_nullable;
             clone.m_Name = m_Name;
@@ -670,6 +860,7 @@ namespace Npgsql
             clone.source_version = source_version;
             clone.value = value;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
+            clone.floatingType = floatingType;
 
             return clone;
         }

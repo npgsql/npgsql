@@ -49,6 +49,10 @@ namespace NpgsqlTypes
     internal delegate Object ConvertBackendBinaryToNativeHandler(
         NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier);
 
+    internal delegate object ConvertProviderTypeToFrameworkTypeHandler(object value);
+
+    internal delegate object ConvertFrameworkTypeToProviderTypeHandler(object value);
+
     /// <summary>
     /// Represents a backend data type.
     /// This class can be called upon to convert a backend field representation to a native object.
@@ -57,8 +61,8 @@ namespace NpgsqlTypes
     {
         private readonly ConvertBackendTextToNativeHandler _ConvertBackendTextToNative;
         private readonly ConvertBackendBinaryToNativeHandler _ConvertBackendBinaryToNative;
-        private readonly ConvertProviderTypeToFrameworkTypeHander _convertProviderToFramework;
-        private readonly ConvertFrameworkTypeToProviderTypeHander _convertFrameworkToProvider;
+        private readonly ConvertProviderTypeToFrameworkTypeHandler _convertProviderToFramework;
+        private readonly ConvertFrameworkTypeToProviderTypeHandler _convertFrameworkToProvider;
 
         internal Int32 _OID;
         private readonly String _Name;
@@ -100,21 +104,9 @@ namespace NpgsqlTypes
                                         ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
                                         ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative,
                                         Type frameworkType,
-                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
-                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
+                                        ConvertProviderTypeToFrameworkTypeHandler convertProviderToFramework,
+                                        ConvertFrameworkTypeToProviderTypeHandler convertFrameworkToProvider)
             : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, ConvertBackendBinaryToNative)
-        {
-            _frameworkType = frameworkType;
-            _convertProviderToFramework = convertProviderToFramework;
-            _convertFrameworkToProvider = convertFrameworkToProvider;
-        }
-
-        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
-                                        ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
-                                        Type frameworkType,
-                                        ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
-                                        ConvertFrameworkTypeToProviderTypeHander convertFrameworkToProvider)
-            : this(OID, Name, NpgsqlDbType, DbType, Type, ConvertBackendTextToNative, null)
         {
             _frameworkType = frameworkType;
             _convertProviderToFramework = convertProviderToFramework;
@@ -224,41 +216,91 @@ namespace NpgsqlTypes
 
         internal object ConvertToFrameworkType(object providerValue)
         {
-            if (providerValue == DBNull.Value)
+            Type pvType = providerValue.GetType();
+
+            if (pvType == FrameworkType || providerValue == null || providerValue == DBNull.Value)
             {
+                return providerValue;
+            }
+            else if (pvType.IsArray)
+            {
+                if (!FrameworkType.IsArray || pvType.GetElementType() != Type.GetElementType())
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), pvType));
+                }
+
                 return providerValue;
             }
             else if (_convertProviderToFramework != null)
             {
                 return _convertProviderToFramework(providerValue);
             }
-            else if (Type != FrameworkType)
+            else
             {
-                try
+                if (
+                    FrameworkType == typeof(String) ||
+                    (IsTypeNumeric(pvType) && IsTypeNumeric(FrameworkType))
+                )
                 {
-                    return Convert.ChangeType(providerValue, FrameworkType, CultureInfo.InvariantCulture);
+                    return Convert.ChangeType(providerValue, FrameworkType);
                 }
-                catch
+                else
                 {
-                    return providerValue;
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), pvType));
                 }
             }
-            return providerValue;
+
         }
 
         internal object ConvertToProviderType(object frameworkValue)
         {
-            if (frameworkValue == DBNull.Value)
+            Type fvType = frameworkValue.GetType();
+
+            if (fvType == Type || frameworkValue == null || frameworkValue == DBNull.Value)
             {
                 return frameworkValue;
             }
-            else if (_convertFrameworkToProvider!= null)
+            else if (fvType.IsArray)
+            {
+                if (!Type.IsArray || fvType.GetElementType() != Type.GetElementType())
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), fvType));
+                }
+
+                return frameworkValue;
+            }
+            else if (_convertFrameworkToProvider != null)
             {
                 return _convertFrameworkToProvider(frameworkValue);
             }
-
-            return frameworkValue;
+            else
+            {
+                if (
+                    Type == typeof(String) ||
+                    (IsTypeNumeric(fvType) && IsTypeNumeric(Type))
+                )
+                {
+                    return Convert.ChangeType(frameworkValue, Type);
+                }
+                else
+                {
+                    throw new InvalidCastException(String.Format(Messages.GetString("Exception_ImpossibleToCast"), fvType));
+                }
+            }
         }
 
+        private bool IsTypeNumeric(Type type)
+        {
+            return (
+                type.IsEnum ||
+                type == typeof(Boolean) ||
+                type == typeof(SByte) || type == typeof(Byte) ||
+                type == typeof(Int16) || type == typeof(UInt16) ||
+                type == typeof(Int32) || type == typeof(UInt32) ||
+                type == typeof(Int64) || type == typeof(UInt64) ||
+                type == typeof(float) || type == typeof(double) ||
+                type == typeof(decimal)
+            );
+        }
     }
 }
