@@ -34,6 +34,8 @@ namespace NpgsqlTests
     [TestFixture]
     public class ConnectionTests : TestBase
     {
+        public ConnectionTests(string backendVersion) : base(backendVersion) { }
+
         [Test]
         public void ChangeDatabase()
         {
@@ -439,10 +441,5 @@ namespace NpgsqlTests
             }
         }
 
-    }
-    [TestFixture]
-    public class ConnectionTestsV2 : ConnectionTests
-    {
-        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }

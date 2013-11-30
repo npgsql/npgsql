@@ -11,6 +11,8 @@ namespace NpgsqlTests
     [TestFixture]
     public class SystemTransactionsTest : TestBase
     {
+        public SystemTransactionsTest(string backendVersion) : base(backendVersion) { }
+
         [Test, Description("Single connection enlisting explicitly, committing")]
         public void ExplicitEnlist()
         {
@@ -232,10 +234,5 @@ namespace NpgsqlTests
         }
 
         #endregion
-    }
-
-    public class SystemTransactionsTestV2 : SystemTransactionsTest
-    {
-        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
     }
 }
