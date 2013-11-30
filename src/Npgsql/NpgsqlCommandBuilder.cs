@@ -94,7 +94,7 @@ namespace Npgsql
         /// This method is reponsible to derive the command parameter list with values obtained from function definition.
         /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
         /// Parameters name will be parameter1, parameter2, ...
-        /// For while, only parameter name, NpgsqlDbType and parameter direction (IN, OUT, INOUT) are obtained.
+        /// For while, only parameter name and NpgsqlDbType are obtained.
         ///</summary>
         /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
         public static void DeriveParameters(NpgsqlCommand command)
@@ -105,24 +105,16 @@ namespace Npgsql
             string procedureName = null;
             string schemaName = null;
             string[] fullName = command.CommandText.Split('.');
-            
             if (fullName.Length > 1 && fullName[0].Length > 0)
             {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                if (command.Connector.ServerVersion >= new System.Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
-                else
-                    query = "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
+                query =
+                    "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
                 schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
                 procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
             }
             else
             {
-                // proargsmodes is supported for Postgresql 8.1 and above
-                if (command.Connector.ServerVersion >= new System.Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proargmodes from pg_proc where proname = :proname";
-                else
-                    query = "select proargnames, proargtypes from pg_proc where proname = :proname";
+                query = "select proargnames, proargtypes from pg_proc where proname = :proname";
                 procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
             }
 
@@ -138,8 +130,6 @@ namespace Npgsql
 
                 String[] names = null;
                 String[] types = null;
-                bool haveDirections = false;
-                string[] directions = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
@@ -149,11 +139,6 @@ namespace Npgsql
                             names = rdr.GetValue(0) as String[];
                         if (!rdr.IsDBNull(1))
                             types = rdr.GetString(1).Split();
-                        if ((rdr.FieldCount > 2) && (!rdr.IsDBNull(2))) // When all parameters are IN, "proargmodes" column is returned as null
-                        {
-                            haveDirections = true;
-                            directions = (string[])rdr.GetValue(2);
-                        }
                     }
                 }
 
@@ -176,38 +161,10 @@ namespace Npgsql
                             command.Parameters.Clear();
                             throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
                         }
-                        
-                        NpgsqlParameter param = new NpgsqlParameter();
                         if (names != null && i < names.Length)
-                            param.ParameterName = ":" + names[i];
+                            command.Parameters.Add(new NpgsqlParameter(":" + names[i], typeInfo.NpgsqlDbType));
                         else
-                            param.ParameterName = "parameter" + (i + 1).ToString();
-
-                        param.NpgsqlDbType = typeInfo.NpgsqlDbType;
-
-                        if (haveDirections)  // if any parameter is not IN
-                        {
-                            switch (directions[i])
-                            {
-                                case "o":
-                                    param.Direction = ParameterDirection.Output;
-                                    break;
-
-                                case "b":
-                                    param.Direction = ParameterDirection.InputOutput;
-                                    break;
-
-                                default:
-                                    param.Direction = ParameterDirection.Input;
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            param.Direction = ParameterDirection.Input;
-                        }
-
-                        command.Parameters.Add(param);
+                            command.Parameters.Add(new NpgsqlParameter("parameter" + (i + 1).ToString(), typeInfo.NpgsqlDbType));
                     }
                 }
             }
