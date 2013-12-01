@@ -287,7 +287,12 @@ namespace Npgsql
 									_routine = PGUtil.ReadString(stream);
 									;
 									break;
-								
+								default:
+									// Unknown error field; consume and discard.
+									PGUtil.ReadString(stream);
+									;
+									break;
+
 							}
 						}
 					}
