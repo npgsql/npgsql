@@ -152,6 +152,14 @@
   </ItemGroup>
   <ItemGroup Condition=" '$(Configuration)' == 'Debug-net45-EF6' Or '$(Configuration)' == 'Release-net45-EF6' ">
     <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EntityFramework.6.0.1\lib\net40\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EntityFramework.6.0.1\lib\net40\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup Condition=" '$(Configuration)' != 'Debug-net45-EF6' And '$(Configuration)' != 'Release-net45-EF6' ">
     <Reference Include="System.Data.Entity" />
@@ -167,10 +175,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
     <None Include="Npgsql\Npgsql.snk" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.msl" />
     <EmbeddedResource Include="Npgsql\NpgsqlSchema.ssdl" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
