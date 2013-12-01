@@ -7,4 +7,4 @@
 *.xml text
 *.txt text
 
-packages/* binary
+packages/ binary
