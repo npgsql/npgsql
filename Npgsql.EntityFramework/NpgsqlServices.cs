@@ -1,5 +1,4 @@
-﻿#if ENTITIES
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Xml;
@@ -114,5 +113,3 @@ namespace Npgsql
         }
     }
 }
-
-#endif

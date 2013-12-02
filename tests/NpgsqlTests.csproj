@@ -151,14 +151,6 @@
   </ItemGroup>
   <ItemGroup Condition=" '$(Configuration)' == 'Debug-net45-EF6' Or '$(Configuration)' == 'Release-net45-EF6' ">
     <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\EntityFramework.6.0.1\lib\net40\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\EntityFramework.6.0.1\lib\net40\EntityFramework.SqlServer.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
@@ -219,7 +211,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\Npgsql.csproj">
+    <ProjectReference Include="..\Npgsql\Npgsql.csproj">
       <Project>{9D13B739-62B1-4190-B386-7A9547304EB3}</Project>
       <Name>Npgsql2012</Name>
     </ProjectReference>

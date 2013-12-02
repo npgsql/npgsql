@@ -1,5 +1,4 @@
-﻿#if ENTITIES
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
@@ -10,11 +9,11 @@ using System.Data.Common.CommandTrees;
 
 namespace Npgsql.SqlGenerators
 {
-    class SqlUpdateGenerator : SqlBaseGenerator
+    internal class SqlDeleteGenerator : SqlBaseGenerator
     {
-        private DbUpdateCommandTree _commandTree;
+        private DbDeleteCommandTree _commandTree;
 
-        public SqlUpdateGenerator(DbUpdateCommandTree commandTree)
+        public SqlDeleteGenerator(DbDeleteCommandTree commandTree)
         {
             _commandTree = commandTree;
         }
@@ -30,20 +29,15 @@ namespace Npgsql.SqlGenerators
         public override void BuildCommand(DbCommand command)
         {
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
-            UpdateExpression update = new UpdateExpression();
+            DeleteExpression delete = new DeleteExpression();
             _projectVarName.Push(_commandTree.Target.VariableName);
-            update.AppendTarget(_commandTree.Target.Expression.Accept(this));
-            foreach (DbSetClause clause in _commandTree.SetClauses)
-            {
-                update.AppendSet(clause.Property.Accept(this), clause.Value.Accept(this));
-            }
+            delete.AppendFrom(_commandTree.Target.Expression.Accept(this));
             if (_commandTree.Predicate != null)
             {
-                update.AppendWhere(_commandTree.Predicate.Accept(this));
+                delete.AppendWhere(_commandTree.Predicate.Accept(this));
             }
             _projectVarName.Pop();
-            command.CommandText = update.ToString();
+            command.CommandText = delete.ToString();
         }
     }
 }
-#endif

@@ -24,9 +24,6 @@
 
 using System;
 using System.Data.Common;
-#if ENTITIES6
-using System.Data.Entity.Core.Common;
-#endif
 
 namespace Npgsql
 {
@@ -79,11 +76,22 @@ namespace Npgsql
 
         public object GetService(Type serviceType)
         {
-#if ENTITIES
+            throw new NotImplementedException("Still working on it...");
+            // In legacy Entity Framework, this is the entry point for obtaining Npgsql's
+            // implementation of DbProviderServices. We use reflection for all types to
+            // avoid any dependencies on EF stuff in this project.
+            var dbProviderServicesType = Type.GetType("DbProviderServices", false);
+            if (dbProviderServicesType == null || serviceType != dbProviderServicesType)
+                return null;
+
+            // User has requested a legacy EF DbProviderServices implementation. Attempt to
+            // find the Npgsql.EntityFrameworkLegacy assembly
+
+            /*
             if (serviceType == typeof(DbProviderServices))
                 return NpgsqlServices.Instance;
             else
-#endif
+             */
             return null;
         }
 

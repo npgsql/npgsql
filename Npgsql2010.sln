@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "src\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "Npgsql\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlTests", "tests\NpgsqlTests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
 EndProject

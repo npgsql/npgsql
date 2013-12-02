@@ -1,5 +1,4 @@
-﻿#if ENTITIES
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
@@ -1338,4 +1337,3 @@ namespace Npgsql.SqlGenerators
 #endif
     }
 }
-#endif
