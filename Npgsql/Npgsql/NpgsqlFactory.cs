@@ -75,37 +75,31 @@ namespace Npgsql
 
         #region IServiceProvider Members
 
-        public object GetService(Type serviceType) {
-            // throw new NotImplementedException("Still working on it..."); 
-
+        public object GetService(Type serviceType)
+        {
             // In legacy Entity Framework, this is the entry point for obtaining Npgsql's
             // implementation of DbProviderServices. We use reflection for all types to
             // avoid any dependencies on EF stuff in this project.
-            Assembly EntitiyRef = Assembly.Load("System.Data.Entity, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089");
+            var entityAssembly = Assembly.Load("System.Data.Entity, PublicKeyToken=b77a5c561934e089");
 
-            var dbProviderServicesType = EntitiyRef.GetType("System.Data.Common.DbProviderServices", true);
-            if (dbProviderServicesType == null)
-                return null;
-            if (serviceType!= dbProviderServicesType)
+            var dbProviderServicesType = entityAssembly.GetType("System.Data.Common.DbProviderServices", true);
+            if (serviceType != dbProviderServicesType)
                 return null;
 
             // User has requested a legacy EF DbProviderServices implementation. Attempt to
             // find the Npgsql.EntityFrameworkLegacy assembly
-
-            Assembly EFRef = Assembly.Load("Npgsql.EntityFrameworkLegacy, Version=2.1.0.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7");
-
-            Type ty = EFRef.GetType("Npgsql.NpgsqlServices", true);
-
-            if (ty != null) {
-                return ty.InvokeMember("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]);
+            Assembly npgsqlEntityAssembly;
+            try
+            {
+                npgsqlEntityAssembly = Assembly.Load("Npgsql.EntityFrameworkLegacy, PublicKeyToken=5d8b90d52f46fda7");
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Could not load Npgsql.EntityFrameworkLegacy.dll, is it installed?", e);
             }
 
-            /*
-            if (serviceType == typeof(DbProviderServices))
-                return NpgsqlServices.Instance;
-            else
-             */
-            return null;
+            var ty = npgsqlEntityAssembly.GetType("Npgsql.NpgsqlServices", true);
+            return ty.InvokeMember("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]);
         }
 
         #endregion

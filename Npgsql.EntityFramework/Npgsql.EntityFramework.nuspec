@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>Npgsql.EntityFramework</id>
+    <version>2.1.0-beta1</version>
+    <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
+    <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
+    <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
+    <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Postgresql provider for Entity Framework 6 and above</description>
+    <summary>Postgresql provider for Entity Framework 6 and above</summary>
+    <language>en-US</language>
+    <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
+    <dependencies>
+      <dependency id="Npgsql" version="[2.1.0-beta1]" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release-net40\Npgsql.EntityFramework.dll" target="lib\net40"/>
+    <file src="bin\Release-net40\Npgsql.EntityFramework.pdb" target="lib\net40"/>
+    <file src="bin\Release-net40\Npgsql.EntityFramework.xml" target="lib\net40"/>
+    <file src="bin\Release-net45\Npgsql.EntityFramework.dll" target="lib\net45"/>
+    <file src="bin\Release-net45\Npgsql.EntityFramework.pdb" target="lib\net45"/>
+    <file src="bin\Release-net45\Npgsql.EntityFramework.xml" target="lib\net45"/>
+    <file src="**\*.cs" target="src" />
+  </files>
+</package>

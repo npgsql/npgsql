@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>Npgsql.EntityFrameworkLegacy</id>
+    <version>2.1.0-beta1</version>
+    <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
+    <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
+    <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
+    <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Postgresql provider for Entity Framework 5 and below</description>
+    <summary>Postgresql provider for Entity Framework 5 and below</summary>
+    <language>en-US</language>
+    <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
+  </metadata>
+  <files>
+    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.dll" target="lib\net35"/>
+    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net35"/>
+    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.xml" target="lib\net35"/>
+    <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.dll" target="lib\net40"/>
+    <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net40"/>
+    <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.xml" target="lib\net40"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.dll" target="lib\net45"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net45"/>
+    <file src="bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.xml" target="lib\net45"/>
+    <file src="**\*.cs" target="src" />
+  </files>
+</package>
