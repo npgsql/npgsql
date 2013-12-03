@@ -94,7 +94,8 @@ namespace Npgsql
         /// This method is reponsible to derive the command parameter list with values obtained from function definition.
         /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
         /// Parameters name will be parameter1, parameter2, ...
-        /// For while, only parameter name, NpgsqlDbType and parameter direction (IN, OUT, INOUT) are obtained.
+        /// For while, only parameter name, NpgsqlDbType and parameter direction (IN, INOUT) are obtained.
+        /// Out parameters are removed because PosgreSql do not consider them in function signatures.
         ///</summary>
         /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
         public static void DeriveParameters(NpgsqlCommand command)
@@ -138,7 +139,6 @@ namespace Npgsql
 
                 String[] names = null;
                 String[] types = null;
-                bool haveDirections = false;
                 string[] directions = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
@@ -150,10 +150,7 @@ namespace Npgsql
                         if (!rdr.IsDBNull(1))
                             types = rdr.GetString(1).Split();
                         if ((rdr.FieldCount > 2) && (!rdr.IsDBNull(2))) // When all parameters are IN, "proargmodes" column is returned as null
-                        {
-                            haveDirections = true;
-                            directions = (string[])rdr.GetValue(2);
-                        }
+                            directions = rdr.GetValue(2) as String[];
                     }
                 }
 
@@ -161,6 +158,22 @@ namespace Npgsql
                 {
                     throw new InvalidOperationException(
                         String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
+                }
+
+                if (directions != null)
+                {
+                    if (names != null)
+                    {
+                        // If names array is not null, it always be the same size as directions array.
+                        for (Int32 i = 0; i < directions.Length; i++)
+                        {
+                            // Remove all names and directions for OUT parameters because they are not included in PostgreSql's function signatures
+                            if (directions[i] == "o")
+                                names[i] = "";
+                        }
+                        names = (string.Join(",", names).Replace(",,", ",")).Split(',');
+                    }
+                    directions = (string.Join(",", directions).Replace("o", "").Replace(",,", ",")).Split(',');
                 }
 
                 command.Parameters.Clear();
@@ -185,7 +198,7 @@ namespace Npgsql
 
                         param.NpgsqlDbType = typeInfo.NpgsqlDbType;
 
-                        if (haveDirections)  // if any parameter is not IN
+                        if (directions != null)  // if any parameter is not IN
                         {
                             switch (directions[i])
                             {

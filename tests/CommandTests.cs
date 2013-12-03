@@ -3478,6 +3478,27 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
             */
         }
+
+        [Test]
+        public void FunctionDeriveParameters()
+        {
+            // This function returns record because of the two Out (InOut & Out) parameters
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""FunctionToDeriveParams""(IN param1 int, OUT param2 int, INOUT param3 int) RETURNS record AS 
+                              '
+                              BEGIN
+                                      param1 = param1 + 1; 
+                                      param2 = param2 + 2; 
+                                      param3 = param3 + 3; 
+                              END;
+                              ' LANGUAGE 'plpgsql';");
+
+            var command = new NpgsqlCommand(@"""FunctionToDeriveParams""", Conn);
+            command.CommandType = CommandType.StoredProcedure;
+            NpgsqlCommandBuilder.DeriveParameters(command);
+            Assert.AreEqual(ParameterDirection.Input, command.Parameters[0].Direction);
+            Assert.AreEqual(ParameterDirection.InputOutput, command.Parameters[1].Direction);
+        }
+
     }
 
     [TestFixture]
