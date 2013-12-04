@@ -33,7 +33,6 @@ DEVELOPERS
     Chris Morgan
     Thilo Utke
     Hiroshi Saito
-    Glen Parker
     Shay Rojansky
 
 LICENSE
