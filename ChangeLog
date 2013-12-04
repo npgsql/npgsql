@@ -1,3 +1,14 @@
+2013-12-03        glenebob
+
+        * src/Npgsql/NpgsqlError.cs:
+          Bug fix: NpgsqlError now properly consumes and discards unknown error fields.
+
+2013-03-10        fxjr
+
+        * src/Npgsql/NpgsqlState.cs
+          Applied patch [#1011316] ConnectionTimeout fix, bypass the 2147 seconds limit of Socket.Poll method.
+          Thanks Tasos Mamaloukos for patch.
+
 2012-08-07 15:36  fxjr
 
 	* src/Npgsql/NpgsqlCopySerializer.cs:

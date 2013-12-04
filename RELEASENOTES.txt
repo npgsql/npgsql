@@ -1,3 +1,16 @@
+﻿2013-12-4
+
+    Npgsql 2.0.14
+
+    Fixed bugs:
+
+        Unknown error fields from the backend can cause backend communication to go out of sync, causing a
+        hang or confusing/incorrect error condition. This bug was exposed by new error fields introduced
+        in PG 9.3.
+
+        [#1011136], [#1011302] Npgsql wouldn't allow a timeout higher than 2147 seconds.
+
+    This is a bug fix only release for 2.0.12.
 
 2012-09-02
 
