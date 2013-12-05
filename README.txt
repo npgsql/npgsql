@@ -6,25 +6,15 @@ Npgsql - .Net Data Provider for PostgreSQL
 WHAT'S IT?
 ==========
     
-    Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect to PostgreSQL server
-in .Net.
+    Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect to PostgreSQL server in .NET.
 
 
-HISTORY
-=======
+PROJECT INFO
+============
     
-    Check RELEASENOTES.txt file for a comprehensive list of details about Npgsql history.
-    
-
-COMPILING
-===========
-run 'nant' from src
-
-
-RUNNING TESTSUITE
-==========
-run 'nant tests' from src
-
+    Npgsql is hosted on github: https://github.com/npgsql/Npgsql
+    Usage instructions and other info can be found on the wiki: https://github.com/npgsql/Npgsql/wiki
+    Additional information can be found here: http://www.npgsql.org
 
 DEVELOPERS
 ==========
@@ -43,17 +33,10 @@ DEVELOPERS
     Chris Morgan
     Thilo Utke
     Hiroshi Saito
+    Glen Parker
+    Shay Rojansky
 
-    
-CONTACT INFO
-============
-    
-    Web:
-    All info related to Npgsql can be found in its homepage:
-    http://www.npgsql.org
-    http://npgsql.projects.postgresql.org
-    
-    
+LICENSE
+=======
 
-    
-
+    See LICENSE.txt    

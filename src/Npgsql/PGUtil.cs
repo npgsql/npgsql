@@ -763,9 +763,9 @@ namespace Npgsql
     /// </summary>
     public enum ProtocolVersion
     {
-        Unknown,
-        Version2,
-        Version3
+        Unknown  = 0,
+        Version2 = 2,
+        Version3 = 3
     }
 
     public enum ServerVersionCode

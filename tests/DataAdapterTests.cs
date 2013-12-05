@@ -36,6 +36,8 @@ namespace NpgsqlTests
     [TestFixture]
     public class DataAdapterTests : TestBase
     {
+        public DataAdapterTests(string backendVersion) : base(backendVersion) { }
+
         [Test]
         public void InsertWithDataSet()
         {
@@ -419,10 +421,12 @@ namespace NpgsqlTests
             Assert.IsNotNull(common.SelectCommand);
         }
     }
+    /*
     [TestFixture]
     public class DataAdapterTestsV2 : DataAdapterTests
     {
-        protected override int BACKEND_PROTOCOL_VERSION { get { return 2; } }
+        public DataAdapterTestsV2(int backendProtocolVersion) : base(backendProtocolVersion) {}
+
         public override void DoInsertWithCommandBuilderCaseSensitive()
         {
             //Not possible with V2?
@@ -432,4 +436,5 @@ namespace NpgsqlTests
             //Not possible with V2?
         }
     }
+     */
 }

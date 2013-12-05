@@ -4,6 +4,7 @@
 *.user
 *.sln.docstates
 *.userprefs
+/*.nupkg
 [Bb]in/
 [Bb]uild/
 /src/[Oo]bj/
