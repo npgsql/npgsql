@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2012
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "Npgsql\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFramework", "Npgsql.EntityFramework\Npgsql.EntityFramework.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
@@ -11,8 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlTests", "tests\Npgsql
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4A5A60DD-41B6-40BF-B677-227A921ECCC8}"
 	ProjectSection(SolutionItems) = preProject
-		Npgsql.snk = Npgsql.snk
 		CommonAssemblyInfo.cs = CommonAssemblyInfo.cs
+		Npgsql.snk = Npgsql.snk
 	EndProjectSection
 EndProject
 Global
