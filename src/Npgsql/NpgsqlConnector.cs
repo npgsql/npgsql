@@ -177,6 +177,10 @@ namespace Npgsql
 
         private string initQueries;
 
+        // The last command timeout sent via SET command_timeout.  By tracking this, we can avoid
+        // sending it redundantly.
+        private int _commandTimeoutSent = -1; // -1 means none sent.
+
 #if WINDOWS && UNMANAGED
 
         private SSPIHandler _sspi;
@@ -271,6 +275,12 @@ namespace Npgsql
         internal Int32 CommandTimeout
         {
             get { return settings.CommandTimeout; }
+        }
+
+        internal Int32 CommandTimeoutSent
+        {
+            get { return _commandTimeoutSent; }
+            set { _commandTimeoutSent = value; }
         }
 
         internal Boolean Enlist
@@ -431,7 +441,7 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this))
+            using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this, 60))
             {
                 cmd.ExecuteBlind();
             }
@@ -975,7 +985,7 @@ namespace Npgsql
 
             initQueries = sbInitQueries.ToString();
 
-            NpgsqlCommand initCommand = new NpgsqlCommand(initQueries, this);
+            NpgsqlCommand initCommand = new NpgsqlCommand(initQueries, this, 60);
             initCommand.ExecuteBlind();
 
             // Make a shallow copy of the type mapping that the connector will own.
