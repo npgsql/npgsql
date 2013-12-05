@@ -23,11 +23,6 @@ namespace Npgsql
             get { return _instance; }
         }
 
-        public static Type TargetProviderServices
-        {
-            get { return typeof(DbProviderServices); }
-        }
-
         protected override DbCommandDefinition CreateDbCommandDefinition(DbProviderManifest providerManifest, DbCommandTree commandTree)
         {
             return CreateCommandDefinition(CreateDbCommand(commandTree));

@@ -76,33 +76,38 @@ namespace Npgsql
         #region IServiceProvider Members
 
         public object GetService(Type serviceType) {
-#if ENTITIES
             // In legacy Entity Framework, this is the entry point for obtaining Npgsql's
             // implementation of DbProviderServices. We use reflection for all types to
             // avoid any dependencies on EF stuff in this project.
 
-            if (serviceType != null && serviceType.Name == "DbProviderServices") {
-                // User has requested a legacy EF DbProviderServices implementation. Attempt to
-                // find the Npgsql.EntityFrameworkLegacy assembly
-                AssemblyName assemblyName = typeof(NpgsqlFactory).Assembly.GetName();
+            if (serviceType != null && serviceType.FullName == "System.Data.Common.DbProviderServices")
+            {
+                // User has requested a legacy EF DbProviderServices implementation. Check our cache first.
+                if (_legacyEntityFrameworkServices != null)
+                    return _legacyEntityFrameworkServices;
+
+                // First time, attempt to find the Npgsql.EntityFrameworkLegacy assembly and load the type via reflection
+                var assemblyName = typeof(NpgsqlFactory).Assembly.GetName();
                 assemblyName.Name = "Npgsql.EntityFrameworkLegacy";
-                Type npgsqlServicesType = npgsqlServicesType = Type.GetType("Npgsql.NpgsqlServices, " + assemblyName.FullName, false);
-                if (true
-                    && npgsqlServicesType != null
-                    && npgsqlServicesType.GetProperty("TargetProviderServices") != null
-                    && npgsqlServicesType.GetProperty("Instance") != null
-                ) {
-                    // Check if Npgsql.EntityFrameworkLegacy meets user's EF version.
-                    Type dbProviderServicesType = npgsqlServicesType.InvokeMember("TargetProviderServices", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]) as Type;
-                    if (serviceType == dbProviderServicesType) {
-                        return npgsqlServicesType.InvokeMember("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]);
-                    }
+                Assembly npgsqlEfAssembly;
+                try {
+                    npgsqlEfAssembly = Assembly.Load(assemblyName.FullName);
+                } catch (Exception e) {
+                    throw new Exception("Could not load Npgsql.EntityFrameworkLegacy assembly, is it installed?", e);
                 }
+
+                Type npgsqlServicesType;
+                if ((npgsqlServicesType = npgsqlEfAssembly.GetType("Npgsql.NpgsqlServices")) == null ||
+                    npgsqlServicesType.GetProperty("Instance") == null)
+                    throw new Exception("Npgsql.EntityFrameworkLegacy assembly does not seem to contain the correct type!");
+
+                return _legacyEntityFrameworkServices = npgsqlServicesType.InvokeMember("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetProperty, null, null, new object[0]);
             }
-#endif
 
             return null;
         }
+
+        private static object _legacyEntityFrameworkServices;
 
         #endregion
     }
