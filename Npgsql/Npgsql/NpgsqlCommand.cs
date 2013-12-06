@@ -176,6 +176,7 @@ namespace Npgsql
 
                 if (m_Connector != null && m_Connector.AlwaysPrepare)
                 {
+                    CommandTimeout = m_Connector.CommandTimeout;
                     prepared = PrepareStatus.NeedsPrepare;
                 }
             }
@@ -189,13 +190,14 @@ namespace Npgsql
         /// <summary>
         /// Used to execute internal commands.
         /// </summary>
-        internal NpgsqlCommand(String cmdText, NpgsqlConnector connector)
+        internal NpgsqlCommand(String cmdText, NpgsqlConnector connector, int CommandTimeout = 20)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             planName = String.Empty;
             commandText = cmdText;
             this.m_Connector = connector;
+            this.CommandTimeout = CommandTimeout;
             commandType = CommandType.Text;
 
             // Removed this setting. It was causing too much problem.
