@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DataObjectSupport xmlns="http://schemas.microsoft.com/VisualStudio/2007/07/Data/DataObjectSupport">
+  <Types>
+    <RootType>
+      <Properties>
+        <Property name="Host"/>
+        <Property name="Port"/>
+        <Property name="UserName"/>
+        <Property name="Database"/>
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Npgsql.VisualStudio.NpgsqlObjectSelector"/>
+      </Services>
+    </RootType>
+
+    <Type name="Table" preferredOrdering="Database, Schema, Name">
+      <Identifier>
+        <Part name="Database"/>
+        <Part name="Schema"/>
+        <Part name="Name"/>
+      </Identifier>
+      <Properties>
+        <Property name="Name" isIdentifierPart="true"/>
+        <Property name="Schema" isIdentifierPart="true"/>
+        <Property name="Type"/>
+      </Properties>
+      <Services>
+        <Service type="IVsDataObjectSelector" implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetObjectSelector"/>
+      </Services>
+    </Type>
+  </Types>
+</DataObjectSupport>

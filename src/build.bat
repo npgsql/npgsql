@@ -1,1 +1,0 @@
-..\Tools\NAnt\NAnt.exe %*

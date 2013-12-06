@@ -1,0 +1,43 @@
+//****************************************************************************
+//
+//    Copyright (c) Microsoft Corporation. All rights reserved.
+//    This code is licensed under the Visual Studio SDK license terms.
+//    THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF
+//    ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY
+//    IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
+//    PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
+//
+//****************************************************************************
+
+//
+// This is the file that defines the actual layout and type of the commands.
+// It is divided in different sections (e.g. command definition, command
+// placement, ...), with each defining a specific set of properties.
+//
+
+#include "stdidcmd.h"
+#include "vsshlids.h"
+#include "msobtnid.h"
+#include "Guids.h"
+#include "PkgCmdID.h"
+
+#define DIS_DEF DEFAULTDISABLED | DEFAULTINVISIBLE | DYNAMICVISIBILITY
+#define OI_NOID guidOfficeIcon:msotcidNoIcon
+
+CMDS_SECTION guidVSPackageBasedProviderPkg
+
+    BUTTONS_BEGIN
+
+        guidVSPackageBasedProviderCmdSet:cmdidVacuum,      Group_Undefined:0, 0x0000, OI_NOID, BUTTON, DIS_DEF, "&Vacuum";
+        guidVSPackageBasedProviderCmdSet:cmdidRekey,       Group_Undefined:0, 0x0000, OI_NOID, BUTTON, DIS_DEF, "Change &Password ...";
+
+    BUTTONS_END
+
+CMDS_END
+
+CMDPLACEMENT_SECTION
+
+    guidVSPackageBasedProviderCmdSet:cmdidVacuum,      guidVSData:IDG_DV_CONNECTION, 0x0100;
+    guidVSPackageBasedProviderCmdSet:cmdidRekey,       guidVSData:IDG_DV_CONNECTION, 0x0100;
+
+CMDPLACEMENT_END

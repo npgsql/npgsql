@@ -7,5 +7,5 @@
 /*.nupkg
 [Bb]in/
 [Bb]uild/
-/src/[Oo]bj/
-/tests/[Oo]bj/
+[Oo]bj/
+[Oo]bj/

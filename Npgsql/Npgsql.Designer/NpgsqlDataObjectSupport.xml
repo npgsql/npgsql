@@ -1,0 +1,660 @@
+﻿<?xml version="1.0" encoding="utf-8"?> 
+
+<!--
+/********************************************************
+ * ADO.NET 2.0 Data Provider for SQLite Version 3.X
+ * Written by Robert Simpson (robert@blackcastlesoft.com)
+ * 
+ * Released to the public domain, use at your own risk!
+ ********************************************************/
+-->
+
+<VSDataObjectSupport xmlns="http://tempuri.org/VSDataObjectSupport.xsd">
+	<Types>
+		<RootType>
+			<Properties>
+        <Property name="Server" type="System.String" itemName="DataSource"/>
+        <Property name="Database" type="System.String" itemName="Database"/>
+      </Properties>
+			<Actions>
+				<Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetRootObjectEnumerator"/>
+			</Actions>
+		</RootType>
+
+		<Type name="Table" defaultSort="Database,Name">
+			<Concepts>
+				<Concept name="Table" restrictions="{Catalog},null,{Name}"/>
+			</Concepts>
+			<Identifier>
+				<Part name="Database" itemName="table_catalog">
+					<Concepts>
+						<Concept name="Identifier0"/>
+					</Concepts>
+				</Part>
+				<Part name="Schema" itemName="table_schema">
+					<Concepts>
+						<Concept name="Identifier1"/>
+					</Concepts>
+				</Part>
+				<Part name="Name" itemName="table_name">
+					<Concepts>
+						<Concept name="Identifier2"/>
+					</Concepts>
+				</Part>
+			</Identifier>
+			<Properties>
+				<Property name="Name" type="System.String" itemName="table_name"/>
+				<Property name="Schema" type="System.String" itemName="table_schema"/>
+        <Property name="Type" type="System.String" itemName="table_type">
+          <Concepts>
+            <Concept name="Type">
+              <Conversion>
+                <Calculate expr="IIF({0}='TABLE','USER','SYSTEM')" type="System.String"/>
+              </Conversion>
+            </Concept>
+          </Concepts>
+        </Property>
+      </Properties>
+			<Actions>
+				<Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+					<Parameter value="Tables"/>
+				</Action>
+				<Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+					<Parameter>
+						<Parameter value="{2}"/>
+						<Parameter value="{1}"/>
+						<Parameter value="Table"/>
+						<Parameter/>
+						<Parameter>
+							<!-- GUID_DSRefProperty_PreciseType -->
+							<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+								<Parameter value="101" type="System.Int32"/> <!-- Table -->
+							</Parameter>
+						</Parameter>
+					</Parameter>
+				</Action>
+			</Actions>
+		</Type>
+
+		<Type name="TableColumn" defaultSort="Database,Table,Ordinal">
+			<Concepts>
+				<Concept name="TableColumn" restrictions="{Catalog},null,{Table},{Name}"/>
+			</Concepts>
+			<Identifier>
+				<Part name="Database" itemName="table_catalog">
+					<Concepts>
+						<Concept name="Identifier0"/>
+					</Concepts>
+				</Part>
+				<Part name="Schema" itemName="table_schema">
+					<Concepts>
+						<Concept name="Identifier1"/>
+					</Concepts>
+				</Part>
+				<Part name="Table" itemName="table_name">
+					<Concepts>
+						<Concept name="Identifier2"/>
+					</Concepts>
+				</Part>
+				<Part name="Name" itemName="column_name">
+					<Concepts>
+						<Concept name="Identifier3"/>
+					</Concepts>
+				</Part>
+			</Identifier>
+			<Properties>
+				<Property name="Name" type="System.String" itemName="column_name"/>
+				<Property name="Ordinal" type="System.Int32" itemName="ordinal_position">
+					<Concepts>
+						<Concept name="Ordinal">
+						</Concept>
+					</Concepts>
+				</Property>
+        <Property name="DataType" type="System.String" itemName="data_type" />
+        <Property name="SystemType" type="System.String" itemName="data_type">
+          <Concepts>
+            <Concept name="UserDataType"/>
+            <Concept name="NativeDataType"/>
+            <Concept name="ProviderDataType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+            <Concept name="ProviderDbType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+            <Concept name="FrameworkDataType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+          </Concepts>
+        </Property>
+        <Property name="Length" type="System.Int32" itemName='character_maximum_length'>
+					<Concepts>
+						<Concept name="Length"/>
+					</Concepts>
+				</Property>
+				<Property name="Precision" type="System.Int32" itemName="numeric_precision">
+					<Concepts>
+						<Concept name="Precision">
+						</Concept>
+					</Concepts>
+				</Property>
+				<Property name="Scale" type="System.Int32" itemName="numeric_scale">
+					<Concepts>
+						<Concept name="Scale"/>
+					</Concepts>
+				</Property>
+				<Property name="Nullable" type="System.Boolean" itemName="is_nullable">
+					<Concepts>
+						<Concept name="Nullable">
+						</Concept>
+					</Concepts>
+				</Property>
+				<Property name="Default" type="System.String" itemName="column_default">
+					<Concepts>
+						<Concept name="Default"/>
+					</Concepts>
+				</Property>
+        <Property name="InPrimaryKey" type="System.Boolean" itemName="primary_key"/>
+      </Properties>
+			<Actions>
+				<Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+					<Parameter value="Columns"/>
+				</Action>
+				<Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+					<Parameter>
+						<Parameter value="{2}"/>
+						<Parameter value="{1}"/>
+						<Parameter value="Table"/>
+						<Parameter/>
+						<Parameter>
+							<!-- GUID_DSRefProperty_PreciseType -->
+							<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+								<Parameter value="101" type="System.Int32"/> <!-- Table -->
+							</Parameter>
+						</Parameter>
+						<Parameter>
+							<Parameter>
+								<Parameter value="{3}"/>
+								<Parameter/>
+								<Parameter value="Field"/>
+								<Parameter/>
+								<Parameter>
+									<!-- GUID_DSRefProperty_PreciseType -->
+									<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+										<Parameter value="102" type="System.Int32"/> <!-- Table_Column -->
+									</Parameter>
+								</Parameter>
+							</Parameter>
+						</Parameter>
+					</Parameter>
+				</Action>
+			</Actions>
+		</Type>
+
+		<Type name="View" defaultSort="Database,Name">
+			<Concepts>
+				<Concept name="View" restrictions="{Catalog},null,{Name}"/>
+			</Concepts>
+			<Identifier>
+				<Part name="Database" itemName="table_catalog">
+					<Concepts>
+						<Concept name="Identifier0"/>
+					</Concepts>
+				</Part>
+				<Part name="Schema" itemName="table_schema">
+					<Concepts>
+						<Concept name="Identifier1"/>
+					</Concepts>
+				</Part>
+				<Part name="Name" itemName="table_name">
+					<Concepts>
+						<Concept name="Identifier2"/>
+					</Concepts>
+				</Part>
+			</Identifier>
+			<Properties>
+				<Property name="Name" type="System.String" itemName="table_name"/>
+				<Property name="Schema" type="System.String" itemName="table_schema">
+					<Concepts>
+						<Concept name="Schema"/>
+					</Concepts>
+				</Property>
+				<Property name="CheckOption" type="System.Boolean" itemName="check_option"/>
+				<Property name="IsUpdatable" type="System.Boolean" itemName="is_updatable"/>
+			</Properties>
+			<Actions>
+				<Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+					<Parameter value="Views"/>
+				</Action>
+				<Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+					<Parameter>
+						<Parameter value="{2}"/>
+						<Parameter value="{1}"/>
+						<Parameter value="View"/>
+						<Parameter/>
+						<Parameter>
+							<!-- GUID_DSRefProperty_PreciseType -->
+							<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+								<Parameter value="301" type="System.Int32"/> <!-- View -->
+							</Parameter>
+						</Parameter>
+					</Parameter>
+				</Action>
+			</Actions>
+		</Type>
+
+		<!--
+			Defines a type that represents a view column.
+		-->
+		<Type name="ViewColumn" defaultSort="Database,View,Ordinal">
+			<Concepts>
+				<Concept name="ViewColumn" restrictions="{Catalog},null,{View},{Name}"/>
+			</Concepts>
+			<Identifier>
+				<Part name="Database" itemName="table_catalog">
+					<Concepts>
+						<Concept name="Identifier0"/>
+					</Concepts>
+				</Part>
+				<Part name="Schema" itemName="table_schema">
+					<Concepts>
+						<Concept name="Identifier1"/>
+					</Concepts>
+				</Part>
+				<Part name="View" itemName="table_name">
+					<Concepts>
+						<Concept name="Identifier2"/>
+					</Concepts>
+				</Part>
+				<Part name="Name" itemName="column_name">
+					<Concepts>
+						<Concept name="Identifier3"/>
+					</Concepts>
+				</Part>
+			</Identifier>
+			<Properties>
+				<Property name="Name" type="System.String" itemName="column_name"/>
+				<Property name="Ordinal" type="System.Int32" itemName="ordinal_position">
+					<Concepts>
+						<Concept name="Ordinal">
+						</Concept>
+					</Concepts>
+				</Property>
+        <Property name="DataType" type="System.String" itemName="data_type" />
+        <Property name="SystemType" type="System.String" itemName="data_type">
+          <Concepts>
+            <Concept name="UserDataType"/>
+            <Concept name="NativeDataType"/>
+            <Concept name="ProviderDataType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+            <Concept name="ProviderDbType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+            <Concept name="FrameworkDataType">
+              <Conversion mapper="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectConceptMapper"/>
+            </Concept>
+          </Concepts>
+        </Property>
+        <Property name="Length" type="System.Int32" itemName='character_maximum_length'>
+					<Concepts>
+						<Concept name="Length"/>
+					</Concepts>
+				</Property>
+				<Property name="Precision" type="System.Int32" itemName="numeric_precision">
+					<Concepts>
+						<Concept name="Precision">
+						</Concept>
+					</Concepts>
+				</Property>
+				<Property name="Scale" type="System.Int32" itemName="numeric_scale">
+					<Concepts>
+						<Concept name="Scale"/>
+					</Concepts>
+				</Property>
+				<Property name="Nullable" type="System.Boolean" itemName="is_nullable">
+					<Concepts>
+						<Concept name="Nullable">
+						</Concept>
+					</Concepts>
+				</Property>
+				<Property name="Default" type="System.String" itemName="column_default">
+					<Concepts>
+						<Concept name="Default"/>
+					</Concepts>
+				</Property>
+			</Properties>
+			<Actions>
+				<Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+					<Parameter value="Columns"/>
+				</Action>
+				<Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+					<Parameter>
+						<Parameter value="{2}"/>
+						<Parameter value="{1}"/>
+						<Parameter value="View"/>
+						<Parameter/>
+						<Parameter>
+							<!-- GUID_DSRefProperty_PreciseType -->
+							<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+								<Parameter value="301" type="System.Int32"/> <!-- View -->
+							</Parameter>
+						</Parameter>
+						<Parameter>
+							<Parameter>
+								<Parameter value="{3}"/>
+								<Parameter/>
+								<Parameter value="Field"/>
+								<Parameter/>
+								<Parameter>
+									<!-- GUID_DSRefProperty_PreciseType -->
+									<Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+										<Parameter value="302" type="System.Int32"/> <!-- View_Column -->
+									</Parameter>
+								</Parameter>
+							</Parameter>
+						</Parameter>
+					</Parameter>
+				</Action>
+			</Actions>
+		</Type>
+    <!--
+			Defines a type that represents an index.
+		-->
+    <Type name="Index" defaultSort="Database,Table,Name">
+      <Concepts>
+        <Concept name="TableUniqueKey" restrictions="{Catalog},null,{Table},{Name}" filter="IsUnique = true"/>
+      </Concepts>
+      <Identifier>
+        <Part name="Database" itemName="table_catalog">
+          <Concepts>
+            <Concept name="Identifier0"/>
+          </Concepts>
+        </Part>
+        <Part name="Schema" itemName="table_schema">
+          <Concepts>
+            <Concept name="Identifier1"/>
+          </Concepts>
+        </Part>
+        <Part name="Table" itemName="table_name">
+          <Concepts>
+            <Concept name="Identifier2"/>
+          </Concepts>
+        </Part>
+        <Part name="Name" itemName="index_name">
+          <Concepts>
+            <Concept name="Identifier3"/>
+          </Concepts>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Name" type="System.String" itemName="index_name"/>
+        <Property name="IsUnique" type="System.Boolean" itemName="UNIQUE">
+          <Concepts>
+            <Concept name="IsUnique"/>
+          </Concepts>
+        </Property>                  
+        <Property name="IsPrimary" type="System.Boolean" itemName="PRIMARY_KEY">
+          <Concepts>
+            <Concept name="IsPrimary"/>
+          </Concepts>
+        </Property>
+      </Properties>
+      <Actions>
+        <Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+          <Parameter value="Indexes"/>
+        </Action>
+        <Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+          <Parameter>
+            <Parameter value="{2}"/>
+            <Parameter value="{1}"/>
+            <Parameter value="Table"/>
+            <Parameter/>
+            <Parameter>
+              <!-- GUID_DSRefProperty_Qualifier -->
+              <Parameter value="4656BAEA-F397-11ce-BFE1-00AA0057B34E">
+                <Parameter value="{0}"/>
+              </Parameter>
+              <!-- GUID_DSRefProperty_PreciseType -->
+              <Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+                <Parameter value="101" type="System.Int32"/>
+                <!-- Table -->
+              </Parameter>
+            </Parameter>
+            <Parameter>
+              <Parameter>
+                <Parameter value="{3}"/>
+                <Parameter/>
+                <Parameter value="Index"/>
+              </Parameter>
+            </Parameter>
+          </Parameter>
+        </Action>
+      </Actions>
+    </Type>
+
+    <Type name="IndexColumn" defaultSort="Database,Table,Index,Ordinal">
+      <Concepts>
+        <Concept name="TableUniqueKeyColumn" restrictions="{Catalog},null,{Table},{TableUniqueKey},{Name}"/>
+      </Concepts>
+      <Identifier>
+        <Part name="Database" itemName="table_catalog">
+          <Concepts>
+            <Concept name="Identifier0"/>
+          </Concepts>
+        </Part>
+        <Part name="Schema" itemName="table_schema">
+          <Concepts>
+            <Concept name="Identifier1"/>
+          </Concepts>
+        </Part>
+        <Part name="Table" itemName="table_name">
+          <Concepts>
+            <Concept name="Identifier2"/>
+          </Concepts>
+        </Part>
+        <Part name="Index" itemName="index_name">
+          <Concepts>
+            <Concept name="Identifier3"/>
+          </Concepts>
+        </Part>
+        <Part name="Name" itemName="column_name">
+          <Concepts>
+            <Concept name="Identifier4"/>
+          </Concepts>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Name" type="System.String" itemName="column_name"/>
+        <Property name="Ordinal" type="System.Byte" itemName="ordinal_position">
+          <Concepts>
+            <Concept name="Ordinal">
+              <Conversion>
+                <ChangeType type="System.Int32"/>
+              </Conversion>
+            </Concept>
+          </Concepts>
+        </Property>
+      </Properties>
+      <Actions>
+        <Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+          <Parameter value="IndexColumns"/>
+        </Action>
+        <Action name="BuildDSRef" guid="7C030900-E8DD-471b-8F18-D83DA7036144" handler="Microsoft.VisualStudio.Data.DSRefBuilder">
+          <Parameter>
+            <Parameter value="{2}"/>
+            <Parameter value="{1}"/>
+            <Parameter value="Table"/>
+            <Parameter/>
+            <Parameter>
+              <!-- GUID_DSRefProperty_Qualifier -->
+              <Parameter value="4656BAEA-F397-11ce-BFE1-00AA0057B34E">
+                <Parameter value="{0}"/>
+              </Parameter>
+              <!-- GUID_DSRefProperty_PreciseType -->
+              <Parameter value="39A5A7E7-513F-44a4-B79D-7652CD8962D9">
+                <Parameter value="101" type="System.Int32"/>
+                <!-- Table -->
+              </Parameter>
+            </Parameter>
+            <Parameter>
+              <Parameter>
+                <Parameter value="{3}"/>
+                <Parameter/>
+                <Parameter value="Index"/>
+                <Parameter/>
+                <Parameter/>
+                <Parameter>
+                  <Parameter>
+                    <Parameter value="{4}"/>
+                    <Parameter/>
+                    <Parameter value="Field"/>
+                  </Parameter>
+                </Parameter>
+              </Parameter>
+            </Parameter>
+          </Parameter>
+        </Action>
+      </Actions>
+    </Type>
+
+    <Type name="Triggers" defaultSort="Database,Table,Name">
+      <Concepts>
+        <Concept name="TableTriggers" restrictions="{Catalog},null,{Table},{Name}"/>
+      </Concepts>
+      <Identifier>
+        <Part name="Database" itemName="table_catalog">
+          <Concepts>
+            <Concept name="Identifier0"/>
+          </Concepts>
+        </Part>
+        <Part name="Schema" itemName="table_schema">
+          <Concepts>
+            <Concept name="Identifier1"/>
+          </Concepts>
+        </Part>
+        <Part name="Table" itemName="table_name">
+          <Concepts>
+            <Concept name="Identifier2"/>
+          </Concepts>
+        </Part>
+        <Part name="Name" itemName="trigger_name">
+          <Concepts>
+            <Concept name="Identifier3"/>
+          </Concepts>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Name" type="System.String" itemName="trigger_name"/>
+      </Properties>
+      <Actions>
+        <Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+          <Parameter value="Triggers"/>
+        </Action>
+      </Actions>
+    </Type>
+    
+    <Type name="ForeignKey" defaultSort="Database,Table,Name">
+      <Concepts>
+        <Concept name="TableForeignKey" restrictions="{Catalog},null,{Table},{Name}"/>
+      </Concepts>
+      <Identifier>
+        <Part name="Database" itemName="table_catalog">
+          <Concepts>
+            <Concept name="Identifier0"/>
+          </Concepts>
+        </Part>
+        <Part name="Schema" itemName="table_schema">
+          <Concepts>
+            <Concept name="Identifier1"/>
+          </Concepts>
+        </Part>
+        <Part name="Table" itemName="table_name">
+          <Concepts>
+            <Concept name="Identifier2"/>
+          </Concepts>
+        </Part>
+        <Part name="Name" itemName="constraint_name">
+          <Concepts>
+            <Concept name="Identifier3"/>
+          </Concepts>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Name" type="System.String" itemName="constraint_name"/>
+        <Property name="ReferencedColumnName" type="System.String" itemName="fkey_to_column"/>
+        <Property name="ColumnName" type="System.String" itemName="fkey_from_column"/>
+        <Property name="ReferencedTableDatabase" type="System.String" itemName="fkey_to_catalog">
+          <Concepts>
+            <Concept name="ReferencedTableId0"/>
+          </Concepts>
+        </Property>
+        <Property name="ReferencedTableSchema" type="System.String" itemName="fkey_to_schema">
+          <Concepts>
+            <Concept name="ReferencedTableId1"/>
+          </Concepts>
+        </Property>
+        <Property name="ReferencedTableName" type="System.String" itemName="fkey_to_table">
+          <Concepts>
+            <Concept name="ReferencedTableId2"/>
+          </Concepts>
+        </Property>
+      </Properties>
+      <Actions>
+        <Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+          <Parameter value="ForeignKeys"/>
+        </Action>
+      </Actions>
+    </Type>
+
+    <Type name="ForeignKeyColumn" defaultSort="Database,Table,ForeignKey,Ordinal">
+      <Concepts>
+        <Concept name="TableForeignKeyColumn" restrictions="{Catalog},null,{Table},{TableForeignKey},{Name}"/>
+      </Concepts>
+      <Identifier>
+        <Part name="Database" itemName="table_catalog">
+          <Concepts>
+            <Concept name="Identifier0"/>
+          </Concepts>
+        </Part>
+        <Part name="Schema" itemName="table_schema">
+          <Concepts>
+            <Concept name="Identifier1"/>
+          </Concepts>
+        </Part>
+        <Part name="Table" itemName="table_name">
+          <Concepts>
+            <Concept name="Identifier2"/>
+          </Concepts>
+        </Part>
+        <Part name="ForeignKey" itemName="constraint_name">
+          <Concepts>
+            <Concept name="Identifier3"/>
+          </Concepts>
+        </Part>
+        <Part name="Name" itemName="fkey_from_column">
+          <Concepts>
+            <Concept name="Identifier4"/>
+          </Concepts>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Name" type="System.String" itemName="fkey_from_column"/>
+        <Property name="Ordinal" type="System.Int32" itemName="fkey_from_ordinal_position">
+          <Concepts>
+            <Concept name="Ordinal"/>
+          </Concepts>
+        </Property>
+        <Property name="ReferencedColumnName" type="System.String" itemName="fkey_to_column">
+          <Concepts>
+            <Concept name="ReferencedTableColumn"/>
+          </Concepts>
+        </Property>
+      </Properties>
+      <Actions>
+        <Action name="Enumerate" guid="61CC0372-384D-42e5-9707-6D7C8DC5287A" handler="Microsoft.VisualStudio.Data.AdoDotNet.AdoDotNetObjectEnumerator">
+          <Parameter value="ForeignKeys"/>
+        </Action>
+      </Actions>
+    </Type>
+  </Types>
+</VSDataObjectSupport>

@@ -1,0 +1,220 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{9B4A5CF6-5BE5-4926-ACC7-B729A8C05198}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Npgsql.Designer</RootNamespace>
+    <AssemblyName>Npgsql.Designer</AssemblyName>
+    <SignAssembly>false</SignAssembly>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>-->
+    <!--<RegisterWithCodebase>false</RegisterWithCodebase>-->
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\bin\designer\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>1701;1702;1699;3001</NoWarn>
+    <FileAlignment>512</FileAlignment>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>-->
+    <!--<GeneratePkgDefFile>false</GeneratePkgDefFile>-->
+    <!--<RegisterWithCodebase>false</RegisterWithCodebase>-->
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\bin\Designer\</OutputPath>
+    <DefineConstants>
+    </DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>1701;1702;1699;3001</NoWarn>
+    <FileAlignment>512</FileAlignment>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!--<RegisterOutputPackage>false</RegisterOutputPackage>
+    <RegisterWithCodebase>false</RegisterWithCodebase>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>-->
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EnvDTE, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\PublicAssemblies\EnvDTE.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Data.ConnectionUI, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Visual Studio 2008 SDK\VisualStudioIntegration\Common\Assemblies\2005\Microsoft.Data.ConnectionUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.CommandBars, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Common Files\Microsoft Shared\MSEnv\PublicAssemblies\Microsoft.VisualStudio.CommandBars.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Data, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Visual Studio 2008 SDK\VisualStudioIntegration\Common\Assemblies\2005\Microsoft.VisualStudio.Data.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Data.Services, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.VisualStudio.OLE.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Shell, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Shell.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.Shell.Interop.8.0, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ChangePasswordDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ChangePasswordDialog.Designer.cs">
+      <DependentUpon>ChangePasswordDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ChangeScriptDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ChangeScriptDialog.Designer.cs">
+      <DependentUpon>ChangeScriptDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Design\Check.cs" />
+    <Compile Include="Design\Column.cs" />
+    <Compile Include="Design\ForeignKey.cs" />
+    <Compile Include="Design\Index.cs" />
+    <Compile Include="Design\PrimaryKey.cs" />
+    <Compile Include="Design\SimpleTokenizer.cs" />
+    <Compile Include="Design\Table.cs" />
+    <Compile Include="Design\Trigger.cs" />
+    <Compile Include="Design\Unique.cs" />
+    <Compile Include="Design\View.cs" />
+    <Compile Include="Editors\AutoCompleteColumn.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Editors\TableDesignerDoc.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Editors\TableDesignerDoc.Designer.cs">
+      <DependentUpon>TableDesignerDoc.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Editors\ViewDesignerDoc.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Editors\ViewDesignerDoc.Designer.cs">
+      <DependentUpon>ViewDesignerDoc.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NpgsqlAdapterDesigner.cs">
+    </Compile>
+    <Compile Include="NpgsqlCommandDesigner.cs">
+    </Compile>
+    <Compile Include="NpgsqlCommandHandler.cs" />
+    <Compile Include="NpgsqlConnectionProperties.cs" />
+    <Compile Include="NpgsqlConnectionStringEditor.cs" />
+    <Compile Include="NpgsqlConnectionUIControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="NpgsqlConnectionUIControl.Designer.cs">
+      <DependentUpon>NpgsqlConnectionUIControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NpgsqlDataAdapterToolboxItem.cs" />
+    <Compile Include="NpgsqlDataConnectionSupport.cs" />
+    <Compile Include="NpgsqlDataObjectIdentifierResolver.cs" />
+    <Compile Include="NpgsqlDataObjectSupport.cs" />
+    <Compile Include="NpgsqlDataSourceInformation.cs" />
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="NpgsqlDataViewSupport.cs" />
+    <Compile Include="NpgsqlPackage.cs" />
+    <Compile Include="NpgsqlProviderObjectFactory.cs" />
+    <Compile Include="TableNameDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TableNameDialog.Designer.cs">
+      <DependentUpon>TableNameDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="VSPackage.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>VSPackage.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <!--<ItemGroup>
+    <VSCTCompile Include="PkgCmd.vsct">
+      <ResourceName>1000</ResourceName>
+    </VSCTCompile>
+  </ItemGroup>-->
+  <ItemGroup>
+    <EmbeddedResource Include="NpgsqlDataViewSupport2008.xml" />
+    <!--<EmbeddedResource Include="VSPackage.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>VSPackage.Designer.cs</LastGenOutput>
+      <MergeWithCTO>true</MergeWithCTO>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>-->
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ChangePasswordDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>ChangePasswordDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Editors\TableDesignerDoc.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>TableDesignerDoc.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Editors\ViewDesignerDoc.resx">
+      <DependentUpon>ViewDesignerDoc.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlConnectionUIControl.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>NpgsqlConnectionUIControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlDataObjectSupport.xml" />
+    <EmbeddedResource Include="TableNameDialog.resx">
+      <DependentUpon>TableNameDialog.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ChangeScriptDialog.resx">
+      <DependentUpon>ChangeScriptDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NpgsqlDataViewSupport2005.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\info.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ToolboxItems.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>
