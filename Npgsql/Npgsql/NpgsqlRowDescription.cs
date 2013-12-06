@@ -32,6 +32,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using NpgsqlTypes;
+using System.Text.RegularExpressions;
 
 namespace Npgsql
 {
@@ -196,12 +197,21 @@ namespace Npgsql
         public int FieldIndex(String fieldName)
         {
             int ret = -1;
-            if(field_name_index_table.TryGetValue(fieldName, out ret) || caseInsensitiveNameIndexTable.TryGetValue(fieldName, out ret))
+            string fieldNameUnderScore = ConvertToUnderscore(fieldName);
+            if (field_name_index_table.TryGetValue(fieldName, out ret)
+                || caseInsensitiveNameIndexTable.TryGetValue(fieldName, out ret)
+                || field_name_index_table.TryGetValue(fieldNameUnderScore, out ret)
+                || caseInsensitiveNameIndexTable.TryGetValue(fieldNameUnderScore, out ret))
                 return ret;
             else if(_compatVersion < GET_ORDINAL_THROW_EXCEPTION)
                 return -1;
             else
                 throw new IndexOutOfRangeException("Field not found");
+        }
+
+        private string ConvertToUnderscore(string val)
+        {
+            return Regex.Replace(val, @"(\p{Ll})(\p{Lu})", "$1_$2");
         }
     }
 
