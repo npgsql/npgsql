@@ -650,7 +650,7 @@ namespace Npgsql
                         break;
 
                     case TokenType.Param :
-                        if (IsParamNameChar(ch))
+                        if (IsParamNameChar(ch) || ch == '@') //Accept operator @@ for FullTextSearch
                         {
                             currTokenLen++;
                         }
