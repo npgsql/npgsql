@@ -1,0 +1,10 @@
+.DS_Store
+*.resources
+*.suo
+*.user
+*.sln.docstates
+*.userprefs
+/*.nupkg
+[Bb]in/
+[Bb]uild/
+[Oo]bj/

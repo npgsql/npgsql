@@ -30,7 +30,6 @@ using System;
 
 using Npgsql;
 using NUnit.Framework;
-using NUnit.Core;
 using System.Data;
 using System.Globalization;
 using System.Net;
