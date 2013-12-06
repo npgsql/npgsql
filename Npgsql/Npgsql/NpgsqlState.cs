@@ -388,12 +388,19 @@ namespace Npgsql
             const int limitOfSeconds = 2147;
 
             bool socketPoolResponse = false;
-            int secondsToWait = context.Mediator.CommandTimeout;
+
+            // Because the backend's statement_timeout parameter has been set to context.Mediator.CommandTimeout,
+            // we will give an extra 5 seconds because we'd prefer to receive a timeout error from PG
+            // than to be forced to start a new connection and send a cancel request.
+            // The result is that a timeout could take 5 seconds too long to occur, but if everything
+            // is healthy, that shouldn't happen.
+            int secondsToWait = context.Mediator.CommandTimeout + 5;
 
             /* In order to bypass this limit, the availability of
              * the socket is checked in 2,147 seconds cycles
              */
-            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse)) {    //
+            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse))
+            {
                 socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
                 secondsToWait -= limitOfSeconds;
             }
