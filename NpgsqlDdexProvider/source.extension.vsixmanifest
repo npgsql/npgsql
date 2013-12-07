@@ -5,8 +5,9 @@
     <DisplayName>NpgsqlDdexProvider</DisplayName>
     <Description>Npgsql Ddex Provider</Description>
   </Metadata>
-  <Installation InstalledByMsi="false">
+  <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="11.0" />
+    <InstallationTarget Version="[12.0,13.0)" Id="Microsoft.VisualStudio.Pro" />
   </Installation>
   <Dependencies>
     <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="4.5" />
