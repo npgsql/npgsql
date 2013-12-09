@@ -1,4 +1,0 @@
-[SQLite]
-System.Data.SQLite.SQLiteConnection, System.Data.SQLite
-System.Data.SQLite.SQLiteDataAdapter, System.Data.SQLite
-System.Data.SQLite.SQLiteCommand, System.Data.SQLite

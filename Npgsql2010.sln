@@ -1,9 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "src\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql", "Npgsql\Npgsql.csproj", "{9D13B739-62B1-4190-B386-7A9547304EB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFramework", "Npgsql.EntityFramework\Npgsql.EntityFramework.csproj", "{3EC85CBA-5B79-11E3-8104-0022198AB089}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.EntityFrameworkLegacy", "Npgsql.EntityFramework\Npgsql.EntityFrameworkLegacy.csproj", "{100998C4-5B85-11E3-911C-0022198AB089}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlTests", "tests\NpgsqlTests.csproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4A5A60DD-41B6-40BF-B677-227A921ECCC8}"
+	ProjectSection(SolutionItems) = preProject
+		Npgsql.snk = Npgsql.snk
+		CommonAssemblyInfo.cs = CommonAssemblyInfo.cs
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +37,24 @@ Global
 		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release-net35|AnyCPU.Build.0 = Release-net35|Any CPU
 		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
 		{9D13B739-62B1-4190-B386-7A9547304EB3}.Release-net40|AnyCPU.Build.0 = Release-net40|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Debug-net20|AnyCPU.ActiveCfg = Debug-net45|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Debug-net35|AnyCPU.ActiveCfg = Debug-net45|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Debug-net40|AnyCPU.ActiveCfg = Debug-net40|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Debug-net40|AnyCPU.Build.0 = Debug-net40|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Release-net20|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Release-net35|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Release-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
+		{3EC85CBA-5B79-11E3-8104-0022198AB089}.Release-net40|AnyCPU.Build.0 = Release-net40|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Debug-net20|AnyCPU.ActiveCfg = Debug-net45|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Debug-net35|AnyCPU.ActiveCfg = Debug-net35|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Debug-net35|AnyCPU.Build.0 = Debug-net35|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Debug-net40|AnyCPU.ActiveCfg = Debug-net40|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Debug-net40|AnyCPU.Build.0 = Debug-net40|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Release-net20|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Release-net35|AnyCPU.ActiveCfg = Release-net35|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Release-net35|AnyCPU.Build.0 = Release-net35|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Release-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
+		{100998C4-5B85-11E3-911C-0022198AB089}.Release-net40|AnyCPU.Build.0 = Release-net40|Any CPU
 		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug-net20|AnyCPU.ActiveCfg = Debug-net20|Any CPU
 		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug-net20|AnyCPU.Build.0 = Debug-net20|Any CPU
 		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug-net35|AnyCPU.ActiveCfg = Debug-net35|Any CPU

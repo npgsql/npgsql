@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+/********************************************************
+ * ADO.NET 2.0 Data Provider for SQLite Version 3.X
+ * Written by Robert Simpson (robert@blackcastlesoft.com)
+ * 
+ * Released to the public domain, use at your own risk!
+ ********************************************************/
+-->
+
+<VSDataViewSupport xmlns="http://tempuri.org/VSDataViewSupport.xsd">
+	<DataViews>
+		<!-- This sample defines a single data view -->
+		<DataView name="SQLite">
+      <DisplayName>SQLite</DisplayName>
+			<!-- The connection node is static, i.e. has no underlying object -->
+			<StaticConnectionNode>
+				<!-- We can always specify data from the root object -->
+				<InitialDisplayName>SQLite [{Root.Server}]</InitialDisplayName>
+				<CommandBindings>
+          <CommandBinding name="NewTable" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13600" handler="Npgsql.Designer.SQLiteCommandHandler"/>
+          <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+          <CommandBinding name="Vacuum"   guid="814658EE-A28E-4b97-BC33-4B1BC81EBECB" cmdid="262" handler="Npgsql.Designer.SQLiteCommandHandler"/>
+          <CommandBinding name="Rekey"    guid="814658EE-A28E-4b97-BC33-4B1BC81EBECB" cmdid="263" handler="Npgsql.Designer.SQLiteCommandHandler"/>
+        </CommandBindings>
+				<Children>
+          
+					<StaticNode nid="Tables">
+            <DisplayName>Tables</DisplayName>
+						<CommandBindings>
+              <CommandBinding name="NewTable" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13600" handler="Npgsql.Designer.SQLiteCommandHandler"/>
+              <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+            </CommandBindings>
+						<Children>
+              <Selection type="Table" filter="TYPE='TABLE'">
+                <SelectionNode nid="Table">
+                  <Icon name="Table"/>
+                  <Children>
+                    <SubHierarchyRef name="Table children"/>
+                  </Children>
+                </SelectionNode>
+              </Selection>
+            </Children>
+					</StaticNode>
+
+          <StaticNode nid="Tables">
+            <DisplayName>System Tables</DisplayName>
+            <CommandBindings>
+              <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+            </CommandBindings>
+            <Children>
+              <Selection type="Table" filter="TYPE='SYSTEM_TABLE'">
+                <SelectionNode nid="Table">
+                  <Icon name="Table"/>
+                  <Children>
+                    <SubHierarchyRef name="Table children"/>
+                  </Children>
+                </SelectionNode>
+              </Selection>
+            </Children>
+          </StaticNode>
+
+          <StaticNode nid="Views">
+            <DisplayName>Views</DisplayName>
+						<CommandBindings>
+              <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+              <CommandBinding name="NewView" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13601" handler="Npgsql.Designer.SQLiteCommandHandler" />
+            </CommandBindings>
+						<Children>
+							<Selection type="View">
+								<SelectionNode nid="View">
+                  <DisplayName>{View.Name}</DisplayName>
+                  <Icon name="View"/>
+									<Children>
+                    <SubHierarchyRef name="View children"/>
+									</Children>
+								</SelectionNode>
+							</Selection>
+						</Children>
+					</StaticNode>   
+          
+				</Children>
+			</StaticConnectionNode>
+		</DataView>
+	</DataViews>
+  
+  <SubHierarchies>
+    <SubHierarchy name="table children">      
+      <StaticNode nid="Columns">
+        <DisplayName>Columns</DisplayName>
+        <CommandBindings>
+          <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        </CommandBindings>
+        <Children>
+          <Selection type="TableColumn" restrictions="{Table.Database},null,{Table.Name}" filter="InPrimaryKey=True">
+            <SelectionNode>
+              <Icon name="PrimaryKey"/>
+            </SelectionNode>
+          </Selection>
+          <Selection type="TableColumn" restrictions="{Table.Database},null,{Table.Name}" filter="InPrimaryKey=False">
+            <SelectionNode>
+              <Icon name="Column"/>
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+      
+      <StaticNode nid="Indexes">
+        <DisplayName>Indexes</DisplayName>
+        <CommandBindings>
+          <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        </CommandBindings>
+        <Children>
+          <Selection type="Index" restrictions="{Table.Database},null,{Table.Name}">
+            <SelectionNode>
+              <Icon when="{IsPrimary}=true" name="PrimaryKey"/>
+              <Icon when="{IsUnique}=true" name="UniqueKey"/>
+              <Icon name="Index"/>
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+
+      <StaticNode nid="ForeignKeys">
+        <DisplayName>Foreign Keys</DisplayName>
+        <CommandBindings>
+          <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        </CommandBindings>
+        <Children>
+          <Selection type="ForeignKey" restrictions="{Table.Database},null,{Table.Name}">
+            <SelectionNode>
+              <Icon name="ForeignKey"/>
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+
+      <StaticNode nid="Triggers">
+        <DisplayName>Triggers</DisplayName>
+        <Children>
+          <Selection type="Triggers" restrictions="{Table.Database},null,{Table.Name}">
+            <SelectionNode>
+              <Icon name="Index" />
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+    </SubHierarchy>
+    
+    <SubHierarchy name="view children">      
+      <StaticNode nid="Columns">
+        <DisplayName>Columns</DisplayName>
+        <CommandBindings>
+          <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        </CommandBindings>
+        <Children>
+          <Selection type="ViewColumn" restrictions="{View.Database},null,{View.Name}">
+            <SelectionNode>
+              <Icon name="Column"/>
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+      
+      <StaticNode nid="Triggers">
+        <DisplayName>Triggers</DisplayName>
+        <Children>
+          <Selection type="Triggers" restrictions="{View.Database},null,{View.Name}">
+            <SelectionNode>
+              <Icon name="Index" />
+            </SelectionNode>
+          </Selection>
+        </Children>
+      </StaticNode>
+    </SubHierarchy>
+    
+  </SubHierarchies>
+  <TypeExtensions>
+    
+    <TypeExtension name="Table">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        <CommandBinding name="DropTable" guid="5efc7975-14bc-11cf-9b2b-00aa00573819" cmdid="17" handler="Npgsql.Designer.SQLiteCommandHandler">
+          <Parameter value="Table"/>
+        </CommandBinding>
+        <CommandBinding name="Browse_Data" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="12384" handler="884DD964-5327-461f-9F06-6484DD540F8F">
+          <Parameter value="Open"/>
+        </CommandBinding>
+        <CommandBinding name="Design" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="12291" handler="Npgsql.Designer.SQLiteCommandHandler">
+          <Parameter value="Table"/>
+        </CommandBinding>
+      </CommandBindings>
+    </TypeExtension>
+    
+    <TypeExtension name="View">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="IsUpdatable">
+          <DisplayName>Updatable</DisplayName>
+        </Property>
+      </Properties>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        <CommandBinding name="DropView" guid="5efc7975-14bc-11cf-9b2b-00aa00573819" cmdid="17" handler="Npgsql.Designer.SQLiteCommandHandler">
+          <Parameter value="View"/>
+        </CommandBinding>
+        <CommandBinding name="Design" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="12291" handler="Npgsql.Designer.SQLiteCommandHandler">
+          <Parameter value="View"/>
+        </CommandBinding>
+        <CommandBinding name="Browse_Data" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="12384" handler="884DD964-5327-461f-9F06-6484DD540F8F">
+          <Parameter value="Open"/>
+        </CommandBinding>
+      </CommandBindings>
+    </TypeExtension>
+    
+    <TypeExtension name="ViewColumn">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+        <Part name="View">
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Ordinal"/>
+        <Property name="Length"/>
+        <Property name="DataType">
+          <DisplayName>Data Type</DisplayName>
+        </Property>
+        <Property name="Nullable">
+          <DisplayName>Allow Nulls</DisplayName>
+        </Property>
+        <Property name="Default">
+          <DisplayName>Default Value</DisplayName>
+        </Property>
+      </Properties>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+      </CommandBindings>
+    </TypeExtension>
+    
+    <TypeExtension name="Index">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+        <Part name="Table">
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="IsUnique">
+          <DisplayName>Is Unique</DisplayName>
+        </Property>
+        <Property name="IsPrimary">
+          <DisplayName>Primary Key</DisplayName>
+        </Property>
+      </Properties>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+        <CommandBinding name="DropIndex" guid="5efc7975-14bc-11cf-9b2b-00aa00573819" cmdid="17" handler="Npgsql.Designer.SQLiteCommandHandler">
+          <Parameter value="Index"/>
+        </CommandBinding>
+      </CommandBindings>
+    </TypeExtension>
+
+    <TypeExtension name="Triggers">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+        <Part name="Table">
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+    </TypeExtension>
+
+    <TypeExtension name="TableColumn">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+        <Part name="Table">
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <Properties>
+        <Property name="Ordinal"/>
+        <Property name="Length"/>
+        <Property name="DataType">
+          <DisplayName>Data Type</DisplayName>
+        </Property>
+        <Property name="Nullable">
+          <DisplayName>Allow Nulls</DisplayName>
+        </Property>
+        <Property name="Default">
+          <DisplayName>Default Value</DisplayName>
+        </Property>
+        <Property name="InPrimaryKey">
+          <DisplayName>Primary Key</DisplayName>
+        </Property>
+      </Properties>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+      </CommandBindings>
+    </TypeExtension>
+
+    <TypeExtension name="ForeignKey">
+      <Identifier>
+        <Part name="Name">
+          <Category resource="Category_Identity"/>
+        </Part>
+        <Part name="Database">
+          <DisplayName>Catalog</DisplayName>
+          <Category resource="Category_Location"/>
+        </Part>
+        <Part name="Table">
+          <Category resource="Category_Location"/>
+        </Part>
+      </Identifier>
+      <Properties>
+        <!--<Property name="ColumnName">
+          <DisplayName>Source Column</DisplayName>
+          <Category resource="Category_Source"/>
+        </Property>-->
+        <Property name="ReferencedTableDatabase">
+          <DisplayName>Referenced Database</DisplayName>
+          <Category resource="Category_Refs"/>
+        </Property>
+        <Property name="ReferencedTableName">
+          <DisplayName>Referenced Table</DisplayName>
+          <Category resource="Category_Refs"/>
+        </Property>
+        <!--<Property name="ReferencedColumnName">
+          <DisplayName>Referenced Column</DisplayName>
+          <Category resource="Category_Refs"/>
+        </Property>-->
+      </Properties>
+      <CommandBindings>
+        <CommandBinding name="NewQuery" guid="501822E1-B5AF-11d0-B4DC-00A0C91506EF" cmdid="13608" handler="884DD964-5327-461f-9F06-6484DD540F8F"/>
+      </CommandBindings>
+    </TypeExtension>
+  </TypeExtensions>
+
+  <Resources baseName="Npgsql.Designer.VSPackage">
+    <Resource name="Category_Identity">(Identity)</Resource>
+    <Resource name="Category_Location">(Location)</Resource>
+    <Resource name="Category_Source">(Source)</Resource>
+    <Resource name="Category_Refs">References</Resource>
+  </Resources>
+</VSDataViewSupport>
