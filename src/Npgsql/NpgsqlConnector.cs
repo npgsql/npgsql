@@ -34,6 +34,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
@@ -144,9 +145,6 @@ namespace Npgsql
 
 		private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
 			new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
-
-		// For IsValid test
-		private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
 #if WINDOWS && UNMANAGED
 
@@ -349,16 +347,14 @@ namespace Npgsql
 		/// This method checks if the connector is still ok.
 		/// We try to send a simple query text, select 1 as ConnectionTest;
 		/// </summary>
-		internal Boolean IsValid()
+		internal Boolean IsValid()//TODO: WTF!?
 		{
 			try
 			{
 				// Here we use a fake NpgsqlCommand, just to send the test query string.
 
 				// Get random test value.
-				Byte[] testBytes = new Byte[2];
-				rng.GetNonZeroBytes(testBytes);
-				String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
+				String testValue = "Npgsql" + DateTime.Now.Ticks.ToString();
 
 				//Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
 				string compareValue = string.Empty;
@@ -719,13 +715,13 @@ namespace Npgsql
 				}
 			}
 
+			StringBuilder sbInit = new StringBuilder();
+
 			// Adjust client encoding.
 			NpgsqlParameterStatus clientEncodingParam = null;
-			if (
-				!ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
-				(!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
-			  )
-				new NpgsqlCommand("SET CLIENT_ENCODING TO UTF8", this).ExecuteBlind();
+			if (!ServerParameters.TryGetValue("client_encoding", out clientEncodingParam)
+				|| !string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
+				sbInit.AppendLine("SET CLIENT_ENCODING TO UTF8;");
 
 			if (!string.IsNullOrEmpty(settings.SearchPath))
 			{
@@ -738,9 +734,7 @@ namespace Npgsql
 					throw new InvalidOperationException();
 				}
 
-				// This is using string concatenation because set search_path doesn't allow type casting. ::text    
-				NpgsqlCommand commandSearchPath = new NpgsqlCommand("SET SEARCH_PATH=" + settings.SearchPath, this);
-				commandSearchPath.ExecuteBlind();
+				sbInit.AppendLine("SET SEARCH_PATH=" + settings.SearchPath + ";");
 			}
 
 			if (!string.IsNullOrEmpty(settings.ApplicationName))
@@ -757,8 +751,7 @@ namespace Npgsql
 					throw new InvalidOperationException();
 				}
 
-				NpgsqlCommand commandApplicationName = new NpgsqlCommand("SET APPLICATION_NAME='" + settings.ApplicationName + "'", this);
-				commandApplicationName.ExecuteBlind();
+				sbInit.AppendLine("SET APPLICATION_NAME='" + settings.ApplicationName.Replace('\'', '-') + "';");
 			}
 
 			/*
@@ -768,26 +761,32 @@ namespace Npgsql
 			 * This only works on postgresql servers where the ssl renegotiation settings is supported of course.
 			 * See http://lists.pgfoundry.org/pipermail/npgsql-devel/2010-February/001065.html for more information.
 			 */
-			try
-			{
-				NpgsqlCommand commandSslrenegotiation = new NpgsqlCommand("SET ssl_renegotiation_limit=0", this);
-				commandSslrenegotiation.ExecuteBlind();
-
-			}
-			catch { }
+			sbInit.AppendLine("SET ssl_renegotiation_limit=0;");
 
 			/*
 			 * Set precision digits to maximum value possible. For postgresql before 9 it was 2, after that, it is 3.
 			 * This way, we set first to 2 and then to 3. If there is an error because of 3, it will have been set to 2 at least.
 			 * Check bug report #1010992 for more information.
 			 */
+			sbInit.AppendLine("SET extra_float_digits=3;");
 			try
 			{
-				NpgsqlCommand commandSingleDoublePrecision = new NpgsqlCommand("SET extra_float_digits=2;SET extra_float_digits=3;", this);
-				commandSingleDoublePrecision.ExecuteBlind();
-
+				new NpgsqlCommand(sbInit.ToString(), this).ExecuteBlind();
 			}
-			catch { }
+			catch
+			{
+				foreach (var line in sbInit.ToString().Split(Environment.NewLine.ToCharArray()))
+				{
+					try
+					{
+						if (line.Length > 0)
+						{
+							new NpgsqlCommand(line, this).ExecuteBlind();
+						}
+					}
+					catch { }
+				}
+			}
 
 			// Make a shallow copy of the type mapping that the connector will own.
 			// It is possible that the connector may add types to its private

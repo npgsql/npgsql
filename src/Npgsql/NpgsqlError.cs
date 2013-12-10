@@ -331,7 +331,9 @@ namespace Npgsql
 									_constraintName = PGUtil.ReadString(stream);
 									break;
 								default:
-									throw new NpgsqlException("Invalid error format!");
+									// Unknown error field; consume and discard.
+									PGUtil.ReadString(stream);
+									break;
 							}
 						}
 					}

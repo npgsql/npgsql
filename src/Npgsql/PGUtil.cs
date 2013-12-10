@@ -153,23 +153,21 @@ namespace Npgsql
 		/// </summary>
 		public static String ReadString(Stream network_stream)
 		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadString");
+			//NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadString");
 
 			List<byte> buffer = new List<byte>();
-			for (int bRead = network_stream.ReadByte(); bRead != 0; bRead = network_stream.ReadByte())
+			int bRead;
+			for (bRead = network_stream.ReadByte(); bRead > 0; bRead = network_stream.ReadByte())
 			{
-				if (bRead == -1)
-				{
-					throw new IOException();
-				}
-				else
-				{
-					buffer.Add((byte)bRead);
-				}
+				buffer.Add((byte)bRead);
+			}
+			if (bRead == -1)
+			{
+				throw new IOException();
 			}
 
-			if (NpgsqlEventLog.Level >= LogLevel.Debug)
-				NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
+			//if (NpgsqlEventLog.Level >= LogLevel.Debug)
+			//NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, ENCODING_UTF8.GetString(buffer.ToArray()));
 
 			return ENCODING_UTF8.GetString(buffer.ToArray());
 		}
@@ -331,9 +329,9 @@ namespace Npgsql
 		public static void WriteString(String the_string, Stream network_stream)
 		{
 
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
+			//NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
 
-			NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
+			//NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, the_string);
 
 			byte[] bytes = ENCODING_UTF8.GetBytes(the_string + NULL_TERMINATOR_STRING);
 
@@ -345,8 +343,8 @@ namespace Npgsql
 		/// </summary>
 		public static void WriteBytes(byte[] the_bytes, Stream network_stream)
 		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
-			NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
+			//NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
+			//NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
 
 			network_stream.Write(the_bytes, 0, the_bytes.Length);
 			network_stream.Write(new byte[1], 0, 1);
@@ -359,7 +357,7 @@ namespace Npgsql
 		/// </summary>
 		public static void WriteLimString(String the_string, Int32 n, Stream network_stream)
 		{
-			NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
+			//NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
 
 			//Note: We do not know the size in bytes until after we have converted the string.
 			byte[] bytes = ENCODING_UTF8.GetBytes(the_string);
