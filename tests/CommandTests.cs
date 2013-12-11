@@ -3489,8 +3489,9 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ""FunctionToDeriveParams""(IN param1 int, OUT param2 int, INOUT param3 int) RETURNS record AS 
                               '
                               BEGIN
-                                      param1 = param1 + 1; 
-                                      param2 = param2 + 2; 
+                                      -- IN parameters are immutable for PostgreSql 8.4 or lesser
+                                      --param1 = param1 + 1; 
+                                      param2 = param1 + 2; 
                                       param3 = param3 + 3; 
                               END;
                               ' LANGUAGE 'plpgsql';");
