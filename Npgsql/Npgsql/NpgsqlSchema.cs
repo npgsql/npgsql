@@ -155,7 +155,14 @@ namespace Npgsql
 
             StringBuilder getSchemata = new StringBuilder();
 
-            getSchemata.Append("SELECT catalog_name, schema_name, schema_owner FROM information_schema.schemata");
+            getSchemata.Append(
+@"select * from(
+    select current_database() as catalog_name,
+        nspname AS schema_name,
+        r.rolname AS schema_owner
+    from
+        pg_catalog.pg_namespace left join pg_catalog.pg_roles r on r.oid = nspowner
+    ) tmp");
 
             using (
                 NpgsqlCommand command =
