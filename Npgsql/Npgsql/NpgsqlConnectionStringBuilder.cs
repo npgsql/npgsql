@@ -326,6 +326,9 @@ namespace Npgsql
         #region Properties
 
         private string _host;
+        /// <summary>
+        /// Gets or sets the backend server host name.
+        /// </summary>
         public string Host
         {
             get { return _host; }
@@ -333,6 +336,9 @@ namespace Npgsql
         }
 
         private int _port;
+        /// <summary>
+        /// Gets or sets the backend server port.
+        /// </summary>
         public int Port
         {
             get { return _port; }
@@ -340,6 +346,9 @@ namespace Npgsql
         }
 
         private ProtocolVersion _protocol;
+        /// <summary>
+        /// Gets or sets the specified backend communication protocol version.
+        /// </summary>
         public ProtocolVersion Protocol
         {
             get { return _protocol; }
@@ -347,6 +356,11 @@ namespace Npgsql
         }
 
         private string _database;
+        ///<summary>
+        /// Gets or sets the name of the database to be used after a connection is opened.
+        /// </summary>
+        /// <value>The name of the database to be
+        /// used after a connection is opened.</value>
         public string Database
         {
             get { return _database; }
@@ -354,6 +368,9 @@ namespace Npgsql
         }
 
         private string _username;
+        /// <summary>
+        /// Gets or sets the login user name.
+        /// </summary>
         public string UserName
         {
             get
@@ -371,6 +388,9 @@ namespace Npgsql
         }
 
         private PasswordBytes _password;
+        /// <summary>
+        /// Gets or sets the login password as a UTF8 encoded byte array.
+        /// </summary>
         public byte[] PasswordAsByteArray
         {
             get { return _password.PasswordAsByteArray; }
@@ -384,12 +404,18 @@ namespace Npgsql
                 _password.PasswordAsByteArray = value;
             }
         }
+        /// <summary>
+        /// Sets the login password as a string.
+        /// </summary>
         public string Password
         {
             set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
         }
 
         private bool _ssl;
+        /// <summary>
+        /// Gets or sets a value indicating whether to attempt to use SSL.
+        /// </summary>
         public bool SSL
         {
             get { return _ssl; }
@@ -397,13 +423,19 @@ namespace Npgsql
         }
 
         private SslMode _sslmode;
+        /// <summary>
+        /// Gets or sets a value indicating whether to attempt to use SSL.
+        /// </summary>
         public SslMode SslMode
         {
             get { return _sslmode; }
             set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
         }
 
-        [Obsolete("UTF-8 is always used regardless of this setting.")]
+        /// <summary>
+        /// Gets the backend encoding.  Always returns "UTF8".
+        /// </summary>
+        [Obsolete("UTF8 is always used regardless of this setting.")]
         public string Encoding
         {
 #pragma warning disable 618
@@ -412,6 +444,11 @@ namespace Npgsql
         }
 
         private int _timeout;
+        /// <summary>
+        /// Gets or sets the time to wait while trying to establish a connection
+        /// before terminating the attempt and generating an error.
+        /// </summary>
+        /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
         public int Timeout
         {
             get { return _timeout; }
@@ -419,6 +456,9 @@ namespace Npgsql
         }
 
         private string _searchpath;
+        /// <summary>
+        /// Gets or sets the schema search path.
+        /// </summary>
         public string SearchPath
         {
             get { return _searchpath; }
@@ -426,6 +466,9 @@ namespace Npgsql
         }
 
         private bool _pooling;
+        /// <summary>
+        /// Gets or sets a value indicating whether connection pooling should be used.
+        /// </summary>
         public bool Pooling
         {
             get { return _pooling; }
@@ -433,6 +476,17 @@ namespace Npgsql
         }
 
         private int _connection_life_time;
+        /// <summary>
+        /// Gets or sets the time to wait before closing unused connections in the pool if the count
+        /// of all connections exeeds MinPoolSize.
+        /// </summary>
+        /// <remarks>
+        /// If connection pool contains unused connections for ConnectionLifeTime seconds,
+        /// the half of them will be closed. If there will be unused connections in a second
+        /// later then again the half of them will be closed and so on.
+        /// This strategy provide smooth change of connection count in the pool.
+        /// </remarks>
+        /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
         public int ConnectionLifeTime
         {
             get { return _connection_life_time; }
@@ -440,6 +494,9 @@ namespace Npgsql
         }
 
         private int _min_pool_size;
+        /// <summary>
+        /// Gets or sets the minimum connection pool size.
+        /// </summary>
         public int MinPoolSize
         {
             get { return _min_pool_size; }
@@ -447,6 +504,9 @@ namespace Npgsql
         }
 
         private int _max_pool_size;
+        /// <summary>
+        /// Gets or sets the maximum connection pool size.
+        /// </summary>
         public int MaxPoolSize
         {
             get { return _max_pool_size; }
@@ -454,6 +514,9 @@ namespace Npgsql
         }
 
         private bool _sync_notification;
+        /// <summary>
+        /// Gets or sets a value indicating whether to listen for notifications and report them between command activity.
+        /// </summary>
         public bool SyncNotification
         {
             get { return _sync_notification; }
@@ -461,6 +524,11 @@ namespace Npgsql
         }
 
         private int _command_timeout;
+        /// <summary>
+        /// Gets the time to wait while trying to execute a command
+        /// before terminating the attempt and generating an error.
+        /// </summary>
+        /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
         public int CommandTimeout
         {
             get { return _command_timeout; }
@@ -475,6 +543,9 @@ namespace Npgsql
         }
 
         private bool _preloadReader;
+        /// <summary>
+        /// Gets or sets a value indicating whether datareaders are loaded in their entirety (for compatibility with earlier code).
+        /// </summary>
         public bool PreloadReader
         {
             get { return _preloadReader; }
@@ -510,8 +581,10 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Compatible), Keywords.Compatible, value); }
         }
 
-
         private string _application_name;
+        /// <summary>
+        /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
+        /// </summary>
         public string ApplicationName
         {
             get { return _application_name; }
@@ -519,6 +592,9 @@ namespace Npgsql
         }
 
         private bool _always_prepare;
+        /// <summary>
+        /// Gets or sets a value indicating whether to silently Prepare() all commands before execution.
+        /// </summary>
         public bool AlwaysPrepare
         {
             get { return _always_prepare; }
