@@ -135,7 +135,8 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>Npgsql.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="EntityFramework">
@@ -186,7 +187,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="Npgsql.snk" />
     <None Include="packages.config" />
     <None Include="xmlModel\XmlTest.csdl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
