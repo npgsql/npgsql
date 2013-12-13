@@ -94,7 +94,6 @@
     <EmbeddedResource Include="NpgsqlSchema.msl" />
     <EmbeddedResource Include="NpgsqlSchema.ssdl" />
     <EmbeddedResource Include="NpgsqlProviderManifest.Manifest.xml" />
-    <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
