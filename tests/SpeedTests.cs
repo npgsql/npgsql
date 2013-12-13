@@ -632,6 +632,81 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void ParameterCollectionGetValueFor1ItemDifferentCase()
+        {
+            this.PerformanceWithNParameters(1, true);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor10ItemsDifferentCase()
+        {
+            this.PerformanceWithNParameters(10, true);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor100ItemsDifferentCase()
+        {
+            this.PerformanceWithNParameters(100, true);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor1000ItemsDifferentCase()
+        {
+            this.PerformanceWithNParameters(1000, true);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor1ItemSameCase()
+        {
+            this.PerformanceWithNParameters(1, false);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor10ItemsSameCase()
+        {
+            this.PerformanceWithNParameters(10, false);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor100ItemsSameCase()
+        {
+            this.PerformanceWithNParameters(100, false);
+        }
+
+        [Test]
+        public void ParameterCollectionGetValueFor1000ItemsSameCase()
+        {
+            this.PerformanceWithNParameters(1000, false);
+        }
+
+        private void PerformanceWithNParameters(int n, bool differentCase)
+        {
+            var command = new NpgsqlCommand();
+            var collection = command.Parameters;
+            for (int i = 0; i < n; i++)
+            {
+                collection.AddWithValue("value" + i, i);
+            }
+
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    for (int i = 0; i < n && !metrics.TimesUp; i++)
+                    {
+                        NpgsqlParameter param;
+                        if (!collection.TryGetValue((differentCase ? "VALUE" : "value") + i, out param))
+                        {
+                            throw new Exception();
+                        }
+
+                        metrics.IncrementIterations();
+                    }
+                }
+            }
+        }
+
         #region Setup / Teardown / Utils
 
         private Stopwatch _watch;
