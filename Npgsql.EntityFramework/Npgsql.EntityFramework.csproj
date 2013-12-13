@@ -82,9 +82,6 @@
     <Reference Include="EntityFramework.SqlServer">
       <HintPath>..\packages\EntityFramework.6.0.1\lib\net40\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework">
-      <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -114,16 +111,11 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tests\EntityFrameworkTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj">
       <Project>{9d13b739-62b1-4190-b386-7a9547304eb3}</Project>
       <Name>Npgsql</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\tests\NpgsqlTests.csproj">
-      <Project>{e9c258d7-0d8e-4e6a-9857-5c6438591755}</Project>
-      <Name>NpgsqlTests</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

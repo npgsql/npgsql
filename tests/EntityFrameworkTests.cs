@@ -8,7 +8,7 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 
-namespace Tests
+namespace NpgsqlTests
 {
     public class EntityFrameworkTests : TestBase
     {
@@ -121,7 +121,7 @@ namespace Tests
         }
 
         [Test]
-        public void EntityFrameworkSqlQueryMapWithUnderscoreColumnNames()
+        public void DbContextSqlQueryMapWithUnderscoreColumnNames()
         {
             var conn = Npgsql.NpgsqlFactory.Instance.CreateConnection();
             conn.ConnectionString = ConnectionString;
