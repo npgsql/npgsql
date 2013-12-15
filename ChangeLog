@@ -1,3 +1,8 @@
+2013-12-15        glenebob
+
+        * src/Npgsql2012.csproj:
+          Bug fix: Npgsql was not returning a provider manifest to the EF.
+
 2013-12-03        glenebob
 
         * src/Npgsql/NpgsqlError.cs:

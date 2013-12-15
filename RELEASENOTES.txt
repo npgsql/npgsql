@@ -1,4 +1,13 @@
-﻿2013-12-4
+﻿2013-12-15
+
+    Npgsql 2.0.14.2
+
+    Fixed busg:
+
+        Fixed bug causing EF to throw System.Data.ProviderIncompatibleException.
+        Npgsql was not returning a provider manifest.
+
+2013-12-4
 
     Npgsql 2.0.14
 

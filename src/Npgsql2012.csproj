@@ -589,7 +589,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Npgsql\NpgsqlProviderManifest.Manifest.xml" />
+    <EmbeddedResource Include="Npgsql\NpgsqlProviderManifest.Manifest.xml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
