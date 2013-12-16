@@ -27,6 +27,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Resources;
 using NpgsqlTypes;
@@ -119,14 +120,28 @@ namespace Npgsql
         /// This method is reponsible to derive the command parameter list with values obtained from function definition.
         /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
         /// Parameters name will be parameter1, parameter2, ...
-        /// For while, only parameter name, NpgsqlDbType and parameter direction (IN, INOUT) are obtained.
-        /// Out parameters are removed because PosgreSql does not consider them in function signatures.
         ///</summary>
         /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
         public static void DeriveParameters(NpgsqlCommand command)
         {
+            try
+            {
+                DoDeriveParameters(command);
+            }
+            catch
+            {
+                command.Parameters.Clear();
+                 throw;
+            }
+        }
+
+        private static void DoDeriveParameters(NpgsqlCommand command)
+        {
+            // See http://www.postgresql.org/docs/9.3/static/catalog-pg-proc.html
+            command.Parameters.Clear();
             // Updated after 0.99.3 to support the optional existence of a name qualifying schema and case insensitivity when the schema ror procedure name do not contain a quote.
             // This fixed an incompatibility with NpgsqlCommand.CheckFunctionReturn(String ReturnType)
+            var serverVersion = command.Connector.ServerVersion;
             String query = null;
             string procedureName = null;
             string schemaName = null;
@@ -134,8 +149,8 @@ namespace Npgsql
             if (fullName.Length > 1 && fullName[0].Length > 0)
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
-                if (command.Connector.ServerVersion >= new System.Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
+                if (serverVersion >= new Version(8, 1, 0))
+                    query = "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
                 else
                     query = "select proargnames, proargtypes from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where proname=:proname and n.nspname=:nspname";
                 schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
@@ -144,8 +159,8 @@ namespace Npgsql
             else
             {
                 // proargsmodes is supported for Postgresql 8.1 and above
-                if (command.Connector.ServerVersion >= new System.Version(8, 1, 0))
-                    query = "select proargnames, proargtypes, proargmodes from pg_proc where proname = :proname";
+                if (serverVersion >= new Version(8, 1, 0))
+                    query = "select proargnames, proargtypes, proallargtypes, proargmodes from pg_proc where proname = :proname";
                 else
                     query = "select proargnames, proargtypes from pg_proc where proname = :proname";
                 procedureName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
@@ -161,9 +176,9 @@ namespace Npgsql
                     prm.Value = schemaName.Replace("\"", "").Trim();
                 }
 
-                String[] names = null;
-                String[] types = null;
-                String[] directions = null;
+                string[] names = null;
+                int[] types = null;
+                string[] modes = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
@@ -171,66 +186,64 @@ namespace Npgsql
                     {
                         if (!rdr.IsDBNull(0))
                             names = rdr.GetValue(0) as String[];
-                        if (!rdr.IsDBNull(1))
-                            types = rdr.GetString(1).Split();
-                        if ((rdr.FieldCount > 2) && (!rdr.IsDBNull(2))) // When all parameters are IN, "proargmodes" column is returned as null
-                            directions = rdr.GetValue(2) as String[];
-                    }
-                }
-
-                if (types == null)
-                {
-                    throw new InvalidOperationException(
-                        String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
-                }
-
-                if (directions != null)
-                {
-                    if (names != null)
-                    {
-                        // If names array is not null, it always be the same size as directions array.
-                        for (Int32 i = 0; i < directions.Length; i++)
+                        if (serverVersion >= new Version("8.1.0"))
                         {
-                            // Remove all names and directions for OUT parameters because they are not included in PostgreSql's function signatures
-                            if (directions[i] == "o")
-                                names[i] = "";
+                            if (!rdr.IsDBNull(2))
+                                types = rdr.GetValue(2) as int[];
+                            if (!rdr.IsDBNull(3))
+                                modes = rdr.GetValue(3) as String[];
                         }
-                        names = (string.Join(",", names).Replace(",,", ",")).Split(',');
+                        if (types == null)
+                        {
+                            if (rdr.IsDBNull(1) || rdr.GetString(1) == "")
+                                return;  // Parameterless function
+                            types = rdr.GetString(1).Split().Select(int.Parse).ToArray();
+                        }
                     }
-                    directions = (string.Join(",", directions).Replace("o", "").Replace(",,", ",")).Split(',');
+                    else 
+                        throw new InvalidOperationException(String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
                 }
 
                 command.Parameters.Clear();
-                for (Int32 i = 0; i < types.Length; i++)
+                for (var i = 0; i < types.Length; i++)
                 {
-                    // skip parameter if type string is empty
-                    // empty parameter lists can cause this
-                    if (!string.IsNullOrEmpty(types[i]))
+                    var param = new NpgsqlParameter();
+                    NpgsqlBackendTypeInfo typeInfo = null;
+                    if (!c.Connector.OidToNameMapping.TryGetValue(types[i], out typeInfo))
+                        throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
+                    param.NpgsqlDbType = typeInfo.NpgsqlDbType;
+
+                    if (names != null && i < names.Length)
+                        param.ParameterName = ":" + names[i];
+                    else
+                        param.ParameterName = "parameter" + (i + 1);
+
+                    if (modes == null) // All params are IN, or server < 8.1.0 (and only IN is supported)
+                        param.Direction = ParameterDirection.Input;
+                    else
                     {
-                        NpgsqlBackendTypeInfo typeInfo = null;
-                        if (!c.Connector.OidToNameMapping.TryGetValue(int.Parse(types[i]), out typeInfo))
+                        switch (modes[i])
                         {
-                            command.Parameters.Clear();
-                            throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
+                            case "i":
+                                param.Direction = ParameterDirection.Input;
+                                break;
+                            case "o":
+                                param.Direction = ParameterDirection.Output;
+                                break;
+                            case "b":
+                                param.Direction = ParameterDirection.InputOutput;
+                                break;
+                            case "v":
+                                throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
+                            case "t":
+                                throw new NotImplementedException("Cannot derive function parameter of type TABLE");
+                            default:
+                                throw new ArgumentOutOfRangeException("proargmode", modes[i],
+                                    "Unknown code in proargmodes while deriving: " + modes[i]);
                         }
-
-                        NpgsqlParameter param = new NpgsqlParameter();
-                        if (names != null && i < names.Length)
-                            param.ParameterName = ":" + names[i];
-                        else
-                            param.ParameterName = "parameter" + (i + 1).ToString();
-
-                        param.NpgsqlDbType = typeInfo.NpgsqlDbType;
-
-                        // See whether parameter direction is IN or INOUT
-                        // Note: OUT parameters are not checked because they were removed previously (just before this FOR loop).
-                        if ((directions != null) && (directions[i] == "b"))
-                            param.Direction = ParameterDirection.InputOutput;
-                        else
-                            param.Direction = ParameterDirection.Input;
-
-                        command.Parameters.Add(param);
                     }
+                    
+                    command.Parameters.Add(param);
                 }
             }
         }
