@@ -2880,13 +2880,13 @@ namespace NpgsqlTypes
             {
                 case TimeType.Infinity:
                 case TimeType.MinusInfinity:
-                    throw new ArgumentOutOfRangeException("You cannot subtract infinity timestamps");
+                    throw new ArgumentOutOfRangeException("this", "You cannot subtract infinity timestamps");
             }
             switch (timestamp._type)
             {
                 case TimeType.Infinity:
                 case TimeType.MinusInfinity:
-                    throw new ArgumentOutOfRangeException("You cannot subtract infinity timestamps");
+                    throw new ArgumentOutOfRangeException("timestamp", "You cannot subtract infinity timestamps");
             }
             return new NpgsqlInterval(0, _date.DaysSinceEra - timestamp._date.DaysSinceEra, _time.Ticks - timestamp._time.Ticks);
         }
@@ -3364,13 +3364,13 @@ namespace NpgsqlTypes
             {
                 case TimeType.Infinity:
                 case TimeType.MinusInfinity:
-                    throw new ArgumentOutOfRangeException("You cannot subtract infinity timestamps");
+                    throw new ArgumentOutOfRangeException("this", "You cannot subtract infinity timestamps");
             }
             switch (timestamp._type)
             {
                 case TimeType.Infinity:
                 case TimeType.MinusInfinity:
-                    throw new ArgumentOutOfRangeException("You cannot subtract infinity timestamps");
+                    throw new ArgumentOutOfRangeException("timestamp", "You cannot subtract infinity timestamps");
             }
             return new NpgsqlInterval(0, _date.DaysSinceEra - timestamp._date.DaysSinceEra, (_time - timestamp._time).Ticks);
         }

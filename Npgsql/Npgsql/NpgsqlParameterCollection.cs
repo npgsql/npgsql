@@ -55,9 +55,13 @@ namespace Npgsql
     [Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
 
-    public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
+    public sealed class NpgsqlParameterCollection : DbParameterCollection
     {
         private readonly List<NpgsqlParameter> InternalList = new List<NpgsqlParameter>();
+
+        // Dictionary lookups for GetValue to improve performance
+        private Dictionary<string, int> lookup;
+        private Dictionary<string, int> lookupIgnoreCase;
 
         // Logging related value
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
@@ -71,6 +75,13 @@ namespace Npgsql
         internal NpgsqlParameterCollection()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+            InvalidateHashLookups();
+        }
+
+        private void InvalidateHashLookups()
+        {
+            lookup = null;
+            lookupIgnoreCase = null;
         }
 
         #region NpgsqlParameterCollection Member
@@ -90,12 +101,33 @@ namespace Npgsql
             get
             {
                 NpgsqlEventLog.LogIndexerGet(LogLevel.Debug, CLASSNAME, parameterName);
-                return this.InternalList[IndexOf(parameterName)];
+                int index = IndexOf(parameterName);
+
+                if (index == -1)
+                {
+                    throw new IndexOutOfRangeException("Parameter not found");
+                }
+
+                return this.InternalList[index];
             }
             set
             {
                 NpgsqlEventLog.LogIndexerSet(LogLevel.Debug, CLASSNAME, parameterName, value);
-                this.InternalList[IndexOf(parameterName)] = value;
+                int index = IndexOf(parameterName);
+
+                if (index == -1)
+                {
+                    throw new IndexOutOfRangeException("Parameter not found");
+                }
+
+                NpgsqlParameter oldValue = this.InternalList[index];
+
+                if (value.CleanName != oldValue.CleanName)
+                {
+                    InvalidateHashLookups();
+                }
+
+                this.InternalList[index] = value;
             }
         }
 
@@ -119,6 +151,13 @@ namespace Npgsql
             set
             {
                 NpgsqlEventLog.LogIndexerSet(LogLevel.Debug, CLASSNAME, index, value);
+                NpgsqlParameter oldValue = this.InternalList[index];
+
+                if (value.CleanName != oldValue.CleanName)
+                {
+                    InvalidateHashLookups();
+                }
+
                 this.InternalList[index] = value;
             }
         }
@@ -135,6 +174,7 @@ namespace Npgsql
             // Do not allow parameters without name.
 
             this.InternalList.Add(value);
+            this.InvalidateHashLookups();
 
             // Check if there is a name. If not, add a name based in the index of parameter.
             if (value.ParameterName.Trim() == String.Empty || (value.ParameterName.Length == 1 && value.ParameterName[0] == ':'))
@@ -285,6 +325,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", parameterName);
             this.InternalList.RemoveAt(IndexOf(parameterName));
+            this.InvalidateHashLookups();
         }
 
         /// <summary>
@@ -307,29 +348,93 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", parameterName);
 
-            // Iterate values to see what is the index of parameter.
-            int index = 0;
-                int bestChoose = -1;
+            int retIndex;
+            int scanIndex;
+
             if ((parameterName[0] == ':') || (parameterName[0] == '@'))
             {
                 parameterName = parameterName.Remove(0, 1);
             }
 
-            foreach (NpgsqlParameter parameter in this)
-            {
-                // allow for optional use of ':' and '@' in the ParameterName property
-                        string cleanName = parameter.CleanName;
-                        if(cleanName == parameterName)
+            // Using a dictionary is much faster for 5 or more items            
+            if (this.InternalList.Count >= 5)
+            {            
+                if (this.lookup == null)
                 {
-                    return index;
+                    this.lookup = new Dictionary<string, int>();
+                    for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
+                    {
+                        var item = this.InternalList[scanIndex];
+
+                        // Store only the first of each distinct value
+                        if (! this.lookup.ContainsKey(item.CleanName))
+                        {
+                            this.lookup.Add(item.CleanName, scanIndex);
+                        }
+                    }
                 }
-                if(string.Compare(parameterName, cleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
+
+                // Try to access the case sensitive parameter name first
+                if (this.lookup.TryGetValue(parameterName, out retIndex))
                 {
-                    bestChoose = index;
+                    return retIndex;
                 }
-                index++;
+
+                // Case sensitive lookup failed, generate a case insensitive lookup
+                if (this.lookupIgnoreCase == null)
+                {
+                    this.lookupIgnoreCase = new Dictionary<string, int>(StringComparer.InvariantCultureIgnoreCase);
+                    for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
+                    {
+                        var item = this.InternalList[scanIndex];
+                        
+                        // Store only the first of each distinct value
+                        if (! this.lookupIgnoreCase.ContainsKey(item.CleanName))
+                        {
+                            this.lookupIgnoreCase.Add(item.CleanName, scanIndex);
+                        }
+                    }
+                }
+
+                // Then try to access the case insensitive parameter name
+                if (this.lookupIgnoreCase.TryGetValue(parameterName, out retIndex))
+                {
+                    return retIndex;
+                }
+
+                return -1;
             }
-            return bestChoose;
+
+            retIndex = -1;
+
+            // Scan until a case insensitive match is found, and save its index for possible return.
+            // Items that don't match loosely cannot possibly match exactly.
+            for (scanIndex = 0 ; scanIndex < this.InternalList.Count ; scanIndex++)
+            {
+                var item = this.InternalList[scanIndex];
+
+                if (string.Compare(parameterName, item.CleanName, StringComparison.InvariantCultureIgnoreCase) == 0)
+                {
+                    retIndex = scanIndex;
+
+                    break;
+                }
+            }
+
+            // Then continue the scan until a case sensitive match is found, and return it.
+            // If a case insensitive match was found, it will be re-checked for an exact match.
+            for ( ; scanIndex < this.InternalList.Count ; scanIndex++)
+            {
+                var item = this.InternalList[scanIndex];
+
+                if(item.CleanName == parameterName)
+                {
+                    return scanIndex;
+                }
+            }
+
+            // If a case insensitive match was found, it will be returned here.
+            return retIndex;
         }
 
         #endregion
@@ -353,6 +458,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", index);
             this.InternalList.RemoveAt(index);
+            this.InvalidateHashLookups();
         }
 
         /// <summary>
@@ -365,6 +471,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, value);
             CheckType(value);
             this.InternalList.Insert(index, (NpgsqlParameter) value);
+            this.InvalidateHashLookups();
         }
 
         /// <summary>
@@ -376,6 +483,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", value);
             CheckType(value);
             this.InternalList.Remove((NpgsqlParameter) value);
+            this.InvalidateHashLookups();
         }
 
         /// <summary>
@@ -407,11 +515,10 @@ namespace Npgsql
 
             if (index != -1)
             {
-                parameter = this[index];
+                parameter = InternalList[index];
 
                 return true;
             }
-
             else
             {
                 parameter = null;
@@ -427,6 +534,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Clear");
             this.InternalList.Clear();
+            this.InvalidateHashLookups();
         }
 
         /// <summary>
@@ -451,7 +559,7 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", value);
             CheckType(value);
             this.Add((NpgsqlParameter) value);
-            return IndexOf(value);
+            return Count - 1;
         }
 
         public override bool IsFixedSize
@@ -592,12 +700,6 @@ namespace Npgsql
         }
 */
 
-        NpgsqlParameter IList<NpgsqlParameter>.this[int index]
-        {
-            get { return InternalList[index]; }
-            set { InternalList[index] = value; }
-        }
-
         public int IndexOf(NpgsqlParameter item)
         {
             return InternalList.IndexOf(item);
@@ -606,6 +708,7 @@ namespace Npgsql
         public void Insert(int index, NpgsqlParameter item)
         {
             InternalList.Insert(index, item);
+            this.InvalidateHashLookups();
         }
 
         public bool Contains(NpgsqlParameter item)
@@ -615,12 +718,14 @@ namespace Npgsql
 
         public bool Remove(NpgsqlParameter item)
         {
-            return Remove(item);
-        }
+            if (InternalList.Remove(item))
+            {
+                this.InvalidateHashLookups();
 
-        IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
-        {
-            return InternalList.GetEnumerator();
+                return true;
+            }
+
+            return false;
         }
 
         public void CopyTo(NpgsqlParameter[] array, int arrayIndex)
@@ -628,9 +733,9 @@ namespace Npgsql
             InternalList.CopyTo(array, arrayIndex);
         }
 
-        void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
+        public NpgsqlParameter[] ToArray()
         {
-            Add(item);
+            return InternalList.ToArray();
         }
     }
 }
