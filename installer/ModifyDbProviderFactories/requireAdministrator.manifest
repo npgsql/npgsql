@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<asmv1:assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <assemblyIdentity version="1.0.0.0" name="MyApplication.app"/>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <!-- UAC マニフェスト オプション
+            Windows のユーザー アカウント制御のレベルを変更するには、
+            requestedExecutionLevel ノードを以下のいずれかで置換します。
+
+        <requestedExecutionLevel  level="asInvoker" uiAccess="false" />
+        <requestedExecutionLevel  level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel  level="highestAvailable" uiAccess="false" />
+
+            requestedExecutionLevel ノードを指定すると、ファイルおよびレジストリの仮想化は無効になります。
+            旧バージョンとの互換性のためにファイルおよびレジストリの仮想化を
+            使用する場合は、requestedExecutionLevel ノードを削除します。
+        -->
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!--このアプリケーションが動作するように設計されている、Windows のすべてのバージョンの一覧。
+      Windows は最も互換性の高い環境を自動的に選択します。-->
+
+      <!--アプリケーションが Windows Vista で動作するように設計されている場合は、次の supportedOS ノードのコメントを解除します-->
+      <!--<supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}"></supportedOS>-->
+
+      <!-- アプリケーションが Windows 7 で動作するように設計されている場合は、次の supportedOS ノードのコメントを解除します。-->
+      <!--<supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>-->
+
+      <!--アプリケーションが Windows 8 で動作するように設計されている場合は、次の supportedOS ノードのコメントを解除します-->
+      <!--<supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"></supportedOS>-->
+
+    </application>
+  </compatibility>
+
+  <!-- Windows のコモン コントロールとダイアログのテーマを有効にします (Windows XP 以降) -->
+  <!-- <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+          type="win32"
+          name="Microsoft.Windows.Common-Controls"
+          version="6.0.0.0"
+          processorArchitecture="*"
+          publicKeyToken="6595b64144ccf1df"
+          language="*"
+        />
+    </dependentAssembly>
+  </dependency>-->
+
+</asmv1:assembly>

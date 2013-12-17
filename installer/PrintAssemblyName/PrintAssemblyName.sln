@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrintAssemblyName", "PrintAssemblyName.csproj", "{E01E6E9E-3125-4627-94BE-BAF14B72D077}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E01E6E9E-3125-4627-94BE-BAF14B72D077}.Debug|Any CPU.ActiveCfg = Debug-net40|Any CPU
+		{E01E6E9E-3125-4627-94BE-BAF14B72D077}.Debug|Any CPU.Build.0 = Debug-net40|Any CPU
+		{E01E6E9E-3125-4627-94BE-BAF14B72D077}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E01E6E9E-3125-4627-94BE-BAF14B72D077}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
