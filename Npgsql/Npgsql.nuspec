@@ -14,16 +14,16 @@
     <tags>Npgsql postgres data database Postgresql</tags>
   </metadata>
   <files>
-    <file src="bin\Release-net20\**\*.dll" target="lib\net20"/>
+    <file src="bin\Release-net20\**\*.dll" target="lib\net20" exclude="**\policy.*" />
     <file src="bin\Release-net20\*.pdb" target="lib\net20"/>
     <file src="bin\Release-net20\*.xml" target="lib\net20"/>
-    <file src="bin\Release-net35\**\*.dll" target="lib\net35"/>
+    <file src="bin\Release-net35\**\*.dll" target="lib\net35" exclude="**\policy.*" />
     <file src="bin\Release-net35\*.pdb" target="lib\net35"/>
     <file src="bin\Release-net35\*.xml" target="lib\net35"/>
-    <file src="bin\Release-net40\**\*.dll" target="lib\net40"/>
+    <file src="bin\Release-net40\**\*.dll" target="lib\net40" exclude="**\policy.*" />
     <file src="bin\Release-net40\*.pdb" target="lib\net40"/>
     <file src="bin\Release-net40\*.xml" target="lib\net40"/>
-    <file src="bin\Release-net45\**\*.dll" target="lib\net45"/>
+    <file src="bin\Release-net45\**\*.dll" target="lib\net45" exclude="**\policy.*" />
     <file src="bin\Release-net45\*.pdb" target="lib\net45"/>
     <file src="bin\Release-net45\*.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
