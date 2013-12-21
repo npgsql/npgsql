@@ -3481,5 +3481,32 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof(NpgsqlTimeTZ), result.GetType());
             */
         }
+
+        [Test]
+        // Target NpgsqlCommand.AppendCommandReplacingParameterValues()'s handling of operator @@.
+        public void Operator_At_At_RewriteTest()
+        {
+            NpgsqlCommand cmd = new NpgsqlCommand("SELECT to_tsvector('fat cats ate rats') @@ to_tsquery('cat & rat')", Conn);
+
+            Assert.IsTrue((bool)cmd.ExecuteScalar());
+        }
+
+        [Test]
+        // Target NpgsqlCommand.AppendCommandReplacingParameterValues()'s handling of operator @>.
+        public void Operator_At_GT_RewriteTest()
+        {
+            NpgsqlCommand cmd = new NpgsqlCommand("SELECT 'cat'::tsquery @> 'cat & rat'::tsquery", Conn);
+
+            Assert.IsFalse((bool)cmd.ExecuteScalar());
+        }
+
+        [Test]
+        // Target NpgsqlCommand.AppendCommandReplacingParameterValues()'s handling of operator <@.
+        public void Operator_LT_At_RewriteTest()
+        {
+            NpgsqlCommand cmd = new NpgsqlCommand("SELECT 'cat'::tsquery <@ 'cat & rat'::tsquery", Conn);
+
+            Assert.IsTrue((bool)cmd.ExecuteScalar());
+        }
     }
 }
