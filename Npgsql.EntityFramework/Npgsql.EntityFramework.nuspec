@@ -14,6 +14,7 @@
     <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
     <dependencies>
       <dependency id="Npgsql" version="[2.1.0-beta1]" />
+      <dependency id="EntityFramework" version="6.0.0" />
     </dependencies>
   </metadata>
   <files>
