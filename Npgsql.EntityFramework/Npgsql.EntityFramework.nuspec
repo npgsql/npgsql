@@ -25,5 +25,6 @@
     <file src="bin\Release-net45\Npgsql.EntityFramework.pdb" target="lib\net45"/>
     <file src="bin\Release-net45\Npgsql.EntityFramework.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
+    <file src="install.ps1" target="tools" />
   </files>
 </package>
