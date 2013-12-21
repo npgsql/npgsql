@@ -375,23 +375,16 @@ namespace Npgsql
         {
             get
             {
-#if WINDOWS
-                SetUsernameWindowsIntegratedSecurity();
-#endif
+                if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
+                {
+                    System.Security.Principal.WindowsIdentity identity =
+                        System.Security.Principal.WindowsIdentity.GetCurrent();
+                    _username = identity.Name.Split('\\')[1];
+                }
                 return _username;
             }
 
             set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
-        }
-
-        private void SetUsernameWindowsIntegratedSecurity()
-        {
-            if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
-            {
-                System.Security.Principal.WindowsIdentity identity =
-                    System.Security.Principal.WindowsIdentity.GetCurrent();
-                _username = identity.Name.Split('\\')[1];
-            }
         }
 
         private PasswordBytes _password;

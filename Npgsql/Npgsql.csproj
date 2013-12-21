@@ -122,86 +122,6 @@
     <DocumentationFile>bin\Release-net20\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Release-net45|AnyCPU'">
-    <OutputPath>bin\Mono-Release-net45\</OutputPath>
-    <DefineConstants>TRACE;UNMANAGED;NET35;NET40;NET45;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Release-net45\Npgsql.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Debug-net20|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Mono-Debug-net20\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED</DefineConstants>
-    <DocumentationFile>bin\Debug-net20\Npgsql.xml</DocumentationFile>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Debug-net35|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Mono-Debug-net35\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Debug-net35\Npgsql.xml</DocumentationFile>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Debug-net40|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Mono-Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Debug-net45|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Mono-Debug-net45\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;NET45;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Debug-net45\Npgsql.xml</DocumentationFile>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Release-net20|AnyCPU'">
-    <OutputPath>bin\Mono-Release-net20\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED</DefineConstants>
-    <DocumentationFile>bin\Release-net20\Npgsql.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Release-net35|AnyCPU'">
-    <OutputPath>bin\Mono-Release-net35\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Release-net35\Npgsql.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Mono-Release-net40|AnyCPU'">
-    <OutputPath>bin\Mono-Release-net40\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
-    <DocumentationFile>bin\Release-net40\Npgsql.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ErrorReport>prompt</ErrorReport>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -210,12 +130,12 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Xml" />
   </ItemGroup>
-  <ItemGroup Condition=" '$(Configuration)' == 'Debug-net40' Or '$(Configuration)' == 'Release-net40' Or '$(Configuration)' == 'Debug-net45' Or '$(Configuration)' == 'Release-net45'&#xD;&#xA;						 OR '$(Configuration)' == 'Mono-Debug-net40' Or '$(Configuration)' == 'Mono-Release-net40' Or '$(Configuration)' == 'Mono-Debug-net45' Or '$(Configuration)' == 'Mono-Release-net45'">
+  <ItemGroup Condition=" '$(Configuration)' == 'Debug-net40' Or '$(Configuration)' == 'Release-net40' Or '$(Configuration)' == 'Debug-net45' Or '$(Configuration)' == 'Release-net45' ">
     <Reference Include="Mono.Security">
       <HintPath>..\lib\Mono.Security\4.0\Mono.Security.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <ItemGroup Condition=" '$(Configuration)' == 'Debug-net20' Or '$(Configuration)' == 'Release-net20' Or '$(Configuration)' == 'Debug-net35' Or '$(Configuration)' == 'Release-net35' &#xD;&#xA;						 OR '$(Configuration)' == 'Mono-Debug-net20' Or '$(Configuration)' == 'Mono-Release-net20' Or '$(Configuration)' == 'Mono-Debug-net35' Or '$(Configuration)' == 'Mono-Release-net35'">
+  <ItemGroup Condition=" '$(Configuration)' == 'Debug-net20' Or '$(Configuration)' == 'Release-net20' Or '$(Configuration)' == 'Debug-net35' Or '$(Configuration)' == 'Release-net35' ">
     <Reference Include="Mono.Security">
       <HintPath>..\lib\Mono.Security\2.0\Mono.Security.dll</HintPath>
     </Reference>
