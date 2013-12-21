@@ -9,6 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Npgsql.EntityFrameworkLegacy</AssemblyName>
+    <RootNamespace>Npgsql</RootNamespace>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Npgsql.snk</AssemblyOriginatorKeyFile>
@@ -136,5 +137,8 @@
       <Name>Npgsql</Name>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="PublisherPolicy">
+    <AL LinkResources="PublisherPolicy.config" OutputAssembly="$(OutputPath)\policy.2.0.$(AssemblyName).dll" KeyFile="..\Npgsql.snk" />
+  </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

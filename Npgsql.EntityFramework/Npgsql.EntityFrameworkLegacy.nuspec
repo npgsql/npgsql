@@ -12,6 +12,10 @@
     <summary>Postgresql provider for Entity Framework 5 and below</summary>
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
+    <dependencies>
+      <dependency id="Npgsql" version="[2.1.0-beta1]" />
+      <dependency id="EntityFramework" version="(,6.0.0)" />
+    </dependencies>
   </metadata>
   <files>
     <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.dll" target="lib\net35"/>

@@ -14,6 +14,7 @@
     <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
     <dependencies>
       <dependency id="Npgsql" version="[2.1.0-beta1]" />
+      <dependency id="EntityFramework" version="6.0.0" />
     </dependencies>
   </metadata>
   <files>
@@ -24,5 +25,6 @@
     <file src="bin\Release-net45\Npgsql.EntityFramework.pdb" target="lib\net45"/>
     <file src="bin\Release-net45\Npgsql.EntityFramework.xml" target="lib\net45"/>
     <file src="**\*.cs" target="src" />
+    <file src="install.ps1" target="tools" />
   </files>
 </package>
