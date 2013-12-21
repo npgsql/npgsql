@@ -1,8 +1,17 @@
-﻿2013-12-15
+﻿2013-12-21
+
+    Npgsql-2.0.14.3
+
+    Fixed bugs:
+
+        Boolean constants converted to ETRUE and EFALSE instead of TRUE and FALSE.
+        Thanks sebastian.kotulla@gmail.com.  Fix cherry-picked from Master.
+
+2013-12-15
 
     Npgsql 2.0.14.2
 
-    Fixed busg:
+    Fixed bugs:
 
         Fixed bug causing EF to throw System.Data.ProviderIncompatibleException.
         Npgsql was not returning a provider manifest.

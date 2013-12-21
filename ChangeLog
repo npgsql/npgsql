@@ -1,3 +1,9 @@
+﻿2013-12-21        glenebob
+
+        * src/Npgsql/SqlGenerators/VisitedExpression.cs
+          Bugfix: Boolean constants converted to ETRUE and EFALSE instead of TRUE and FALSE.
+          Thanks sebastian.kotulla@gmail.com.  Fix cherry-picked from Master.
+
 2013-12-15        glenebob
 
         * src/Npgsql2012.csproj:
@@ -18,7 +24,7 @@
 
 	* src/Npgsql/NpgsqlCopySerializer.cs:
 	  [#1011215] AddString in NpgsqlCopySerializer.cs crashes with \ in
-	  string. Thanks Jelmer Baas for patch and Panda Răzvan for
+	  string. Thanks Jelmer Baas for patch and Panda RÄƒzvan for
 	  testing.
 
 2012-07-06 23:44  fxjr
@@ -1881,7 +1887,7 @@
 2009-01-19 01:20  jbcooley
 
 	* src/Npgsql/NpgsqlSchema.ssdl: Fixed relationships with a simpler
-	  query.  Thanks to Eug�nio Ferreira Lima <eugenioflima at
+	  query.  Thanks to Eugênio Ferreira Lima <eugenioflima at
 	  gmail.com>
 
 2009-01-16 14:11  talliesin
@@ -2341,7 +2347,7 @@
 	* src/Npgsql/NpgsqlState.cs:
 	  Added try/catch to handle possible problems when cancelling a
 	  request because of a threadabortexception. Thanks to Andreas
-	  Schönebeck for heads up.
+	  SchÃ¶nebeck for heads up.
 
 2008-09-23 00:59  fxjr
 
@@ -2643,14 +2649,14 @@
 2008-07-28 22:47  jbcooley
 
 	* src/Npgsql/NpgsqlConnector.cs: Make Npgsql more stable in the
-	  face of Thread.Abort.  Many thanks to Andreas Sch�nebeck for
+	  face of Thread.Abort.  Many thanks to Andreas Schönebeck for
 	  reporting this and providing a very solid test case.
 
 2008-07-28 22:43  jbcooley
 
 	* src/Npgsql/: NpgsqlTransaction.cs, NpgsqlConnectorPool.cs: Make
 	  Npgsql more stable in the face of Thread.Abort.  Many thanks to
-	  Andreas Sch�nebeck for reporting this and providing a very solid
+	  Andreas Schönebeck for reporting this and providing a very solid
 	  test case.
 
 2008-07-28 22:35  jbcooley
