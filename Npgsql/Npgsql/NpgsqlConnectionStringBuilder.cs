@@ -31,8 +31,10 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Reflection;
 using System.Resources;
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace Npgsql
@@ -376,15 +378,27 @@ namespace Npgsql
             get
             {
                 if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
-                {
-                    System.Security.Principal.WindowsIdentity identity =
-                        System.Security.Principal.WindowsIdentity.GetCurrent();
-                    _username = identity.Name.Split('\\')[1];
-                }
+                    _username = WindowsIdentityUserName;
                 return _username;
             }
 
             set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
+        }
+
+        /// <summary>
+        /// This is a pretty horrible hack to fix https://github.com/npgsql/Npgsql/issues/133
+        /// In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
+        /// which doesn't exist in mono, and calling UserName getter above bombs.
+        /// The workaround is that the function that actually deals with WindowsIdentity never
+        /// gets called on mono, so never gets JITted and the problem goes away.
+        /// </summary>
+        private string WindowsIdentityUserName
+        {
+            get
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                return identity.Name.Split('\\')[1];                
+            }
         }
 
         private PasswordBytes _password;
@@ -563,7 +577,23 @@ namespace Npgsql
         public bool IntegratedSecurity
         {
             get { return _integrated_security; }
-            set { SetValue(GetKeyName(Keywords.IntegratedSecurity), Keywords.IntegratedSecurity, value); }
+            set
+            {
+                if (value == true)
+                    CheckIntegratedSecuritySupport();
+                SetValue(GetKeyName(Keywords.IntegratedSecurity), Keywords.IntegratedSecurity, value);
+            }
+        }
+
+        /// <summary>
+        /// No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
+        /// see https://github.com/npgsql/Npgsql/issues/133
+        /// </summary>
+        [Conditional("NET45")]
+        private static void CheckIntegratedSecuritySupport()
+        {
+            if (Type.GetType("Mono.Runtime") != null)
+                throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
         }
 
         private Version _compatible;
@@ -863,7 +893,10 @@ namespace Npgsql
                     case Keywords.UseExtendedTypes:
                         return this._useExtendedTypes = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
-                        return this._integrated_security = ToIntegratedSecurity(value);
+                        var v2 = ToIntegratedSecurity(value);
+                        if (v2 == true)
+                            CheckIntegratedSecuritySupport();
+                        return this._integrated_security = ToIntegratedSecurity(v2);
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
