@@ -411,7 +411,7 @@ where pgc.contype='f'
         internal static DataTable GetDataSourceInformation()
         {
             DataSet ds = new DataSet();
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.Npgsql.NpgsqlMetaData.xml"))
             {
                 ds.ReadXml(xmlStream);
             }
