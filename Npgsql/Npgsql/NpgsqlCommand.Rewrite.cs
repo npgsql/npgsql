@@ -660,40 +660,33 @@ namespace Npgsql
                         }
                         else
                         {
-                            if (currTokenLen == 0)
-                            {
-                                dest.WriteBytes((byte)ASCIIBytes.Colon);
-                            }
-                            else
-                            {
-                                string paramName = src.Substring(currTokenBeg, currTokenLen);
-                                NpgsqlParameter parameter;
-                                bool wroteParam = false;
+                            string paramName = src.Substring(currTokenBeg, currTokenLen);
+                            NpgsqlParameter parameter;
+                            bool wroteParam = false;
 
-                                if (parameters.TryGetValue(paramName, out parameter))
+                            if (parameters.TryGetValue(paramName, out parameter))
+                            {
+                                if (
+                                    (parameter.Direction == ParameterDirection.Input) ||
+                                    (parameter.Direction == ParameterDirection.InputOutput)
+                                )
                                 {
-                                    if (
-                                        (parameter.Direction == ParameterDirection.Input) ||
-                                        (parameter.Direction == ParameterDirection.InputOutput)
-                                    )
+                                    if (prepare)
                                     {
-                                        if (prepare)
-                                        {
-                                            AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
-                                        }
-                                        else
-                                        {
-                                            AppendParameterValue(dest, parameter);
-                                        }
+                                        AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
                                     }
-
-                                    wroteParam = true;
+                                    else
+                                    {
+                                        AppendParameterValue(dest, parameter);
+                                    }
                                 }
 
-                                if (! wroteParam)
-                                {
-                                    dest.WriteString("{0}{1}", paramMarker, paramName);
-                                }
+                                wroteParam = true;
+                            }
+
+                            if (! wroteParam)
+                            {
+                                dest.WriteString("{0}{1}", paramMarker, paramName);
                             }
 
                             currTokenType = TokenType.None;
@@ -740,14 +733,12 @@ namespace Npgsql
                     case TokenType.Colon :
                         if (IsParamNameChar(ch))
                         {
+                            // Switch to parameter name token, include this character.
                             currTokenType = TokenType.Param;
 
                             currTokenBeg = currCharOfs;
-                            currTokenLen = 0;
+                            currTokenLen = 1;
                             paramMarker = ':';
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
                         }
                         else
                         {
@@ -761,14 +752,12 @@ namespace Npgsql
                     case TokenType.FullTextMatchOp :
                         if (lastChar == '@' && IsParamNameChar(ch))
                         {
+                            // Switch to parameter name token, include this character.
                             currTokenType = TokenType.Param;
 
                             currTokenBeg = currCharOfs;
-                            currTokenLen = 0;
+                            currTokenLen = 1;
                             paramMarker = '@';
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
                         }
                         else
                         {
@@ -787,40 +776,33 @@ namespace Npgsql
             switch (currTokenType)
             {
                 case TokenType.Param :
-                    if (currTokenLen == 0)
-                    {
-                        dest.WriteBytes((byte)ASCIIBytes.Colon);
-                    }
-                    else
-                    {
-                        string paramName = src.Substring(currTokenBeg, currTokenLen);
-                        NpgsqlParameter parameter;
-                        bool wroteParam = false;
+                    string paramName = src.Substring(currTokenBeg, currTokenLen);
+                    NpgsqlParameter parameter;
+                    bool wroteParam = false;
 
-                        if (parameters.TryGetValue(paramName, out parameter))
+                    if (parameters.TryGetValue(paramName, out parameter))
+                    {
+                        if (
+                            (parameter.Direction == ParameterDirection.Input) ||
+                            (parameter.Direction == ParameterDirection.InputOutput)
+                        )
                         {
-                            if (
-                                (parameter.Direction == ParameterDirection.Input) ||
-                                (parameter.Direction == ParameterDirection.InputOutput)
-                            )
+                            if (prepare)
                             {
-                                if (prepare)
-                                {
-                                    AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
-                                }
-                                else
-                                {
-                                    AppendParameterValue(dest, parameter);
-                                }
+                                AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
                             }
-
-                            wroteParam = true;
+                            else
+                            {
+                                AppendParameterValue(dest, parameter);
+                            }
                         }
 
-                        if (! wroteParam)
-                        {
-                            dest.WriteString("{0}{1}", paramMarker, paramName);
-                        }
+                        wroteParam = true;
+                    }
+
+                    if (! wroteParam)
+                    {
+                        dest.WriteString("{0}{1}", paramMarker, paramName);
                     }
 
                     break;
