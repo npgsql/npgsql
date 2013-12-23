@@ -121,17 +121,15 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void DbContextSqlQueryMapWithUnderscoreColumnNames()
+        public void FirstOrDefaultTest()
         {
             var conn = Npgsql.NpgsqlFactory.Instance.CreateConnection();
             conn.ConnectionString = ConnectionString;
             using (var ctx = new TestDbContext(conn, true))
             {
-                var query = @"select *  from posts";
-                var posts = ctx.Database.SqlQuery<Post>(query).ToList();
+                var post = ctx.Posts.FirstOrDefault();
 
-                Assert.AreEqual(6, posts.Count);
-                Assert.AreEqual("Clark Kent", posts.FirstOrDefault().UserName);
+                Assert.AreEqual("Clark Kent", post.UserName);
             }
         }
     }
