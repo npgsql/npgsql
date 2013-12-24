@@ -70,6 +70,7 @@ namespace Npgsql
         private Object value = null;
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
+        private NpgsqlParameterCollection collection = null;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Boolean useCast = false;
@@ -121,6 +122,21 @@ namespace Npgsql
             }*/
 
         }
+
+        /// <summary>
+        /// The collection to which this parameter belongs, if any.
+        /// </summary>
+        public NpgsqlParameterCollection Collection
+        {
+            get { return collection; }
+
+            internal set
+            {
+                collection = value;
+                bound = false;
+            }
+        }
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
@@ -474,7 +490,11 @@ namespace Npgsql
 
                 m_Name = m_Name.Trim();
 
-                bound = false;
+                if (collection != null)
+                {
+                    collection.InvalidateHashLookups();
+                    bound = false;
+                }
 
                 NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", m_Name);
             }
