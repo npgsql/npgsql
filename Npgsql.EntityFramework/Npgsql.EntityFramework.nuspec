@@ -2,11 +2,13 @@
 <package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>Npgsql.EntityFramework</id>
+    <title>Npgsql for Entity Framework</title>
     <version>2.1.0-beta1</version>
     <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
+    <copyright>Copyright 2002 - 2013 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Postgresql provider for Entity Framework 6 and above</description>
     <summary>Postgresql provider for Entity Framework 6 and above</summary>
