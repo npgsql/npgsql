@@ -1221,7 +1221,7 @@ namespace Npgsql
 
         public IDictionary<string, NpgsqlParameterStatus> ServerParameters
         {
-            get { return new ReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
+            get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
         }
     }
 }
