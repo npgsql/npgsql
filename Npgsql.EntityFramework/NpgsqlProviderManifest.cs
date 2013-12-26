@@ -16,7 +16,7 @@ namespace Npgsql
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
         public NpgsqlProviderManifest(string serverVersion)
-            : base(CreateXmlReaderForResource("NpgsqlProviderManifest.Manifest.xml"))
+            : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
         }
 
@@ -26,11 +26,11 @@ namespace Npgsql
 
             if (informationType == StoreSchemaDefinition)
             {
-                xmlReader = CreateXmlReaderForResource("NpgsqlSchema.ssdl");
+                xmlReader = CreateXmlReaderForResource("Npgsql.NpgsqlSchema.ssdl");
             }
             else if (informationType == StoreSchemaMapping)
             {
-                xmlReader = CreateXmlReaderForResource("NpgsqlSchema.msl");
+                xmlReader = CreateXmlReaderForResource("Npgsql.NpgsqlSchema.msl");
             }
 
             if (xmlReader == null)
