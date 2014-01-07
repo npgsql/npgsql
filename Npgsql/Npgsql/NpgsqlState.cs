@@ -318,7 +318,12 @@ namespace Npgsql
 
                 // Process commandTimeout behavior.
 
-                if ((context.Mediator.CommandTimeout > 0) && (!context.Stream.WaitAvailable(TimeSpan.FromSeconds(context.Mediator.CommandTimeout))))
+                // We will give an extra 5 seconds to context.Mediator.CommandTimeout
+                // because we'd prefer to receive a timeout error from PG
+                // than to be forced to start a new connection and send a cancel request.
+                // The result is that a timeout could take 5 seconds too long to occur, but if everything
+                // is healthy, that shouldn't happen.
+                if ((context.Mediator.CommandTimeout > 0) && (!context.Stream.WaitAvailable(TimeSpan.FromSeconds(context.Mediator.CommandTimeout + 5))))
                 {
                     // If timeout occurs when establishing the session with server then
                     // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.

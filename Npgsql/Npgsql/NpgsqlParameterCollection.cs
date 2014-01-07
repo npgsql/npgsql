@@ -78,7 +78,11 @@ namespace Npgsql
             InvalidateHashLookups();
         }
 
-        private void InvalidateHashLookups()
+        /// <summary>
+        /// Invalidate the hash lookup tables.  This should be done any time a change
+        /// may throw the lookups out of sync with the list.
+        /// </summary>
+        internal void InvalidateHashLookups()
         {
             lookup = null;
             lookupIgnoreCase = null;
@@ -153,12 +157,25 @@ namespace Npgsql
                 NpgsqlEventLog.LogIndexerSet(LogLevel.Debug, CLASSNAME, index, value);
                 NpgsqlParameter oldValue = this.InternalList[index];
 
+                if (oldValue == value)
+                {
+                    // Reasigning the same value is a non-op.
+                    return;
+                }
+
+                if (value.Collection != null)
+                {
+                    throw new InvalidOperationException("The parameter already belongs to a collection");
+                }
+
                 if (value.CleanName != oldValue.CleanName)
                 {
                     InvalidateHashLookups();
                 }
 
                 this.InternalList[index] = value;
+                value.Collection = this;
+                oldValue.Collection = null;
             }
         }
 
@@ -173,7 +190,13 @@ namespace Npgsql
 
             // Do not allow parameters without name.
 
+            if (value.Collection != null)
+            {
+                throw new InvalidOperationException("The parameter already belongs to a collection");
+            }
+
             this.InternalList.Add(value);
+            value.Collection = this;
             this.InvalidateHashLookups();
 
             // Check if there is a name. If not, add a name based in the index of parameter.
@@ -324,7 +347,11 @@ namespace Npgsql
         public override void RemoveAt(string parameterName)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", parameterName);
-            this.InternalList.RemoveAt(IndexOf(parameterName));
+
+            int index = IndexOf(parameterName);
+            NpgsqlParameter existing = InternalList[index];
+            this.InternalList.RemoveAt(index);
+            existing.Collection = null;
             this.InvalidateHashLookups();
         }
 
@@ -457,32 +484,81 @@ namespace Npgsql
         public override void RemoveAt(int index)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", index);
-            this.InternalList.RemoveAt(index);
-            this.InvalidateHashLookups();
+
+            if (InternalList.Count - 1 < index)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            InternalList[index].Collection = null;
+            InternalList.RemoveAt(index);
+            InvalidateHashLookups();
         }
 
         /// <summary>
         /// Inserts a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> into the collection at the specified index.
         /// </summary>
         /// <param name="index">The zero-based index where the parameter is to be inserted within the collection.</param>
-        /// <param name="value">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-        public override void Insert(int index, object value)
+        /// <param name="oValue">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
+        public override void Insert(int index, object oValue)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, value);
-            CheckType(value);
-            this.InternalList.Insert(index, (NpgsqlParameter) value);
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, oValue);
+
+            CheckType(oValue);
+
+            NpgsqlParameter value = oValue as NpgsqlParameter;
+
+            if (value.Collection != null)
+            {
+                throw new InvalidOperationException("The parameter already belongs to a collection");
+            }
+
+            value.Collection = this;
+            this.InternalList.Insert(index, value);
             this.InvalidateHashLookups();
         }
 
         /// <summary>
         /// Removes the specified <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> from the collection.
         /// </summary>
-        /// <param name="value">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
-        public override void Remove(object value)
+        /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
+        public void Remove(string parameterName)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", value);
-            CheckType(value);
-            this.InternalList.Remove((NpgsqlParameter) value);
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", parameterName);
+
+            int index;
+
+            index = IndexOf(parameterName);
+
+            if (index < 0)
+            {
+                throw new InvalidOperationException("No parameter with the specified name exists in the collection");
+            }
+
+            this.InternalList[index].Collection = null;
+            this.InternalList.RemoveAt(index);
+            this.InvalidateHashLookups();
+        }
+
+        /// <summary>
+        /// Removes the specified <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> from the collection.
+        /// </summary>
+        /// <param name="oValue">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
+        public override void Remove(object oValue)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", oValue);
+
+            CheckType(oValue);
+
+            NpgsqlParameter value = oValue as NpgsqlParameter;
+
+            if (value.Collection != this)
+            {
+                throw new InvalidOperationException("The item does not belong to this collection");
+            }
+
+            value.Collection = null;
+            this.InternalList.Remove(value);
             this.InvalidateHashLookups();
         }
 
@@ -707,7 +783,13 @@ namespace Npgsql
 
         public void Insert(int index, NpgsqlParameter item)
         {
+            if (item.Collection != null)
+            {
+                throw new Exception("The parameter already belongs to a collection");
+            }
+
             InternalList.Insert(index, item);
+            item.Collection = this;
             this.InvalidateHashLookups();
         }
 
@@ -720,6 +802,7 @@ namespace Npgsql
         {
             if (InternalList.Remove(item))
             {
+                item.Collection = null;
                 this.InvalidateHashLookups();
 
                 return true;

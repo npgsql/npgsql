@@ -908,11 +908,11 @@ namespace Npgsql
         Binary = 1
     }
 
-    internal class ReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>
+    internal class NpgsqlReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>
     {
         private readonly Dictionary<TKey, TValue> _inner;
 
-        public ReadOnlyDictionary(Dictionary<TKey, TValue> inner)
+        public NpgsqlReadOnlyDictionary(Dictionary<TKey, TValue> inner)
         {
             _inner = inner;
         }

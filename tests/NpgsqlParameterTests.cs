@@ -1795,5 +1795,37 @@ namespace NpgsqlTests
             A = long.MinValue,
             B = long.MaxValue
         }
+
+        [Test]
+        public void ParameterCollectionHashLookupParameterRenameBug()
+        {
+            using (var command = new NpgsqlCommand())
+            {
+                // Put plenty of parameters in the collection to turn on hash lookup functionality.
+                for (int i = 0 ; i < 10 ; i++)
+                {
+                    command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
+                }
+
+                // Make sure both hash lookups have been generated.
+                Assert.AreEqual(command.Parameters["p03"].ParameterName, "p03");
+                Assert.AreEqual(command.Parameters["P03"].ParameterName, "p03");
+
+                // Rename the target parameter.
+                command.Parameters["p03"].ParameterName = "a_new_name";
+
+                try
+                {
+                    // Try to exploit the hash lookup bug.
+                    // If the bug exists, the hash lookups will be out of sync with the list, and be unable
+                    // to find the parameter by its new name.
+                    Assert.IsTrue(command.Parameters.IndexOf("a_new_name") >= 0);
+                }
+                catch (Exception e)
+                {
+                    throw new Exception("NpgsqlParameterCollection hash lookup/parameter rename bug detected", e);
+                }
+            }
+        }
     }
 }

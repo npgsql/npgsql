@@ -47,20 +47,17 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
     {
         /// <summary>
-        /// Slightly optimised version of ExecuteNonQuery() for internal ues in cases where the number
+        /// Slightly optimised version of ExecuteNonQuery() for internal use in cases where the number
         /// of affected rows is of no interest.
-        /// This function must not be called with a query that returns result rows, or after calling Prepare().
+        /// This function must not be called with a query that returns result rows, after calling Prepare(), or.
+        /// with a query that requires parameter substitution of any kind.
         /// </summary>
         internal void ExecuteBlind()
         {
-            if (prepared == PrepareStatus.V2Prepared || prepared == PrepareStatus.V3Prepared)
-            {
-                throw new InvalidOperationException("Cannot call ExecuteBlind() on a prepared command");
-            }
-
             NpgsqlQuery query;
 
-            query = new NpgsqlQuery(m_Connector, GetCommandText());
+            // Bypass cpmmand parsing overhead and send commandText verbatim.
+            query = new NpgsqlQuery(m_Connector, commandText);
 
             // Block the notification thread before writing anything to the wire.
             using (var blocker = m_Connector.BlockNotificationThread())
@@ -181,6 +178,15 @@ namespace Npgsql
             {
                 IEnumerable<IServerResponseObject> responseEnum;
                 ForwardsOnlyDataReader reader;
+
+                if (m_Connector.CommandTimeoutSent == -1 || m_Connector.CommandTimeoutSent != this.CommandTimeout)
+                {
+                    NpgsqlCommand toq = new NpgsqlCommand(string.Format("SET statement_timeout = {0}", this.CommandTimeout * 1000), m_Connector);
+
+                    toq.ExecuteBlind();
+
+                    m_Connector.CommandTimeoutSent = this.CommandTimeout;
+                }
 
                 if (prepared == PrepareStatus.NeedsPrepare)
                 {
