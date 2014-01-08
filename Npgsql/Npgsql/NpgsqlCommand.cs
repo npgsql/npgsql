@@ -320,6 +320,11 @@ namespace Npgsql
                 if (this.connection != null)
                 {
                     m_Connector = this.connection.Connector;
+
+                    if (m_Connector != null && m_Connector.AlwaysPrepare)
+                    {
+                        prepared = PrepareStatus.NeedsPrepare;
+                    }
                 }
 
                 SetCommandTimeout();
