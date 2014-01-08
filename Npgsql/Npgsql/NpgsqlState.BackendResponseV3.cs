@@ -274,7 +274,7 @@ namespace Npgsql
                             // Eat the length
                             PGUtil.ReadInt32(stream);
                             context.FireNotification(new NpgsqlNotificationEventArgs(stream, true));
-                            if (context.IsNotificationThreadRunning)
+                            if (context.ShouldNotificationThreadStop)
                             {
                                 yield break;
                             }
