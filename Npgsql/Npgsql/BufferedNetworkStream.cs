@@ -22,6 +22,7 @@
 
 // History:
 // 2013-12-03 BufferedNetworkStream class created by Udo Liess
+// 2014-01-08 event Arrived added, Dispose rewritten by Udo Liess
 
 
 using System;
@@ -38,8 +39,8 @@ namespace Npgsql
     {
         Stream readStream;
         Stream writeStream;
-        byte[] readBuffer = new byte[1];
         IAsyncResult readResult;
+        byte[] readBuffer = new byte[1];
 
         /// <summary>
         /// Constructor.
@@ -54,7 +55,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Constructor. 
+        /// Constructor.
         /// The buffer size is set to ushort.MaxValue.
         /// </summary>
         /// <param name="baseStream"></param>
@@ -63,7 +64,8 @@ namespace Npgsql
 
         void BackgroundReading()
         {
-            readResult = readStream.BeginRead(readBuffer, 0, 1, null, null);
+            Action method = () => Arrived(this, EventArgs.Empty);
+            readResult = readStream.BeginRead(readBuffer, 0, 1, ar1 => method.BeginInvoke(ar2 => method.EndInvoke(ar2), null), null);
         }
 
         /// <summary>
@@ -128,8 +130,6 @@ namespace Npgsql
         {
             if (count < 1)
                 return 0;
-            if (!readResult.IsCompleted)
-                readResult.AsyncWaitHandle.WaitOne();
             var result = readStream.EndRead(readResult);
             if (result > 0)
             {
@@ -202,14 +202,50 @@ namespace Npgsql
             return false;
         }
 
+        /// <summary>
+        /// Event that fires in thread pool thread when new data is available.
+        /// </summary>
+        public event EventHandler Arrived = delegate { };
+
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
             try
             {
-                readStream.EndRead(readResult);
+                if (disposing && readBuffer != null)
+                {
+                    try
+                    {
+                        Flush();
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            readStream.Close();
+                        }
+                        finally
+                        {
+                            writeStream.Close();
+                        }
+                    }
+                }
             }
-            catch { }
+            finally
+            {
+                try
+                {
+                    readStream.EndRead(readResult);
+                }
+                catch { }
+                finally
+                {
+                    readStream = null;
+                    writeStream = null;
+                    readResult = null;
+                    readBuffer = null;
+                    base.Dispose(disposing);
+                }
+            }
         }
     }
 }
