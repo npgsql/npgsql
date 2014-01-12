@@ -80,8 +80,8 @@ namespace Npgsql
 
             commandText.Append(";");
 
-            NpgsqlCommand command = new NpgsqlCommand(commandText.ToString(), conn.Connector);
-            command.ExecuteBlind();
+            NpgsqlCommand.ExecuteBlind(conn.Connector, commandText.ToString());
+
             _conn.Connector.Transaction = this;
         }
 
@@ -160,8 +160,8 @@ namespace Npgsql
 
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Commit");
 
-            NpgsqlCommand command = new NpgsqlCommand("COMMIT", _conn.Connector);
-            command.ExecuteBlind();
+            NpgsqlCommand.ExecuteBlind(_conn.Connector, "COMMIT");
+
             _conn.Connector.Transaction = null;
             _conn = null;
         }
@@ -180,8 +180,7 @@ namespace Npgsql
 
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
 
-            NpgsqlCommand command = new NpgsqlCommand("ROLLBACK", _conn.Connector);
-            command.ExecuteBlind();
+            NpgsqlCommand.ExecuteBlind(_conn.Connector, "ROLLBACK");
             _conn.Connector.Transaction = null;
             _conn = null;
         }
@@ -210,9 +209,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand command = new NpgsqlCommand("ROLLBACK TO SAVEPOINT " + savePointName, _conn.Connector);
-            command.ExecuteBlind();
-
+            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>
@@ -240,8 +237,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand command = new NpgsqlCommand("SAVEPOINT " + savePointName, _conn.Connector);
-            command.ExecuteBlind();
+            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("SAVEPOINT {0}", savePointName));
 
         }
         /// <summary>

@@ -87,16 +87,15 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CommitTransaction");
             NpgsqlConnection connection = GetConnection();
-            NpgsqlCommand command = null;
+
             if (_prepared)
             {
-                command = new NpgsqlCommand(string.Format("COMMIT PREPARED '{0}'", _txName), connection);
+                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("COMMIT PREPARED '{0}'", _txName));
             }
             else
             {
-                command = new NpgsqlCommand("COMMIT", connection);
+                NpgsqlCommand.ExecuteBlind(connection.Connector, "COMMIT");
             }
-            command.ExecuteBlind();
         }
 
         public void PrepareTransaction()
@@ -105,8 +104,7 @@ namespace Npgsql
             {
                 NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PrepareTransaction");
                 NpgsqlConnection connection = GetConnection();
-                NpgsqlCommand command = new NpgsqlCommand(string.Format("PREPARE TRANSACTION '{0}'", _txName), connection);
-                command.ExecuteBlind();
+                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("PREPARE TRANSACTION '{0}'", _txName));
                 _prepared = true;
             }
         }
@@ -115,16 +113,15 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RollbackTransaction");
             NpgsqlConnection connection = GetConnection();
-            NpgsqlCommand command = null;
+
             if (_prepared)
             {
-                command = new NpgsqlCommand(string.Format("ROLLBACK PREPARED '{0}'", _txName), connection);
+                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("ROLLBACK PREPARED '{0}'", _txName));
             }
             else
             {
-                command = new NpgsqlCommand("ROLLBACK", connection);
+                NpgsqlCommand.ExecuteBlind(connection.Connector, "ROLLBACK");
             }
-            command.ExecuteBlind();
         }
 
         #endregion
