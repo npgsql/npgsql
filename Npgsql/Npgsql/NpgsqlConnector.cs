@@ -177,10 +177,6 @@ namespace Npgsql
 
         private string initQueries;
 
-        // The last command timeout sent via SET command_timeout.  By tracking this, we can avoid
-        // sending it redundantly.
-        private int _commandTimeoutSent = -1; // -1 means none sent.
-
 #if WINDOWS && UNMANAGED
 
         private SSPIHandler _sspi;
@@ -272,15 +268,9 @@ namespace Npgsql
             get { return settings.Timeout; }
         }
 
-        internal Int32 CommandTimeout
+        internal Int32 DefaultCommandTimeout
         {
             get { return settings.CommandTimeout; }
-        }
-
-        internal Int32 CommandTimeoutSent
-        {
-            get { return _commandTimeoutSent; }
-            set { _commandTimeoutSent = value; }
         }
 
         internal Boolean Enlist
@@ -485,6 +475,22 @@ namespace Npgsql
 
             _portalIndex = 0;
             _planIndex = 0;
+        }
+
+        /// <summary>
+        /// Modify the backend statement_timeout value if needed.
+        /// </summary>
+        /// <param name="timeout">New timeout</param>
+        internal void SetBackendCommandTimeout(int timeout)
+        {
+            if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
+            {
+                NpgsqlCommand toq = new NpgsqlCommand(string.Format("SET statement_timeout = {0}", timeout * 1000), this);
+
+                toq.ExecuteBlind();
+
+                Mediator.BackendCommandTimeout = timeout;
+            }
         }
 
         internal void FireNotice(NpgsqlError e)
@@ -877,13 +883,11 @@ namespace Npgsql
 
             ProcessServerVersion();
 
-            StringBuilder sbInitQueries = new StringBuilder();
+            StringWriter sbInitQueries = new StringWriter();
 
             if (BackendProtocolVersion == ProtocolVersion.Version2)
             {
-
-
-                sbInitQueries.Append("set DATESTYLE TO ISO;");
+                sbInitQueries.WriteLine("SET DATESTYLE TO ISO;");
 
                 // Adjust client encoding.
 
@@ -892,7 +896,9 @@ namespace Npgsql
                     !ServerParameters.TryGetValue("client_encoding", out clientEncodingParam) ||
                     (!string.Equals(clientEncodingParam.ParameterValue, "UTF8", StringComparison.OrdinalIgnoreCase) && !string.Equals(clientEncodingParam.ParameterValue, "UNICODE", StringComparison.OrdinalIgnoreCase))
                   )
-                    sbInitQueries.Append("SET CLIENT_ENCODING TO UTF8;"); 
+                {
+                    sbInitQueries.WriteLine("SET CLIENT_ENCODING TO UTF8;");
+                }
 
                 if (!string.IsNullOrEmpty(settings.SearchPath))
                 {
@@ -906,9 +912,7 @@ namespace Npgsql
                     }
 
                     // This is using string concatenation because set search_path doesn't allow type casting. ::text
-                    sbInitQueries.Append("SET SEARCH_PATH=")
-                                .Append(settings.SearchPath)
-                                .Append(";");
+                    sbInitQueries.WriteLine("SET SEARCH_PATH = {0};", settings.SearchPath);
                 }
 
                 if (!string.IsNullOrEmpty(settings.ApplicationName))
@@ -925,9 +929,7 @@ namespace Npgsql
                         throw new InvalidOperationException();
                     }
 
-                    sbInitQueries.Append("SET APPLICATION_NAME='")
-                                .Append(settings.ApplicationName)
-                                .Append("';");
+                    sbInitQueries.WriteLine("SET APPLICATION_NAME='{0}';", settings.ApplicationName);
                 }
 
                 /*
@@ -940,7 +942,7 @@ namespace Npgsql
 
                 if (SupportsSslRenegotiationLimit)
                 {
-                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
+                    sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
                 }
 
                 /*
@@ -950,11 +952,11 @@ namespace Npgsql
 
                 if (SupportsExtraFloatDigits3)
                 {
-                    sbInitQueries.Append("SET extra_float_digits=3;");
+                    sbInitQueries.WriteLine("SET extra_float_digits=3;");
                 }
                 else if (SupportsExtraFloatDigits)
                 {
-                    sbInitQueries.Append("SET extra_float_digits=2;");
+                    sbInitQueries.WriteLine("SET extra_float_digits=2;");
                 }
 
                 /*
@@ -964,8 +966,7 @@ namespace Npgsql
                  * By going with a culture agnostic format, we get a consistent behavior.
                  */
 
-                sbInitQueries.Append("SET lc_monetary='C';");
-
+                sbInitQueries.WriteLine("SET lc_monetary='C';");
             }
             else
             {
@@ -973,12 +974,12 @@ namespace Npgsql
                 // The rest will be setted here.
                 if (SupportsExtraFloatDigits3)
                 {
-                    sbInitQueries.Append("SET extra_float_digits=3;");
+                    sbInitQueries.WriteLine("SET extra_float_digits=3;");
                 }
 
                 if (SupportsSslRenegotiationLimit)
                 {
-                    sbInitQueries.Append("SET ssl_renegotiation_limit=0;");
+                    sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
                 }
 
             }

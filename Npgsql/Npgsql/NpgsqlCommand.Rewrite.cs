@@ -79,9 +79,8 @@ namespace Npgsql
 
             byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false, false) : GetExecuteCommandText();
             // In constructing the command text, we potentially called internal
-            // queries.  Reset command timeout and SQL sent.
+            // queries.  Reset SQL sent.
             m_Connector.Mediator.ResetResponses();
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             return ret;
         }
@@ -173,9 +172,6 @@ namespace Npgsql
 
             // reset any responses just before getting new ones
             m_Connector.Mediator.ResetResponses();
-
-            // Set command timeout.
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             return ret;
         }

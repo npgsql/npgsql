@@ -176,7 +176,7 @@ namespace Npgsql
 
                 if (m_Connector != null && m_Connector.AlwaysPrepare)
                 {
-                    CommandTimeout = m_Connector.CommandTimeout;
+                    CommandTimeout = m_Connector.DefaultCommandTimeout;
                     prepared = PrepareStatus.NeedsPrepare;
                 }
             }

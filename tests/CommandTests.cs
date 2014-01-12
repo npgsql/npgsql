@@ -3281,19 +3281,38 @@ namespace NpgsqlTests
                 {
                 }
 
-                var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(1.5)", conn);
-                command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
-                command.Parameters[0].Value = "foo";
-                command.CommandTimeout = 1;
-                try
+                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn))
                 {
-                    command.ExecuteNonQuery();
-                    Assert.Fail("1.5s command survived a 1s timeout");
+                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
+                    command.Parameters[0].Value = "foo";
+                    command.CommandTimeout = 1;
+                    try
+                    {
+                        command.ExecuteNonQuery();
+                        Assert.Fail("3s command survived a 1s timeout");
+                    }
+                    catch (NpgsqlException)
+                    {
+                        // We cannot currently identify that the exception was a timeout
+                        // in a locale-independent fashion, so just assume so.
+                    }
                 }
-                catch (NpgsqlException)
+
+                using (var command = new NpgsqlCommand("SELECT :dummy, pg_sleep(3)", conn))
                 {
-                    // We cannot currently identify that the exception was a timeout
-                    // in a locale-independent fashion, so just assume so.
+                    command.Parameters.Add(new NpgsqlParameter("dummy", NpgsqlDbType.Text));
+                    command.Parameters[0].Value = "foo";
+                    command.CommandTimeout = 4;
+                    try
+                    {
+                        command.ExecuteNonQuery();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        // We cannot currently identify that the exception was a timeout
+                        // in a locale-independent fashion, so just assume so.
+                        throw new Exception("3s command did NOT survive a 4s timeout");
+                    }
                 }
             }
         }
@@ -3311,17 +3330,38 @@ namespace NpgsqlTests
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.Add(new NpgsqlParameter());
                 command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
-                command.Parameters[0].Value = 1.5;
+                command.Parameters[0].Value = 3d;
                 command.CommandTimeout = 1;
                 try
                 {
                     command.ExecuteNonQuery();
-                    Assert.Fail("1.5s function call survived a 1s timeout");
+                    Assert.Fail("3s function call survived a 1s timeout");
                 }
                 catch (NpgsqlException)
                 {
                     // We cannot currently identify that the exception was a timeout
                     // in a locale-independent fashion, so just assume so.
+                }
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString)) {
+                conn.Open();
+
+                var command = new NpgsqlCommand("pg_sleep", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.Add(new NpgsqlParameter());
+                command.Parameters[0].NpgsqlDbType = NpgsqlDbType.Double;
+                command.Parameters[0].Value = 3d;
+                command.CommandTimeout = 4;
+                try
+                {
+                    command.ExecuteNonQuery();
+                }
+                catch (NpgsqlException)
+                {
+                    // We cannot currently identify that the exception was a timeout
+                    // in a locale-independent fashion, so just assume so.
+                    throw new Exception("3s command did NOT survive a 4s timeout");
                 }
             }
         }

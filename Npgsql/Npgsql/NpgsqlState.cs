@@ -318,11 +318,12 @@ namespace Npgsql
 
                 // Process commandTimeout behavior.
 
-                if ((context.Mediator.CommandTimeout > 0) &&
+                if ((context.Mediator.BackendCommandTimeout > 0) &&
                         (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
                 {
                     // If timeout occurs when establishing the session with server then
-                    // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.
+                    // throw an exception instead of trying to cancel query. This helps to prevent loop as
+                    // CancelRequest will also try to stablish a connection and sends commands.
                     if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState)))
                     {
                         try
@@ -334,10 +335,11 @@ namespace Npgsql
                         catch(Exception)
                         {
                         }
-                        //We should have gotten an error from CancelRequest(). Whether we did or not, what we
-                        //really have is a timeout exception, and that will be less confusing to the user than
-                        //"operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
-                        // Changed message again to report about the two possible timeouts: connection or command as the establishment timeout only was confusing users when the timeout was a command timeout.
+                        // We should have gotten an error from CancelRequest(). Whether we did or not, what we
+                        // really have is a timeout exception, and that will be less confusing to the user than
+                        // "operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
+                        // Changed message again to report about the two possible timeouts: connection or command
+                        // as the establishment timeout only was confusing users when the timeout was a command timeout.
                     }
 
                     throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
@@ -389,12 +391,13 @@ namespace Npgsql
 
             bool socketPoolResponse = false;
 
-            // Because the backend's statement_timeout parameter has been set to context.Mediator.CommandTimeout,
+            // Because the backend's statement_timeout parameter has been set to context.Mediator.BackendCommandTimeout,
             // we will give an extra 5 seconds because we'd prefer to receive a timeout error from PG
             // than to be forced to start a new connection and send a cancel request.
             // The result is that a timeout could take 5 seconds too long to occur, but if everything
-            // is healthy, that shouldn't happen.
-            int secondsToWait = context.Mediator.CommandTimeout + 5;
+            // is healthy, that shouldn't happen. Not to mention, if the backend is unhealthy enough
+            // to fail to send a timeout error, then a cancel request may malfunction anyway.
+            int secondsToWait = context.Mediator.BackendCommandTimeout + 5;
 
             /* In order to bypass this limit, the availability of
              * the socket is checked in 2,147 seconds cycles

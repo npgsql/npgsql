@@ -170,23 +170,13 @@ namespace Npgsql
             // reset any responses just before getting new ones
             Connector.Mediator.ResetResponses();
 
-            // Set command timeout.
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
-
             // Block the notification thread before writing anything to the wire.
             using (m_Connector.BlockNotificationThread())
             {
                 IEnumerable<IServerResponseObject> responseEnum;
                 ForwardsOnlyDataReader reader;
 
-                if (m_Connector.CommandTimeoutSent == -1 || m_Connector.CommandTimeoutSent != this.CommandTimeout)
-                {
-                    NpgsqlCommand toq = new NpgsqlCommand(string.Format("SET statement_timeout = {0}", this.CommandTimeout * 1000), m_Connector);
-
-                    toq.ExecuteBlind();
-
-                    m_Connector.CommandTimeoutSent = this.CommandTimeout;
-                }
+                m_Connector.SetBackendCommandTimeout(CommandTimeout);
 
                 if (prepared == PrepareStatus.NeedsPrepare)
                 {
@@ -383,9 +373,6 @@ namespace Npgsql
 
             // reset any responses just before getting new ones
             Connector.Mediator.ResetResponses();
-
-            // Set command timeout.
-            m_Connector.Mediator.CommandTimeout = CommandTimeout;
 
             PrepareInternal();
         }

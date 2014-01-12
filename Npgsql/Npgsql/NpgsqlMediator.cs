@@ -51,18 +51,18 @@ namespace Npgsql
         // Responses collected from the backend.
         //
         private byte[] _sqlSent;
-        private Int32 _commandTimeout;
+
+        // The current command timeout on the backend.  This is set via "SET statement_timeout = <milliseconds>".
+        private Int32 _backendCommandTimeout = -1; // -1 means unknown - we have no way to know it until we set it.
 
         public NpgsqlMediator()
         {
             _sqlSent = new byte[0];
-            _commandTimeout = 20;
         }
 
         public void ResetResponses()
         {
             _sqlSent = new byte[0];
-            _commandTimeout = 20;
         }
 
         public String SqlSent
@@ -74,11 +74,14 @@ namespace Npgsql
             _sqlSent = sqlSent;
         }
 
-        public Int32 CommandTimeout
+        /// <summary>
+        /// The current command timeout on the backend.  This is set via "SET statement_timeout = <milliseconds>".
+        /// A value of -1 means the backend's timeout value is unknown because it has not yet been set.
+        /// </summary>
+        public Int32 BackendCommandTimeout
         {
-            set { _commandTimeout = value; }
-
-            get { return _commandTimeout; }
+            get { return _backendCommandTimeout; }
+            set { _backendCommandTimeout = value; }
         }
 
         public Stream CopyStream
