@@ -78,6 +78,7 @@ namespace Npgsql
         private Boolean designTimeVisible;
 
         private PrepareStatus prepared = PrepareStatus.NotPrepared;
+        private byte[] preparedCommandText = null;
         private NpgsqlBind bind = null;
         private NpgsqlExecute execute = null;
         private NpgsqlRowDescription currentRowDescription = null;

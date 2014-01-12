@@ -395,12 +395,11 @@ namespace Npgsql
                 }
 
                 if (compareValue != testValue)
+                {
                     return false;
+                }
 
-                // Clear mediator.
-                Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
-
             }
             catch
             {
@@ -852,7 +851,6 @@ namespace Npgsql
                     throw;
                 }
                 // Try using the 2.0 protocol.
-                _mediator.ResetResponses();
                 BackendProtocolVersion = ProtocolVersion.Version2;
                 CurrentState = NpgsqlClosedState.Instance;
 
@@ -1182,8 +1180,6 @@ namespace Npgsql
                             // 20 millisecond timeout
                             if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
                             {
-                                // reset any responses just before getting new ones
-                                this.connector.Mediator.ResetResponses();
                                 this.connector.ProcessAndDiscardBackendResponses();
                             }
                         }

@@ -57,7 +57,7 @@ namespace Npgsql
             NpgsqlQuery query;
 
             // Bypass cpmmand parsing overhead and send commandText verbatim.
-            query = new NpgsqlQuery(m_Connector, commandText);
+            query = NpgsqlQuery.Create(m_Connector.BackendProtocolVersion, commandText);
 
             // Block the notification thread before writing anything to the wire.
             using (var blocker = m_Connector.BlockNotificationThread())
@@ -167,9 +167,6 @@ namespace Npgsql
         {
             CheckConnectionState();
 
-            // reset any responses just before getting new ones
-            Connector.Mediator.ResetResponses();
-
             // Block the notification thread before writing anything to the wire.
             using (m_Connector.BlockNotificationThread())
             {
@@ -186,11 +183,22 @@ namespace Npgsql
                 if (prepared == PrepareStatus.NotPrepared || prepared == PrepareStatus.V2Prepared)
                 {
                     NpgsqlQuery query;
+                    byte[] commandText = GetCommandText();
 
-                    query = new NpgsqlQuery(m_Connector, GetCommandText());
+                    query = NpgsqlQuery.Create(m_Connector.BackendProtocolVersion, commandText);
 
                     // Write the Query message to the wire.
                     m_Connector.Query(query);
+
+                    // Tell to mediator what command is being sent.
+                    if (prepared == PrepareStatus.NotPrepared)
+                    {
+                        m_Connector.Mediator.SetSqlSent(commandText, NpgsqlMediator.SQLSentType.Simple);
+                    }
+                    else
+                    {
+                        m_Connector.Mediator.SetSqlSent(preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
+                    }
 
                     // Flush and wait for responses.
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
@@ -231,7 +239,7 @@ namespace Npgsql
                         // Passthrough the commandtimeout to the inner command, so user can also control its timeout.
                         // TODO: Check if there is a better way to handle that.
 
-                        query = new NpgsqlQuery(m_Connector, queryText);
+                        query = NpgsqlQuery.Create(m_Connector.BackendProtocolVersion, queryText);
 
                         // Write the Query message to the wire.
                         m_Connector.Query(query);
@@ -257,6 +265,9 @@ namespace Npgsql
                     m_Connector.Bind(bind);
                     m_Connector.Execute(execute);
                     m_Connector.Sync();
+
+                    // Tell to mediator what command is being sent.
+                    m_Connector.Mediator.SetSqlSent(preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
                     // Flush and wait for responses.
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
@@ -352,6 +363,8 @@ namespace Npgsql
                 planName = String.Empty;
                 prepared = PrepareStatus.NeedsPrepare;
             }
+
+            preparedCommandText = null;
         }
 
         /// <summary>
@@ -371,9 +384,6 @@ namespace Npgsql
 
             UnPrepare();
 
-            // reset any responses just before getting new ones
-            Connector.Mediator.ResetResponses();
-
             PrepareInternal();
         }
 
@@ -382,21 +392,27 @@ namespace Npgsql
             if (m_Connector.BackendProtocolVersion == ProtocolVersion.Version2)
             {
                 planName = Connector.NextPlanName();
+                preparedCommandText = GetCommandText(true, false);
 
                 // BackendEncoding.UTF8Encoding.GetString() is temporary.  A new optimization for
                 // ExecuteBlind() will negate the need.
-                using (NpgsqlCommand command = new NpgsqlCommand(BackendEncoding.UTF8Encoding.GetString(GetCommandText(true, false)), m_Connector))
+                using (NpgsqlCommand command = new NpgsqlCommand(BackendEncoding.UTF8Encoding.GetString(preparedCommandText), m_Connector))
                 {
                     command.ExecuteBlind();
                     prepared = PrepareStatus.V2Prepared;
                 }
+
+                // Tell to mediator what command is being sent.
+                m_Connector.Mediator.SetSqlSent(preparedCommandText, NpgsqlMediator.SQLSentType.Prepare);
             }
             else
             {
                 // Use the extended query parsing...
                 planName = m_Connector.NextPlanName();
                 String portalName = "";
-                NpgsqlParse parse = new NpgsqlParse(planName,  GetCommandText(true, true), new Int32[] { });
+
+                preparedCommandText = GetCommandText(true, true);
+                NpgsqlParse parse = new NpgsqlParse(planName, preparedCommandText, new Int32[] { });
                 NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
                 IEnumerable<IServerResponseObject> responseEnum;
                 NpgsqlRowDescription returnRowDesc = null;
@@ -405,6 +421,9 @@ namespace Npgsql
                 m_Connector.Parse(parse);
                 m_Connector.Describe(statementDescribe);
                 m_Connector.Sync();
+
+                // Tell to mediator what command is being sent.
+                m_Connector.Mediator.SetSqlSent(preparedCommandText, NpgsqlMediator.SQLSentType.Parse);
 
                 // Flush and wait for response.
                 responseEnum = m_Connector.ProcessBackendResponsesEnum();

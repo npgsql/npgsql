@@ -1,4 +1,4 @@
-// Npgsql.NpgsqlQuery.cs
+// Npgsql.NpgsqlQueryV3.cs
 //
 // Author:
 //     Dave Joyner <d4ljoyn@yahoo.com>
@@ -33,48 +33,34 @@ namespace Npgsql
     /// <summary>
     /// Summary description for NpgsqlQuery
     /// </summary>
-    internal abstract class NpgsqlQuery : ClientMessage
+    internal sealed class NpgsqlQueryV3 : NpgsqlQuery
     {
-        protected readonly byte[] commandText;
-
-        public static NpgsqlQuery Create(ProtocolVersion protocolVersion, byte[] command)
+        public NpgsqlQueryV3(byte[] command)
+        : base(command)
         {
-            switch (protocolVersion)
+        }
+
+        public NpgsqlQueryV3(string command)
+        : base(command)
+        {
+        }
+
+        public override void WriteToStream(Stream outputStream)
+        {
+            if (NpgsqlEventLog.Level >= LogLevel.Debug)
             {
-                case ProtocolVersion.Version2 :
-                    return new NpgsqlQueryV2(command);
-
-                case ProtocolVersion.Version3 :
-                    return new NpgsqlQueryV3(command);
-
-                default :
-                    throw new ArgumentException("Unknown protocol version");
+                // Log the string being sent.
+                PGUtil.LogStringWritten(BackendEncoding.UTF8Encoding.GetString(commandText));
             }
-        }
 
-        public static NpgsqlQuery Create(ProtocolVersion protocolVersion, string command)
-        {
-            switch (protocolVersion)
-            {
-                case ProtocolVersion.Version2 :
-                    return new NpgsqlQueryV2(command);
+            // Send the query to server.
+            // Write the byte 'Q' to identify a query message.
+            outputStream.WriteByte((byte)FrontEndMessageCode.Query);
 
-                case ProtocolVersion.Version3 :
-                    return new NpgsqlQueryV3(command);
+            // Write message length. Int32 + string length + null terminator.
+            PGUtil.WriteInt32(outputStream, 4 + commandText.Length + 1);
 
-                default :
-                    throw new ArgumentException("Unknown protocol version");
-            }
-        }
-
-        protected NpgsqlQuery(byte[] command)
-        {
-            commandText = command;
-        }
-
-        protected NpgsqlQuery(string command)
-        {
-            commandText = BackendEncoding.UTF8Encoding.GetBytes(command);
+            outputStream.WriteBytesNullTerminated(commandText);
         }
     }
 }
