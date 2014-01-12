@@ -47,27 +47,72 @@ namespace Npgsql
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
     {
         /// <summary>
-        /// Slightly optimised version of ExecuteNonQuery() for internal use in cases where the number
+        /// Internal query shortcut for use in cases where the number
         /// of affected rows is of no interest.
-        /// This function must not be called with a query that returns result rows, after calling Prepare(), or.
-        /// with a query that requires parameter substitution of any kind.
         /// </summary>
-        internal void ExecuteBlind()
+        internal static void ExecuteBlind(NpgsqlConnector connector, byte[] command, int timeout = 20)
         {
             NpgsqlQuery query;
 
-            // Bypass cpmmand parsing overhead and send commandText verbatim.
-            query = NpgsqlQuery.Create(m_Connector.BackendProtocolVersion, commandText);
+            connector.SetBackendCommandTimeout(timeout);
+
+            // Bypass cpmmand parsing overhead and send command verbatim.
+            query = NpgsqlQuery.Create(connector.BackendProtocolVersion, command);
 
             // Block the notification thread before writing anything to the wire.
-            using (var blocker = m_Connector.BlockNotificationThread())
+            using (var blocker = connector.BlockNotificationThread())
             {
                 // Write the Query message to the wire.
-                m_Connector.Query(query);
+                connector.Query(query);
 
                 // Flush, and wait for and discard all responses.
-                m_Connector.ProcessAndDiscardBackendResponses();
+                connector.ProcessAndDiscardBackendResponses();
             }
+        }
+
+        /// <summary>
+        /// Internal query shortcut for use in cases where the number
+        /// of affected rows is of no interest.
+        /// </summary>
+        internal static void ExecuteBlind(NpgsqlConnector connector, string command, int timeout = 20)
+        {
+            NpgsqlQuery query;
+
+            connector.SetBackendCommandTimeout(timeout);
+
+            // Bypass cpmmand parsing overhead and send command verbatim.
+            query = NpgsqlQuery.Create(connector.BackendProtocolVersion, command);
+
+            // Block the notification thread before writing anything to the wire.
+            using (var blocker = connector.BlockNotificationThread())
+            {
+                // Write the Query message to the wire.
+                connector.Query(query);
+
+                // Flush, and wait for and discard all responses.
+                connector.ProcessAndDiscardBackendResponses();
+            }
+        }
+
+        /// <summary>
+        /// Special adaptation of ExecuteBlind() that sets statement_timeout.
+        /// This exists to prevent Connector.SetBackendCommandTimeout() from calling Command.ExecuteBlind(),
+        /// which will cause an endless recursive loop.
+        /// </summary>
+        /// <param name="connector"></param>
+        /// <param name="timeout">Timeout in seconds.</param>
+        internal static void ExecuteSetStatementTimeoutBlind(NpgsqlConnector connector, int timeout)
+        {
+            NpgsqlQuery query;
+
+            // Bypass cpmmand parsing overhead and send command verbatim.
+            query = NpgsqlQuery.Create(connector.BackendProtocolVersion, string.Format("SET statement_timeout = {0}", timeout * 1000));
+
+            // Write the Query message to the wire.
+            connector.Query(query);
+
+            // Flush, and wait for and discard all responses.
+            connector.ProcessAndDiscardBackendResponses();
         }
 
         /// <summary>
@@ -394,13 +439,8 @@ namespace Npgsql
                 planName = Connector.NextPlanName();
                 preparedCommandText = GetCommandText(true, false);
 
-                // BackendEncoding.UTF8Encoding.GetString() is temporary.  A new optimization for
-                // ExecuteBlind() will negate the need.
-                using (NpgsqlCommand command = new NpgsqlCommand(BackendEncoding.UTF8Encoding.GetString(preparedCommandText), m_Connector))
-                {
-                    command.ExecuteBlind();
-                    prepared = PrepareStatus.V2Prepared;
-                }
+                ExecuteBlind(m_Connector, preparedCommandText);
+                prepared = PrepareStatus.V2Prepared;
 
                 // Tell to mediator what command is being sent.
                 m_Connector.Mediator.SetSqlSent(preparedCommandText, NpgsqlMediator.SQLSentType.Prepare);
