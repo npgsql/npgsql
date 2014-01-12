@@ -40,6 +40,15 @@ namespace Npgsql
     ///
     internal sealed class NpgsqlMediator
     {
+        public enum SQLSentType
+        {
+            None,
+            Simple,
+            Prepare, // V2 prepared
+            Parse,   // V3 prepared
+            Execute
+        }
+
         // Stream for user to exchange COPY data
         private Stream _copyStream;
         // Size of data chunks read from user stream and written to server in COPY IN
@@ -50,32 +59,42 @@ namespace Npgsql
         //
         // Responses collected from the backend.
         //
-        private byte[] _sqlSent;
+        private byte[] _sqlSent = null;
+        private SQLSentType _sqlSentType = SQLSentType.None;
 
         // The current command timeout on the backend.  This is set via "SET statement_timeout = <milliseconds>".
         private Int32 _backendCommandTimeout = -1; // -1 means unknown - we have no way to know it until we set it.
 
-        public NpgsqlMediator()
+        public String GetSqlSent()
         {
-            _sqlSent = new byte[0];
+            switch (_sqlSentType)
+            {
+                case SQLSentType.None :
+                    return "";
+
+                case SQLSentType.Prepare :
+                    return string.Format("PREPARE {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
+
+                case SQLSentType.Parse:
+                    return string.Format("{{PARSE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
+
+                case SQLSentType.Execute :
+                    return string.Format("{{EXECUTE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
+
+                default :
+                    return BackendEncoding.UTF8Encoding.GetString(_sqlSent);
+
+            } 
         }
 
-        public void ResetResponses()
-        {
-            _sqlSent = new byte[0];
-        }
-
-        public String SqlSent
-        {
-            get { return BackendEncoding.UTF8Encoding.GetString(_sqlSent); }
-        }
-        public void SetSqlSent(byte[] sqlSent)
+        public void SetSqlSent(byte[] sqlSent, SQLSentType sqlSentType)
         {//We only use this if there is an error, so let's only get the string when that happens.
             _sqlSent = sqlSent;
+            _sqlSentType = sqlSentType;
         }
 
         /// <summary>
-        /// The current command timeout on the backend.  This is set via "SET statement_timeout = <milliseconds>".
+        /// The current command timeout on the backend.  This is set via "SET statement_timeout = (milliseconds)".
         /// A value of -1 means the backend's timeout value is unknown because it has not yet been set.
         /// </summary>
         public Int32 BackendCommandTimeout
