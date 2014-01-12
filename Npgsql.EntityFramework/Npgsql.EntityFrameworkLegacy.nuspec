@@ -8,7 +8,7 @@
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
-    <copyright>Copyright 2002 - 2013 Npgsql Development Team</copyright>
+    <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Postgresql provider for Entity Framework 5 and below</description>
     <summary>Postgresql provider for Entity Framework 5 and below</summary>

@@ -13,7 +13,7 @@ using System.Resources;
 #endif
 [assembly: AssemblyCompanyAttribute("Npgsql Development Team")]
 [assembly: AssemblyProductAttribute("Npgsql")]
-[assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2013 Npgsql Development Team")]
+[assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2014 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
 [assembly: AssemblyVersionAttribute("2.1.0")]
 [assembly: AssemblyFileVersionAttribute("2.1.0")]
