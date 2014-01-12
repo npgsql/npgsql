@@ -28,6 +28,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Reflection;
@@ -42,7 +43,7 @@ namespace Npgsql
     [Serializable]
     public sealed class NpgsqlException : DbException
     {
-        private readonly IList errors;
+        private readonly NpgsqlError[] errors;
 
         // Logging related values
         //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
@@ -52,7 +53,10 @@ namespace Npgsql
         private NpgsqlException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            errors = (IList) info.GetValue("errors", typeof (IList));
+            IList<NpgsqlError> l = (IList<NpgsqlError>) info.GetValue("errors", typeof (IList<NpgsqlError>));
+
+            errors = new NpgsqlError[l.Count];
+            l.CopyTo(errors, 0);
         }
 
         /// <summary>
@@ -60,11 +64,13 @@ namespace Npgsql
         /// backend errors.  The basic Exception.Message will be built from the
         /// first (usually the only) error in the list.
         /// </summary>
-        internal NpgsqlException(IList errors)
+        internal NpgsqlException(IList<NpgsqlError> errors)
             : base(errors[0].ToString())
         {
             NpgsqlEventLog.LogMsg(resman, "Log_ExceptionOccured", LogLevel.Normal, Message);
-            this.errors = new ArrayList(errors);
+
+            this.errors = new NpgsqlError[errors.Count];
+            errors.CopyTo(this.errors, 0);
         }
 
         internal NpgsqlException(String message)
@@ -75,8 +81,9 @@ namespace Npgsql
         internal NpgsqlException(String message, Exception innerException)
             : base(message, innerException)
         {
-            errors = new ArrayList();
-            errors.Add(new NpgsqlError(ProtocolVersion.Unknown, message));
+            NpgsqlEventLog.LogMsg(resman, "Log_ExceptionOccured", LogLevel.Normal, Message);
+
+            errors = new NpgsqlError[] { new NpgsqlError(ProtocolVersion.Unknown, message) };
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
