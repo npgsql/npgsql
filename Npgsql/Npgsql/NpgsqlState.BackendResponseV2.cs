@@ -206,7 +206,7 @@ namespace Npgsql
 
                         case BackEndMessageCode.NotificationResponse:
                             context.FireNotification(new NpgsqlNotificationEventArgs(stream, false));
-                            if (context.IsNotificationThreadRunning)
+                            if (context.ShouldNotificationThreadStop)
                             {
                                 yield break;
                             }

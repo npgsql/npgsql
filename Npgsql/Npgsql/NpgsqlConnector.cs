@@ -160,6 +160,7 @@ namespace Npgsql
 
         // Counter of notification thread start/stop requests in order to
         internal Int16 _notificationThreadStopCount;
+        internal object _notificationThreadStopSync = new object();
 
         private Exception _notificationException;
 
@@ -1069,13 +1070,15 @@ namespace Npgsql
 
                 // Special case in order to not get problems with thread synchronization.
                 // It will be turned to 0 when synch thread is created.
-                _notificationThreadStopCount = 1;
+                lock (_notificationThreadStopSync)
+                    _notificationThreadStopCount = 1;
             }
         }
 
         internal void AddNotificationThread()
         {
-            _notificationThreadStopCount = 0;
+            lock (_notificationThreadStopSync)
+                _notificationThreadStopCount = 0;
 
             NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
 
@@ -1129,7 +1132,8 @@ namespace Npgsql
                 throw _notificationException;
             }
 
-            _notificationThreadStopCount++;
+            lock (_notificationThreadStopSync)
+                _notificationThreadStopCount++;
 
             if (_notificationThreadStopCount == 1) // If this call was the first to increment.
             {
@@ -1139,7 +1143,8 @@ namespace Npgsql
 
         private void ResumeNotificationThread()
         {
-            _notificationThreadStopCount--;
+            lock (_notificationThreadStopSync)
+                _notificationThreadStopCount--;
 
             if (_notificationThreadStopCount == 0)
             {
@@ -1148,9 +1153,16 @@ namespace Npgsql
             }
         }
 
-        internal Boolean IsNotificationThreadRunning
+        /// <summary>
+        /// Returns whether we are in notification thread and notification thread shoul stop.
+        /// </summary>
+        internal Boolean ShouldNotificationThreadStop
         {
-            get { return _notificationThreadStopCount <= 0; }
+            get
+            {
+                lock (_notificationThreadStopSync)
+                    return _notificationThreadStopCount > 0 && Thread.CurrentThread == _notificationThread;
+            }
         }
 
         internal class NpgsqlContextHolder
