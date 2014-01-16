@@ -154,6 +154,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="NotifyTest.cs" />
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
     </Compile>

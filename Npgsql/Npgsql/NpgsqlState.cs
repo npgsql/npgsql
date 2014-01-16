@@ -318,8 +318,12 @@ namespace Npgsql
 
                 // Process commandTimeout behavior.
 
-                if ((context.Mediator.BackendCommandTimeout > 0) &&
-                        (!CheckForContextSocketAvailability(context, SelectMode.SelectRead)))
+                // We will give an extra 5 seconds to context.Mediator.CommandTimeout
+                // because we'd prefer to receive a timeout error from PG
+                // than to be forced to start a new connection and send a cancel request.
+                // The result is that a timeout could take 5 seconds too long to occur, but if everything
+                // is healthy, that shouldn't happen.
+                if ((context.Mediator.BackendCommandTimeout > 0) && (!context.Stream.WaitAvailable(TimeSpan.FromSeconds(context.Mediator.BackendCommandTimeout + 5))))
                 {
                     // If timeout occurs when establishing the session with server then
                     // throw an exception instead of trying to cancel query. This helps to prevent loop as
@@ -370,46 +374,6 @@ namespace Npgsql
 
         }
 
-        /// <summary>
-        /// Checks for context socket availability.
-        /// Socket.Poll supports integer as microseconds parameter.
-        /// This limits the usable command timeout value
-        /// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
-        /// In order to bypass this limit, the availability of
-        /// the socket is checked in 2,147 seconds cycles
-        /// </summary>
-        /// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
-        /// <param name="context">Context.</param>
-        /// <param name="selectMode">Select mode.</param>
-        internal bool CheckForContextSocketAvailability (NpgsqlConnector context, SelectMode selectMode)
-        {
-            /* Socket.Poll supports integer as microseconds parameter.
-             * This limits the usable command timeout value
-             * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
-             */
-            const int limitOfSeconds = 2147;
-
-            bool socketPoolResponse = false;
-
-            // Because the backend's statement_timeout parameter has been set to context.Mediator.BackendCommandTimeout,
-            // we will give an extra 5 seconds because we'd prefer to receive a timeout error from PG
-            // than to be forced to start a new connection and send a cancel request.
-            // The result is that a timeout could take 5 seconds too long to occur, but if everything
-            // is healthy, that shouldn't happen. Not to mention, if the backend is unhealthy enough
-            // to fail to send a timeout error, then a cancel request may malfunction anyway.
-            int secondsToWait = context.Mediator.BackendCommandTimeout + 5;
-
-            /* In order to bypass this limit, the availability of
-             * the socket is checked in 2,147 seconds cycles
-             */
-            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse))
-            {
-                socketPoolResponse = context.Socket.Poll (1000000 * limitOfSeconds, selectMode);
-                secondsToWait -= limitOfSeconds;
-            }
-
-            return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
-        }
 
         private enum BackEndMessageCode
         {
@@ -543,7 +507,9 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream.WriteBytes(_messageData);
+            outputStream
+                .WriteBytes(_messageData)
+                .Flush();
         }
     }
 

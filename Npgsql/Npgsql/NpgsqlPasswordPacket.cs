@@ -77,6 +77,8 @@ namespace Npgsql
 
                     break;
             }
+
+            outputStream.Flush();
         }
     }
 }
