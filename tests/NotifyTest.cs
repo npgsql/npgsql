@@ -118,7 +118,7 @@ namespace NpgsqlTests
                                         }
                                     }
                                     WaitHandle.WaitAny(new[] { wakeup }, remain); // wait for wakeup event but only for limited time
-                                    wakeup.Reset(); // reset event so it can be resued
+                                    wakeup.Reset(); // reset event so it can be reused
                                 }
                             }
                         }
