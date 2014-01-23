@@ -210,7 +210,7 @@ namespace Npgsql
 					}
 				}
 
-				context.Stream = new BufferedStream(stream);
+				context.Stream = new BufferedNetworkStream(stream);
 				context.Socket = socket;
 
 

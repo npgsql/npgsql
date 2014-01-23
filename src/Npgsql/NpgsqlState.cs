@@ -358,7 +358,7 @@ namespace Npgsql
             // Process commandTimeout behavior.
 
             if ((context.Mediator.CommandTimeout > 0) &&
-                (!context.Socket.Poll(1000000*context.Mediator.CommandTimeout, SelectMode.SelectRead)))
+                (!context.Stream.WaitAvailable(TimeSpan.FromSeconds(context.Mediator.CommandTimeout))))
             {
                 // If timeout occurs when establishing the session with server then
                 // throw an exception instead of trying to cancel query. This helps to prevent loop as CancelRequest will also try to stablish a connection and sends commands.

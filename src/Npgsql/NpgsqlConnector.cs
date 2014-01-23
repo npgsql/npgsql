@@ -91,7 +91,7 @@ namespace Npgsql
         private ConnectionState _connection_state;
 
         // The physical network connection to the backend.
-        private Stream _stream;
+        private BufferedNetworkStream _stream;
 
         private Socket _socket;
 
@@ -543,7 +543,7 @@ namespace Npgsql
         /// <summary>
         /// The physical connection stream to the backend.
         /// </summary>
-        internal Stream Stream
+        internal BufferedNetworkStream Stream
         {
             get { return _stream; }
             set { _stream = value; }
@@ -1019,7 +1019,7 @@ namespace Npgsql
                         //To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
                         this.connector._notificationAutoResetEvent.WaitOne();
 
-                        if (this.connector.Socket.Poll(100, SelectMode.SelectRead))
+                        if (this.connector.Stream.WaitAvailable(TimeSpan.FromMilliseconds(100)))
                         {
                             // reset any responses just before getting new ones
                             this.connector.Mediator.ResetResponses();
