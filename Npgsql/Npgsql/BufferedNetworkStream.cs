@@ -41,6 +41,11 @@ namespace Npgsql
         Stream writeStream;
         IAsyncResult readResult;
         byte[] readBuffer = new byte[1];
+        Action fireArrived;
+        bool doingArrived;
+        bool todoArrived;
+        object syncArrived = new object();
+
 
         /// <summary>
         /// Constructor.
@@ -49,6 +54,7 @@ namespace Npgsql
         /// <param name="bufferSize"></param>
         public BufferedNetworkStream(Stream baseStream, int bufferSize)
         {
+            fireArrived = FireArrived;
             readStream = new BufferedStream(baseStream, bufferSize);
             writeStream = new BufferedStream(baseStream, bufferSize);
             BackgroundReading();
@@ -64,8 +70,14 @@ namespace Npgsql
 
         void BackgroundReading()
         {
-            Action method = () => Arrived(this, EventArgs.Empty);
-            readResult = readStream.BeginRead(readBuffer, 0, 1, ar1 => method.BeginInvoke(ar2 => method.EndInvoke(ar2), null), null);
+            readResult = readStream.BeginRead(readBuffer, 0, 1,
+                x =>
+                {
+                    lock (syncArrived)
+                        todoArrived = true;
+                    fireArrived.BeginInvoke(ar => fireArrived.EndInvoke(ar), null);
+                },
+                null);
         }
 
         /// <summary>
@@ -206,6 +218,36 @@ namespace Npgsql
         /// Event that fires in thread pool thread when new data is available.
         /// </summary>
         public event EventHandler Arrived = delegate { };
+
+        void TriggerArrived()
+        {
+            lock (syncArrived)
+                todoArrived = true;
+            fireArrived.BeginInvoke(ar => fireArrived.EndInvoke(ar), null);
+        }
+
+        void FireArrived()
+        {
+            var fire = false;
+            lock (syncArrived)
+                if (todoArrived && !doingArrived)
+                {
+                    todoArrived = false;
+                    doingArrived = true;
+                    fire = true;
+                }
+            if (fire)
+            {
+                try { Arrived(this, EventArgs.Empty); }
+                catch { }
+                lock (syncArrived)
+                {
+                    doingArrived = false;
+                    if (todoArrived)
+                        fireArrived.BeginInvoke(ar => fireArrived.EndInvoke(ar), null);
+                }
+            }
+        }
 
         protected override void Dispose(bool disposing)
         {
