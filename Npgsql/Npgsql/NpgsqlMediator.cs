@@ -56,9 +56,7 @@ namespace Npgsql
         // Very temporary holder of data received during COPY OUT
         private byte[] _receivedCopyData;
 
-        //
-        // Responses collected from the backend.
-        //
+        // Last command sent.  This is saved for possible later use by NpgsqlException if an error occurs.
         private byte[] _sqlSent = null;
         private SQLSentType _sqlSentType = SQLSentType.None;
 
