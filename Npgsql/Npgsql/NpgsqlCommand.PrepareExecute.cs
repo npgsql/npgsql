@@ -52,22 +52,8 @@ namespace Npgsql
         /// </summary>
         internal static void ExecuteBlind(NpgsqlConnector connector, byte[] command, int timeout = 20)
         {
-            NpgsqlQuery query;
-
-            connector.SetBackendCommandTimeout(timeout);
-
             // Bypass cpmmand parsing overhead and send command verbatim.
-            query = NpgsqlQuery.Create(connector.BackendProtocolVersion, command);
-
-            // Block the notification thread before writing anything to the wire.
-            using (var blocker = connector.BlockNotificationThread())
-            {
-                // Write the Query message to the wire.
-                connector.Query(query);
-
-                // Flush, and wait for and discard all responses.
-                connector.ProcessAndDiscardBackendResponses();
-            }
+            ExecuteBlind(connector, NpgsqlQuery.Create(connector.BackendProtocolVersion, command), timeout);
         }
 
         /// <summary>
@@ -76,16 +62,18 @@ namespace Npgsql
         /// </summary>
         internal static void ExecuteBlind(NpgsqlConnector connector, string command, int timeout = 20)
         {
-            NpgsqlQuery query;
-
-            connector.SetBackendCommandTimeout(timeout);
-
             // Bypass cpmmand parsing overhead and send command verbatim.
-            query = NpgsqlQuery.Create(connector.BackendProtocolVersion, command);
+            ExecuteBlind(connector, NpgsqlQuery.Create(connector.BackendProtocolVersion, command), timeout);
+        }
 
+        private static void ExecuteBlind(NpgsqlConnector connector, NpgsqlQuery query, int timeout)
+        {
             // Block the notification thread before writing anything to the wire.
             using (var blocker = connector.BlockNotificationThread())
             {
+                // Set statement timeout as needed.
+                connector.SetBackendCommandTimeout(timeout);
+
                 // Write the Query message to the wire.
                 connector.Query(query);
 
