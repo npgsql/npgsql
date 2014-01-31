@@ -140,6 +140,10 @@ namespace Npgsql
                         }
                         return TypeUsage.CreateBinaryTypeUsage(primitiveType, false);
                     }
+                case "rowversion":
+                    {
+                        return TypeUsage.CreateBinaryTypeUsage(primitiveType, true, 8);
+                    }
                     //TypeUsage.CreateBinaryTypeUsage
                     //TypeUsage.CreateDateTimeTypeUsage
                     //TypeUsage.CreateDecimalTypeUsage
@@ -256,9 +260,9 @@ namespace Npgsql
                     }
                 case PrimitiveTypeKind.Guid:
                     return TypeUsage.CreateDefaultTypeUsage(StoreTypeNameToStorePrimitiveType["uuid"]);
-                // notably missing
-                // PrimitiveTypeKind.Byte:
-                // PrimitiveTypeKind.SByte:
+                case PrimitiveTypeKind.Byte:
+                case PrimitiveTypeKind.SByte: 
+                    return TypeUsage.CreateDefaultTypeUsage(StoreTypeNameToStorePrimitiveType["int2"]);
             }
 
             throw new NotSupportedException();

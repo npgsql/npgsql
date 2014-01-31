@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NpgsqlConnectionFactory.cs" />
+    <Compile Include="NpgsqlMigrationSqlGenerator.cs" />
     <Compile Include="NpgsqlServices.cs" />
     <Compile Include="NpgsqlProviderManifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
