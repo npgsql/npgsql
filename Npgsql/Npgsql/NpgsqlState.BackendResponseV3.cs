@@ -65,7 +65,7 @@ namespace Npgsql
                         case BackEndMessageCode.ErrorResponse:
 
                             NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
-                            error.ErrorSql = mediator.SqlSent;
+                            error.ErrorSql = mediator.GetSqlSent();
 
                             errors.Add(error);
 

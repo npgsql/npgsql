@@ -78,9 +78,6 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
             byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false, false) : GetExecuteCommandText();
-            // In constructing the command text, we potentially called internal
-            // queries.  Reset SQL sent.
-            m_Connector.Mediator.ResetResponses();
 
             return ret;
         }
@@ -169,9 +166,6 @@ namespace Npgsql
 
                 ret = (Boolean)c.ExecuteScalar();
             }
-
-            // reset any responses just before getting new ones
-            m_Connector.Mediator.ResetResponses();
 
             return ret;
         }

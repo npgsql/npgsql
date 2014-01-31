@@ -395,12 +395,11 @@ namespace Npgsql
                 }
 
                 if (compareValue != testValue)
+                {
                     return false;
+                }
 
-                // Clear mediator.
-                Mediator.ResetResponses();
                 this.RequireReadyForQuery = true;
-
             }
             catch
             {
@@ -431,21 +430,14 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            using (NpgsqlCommand cmd = new NpgsqlCommand("DISCARD ALL", this, 60))
-            {
-                cmd.ExecuteBlind();
-            }
+            NpgsqlCommand.ExecuteBlind(this, "DISCARD ALL", 60);
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
         {
-            //Query(new NpgsqlCommand("unlisten *", this));
-            using(NpgsqlCommand cmd = new NpgsqlCommand("unlisten *", this))
-            {
-                cmd.ExecuteBlind();
-            }
+            NpgsqlCommand.ExecuteBlind(this, "UNLISTEN *");
         }
 
         /// <summary>
@@ -461,15 +453,10 @@ namespace Npgsql
                 {
                     try
                     {
-                        //Query(new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i), this));
-                        using(NpgsqlCommand cmd = new NpgsqlCommand(String.Format("deallocate \"{0}\";", _planNamePrefix + i.ToString()), this))
-                        {
-                            cmd.ExecuteBlind();
-                        }
+                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", _planNamePrefix, i), -1);
                     }
-
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
-                    catch(Exception) {}
+                    catch {}
                 }
             }
 
@@ -485,9 +472,7 @@ namespace Npgsql
         {
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
             {
-                NpgsqlCommand toq = new NpgsqlCommand(string.Format("SET statement_timeout = {0}", timeout * 1000), this);
-
-                toq.ExecuteBlind();
+                NpgsqlCommand.ExecuteSetStatementTimeoutBlind(this, timeout);
 
                 Mediator.BackendCommandTimeout = timeout;
             }
@@ -852,7 +837,6 @@ namespace Npgsql
                     throw;
                 }
                 // Try using the 2.0 protocol.
-                _mediator.ResetResponses();
                 BackendProtocolVersion = ProtocolVersion.Version2;
                 CurrentState = NpgsqlClosedState.Instance;
 
@@ -986,8 +970,7 @@ namespace Npgsql
 
             initQueries = sbInitQueries.ToString();
 
-            NpgsqlCommand initCommand = new NpgsqlCommand(initQueries, this, 60);
-            initCommand.ExecuteBlind();
+            NpgsqlCommand.ExecuteBlind(this, initQueries, 60);
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
@@ -1182,8 +1165,6 @@ namespace Npgsql
                             // 20 millisecond timeout
                             if(this.connector.Stream.WaitAvailable(TimeSpan.FromMilliseconds(20)))
                             {
-                                // reset any responses just before getting new ones
-                                this.connector.Mediator.ResetResponses();
                                 this.connector.ProcessAndDiscardBackendResponses();
                             }
                         }
