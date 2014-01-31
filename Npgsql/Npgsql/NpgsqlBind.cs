@@ -177,8 +177,6 @@ namespace Npgsql
             {
                 PGUtil.WriteInt16(outputStream, code);
             }
-
-            outputStream.Flush();
         }
     }
 }

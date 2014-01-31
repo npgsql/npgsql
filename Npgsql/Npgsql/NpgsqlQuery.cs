@@ -72,8 +72,6 @@ namespace Npgsql
             }
 
             outputStream.WriteBytesNullTerminated(commandText);
-
-            outputStream.Flush();
         }
     }
 }

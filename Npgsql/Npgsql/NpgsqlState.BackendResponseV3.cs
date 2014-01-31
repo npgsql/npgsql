@@ -104,6 +104,7 @@ namespace Npgsql
 
                                     ChangeState(context, NpgsqlStartupState.Instance);
                                     context.Authenticate(context.Password);
+                                    context.Stream.Flush();
 
                                     break;
                                 case AuthenticationRequestType.AuthenticationMD5Password:
@@ -151,6 +152,7 @@ namespace Npgsql
                                     }
 
                                     context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                                    context.Stream.Flush();
 
                                     break;
 #if WINDOWS && UNMANAGED
@@ -164,6 +166,7 @@ namespace Npgsql
                                             context.SSPI = new SSPIHandler(ipAddressString, "POSTGRES");
                                             ChangeState(context, NpgsqlStartupState.Instance);
                                             context.Authenticate(context.SSPI.Continue(null));
+                                            context.Stream.Flush();
                                             break;
                                         }
                                         else
@@ -181,6 +184,7 @@ namespace Npgsql
                                         if (passwd_read.Length != 0)
                                         {
                                             context.Authenticate(passwd_read);
+                                            context.Stream.Flush();
                                         }
                                         break;
                                     }

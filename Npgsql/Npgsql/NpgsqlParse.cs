@@ -76,8 +76,6 @@ namespace Npgsql
             {
                 outputStream.WriteInt32(_parameterIDs[i]);
             }
-
-            outputStream.Flush();
         }
     }
 }

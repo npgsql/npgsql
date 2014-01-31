@@ -89,6 +89,7 @@ namespace Npgsql
             byte[] convertBuffer = new byte[36];
 
             PGUtil.WriteStringNullTerminated(stm, "Qlisten {0};notify {0};", uuidString);
+            stm.Flush();
 
             for (;;)
             {
@@ -507,9 +508,7 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            outputStream
-                .WriteBytes(_messageData)
-                .Flush();
+            outputStream.WriteBytes(_messageData);
         }
     }
 

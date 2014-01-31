@@ -110,20 +110,19 @@ namespace Npgsql
             this.optional_tty = BackendEncoding.UTF8Encoding.GetBytes(optional_tty);
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public override void WriteToStream(Stream output_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
             // Packet length = 296
-            outputStream
+            output_stream
                 .WriteInt32(296)
                 .WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version))
                 .WriteLimBytes(database_name, 64)
                 .WriteLimBytes(user_name, 32)
                 .WriteLimBytes(arguments, 64)
                 .WriteLimBytes(unused, 64)
-                .WriteLimBytes(optional_tty, 64)
-                .Flush();
+                .WriteLimBytes(optional_tty, 64);
         }
 
     }
@@ -162,7 +161,7 @@ namespace Npgsql
             }
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public override void WriteToStream(Stream output_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
@@ -172,17 +171,15 @@ namespace Npgsql
                 packet_size += (parameterNames[i].Length + parameterValues[i].Length + 2);
             }
 
-            outputStream.WriteInt32(packet_size);
-            outputStream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
+            output_stream.WriteInt32(packet_size);
+            output_stream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
 
             for (int i = 0; i < parameterNames.Count; i++)
             {
-                outputStream.WriteBytesNullTerminated(parameterNames[i]);
-                outputStream.WriteBytesNullTerminated(parameterValues[i]);
+                output_stream.WriteBytesNullTerminated(parameterNames[i]);
+                output_stream.WriteBytesNullTerminated(parameterValues[i]);
             }
-            outputStream.WriteByte(0);
-
-            outputStream.Flush();
+            output_stream.WriteByte(0);
         }
     }
 
