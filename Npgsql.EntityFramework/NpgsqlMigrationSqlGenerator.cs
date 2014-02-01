@@ -554,7 +554,10 @@ namespace Npgsql
                         break;
                 }
             }
-            else if (column.IsNullable != null && !column.IsNullable.Value)
+            else if (column.IsNullable != null
+                && !column.IsNullable.Value
+                && (column.StoreType == null ||
+                (column.StoreType.IndexOf("rowversion", StringComparison.OrdinalIgnoreCase) == -1)))
             {
                 sql.Append(" DEFAULT ");
                 AppendValue(column.ClrDefaultValue, sql);
@@ -721,10 +724,17 @@ namespace Npgsql
 
         private void AppendValue(byte[] values, StringBuilder sql)
         {
-            sql.Append("E'\\\\");
-            foreach (var value in values)
-                sql.Append(value.ToString("X2"));
-            sql.Append("'");
+            if (values.Length == 0)
+            {
+                sql.Append("''");
+            }
+            else
+            {
+                sql.Append("E'\\\\");
+                foreach (var value in values)
+                    sql.Append(value.ToString("X2"));
+                sql.Append("'");
+            }
         }
 
         private void AppendValue(bool value, StringBuilder sql)

@@ -56,7 +56,7 @@ namespace NpgsqlTests
         /// <param name="statments"></param>
         private void PrintCode(IEnumerable<System.Data.Entity.Migrations.Sql.MigrationStatement> statments)
         {
-            
+
             using (var SW = new System.IO.StreamWriter(@"D:\temp\printedCode.txt"))
             {
                 SW.WriteLine("Assert.AreEqual(" + statments.Count() + ", statments.Count());");
@@ -143,7 +143,7 @@ namespace NpgsqlTests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("integer", (string)reader[1]);
                                     Assert.AreEqual("NO", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.AreEqual("nextval('dbo.\"Posts_PostId_seq\"'::regclass)", (string)reader[3]);
                                     break;
                                 case "Title":
                                     expectedColumns.Remove((string)reader[0]);
@@ -161,7 +161,7 @@ namespace NpgsqlTests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("integer", (string)reader[1]);
                                     Assert.AreEqual("NO", (string)reader[2]);
-                                    Assert.IsNullOrEmpty(reader[3] as string);
+                                    Assert.AreEqual("0", (string)reader[3]);
                                     break;
                                 case "UniqueId":
                                     expectedColumns.Remove((string)reader[0]);
@@ -201,6 +201,7 @@ namespace NpgsqlTests
 
         public class Post
         {
+            [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
             public int PostId { get; set; }
             public string Title { get; set; }
             public string Content { get; set; }
@@ -363,7 +364,7 @@ namespace NpgsqlTests
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
             Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(0).Sql);
-            Assert.AreEqual("CREATE TABLE \"someSchema\".\"someTable\"(\"SomeString\" varchar(233) NOT NULL,\"AnotherString\" text,\"SomeBytes\" bytea,\"SomeLong\" serial8,\"SomeDateTime\" timestamp)", statments.ElementAt(1).Sql);
+            Assert.AreEqual("CREATE TABLE \"someSchema\".\"someTable\"(\"SomeString\" varchar(233) NOT NULL DEFAULT '',\"AnotherString\" text,\"SomeBytes\" bytea,\"SomeLong\" serial8,\"SomeDateTime\" timestamp)", statments.ElementAt(1).Sql);
         }
 
         [Test]
