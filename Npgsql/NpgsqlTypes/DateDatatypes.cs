@@ -157,7 +157,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="timespan">A time period expressed in a <see cref="TimeSpan"/></param>
         public NpgsqlInterval(TimeSpan timespan)
-            : this(timespan.Ticks)
+            : this(timespan.Days, timespan.Hours, timespan.Minutes, timespan.Seconds, timespan.Milliseconds)
         {
         }
 
