@@ -537,10 +537,27 @@ namespace Npgsql
                 sql.Append(" DEFAULT ");
                 sql.Append(column.DefaultValueSql);
             }
-            else if (column.IsIdentity && column.Type == PrimitiveTypeKind.Guid)
+            else if (column.IsIdentity)
             {
-                CreateExtension("uuid-ossp");
-                sql.Append(" DEFAULT uuid_generate_v4()");
+                switch (column.Type)
+                {
+                    case PrimitiveTypeKind.Guid:
+                        CreateExtension("uuid-ossp");
+                        sql.Append(" DEFAULT uuid_generate_v4()");
+                        break;
+                    case PrimitiveTypeKind.Byte:
+                    case PrimitiveTypeKind.SByte:
+                    case PrimitiveTypeKind.Int16:
+                    case PrimitiveTypeKind.Int32:
+                    case PrimitiveTypeKind.Int64:
+                        //TODO: Add support for setting "SERIAL"
+                        break;
+                }
+            }
+            else if (column.IsNullable != null && !column.IsNullable.Value)
+            {
+                sql.Append(" DEFAULT ");
+                AppendValue(column.ClrDefaultValue, sql);
             }
         }
 
