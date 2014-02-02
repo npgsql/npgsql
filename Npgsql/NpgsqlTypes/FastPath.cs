@@ -38,42 +38,42 @@ using Npgsql;
 
 namespace NpgsqlTypes
 {
-    /*
-     * This class implements the Fastpath api.
-     *
-     *
-     *
-     */
-
+    /// <summary>
+    /// This class implements the Fastpath api.
+    /// </summary>
     public class Fastpath
     {
-        // This maps the functions names to their id's (possible unique just
-        // to a connection).
+        /// <summary>
+        /// This maps the functions names to their id's (possible unique just
+        /// to a connection).
+        /// </summary>
         protected Dictionary<string, int> func = new Dictionary<string, int>();
 
-        protected NpgsqlConnection conn; // our connection
-        protected Stream stream; // the network stream
+        /// <summary>
+        /// Our connection.
+        /// </summary>
+        protected NpgsqlConnection conn;
 
-        /*
-         * Initialises the fastpath system
-         *
-         * @param conn BaseConnection to attach to
-         * @param stream The network stream to the backend
-         */
+        /// <summary>
+        /// The network stream.
+        /// </summary>
+        protected Stream stream;
 
+        /// <summary>
+        /// Initialises the fastpath system.
+        /// </summary>
+        /// <param name="conn">BaseConnection to attach to.</param>
+        /// <param name="stream">The network stream to the backend.</param>
         public Fastpath(NpgsqlConnection conn, Stream stream)
         {
             this.conn = conn;
             this.stream = stream;
         }
 
-        /*
-         * Initialises the fastpath system
-         *
-         * @param conn BaseConnection to attach to
-         * @param stream The network stream to the backend
-         */
-
+        /// <summary>
+        /// Initialises the fastpath system.
+        /// </summary>
+        /// <param name="conn">BaseConnection to attach to.</param>
         public Fastpath(NpgsqlConnection conn)
         {
             this.conn = conn;
@@ -81,16 +81,13 @@ namespace NpgsqlTypes
             this.stream = conn.Connector.Stream;
         }
 
-        /*
-         * Send a function call to the PostgreSQL backend
-         *
-         * @param fnid Function id
-         * @param resulttype True if the result is an integer, false for other results
-         * @param args FastpathArguments to pass to fastpath
-         * @return null if no data, Integer if an integer result, or byte[] otherwise
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Send a function call to the PostgreSQL backend.
+        /// </summary>
+        /// <param name="fnid">Function id.</param>
+        /// <param name="resulttype">True if the result is an integer, false for other results.</param>
+        /// <param name="args">FastpathArguments to pass to fastpath.</param>
+        /// <returns>null if no data, Integer if an integer result, or byte[] otherwise.</returns>
         public Object FastpathCall(Int32 fnid, Boolean resulttype, FastpathArg[] args)
         {
             try
@@ -354,40 +351,29 @@ namespace NpgsqlTypes
             }
         }
 
-        /*
-         * Send a function call to the PostgreSQL backend by name.
-         *
-         * Note: the mapping for the procedure name to function id needs to exist,
-         * usually to an earlier call to addfunction().
-         *
-         * This is the prefered method to call, as function id's can/may change
-         * between versions of the backend.
-         *
-         * For an example of how this works, refer to org.postgresql.largeobject.LargeObject
-         *
-         * @param name Function name
-         * @param resulttype True if the result is an integer, false for other
-         * results
-         * @param args FastpathArguments to pass to fastpath
-         * @return null if no data, Integer if an integer result, or byte[] otherwise
-         * @exception NpgsqlException if name is unknown or if a database-access error
-         * occurs.
-         * @see org.postgresql.largeobject.LargeObject
-         */
-
+        /// <summary>
+        /// Send a function call to the PostgreSQL backend by name.
+        /// Note: the mapping for the procedure name to function id needs to exist,
+        /// usually to an earlier call to addfunction().
+        /// This is the prefered method to call, as function id's can/may change
+        /// between versions of the backend.
+        /// For an example of how this works, refer to NpgsqlTypes.LargeObject
+        /// </summary>
+        /// <param name="name">Function name.</param>
+        /// <param name="resulttype">True if the result is an integer, false for other results.</param>
+        /// <param name="args">FastpathArguments to pass to fastpath.</param>
+        /// <returns>null if no data, Integer if an integer result, or byte[] otherwise.</returns>
         public Object FastpathCall(String name, Boolean resulttype, FastpathArg[] args)
         {
             return FastpathCall(GetID(name), resulttype, args);
         }
 
-        /*
-         * This convenience method assumes that the return value is an Integer
-         * @param name Function name
-         * @param args Function arguments
-         * @return integer result
-         * @exception NpgsqlException if a database-access error occurs or no result
-         */
-
+        /// <summary>
+        /// This convenience method assumes that the return value is an Integer.
+        /// </summary>
+        /// <param name="name">Function name.</param>
+        /// <param name="args">Function arguments.</param>
+        /// <returns>Integer result.</returns>
         public Int32 GetInteger(String name, FastpathArg[] args)
         {
             Int32 i = (Int32) FastpathCall(name, true, args);
@@ -395,69 +381,53 @@ namespace NpgsqlTypes
             return i;
         }
 
-        /*
-         * This convenience method assumes that the return value is an Integer
-         * @param name Function name
-         * @param args Function arguments
-         * @return byte[] array containing result
-         * @exception NpgsqlException if a database-access error occurs or no result
-         */
-
+        /// <summary>
+        /// This convenience method assumes that the return value is an Integer.
+        /// </summary>
+        /// <param name="name">Function name.</param>
+        /// <param name="args">Function arguments.</param>
+        /// <returns>Array containing result</returns>
         public Byte[] GetData(String name, FastpathArg[] args)
         {
             return (Byte[]) FastpathCall(name, false, args);
         }
 
-        /*
-         * This adds a function to our lookup table.
-         *
-         * <p>User code should use the addFunctions method, which is based upon a
-         * query, rather than hard coding the oid. The oid for a function is not
-         * guaranteed to remain static, even on different servers of the same
-         * version.
-         *
-         * @param name Function name
-         * @param fnid Function id
-         */
-
+        /// <summary>
+        /// This adds a function to our lookup table.
+        /// User code should use the addFunctions method, which is based upon a
+        /// query, rather than hard coding the oid. The oid for a function is not
+        /// guaranteed to remain static, even on different servers of the same
+        /// version.
+        /// </summary>
+        /// <param name="name">Function name.</param>
+        /// <param name="fnid">Function id.</param>
         public void AddFunction(String name, Int32 fnid)
         {
             func.Add(name, fnid);
         }
 
-        /*
-         * This takes a ResultSet containing two columns. Column 1 contains the
-         * function name, Column 2 the oid.
-         *
-         * <p>It reads the entire ResultSet, loading the values into the function
-         * table.
-         *
-         * <p><b>REMEMBER</b> to close() the resultset after calling this!!
-         *
-         * <p><b><em>Implementation note about function name lookups:</em></b>
-         *
-         * <p>PostgreSQL stores the function id's and their corresponding names in
-         * the pg_proc table. To speed things up locally, instead of querying each
-         * function from that table when required, a Dictionary is used. Also, only
-         * the function's required are entered into this table, keeping connection
-         * times as fast as possible.
-         *
-         * <p>The org.postgresql.largeobject.LargeObject class performs a query upon it's startup,
-         * and passes the returned ResultSet to the addFunctions() method here.
-         *
-         * <p>Once this has been done, the LargeObject api refers to the functions by
-         * name.
-         *
-         * <p>Dont think that manually converting them to the oid's will work. Ok,
-         * they will for now, but they can change during development (there was some
-         * discussion about this for V7.0), so this is implemented to prevent any
-         * unwarranted headaches in the future.
-         *
-         * @param rs ResultSet
-         * @exception NpgsqlException if a database-access error occurs.
-         * @see org.postgresql.largeobject.LargeObjectManager
-         */
-
+        /// <summary>
+        /// This takes a ResultSet containing two columns. Column 1 contains the
+        /// function name, Column 2 the oid.
+        /// It reads the entire ResultSet, loading the values into the function
+        /// table.
+        /// REMEMBER to close() the resultset after calling this!!
+        /// Implementation note about function name lookups:
+        /// PostgreSQL stores the function id's and their corresponding names in
+        /// the pg_proc table. To speed things up locally, instead of querying each
+        /// function from that table when required, a Dictionary is used. Also, only
+        /// the function's required are entered into this table, keeping connection
+        /// times as fast as possible.
+        /// The org.postgresql.largeobject.LargeObject class performs a query upon it's startup,
+        /// and passes the returned ResultSet to the addFunctions() method here.
+        /// Once this has been done, the LargeObject api refers to the functions by
+        /// name.
+        /// Dont think that manually converting them to the oid's will work. Ok,
+        /// they will for now, but they can change during development (there was some
+        /// discussion about this for V7.0), so this is implemented to prevent any
+        /// unwarranted headaches in the future.
+        /// </summary>
+        /// <param name="rs">ResultSet</param>
         public void AddFunctions(IDataReader rs)
         {
             while (rs.Read())
@@ -470,17 +440,13 @@ namespace NpgsqlTypes
             }
         }
 
-        /*
-         * This returns the function id associated by its name
-         *
-         * <p>If addFunction() or addFunctions() have not been called for this name,
-         * then an NpgsqlException is thrown.
-         *
-         * @param name Function name to lookup
-         * @return Function ID for fastpath call
-         * @exception NpgsqlException is function is unknown.
-         */
-
+        /// <summary>
+        /// This returns the function id associated by its name
+        /// If addFunction() or addFunctions() have not been called for this name,
+        /// then an NpgsqlException is thrown.
+        /// </summary>
+        /// <param name="name">Function name to lookup.</param>
+        /// <returns>Function ID for fastpath call.</returns>
         public Int32 GetID(String name)
         {
             return func[name];

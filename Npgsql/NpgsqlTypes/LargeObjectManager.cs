@@ -39,27 +39,26 @@ using Npgsql;
 namespace NpgsqlTypes
 {
     /// <summary>
-    /// Summary description for LargeObjectManager.
+    /// Large Object Manager.
     /// </summary>
     public class LargeObjectManager
     {
         // the fastpath api for this connection
         private readonly Fastpath fp;
 
-        /*
-         * This mode indicates we want to write to an object
-         */
+        /// <summary>
+        /// This mode indicates we want to write to an object
+        /// </summary>
         public const Int32 WRITE = 0x00020000;
 
-        /*
-         * This mode indicates we want to read an object
-         */
+        /// <summary>
+        /// This mode indicates we want to read an object
+        /// </summary>
         public static Int32 READ = 0x00040000;
 
-        /*
-         * This mode is the default. It indicates we want read and write access to
-         * a large object
-         */
+        /// <summary>
+        /// This mode is the default. It indicates we want read and write access to
+        /// </summary>
         public static Int32 READWRITE = READ | WRITE;
 
         private LargeObjectManager()
@@ -69,17 +68,13 @@ namespace NpgsqlTypes
             */
         }
 
-        /*
-         * Constructs the LargeObject API.
-         *
-         * <p><b>Important Notice</b>
-         * <br>This method should only be called by org.postgresql.Connection
-         *
-         * <p>There should only be one LargeObjectManager per Connection. The
-         * org.postgresql.Connection class keeps track of the various extension API's
-         * and it's advised you use those to gain access, and not going direct.
-         */
-
+        /// <summary>
+        /// Constructs the LargeObject API.
+        /// There should only be one LargeObjectManager per Connection. The
+        /// org.postgresql.Connection class keeps track of the various extension API's
+        /// and it's advised you use those to gain access, and not going direct.
+        /// </summary>
+        /// <param name="conn"></param>
         public LargeObjectManager(NpgsqlConnection conn)
         {
             // We need Fastpath to do anything
@@ -139,43 +134,32 @@ namespace NpgsqlTypes
             }
         }
 
-        /*
-         * This opens an existing large object, based on its OID. This method
-         * assumes that READ and WRITE access is required (the default).
-         *
-         * @param oid of large object
-         * @return LargeObject instance providing access to the object
-         * @exception NpgsqlException on error
-         */
-
+        /// <summary>
+        /// This opens an existing large object, based on its OID. This method
+        /// assumes that READ and WRITE access is required (the default).
+        /// </summary>
+        /// <param name="oid">OID of large object.</param>
+        /// <returns>LargeObject instance providing access to the object</returns>
         public LargeObject Open(Int32 oid)
         {
             return new LargeObject(fp, oid, READWRITE);
         }
 
-        /*
-         * This opens an existing large object, based on its OID
-         *
-         * @param oid of large object
-         * @param mode mode of open
-         * @return LargeObject instance providing access to the object
-         * @exception NpgsqlException on error
-         */
-
+        /// <summary>
+        /// This opens an existing large object, based on its OID.
+        /// </summary>
+        /// <param name="oid">OID of large object.</param>
+        /// <param name="mode">Mode of open.</param>
+        /// <returns></returns>
         public LargeObject Open(Int32 oid, Int32 mode)
         {
             return new LargeObject(fp, oid, mode);
         }
 
-        /*
-         * This creates a large object, returning its OID.
-         *
-         * <p>It defaults to READWRITE for the new object's attributes.
-         *
-         * @return oid of new object
-         * @exception NpgsqlException on error
-         */
-
+        /// <summary>
+        /// This creates a large object, returning its OID.
+        /// </summary>
+        /// <returns>OID of new object.</returns>
         public Int32 Create()
         {
             FastpathArg[] args = new FastpathArg[1];
@@ -190,7 +174,11 @@ namespace NpgsqlTypes
          * @return oid of new object
          * @exception NpgsqlException on error
          */
-
+        /// <summary>
+        /// This creates a large object, returning its OID.
+        /// </summary>
+        /// <param name="mode">Bitmask describing different attributes of the new object.</param>
+        /// <returns>OID of new object.</returns>
         public Int32 Create(Int32 mode)
         {
             FastpathArg[] args = new FastpathArg[1];
@@ -198,13 +186,10 @@ namespace NpgsqlTypes
             return fp.GetInteger("lo_creat", args);
         }
 
-        /*
-         * This deletes a large object.
-         *
-         * @param oid describing object to delete
-         * @exception NpgsqlException on error
-         */
-
+        /// <summary>
+        /// This deletes a large object.
+        /// </summary>
+        /// <param name="oid">OID describing object to delete.</param>
         public void Delete(Int32 oid)
         {
             FastpathArg[] args = new FastpathArg[1];
@@ -212,16 +197,11 @@ namespace NpgsqlTypes
             fp.FastpathCall("lo_unlink", false, args);
         }
 
-        /*
-         * This deletes a large object.
-         *
-         * <p>It is identical to the delete method, and is supplied as the C API uses
-         * unlink.
-         *
-         * @param oid describing object to delete
-         * @exception NpgsqlException on error
-         */
-
+        /// <summary>
+        /// This deletes a large object.
+        /// It is identical to the Delete() method, and is supplied as the C API uses unlink.
+        /// </summary>
+        /// <param name="oid">OID describing object to delete.</param>
         public void Unlink(Int32 oid)
         {
             Delete(oid);

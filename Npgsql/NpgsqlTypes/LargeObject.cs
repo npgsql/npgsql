@@ -34,21 +34,24 @@ using System;
 
 namespace NpgsqlTypes
 {
+    /// <summary>
+    /// Large Object.
+    /// </summary>
     public class LargeObject
     {
-        /*
-         * Indicates a seek from the begining of a file
-         */
+        /// <summary>
+        /// Indicates a seek from the begining of a file.
+        /// </summary>
         public const Int32 SEEK_SET = 0;
 
-        /*
-         * Indicates a seek from the current position
-         */
+        /// <summary>
+        /// Indicates a seek from the current position.
+        /// </summary>
         public const Int32 SEEK_CUR = 1;
 
-        /*
-         * Indicates a seek from the end of a file
-         */
+        /// <summary>
+        /// Indicates a seek from the end of a file.
+        /// </summary>
         public const Int32 SEEK_END = 2;
 
         private readonly Fastpath fp; // Fastpath API to use
@@ -57,19 +60,13 @@ namespace NpgsqlTypes
 
         private Boolean closed = false; // true when we are closed
 
-        /*
-         * This opens a large object.
-         *
-         * <p>If the object does not exist, then an NpgsqlException is thrown.
-         *
-         * @param fp FastPath API for the connection to use
-         * @param oid of the Large Object to open
-         * @param mode Mode of opening the large object
-         * (defined in LargeObjectManager)
-         * @exception NpgsqlException if a database-access error occurs.
-         * @see org.postgresql.largeobject.LargeObjectManager
-         */
-
+        /// <summary>
+        /// This opens a large object.
+        /// If the object does not exist, then an NpgsqlException is thrown.
+        /// </summary>
+        /// <param name="fp">FastPath API for the connection to use.</param>
+        /// <param name="oid">OID of the Large Object to open.</param>
+        /// <param name="mode">Mode of opening the large object</param>
         public LargeObject(Fastpath fp, Int32 oid, Int32 mode)
         {
             this.fp = fp;
@@ -81,21 +78,27 @@ namespace NpgsqlTypes
             this.fd = fp.GetInteger("lo_open", args);
         }
 
-        /*
-         * @return the OID of this LargeObject
-         */
-
+        /// <summary>
+        /// OID getter.
+        /// </summary>
+        /// <returns>The OID of this LargeObject.</returns>
         public Int32 GetOID()
         {
             return oid;
         }
 
-        /*
-         * This method closes the object. You must not call methods in this
-         * object after this is called.
-         * @exception NpgsqlException if a database-access error occurs.
-         */
+        /// <summary>
+        /// OID.
+        /// </summary>
+        public Int32 OID
+        {
+            get { return oid; }
+        }
 
+        /// <summary>
+        /// This method closes the object. You must not call methods in this
+        /// object after this is called.
+        /// </summary>
         public void Close()
         {
             if (!closed)
@@ -108,14 +111,11 @@ namespace NpgsqlTypes
             }
         }
 
-        /*
-         * Reads some data from the object, and return as a byte[] array
-         *
-         * @param len number of bytes to read
-         * @return byte[] array containing data read
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Reads some data from the object, and return as a byte[] array.
+        /// </summary>
+        /// <param name="len">Number of bytes to read.</param>
+        /// <returns>Array containing data read.</returns>
         public Byte[] Read(Int32 len)
         {
             // This is the original method, where the entire block (len bytes)
@@ -150,16 +150,13 @@ namespace NpgsqlTypes
             //}
         }
 
-        /*
-         * Reads some data from the object into an existing array
-         *
-         * @param buf destination array
-         * @param off offset within array
-         * @param len number of bytes to read
-         * @return the number of bytes actually read
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Reads some data from the object into an existing array.
+        /// </summary>
+        /// <param name="buf">Destination array.</param>
+        /// <param name="off">Offset within array.</param>
+        /// <param name="len">Maximum number of bytes to read.</param>
+        /// <returns>The number of bytes actually read.</returns>
         public Int32 Read(Byte[] buf, Int32 off, Int32 len)
         {
             Byte[] b = Read(len);
@@ -171,13 +168,10 @@ namespace NpgsqlTypes
             return len;
         }
 
-        /*
-         * Writes an array to the object
-         *
-         * @param buf array to write
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Writes an array to the object.
+        /// </summary>
+        /// <param name="buf">Array to write.</param>
         public void Write(Byte[] buf)
         {
             FastpathArg[] args = new FastpathArg[2];
@@ -186,15 +180,12 @@ namespace NpgsqlTypes
             fp.FastpathCall("lowrite", false, args);
         }
 
-        /*
-         * Writes some data from an array to the object
-         *
-         * @param buf destination array
-         * @param off offset within array
-         * @param len number of bytes to write
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Writes some data from an array to the object.
+        /// </summary>
+        /// <param name="buf">Destination array.</param>
+        /// <param name="off">Offset within array.</param>
+        /// <param name="len">Number of bytes to write.</param>
         public void Write(Byte[] buf, Int32 off, Int32 len)
         {
             Byte[] data = new Byte[len];
@@ -203,17 +194,13 @@ namespace NpgsqlTypes
             Write(data);
         }
 
-        /*
-         * Sets the current position within the object.
-         *
-         * <p>This is similar to the fseek() call in the standard C library. It
-         * allows you to have random access to the large object.
-         *
-         * @param pos position within object
-         * @param ref Either SEEK_SET, SEEK_CUR or SEEK_END
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Sets the current position within the object.
+        /// This is similar to the fseek() call in the standard C library. It
+        /// allows you to have random access to the large object.
+        /// </summary>
+        /// <param name="pos">Position within object.</param>
+        /// <param name="refi">Either SEEK_SET, SEEK_CUR or SEEK_END.</param>
         public void Seek(Int32 pos, Int32 refi)
         {
             FastpathArg[] args = new FastpathArg[3];
@@ -223,26 +210,21 @@ namespace NpgsqlTypes
             fp.FastpathCall("lo_lseek", false, args);
         }
 
-        /*
-         * Sets the current position within the object.
-         *
-         * <p>This is similar to the fseek() call in the standard C library. It
-         * allows you to have random access to the large object.
-         *
-         * @param pos position within object from begining
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Sets the current position within the object.
+        /// This is similar to the fseek() call in the standard C library. It
+        /// allows you to have random access to the large object.
+        /// </summary>
+        /// <param name="pos">Position within object from begining.</param>
         public void Seek(Int32 pos)
         {
             Seek(pos, SEEK_SET);
         }
 
-        /*
-         * @return the current position within the object
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// Report the current position within the object.
+        /// </summary>
+        /// <returns>The current position within the object.</returns>
         public Int32 Tell()
         {
             FastpathArg[] args = new FastpathArg[1];
@@ -250,17 +232,13 @@ namespace NpgsqlTypes
             return fp.GetInteger("lo_tell", args);
         }
 
-        /*
-         * This method is inefficient, as the only way to find out the size of
-         * the object is to seek to the end, record the current position, then
-         * return to the original position.
-         *
-         * <p>A better method will be found in the future.
-         *
-         * @return the size of the large object
-         * @exception NpgsqlException if a database-access error occurs.
-         */
-
+        /// <summary>
+        /// This method is inefficient, as the only way to find out the size of
+        /// the object is to seek to the end, record the current position, then
+        /// return to the original position.
+        /// A better method will be found in the future.
+        /// </summary>
+        /// <returns>The size of the large object.</returns>
         public Int32 Size()
         {
             Int32 cp = Tell();

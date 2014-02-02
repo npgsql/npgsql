@@ -35,6 +35,9 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace Npgsql
 {
     ///<summary>
@@ -1009,3 +1012,5 @@ namespace Npgsql
         }
     }
 }
+
+#pragma warning restore 1591

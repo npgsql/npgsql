@@ -86,6 +86,11 @@ namespace Npgsql
             errors = new NpgsqlError[] { new NpgsqlError(ProtocolVersion.Unknown, message) };
         }
 
+        /// <summary>
+        /// Get object data.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);

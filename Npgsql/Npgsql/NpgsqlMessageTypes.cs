@@ -25,6 +25,9 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace Npgsql
 {
     public enum FrontEndMessageCode :byte
@@ -44,3 +47,5 @@ namespace Npgsql
         Sync = (byte) 'S'
     }
 }
+
+#pragma warning restore 1591

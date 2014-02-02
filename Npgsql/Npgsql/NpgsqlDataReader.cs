@@ -166,6 +166,11 @@ namespace Npgsql
             get { return GetValue(i); }
         }
 
+        /// <summary>
+        /// Has ordinal.
+        /// </summary>
+        /// <param name="fieldName"></param>
+        /// <returns></returns>
         public bool HasOrdinal(string fieldName)
         {
             if(CurrentDescription == null)
@@ -212,6 +217,11 @@ namespace Npgsql
             return TryGetTypeInfo(Index, out TI) ? TI.NpgsqlDbType : NpgsqlDbType.Text;
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public BitString GetBitString(int i)
         {
             object ret = GetValue(i);
@@ -234,31 +244,59 @@ namespace Npgsql
             return (NpgsqlInterval)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public NpgsqlTime GetTime(int i)
         {
             return (NpgsqlTime)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public NpgsqlTimeTZ GetTimeTZ(int i)
         {
             return (NpgsqlTimeTZ)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public NpgsqlTimeStamp GetTimeStamp(int i)
         {
             return (NpgsqlTimeStamp)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public NpgsqlTimeStampTZ GetTimeStampTZ(int i)
         {
             return (NpgsqlTimeStampTZ)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Get specified field value.
+        /// /// </summary>
+        /// <param name="i"></param>
+        /// <returns></returns>
         public NpgsqlDate GetDate(int i)
         {
             return (NpgsqlDate)GetProviderSpecificValue(i);
         }
 
+        /// <summary>
+        /// Send closed event.
+        /// </summary>
         protected void SendClosedEvent()
         {
             if (this.ReaderClosed != null)
@@ -983,6 +1021,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Get enumerator.
+        /// </summary>
+        /// <returns></returns>
         public override IEnumerator GetEnumerator()
         {
             return new DbEnumerator(this);
