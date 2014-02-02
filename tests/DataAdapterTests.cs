@@ -185,10 +185,7 @@ namespace NpgsqlTests
             Assert.AreEqual(typeof(int), field_serial.DataType);
             Assert.AreEqual(0, field_serial.Ordinal);
             // version 2 of the protocol doesn't know how to populate the unique field
-            if (Conn.BackendProtocolVersion != ProtocolVersion.Version2)
-            {
-                Assert.IsTrue(field_serial.Unique);
-            }
+            Assert.IsTrue(field_serial.Unique);
 
             Assert.IsTrue(field_int2.AllowDBNull);
             Assert.IsFalse(field_int2.AutoIncrement);

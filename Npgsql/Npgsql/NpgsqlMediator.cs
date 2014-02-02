@@ -44,8 +44,7 @@ namespace Npgsql
         {
             None,
             Simple,
-            Prepare, // V2 prepared
-            Parse,   // V3 prepared
+            Parse,
             Execute
         }
 
@@ -69,9 +68,6 @@ namespace Npgsql
             {
                 case SQLSentType.None :
                     return "";
-
-                case SQLSentType.Prepare :
-                    return string.Format("PREPARE {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
 
                 case SQLSentType.Parse:
                     return string.Format("{{PARSE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));

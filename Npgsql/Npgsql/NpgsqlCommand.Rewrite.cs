@@ -260,11 +260,7 @@ namespace Npgsql
                         functionChecksDone = true;
                     }
 
-                    commandBuilder.WriteString(
-                        Connector.SupportsPrepare
-                        ? "SELECT * FROM " // This syntax is only available in 7.3+ as well SupportsPrepare.
-                        : "SELECT " //Only a single result return supported. 7.2 and earlier.
-                    );
+                    commandBuilder.WriteString("SELECT * FROM ");
 
                     if (commandText[chunk.Begin + chunk.Length - 1] == ')')
                     {

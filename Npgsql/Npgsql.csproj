@@ -65,8 +65,7 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <NoWarn>
-    </NoWarn>
+    <NoWarn>1591</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -159,14 +158,12 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
-    <Compile Include="Npgsql\NpgsqlQueryV2.cs" />
-    <Compile Include="Npgsql\NpgsqlQueryV3.cs" />
+    <Compile Include="Npgsql\NpgsqlQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
     <Compile Include="Npgsql\BackendEncoding.cs" />
     <Compile Include="Npgsql\ASCIIBytes.cs" />
-    <Compile Include="Npgsql\NpgsqlState.BackendResponseV2.cs" />
-    <Compile Include="Npgsql\NpgsqlState.BackendResponseV3.cs" />
+    <Compile Include="Npgsql\NpgsqlState.BackendResponse.cs" />
     <Compile Include="Npgsql\HashAlgorithm.cs" />
     <Compile Include="Npgsql\MD5.cs" />
     <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
@@ -222,7 +219,6 @@
     <Compile Include="Npgsql\NpgsqlParse.cs" />
     <Compile Include="Npgsql\NpgsqlPasswordPacket.cs" />
     <Compile Include="Npgsql\NpgsqlPromotableSinglePhaseNotification.cs" />
-    <Compile Include="Npgsql\NpgsqlQuery.cs" />
     <Compile Include="Npgsql\NpgsqlReadyState.cs" />
     <Compile Include="Npgsql\NpgsqlResourceManager.cs" />
     <Compile Include="Npgsql\NpgsqlRow.cs" />

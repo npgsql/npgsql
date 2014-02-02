@@ -39,111 +39,35 @@ namespace Npgsql
     /// protocol.
     /// </summary>
     ///
-    internal abstract class NpgsqlStartupPacket : ClientMessage
-    {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
-        public static NpgsqlStartupPacket BuildStartupPacket(ProtocolVersion protocol_version, String database_name, String user_name,
-                                                             NpgsqlConnectionStringBuilder  settings)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BuildStartupPacket");
-
-            if (protocol_version == ProtocolVersion.Version2)
-            {
-                return new NpgsqlStartupPacketV2(database_name,user_name, "", "", "");
-            }
-            else
-            {
-                Dictionary<String, String> parameters = new Dictionary<String, String>();
-
-                parameters.Add("DateStyle", "ISO");
-                parameters.Add("client_encoding", "UTF8");
-                parameters.Add("extra_float_digits", "2");
-                parameters.Add("lc_monetary", "C");
-
-                if (!string.IsNullOrEmpty(settings.ApplicationName))
-                {
-                    parameters.Add("application_name", settings.ApplicationName);
-                }
-
-                if (!string.IsNullOrEmpty(settings.SearchPath))
-                {
-                    parameters.Add("search_path", settings.SearchPath);
-                }
-
-                return new NpgsqlStartupPacketV3(database_name,user_name,parameters);
-            }
-        }
-
-        protected NpgsqlStartupPacket() { }
-    }
-
-    internal sealed class NpgsqlStartupPacketV2 : NpgsqlStartupPacket
+    internal sealed class NpgsqlStartupPacket : ClientMessage
     {
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         // Private fields.
-        private readonly ProtocolVersion protocol_version;
-        private readonly byte[] database_name;
-        private readonly byte[] user_name;
-        private readonly byte[] arguments;
-        private readonly byte[] unused;
-        private readonly byte[] optional_tty;
-
-        public NpgsqlStartupPacketV2(String database_name, String user_name,
-                                   String arguments, String unused, String optional_tty)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-            // Just copy the values.
-
-            // [FIXME] Validate params? We are the only clients, so, hopefully, we
-            // know what to send.
-
-            this.protocol_version = ProtocolVersion.Version2;
-
-            this.database_name = BackendEncoding.UTF8Encoding.GetBytes(database_name);
-            this.user_name = BackendEncoding.UTF8Encoding.GetBytes(user_name);
-            this.arguments = BackendEncoding.UTF8Encoding.GetBytes(arguments);
-            this.unused = BackendEncoding.UTF8Encoding.GetBytes(unused);
-            this.optional_tty = BackendEncoding.UTF8Encoding.GetBytes(optional_tty);
-        }
-
-        public override void WriteToStream(Stream output_stream)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
-
-            // Packet length = 296
-            output_stream
-                .WriteInt32(296)
-                .WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version))
-                .WriteLimBytes(database_name, 64)
-                .WriteLimBytes(user_name, 32)
-                .WriteLimBytes(arguments, 64)
-                .WriteLimBytes(unused, 64)
-                .WriteLimBytes(optional_tty, 64);
-        }
-
-    }
-
-
-    internal sealed class NpgsqlStartupPacketV3 : NpgsqlStartupPacket
-    {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
-        // Private fields.
-        private readonly ProtocolVersion protocol_version;
         private readonly List<byte[]> parameterNames = new List<byte[]>(10);
         private readonly List<byte[]> parameterValues = new List<byte[]>(10);
 
-        public NpgsqlStartupPacketV3(String database_name, String user_name,
-                                   Dictionary<String, String> parameters)
+        public NpgsqlStartupPacket(String database_name, String user_name, NpgsqlConnectionStringBuilder  settings)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BuildStartupPacket");
 
-            this.protocol_version = ProtocolVersion.Version3;
+            Dictionary<String, String> parameters = new Dictionary<String, String>();
+
+            parameters.Add("DateStyle", "ISO");
+            parameters.Add("client_encoding", "UTF8");
+            parameters.Add("extra_float_digits", "2");
+            parameters.Add("lc_monetary", "C");
+
+            if (! string.IsNullOrEmpty(settings.ApplicationName))
+            {
+                parameters.Add("application_name", settings.ApplicationName);
+            }
+
+            if (! string.IsNullOrEmpty(settings.SearchPath))
+            {
+                parameters.Add("search_path", settings.SearchPath);
+            }
 
             //database
             parameterNames.Add(BackendEncoding.UTF8Encoding.GetBytes("database"));
@@ -166,21 +90,24 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
             int packet_size = 4 + 4 + 1;
+
             for (int i = 0; i < parameterNames.Count; i++)
             {
                 packet_size += (parameterNames[i].Length + parameterValues[i].Length + 2);
             }
 
-            output_stream.WriteInt32(packet_size);
-            output_stream.WriteInt32(PGUtil.ConvertProtocolVersion(this.protocol_version));
+            output_stream
+                .WriteInt32(packet_size)
+                .WriteInt32(PGUtil.ConvertProtocolVersion(ProtocolVersion.Version3));
 
             for (int i = 0; i < parameterNames.Count; i++)
             {
-                output_stream.WriteBytesNullTerminated(parameterNames[i]);
-                output_stream.WriteBytesNullTerminated(parameterValues[i]);
+                output_stream
+                    .WriteBytesNullTerminated(parameterNames[i])
+                    .WriteBytesNullTerminated(parameterValues[i]);
             }
+
             output_stream.WriteByte(0);
         }
     }
-
 }

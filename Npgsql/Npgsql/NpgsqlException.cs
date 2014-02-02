@@ -83,7 +83,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMsg(resman, "Log_ExceptionOccured", LogLevel.Normal, Message);
 
-            errors = new NpgsqlError[] { new NpgsqlError(ProtocolVersion.Unknown, message) };
+            errors = new NpgsqlError[] { new NpgsqlError(message) };
         }
 
         /// <summary>

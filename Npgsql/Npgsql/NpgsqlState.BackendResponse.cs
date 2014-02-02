@@ -45,7 +45,59 @@ namespace Npgsql
     ///
     internal abstract partial class NpgsqlState
     {
-        protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_3(NpgsqlConnector context)
+        private enum BackEndMessageCode
+        {
+            IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
+
+            CopyData = 'd',
+            CopyDone = 'c',
+            DataRow = 'D',
+
+            BackendKeyData = 'K',
+            CancelRequest = 'F',
+            CompletedResponse = 'C',
+            CopyDataRows = ' ',
+            CopyInResponse = 'G',
+            CopyOutResponse = 'H',
+            EmptyQueryResponse = 'I',
+            ErrorResponse = 'E',
+            FunctionCall = 'F',
+            FunctionCallResponse = 'V',
+
+            AuthenticationRequest = 'R',
+
+            NoticeResponse = 'N',
+            NotificationResponse = 'A',
+            ParameterStatus = 'S',
+            PasswordPacket = ' ',
+            ReadyForQuery = 'Z',
+            RowDescription = 'T',
+            SSLRequest = ' ',
+
+            // extended query backend messages
+            ParseComplete = '1',
+            BindComplete = '2',
+            PortalSuspended = 's',
+            ParameterDescription = 't',
+            NoData = 'n',
+            CloseComplete = '3'
+        }
+
+        private enum AuthenticationRequestType
+        {
+            AuthenticationOk = 0,
+            AuthenticationKerberosV4 = 1,
+            AuthenticationKerberosV5 = 2,
+            AuthenticationClearTextPassword = 3,
+            AuthenticationCryptPassword = 4,
+            AuthenticationMD5Password = 5,
+            AuthenticationSCMCredential = 6,
+            AuthenticationGSS = 7,
+            AuthenticationGSSContinue = 8,
+            AuthenticationSSPI = 9
+        }
+
+        protected IEnumerable<IServerResponseObject> ProcessBackendResponses(NpgsqlConnector context)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ProcessBackendResponses");
 
@@ -64,7 +116,7 @@ namespace Npgsql
                     {
                         case BackEndMessageCode.ErrorResponse:
 
-                            NpgsqlError error = new NpgsqlError(context.BackendProtocolVersion, stream);
+                            NpgsqlError error = new NpgsqlError(stream);
                             error.ErrorSql = mediator.GetSqlSent();
 
                             errors.Add(error);
@@ -189,14 +241,13 @@ namespace Npgsql
 
                                 default:
                                     // Only AuthenticationClearTextPassword and AuthenticationMD5Password supported for now.
-                                    errors.Add(
-                                        new NpgsqlError(context.BackendProtocolVersion,
-                                                        String.Format(resman.GetString("Exception_AuthenticationMethodNotSupported"), authType)));
+                                    errors.Add(new NpgsqlError(String.Format(resman.GetString("Exception_AuthenticationMethodNotSupported"), authType)));
+
                                     throw new NpgsqlException(errors);
                             }
                             break;
                         case BackEndMessageCode.RowDescription:
-                            yield return new NpgsqlRowDescriptionV3(stream, context.OidToNameMapping, context.CompatVersion);
+                            yield return new NpgsqlRowDescription(stream, context.OidToNameMapping, context.CompatVersion);
                             break;
 
                         case BackEndMessageCode.ParameterDescription:
@@ -212,7 +263,7 @@ namespace Npgsql
                             break;
 
                         case BackEndMessageCode.DataRow:
-                            yield return new StringRowReaderV3(stream);
+                            yield return new StringRowReader(stream);
                             break;
 
                         case BackEndMessageCode.ReadyForQuery:
@@ -240,7 +291,7 @@ namespace Npgsql
 
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "BackendKeyData");
                             // BackendKeyData message.
-                            NpgsqlBackEndKeyData backend_keydata = new NpgsqlBackEndKeyData(context.BackendProtocolVersion, stream);
+                            NpgsqlBackEndKeyData backend_keydata = new NpgsqlBackEndKeyData(stream);
                             context.BackEndKeyData = backend_keydata;
 
                             // Wait for ReadForQuery message
@@ -249,7 +300,7 @@ namespace Npgsql
                         case BackEndMessageCode.NoticeResponse:
                             // Notices and errors are identical except that we
                             // just throw notices away completely ignored.
-                            context.FireNotice(new NpgsqlError(context.BackendProtocolVersion, stream));
+                            context.FireNotice(new NpgsqlError(stream));
                             break;
 
                         case BackEndMessageCode.CompletedResponse:

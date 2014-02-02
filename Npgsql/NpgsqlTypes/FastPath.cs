@@ -92,14 +92,7 @@ namespace NpgsqlTypes
         {
             try
             {
-                if (conn.BackendProtocolVersion == ProtocolVersion.Version3)
-                {
-                    return FastpathV3(fnid, resulttype, args);
-                }
-                else
-                {
-                    return FastpathV2(fnid, resulttype, args);
-                }
+                return FastpathV3(fnid, resulttype, args);
             }
             catch (IOException)
             {
@@ -167,7 +160,7 @@ namespace NpgsqlTypes
                             //------------------------------
                             // Error message returned
                         case 'E':
-                            NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion, stream);
+                            NpgsqlError e = new NpgsqlError(stream);
                             throw new NpgsqlException(e.ToString());
 
                             //------------------------------
@@ -175,7 +168,7 @@ namespace NpgsqlTypes
                         case 'N':
                             Int32 l_nlen = PGUtil.ReadInt32(stream);
 
-                            conn.Connector.FireNotice(new NpgsqlError(conn.BackendProtocolVersion, stream));
+                            conn.Connector.FireNotice(new NpgsqlError(stream));
 
                             break;
 
@@ -237,114 +230,6 @@ namespace NpgsqlTypes
                 if (error != null)
                 {
                     throw error;
-                }
-
-                return result;
-            }
-        }
-
-        private Object FastpathV2(Int32 fnid, Boolean resulttype, FastpathArg[] args)
-        {
-            // added Oct 7 1998 to give us thread safety
-            lock (stream)
-            {
-                // send the function call
-
-                stream
-                    .WriteBytesNullTerminated((byte)ASCIIBytes.F)
-                    .WriteInt32(fnid)
-                    .WriteInt32(args.Length);
-
-                for (Int32 i = 0; i < args.Length; i++)
-                {
-                    args[i].Send(stream);
-                }
-
-                // This is needed, otherwise data can be lost
-                stream.Flush();
-
-                // Now handle the result
-
-                // Now loop, reading the results
-                Object result = null; // our result
-                String errorMessage = "";
-                Int32 c;
-                Boolean l_endQuery = false;
-                while (!l_endQuery)
-                {
-                    c = (Char) stream.ReadByte();
-
-                    switch (c)
-                    {
-                        case 'A': // Asynchronous Notify
-                            //TODO: do something with this
-                            Int32 pid = PGUtil.ReadInt32(stream);
-                            String msg = PGUtil.ReadString(stream);
-
-                            break;
-
-                            //------------------------------
-                            // Error message returned
-                        case 'E':
-                            NpgsqlError e = new NpgsqlError(conn.BackendProtocolVersion, stream);
-                            errorMessage += e.Message;
-                            break;
-
-                            //------------------------------
-                            // Notice from backend
-                        case 'N':
-                            NpgsqlError notice = new NpgsqlError(conn.BackendProtocolVersion, stream);
-                            errorMessage += notice.Message;
-                            break;
-
-                        case 'V':
-                            Char l_nextChar = (Char) stream.ReadByte();
-                            if (l_nextChar == 'G')
-                            {
-                                Int32 sz = PGUtil.ReadInt32(stream);
-                                // Return an Integer if
-                                if (resulttype)
-                                {
-                                    result = PGUtil.ReadInt32(stream);
-                                }
-                                else
-                                {
-                                    Byte[] buf = new Byte[sz];
-
-                                    Int32 bytes_from_stream = 0;
-                                    Int32 total_bytes_read = 0;
-                                    Int32 size = sz;
-                                    do
-                                    {
-                                        bytes_from_stream = stream.Read(buf, total_bytes_read, size);
-                                        total_bytes_read += bytes_from_stream;
-                                        size -= bytes_from_stream;
-                                    }
-                                    while (size > 0);
-
-                                    result = buf;
-                                }
-                                //There should be a trailing '0'
-                                Int32 l_endChar = (Char) stream.ReadByte();
-                            }
-                            else
-                            {
-                                //it must have been a '0', thus no results
-                            }
-                            break;
-
-                        case 'Z':
-                            l_endQuery = true;
-                            break;
-
-                        default:
-                            throw new NpgsqlException(string.Format("postgresql.fp.protocol {0}", c));
-                    }
-                }
-
-                if (errorMessage != null)
-                {
-                    throw new NpgsqlException("postgresql.fp.error" + errorMessage);
                 }
 
                 return result;
