@@ -182,12 +182,13 @@ namespace Npgsql
 
         private void AddFunctionColumnListSupport(Stream st)
         {
+            bool isFirstOutputOrInputOutput = true;
+
             PGUtil.WriteString(st, " AS (");
 
             for (int i = 0 ; i < Parameters.Count ; i++)
             {
                 var p = Parameters[i];
-                bool isFirstOutputOrInputOutput = true;
 
                 switch(p.Direction)
                 {
