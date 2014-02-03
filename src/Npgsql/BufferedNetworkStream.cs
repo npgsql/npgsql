@@ -203,42 +203,22 @@ namespace Npgsql
 
         protected override void Dispose(bool disposing)
         {
-            try
+            if (disposing && readBuffer != null)
             {
-                if (disposing && readBuffer != null)
-                {
-                    try
-                    {
-                        Flush();
-                    }
-                    finally
-                    {
-                        try
-                        {
-                            readStream.Close();
-                        }
-                        finally
-                        {
-                            writeStream.Close();
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                try
-                {
-                    readStream.EndRead(readResult);
-                }
+                try { Flush(); }
                 catch { }
-                finally
-                {
-                    readStream = null;
-                    writeStream = null;
-                    readResult = null;
-                    readBuffer = null;
-                    base.Dispose(disposing);
-                }
+                try { readStream.Close(); }
+                catch { }
+                try { writeStream.Close(); }
+                catch { }
+                var e = new Action(() => readStream.EndRead(readResult));
+                try { e.BeginInvoke(ar => e.EndInvoke(ar), null); }
+                catch { }
+                readStream = null;
+                writeStream = null;
+                readResult = null;
+                readBuffer = null;
+                base.Dispose(disposing);
             }
         }
     }
