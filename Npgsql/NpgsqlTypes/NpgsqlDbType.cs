@@ -24,6 +24,9 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace NpgsqlTypes
 {
     public enum NpgsqlDbType
@@ -72,3 +75,5 @@ namespace NpgsqlTypes
         MacAddr
     }
 }
+
+#pragma warning restore 1591

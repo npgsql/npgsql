@@ -56,29 +56,61 @@ namespace Npgsql
         // Log support
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
+        /// <summary>
+        /// Row updated event.
+        /// </summary>
         public event NpgsqlRowUpdatedEventHandler RowUpdated;
+
+        /// <summary>
+        /// Row updating event.
+        /// </summary>
         public event NpgsqlRowUpdatingEventHandler RowUpdating;
 
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
         public NpgsqlDataAdapter()
         {
         }
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="selectCommand"></param>
         public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
             SelectCommand = selectCommand;
         }
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="selectCommandText"></param>
+        /// <param name="selectConnection"></param>
         public NpgsqlDataAdapter(String selectCommandText, NpgsqlConnection selectConnection)
             : this(new NpgsqlCommand(selectCommandText, selectConnection))
         {
         }
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="selectCommandText"></param>
+        /// <param name="selectConnectionString"></param>
         public NpgsqlDataAdapter(String selectCommandText, String selectConnectionString)
             : this(selectCommandText, new NpgsqlConnection(selectConnectionString))
         {
         }
 
+        /// <summary>
+        /// Create row updated event.
+        /// </summary>
+        /// <param name="dataRow"></param>
+        /// <param name="command"></param>
+        /// <param name="statementType"></param>
+        /// <param name="tableMapping"></param>
+        /// <returns></returns>
         protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
                                                                      StatementType statementType,
                                                                      DataTableMapping tableMapping)
@@ -87,6 +119,14 @@ namespace Npgsql
             return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
         }
 
+        /// <summary>
+        /// Create row updating event.
+        /// </summary>
+        /// <param name="dataRow"></param>
+        /// <param name="command"></param>
+        /// <param name="statementType"></param>
+        /// <param name="tableMapping"></param>
+        /// <returns></returns>
         protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
                                                                        StatementType statementType,
                                                                        DataTableMapping tableMapping)
@@ -95,6 +135,10 @@ namespace Npgsql
             return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
         }
 
+        /// <summary>
+        /// Raise the RowUpdated event.
+        /// </summary>
+        /// <param name="value"></param>
         protected override void OnRowUpdated(RowUpdatedEventArgs value)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdated");
@@ -105,6 +149,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Raise the RowUpdating event.
+        /// </summary>
+        /// <param name="value"></param>
         protected override void OnRowUpdating(RowUpdatingEventArgs value)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdating");
@@ -114,6 +162,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Delete command.
+        /// </summary>
         public new NpgsqlCommand DeleteCommand
         {
             get
@@ -125,6 +176,9 @@ namespace Npgsql
             set { base.DeleteCommand = value; }
         }
 
+        /// <summary>
+        /// Select command.
+        /// </summary>
         public new NpgsqlCommand SelectCommand
         {
             get
@@ -136,6 +190,9 @@ namespace Npgsql
             set { base.SelectCommand = value; }
         }
 
+        /// <summary>
+        /// Update command.
+        /// </summary>
         public new NpgsqlCommand UpdateCommand
         {
             get
@@ -147,6 +204,9 @@ namespace Npgsql
             set { base.UpdateCommand = value; }
         }
 
+        /// <summary>
+        /// Insert command.
+        /// </summary>
         public new NpgsqlCommand InsertCommand
         {
             get
@@ -159,6 +219,8 @@ namespace Npgsql
         }
     }
 }
+
+#pragma warning disable 1591
 
 public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
 {
@@ -179,3 +241,5 @@ public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
     {
     }
 }
+
+#pragma warning restore 1591

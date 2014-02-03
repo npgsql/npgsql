@@ -34,6 +34,9 @@ using Npgsql;
 //do just as well with these - and hence no reason not to choose these if they are appropriate.
 //Similarly, lots of documentation is a must.
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace NpgsqlTypes
 {
     /// <summary>
@@ -3508,3 +3511,5 @@ namespace NpgsqlTypes
         }
     }
 }
+
+#pragma warning restore 1591

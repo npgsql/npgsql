@@ -37,6 +37,9 @@ using System.Resources;
 using System.Runtime.Versioning;
 using System.Text;
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace Npgsql
 {
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
@@ -1105,3 +1108,5 @@ namespace Npgsql
         Require = 1 << 3
     }
 }
+
+#pragma warning restore 1591

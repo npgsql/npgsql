@@ -36,13 +36,35 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlCopySerializer
     {
-        public static String DEFAULT_DELIMITER = "\t",
-                             DEFAULT_SEPARATOR = "\n",
-                             DEFAULT_NULL = "\\N",
-                             DEFAULT_ESCAPE = "\\",
-                             DEFAULT_QUOTE = "\"";
+        /// <summary>
+        /// Default delimiter.
+        /// </summary>
+        public const String DEFAULT_DELIMITER = "\t";
 
-        public static int DEFAULT_BUFFER_SIZE = 8192;
+        /// <summary>
+        /// Default separator.
+        /// </summary>
+        public const String DEFAULT_SEPARATOR = "\n";
+
+        /// <summary>
+        /// Default null.
+        /// </summary>
+        public const String DEFAULT_NULL = "\\N";
+
+        /// <summary>
+        /// Default escape.
+        /// </summary>
+        public const String DEFAULT_ESCAPE = "\\";
+
+        /// <summary>
+        /// Default quote.
+        /// </summary>
+        public const String DEFAULT_QUOTE = "\"";
+
+        /// <summary>
+        /// Default buffer size.
+        /// </summary>
+        public const int DEFAULT_BUFFER_SIZE = 8192;
 
         private static readonly CultureInfo _cultureInfo = CultureInfo.InvariantCulture;    // PostgreSQL currently only supports SQL notation for decimal point (which is the same as InvariantCulture)
 
@@ -61,16 +83,26 @@ namespace Npgsql
         private byte[] _sendBuffer = null;
         private int _sendBufferAt = 0, _lastFieldEndAt = 0, _lastRowEndAt = 0, _atField = 0;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="conn"></param>
         public NpgsqlCopySerializer(NpgsqlConnection conn)
         {
             _context = conn.Connector;
         }
 
+        /// <summary>
+        /// Report whether the serializer is active.
+        /// </summary>
         public bool IsActive
         {
             get { return _toStream != null && _context.Mediator.CopyStream == _toStream && _context.CurrentState is NpgsqlCopyInState; }
         }
 
+        /// <summary>
+        /// To Stream.
+        /// </summary>
         public Stream ToStream
         {
             get
@@ -91,6 +123,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Delimiter.
+        /// </summary>
         public String Delimiter
         {
             get { return _delimiter; }
@@ -119,6 +154,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Separator.
+        /// </summary>
         public String Separator
         {
             get { return _separator; }
@@ -147,6 +185,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Escape.
+        /// </summary>
         public String Escape
         {
             get { return _escape; }
@@ -175,6 +216,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Null.
+        /// </summary>
         public String Null
         {
             get { return _null; }
@@ -203,6 +247,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Buffer size.
+        /// </summary>
         public Int32 BufferSize
         {
             get { return _sendBuffer != null ? _sendBuffer.Length : DEFAULT_BUFFER_SIZE; }
@@ -220,6 +267,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Flush buffers.
+        /// </summary>
         public void Flush()
         {
             if (_sendBufferAt > 0)
@@ -232,6 +282,9 @@ namespace Npgsql
             _lastFieldEndAt = 0;
         }
 
+        /// <summary>
+        /// Flush rows.
+        /// </summary>
         public void FlushRows()
         {
             if (_lastRowEndAt > 0)
@@ -249,6 +302,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Flush fields.
+        /// </summary>
         public void FlushFields()
         {
             if (_lastFieldEndAt > 0)
@@ -266,6 +322,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Close the serializer.
+        /// </summary>
         public void Close()
         {
             if (_atField > 0)
@@ -276,11 +335,17 @@ namespace Npgsql
             ToStream.Close();
         }
 
+        /// <summary>
+        /// Report whether space remains in the buffer.
+        /// </summary>
         protected int SpaceInBuffer
         {
             get { return BufferSize - _sendBufferAt; }
         }
 
+        /// <summary>
+        /// Strings to escape.
+        /// </summary>
         protected String[] StringsToEscape
         {
             get
@@ -293,6 +358,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Escape sequence bytes.
+        /// </summary>
         protected byte[][] EscapeSequenceBytes
         {
             get
@@ -320,9 +388,15 @@ namespace Npgsql
         private static readonly byte[] esc_f = new byte[] {(byte) 'f'};
 
         private static readonly byte[] esc_v = new byte[] {(byte) 'v'};
-
+ 
+        /// <summary>
+        /// Escape sequence for.
+        /// </summary>
+        /// <param name="c"></param>
+        /// <returns></returns>
         protected static byte[] EscapeSequenceFor(char c)
         {
+            // TODO: Turn this into a switch statement.
             return
                 c == '\t'
                     ? esc_t
@@ -341,6 +415,10 @@ namespace Npgsql
                                                         : new byte[] {(byte) c};
         }
 
+        /// <summary>
+        /// Make room for bytes.
+        /// </summary>
+        /// <param name="len"></param>
         protected void MakeRoomForBytes(int len)
         {
             if (_sendBuffer == null)
@@ -361,6 +439,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Add bytes.
+        /// </summary>
+        /// <param name="bytes"></param>
         protected void AddBytes(byte[] bytes)
         {
             MakeRoomForBytes(bytes.Length);
@@ -371,6 +453,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// End row.
+        /// </summary>
         public void EndRow()
         {
             if (_context != null)
@@ -388,6 +473,9 @@ namespace Npgsql
             _atField = 0;
         }
 
+        /// <summary>
+        /// Prefix field.
+        /// </summary>
         protected void PrefixField()
         {
             if (_atField > 0)
@@ -400,12 +488,18 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Field added.
+        /// </summary>
         protected void FieldAdded()
         {
             _lastFieldEndAt = _sendBufferAt;
             _atField++;
         }
 
+        /// <summary>
+        /// Add null.
+        /// </summary>
         public void AddNull()
         {
             PrefixField();
@@ -413,6 +507,10 @@ namespace Npgsql
             FieldAdded();
         }
 
+        /// <summary>
+        /// Add string.
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddString(String fieldValue)
         {
             PrefixField();
@@ -457,26 +555,46 @@ namespace Npgsql
             FieldAdded();
         }
 
+        /// <summary>
+        /// add Int32.
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddInt32(Int32 fieldValue)
         {
             AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
+        /// <summary>
+        /// Add Int64.
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddInt64(Int64 fieldValue)
         {
             AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
+        /// <summary>
+        /// Add number.
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddNumber(double fieldValue)
         {
             AddString(string.Format(_cultureInfo, "{0}", fieldValue));
         }
 
+        /// <summary>
+        /// Add bool
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddBool(bool fieldValue)
         {
             AddString(fieldValue ? "TRUE" : "FALSE");
         }
 
+        /// <summary>
+        /// Add DateTime.
+        /// </summary>
+        /// <param name="fieldValue"></param>
         public void AddDateTime(DateTime fieldValue)
         {
             AddString(string.Format("{0}-{1}-{2} {3}:{4}:{5}.{6}", fieldValue.Year, fieldValue.Month, fieldValue.Day, fieldValue.Hour, fieldValue.Minute, fieldValue.Second, fieldValue.Millisecond));

@@ -37,52 +37,52 @@ using Npgsql;
 
 namespace NpgsqlTypes
 {
+    /// <summary>
+    /// Fast Path Arg.
+    /// </summary>
     public class FastpathArg
     {
-        /*
-         * Type of argument, true=integer, false=byte[]
-         */
+        /// <summary>
+        /// Type of argument, true=integer, false=byte[].
+        /// </summary>
         public Boolean type;
 
-        /*
-         * Integer value if type=true
-         */
+        /// <summary>
+        /// Integer value if type=true.
+        /// </summary>
         public Int32 value;
 
-        /*
-         * Byte value if type=false;
-         */
+        /// <summary>
+        /// Byte value if type=false;
+        /// </summary>
         public Byte[] bytes;
 
-        /*
-         * Constructs an argument that consists of an integer value
-         * @param value int value to set
-         */
-
+        /// <summary>
+        /// Constructs an argument that consists of an integer value.
+        /// </summary>
+        /// <param name="value">Int value to set.</param>
         public FastpathArg(Int32 value)
         {
             type = true;
             this.value = value;
         }
 
-        /*
-         * Constructs an argument that consists of an array of bytes
-         * @param bytes array to store
-         */
-
+        /// <summary>
+        /// Constructs an argument that consists of an array of bytes.
+        /// </summary>
+        /// <param name="bytes">Array to store.</param>
         public FastpathArg(Byte[] bytes)
         {
             type = false;
             this.bytes = bytes;
         }
 
-        /*
-         * Constructs an argument that consists of part of a byte array
-         * @param buf source array
-         * @param off offset within array
-         * @param len length of data to include
-         */
-
+        /// <summary>
+        /// Constructs an argument that consists of part of a byte array.
+        /// </summary>
+        /// <param name="buf">Source array.</param>
+        /// <param name="off">offset within array.</param>
+        /// <param name="len">length of data to include.</param>
         public FastpathArg(Byte[] buf, Int32 off, Int32 len)
         {
             type = false;
@@ -91,29 +91,23 @@ namespace NpgsqlTypes
             bytes = buf;
         }
 
-        /*
-         * Constructs an argument that consists of a String.
-         * @param s String to store
-         */
-
+        /// <summary>
+        /// Constructs an argument that consists of a String.
+        /// </summary>
+        /// <param name="s">String to store.</param>
         public FastpathArg(String s)
         {
             //this(s.ToCharArray());
         }
 
-        /*
-         * This sends this argument down the network stream.
-         *
-         * <p>The stream sent consists of the length.int4 then the contents.
-         *
-         * <p><b>Note:</b> This is called from Fastpath, and cannot be called from
-         * client code.
-         *
-         * @param s output stream
-         * @exception IOException if something failed on the network stream
-         */
-
-        public void Send(Stream s)
+        /// <summary>
+        /// This sends this argument down the network stream.
+        /// The stream sent consists of the length.int4 then the contents.
+        /// Note: This is called from Fastpath, and cannot be called from
+        /// client code.
+        /// </summary>
+        /// <param name="s"></param>
+        internal void Send(Stream s)
         {
             if (type)
             {
@@ -129,6 +123,10 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Report send size.
+        /// </summary>
+        /// <returns>Send size.</returns>
         public Int32 SendSize()
         {
             if (type)

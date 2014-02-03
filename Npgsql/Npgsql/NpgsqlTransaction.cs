@@ -97,6 +97,9 @@ namespace Npgsql
             get { return _conn; }
         }
 
+        /// <summary>
+        /// DB connection.
+        /// </summary>
         protected override DbConnection DbConnection
         {
             get { return Connection; }
@@ -120,6 +123,10 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Dispose.
+        /// </summary>
+        /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && this._conn != null)
@@ -215,7 +222,6 @@ namespace Npgsql
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
-
         public void Save(String savePointName)
         {
 
@@ -240,6 +246,7 @@ namespace Npgsql
             NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("SAVEPOINT {0}", savePointName));
 
         }
+
         /// <summary>
         /// Cancel the transaction without telling the backend about it.  This is
         /// used to make the transaction go away when closing a connection.

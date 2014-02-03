@@ -149,23 +149,33 @@ namespace Npgsql
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
+        /// </summary>
+        /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
+        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         public NpgsqlParameter(String parameterName, DbType parameterType)
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, 0, String.Empty)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
-        /// class with the parameter m_Name, the <see cref="System.Data.DbType">DbType</see>, and the size.
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
         /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
-        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param m_Name="size">The length of the parameter.</param>
         public NpgsqlParameter(String parameterName, NpgsqlDbType parameterType, Int32 size)
             : this(parameterName, parameterType, size, String.Empty)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
+        /// </summary>
+        /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
+        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="size">The length of the parameter.</param>
         public NpgsqlParameter(String parameterName, DbType parameterType, Int32 size)
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, String.Empty)
         {
@@ -173,11 +183,9 @@ namespace Npgsql
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
-        /// class with the parameter m_Name, the <see cref="System.Data.DbType">DbType</see>, the size,
-        /// and the source column m_Name.
         /// </summary>
         /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
-        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param m_Name="size">The length of the parameter.</param>
         /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
         public NpgsqlParameter(String parameterName, NpgsqlDbType parameterType, Int32 size, String sourceColumn)
@@ -192,21 +200,23 @@ namespace Npgsql
             source_column = sourceColumn;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
+        /// </summary>
+        /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
+        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="size">The length of the parameter.</param>
+        /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
         public NpgsqlParameter(String parameterName, DbType parameterType, Int32 size, String sourceColumn)
             : this(parameterName, NpgsqlTypesHelper.GetNativeTypeInfo(parameterType).NpgsqlDbType, size, sourceColumn)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>
-        /// class with the parameter m_Name, the <see cref="System.Data.DbType">DbType</see>, the size,
-        /// the source column m_Name, a <see cref="System.Data.ParameterDirection">ParameterDirection</see>,
-        /// the precision of the parameter, the scale of the parameter, a
-        /// <see cref="System.Data.DataRowVersion">DataRowVersion</see> to use, and the
-        /// value of the parameter.
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
         /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
-        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param m_Name="size">The length of the parameter.</param>
         /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
         /// <param m_Name="direction">One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see> values.</param>
@@ -243,6 +253,22 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.
+        /// </summary>
+        /// <param m_Name="parameterName">The m_Name of the parameter to map.</param>
+        /// <param m_Name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param m_Name="size">The length of the parameter.</param>
+        /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
+        /// <param m_Name="direction">One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see> values.</param>
+        /// <param m_Name="isNullable"><b>true</b> if the value of the field can be null, otherwise <b>false</b>.</param>
+        /// <param m_Name="precision">The total number of digits to the left and right of the decimal point to which
+        /// <see cref="Npgsql.NpgsqlParameter.Value">Value</see> is resolved.</param>
+        /// <param m_Name="scale">The total number of decimal places to which
+        /// <see cref="Npgsql.NpgsqlParameter.Value">Value</see> is resolved.</param>
+        /// <param m_Name="sourceVersion">One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.</param>
+        /// <param m_Name="value">An <see cref="System.Object">Object</see> that is the value
+        /// of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see>.</param>
         public NpgsqlParameter(String parameterName, DbType parameterType, Int32 size, String sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
@@ -278,6 +304,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Whether to use an explicit cast when included in a query.
+        /// </summary>
         public Boolean UseCast
         {
             get
@@ -655,6 +684,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Reset DBType.
+        /// </summary>
         public override void ResetDbType()
         {
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
@@ -663,6 +695,9 @@ namespace Npgsql
             bound = false;
         }
 
+        /// <summary>
+        /// Source column mapping.
+        /// </summary>
         public override bool SourceColumnNullMapping
         {
             get { return sourceColumnNullMapping; }
@@ -693,6 +728,7 @@ namespace Npgsql
 
             return clone;
         }
+
         object ICloneable.Clone()
         {
             return Clone();

@@ -440,6 +440,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Compatibility version.
+        /// </summary>
         public Version NpgsqlCompatibilityVersion
         {
             get
@@ -462,6 +465,9 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// PostgreSQL server version.
+        /// </summary>
         public override string ServerVersion
         {
             get { return PostgreSqlVersion.ToString(); }
@@ -897,6 +903,9 @@ namespace Npgsql
             get { return settings.UserName; }
         }
 
+        /// <summary>
+        /// Use extended types.
+        /// </summary>
         public bool UseExtendedTypes
         {
             get
@@ -1194,22 +1203,35 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Clear connection pool.
+        /// </summary>
         public void ClearPool()
         {
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearPool(this);
         }
 
+        /// <summary>
+        /// Clear all connection pools.
+        /// </summary>
         public static void ClearAllPools()
         {
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
         }
 
+        /// <summary>
+        /// Enlist transation.
+        /// </summary>
+        /// <param name="transaction"></param>
         public override void EnlistTransaction(Transaction transaction)
         {
             Promotable.Enlist(transaction);
         }
 
 #if NET35
+        /// <summary>
+        /// DB provider factory.
+        /// </summary>
         protected override DbProviderFactory DbProviderFactory
         {
             get

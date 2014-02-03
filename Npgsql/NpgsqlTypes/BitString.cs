@@ -30,6 +30,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace NpgsqlTypes
 {
     /// <summary>
@@ -1195,3 +1198,5 @@ namespace NpgsqlTypes
         }
      }
 }
+
+#pragma warning restore 1591

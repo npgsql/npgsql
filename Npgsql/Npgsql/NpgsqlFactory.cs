@@ -26,6 +26,9 @@ using System;
 using System.Data.Common;
 using System.Reflection;
 
+// Keep the xml comment warning quiet for this file.
+#pragma warning disable 1591
+
 namespace Npgsql
 {
     /// <summary>
@@ -112,3 +115,5 @@ namespace Npgsql
         #endregion
     }
 }
+
+#pragma warning restore 1591

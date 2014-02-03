@@ -172,6 +172,8 @@ namespace Npgsql
 
         private void AddFunctionColumnListSupport(Stream st)
         {
+            bool isFirstOutputOrInputOutput = true;
+
             PGUtil.WriteString(st, " AS (");
 
             for (int i = 0 ; i < Parameters.Count ; i++)
@@ -181,7 +183,11 @@ namespace Npgsql
                 switch(p.Direction)
                 {
                     case ParameterDirection.Output: case ParameterDirection.InputOutput:
-                        if (i > 0)
+                        if (isFirstOutputOrInputOutput)
+                        {
+                            isFirstOutputOrInputOutput = false;
+                        }
+                        else
                         {
                             st.WriteString(", ");
                         }
