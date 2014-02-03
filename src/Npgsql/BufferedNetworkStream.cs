@@ -20,10 +20,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-// History:
-// 2013-12-03 BufferedNetworkStream class created by Udo Liess
-// 2014-01-08 Dispose rewritten by Udo Liess
-
 
 using System;
 using System.IO;
@@ -211,8 +207,10 @@ namespace Npgsql
                 catch { }
                 try { writeStream.Close(); }
                 catch { }
-                var e = new Action(() => readStream.EndRead(readResult));
-                try { e.BeginInvoke(ar => e.EndInvoke(ar), null); }
+                var s = readStream;
+                var r = readResult;
+                var a = new Action(() => { try { s.EndRead(r); } catch { } });
+                try { a.BeginInvoke(ar => a.EndInvoke(ar), null); }
                 catch { }
                 readStream = null;
                 writeStream = null;
