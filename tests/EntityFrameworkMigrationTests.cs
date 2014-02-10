@@ -28,6 +28,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Common;
 using System.Data.Entity;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Migrations;
@@ -45,6 +46,23 @@ namespace NpgsqlTests
     public class EntityFrameworkMigrationTests : TestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
+
+        protected override void SetUp()
+        {
+            //Prevent TestBase to open connection since we want to drop DB in our tests
+            //base.SetUp();
+            if (Conn != null)
+            {
+                Conn.Close();
+                Conn.Dispose();
+            }
+        }
+
+        protected override void TearDown()
+        {
+            //Conn is already closed by SetUp...
+            //base.TearDown();
+        }
 
         #region Helper method
 
@@ -74,12 +92,12 @@ namespace NpgsqlTests
         [Test]
         public void CreateBloggingContext()
         {
-            using (var db = new BloggingContext())
+            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionString)))
             {
                 if (!(db.Database.Connection is NpgsqlConnection))
                 {
                     Assert.Fail(
-                           "Connection type is \"" + db.Database.Connection.GetType() + "\" should be \"" + typeof(NpgsqlConnection) + "\"." + Environment.NewLine +
+                           "Connection type is \"" + db.Database.Connection.GetType().FullName + "\" should be \"" + typeof(NpgsqlConnection).FullName + "\"." + Environment.NewLine +
                            "Most likely wrong configuration in App.config file of Tests project.");
                 }
                 db.Database.Delete();
@@ -215,8 +233,8 @@ namespace NpgsqlTests
 
         public class BloggingContext : DbContext
         {
-            public BloggingContext()
-                : base("BloggingContext")
+            public BloggingContext(DbConnection connection)
+                : base(connection, true)
             {
             }
 
@@ -229,7 +247,7 @@ namespace NpgsqlTests
         [Test]
         public void DatabaseExistsCreateDelete()
         {
-            using (var db = new BloggingContext())
+            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionString)))
             {
                 if (db.Database.Exists())
                 {
@@ -244,6 +262,7 @@ namespace NpgsqlTests
                 Assert.IsTrue(db.Database.Exists());
                 db.Database.Delete();
                 Assert.IsFalse(db.Database.Exists());
+                db.Database.Create();
             }
         }
 
