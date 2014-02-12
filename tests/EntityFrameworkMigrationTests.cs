@@ -43,27 +43,10 @@ using System.Threading;
 namespace NpgsqlTests
 {
     [TestFixture]
-    public class EntityFrameworkMigrationTests : TestBase
+    public class EntityFrameworkMigrationTests : EFTestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
-
-        protected override void SetUp()
-        {
-            //Prevent TestBase to open connection since we want to drop DB in our tests
-            //base.SetUp();
-            if (Conn != null)
-            {
-                Conn.Close();
-                Conn.Dispose();
-            }
-        }
-
-        protected override void TearDown()
-        {
-            //Conn is already closed by SetUp...
-            //base.TearDown();
-        }
-
+        
         #region Helper method
 
         /// <summary>
@@ -262,7 +245,6 @@ namespace NpgsqlTests
                 Assert.IsTrue(db.Database.Exists());
                 db.Database.Delete();
                 Assert.IsFalse(db.Database.Exists());
-                db.Database.Create();
             }
         }
 
