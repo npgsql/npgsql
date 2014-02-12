@@ -168,7 +168,8 @@ namespace NpgsqlTests
                                     expectedColumns.Remove((string)reader[0]);
                                     Assert.AreEqual("uuid", (string)reader[1]);
                                     Assert.AreEqual("NO", (string)reader[2]);
-                                    Assert.AreEqual("uuid_generate_v4()", reader[3] as string);
+                                    Assert.AreEqual("'00000000-0000-0000-0000-000000000000'::uuid", reader[3] as string);
+                                    //Assert.AreEqual("uuid_generate_v4()", reader[3] as string);
                                     break;
                                 case "Rating":
                                     expectedColumns.Remove((string)reader[0]);
@@ -206,7 +207,7 @@ namespace NpgsqlTests
             public int PostId { get; set; }
             public string Title { get; set; }
             public string Content { get; set; }
-            [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+            //[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
             public Guid UniqueId { get; set; }
             public byte? Rating { get; set; }
 

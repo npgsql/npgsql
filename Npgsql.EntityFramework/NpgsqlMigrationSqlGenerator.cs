@@ -238,17 +238,17 @@ namespace Npgsql
             }
         }
 
-        private void CreateExtension(string exensionName)
-        {
-            //This is compatible only with server 9.1+
-            if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 1))
-            {
-                if (addedExtensions.Contains(exensionName))
-                    return;
-                addedExtensions.Add(exensionName);
-                AddStatment("CREATE EXTENSION IF NOT EXISTS \"" + exensionName + "\"");
-            }
-        }
+        //private void CreateExtension(string exensionName)
+        //{
+        //    //This is compatible only with server 9.1+
+        //    if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 1))
+        //    {
+        //        if (addedExtensions.Contains(exensionName))
+        //            return;
+        //        addedExtensions.Add(exensionName);
+        //        AddStatment("CREATE EXTENSION IF NOT EXISTS \"" + exensionName + "\"");
+        //    }
+        //}
 
         private void Convert(MoveTableOperation moveTableOperation)
         {
@@ -333,7 +333,9 @@ namespace Npgsql
                         //on types int2, int4 and int8 won't switch to type serial2, serial4 and serial8
                         throw new NotImplementedException("Not supporting creating sequence for integer types");
                     case PrimitiveTypeKind.Guid:
-                        CreateExtension("uuid-ossp");
+                        //CreateExtension("uuid-ossp");
+                        //If uuid-ossp is not enabled migrations throw exception
+                        AddStatment("select * from uuid_generate_v4()");
                         sql.Append("uuid_generate_v4()");
                         break;
                     default:
@@ -542,7 +544,9 @@ namespace Npgsql
                 switch (column.Type)
                 {
                     case PrimitiveTypeKind.Guid:
-                        CreateExtension("uuid-ossp");
+                        //CreateExtension("uuid-ossp");
+                        //If uuid-ossp is not enabled migrations throw exception
+                        AddStatment("select * from uuid_generate_v4()");
                         sql.Append(" DEFAULT uuid_generate_v4()");
                         break;
                     case PrimitiveTypeKind.Byte:
