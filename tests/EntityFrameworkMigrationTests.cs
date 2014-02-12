@@ -43,7 +43,7 @@ using System.Threading;
 namespace NpgsqlTests
 {
     [TestFixture]
-    public class EntityFrameworkMigrationTests : EFTestBase
+    public class EntityFrameworkMigrationTests : TestBase
     {
         public EntityFrameworkMigrationTests(string backendVersion) : base(backendVersion) { }
         
@@ -75,7 +75,7 @@ namespace NpgsqlTests
         [Test]
         public void CreateBloggingContext()
         {
-            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionString)))
+            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionStringEF)))
             {
                 if (!(db.Database.Connection is NpgsqlConnection))
                 {
@@ -230,7 +230,7 @@ namespace NpgsqlTests
         [Test]
         public void DatabaseExistsCreateDelete()
         {
-            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionString)))
+            using (var db = new BloggingContext(new NpgsqlConnection(ConnectionStringEF)))
             {
                 if (db.Database.Exists())
                 {

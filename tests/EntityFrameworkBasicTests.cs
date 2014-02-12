@@ -10,7 +10,7 @@ using System.Text;
 namespace NpgsqlTests
 {
     [TestFixture]
-    public class EntityFrameworkBasicTests : EFTestBase
+    public class EntityFrameworkBasicTests : TestBase
     {
         public EntityFrameworkBasicTests(string backendVersion)
             : base(backendVersion)
@@ -21,7 +21,7 @@ namespace NpgsqlTests
         public override void TestFixtureSetup()
         {
             base.TestFixtureSetup();
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 if (context.Database.Exists())
                     context.Database.Delete();//We delete to be 100% schema is synced
@@ -33,9 +33,10 @@ namespace NpgsqlTests
         /// Clean any previous entites before our test
         /// </summary>
         [SetUp]
-        public void ClearContext()
+        protected override void SetUp()
         {
-            using (var context = new BloggingContext(ConnectionString))
+            base.SetUp();
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 context.Blogs.RemoveRange(context.Blogs);
                 context.Posts.RemoveRange(context.Posts);
@@ -76,7 +77,7 @@ namespace NpgsqlTests
         [Test]
         public void InsertAndSelect()
         {
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var blog = new Blog()
                 {
@@ -94,7 +95,7 @@ namespace NpgsqlTests
                 context.SaveChanges();
             }
 
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var posts = from p in context.Posts
                             select p;
@@ -109,7 +110,7 @@ namespace NpgsqlTests
         [Test]
         public void SelectWithWhere()
         {
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var blog = new Blog()
                 {
@@ -127,7 +128,7 @@ namespace NpgsqlTests
                 context.SaveChanges();
             }
 
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var posts = from p in context.Posts
                             where p.Rating < 3
@@ -143,7 +144,7 @@ namespace NpgsqlTests
         [Test]
         public void OrderBy()
         {
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 Random random = new Random();
                 var blog = new Blog()
@@ -163,7 +164,7 @@ namespace NpgsqlTests
                 context.SaveChanges();
             }
 
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var posts = from p in context.Posts
                             orderby p.Rating
@@ -181,7 +182,7 @@ namespace NpgsqlTests
         [Test]
         public void OrderByThenBy()
         {
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 Random random = new Random();
                 var blog = new Blog()
@@ -201,7 +202,7 @@ namespace NpgsqlTests
                 context.SaveChanges();
             }
 
-            using (var context = new BloggingContext(ConnectionString))
+            using (var context = new BloggingContext(ConnectionStringEF))
             {
                 var posts = context.Posts.AsQueryable<Post>().OrderBy((p) => p.Title).ThenByDescending((p) => p.Rating);
                 Assert.AreEqual(10, posts.Count());

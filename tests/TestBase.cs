@@ -69,6 +69,27 @@ namespace NpgsqlTests
         protected virtual string ConnectionString { get { return _connectionString; } }
         private string _connectionString;
 
+
+        /// <summary>
+        /// New ConectionString property crafted to change the database name from original TestBase.ConnectionString to append a "_ef" suffix.
+        /// i.e.: the TestBase.ConnectionString database is npgsql_tests. Entity Framework database will be npgsql_tests_ef.
+        /// </summary>
+        protected virtual string ConnectionStringEF
+        {
+            get
+            {
+                if (connectionStringEF == null)
+                {
+                    //Reuse all strings just add _ef at end of database name for 
+                    var connectionSB = new NpgsqlConnectionStringBuilder(ConnectionString);
+                    connectionSB.Database += "_ef";
+                    connectionStringEF = connectionSB.ConnectionString;
+                }
+                return connectionStringEF;
+            }
+        }
+        private string connectionStringEF;
+
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
@@ -84,7 +105,7 @@ namespace NpgsqlTests
         #region Setup / Teardown
 
         [TestFixtureSetUp]
-        public void TestFixtureSetup()
+        public virtual void TestFixtureSetup()
         {
             var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion;
             _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
