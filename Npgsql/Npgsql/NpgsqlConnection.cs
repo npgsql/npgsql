@@ -421,9 +421,9 @@ namespace Npgsql
         {
             get
             {
-                CheckNotDisposed();
+                //CheckNotDisposed();
 
-                if (connector != null)
+                if (connector != null && !disposed)
                 {
                     return connector.State;
                 }
