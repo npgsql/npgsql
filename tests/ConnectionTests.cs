@@ -441,5 +441,20 @@ namespace NpgsqlTests
             }
         }
 
+
+        [Test]
+        public void GetConnectionState()
+        {
+            // Test created to PR #164
+
+            NpgsqlConnection c = new NpgsqlConnection();
+            c.Dispose();
+
+            Assert.AreEqual(ConnectionState.Closed, c.State);
+
+
+
+        }
+
     }
 }
