@@ -1091,7 +1091,12 @@ namespace Npgsql
         {
             if (CurrentDescription != null)
             {
-                NpgsqlRow row = null;
+                NpgsqlRow row = ParameterUpdateRow;
+                if (row == null)
+                {
+                    return;
+                }
+
                 Queue<NpgsqlParameter> pending = new Queue<NpgsqlParameter>();
                 List<int> taken = new List<int>();
                 foreach (NpgsqlParameter p in _command.Parameters)
@@ -1105,16 +1110,12 @@ namespace Npgsql
                         }
                         else
                         {
-                            if ((row = row ?? ParameterUpdateRow) == null)
-                            {
-                                return;
-                            }
                             p.Value = row[idx];
                             taken.Add(idx);
                         }
                     }
                 }
-                for (int i = 0; pending.Count != 0 && i != (row = row ?? ParameterUpdateRow).NumFields; ++i)
+                for (int i = 0; pending.Count != 0 && i != row.NumFields; ++i)
                 {
                     if (!taken.Contains(i))
                     {
