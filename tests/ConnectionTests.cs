@@ -456,5 +456,14 @@ namespace NpgsqlTests
 
         }
 
+        [Test]
+        public void ChangeApplicationNameWithConnectionStringBuilder()
+        {
+            // Test for issue #165 on github.
+            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
+            builder.ApplicationName = "test";
+        }
+
+
     }
 }
