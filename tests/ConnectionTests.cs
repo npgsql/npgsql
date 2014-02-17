@@ -441,20 +441,14 @@ namespace NpgsqlTests
             }
         }
 
-
         [Test]
-        public void GetConnectionState()
+        public void ChangeApplicationNameWithConnectionStringBuilder()
         {
-            // Test created to PR #164
-
-            NpgsqlConnection c = new NpgsqlConnection();
-            c.Dispose();
-
-            Assert.AreEqual(ConnectionState.Closed, c.State);
-
-
-
+            // Test for issue #165 on github.
+            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
+            builder.ApplicationName = "test";
         }
+
 
     }
 }
