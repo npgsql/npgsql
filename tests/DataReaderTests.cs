@@ -320,6 +320,19 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ExcuteReaderGettingEmptyResultSetWithOutputParameter()
+        {
+            var command = new NpgsqlCommand("select * from data where field_text = NULL;", Conn);
+            var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
+            param.Direction = ParameterDirection.Output;
+            command.Parameters.Add(param);
+            using (NpgsqlDataReader dr = command.ExecuteReader())
+            {
+                Assert.IsFalse(dr.NextResult());
+            }
+        }
+
+        [Test]
         [ExpectedException(typeof(InvalidOperationException))]
         public void GetValueFromEmptyResultset()
         {
