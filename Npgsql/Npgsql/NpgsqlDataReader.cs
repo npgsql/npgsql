@@ -30,6 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.Threading;
@@ -1091,30 +1092,35 @@ namespace Npgsql
         {
             if (CurrentDescription != null)
             {
-                NpgsqlRow row = null;
+                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = _command.Parameters.Cast<NpgsqlParameter>()
+                    .Where(p => p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output);
+                if (!inputOutputAndOutputParams.Any())
+                {
+                    return;
+                }
+
+                NpgsqlRow row = ParameterUpdateRow;
+                if (row == null)
+                {
+                    return;
+                }
+
                 Queue<NpgsqlParameter> pending = new Queue<NpgsqlParameter>();
                 List<int> taken = new List<int>();
-                foreach (NpgsqlParameter p in _command.Parameters)
+                foreach (NpgsqlParameter p in inputOutputAndOutputParams)
                 {
-                    if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
+                    int idx = CurrentDescription.TryFieldIndex(p.CleanName);
+                    if (idx == -1)
                     {
-                        int idx = CurrentDescription.TryFieldIndex(p.CleanName);
-                        if (idx == -1)
-                        {
-                            pending.Enqueue(p);
-                        }
-                        else
-                        {
-                            if ((row = row ?? ParameterUpdateRow) == null)
-                            {
-                                return;
-                            }
-                            p.Value = row[idx];
-                            taken.Add(idx);
-                        }
+                        pending.Enqueue(p);
+                    }
+                    else
+                    {
+                        p.Value = row[idx];
+                        taken.Add(idx);
                     }
                 }
-                for (int i = 0; pending.Count != 0 && i != (row = row ?? ParameterUpdateRow).NumFields; ++i)
+                for (int i = 0; pending.Count != 0 && i != row.NumFields; ++i)
                 {
                     if (!taken.Contains(i))
                     {
