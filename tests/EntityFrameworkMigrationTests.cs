@@ -365,7 +365,10 @@ namespace NpgsqlTests
             operations.Add(operation);
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(0).Sql);
+            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someSchema", statments.ElementAt(0).Sql);
+            else
+                Assert.AreEqual("CREATE SCHEMA someSchema", statments.ElementAt(0).Sql);
             Assert.AreEqual("CREATE TABLE \"someSchema\".\"someTable\"(\"SomeString\" varchar(233) NOT NULL DEFAULT '',\"AnotherString\" text,\"SomeBytes\" bytea,\"SomeLong\" serial8,\"SomeDateTime\" timestamp)", statments.ElementAt(1).Sql);
         }
 
@@ -477,7 +480,10 @@ namespace NpgsqlTests
             operations.Add(new MoveTableOperation("someOldSchema.someTable", "someNewSchema"));
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someNewSchema", statments.ElementAt(0).Sql);
+            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS someNewSchema", statments.ElementAt(0).Sql);
+            else
+                Assert.AreEqual("CREATE SCHEMA someNewSchema", statments.ElementAt(0).Sql);
             Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA someNewSchema", statments.ElementAt(1).Sql);
         }
 
@@ -488,7 +494,10 @@ namespace NpgsqlTests
             operations.Add(new MoveTableOperation("someOldSchema.someTable", null));
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
             Assert.AreEqual(2, statments.Count());
-            Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS dbo", statments.ElementAt(0).Sql);
+            if (BackendVersion.Major > 9 || (BackendVersion.Major == 9 && BackendVersion.Minor > 2))
+                Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS dbo", statments.ElementAt(0).Sql);
+            else
+                Assert.AreEqual("CREATE SCHEMA dbo", statments.ElementAt(0).Sql);
             Assert.AreEqual("ALTER TABLE \"someOldSchema\".\"someTable\" SET SCHEMA dbo", statments.ElementAt(1).Sql);
         }
 
@@ -616,7 +625,10 @@ namespace NpgsqlTests
             operations.Add(operation);
             var statments = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
             Assert.AreEqual(1, statments.Count());
-            Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT IF EXISTS \"someFK\"", statments.ElementAt(0).Sql);
+            if (BackendVersion.Major > 8)
+                Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT IF EXISTS \"someFK\"", statments.ElementAt(0).Sql);
+            else
+                Assert.AreEqual("ALTER TABLE \"someTable\" DROP CONSTRAINT \"someFK\"", statments.ElementAt(0).Sql);
         }
 
         [Test]
