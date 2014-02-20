@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿#if NET40
+using Npgsql;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -217,3 +218,4 @@ namespace NpgsqlTests
         //Hunting season is open Happy hunting on OrderBy,GroupBy,Min,Max,Skip,Take,ThenBy... and all posible combinations
     }
 }
+#endif
