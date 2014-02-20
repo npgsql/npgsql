@@ -442,11 +442,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the value of a column as Byte.  Not implemented.
+        /// Gets the value of a column as Byte.
         /// </summary>
         public override Byte GetByte(Int32 i)
         {
-            throw new NotImplementedException();
+            return (Byte)GetValue(i);
         }
 
         /// <summary>
