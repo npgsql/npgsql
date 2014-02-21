@@ -118,7 +118,7 @@ namespace Npgsql
         private SecHandle sspictx;
         private bool sspictx_set;
 
-        public SSPIHandler(string pghost, string krbsrvname)
+        public SSPIHandler(string pghost, string krbsrvname, bool useGssapi)
         {
             if (pghost == null)
                 throw new ArgumentNullException("pghost");
@@ -129,7 +129,7 @@ namespace Npgsql
             SecHandle expire;
             int status = AcquireCredentialsHandle(
                 "",
-                "negotiate",
+                useGssapi ? "kerberos" : "negotiate",
                 SECPKG_CRED_OUTBOUND,
                 IntPtr.Zero,
                 IntPtr.Zero,

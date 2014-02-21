@@ -45,6 +45,14 @@ namespace Npgsql
     ///
     internal abstract partial class NpgsqlState
     {
+        static byte[] NullTerminateArray(byte[] input)
+        {
+            byte[] output = new byte[input.Length + 1];
+            input.CopyTo(output, 0);
+
+            return output;
+        }
+
         protected IEnumerable<IServerResponseObject> ProcessBackendResponses_Ver_2(NpgsqlConnector context)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ProcessBackendResponses");
@@ -97,7 +105,7 @@ namespace Npgsql
                                     NpgsqlEventLog.LogMsg(resman, "Log_AuthenticationClearTextRequest", LogLevel.Debug);
                                     // Send the PasswordPacket.
                                     ChangeState(context, NpgsqlStartupState.Instance);
-                                    context.Authenticate(context.Password);
+                                    context.Authenticate(NullTerminateArray(context.Password));
                                     context.Stream.Flush();
 
                                     break;
@@ -148,7 +156,7 @@ namespace Npgsql
                                         sb.Append(b.ToString("x2"));
                                     }
 
-                                    context.Authenticate(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                                    context.Authenticate(NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
                                     context.Stream.Flush();
 
                                     break;
