@@ -84,7 +84,7 @@ namespace Npgsql
         public override byte[] GetCopyData(NpgsqlConnector context)
         {
             // polling in COPY would take seconds on Windows
-            foreach (IServerResponseObject obj in ProcessBackendResponses_Ver_3(context))
+            foreach (IServerResponseObject obj in ProcessBackendResponses(context))
             {
                 if (obj is IDisposable)
                 {

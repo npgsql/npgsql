@@ -44,7 +44,8 @@ namespace Npgsql
         public override void Authenticate(NpgsqlConnector context, byte[] password)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Authenticate");
-            NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password, context.BackendProtocolVersion);
+            NpgsqlPasswordPacket pwpck = new NpgsqlPasswordPacket(password);
+
             pwpck.WriteToStream(context.Stream);
         }
     }

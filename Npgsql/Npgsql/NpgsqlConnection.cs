@@ -476,6 +476,7 @@ namespace Npgsql
         /// <summary>
         /// Protocol version in use.
         /// This can only be called when there is an active connection.
+        /// Always retuna Version3
         /// </summary>
         [Browsable(false)]
         public ProtocolVersion BackendProtocolVersion
@@ -483,7 +484,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return connector.BackendProtocolVersion;
+                return ProtocolVersion.Version3;
             }
         }
 

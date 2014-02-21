@@ -166,7 +166,6 @@ namespace Npgsql
             Routine = (byte)'R'
         }
 
-        private readonly ProtocolVersion protocol_version;
         private readonly String _severity = String.Empty;
         private readonly String _code = String.Empty;
         private readonly String _message = String.Empty;
@@ -354,141 +353,119 @@ namespace Npgsql
             return B.ToString();
         }
 
-        internal NpgsqlError(ProtocolVersion protocolVersion, Stream stream)
+        internal NpgsqlError(Stream stream)
         {
-            switch (protocol_version = protocolVersion)
+            // Check the messageLength value. If it is 1178686529, this would be the
+            // "FATA" string, which would mean a protocol 2.0 error string.
+            if (PGUtil.ReadInt32(stream) == 1178686529)
             {
-                case ProtocolVersion.Version2:
-                    string[] parts = PGUtil.ReadString(stream).Split(new char[] {':'}, 2);
-                    if (parts.Length == 2)
-                    {
-                        _severity = parts[0].Trim();
-                        _message = parts[1].Trim();
-                    }
-                    else
-                    {
-                        _severity = string.Empty;
-                        _message = parts[0].Trim();
-                    }
-                    break;
-                case ProtocolVersion.Version3:
-                    // Check the messageLength value. If it is 1178686529, this would be the
-                    // "FATA" string, which would mean a protocol 2.0 error string.
-                    if (PGUtil.ReadInt32(stream) == 1178686529)
-                    {
-                        string[] v2Parts = ("FATA" + PGUtil.ReadString(stream)).Split(new char[] {':'}, 2);
-                        if (v2Parts.Length == 2)
-                        {
-                            _severity = v2Parts[0].Trim();
-                            _message = v2Parts[1].Trim();
-                        }
-                        else
-                        {
-                            _severity = string.Empty;
-                            _message = v2Parts[0].Trim();
-                        }
-                        protocol_version = ProtocolVersion.Version2;
-                    }
-                    else
-                    {
-                        bool done = false;
-                        int fieldCode;
+                string[] v2Parts = ("FATA" + PGUtil.ReadString(stream)).Split(new char[] {':'}, 2);
+                if (v2Parts.Length == 2)
+                {
+                    _severity = v2Parts[0].Trim();
+                    _message = v2Parts[1].Trim();
+                }
+                else
+                {
+                    _severity = string.Empty;
+                    _message = v2Parts[0].Trim();
+                }
+            }
+            else
+            {
+                bool done = false;
+                int fieldCode;
 
-                        while (! done && (fieldCode = stream.ReadByte()) != -1)
-                        {
-                            switch ((byte)fieldCode)
-                            {
-                                case 0 :
-                                    // Null terminator; error message fully consumed.
-                                    done = true;
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Severity :
-                                    _severity = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Code :
-                                    _code = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Message :
-                                    _message = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Detail :
-                                    _detail = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Hint :
-                                    _hint = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Position :
-                                    _position = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.InternalPosition :
-                                    _internalPosition = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.InternalQuery :
-                                    _internalQuery = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Where :
-                                    _where = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.File :
-                                    _file = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Line :
-                                    _line = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.Routine :
-                                    _routine = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.SchemaName :
-                                    _schemaName = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.TableName :
-                                    _tableName = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.ColumnName :
-                                    _columnName = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.DataTypeName :
-                                    _datatypeName = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                case (byte)ErrorFieldTypeCodes.ConstraintName :
-                                    _constraintName = PGUtil.ReadString(stream);
-                                    ;
-                                    break;
-                                default:
-                                    // Unknown error field; consume and discard.
-                                    PGUtil.ReadString(stream);
-                                    ;
-                                    break;
+                while (! done && (fieldCode = stream.ReadByte()) != -1)
+                {
+                    switch ((byte)fieldCode)
+                    {
+                        case 0 :
+                            // Null terminator; error message fully consumed.
+                            done = true;
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Severity :
+                            _severity = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Code :
+                            _code = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Message :
+                            _message = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Detail :
+                            _detail = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Hint :
+                            _hint = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Position :
+                            _position = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.InternalPosition :
+                            _internalPosition = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.InternalQuery :
+                            _internalQuery = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Where :
+                            _where = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.File :
+                            _file = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Line :
+                            _line = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.Routine :
+                            _routine = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.SchemaName :
+                            _schemaName = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.TableName :
+                            _tableName = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.ColumnName :
+                            _columnName = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.DataTypeName :
+                            _datatypeName = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        case (byte)ErrorFieldTypeCodes.ConstraintName :
+                            _constraintName = PGUtil.ReadString(stream);
+                            ;
+                            break;
+                        default:
+                            // Unknown error field; consume and discard.
+                            PGUtil.ReadString(stream);
+                            ;
+                            break;
 
-                            }
-                        }
                     }
-
-                    break;
-
+                }
             }
         }
 
-        internal NpgsqlError(ProtocolVersion protocolVersion, String errorMessage)
+        internal NpgsqlError(String errorMessage)
         {
-            protocol_version = protocolVersion;
             _message = errorMessage;
         }
 
@@ -497,7 +474,7 @@ namespace Npgsql
         /// </summary>
         internal ProtocolVersion BackendProtocolVersion
         {
-            get { return protocol_version; }
+            get { return ProtocolVersion.Version3; }
         }
     }
 }

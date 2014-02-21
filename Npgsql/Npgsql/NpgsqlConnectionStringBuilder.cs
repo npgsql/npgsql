@@ -124,6 +124,8 @@ namespace Npgsql
         private const int POOL_SIZE_LIMIT = 1024;
         private const int TIMEOUT_LIMIT = 1024;
 
+        #region Constructors
+
         static NpgsqlConnectionStringBuilder()
         {
             // Set up value descriptions.
@@ -132,7 +134,9 @@ namespace Npgsql
             // implicit default.
             valueDescriptions.Add(Keywords.Host, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Port, new ValueDescription((Int32)5432));
-            valueDescriptions.Add(Keywords.Protocol, new ValueDescription(typeof(ProtocolVersion), true, ProtocolVersionToString));
+#pragma warning disable 618
+            valueDescriptions.Add(Keywords.Protocol, new ValueDescription(ProtocolVersion.Version3, false));
+#pragma warning restore 618
             valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
@@ -171,6 +175,7 @@ namespace Npgsql
             CheckValues();
         }
 
+        #endregion
 
         /// <summary>
         /// Return an exact copy of this NpgsqlConnectionString.
@@ -208,41 +213,6 @@ namespace Npgsql
             else
             {
                 return (SslMode) Enum.Parse(typeof (SslMode), value.ToString(), true);
-            }
-        }
-
-        private static ProtocolVersion ToProtocolVersion(object value)
-        {
-            if (value is ProtocolVersion)
-            {
-                return (ProtocolVersion) value;
-            }
-            else
-            {
-                int ver = Convert.ToInt32(value);
-
-                switch (ver)
-                {
-                    case 2:
-                        return ProtocolVersion.Version2;
-                    case 3:
-                        return ProtocolVersion.Version3;
-                    default:
-                        throw new InvalidCastException(value.ToString());
-                }
-            }
-        }
-
-        private static string ProtocolVersionToString(object protocolVersion)
-        {
-            switch ((ProtocolVersion)protocolVersion)
-            {
-                case ProtocolVersion.Version2:
-                    return "2";
-                case ProtocolVersion.Version3:
-                    return "3";
-                default:
-                    return string.Empty;
             }
         }
 
@@ -327,7 +297,6 @@ namespace Npgsql
         }
 
         #endregion
-
         #region Properties
 
         private string _host;
@@ -348,16 +317,6 @@ namespace Npgsql
         {
             get { return _port; }
             set { SetValue(GetKeyName(Keywords.Port), Keywords.Port, value); }
-        }
-
-        private ProtocolVersion _protocol;
-        /// <summary>
-        /// Gets or sets the specified backend communication protocol version.
-        /// </summary>
-        public ProtocolVersion Protocol
-        {
-            get { return _protocol; }
-            set { SetValue(GetKeyName(Keywords.Protocol), Keywords.Protocol, value); }
         }
 
         private string _database;
@@ -447,17 +406,6 @@ namespace Npgsql
         {
             get { return _sslmode; }
             set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
-        }
-
-        /// <summary>
-        /// Gets the backend encoding.  Always returns "UTF8".
-        /// </summary>
-        [Obsolete("UTF8 is always used regardless of this setting.")]
-        public string Encoding
-        {
-#pragma warning disable 618
-            get { return (string)valueDescriptions[Keywords.Encoding].ExplicitDefault; }
-#pragma warning restore 618
         }
 
         private int _timeout;
@@ -635,6 +583,31 @@ namespace Npgsql
         }
 
         #endregion
+        #region DeprecatedProperties
+
+        /// <summary>
+        /// Gets or sets the specified backend communication protocol version.
+        /// </summary>
+        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
+        public ProtocolVersion Protocol
+        {
+#pragma warning disable 618
+            get { return (ProtocolVersion)valueDescriptions[Keywords.Protocol].ExplicitDefault; }
+#pragma warning restore 618
+        }
+
+        /// <summary>
+        /// Gets the backend encoding.  Always returns "UTF8".
+        /// </summary>
+        [Obsolete("UTF8 is always used regardless of this setting.")]
+        public string Encoding
+        {
+#pragma warning disable 618
+            get { return (string)valueDescriptions[Keywords.Encoding].ExplicitDefault; }
+#pragma warning restore 618
+        }
+
+        #endregion
 
         private static Keywords GetKey(string key)
         {
@@ -646,7 +619,9 @@ namespace Npgsql
                 case "PORT":
                     return Keywords.Port;
                 case "PROTOCOL":
+#pragma warning disable 618
                     return Keywords.Protocol;
+#pragma warning restore 618
                 case "DATABASE":
                 case "DB":
                     return Keywords.Database;
@@ -714,7 +689,9 @@ namespace Npgsql
                     return "HOST";
                 case Keywords.Port:
                     return "PORT";
+#pragma warning disable 618
                 case Keywords.Protocol:
+#pragma warning restore 618
                     return "PROTOCOL";
                 case Keywords.Database:
                     return "DATABASE";
@@ -856,8 +833,10 @@ namespace Npgsql
                         return this._host = Convert.ToString(value);
                     case Keywords.Port:
                         return this._port = Convert.ToInt32(value);
+#pragma warning disable 618
                     case Keywords.Protocol:
-                        return this._protocol = ToProtocolVersion(value);
+                        return Protocol;
+#pragma warning restore 618
                     case Keywords.Database:
                         return this._database = Convert.ToString(value);
                     case Keywords.UserName:
@@ -896,10 +875,14 @@ namespace Npgsql
                     case Keywords.UseExtendedTypes:
                         return this._useExtendedTypes = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
-                        var v2 = ToIntegratedSecurity(value);
-                        if (v2 == true)
+                        bool iS = ToIntegratedSecurity(value);
+                        if (iS == true)
+                        {
                             CheckIntegratedSecuritySupport();
-                        return this._integrated_security = ToIntegratedSecurity(v2);
+                        }
+
+                        return this._integrated_security = ToIntegratedSecurity(iS);
+
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
@@ -931,7 +914,9 @@ namespace Npgsql
                     case Keywords.SyncNotification:
                         exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
+#pragma warning disable 618
                     case Keywords.Protocol:
+#pragma warning restore 618
                         exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
                         break;
                 }
@@ -962,8 +947,10 @@ namespace Npgsql
                     return this._host;
                 case Keywords.Port:
                     return this._port;
+#pragma warning disable 618
                 case Keywords.Protocol:
-                    return this._protocol;
+                    return Protocol;
+#pragma warning restore 618
                 case Keywords.Database:
                     return this._database;
                 case Keywords.UserName:
@@ -1073,16 +1060,18 @@ namespace Npgsql
     {
         Host,
         Port,
+        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
         Protocol,
         Database,
         UserName,
         Password,
         SSL,
         SslMode,
-        [Obsolete("UTF-8 is always used regardless of this setting.")] Encoding,
+        [Obsolete("UTF-8 is always used regardless of this setting.")]
+        Encoding,
         Timeout,
         SearchPath,
-        //    These are for the connection pool
+        // These are for the connection pool
         Pooling,
         ConnectionLifeTime,
         MinPoolSize,

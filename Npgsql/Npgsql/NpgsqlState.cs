@@ -110,8 +110,7 @@ namespace Npgsql
                                 case -1:
                                     throw new EndOfStreamException();
                                 case 'Z':
-                                    //context.Query(new NpgsqlCommand("UNLISTEN *", context));
-                                    NpgsqlCommand.ExecuteBlind(context, "UNLISTEN *");
+                                    NpgsqlCommand.ExecuteBlind(context, NpgsqlQuery.UnlistenAll);
 
                                     return;
                             }
@@ -127,17 +126,7 @@ namespace Npgsql
 
         public void TestConnector(NpgsqlConnector context)
         {
-            switch (context.BackendProtocolVersion)
-            {
-                case ProtocolVersion.Version2:
-                    TestNotify(context);
-                    break;
-                case ProtocolVersion.Version3:
-                    EmptySync(context);
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
+            EmptySync(context);
         }
 
         public void EmptySync(NpgsqlConnector context)
@@ -343,16 +332,7 @@ namespace Npgsql
                     throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
                 }
 
-                switch (context.BackendProtocolVersion)
-                {
-                    case ProtocolVersion.Version2:
-                        return ProcessBackendResponses_Ver_2(context);
-                    case ProtocolVersion.Version3:
-                        return ProcessBackendResponses_Ver_3(context);
-                    default:
-                        throw new NpgsqlException(resman.GetString("Exception_UnknownProtocol"));
-                }
-
+                return ProcessBackendResponses(context);
             }
             catch(ThreadAbortException)
             {
@@ -407,60 +387,6 @@ namespace Npgsql
             }
 
             return socketPoolResponse || context.Socket.Poll (1000000 * secondsToWait, selectMode);
-        }
-
-        private enum BackEndMessageCode
-        {
-            IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
-
-            CopyData = 'd',
-            CopyDone = 'c',
-            DataRow = 'D',
-            BinaryRow = 'B', //Version 2 only
-
-            BackendKeyData = 'K',
-            CancelRequest = 'F',
-            CompletedResponse = 'C',
-            CopyDataRows = ' ',
-            CopyInResponse = 'G',
-            CopyOutResponse = 'H',
-            CursorResponse = 'P', //Version 2 only
-            EmptyQueryResponse = 'I',
-            ErrorResponse = 'E',
-            FunctionCall = 'F',
-            FunctionCallResponse = 'V',
-
-            AuthenticationRequest = 'R',
-
-            NoticeResponse = 'N',
-            NotificationResponse = 'A',
-            ParameterStatus = 'S',
-            PasswordPacket = ' ',
-            ReadyForQuery = 'Z',
-            RowDescription = 'T',
-            SSLRequest = ' ',
-
-            // extended query backend messages
-            ParseComplete = '1',
-            BindComplete = '2',
-            PortalSuspended = 's',
-            ParameterDescription = 't',
-            NoData = 'n',
-            CloseComplete = '3'
-        }
-
-        private enum AuthenticationRequestType
-        {
-            AuthenticationOk = 0,
-            AuthenticationKerberosV4 = 1,
-            AuthenticationKerberosV5 = 2,
-            AuthenticationClearTextPassword = 3,
-            AuthenticationCryptPassword = 4,
-            AuthenticationMD5Password = 5,
-            AuthenticationSCMCredential = 6,
-            AuthenticationGSS = 7,
-            AuthenticationGSSContinue = 8,
-            AuthenticationSSPI = 9
         }
 
         private static NpgsqlCopyFormat ReadCopyHeader(Stream stream)

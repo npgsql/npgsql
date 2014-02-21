@@ -90,9 +90,6 @@ namespace Npgsql
         {
             switch (Ver)
             {
-                case ProtocolVersion.Version2:
-                    return (int) ServerVersionCode.ProtocolVersion2;
-
                 case ProtocolVersion.Version3:
                     return (int) ServerVersionCode.ProtocolVersion3;
             }
@@ -767,7 +764,6 @@ namespace Npgsql
     public enum ProtocolVersion
     {
         Unknown  = 0,
-        Version2 = 2,
         Version3 = 3
     }
 

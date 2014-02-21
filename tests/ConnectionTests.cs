@@ -289,8 +289,7 @@ namespace NpgsqlTests
             var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             connection.Open();
 
-            if (connection.PostgreSqlVersion < new Version(8, 3, 0)
-                || new NpgsqlConnectionStringBuilder(ConnectionString).Protocol == ProtocolVersion.Version2)
+            if (connection.PostgreSqlVersion < new Version(8, 3, 0))
             {
                 connection.Close();
                 return;
