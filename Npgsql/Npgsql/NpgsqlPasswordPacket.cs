@@ -57,8 +57,8 @@ namespace Npgsql
 
             outputStream
                 .WriteBytes((Byte)ASCIIBytes.p)
-                .WriteInt32(4 + password.Length + 1)
-                .WriteBytesNullTerminated(password);
+                .WriteInt32(4 + password.Length)
+                .WriteBytes(password);
         }
     }
 }
