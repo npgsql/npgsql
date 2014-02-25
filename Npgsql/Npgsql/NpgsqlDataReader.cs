@@ -457,8 +457,7 @@ namespace Npgsql
         private DataTable GetResultsetSchema()
         {
             DataTable result = null;
-
-            if (CurrentDescription.NumFields > 0)
+            if (CurrentDescription != null && CurrentDescription.NumFields > 0)
             {
                 result = new DataTable("SchemaTable");
 
