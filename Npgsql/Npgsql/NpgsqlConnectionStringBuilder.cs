@@ -445,22 +445,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
         }
 
-        /// <summary>
-        /// This is a pretty horrible hack to fix https://github.com/npgsql/Npgsql/issues/133
-        /// In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
-        /// which doesn't exist in mono, and calling UserName getter above bombs.
-        /// The workaround is that the function that actually deals with WindowsIdentity never
-        /// gets called on mono, so never gets JITted and the problem goes away.
-        /// </summary>
-        private string WindowsIdentityUserName
-        {
-            get
-            {
-                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                return identity.Name.Split('\\')[1];                
-            }
-        }
-
         private PasswordBytes _password;
         /// <summary>
         /// Gets or sets the login password as a UTF8 encoded byte array.
