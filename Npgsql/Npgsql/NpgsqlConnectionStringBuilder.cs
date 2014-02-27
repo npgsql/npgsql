@@ -335,6 +335,14 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Database), Keywords.Database, value); }
         }
 
+    #region Integrated security
+        class CachedUpn {
+            public string Upn;
+            public DateTime ExpiryTimeUtc;
+        }
+
+        static Dictionary<SecurityIdentifier, CachedUpn> __cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
+
         private string GetIntegratedUserName()
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
@@ -345,31 +353,56 @@ namespace Npgsql
 
             // Gets the current user's username for integrated security purposes
             WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            CachedUpn cachedUpn = null;
+            string upn = null;
+
+            // Check to see if we already have this UPN cached
+            lock (__cachedUpns)
+            {
+                if (__cachedUpns.TryGetValue(identity.User, out cachedUpn))
+                {
+                    if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
+                        upn = cachedUpn.Upn;
+                    else
+                        __cachedUpns.Remove(identity.User);
+                }
+            }
 
             try
             {
-                // Try to get the user's UPN in its correct case; this is what the
-                // server will need to verify against a Kerberos/SSPI ticket
+                if (upn == null) {
+                    // Try to get the user's UPN in its correct case; this is what the
+                    // server will need to verify against a Kerberos/SSPI ticket
 
-                // First, find a domain server we can talk to
-                string domainHostName;
+                    // First, find a domain server we can talk to
+                    string domainHostName;
 
-                using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
-                {
-                    domainHostName = (string) rootDse.Properties["dnsHostName"].Value;
+                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
+                    {
+                        domainHostName = (string) rootDse.Properties["dnsHostName"].Value;
+                    }
+
+                    // Query the domain server by the current user's SID
+                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
+                    {
+                        DirectorySearcher search = new DirectorySearcher(entry,
+                            "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
+
+                        SearchResult result = search.FindOne();
+
+                        upn = (string) result.Properties["userPrincipalName"][0];
+                    }
                 }
 
-                // Query the domain server by the current user's SID
-                string upn;
-
-                using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
+                if (cachedUpn == null)
                 {
-                    DirectorySearcher search = new DirectorySearcher(entry,
-                        "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
+                    // Save this value
+                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours( 3.0 ) };
 
-                    SearchResult result = search.FindOne();
-
-                    upn = (string) result.Properties["userPrincipalName"][0];
+                    lock (__cachedUpns)
+                    {
+                        __cachedUpns[identity.User] = cachedUpn;
+                    }
                 }
 
                 string[] upnParts = upn.Split('@');
@@ -391,6 +424,7 @@ namespace Npgsql
                 return identity.Name.Split('\\')[1];
             }
         }
+    #endregion
 
         private string _username;
         /// <summary>
