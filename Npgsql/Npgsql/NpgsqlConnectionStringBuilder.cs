@@ -341,7 +341,7 @@ namespace Npgsql
             public DateTime ExpiryTimeUtc;
         }
 
-        static Dictionary<SecurityIdentifier, CachedUpn> __cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
+        static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
 
         private string GetIntegratedUserName()
         {
@@ -357,14 +357,14 @@ namespace Npgsql
             string upn = null;
 
             // Check to see if we already have this UPN cached
-            lock (__cachedUpns)
+            lock (cachedUpns)
             {
-                if (__cachedUpns.TryGetValue(identity.User, out cachedUpn))
+                if (cachedUpns.TryGetValue(identity.User, out cachedUpn))
                 {
                     if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
                         upn = cachedUpn.Upn;
                     else
-                        __cachedUpns.Remove(identity.User);
+                        cachedUpns.Remove(identity.User);
                 }
             }
 
@@ -399,9 +399,9 @@ namespace Npgsql
                     // Save this value
                     cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours( 3.0 ) };
 
-                    lock (__cachedUpns)
+                    lock (cachedUpns)
                     {
-                        __cachedUpns[identity.User] = cachedUpn;
+                        cachedUpns[identity.User] = cachedUpn;
                     }
                 }
 
