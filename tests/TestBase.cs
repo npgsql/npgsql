@@ -94,7 +94,7 @@ namespace NpgsqlTests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
+        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=postgres;Password=postgres;Database=npgsql_tests;syncnotification=false";
 
         /// <summary>
         /// Indicates whether the database schema has already been created in this unit test session.

@@ -66,6 +66,11 @@ namespace Npgsql
 
         private object locker = new object();
 
+        /// <summary>
+        /// Holds incoming requests for connectors in this pool.
+        /// </summary>
+        private Queue<NpgsqlConnectorRequest> connectorRequests = new Queue<NpgsqlConnectorRequest>();
+
         public NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
@@ -172,30 +177,63 @@ namespace Npgsql
         /// <returns>A connector object.</returns>
         public NpgsqlConnector RequestConnector(NpgsqlConnection Connection)
         {
-            NpgsqlConnector Connector;
-            Int32 timeoutMilliseconds = Connection.Timeout * 1000;
-
-            // No need for this lock anymore
-            //lock (this)
+            //Create new connector request and add to requests queue
+            var request = new NpgsqlConnectorRequest(Connection);
+            lock (connectorRequests)
             {
-                Connector = RequestPooledConnectorInternal(Connection);
+                connectorRequests.Enqueue(request);
             }
 
-            while (Connector == null && timeoutMilliseconds > 0)
+            //Service a request
+            ServiceConnectorRequests();
+
+            int timeoutMilliseconds = Connection.Timeout * 1000;
+
+            //Start a stopwatch to keep track of time spent waiting for a connector
+            System.Diagnostics.Stopwatch requestTimer = new System.Diagnostics.Stopwatch();
+            requestTimer.Start();
+
+            try
             {
-
-                Int32 ST = timeoutMilliseconds > 1000 ? 1000 : timeoutMilliseconds;
-
-                Thread.Sleep(ST);
-                timeoutMilliseconds -= ST;
-
-                //lock (this)
+                while (request.Connector == null && requestTimer.ElapsedMilliseconds < timeoutMilliseconds)
                 {
-                    Connector = RequestPooledConnectorInternal(Connection);
+                    int remainingTime = timeoutMilliseconds - (int)requestTimer.ElapsedMilliseconds;
+                    int st = remainingTime > 10 ? 10 : remainingTime;
+
+                    if (st > 0)
+                    {
+                        Thread.Sleep(st);
+                    }
+
+                    if (request.Connector == null)
+                    {
+                        //My request has not been serviced yet so service next request
+                        ServiceConnectorRequests();
+                    }
+                }
+            }
+            finally
+            {
+                requestTimer.Stop();
+            }
+
+
+            //If connector wasn't found (due to timeout), Indicate that this request shouldn't be serviced if it's still in the queue:
+            if (request.Connector == null)
+            {
+                //Lock is necessary to prevent setting IsCancelled while ServiceConnectorRequests is processing the request
+                lock (connectorRequests)
+                {
+                    request.IsCancelled = true;
                 }
             }
 
-            if (Connector == null)
+            //IMPORTANT NOTE: It's possible that a request that has IsCancelled set to true has a valid connector
+            //Because ServiceConnectorRequests could process it just before the code above is called
+            //So do not use .IsCancelled to determine if a request succeeded.
+            //Check request.Connector instead. .IsCancelled only means that the request will no longer be processed henceforth.
+
+            if (request.Connector == null)
             {
                 if (Connection.Timeout > 0)
                 {
@@ -210,7 +248,47 @@ namespace Npgsql
             if (Timer == null)
                 StartTimer();
 
-            return Connector;
+            return request.Connector;
+        }
+
+        /// <summary>
+        /// Processes the topmost valid request for a connector.
+        /// </summary>
+        private void ServiceConnectorRequests()
+        {
+            lock (connectorRequests)
+            {
+
+                NpgsqlConnectorRequest topRequest = null;
+
+                //Find the topmost request that has not been cancelled.
+                do
+                {
+                    if (topRequest != null)
+                    {
+                        //TopRequest has been cancelled so dequeue it
+                        connectorRequests.Dequeue();
+                    }
+
+                    //If queue is empty leave
+                    if (connectorRequests.Count == 0) return;
+
+                    topRequest = connectorRequests.Peek();
+                }
+                while (topRequest.IsCancelled);                
+
+                //Try to get a connector
+                var connector = RequestPooledConnectorInternal(topRequest.RequestConnection);
+
+                //An available connector wasn't found so leave
+                if (connector == null) return;
+
+                //Set top request's connector to found connector
+                topRequest.Connector = connector;
+
+                //Dequeue top request so the next request can be processed.
+                connectorRequests.Dequeue();                
+            }
         }
 
         /// <summary>
