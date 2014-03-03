@@ -136,8 +136,8 @@ namespace Npgsql.SqlGenerators
                     sqlText.AppendFormat(ni, "cast({0} as float4)", _value);
                     break;
                 case PrimitiveTypeKind.Boolean:
-                     sqlText.AppendFormat(ni, "cast({0} as boolean)", ((bool)_value)?"TRUE":"FALSE");
-                     break;
+                    sqlText.AppendFormat(ni, "cast({0} as boolean)", ((bool)_value) ? "TRUE" : "FALSE");
+                    break;
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
                     NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
@@ -265,29 +265,23 @@ namespace Npgsql.SqlGenerators
             Append(")");
         }
 
-        public VisitedExpression ReturningExpression { get; set; }
+        internal void AppendReturning(DbNewInstanceExpression expression)
+        {
+            Append(" RETURNING ");//Don't put () around columns it will probably have unwanted effect
+            bool first = true;
+            foreach (var returingProperty in expression.Arguments)
+            {
+                if (!first)
+                    Append(",");
+                Append("\"" + (returingProperty as DbPropertyExpression).Property.Name + "\"");
+                first = false;
+            }
+        }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append("INSERT INTO ");
             base.WriteSql(sqlText);
-            if (ReturningExpression != null)
-            {
-                sqlText.Append(";");
-                ReturningExpression.WriteSql(sqlText);
-            }
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return base.GetAccessedProperties().Concat(ReturningExpression.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            if (ReturningExpression != null)
-                return ReturningExpression.GetProjectedColumns();
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 

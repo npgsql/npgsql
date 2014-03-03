@@ -7,6 +7,7 @@ using System.Data.Common;
 using System.Data.Entity;
 using System.Linq;
 using System.Text;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NpgsqlTests
 {
@@ -28,6 +29,17 @@ namespace NpgsqlTests
                     context.Database.Delete();//We delete to be 100% schema is synced
                 context.Database.Create();
             }
+
+            // Create sequence for the IntComputedValue property.
+            using (var createSequenceConn = new NpgsqlConnection(ConnectionStringEF))
+            {
+                createSequenceConn.Open();
+                ExecuteNonQuery("create sequence blog_int_computed_value_seq", createSequenceConn);
+                ExecuteNonQuery("alter table \"dbo\".\"Blogs\" alter column \"IntComputedValue\" set default nextval('blog_int_computed_value_seq');", createSequenceConn);
+
+            }
+            
+
         }
 
         /// <summary>
@@ -51,6 +63,9 @@ namespace NpgsqlTests
             public string Name { get; set; }
 
             public virtual List<Post> Posts { get; set; }
+
+            [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+            public int IntComputedValue { get; set; }
         }
 
         public class Post
@@ -214,6 +229,26 @@ namespace NpgsqlTests
                 }
             }
         }
+
+        [Test]
+        public void TestComputedValue()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                var blog = new Blog()
+                {
+                    Name = "Some blog name"
+                };
+
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+
+                Assert.Greater(blog.BlogId, 0);
+                Assert.Greater(blog.IntComputedValue, 0);
+            }
+
+        }
+
 
         //Hunting season is open Happy hunting on OrderBy,GroupBy,Min,Max,Skip,Take,ThenBy... and all posible combinations
     }
