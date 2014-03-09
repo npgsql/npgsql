@@ -25,6 +25,8 @@
 //      0.00.0000 - 06/17/2002 - ulrich sprick - creation
 //                - 05/??/2004 - Glen Parker<glenebob@nwlink.com> rewritten using
 //                               System.Queue.
+//                - 03/08/2014 - Sunny Ahuwanya<sunny at ahuwanya.net> Services
+//                               requests for connectors sequentially.
 
 using System;
 using System.Collections.Generic;
@@ -185,63 +187,68 @@ namespace Npgsql
             }
 
             //Service a request
-            ServiceConnectorRequests();
-
-            int timeoutMilliseconds = Connection.Timeout * 1000;
-
-            //Start a stopwatch to keep track of time spent waiting for a connector
-            System.Diagnostics.Stopwatch requestTimer = new System.Diagnostics.Stopwatch();
-            requestTimer.Start();
-
-            try
-            {
-                while (request.Connector == null && requestTimer.ElapsedMilliseconds < timeoutMilliseconds)
-                {
-                    int remainingTime = timeoutMilliseconds - (int)requestTimer.ElapsedMilliseconds;
-                    int st = remainingTime > 10 ? 10 : remainingTime;
-
-                    if (st > 0)
-                    {
-                        Thread.Sleep(st);
-                    }
-
-                    if (request.Connector == null)
-                    {
-                        //My request has not been serviced yet so service next request
-                        ServiceConnectorRequests();
-                    }
-                }
-            }
-            finally
-            {
-                requestTimer.Stop();
-            }
-
-
-            //If connector wasn't found (due to timeout), Indicate that this request shouldn't be serviced if it's still in the queue:
+            ServiceNextConnectorRequest();
+           
             if (request.Connector == null)
             {
-                //Lock is necessary to prevent setting IsCancelled while ServiceConnectorRequests is processing the request
-                lock (connectorRequests)
-                {
-                    request.IsCancelled = true;
-                }
-            }
+                //If request was not serviced then keep trying within timeout limit
 
-            //IMPORTANT NOTE: It's possible that a request that has IsCancelled set to true has a valid connector
-            //Because ServiceConnectorRequests could process it just before the code above is called
-            //So do not use .IsCancelled to determine if a request succeeded.
-            //Check request.Connector instead. .IsCancelled only means that the request will no longer be processed henceforth.
+                int timeoutMilliseconds = Connection.Timeout * 1000;
 
-            if (request.Connector == null)
-            {
-                if (Connection.Timeout > 0)
+                //Start a stopwatch to keep track of time spent waiting for a connector
+                System.Diagnostics.Stopwatch requestTimer = new System.Diagnostics.Stopwatch();
+                requestTimer.Start();
+
+                try
                 {
-                    throw new Exception("Timeout while getting a connection from pool.");
+                    while (request.Connector == null && requestTimer.ElapsedMilliseconds < timeoutMilliseconds)
+                    {
+                        int remainingTime = timeoutMilliseconds - (int)requestTimer.ElapsedMilliseconds;
+                        int st = remainingTime > 10 ? 10 : remainingTime;
+
+                        if (st > 0)
+                        {
+                            Thread.Sleep(st);
+                        }
+
+                        if (request.Connector == null)
+                        {
+                            //My request has not been serviced yet so service next request
+                            ServiceNextConnectorRequest();
+                        }
+                    }
                 }
-                else
+                finally
                 {
-                    throw new Exception("Connection pool exceeds maximum size.");
+                    requestTimer.Stop();
+                }
+
+                //If connector wasn't found (due to timeout), Indicate that this request shouldn't be serviced if it's still in the queue:
+                if (request.Connector == null)
+                {
+                    // Lock is necessary to prevent ServiceNextConnectorRequest from processing the request
+                    // after or while IsCancelled is set.
+                    lock (connectorRequests)
+                    {
+                        request.IsCancelled = true;
+                    }
+                }
+
+                //IMPORTANT NOTE: It's possible that a request that has IsCancelled set to true will have a valid connector
+                //because ServiceNextConnectorRequest could process it just before the code above is called
+                //So do not use .IsCancelled to determine if a request succeeded.
+                //Check request.Connector instead. .IsCancelled only means that the request will no longer be processed henceforth.
+
+                if (request.Connector == null)
+                {
+                    if (Connection.Timeout > 0)
+                    {
+                        throw new Exception("Timeout while getting a connection from pool.");
+                    }
+                    else
+                    {
+                        throw new Exception("Connection pool exceeds maximum size.");
+                    }
                 }
             }
 
@@ -254,7 +261,7 @@ namespace Npgsql
         /// <summary>
         /// Processes the topmost valid request for a connector.
         /// </summary>
-        private void ServiceConnectorRequests()
+        private void ServiceNextConnectorRequest()
         {
             lock (connectorRequests)
             {
@@ -278,7 +285,18 @@ namespace Npgsql
                 while (topRequest.IsCancelled);                
 
                 //Try to get a connector
-                var connector = RequestPooledConnectorInternal(topRequest.RequestConnection);
+                NpgsqlConnector connector;
+                try
+                {
+                    connector = RequestPooledConnectorInternal(topRequest.RequestConnection);
+                }
+                catch (Exception ex)
+                {
+                    //An exception was encountered, so set the exception for this request and dequeue request
+                    topRequest.SetException(ex);
+                    connectorRequests.Dequeue();
+                    return;
+                }
 
                 //An available connector wasn't found so leave
                 if (connector == null) return;
@@ -287,7 +305,7 @@ namespace Npgsql
                 topRequest.Connector = connector;
 
                 //Dequeue top request so the next request can be processed.
-                connectorRequests.Dequeue();                
+                connectorRequests.Dequeue();
             }
         }
 

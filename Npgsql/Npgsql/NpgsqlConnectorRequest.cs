@@ -38,7 +38,8 @@ namespace Npgsql
     {
         readonly NpgsqlConnection _connection; 
 
-        NpgsqlConnector _connector;
+        NpgsqlConnector _connector; // Connector that was obtained for this request
+        Exception _exEncountered; //Exception encountered while acquiring connector
         int _cancelled = 0; // 0 for false, -1 for true.
 
         public NpgsqlConnectorRequest(NpgsqlConnection connection)
@@ -56,6 +57,7 @@ namespace Npgsql
 
         /// <summary>
         /// Gets or sets a connector for this request.
+        /// Throws an exception if an exception was encountered for this request.
         /// </summary>
         internal NpgsqlConnector Connector
         {
@@ -63,8 +65,19 @@ namespace Npgsql
 
                 if (_connector == null)
                 {
-                    //Ensure we are reading the most recent value
+                    //Ensure we are reading the latest value.
                     _connector = Interlocked.CompareExchange(ref _connector, null, null);
+
+                    if (_connector == null)
+                    {
+                        //Check if an exception was set.
+                        _exEncountered = Interlocked.CompareExchange(ref _exEncountered, null, null);
+
+                        if (_exEncountered != null)
+                        {
+                            throw _exEncountered;
+                        }
+                    }
                 }
 
                 return _connector; 
@@ -82,6 +95,21 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Sets an exception encountered while the connector was sought.
+        /// </summary>
+        /// <param name="exception"></param>
+        internal void SetException(Exception exception)
+        {
+            if (_exEncountered != null)
+            {
+                throw new InvalidOperationException("Exception can only be set once!");
+            }
+
+            //Set exception
+            Interlocked.CompareExchange(ref _exEncountered, exception, null);
+        }
+
+        /// <summary>
         /// Indicates that this item has been cancelled. i.e. requestor doesn't care for this request to be serviced anymore
         /// </summary>
         internal bool IsCancelled
@@ -90,7 +118,7 @@ namespace Npgsql
             {
                 if (_cancelled == 0)
                 {
-                    //Ensure we are reading the most recent value
+                    //Ensure we are reading the latest value
                     _cancelled = Interlocked.CompareExchange(ref _cancelled, 0, 0);
                 }
 
