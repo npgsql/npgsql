@@ -978,7 +978,6 @@ namespace Npgsql
         private long? _lastInsertOID = null;
         private long? _nextInsertOID = null;
         internal bool _cleanedUp = false;
-        private bool _hasRows = false;
         private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
 
         //Unfortunately we sometimes don't know we're going to be dealing with
@@ -1248,11 +1247,6 @@ namespace Npgsql
                 {
                     _pendingRow = null;
                 }
-                if (!_hasRows)
-                {
-                    // when rows are found, store that this result has rows.
-                    _hasRows = (ret != null);
-                }
                 return ret;
             }
             CurrentRow = null;
@@ -1265,11 +1259,6 @@ namespace Npgsql
             {
                 _pendingDescription = objNext as NpgsqlRowDescription;
                 return null;
-            }
-            if (!_hasRows)
-            {
-                // when rows are found, store that this result has rows.
-                _hasRows = objNext is NpgsqlRow;
             }
             return objNext as NpgsqlRow;
         }
@@ -1313,12 +1302,7 @@ namespace Npgsql
         /// </summary>
         public override Boolean HasRows
         {
-            get
-            {
-                // Return true even after the last row has been read in this result.
-                // the first call to GetNextRow will set _hasRows to true if rows are found.
-                return _hasRows || (GetNextRow(false) != null);
-            }
+            get { return GetNextRow(false) != null; }
         }
 
         private void CleanUp(bool finishedMessages)
@@ -1382,7 +1366,6 @@ namespace Npgsql
             {
                 CurrentRow = null;
                 _currentResultsetSchema = null;
-                _hasRows = false; // set to false and let the reading code determine if the set has rows.
                 return (_currentDescription = GetNextRowDescription()) != null;
             }
             catch (System.IO.IOException ex)
@@ -1527,7 +1510,6 @@ namespace Npgsql
         private ResultSet _currentResult;
         private DataRow _currentRow;
         private int _lastRecordsAffected;
-        private bool _hasRows;
 
         public CachingDataReader(ForwardsOnlyDataReader reader, CommandBehavior behavior)
             : base(reader._command, behavior)
@@ -1597,7 +1579,21 @@ namespace Npgsql
 
         public override bool HasRows
         {
-            get { return _hasRows; }
+            get
+            {
+                if (_currentRow != null || _currentResult.Count != 0)
+                {
+                    return true;
+                }
+                foreach (ResultSet rs in _results)
+                {
+                    if (rs.Count != 0)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
 
         public override int RecordsAffected
@@ -1668,14 +1664,9 @@ namespace Npgsql
             if (_results.Count == 0)
             {
                 _currentResult = null;
-                // clear HasRows after moving past the end of the results.
-                _hasRows = false;
                 return false;
             }
             _lastRecordsAffected = (_currentResult = _results.Dequeue()).RecordsAffected;
-            // HasRows stores if the results has rows even after they have been read for the current results
-            // reset as you move to the next results.
-            _hasRows = _results.Count != 0;
             return true;
         }
 
