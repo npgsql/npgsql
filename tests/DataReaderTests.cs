@@ -967,6 +967,7 @@ namespace NpgsqlTests
             {
                 Assert.IsTrue(dr.HasRows);
                 Assert.IsTrue(dr.Read());
+                Assert.IsTrue(dr.HasRows);
                 Assert.AreEqual(1, dr.GetValue(0));
             }
         }
@@ -983,6 +984,7 @@ namespace NpgsqlTests
             {
                 Assert.IsTrue(dr.HasRows);
                 Assert.IsTrue(dr.Read());
+                Assert.IsTrue(dr.HasRows);
                 var ts = dr.GetTimeSpan(0);
             }
         }
