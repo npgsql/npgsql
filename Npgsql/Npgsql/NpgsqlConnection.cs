@@ -325,6 +325,13 @@ namespace Npgsql
             get { return settings.SSL; }
         }
 
+
+        public Boolean UseSslStream
+        {
+            get { return NpgsqlConnector.UseSslStream; }
+            set { NpgsqlConnector.UseSslStream = value; }
+        }
+
         /// <summary>
         /// Gets the time to wait while trying to establish a connection
         /// before terminating the attempt and generating an error.
@@ -1015,7 +1022,7 @@ namespace Npgsql
             }
             else
             {
-                return false;
+                return true;
             }
         }
 
