@@ -3508,5 +3508,36 @@ namespace NpgsqlTests
 
             Assert.IsTrue((bool)cmd.ExecuteScalar());
         }
+
+        [Test]
+        public void Bug184RollbackFailsOnAbortedTransaction()
+        {
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.CommandTimeout = 100000;
+
+            using (NpgsqlConnection connTimeoutChanged = new NpgsqlConnection(csb.ToString()))
+            {
+                connTimeoutChanged.Open();
+                using (var t = connTimeoutChanged.BeginTransaction())
+                {
+                    try
+                    {
+                        var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
+                        command.Transaction = t;
+                        Object result = command.ExecuteScalar();
+
+
+                    }
+                    catch (Exception)
+                    {
+
+                        t.Rollback();
+                    }
+
+                }
+
+            }
+
+        }
     }
 }
