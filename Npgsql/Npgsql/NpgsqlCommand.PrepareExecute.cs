@@ -72,6 +72,19 @@ namespace Npgsql
             }
         }
 
+        internal static void ExecuteBlindSuppressTimeout(NpgsqlConnector connector, NpgsqlQuery query)
+        {
+            // Block the notification thread before writing anything to the wire.
+            using (var blocker = connector.BlockNotificationThread())
+            {
+                // Write the Query message to the wire.
+                connector.Query(query);
+
+                // Flush, and wait for and discard all responses.
+                connector.ProcessAndDiscardBackendResponses();
+            }
+        }
+
         /// <summary>
         /// Special adaptation of ExecuteBlind() that sets statement_timeout.
         /// This exists to prevent Connector.SetBackendCommandTimeout() from calling Command.ExecuteBlind(),
