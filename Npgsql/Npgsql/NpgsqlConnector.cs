@@ -255,6 +255,8 @@ namespace Npgsql
             get { return settings.SslMode; }
         }
 
+        internal static Boolean UseSslStream = false;
+
         internal Boolean UseMonoSsl
         {
             get { return ValidateRemoteCertificateCallback == null; }
