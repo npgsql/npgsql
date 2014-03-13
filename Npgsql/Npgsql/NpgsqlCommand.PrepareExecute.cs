@@ -50,19 +50,19 @@ namespace Npgsql
         /// Internal query shortcut for use in cases where the number
         /// of affected rows is of no interest.
         /// </summary>
-        internal static void ExecuteBlind(NpgsqlConnector connector, string command, int timeout = 20)
+        internal static void ExecuteBlind(NpgsqlConnector connector, string command)
         {
             // Bypass cpmmand parsing overhead and send command verbatim.
-            ExecuteBlind(connector, new NpgsqlQuery(command), timeout);
+            ExecuteBlind(connector, new NpgsqlQuery(command));
         }
 
-        internal static void ExecuteBlind(NpgsqlConnector connector, NpgsqlQuery query, int timeout = 20)
+        internal static void ExecuteBlind(NpgsqlConnector connector, NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
             using (var blocker = connector.BlockNotificationThread())
             {
                 // Set statement timeout as needed.
-                connector.SetBackendCommandTimeout(timeout);
+                connector.SetBackendCommandTimeout(20);
 
                 // Write the Query message to the wire.
                 connector.Query(query);
