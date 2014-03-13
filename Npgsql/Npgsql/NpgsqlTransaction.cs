@@ -181,7 +181,7 @@ namespace Npgsql
 
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, NpgsqlQuery.RollbackTransaction);
+            NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, NpgsqlQuery.RollbackTransaction);
             _conn.Connector.Transaction = null;
             _conn = null;
         }

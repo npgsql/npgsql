@@ -429,7 +429,7 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.DiscardAll, 60);
+            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.DiscardAll);
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
@@ -452,7 +452,7 @@ namespace Npgsql
                 {
                     try
                     {
-                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", _planNamePrefix, i), -1);
+                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", _planNamePrefix, i));
                     }
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch {}
@@ -830,7 +830,7 @@ namespace Npgsql
 
             initQueries = sbInitQueries.ToString();
 
-            NpgsqlCommand.ExecuteBlind(this, initQueries, 60);
+            NpgsqlCommand.ExecuteBlind(this, initQueries);
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
