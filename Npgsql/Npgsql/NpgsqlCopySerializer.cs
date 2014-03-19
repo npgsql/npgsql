@@ -442,7 +442,7 @@ namespace Npgsql
                     FlushFields();
                     if (len >= SpaceInBuffer)
                     {
-						BufferSize = _sendBufferAt + len;
+                        BufferSize = _sendBufferAt + len;
                     }
                 }
             }
