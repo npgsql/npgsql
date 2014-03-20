@@ -971,7 +971,7 @@ namespace Npgsql
 				{
 					while (true)
 					{
-						Thread.Sleep(0);
+						Thread.Sleep(1);
 						//To give runtime chance to release correctly the lock. See http://pgfoundry.org/forum/message.php?msg_id=1002650 for more information.
 						this.connector._notificationAutoResetEvent.WaitOne();
 
