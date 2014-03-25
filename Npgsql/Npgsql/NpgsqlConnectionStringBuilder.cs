@@ -163,6 +163,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
         }
 
         public NpgsqlConnectionStringBuilder()
