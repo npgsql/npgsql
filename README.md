@@ -1,40 +1,42 @@
-Npgsql - .Net Data Provider for PostgreSQL
+Npgsql - .NET Data Provider for PostgreSQL
+=============
+
+###What Is Npgsql?
+
+Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
 
 
+###Project Information
 
-WHAT'S IT?
-==========
++   [Offical Site][1]
++   [Npgsql source code @ GitHub][2]
++   [Available on NuGet Gallery][3]
++   [Wiki - Usage and other information][4]
+
+
+###Developers
+
+Developers who contributes to Npgsql currently or in past, in no particular order:
     
-    Npgsql is a .Net Data Provider for PostgreSQL. It allows you to connect to PostgreSQL server in .NET.
++   Brar Piening
++   Francisco Figueiredo Jr.
++   Ben Clewett
++   Daniel Morgan
++   Dave Page
++   Ulrich Sprick
++   Glen Parker
++   Josh Cooley
++   Jon Asher
++   Chris Morgan
++   Thilo Utke
++   Hiroshi Saito
++   Shay Rojansky
 
+###License
 
-PROJECT INFO
-============
-    
-    Npgsql is hosted on github: https://github.com/npgsql/Npgsql
-    Usage instructions and other info can be found on the wiki: https://github.com/npgsql/Npgsql/wiki
-    Additional information can be found here: http://www.npgsql.org
+Refer LICENSE.txt for more information on license terms.
 
-DEVELOPERS
-==========
-    
-    We have the following developers who work or have worked with Npgsql since its beginning, in no particular order:
-    
-    Brar Piening
-    Francisco Figueiredo Jr.
-    Ben Clewett
-    Daniel Morgan
-    Dave Page
-    Ulrich Sprick
-    Glen Parker
-    Josh Cooley
-    Jon Asher
-    Chris Morgan
-    Thilo Utke
-    Hiroshi Saito
-    Shay Rojansky
-
-LICENSE
-=======
-
-    See LICENSE.txt    
+[1]: http://www.npgsql.org/  "Official site"
+[2]: https://github.com/npgsql/Npgsql/  "Npgsql source code @ GitHub"
+[3]: http://www.nuget.org/packages/Npgsql/ "Npgsql @ Nuget Gallery"
+[4]: https://github.com/npgsql/Npgsql/wiki/  "Wiki"
