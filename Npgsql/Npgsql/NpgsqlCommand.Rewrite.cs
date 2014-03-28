@@ -636,7 +636,6 @@ namespace Npgsql
 
                                 break;
 
-                            case '<' :
                             case '@' :
                                 if (currTokenLen > 0)
                                 {
