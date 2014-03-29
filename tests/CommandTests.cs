@@ -1249,6 +1249,36 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ProviderDateTimeSupportTimezone4()
+        {
+            ExecuteNonQuery("SET TIME ZONE 5"); //Should not be equal to your local time zone !
+
+            NpgsqlTimeStampTZ tsInsert = new NpgsqlTimeStampTZ(2014, 3, 28, 10, 0, 0, NpgsqlTimeZone.UTC);
+            
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_timestamp_with_timezone) VALUES (:p1)", Conn))
+            {
+                var p1 = command.Parameters.Add("p1", NpgsqlDbType.TimestampTZ);
+                p1.Direction = ParameterDirection.Input;
+                p1.Value = tsInsert;
+                
+                command.ExecuteNonQuery();
+            }
+            
+
+            using (var command = new NpgsqlCommand("SELECT field_timestamp_with_timezone FROM data", Conn))
+            {
+                NpgsqlTimeStampTZ tsSelect;
+                using (var reader = command.ExecuteReader())
+                {
+                    reader.Read();
+                    tsSelect = reader.GetTimeStampTZ(0);
+                }
+
+                Assert.AreEqual(tsInsert.AtTimeZone(NpgsqlTimeZone.UTC), tsSelect.AtTimeZone(NpgsqlTimeZone.UTC));
+            }
+        }
+
+        [Test]
         public void DoubleValueSupportWithExtendedQuery()
         {
             ExecuteNonQuery("INSERT INTO data(field_float8) VALUES (.123456789012345)");
