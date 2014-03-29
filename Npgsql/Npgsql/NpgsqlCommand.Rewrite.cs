@@ -321,6 +321,8 @@ namespace Npgsql
         {
             bool inQuote = false;
             bool quoteEscape = false;
+            bool inComment = false;
+            char prevChar = ' ';
             int currCharOfs = -1;
             int currChunkBeg = 0;
             int currChunkRawLen = 0;
@@ -347,14 +349,25 @@ namespace Npgsql
                             break;
 
                         case ';' :
-                            if (currChunkTrimLen > 0)
+                            if (!inComment)
                             {
-                                chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
-                            }
+                                // Semicolon ends chunk only if not commented out
+                                if (currChunkTrimLen > 0)
+                                {
+                                    chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
+                                }
 
-                            currChunkBeg = currCharOfs + 1;
-                            currChunkRawLen = 0;
-                            currChunkTrimLen = 0;
+                                currChunkBeg = currCharOfs + 1;
+                                currChunkRawLen = 0;
+                                currChunkTrimLen = 0;
+                            }
+                            else
+                            {
+                                // Otherwise semicolon is treated as any other character
+
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+                            }
 
                             break;
 
@@ -371,6 +384,20 @@ namespace Npgsql
                                 currChunkRawLen++;
                             }
 
+                            // Comment ends at newline
+                            if (ch == '\n')
+                                inComment = false;
+
+                            break;
+
+                        case '-':
+                            // Comment starts at "--"
+                            if (prevChar == '-')
+                                inComment = true;
+
+                            currChunkRawLen++;
+                            currChunkTrimLen = currChunkRawLen;
+                            
                             break;
 
                         default :
@@ -380,6 +407,7 @@ namespace Npgsql
                             break;
 
                     }
+                    prevChar = ch;
                 }
                 else
                 {

@@ -119,6 +119,13 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void CommentedOutSemicolon()
+        {
+            var command = new NpgsqlCommand("-- 1\n-- 2; abc\n-- 3;", Conn);
+            command.ExecuteNonQuery();
+        }
+
+        [Test]
         public void NoNameParameterAdd()
         {
             var command = new NpgsqlCommand();
