@@ -2245,15 +2245,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void GreaterThanInQueryStringWithPrepare()
-        {
-            var command = new NpgsqlCommand("select count(*) from data where field_serial >:param1", Conn);
-            command.Parameters.AddWithValue(":param1", 1);
-            command.Prepare();
-            command.ExecuteScalar();
-        }
-
-        [Test]
         public void LessThanParamNoWhitespaceBetween()
         {
             OperatorParamNoWhitespaceBetween("<", false);
