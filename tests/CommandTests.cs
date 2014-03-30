@@ -3884,5 +3884,31 @@ namespace NpgsqlTests
                 CollectionAssert.AreEqual(expected, res);
             }
         }
+
+        [Test]
+        public void InsertJsonValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 2, 0))
+            {
+                // json data type is not supported prior to 9.2
+                return;
+            }
+
+            var jsonValue = @"
+            {
+              ""DisplayFieldName"" : ""ObjectName""
+            }
+            ";
+            using (var cmd = new NpgsqlCommand("insert into data (field_json) values (:paramJson)", Conn))
+            {
+                cmd.Parameters.AddWithValue("paramJson", jsonValue);
+                cmd.Parameters[0].DbType = DbType.String;
+
+                var result = cmd.ExecuteNonQuery();
+
+                Assert.AreEqual(1, result);
+
+            }
+        }
     }
 }

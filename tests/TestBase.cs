@@ -236,6 +236,12 @@ namespace NpgsqlTests
                                 field_polygon                 POLYGON,
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 2, 0))
+            {
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
+            }
+
             _schemaCreated = true;
         }
 
