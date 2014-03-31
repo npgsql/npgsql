@@ -565,22 +565,25 @@ namespace Npgsql
                 return;
             }
 
-            while (Queue.Available.Count > 0)
+            lock (Queue)
             {
-                NpgsqlConnector connector = Queue.Available.Dequeue();
+                while (Queue.Available.Count > 0)
+                {
+                    NpgsqlConnector connector = Queue.Available.Dequeue();
 
-                try
-                {
-                    connector.Close();
+                    try
+                    {
+                        connector.Close();
+                    }
+                    catch
+                    {
+                        // Maybe we should log something here to say we got an exception while closing connector?
+                    }
                 }
-                catch
-                {
-                    // Maybe we should log something here to say we got an exception while closing connector?
-                }
+
+                //Clear the busy list so that the current connections don't get re-added to the queue
+                Queue.Busy.Clear();
             }
-
-            //Clear the busy list so that the current connections don't get re-added to the queue
-            Queue.Busy.Clear();
         }
 
         internal void ClearPool(NpgsqlConnection Connection)
