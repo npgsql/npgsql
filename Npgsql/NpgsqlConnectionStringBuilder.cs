@@ -228,6 +228,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.WithPostgis,   new ValueDescription(typeof(bool)));
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -847,6 +848,23 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.AlwaysPrepare), Keywords.AlwaysPrepare, value); }
         }
 
+
+        private Boolean _withPostgis;
+        [NpgsqlConnectionStringCategory("DataCategory_Context")]
+        [NpgsqlConnectionStringKeyword(Keywords.WithPostgis)]
+        [NpgsqlConnectionStringAcceptableKeyword("WITH POSTGIS")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_WithPostgis")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_WithPostgis")]
+        [DefaultValue(false)]
+        public Boolean WithPostgis {
+            get {
+                return _withPostgis;
+            }
+            set {
+                SetValue (GetKeyName (Keywords.WithPostgis), Keywords.WithPostgis, value);
+            }
+        }
+
         #endregion
 
         private static Keywords GetKey(string key)
@@ -911,6 +929,8 @@ namespace Npgsql
                     return Keywords.ApplicationName;
                 case "ALWAYSPREPARE":
                     return Keywords.AlwaysPrepare;
+                case "WITH POSTGIS":
+                    return Keywords.WithPostgis;
                 default:
                     throw new ArgumentException(L10N.WrongKeyVal, key);
             }
@@ -966,6 +986,8 @@ namespace Npgsql
                     return "APPLICATIONNAME";
                 case Keywords.AlwaysPrepare:
                     return "ALWAYSPREPARE";
+                case Keywords.WithPostgis:
+                    return "WITH POSTGIS";
                 default:
                     return keyword.ToString().ToUpperInvariant();
             }
@@ -1130,6 +1152,8 @@ namespace Npgsql
                         return this._application_name = Convert.ToString(value);
                     case Keywords.AlwaysPrepare:
                         return this._always_prepare = Convert.ToBoolean(value);
+                    case Keywords.WithPostgis:
+                        return this._withPostgis = Convert.ToBoolean(value);
                 }
             }
             catch (InvalidCastException exception)
@@ -1150,6 +1174,9 @@ namespace Npgsql
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
                         exception_template = L10N.InvalidBooleanKeyVal;
+                        break;
+                    case Keywords.WithPostgis :
+                        exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
                 }
 
@@ -1219,6 +1246,8 @@ namespace Npgsql
                     return this._application_name;
                 case Keywords.AlwaysPrepare:
                     return this._always_prepare;
+                case  Keywords.WithPostgis:
+                    return this._withPostgis;
                 default:
                     return null;
 
@@ -1308,6 +1337,7 @@ namespace Npgsql
         ApplicationName,
         AlwaysPrepare,
         IncludeRealm,
+        WithPostgis
     }
 
     public enum SslMode

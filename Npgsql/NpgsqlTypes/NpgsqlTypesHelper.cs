@@ -54,16 +54,20 @@ namespace NpgsqlTypes
         {
             public readonly Version Version;
             public readonly bool UseExtendedTypes;
+            public readonly bool UsePostgisTypes;
+            private int hash;
 
             public MappingKey(NpgsqlConnector conn)
             {
                 Version = conn.ServerVersion;
                 UseExtendedTypes = conn.UseExtendedTypes;
+                UsePostgisTypes = conn.UsePostgisTypes ;
+                hash = 0 ;
             }
 
             public bool Equals(MappingKey other)
             {
-                return UseExtendedTypes.Equals(other.UseExtendedTypes) && Version.Equals(other.Version);
+                return  UsePostgisTypes.Equals(other.UsePostgisTypes) && UseExtendedTypes.Equals(other.UseExtendedTypes) && Version.Equals(other.Version);
             }
 
             public override bool Equals(object obj)
@@ -75,7 +79,13 @@ namespace NpgsqlTypes
 
             public override int GetHashCode()
             {
-                return UseExtendedTypes ? ~Version.GetHashCode() : Version.GetHashCode();
+                if (hash == 0) {
+                    hash = 13;
+                    hash = hash * 7 + UseExtendedTypes.GetHashCode();
+                    hash = hash * 7 + UsePostgisTypes.GetHashCode();
+                    hash = hash * 7 + Version.GetHashCode ();
+                }
+                return hash;
             }
         }
 
@@ -94,7 +104,7 @@ namespace NpgsqlTypes
         {
             Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
 
-            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false))
+            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false,true))
             {
                 NameIndex.Add(TypeInfo.Name, TypeInfo);
 
@@ -452,13 +462,36 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddType("hstore", NpgsqlDbType.Hstore, DbType.Object, false,
                 BasicNativeToBackendTypeConverter.StringToTextText,
                 BasicNativeToBackendTypeConverter.StringToTextBinary);
+            
+            nativeTypeMapping.AddPostgisType(PostGisNativeToBackendTypeConverter.ToGeometryText,
+                                            PostGisNativeToBackendTypeConverter.ToGeometryBinary);                                        
+            
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrPoint);           
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrPoint));
+
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrLineString );
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrLineString));
+
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrPolygon);
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrPolygon));
+
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrMultiPoint );
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrMultiPoint));
+
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrMultiLineString );
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrMultiLineString));
+
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrMultiPolygon);
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrMultiPolygon));
+            
+            nativeTypeMapping.AddNpgsqlDbTypeAlias("geometry", NpgsqlDbType.OgrGeometryCollection );
+            nativeTypeMapping.AddTypeAlias("geometry", typeof(OgrGeometryCollection));
 
             nativeTypeMapping.AddDbTypeAlias("unknown", DbType.Object);
-
             return nativeTypeMapping;
         }
 
-        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes)
+        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, bool usePostgisTypes)
         {
             yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
@@ -665,6 +698,13 @@ namespace NpgsqlTypes
                                             typeof(DateTime),
                                             timestamptz => ((DateTime)(NpgsqlTimeStampTZ)timestamptz).ToLocalTime(),
                                             npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime)npgsqlTimestampTZ : npgsqlTimestampTZ is DateTimeOffset ? (NpgsqlTimeStampTZ)(DateTimeOffset)npgsqlTimestampTZ : npgsqlTimestampTZ));
+            }
+
+            if (usePostgisTypes)
+            {
+                yield return new NpgsqlBackendTypeInfo(0, "geometry", NpgsqlDbType.Geometry, DbType.Object, typeof(IGeometry),
+                                                       new ConvertBackendTextToNativeHandler(PostgisBackendToNativeTypeConverter.FromByteTextToGeometry),
+                                                       new ConvertBackendBinaryToNativeHandler(PostgisBackendToNativeTypeConverter.ToGeometry));
             }
         }
 

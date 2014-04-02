@@ -123,7 +123,8 @@ namespace NpgsqlTypes
         /// <param name="ConvertNativeToBackendBinary">Data conversion handler for binary backend encoding (for extended queries).</param>
         public NpgsqlNativeTypeInfo(String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Boolean Quote,
                                     ConvertNativeToBackendTextHandler ConvertNativeToBackendText = null,
-                                    ConvertNativeToBackendBinaryHandler ConvertNativeToBackendBinary = null)
+                                    ConvertNativeToBackendBinaryHandler ConvertNativeToBackendBinary = null
+                                    )
         {
             _Name = Name;
             _CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
@@ -145,6 +146,7 @@ namespace NpgsqlTypes
             }
         }
 
+
         /// <summary>
         /// Type name provided by the backend server.
         /// </summary>
@@ -153,7 +155,7 @@ namespace NpgsqlTypes
             get { return _Name; }
         }
 
-        public string CastName
+        public virtual string CastName
 
         {
             get { return _CastName; }

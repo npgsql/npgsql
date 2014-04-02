@@ -276,6 +276,19 @@ namespace Npgsql
             }
         }
 
+
+        /// <summary>
+        /// PostGis extension version.
+        /// </summary>
+        public Version PostGisVersion
+        {
+            get 
+            {
+                CheckConnectionOpen();
+                return connector.PostGisVersion;
+            }
+        }
+
         /// <summary>
         /// Refresh the cached _connectionString whenever the builder settings change
         /// </summary>

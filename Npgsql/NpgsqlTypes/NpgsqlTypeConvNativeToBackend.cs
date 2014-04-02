@@ -700,4 +700,19 @@ namespace NpgsqlTypes
             }
         }
     }
+
+    internal abstract class PostGisNativeToBackendTypeConverter
+    {
+
+        internal static byte[] ToGeometryBinary(NpgsqlNativeTypeInfo TypeInfo, Object nativeData, NativeToBackendTypeConverterOptions options)
+        {
+            IGeometry geom = nativeData as IGeometry;
+            return geom.ToWKB();
+        }
+
+        internal static byte[] ToGeometryText(NpgsqlNativeTypeInfo typeInfo, object nativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            return BasicNativeToBackendTypeConverter.ByteArrayToByteaText(typeInfo, ToGeometryBinary(typeInfo, nativeData, options), forExtendedQuery, options, arrayElement);
+        }
+    }
 }
