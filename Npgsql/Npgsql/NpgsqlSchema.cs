@@ -46,7 +46,7 @@ namespace Npgsql
         {
             DataSet ds = new DataSet();
             ds.Locale = CultureInfo.InvariantCulture;
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.Npgsql.NpgsqlMetaData.xml"))
             {
                 ds.ReadXml(xmlStream);
             }
@@ -61,7 +61,7 @@ namespace Npgsql
         {
             DataSet ds = new DataSet();
             ds.Locale = CultureInfo.InvariantCulture;
-            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.NpgsqlMetaData.xml"))
+            using (Stream xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Npgsql.Npgsql.NpgsqlMetaData.xml"))
             {
                 ds.ReadXml(xmlStream);
             }
