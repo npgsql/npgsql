@@ -425,10 +425,10 @@ namespace NpgsqlTests
         [Test]
         public void CheckExtraFloatingDigitsHigherThanTwo()
         {
-            
+
             using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
             {
-                string extraDigits = (string) c.ExecuteScalar();
+                string extraDigits = (string)c.ExecuteScalar();
                 if (Conn.PostgreSqlVersion >= new Version(9, 0, 0))
                 {
                     Assert.AreEqual(extraDigits, "3");
@@ -464,5 +464,45 @@ namespace NpgsqlTests
         }
 
 
+        [Test]
+        public void GetSchema()
+        {
+            using (NpgsqlConnection c = new NpgsqlConnection())
+            {
+                DataTable metaDataCollections = c.GetSchema();
+                Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned. No connectionstring is required.");
+            }
+        }
+
+        [Test]
+        public void GetSchemaWithDbMetaDataCollectionNames()
+        {
+            DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections);
+            Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more metadatacollections returned.");
+            foreach (DataRow row in metaDataCollections.Rows)
+            {
+                var collectionName = (string)row["CollectionName"];
+                //checking this collection
+                if (collectionName != System.Data.Common.DbMetaDataCollectionNames.MetaDataCollections)
+                {
+                    var collection = Conn.GetSchema(collectionName);
+                    Assert.IsNotNull(collection, "Each of the advertised metadata collections should work");
+                }
+            }
+        }
+
+        [Test]
+        public void GetSchemaWithRestrictions()
+        {
+            DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.Restrictions);
+            Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more Restrictions returned.");
+        }
+
+        [Test]
+        public void GetSchemaWithReservedWords()
+        {
+            DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
+            Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
+        }
     }
 }
