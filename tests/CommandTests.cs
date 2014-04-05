@@ -2244,21 +2244,51 @@ namespace NpgsqlTests
             }
         }
 
-        [Test]
-        public void GreaterThanInQueryStringWithPrepare()
+        public void LessThanParamNoWhitespaceBetween()
         {
-            var command = new NpgsqlCommand("select count(*) from data where field_serial >:param1", Conn);
-            command.Parameters.AddWithValue(":param1", 1);
-            command.Prepare();
-            command.ExecuteScalar();
+            OperatorParamNoWhitespaceBetween("<", false);
         }
 
         [Test]
-        public void LessThanInQueryStringWithPrepare()
+        public void LessThanParamNoWhitespaceBetweenWithPrepare()
         {
-            var command = new NpgsqlCommand("select count(*) from data where field_serial <:param1", Conn);
+            OperatorParamNoWhitespaceBetween("<", true);
+        }
+
+        [Test]
+        public void GreaterThanParamNoWhitespaceBetween()
+        {
+            OperatorParamNoWhitespaceBetween(">", false);
+        }
+
+        [Test]
+        public void GreaterThanParamNoWhitespaceBetweenWithPrepare()
+        {
+            OperatorParamNoWhitespaceBetween(">", true);
+        }
+
+        [Test]
+        public void NotEqualThanParamNoWhitespaceBetween()
+        {
+            OperatorParamNoWhitespaceBetween("<>", false);
+        }
+
+        [Test]
+        public void NotEqualThanParamNoWhitespaceBetweenWithPrepare()
+        {
+            OperatorParamNoWhitespaceBetween("<>", true);
+        }
+
+        private void OperatorParamNoWhitespaceBetween(string op, bool prepare)
+        {
+            var command = new NpgsqlCommand(string.Format("select 1{0}:param1", op), Conn);
             command.Parameters.AddWithValue(":param1", 1);
-            command.Prepare();
+
+            if (prepare)
+            {
+                command.Prepare();
+            }
+
             command.ExecuteScalar();
         }
 
