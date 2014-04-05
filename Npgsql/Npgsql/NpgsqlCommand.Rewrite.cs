@@ -636,6 +636,7 @@ namespace Npgsql
 
                                 break;
 
+                            case '<' :
                             case '@' :
                                 if (currTokenLen > 0)
                                 {
@@ -766,9 +767,11 @@ namespace Npgsql
                         }
                         else
                         {
-                            // Demote to the unknown token type and continue.
+                            // Demote to the unknown token type.
                             currTokenType = TokenType.None;
-                            currTokenLen++;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
                         }
 
                         break;
