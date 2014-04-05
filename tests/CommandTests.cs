@@ -3576,7 +3576,33 @@ namespace NpgsqlTests
                 }
 
             }
+        }
 
+        [Test]
+        public void TestCommentInQuery01()
+        {
+            using (var command = new NpgsqlCommand("-- 1\n-- 2; abc\n-- 3;", Conn))
+            {
+                Assert.AreEqual(null, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestCommentInQuery02()
+        {
+            using (var command = new NpgsqlCommand("select -- lc;lc\r\n1", Conn))
+            {
+                Assert.AreEqual(1, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestCommentInQuery03()
+        {
+            using (var command = new NpgsqlCommand("select -- lc;lc /* lc;lc */\r\n1", Conn))
+            {
+                Assert.AreEqual(1, command.ExecuteScalar());
+            }
         }
     }
 }
