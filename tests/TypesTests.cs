@@ -244,6 +244,12 @@ namespace NpgsqlTests
 
             Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
 
+            Assert.AreEqual(new NpgsqlInterval(0, 2, 3, 4, 5).ToString(), new NpgsqlInterval(new TimeSpan(0, 2, 3, 4, 5)).ToString());
+            
+            Assert.AreEqual(new NpgsqlInterval(1, 2, 3, 4, 5).ToString(), new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).ToString());
+            const long moreThanAMonthInTicks = TimeSpan.TicksPerDay*40;
+            Assert.AreEqual(new NpgsqlInterval(moreThanAMonthInTicks).ToString(), new NpgsqlInterval(new TimeSpan(moreThanAMonthInTicks)).ToString());
+            
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
             var testCulture = new System.Globalization.CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
