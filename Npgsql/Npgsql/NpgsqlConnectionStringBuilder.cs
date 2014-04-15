@@ -951,6 +951,7 @@ namespace Npgsql
                 case "USEEXTENDEDTYPES":
                 case "USE EXTENDED TYPES":
                     return Keywords.UseExtendedTypes;
+                case "INTEGRATEDSECURITY":
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
                 case "INCLUDEREALM":
