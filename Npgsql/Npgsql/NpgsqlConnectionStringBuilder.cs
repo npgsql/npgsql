@@ -1062,6 +1062,17 @@ namespace Npgsql
             return base.ContainsKey(GetKeyName(keyword));
         }
 
+        public override bool TryGetValue(string keyword, out object value) {
+            try {
+                value = GetValue(GetKey(keyword));
+                return true;
+            }
+            catch (ArgumentException) {
+                value = null;
+                return false;
+            }
+        }
+
         /// <summary>
         /// This function will set value for known key, both private member and base[key].
         /// </summary>
