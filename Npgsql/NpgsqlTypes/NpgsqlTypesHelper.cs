@@ -447,6 +447,11 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
             nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
 
+            nativeTypeMapping.AddType("json", NpgsqlDbType.Json, DbType.Object, false,
+                BasicNativeToBackendTypeConverter.StringToTextText,
+                BasicNativeToBackendTypeConverter.StringToTextBinary);
+
+
             nativeTypeMapping.AddDbTypeAlias("text_nonbinary", DbType.Object);
 
             return nativeTypeMapping;
@@ -567,6 +572,10 @@ namespace NpgsqlTypes
                                             ExtendedBackendToNativeTypeConverter.ToGuid);
 
             yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof (String), null);
+
+            yield return new NpgsqlBackendTypeInfo(0, "json", NpgsqlDbType.Json, DbType.Object, typeof(String),
+                null,
+                BasicBackendToNativeTypeConverter.TextBinaryToString);
 
             if (useExtendedTypes)
             {

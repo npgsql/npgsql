@@ -3693,7 +3693,7 @@ namespace NpgsqlTests
             using (var cmd = new NpgsqlCommand("insert into data (field_json) values (:paramJson)", Conn))
             {
                 cmd.Parameters.AddWithValue("paramJson", jsonValue);
-                cmd.Parameters[0].DbType = DbType.String;
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
 
                 var result = cmd.ExecuteNonQuery();
 
