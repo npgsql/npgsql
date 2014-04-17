@@ -32,9 +32,11 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.DirectoryServices;
 using System.Reflection;
 using System.Resources;
 using System.Runtime.Versioning;
+using System.Security.Principal;
 using System.Text;
 
 // Keep the xml comment warning quiet for this file.
@@ -124,6 +126,8 @@ namespace Npgsql
         private const int POOL_SIZE_LIMIT = 1024;
         private const int TIMEOUT_LIMIT = 1024;
 
+        #region Constructors
+
         static NpgsqlConnectionStringBuilder()
         {
             // Set up value descriptions.
@@ -132,7 +136,9 @@ namespace Npgsql
             // implicit default.
             valueDescriptions.Add(Keywords.Host, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Port, new ValueDescription((Int32)5432));
-            valueDescriptions.Add(Keywords.Protocol, new ValueDescription(typeof(ProtocolVersion), true, ProtocolVersionToString));
+#pragma warning disable 618
+            valueDescriptions.Add(Keywords.Protocol, new ValueDescription(ProtocolVersion.Version3, false));
+#pragma warning restore 618
             valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
@@ -153,7 +159,9 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
+            valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
+            valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
         }
 
@@ -171,6 +179,7 @@ namespace Npgsql
             CheckValues();
         }
 
+        #endregion
 
         /// <summary>
         /// Return an exact copy of this NpgsqlConnectionString.
@@ -208,41 +217,6 @@ namespace Npgsql
             else
             {
                 return (SslMode) Enum.Parse(typeof (SslMode), value.ToString(), true);
-            }
-        }
-
-        private static ProtocolVersion ToProtocolVersion(object value)
-        {
-            if (value is ProtocolVersion)
-            {
-                return (ProtocolVersion) value;
-            }
-            else
-            {
-                int ver = Convert.ToInt32(value);
-
-                switch (ver)
-                {
-                    case 2:
-                        return ProtocolVersion.Version2;
-                    case 3:
-                        return ProtocolVersion.Version3;
-                    default:
-                        throw new InvalidCastException(value.ToString());
-                }
-            }
-        }
-
-        private static string ProtocolVersionToString(object protocolVersion)
-        {
-            switch ((ProtocolVersion)protocolVersion)
-            {
-                case ProtocolVersion.Version2:
-                    return "2";
-                case ProtocolVersion.Version3:
-                    return "3";
-                default:
-                    return string.Empty;
             }
         }
 
@@ -327,7 +301,6 @@ namespace Npgsql
         }
 
         #endregion
-
         #region Properties
 
         private string _host;
@@ -350,16 +323,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Port), Keywords.Port, value); }
         }
 
-        private ProtocolVersion _protocol;
-        /// <summary>
-        /// Gets or sets the specified backend communication protocol version.
-        /// </summary>
-        public ProtocolVersion Protocol
-        {
-            get { return _protocol; }
-            set { SetValue(GetKeyName(Keywords.Protocol), Keywords.Protocol, value); }
-        }
-
         private string _database;
         ///<summary>
         /// Gets or sets the name of the database to be used after a connection is opened.
@@ -372,6 +335,97 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Database), Keywords.Database, value); }
         }
 
+    #region Integrated security
+        class CachedUpn {
+            public string Upn;
+            public DateTime ExpiryTimeUtc;
+        }
+
+        static Dictionary<SecurityIdentifier, CachedUpn> cachedUpns = new Dictionary<SecurityIdentifier,CachedUpn>();
+
+        private string GetIntegratedUserName()
+        {
+            // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
+            // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
+            // which doesn't exist in mono, and calling a WindowsIdentity method bombs.
+            // The workaround is that this function that actually deals with WindowsIdentity never
+            // gets called on mono, so never gets JITted and the problem goes away.
+
+            // Gets the current user's username for integrated security purposes
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            CachedUpn cachedUpn = null;
+            string upn = null;
+
+            // Check to see if we already have this UPN cached
+            lock (cachedUpns)
+            {
+                if (cachedUpns.TryGetValue(identity.User, out cachedUpn))
+                {
+                    if (cachedUpn.ExpiryTimeUtc > DateTime.UtcNow)
+                        upn = cachedUpn.Upn;
+                    else
+                        cachedUpns.Remove(identity.User);
+                }
+            }
+
+            try
+            {
+                if (upn == null) {
+                    // Try to get the user's UPN in its correct case; this is what the
+                    // server will need to verify against a Kerberos/SSPI ticket
+
+                    // First, find a domain server we can talk to
+                    string domainHostName;
+
+                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
+                    {
+                        domainHostName = (string) rootDse.Properties["dnsHostName"].Value;
+                    }
+
+                    // Query the domain server by the current user's SID
+                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
+                    {
+                        DirectorySearcher search = new DirectorySearcher(entry,
+                            "(objectSid=" + identity.User.Value + ")", new string[] { "userPrincipalName" });
+
+                        SearchResult result = search.FindOne();
+
+                        upn = (string) result.Properties["userPrincipalName"][0];
+                    }
+                }
+
+                if (cachedUpn == null)
+                {
+                    // Save this value
+                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours( 3.0 ) };
+
+                    lock (cachedUpns)
+                    {
+                        cachedUpns[identity.User] = cachedUpn;
+                    }
+                }
+
+                string[] upnParts = upn.Split('@');
+
+                if(_includeRealm)
+                {
+                    // Make it Kerberos-y by uppercasing the realm part
+                    return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
+                }
+                else
+                {
+                    return upnParts[0];
+                }
+            }
+            catch
+            {
+                // Querying the directory failed, so return the SAM name
+                // (which probably won't work, but it's better than nothing)
+                return identity.Name.Split('\\')[1];
+            }
+        }
+    #endregion
+
         private string _username;
         /// <summary>
         /// Gets or sets the login user name.
@@ -381,27 +435,14 @@ namespace Npgsql
             get
             {
                 if ((_integrated_security) && (String.IsNullOrEmpty(_username)))
-                    _username = WindowsIdentityUserName;
+                {
+                    _username = GetIntegratedUserName();
+                }
+
                 return _username;
             }
 
             set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
-        }
-
-        /// <summary>
-        /// This is a pretty horrible hack to fix https://github.com/npgsql/Npgsql/issues/133
-        /// In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
-        /// which doesn't exist in mono, and calling UserName getter above bombs.
-        /// The workaround is that the function that actually deals with WindowsIdentity never
-        /// gets called on mono, so never gets JITted and the problem goes away.
-        /// </summary>
-        private string WindowsIdentityUserName
-        {
-            get
-            {
-                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                return identity.Name.Split('\\')[1];                
-            }
         }
 
         private PasswordBytes _password;
@@ -447,17 +488,6 @@ namespace Npgsql
         {
             get { return _sslmode; }
             set { SetValue(GetKeyName(Keywords.SslMode), Keywords.SslMode, value); }
-        }
-
-        /// <summary>
-        /// Gets the backend encoding.  Always returns "UTF8".
-        /// </summary>
-        [Obsolete("UTF8 is always used regardless of this setting.")]
-        public string Encoding
-        {
-#pragma warning disable 618
-            get { return (string)valueDescriptions[Keywords.Encoding].ExplicitDefault; }
-#pragma warning restore 618
         }
 
         private int _timeout;
@@ -599,6 +629,13 @@ namespace Npgsql
                 throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
         }
 
+        private bool _includeRealm;
+        public bool IncludeRealm
+        {
+            get { return _includeRealm; }
+            set { SetValue(GetKeyName(Keywords.IncludeRealm), Keywords.IncludeRealm, value); }
+        }
+
         private Version _compatible;
 
         private static readonly Version THIS_VERSION =
@@ -635,6 +672,31 @@ namespace Npgsql
         }
 
         #endregion
+        #region DeprecatedProperties
+
+        /// <summary>
+        /// Gets or sets the specified backend communication protocol version.
+        /// </summary>
+        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
+        public ProtocolVersion Protocol
+        {
+#pragma warning disable 618
+            get { return (ProtocolVersion)valueDescriptions[Keywords.Protocol].ExplicitDefault; }
+#pragma warning restore 618
+        }
+
+        /// <summary>
+        /// Gets the backend encoding.  Always returns "UTF8".
+        /// </summary>
+        [Obsolete("UTF8 is always used regardless of this setting.")]
+        public string Encoding
+        {
+#pragma warning disable 618
+            get { return (string)valueDescriptions[Keywords.Encoding].ExplicitDefault; }
+#pragma warning restore 618
+        }
+
+        #endregion
 
         private static Keywords GetKey(string key)
         {
@@ -646,7 +708,9 @@ namespace Npgsql
                 case "PORT":
                     return Keywords.Port;
                 case "PROTOCOL":
+#pragma warning disable 618
                     return Keywords.Protocol;
+#pragma warning restore 618
                 case "DATABASE":
                 case "DB":
                     return Keywords.Database;
@@ -695,6 +759,8 @@ namespace Npgsql
                     return Keywords.UseExtendedTypes;
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
+                case "INCLUDEREALM":
+                    return Keywords.IncludeRealm;
                 case "COMPATIBLE":
                     return Keywords.Compatible;
                 case "APPLICATIONNAME":
@@ -714,7 +780,9 @@ namespace Npgsql
                     return "HOST";
                 case Keywords.Port:
                     return "PORT";
+#pragma warning disable 618
                 case Keywords.Protocol:
+#pragma warning restore 618
                     return "PROTOCOL";
                 case Keywords.Database:
                     return "DATABASE";
@@ -754,6 +822,8 @@ namespace Npgsql
                     return "USEEXTENDEDTYPES";
                 case Keywords.IntegratedSecurity:
                     return "INTEGRATED SECURITY";
+                case Keywords.IncludeRealm:
+                    return "INCLUDEREALM";
                 case Keywords.Compatible:
                     return "COMPATIBLE";
                 case Keywords.ApplicationName:
@@ -856,8 +926,10 @@ namespace Npgsql
                         return this._host = Convert.ToString(value);
                     case Keywords.Port:
                         return this._port = Convert.ToInt32(value);
+#pragma warning disable 618
                     case Keywords.Protocol:
-                        return this._protocol = ToProtocolVersion(value);
+                        return Protocol;
+#pragma warning restore 618
                     case Keywords.Database:
                         return this._database = Convert.ToString(value);
                     case Keywords.UserName:
@@ -896,10 +968,16 @@ namespace Npgsql
                     case Keywords.UseExtendedTypes:
                         return this._useExtendedTypes = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
-                        var v2 = ToIntegratedSecurity(value);
-                        if (v2 == true)
+                        bool iS = ToIntegratedSecurity(value);
+                        if (iS == true)
+                        {
                             CheckIntegratedSecuritySupport();
-                        return this._integrated_security = ToIntegratedSecurity(v2);
+                        }
+
+                        return this._integrated_security = ToIntegratedSecurity(iS);
+
+                    case Keywords.IncludeRealm:
+                        return this._includeRealm = ToBoolean(value);
                     case Keywords.Compatible:
                         Version ver = new Version(value.ToString());
                         if (ver > THIS_VERSION)
@@ -931,7 +1009,9 @@ namespace Npgsql
                     case Keywords.SyncNotification:
                         exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
+#pragma warning disable 618
                     case Keywords.Protocol:
+#pragma warning restore 618
                         exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
                         break;
                 }
@@ -962,8 +1042,10 @@ namespace Npgsql
                     return this._host;
                 case Keywords.Port:
                     return this._port;
+#pragma warning disable 618
                 case Keywords.Protocol:
-                    return this._protocol;
+                    return Protocol;
+#pragma warning restore 618
                 case Keywords.Database:
                     return this._database;
                 case Keywords.UserName:
@@ -1002,6 +1084,8 @@ namespace Npgsql
                     return this._useExtendedTypes;
                 case Keywords.IntegratedSecurity:
                     return this._integrated_security;
+                case Keywords.IncludeRealm:
+                    return this._includeRealm;
                 case Keywords.Compatible:
                     return _compatible;
                 case Keywords.ApplicationName:
@@ -1073,16 +1157,18 @@ namespace Npgsql
     {
         Host,
         Port,
+        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
         Protocol,
         Database,
         UserName,
         Password,
         SSL,
         SslMode,
-        [Obsolete("UTF-8 is always used regardless of this setting.")] Encoding,
+        [Obsolete("UTF-8 is always used regardless of this setting.")]
+        Encoding,
         Timeout,
         SearchPath,
-        //    These are for the connection pool
+        // These are for the connection pool
         Pooling,
         ConnectionLifeTime,
         MinPoolSize,
@@ -1097,7 +1183,8 @@ namespace Npgsql
         IntegratedSecurity,
         Compatible,
         ApplicationName,
-        AlwaysPrepare
+        AlwaysPrepare,
+        IncludeRealm,
     }
 
     public enum SslMode

@@ -825,6 +825,8 @@ namespace Npgsql.SqlGenerators
             {
                 case PrimitiveTypeKind.Boolean:
                     return "bool";
+                case PrimitiveTypeKind.SByte:
+                case PrimitiveTypeKind.Byte:
                 case PrimitiveTypeKind.Int16:
                     return "int2";
                 case PrimitiveTypeKind.Int32:

@@ -90,12 +90,10 @@ namespace Npgsql
             Stream stream = context.Stream;
             try
             {
-                stream.WriteByte((byte) FrontEndMessageCode.Termination);
-                if (context.BackendProtocolVersion >= ProtocolVersion.Version3)
-                {
-                    PGUtil.WriteInt32(stream, 4);
-                }
-                stream.Flush();
+                stream
+                    .WriteBytes((byte) FrontEndMessageCode.Termination)
+                    .WriteInt32(4)
+                    .Flush();
             }
             catch
             {

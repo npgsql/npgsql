@@ -377,42 +377,51 @@ namespace Npgsql
             }
         }
 
-        private static readonly byte[] esc_t = new byte[] {(byte) 't'};
-
-        private static readonly byte[] esc_n = new byte[] {(byte) 'n'};
-
-        private static readonly byte[] esc_r = new byte[] {(byte) 'r'};
-
-        private static readonly byte[] esc_b = new byte[] {(byte) 'b'};
-
-        private static readonly byte[] esc_f = new byte[] {(byte) 'f'};
-
-        private static readonly byte[] esc_v = new byte[] {(byte) 'v'};
+        private static readonly byte[] esc_t = new byte[] { (byte)ASCIIBytes.t };
+        private static readonly byte[] esc_n = new byte[] { (byte)ASCIIBytes.n };
+        private static readonly byte[] esc_r = new byte[] { (byte)ASCIIBytes.r };
+        private static readonly byte[] esc_b = new byte[] { (byte)ASCIIBytes.b };
+        private static readonly byte[] esc_f = new byte[] { (byte)ASCIIBytes.f };
+        private static readonly byte[] esc_v = new byte[] { (byte)ASCIIBytes.v };
  
         /// <summary>
-        /// Escape sequence for.
+        /// Escape sequence for the given character.
         /// </summary>
         /// <param name="c"></param>
         /// <returns></returns>
         protected static byte[] EscapeSequenceFor(char c)
         {
-            // TODO: Turn this into a switch statement.
-            return
-                c == '\t'
-                    ? esc_t
-                    : c == '\n'
-                          ? esc_n
-                          : c == '\r'
-                                ? esc_r
-                                : c == '\b'
-                                      ? esc_b
-                                      : c == '\f'
-                                            ? esc_f
-                                            : c == '\v'
-                                                  ? esc_v
-                                                  : (c < 32 || c > 127)
-                                                        ? new byte[] {(byte) ('0' + ((c/64) & 7)), (byte) ('0' + ((c/8) & 7)), (byte) ('0' + (c & 7))}
-                                                        : new byte[] {(byte) c};
+            switch (c)
+            {
+                case '\t' :
+                    return  esc_t;
+
+                case '\n' :
+                    return esc_n;
+
+                case '\r' :
+                    return esc_r;
+
+                case '\b' :
+                    return esc_b;
+
+                case '\f' :
+                    return esc_f;
+
+                case '\v' :
+                    return esc_v;
+
+                default :
+                    if (c < 32 || c > 127)
+                    {
+                        return new byte[] {(byte) ('0' + ((c/64) & 7)), (byte) ('0' + ((c/8) & 7)), (byte) ('0' + (c & 7))};
+                    }
+                    else
+                    {
+                        return new byte[] {(byte) c};
+                    }
+
+            }
         }
 
         /// <summary>

@@ -17,6 +17,6 @@ using System.Resources;
 [assembly: AssemblyTrademarkAttribute("")]
 [assembly: AssemblyVersionAttribute("2.1.0")]
 [assembly: AssemblyFileVersionAttribute("2.1.0")]
-[assembly: AssemblyInformationalVersionAttribute("2.1.0-beta1")]
+[assembly: AssemblyInformationalVersionAttribute("2.1.0-rc1")]
 [assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 

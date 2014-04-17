@@ -266,11 +266,7 @@ namespace Npgsql
                         functionChecksDone = true;
                     }
 
-                    commandBuilder.WriteString(
-                        Connector.SupportsPrepare
-                        ? "SELECT * FROM " // This syntax is only available in 7.3+ as well SupportsPrepare.
-                        : "SELECT " //Only a single result return supported. 7.2 and earlier.
-                    );
+                    commandBuilder.WriteString("SELECT * FROM ");
 
                     if (commandText[chunk.Begin + chunk.Length - 1] == ')')
                     {
@@ -314,6 +310,20 @@ namespace Npgsql
             return commandBuilder.ToArray();
         }
 
+        private enum TokenType
+        {
+            None,
+            LineComment,
+            BlockComment,
+            Quoted,
+            LineCommentBegin,
+            BlockCommentBegin,
+            BlockCommentEnd,
+            Param,
+            Colon,
+            FullTextMatchOp
+        }
+
         /// <summary>
         /// Find the beginning and end of each distinct SQL command and produce
         /// a list of descriptors, one for each command.  Commands described are trimmed of
@@ -323,7 +333,7 @@ namespace Npgsql
         /// <returns>List of chunk descriptors.</returns>
         private static StringChunk[] GetDistinctTrimmedCommands(string src)
         {
-            bool inQuote = false;
+            TokenType currTokenType = TokenType.None;
             bool quoteEscape = false;
             int currCharOfs = -1;
             int currChunkBeg = 0;
@@ -338,90 +348,178 @@ namespace Npgsql
                 // goto label for character re-evaluation:
                 ProcessCharacter:
 
-                if (! inQuote)
+                switch (currTokenType)
                 {
-                    switch (ch)
-                    {
-                        case '\'' :
-                            inQuote = true;
+                    case TokenType.None :
+                        switch (ch)
+                        {
+                            case '\'' :
+                                currTokenType = TokenType.Quoted;
 
-                            currChunkRawLen++;
-                            currChunkTrimLen = currChunkRawLen;
-
-                            break;
-
-                        case ';' :
-                            if (currChunkTrimLen > 0)
-                            {
-                                chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
-                            }
-
-                            currChunkBeg = currCharOfs + 1;
-                            currChunkRawLen = 0;
-                            currChunkTrimLen = 0;
-
-                            break;
-
-                        case ' ' :
-                        case '\t' :
-                        case '\r' :
-                        case '\n' :
-                            if (currChunkTrimLen == 0)
-                            {
-                                currChunkBeg++;
-                            }
-                            else
-                            {
-                                currChunkRawLen++;
-                            }
-
-                            break;
-
-                        default :
-                            currChunkRawLen++;
-                            currChunkTrimLen = currChunkRawLen;
-
-                            break;
-
-                    }
-                }
-                else
-                {
-                    switch (ch)
-                    {
-                        case '\'' :
-                            if (quoteEscape)
-                            {
-                                quoteEscape = false;
-                            }
-                            else
-                            {
-                                quoteEscape = true;
-                            }
-
-                            currChunkRawLen++;
-                            currChunkTrimLen = currChunkRawLen;
-
-                            break;
-
-                        default :
-                            if (quoteEscape)
-                            {
-                                quoteEscape = false;
-                                inQuote = false;
-
-                                // Re-evaluate this character
-                                goto ProcessCharacter;
-                            }
-                            else
-                            {
                                 currChunkRawLen++;
                                 currChunkTrimLen = currChunkRawLen;
-                            }
 
-                            break;
+                                break;
 
-                    }
+                            case ';' :
+                                if (currChunkTrimLen > 0)
+                                {
+                                    chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
+                                }
+
+                                currChunkBeg = currCharOfs + 1;
+                                currChunkRawLen = 0;
+                                currChunkTrimLen = 0;
+
+                                break;
+
+                            case ' ' :
+                            case '\t' :
+                            case '\r' :
+                            case '\n' :
+                                if (currChunkTrimLen == 0)
+                                {
+                                    currChunkBeg++;
+                                }
+                                else
+                                {
+                                    currChunkRawLen++;
+                                }
+
+                                break;
+
+                            case '/' :
+                                currTokenType = TokenType.BlockCommentBegin;
+
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+
+                                break;
+
+                            case '-' :
+                                currTokenType = TokenType.LineCommentBegin;
+
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+
+                                break;
+
+                            default :
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+
+                                break;
+
+                        }
+
+                        break;
+
+                    case TokenType.LineCommentBegin :
+                        if (ch == '-')
+                        {
+                            currTokenType = TokenType.LineComment;
+                        }
+                        else
+                        {
+                            currTokenType = TokenType.None;
+                        }
+
+                        currChunkRawLen++;
+                        currChunkTrimLen = currChunkRawLen;
+
+                        break;
+
+                    case TokenType.BlockCommentBegin :
+                        if (ch == '*')
+                        {
+                            currTokenType = TokenType.BlockComment;
+                        }
+                        else
+                        {
+                            currTokenType = TokenType.None;
+                        }
+
+                        currChunkRawLen++;
+                        currChunkTrimLen = currChunkRawLen;
+
+                        break;
+
+                    case TokenType.BlockCommentEnd :
+                        if (ch == '/')
+                        {
+                            currTokenType = TokenType.None;
+                        }
+                        else
+                        {
+                            currTokenType = TokenType.BlockComment;
+                        }
+
+                        currChunkRawLen++;
+                        currChunkTrimLen = currChunkRawLen;
+
+                        break;
+
+                    case TokenType.Quoted :
+                        switch (ch)
+                        {
+                            case '\'' :
+                                if (quoteEscape)
+                                {
+                                    quoteEscape = false;
+                                }
+                                else
+                                {
+                                    quoteEscape = true;
+                                }
+
+                                currChunkRawLen++;
+                                currChunkTrimLen = currChunkRawLen;
+
+                                break;
+
+                            default :
+                                if (quoteEscape)
+                                {
+                                    quoteEscape = false;
+                                    currTokenType = TokenType.None;
+
+                                    // Re-evaluate this character
+                                    goto ProcessCharacter;
+                                }
+                                else
+                                {
+                                    currChunkRawLen++;
+                                    currChunkTrimLen = currChunkRawLen;
+                                }
+
+                                break;
+
+                        }
+
+                        break;
+
+                    case TokenType.LineComment :
+                        if (ch == '\n')
+                        {
+                            currTokenType = TokenType.None;
+                        }
+
+                        currChunkRawLen++;
+                        currChunkTrimLen = currChunkRawLen;
+
+                        break;
+
+                    case TokenType.BlockComment :
+                        if (ch == '*')
+                        {
+                            currTokenType = TokenType.BlockCommentEnd;
+                        }
+
+                        currChunkRawLen++;
+                        currChunkTrimLen = currChunkRawLen;
+
+                        break;
+
                 }
             }
 
@@ -512,7 +610,7 @@ namespace Npgsql
 
         private void AppendParameterValue(Stream dest, NpgsqlParameter parameter)
         {
-            byte[] serialised = parameter.TypeInfo.ConvertToBackend(parameter.Value, false, Connector.NativeToBackendTypeConverterOptions);
+            byte[] serialised = parameter.TypeInfo.ConvertToBackend(parameter.NpgsqlValue, false, Connector.NativeToBackendTypeConverterOptions);
 
             // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
             // See bug #1010543
@@ -547,15 +645,6 @@ namespace Npgsql
             {
                 return ((byte)ParamNameCharTable.GetValue(ch) != 0);
             }
-        }
-
-        private enum TokenType
-        {
-            None,
-            Quoted,
-            Param,
-            Colon,
-            FullTextMatchOp
         }
 
         /// <summary>
@@ -634,6 +723,32 @@ namespace Npgsql
                                 }
 
                                 currTokenType = TokenType.FullTextMatchOp;
+
+                                currTokenBeg = currCharOfs;
+                                currTokenLen = 1;
+
+                                break;
+
+                            case '-' :
+                                if (currTokenLen > 0)
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                                }
+
+                                currTokenType = TokenType.LineCommentBegin;
+
+                                currTokenBeg = currCharOfs;
+                                currTokenLen = 1;
+
+                                break;
+
+                            case '/' :
+                                if (currTokenLen > 0)
+                                {
+                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+                                }
+
+                                currTokenType = TokenType.BlockCommentBegin;
 
                                 currTokenBeg = currCharOfs;
                                 currTokenLen = 1;
@@ -726,6 +841,26 @@ namespace Npgsql
 
                         break;
 
+                    case TokenType.LineComment :
+                        if (ch == '\n')
+                        {
+                            currTokenType = TokenType.None;
+                        }
+
+                        currTokenLen++;
+
+                        break;
+
+                    case TokenType.BlockComment :
+                        if (ch == '*')
+                        {
+                            currTokenType = TokenType.BlockCommentEnd;
+                        }
+
+                        currTokenLen++;
+
+                        break;
+
                     case TokenType.Colon :
                         if (IsParamNameChar(ch))
                         {
@@ -757,8 +892,58 @@ namespace Npgsql
                         }
                         else
                         {
-                            // Demote to the unknown token type and continue.
+                            // Demote to the unknown token type.
                             currTokenType = TokenType.None;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
+                        }
+
+                        break;
+
+                    case TokenType.LineCommentBegin :
+                        if (ch == '-')
+                        {
+                            currTokenType = TokenType.LineComment;
+                            currTokenLen++;
+                        }
+                        else
+                        {
+                            // Demote to the unknown token type.
+                            currTokenType = TokenType.None;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
+                        }
+
+                        break;
+
+                    case TokenType.BlockCommentBegin :
+                        if (ch == '*')
+                        {
+                            currTokenType = TokenType.BlockComment;
+                            currTokenLen++;
+                        }
+                        else
+                        {
+                            // Demote to the unknown token type.
+                            currTokenType = TokenType.None;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
+                        }
+
+                        break;
+
+                    case TokenType.BlockCommentEnd :
+                        if (ch == '/')
+                        {
+                            currTokenType = TokenType.None;
+                            currTokenLen++;
+                        }
+                        else
+                        {
+                            currTokenType = TokenType.BlockComment;
                             currTokenLen++;
                         }
 

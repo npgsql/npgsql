@@ -58,8 +58,7 @@ namespace Npgsql
         {
             NotPrepared,
             NeedsPrepare,
-            V2Prepared,
-            V3Prepared
+            Prepared
         }
 
         // Logging related values

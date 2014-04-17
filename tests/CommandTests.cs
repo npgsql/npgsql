@@ -1249,6 +1249,36 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ProviderDateTimeSupportTimezone4()
+        {
+            ExecuteNonQuery("SET TIME ZONE 5"); //Should not be equal to your local time zone !
+
+            NpgsqlTimeStampTZ tsInsert = new NpgsqlTimeStampTZ(2014, 3, 28, 10, 0, 0, NpgsqlTimeZone.UTC);
+            
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_timestamp_with_timezone) VALUES (:p1)", Conn))
+            {
+                var p1 = command.Parameters.Add("p1", NpgsqlDbType.TimestampTZ);
+                p1.Direction = ParameterDirection.Input;
+                p1.Value = tsInsert;
+                
+                command.ExecuteNonQuery();
+            }
+            
+
+            using (var command = new NpgsqlCommand("SELECT field_timestamp_with_timezone FROM data", Conn))
+            {
+                NpgsqlTimeStampTZ tsSelect;
+                using (var reader = command.ExecuteReader())
+                {
+                    reader.Read();
+                    tsSelect = reader.GetTimeStampTZ(0);
+                }
+
+                Assert.AreEqual(tsInsert.AtTimeZone(NpgsqlTimeZone.UTC), tsSelect.AtTimeZone(NpgsqlTimeZone.UTC));
+            }
+        }
+
+        [Test]
         public void DoubleValueSupportWithExtendedQuery()
         {
             ExecuteNonQuery("INSERT INTO data(field_float8) VALUES (.123456789012345)");
@@ -2245,11 +2275,51 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void GreaterThanInQueryStringWithPrepare()
+        public void LessThanParamNoWhitespaceBetween()
         {
-            var command = new NpgsqlCommand("select count(*) from data where field_serial >:param1", Conn);
+            OperatorParamNoWhitespaceBetween("<", false);
+        }
+
+        [Test]
+        public void LessThanParamNoWhitespaceBetweenWithPrepare()
+        {
+            OperatorParamNoWhitespaceBetween("<", true);
+        }
+
+        [Test]
+        public void GreaterThanParamNoWhitespaceBetween()
+        {
+            OperatorParamNoWhitespaceBetween(">", false);
+        }
+
+        [Test]
+        public void GreaterThanParamNoWhitespaceBetweenWithPrepare()
+        {
+            OperatorParamNoWhitespaceBetween(">", true);
+        }
+
+        [Test]
+        public void NotEqualThanParamNoWhitespaceBetween()
+        {
+            OperatorParamNoWhitespaceBetween("<>", false);
+        }
+
+        [Test]
+        public void NotEqualThanParamNoWhitespaceBetweenWithPrepare()
+        {
+            OperatorParamNoWhitespaceBetween("<>", true);
+        }
+
+        private void OperatorParamNoWhitespaceBetween(string op, bool prepare)
+        {
+            var command = new NpgsqlCommand(string.Format("select 1{0}:param1", op), Conn);
             command.Parameters.AddWithValue(":param1", 1);
-            command.Prepare();
+
+            if (prepare)
+            {
+                command.Prepare();
+            }
+
             command.ExecuteScalar();
         }
 
@@ -3547,6 +3617,63 @@ namespace NpgsqlTests
             NpgsqlCommand cmd = new NpgsqlCommand("SELECT 'cat'::tsquery <@ 'cat & rat'::tsquery", Conn);
 
             Assert.IsTrue((bool)cmd.ExecuteScalar());
+        }
+
+        [Test]
+        public void Bug184RollbackFailsOnAbortedTransaction()
+        {
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.CommandTimeout = 100000;
+
+            using (NpgsqlConnection connTimeoutChanged = new NpgsqlConnection(csb.ToString()))
+            {
+                connTimeoutChanged.Open();
+                using (var t = connTimeoutChanged.BeginTransaction())
+                {
+                    try
+                    {
+                        var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
+                        command.Transaction = t;
+                        Object result = command.ExecuteScalar();
+
+
+                    }
+                    catch (Exception)
+                    {
+
+                        t.Rollback();
+                    }
+
+                }
+
+            }
+        }
+
+        [Test]
+        public void TestCommentInQuery01()
+        {
+            using (var command = new NpgsqlCommand("-- 1\n-- 2; abc\n-- 3;", Conn))
+            {
+                Assert.AreEqual(null, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestCommentInQuery02()
+        {
+            using (var command = new NpgsqlCommand("select -- lc;lc\r\n1", Conn))
+            {
+                Assert.AreEqual(1, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestCommentInQuery03()
+        {
+            using (var command = new NpgsqlCommand("select -- lc;lc /* lc;lc */\r\n1", Conn))
+            {
+                Assert.AreEqual(1, command.ExecuteScalar());
+            }
         }
     }
 }

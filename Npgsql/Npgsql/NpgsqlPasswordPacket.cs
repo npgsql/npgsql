@@ -43,40 +43,22 @@ namespace Npgsql
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
 
         private readonly byte[] password;
-        private readonly ProtocolVersion protocolVersion;
 
-        public NpgsqlPasswordPacket(byte[] password, ProtocolVersion protocolVersion)
+        public NpgsqlPasswordPacket(byte[] password)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
 
             this.password = password;
-            this.protocolVersion = protocolVersion;
         }
 
         public override void WriteToStream(Stream outputStream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
 
-            switch (protocolVersion)
-            {
-                case ProtocolVersion.Version2:
-                    // Write the size of the packet.
-                    // 4 + (passwordlength + 1) -> Int32 + NULL terminated string.
-                    // output_stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(4 + (password.Length + 1))), 0, 4);
-                    outputStream
-                        .WriteInt32(4 + password.Length + 1)
-                        .WriteBytesNullTerminated(password);
-
-                    break;
-
-                case ProtocolVersion.Version3:
-                    outputStream
-                        .WriteBytes((Byte)ASCIIBytes.p)
-                        .WriteInt32(4 + password.Length + 1)
-                        .WriteBytesNullTerminated(password);
-
-                    break;
-            }
+            outputStream
+                .WriteBytes((Byte)ASCIIBytes.p)
+                .WriteInt32(4 + password.Length)
+                .WriteBytes(password);
         }
     }
 }

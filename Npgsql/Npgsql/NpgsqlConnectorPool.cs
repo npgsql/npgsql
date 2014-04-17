@@ -69,14 +69,18 @@ namespace Npgsql
         public NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
+
+            Timer = new Timer(1000);
+            Timer.AutoReset = false;
+            Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
         }
 
         private void StartTimer()
         {
-            Timer = new Timer(1000);
-            Timer.AutoReset = false;
-            Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
-            Timer.Start();
+            lock (locker)
+            {
+                Timer.Start();
+            }
         }
 
         private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
@@ -84,9 +88,9 @@ namespace Npgsql
             NpgsqlConnector Connector;
             var activeConnectionsExist = false;
 
-            try
+            lock (locker)
             {
-                lock (locker)
+                try
                 {
                     foreach (ConnectorQueue Queue in PooledConnectors.Values)
                     {
@@ -134,13 +138,13 @@ namespace Npgsql
                         }
                     }
                 }
-            }
-            finally
-            {
-                if (activeConnectionsExist)
-                    Timer.Start();
-                else
-                    Timer = null;
+                finally
+                {
+                    if (activeConnectionsExist)
+                        Timer.Start();
+                    else
+                        Timer.Stop();
+                }
             }
         }
 
@@ -207,8 +211,7 @@ namespace Npgsql
                 }
             }
 
-            if (Timer == null)
-                StartTimer();
+            StartTimer();
 
             return Connector;
         }
@@ -562,22 +565,25 @@ namespace Npgsql
                 return;
             }
 
-            while (Queue.Available.Count > 0)
+            lock (Queue)
             {
-                NpgsqlConnector connector = Queue.Available.Dequeue();
+                while (Queue.Available.Count > 0)
+                {
+                    NpgsqlConnector connector = Queue.Available.Dequeue();
 
-                try
-                {
-                    connector.Close();
+                    try
+                    {
+                        connector.Close();
+                    }
+                    catch
+                    {
+                        // Maybe we should log something here to say we got an exception while closing connector?
+                    }
                 }
-                catch
-                {
-                    // Maybe we should log something here to say we got an exception while closing connector?
-                }
+
+                //Clear the busy list so that the current connections don't get re-added to the queue
+                Queue.Busy.Clear();
             }
-
-            //Clear the busy list so that the current connections don't get re-added to the queue
-            Queue.Busy.Clear();
         }
 
         internal void ClearPool(NpgsqlConnection Connection)

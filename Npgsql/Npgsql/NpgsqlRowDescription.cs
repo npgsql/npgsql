@@ -40,7 +40,7 @@ namespace Npgsql
     /// the PostgreSQL.
     /// </summary>
     ///
-    internal abstract class NpgsqlRowDescription : IServerResponseObject
+    internal sealed class NpgsqlRowDescription : IServerResponseObject
     {
         private abstract class KanaWidthConverter
         {
@@ -75,7 +75,7 @@ namespace Npgsql
         /// <summary>
         /// This struct represents the internal data of the RowDescription message.
         /// </summary>
-        public abstract class FieldData
+        public sealed class FieldData
         {
             private string _name; // Protocol 2/3
             private int _typeOID; // Protocol 2/3
@@ -86,40 +86,51 @@ namespace Npgsql
             private FormatCode _formatCode; // Protocol 3. 0 text, 1 binary
             private NpgsqlBackendTypeInfo _typeInfo; // everything we know about this field type
 
+            public FieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping)
+            {
+                Name = PGUtil.ReadString(stream);
+                TableOID = PGUtil.ReadInt32(stream);
+                ColumnAttributeNumber = PGUtil.ReadInt16(stream);
+                TypeInfo = typeMapping[TypeOID = PGUtil.ReadInt32(stream)];
+                TypeSize = PGUtil.ReadInt16(stream);
+                TypeModifier = PGUtil.ReadInt32(stream);
+                FormatCode = (FormatCode) PGUtil.ReadInt16(stream);
+            }
+
             public string Name
             {
                 get { return _name; }
-                protected set { _name = value; }
+                private set { _name = value; }
             }
 
             public int TypeOID
             {
                 get { return _typeOID; }
-                protected set { _typeOID = value; }
+                private set { _typeOID = value; }
             }
 
             public short TypeSize
             {
                 get { return _typeSize; }
-                protected set { _typeSize = value; }
+                private set { _typeSize = value; }
             }
 
             public int TypeModifier
             {
                 get { return _typeModifier; }
-                protected set { _typeModifier = value; }
+                private set { _typeModifier = value; }
             }
 
             public int TableOID
             {
                 get { return _tableOID; }
-                protected set { _tableOID = value; }
+                private set { _tableOID = value; }
             }
 
             public short ColumnAttributeNumber
             {
                 get { return _columnAttributeNumber; }
-                protected set { _columnAttributeNumber = value; }
+                private set { _columnAttributeNumber = value; }
             }
 
             public FormatCode FormatCode
@@ -131,7 +142,7 @@ namespace Npgsql
             public NpgsqlBackendTypeInfo TypeInfo
             {
                 get { return _typeInfo; }
-                protected set { _typeInfo = value; }
+                private set { _typeInfo = value; }
             }
         }
 
@@ -143,7 +154,7 @@ namespace Npgsql
         private readonly static Version KANA_FIX_VERSION = new Version(2, 0, 2, 1);
         private readonly static Version GET_ORDINAL_THROW_EXCEPTION = KANA_FIX_VERSION;
 
-        protected NpgsqlRowDescription(Stream stream, NpgsqlBackendTypeMapping type_mapping, Version compatVersion)
+        public NpgsqlRowDescription(Stream stream, NpgsqlBackendTypeMapping type_mapping, Version compatVersion)
         {
             int num = ReadNumFields(stream);
             fields_data = new FieldData[num];
@@ -172,8 +183,16 @@ namespace Npgsql
             }
         }
 
-        protected abstract FieldData BuildFieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping);
-        protected abstract int ReadNumFields(Stream stream);
+        private FieldData BuildFieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping)
+        {
+            return new FieldData(stream, typeMapping);
+        }
+
+        private int ReadNumFields(Stream stream)
+        {
+            PGUtil.EatStreamBytes(stream, 4);
+            return PGUtil.ReadInt16(stream);
+        }
 
         public FieldData this[int index]
         {
@@ -202,68 +221,6 @@ namespace Npgsql
                 return -1;
             else
                 throw new IndexOutOfRangeException("Field not found");
-        }
-    }
-
-    internal sealed class NpgsqlRowDescriptionV2 : NpgsqlRowDescription
-    {
-        public NpgsqlRowDescriptionV2(Stream stream, NpgsqlBackendTypeMapping typeMapping, Version compatVersion)
-            : base(stream, typeMapping, compatVersion)
-        {
-        }
-
-        private sealed class FieldDataV2 : FieldData
-        {
-            public FieldDataV2(Stream stream, NpgsqlBackendTypeMapping typeMapping)
-            {
-                Name = PGUtil.ReadString(stream);
-                TypeInfo = typeMapping[TypeOID = PGUtil.ReadInt32(stream)];
-                TypeSize = PGUtil.ReadInt16(stream);
-                TypeModifier = PGUtil.ReadInt32(stream);
-            }
-        }
-
-        protected override FieldData BuildFieldData(Stream stream, NpgsqlBackendTypeMapping type_mapping)
-        {
-            return new FieldDataV2(stream, type_mapping);
-        }
-
-        protected override int ReadNumFields(Stream stream)
-        {
-            return PGUtil.ReadInt16(stream);
-        }
-    }
-
-    internal sealed class NpgsqlRowDescriptionV3 : NpgsqlRowDescription
-    {
-        private sealed class FieldDataV3 : FieldData
-        {
-            public FieldDataV3(Stream stream, NpgsqlBackendTypeMapping typeMapping)
-            {
-                Name = PGUtil.ReadString(stream);
-                TableOID = PGUtil.ReadInt32(stream);
-                ColumnAttributeNumber = PGUtil.ReadInt16(stream);
-                TypeInfo = typeMapping[TypeOID = PGUtil.ReadInt32(stream)];
-                TypeSize = PGUtil.ReadInt16(stream);
-                TypeModifier = PGUtil.ReadInt32(stream);
-                FormatCode = (FormatCode) PGUtil.ReadInt16(stream);
-            }
-        }
-
-        public NpgsqlRowDescriptionV3(Stream stream, NpgsqlBackendTypeMapping typeMapping, Version compatVersion)
-            : base(stream, typeMapping, compatVersion)
-        {
-        }
-
-        protected override FieldData BuildFieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping)
-        {
-            return new FieldDataV3(stream, typeMapping);
-        }
-
-        protected override int ReadNumFields(Stream stream)
-        {
-            PGUtil.EatStreamBytes(stream, 4);
-            return PGUtil.ReadInt16(stream);
         }
     }
 }

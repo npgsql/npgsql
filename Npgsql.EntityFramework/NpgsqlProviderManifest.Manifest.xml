@@ -52,6 +52,12 @@
         <Precision DefaultValue="6" Constant="true"/>
       </FacetDescriptions>
     </Type>
+    <Type Name="rowversion" PrimitiveTypeKind="Binary">
+      <FacetDescriptions>
+        <MaxLength DefaultValue="8" Constant="true" />
+        <FixedLength DefaultValue="true" Constant="true" />
+      </FacetDescriptions>
+    </Type>
     <Type Name="date" PrimitiveTypeKind="DateTime">
       <FacetDescriptions>
         <Precision DefaultValue="0" Constant="true"/>

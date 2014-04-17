@@ -30,6 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.Threading;
@@ -441,11 +442,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the value of a column as Byte.  Not implemented.
+        /// Gets the value of a column as Byte.
         /// </summary>
         public override Byte GetByte(Int32 i)
         {
-            throw new NotImplementedException();
+            return (Byte)GetValue(i);
         }
 
         /// <summary>
@@ -495,8 +496,7 @@ namespace Npgsql
         private DataTable GetResultsetSchema()
         {
             DataTable result = null;
-
-            if (CurrentDescription.NumFields > 0)
+            if (CurrentDescription != null && CurrentDescription.NumFields > 0)
             {
                 result = new DataTable("SchemaTable");
 
@@ -523,83 +523,13 @@ namespace Npgsql
                 result.Columns.Add("IsLong", typeof (bool));
                 result.Columns.Add("IsReadOnly", typeof (bool));
 
-                if (_connector.BackendProtocolVersion == ProtocolVersion.Version2)
-                {
-                    FillSchemaTable_v2(result);
-                }
-                else if (_connector.BackendProtocolVersion == ProtocolVersion.Version3)
-                {
-                    FillSchemaTable_v3(result);
-                }
+                FillSchemaTable(result);
             }
 
             return result;
         }
 
-        private void FillSchemaTable_v2(DataTable schema)
-        {
-            List<string> keyList = (_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo
-                                    ? new List<string>(GetPrimaryKeys(GetTableNameFromQuery()))
-                                    : new List<string>();
-
-            for (Int16 i = 0; i < CurrentDescription.NumFields; i++)
-            {
-                DataRow row = schema.NewRow();
-
-                row["ColumnName"] = GetName(i);
-                row["ColumnOrdinal"] = i + 1;
-                if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-                    (CurrentDescription[i].TypeInfo.Name == "varchar" || CurrentDescription[i].TypeInfo.Name == "bpchar"))
-                {
-                    row["ColumnSize"] = CurrentDescription[i].TypeModifier - 4;
-                }
-                else if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-                         (CurrentDescription[i].TypeInfo.Name == "bit" || CurrentDescription[i].TypeInfo.Name == "varbit"))
-                {
-                    row["ColumnSize"] = CurrentDescription[i].TypeModifier;
-                }
-                else
-                {
-                    row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
-                }
-                if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
-                    CurrentDescription[i].TypeInfo.Name == "numeric")
-                {
-                    row["NumericPrecision"] = ((CurrentDescription[i].TypeModifier - 4) >> 16) & ushort.MaxValue;
-                    row["NumericScale"] = (CurrentDescription[i].TypeModifier - 4) & ushort.MaxValue;
-                }
-                else
-                {
-                    row["NumericPrecision"] = 0;
-                    row["NumericScale"] = 0;
-                }
-                row["IsUnique"] = false;
-                row["IsKey"] = IsKey(GetName(i), keyList);
-                row["BaseCatalogName"] = "";
-                row["BaseSchemaName"] = "";
-                row["BaseTableName"] = "";
-                row["BaseColumnName"] = GetName(i);
-                row["DataType"] = GetFieldType(i);
-                row["AllowDBNull"] = true;
-                    // without other information, must allow dbnull on the client
-                if (CurrentDescription[i].TypeInfo != null)
-                {
-                    row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
-                }
-                row["IsAliased"] = false;
-                row["IsExpression"] = false;
-                row["IsIdentity"] = false;
-                row["IsAutoIncrement"] = false;
-                row["IsRowVersion"] = false;
-                row["IsHidden"] = false;
-                row["IsLong"] = false;
-                row["IsReadOnly"] = false;
-
-                schema.Rows.Add(row);
-            }
-        }
-
-        private void FillSchemaTable_v3(DataTable schema)
+        private void FillSchemaTable(DataTable schema)
         {
             Dictionary<long, Table> oidTableLookup = new Dictionary<long, Table>();
             KeyLookup keyLookup = new KeyLookup();
@@ -1048,6 +978,7 @@ namespace Npgsql
         private long? _lastInsertOID = null;
         private long? _nextInsertOID = null;
         internal bool _cleanedUp = false;
+        private bool _hasRows = false;
         private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
 
         //Unfortunately we sometimes don't know we're going to be dealing with
@@ -1091,30 +1022,35 @@ namespace Npgsql
         {
             if (CurrentDescription != null)
             {
-                NpgsqlRow row = null;
+                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = _command.Parameters.Cast<NpgsqlParameter>()
+                    .Where(p => p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output);
+                if (!inputOutputAndOutputParams.Any())
+                {
+                    return;
+                }
+
+                NpgsqlRow row = ParameterUpdateRow;
+                if (row == null)
+                {
+                    return;
+                }
+
                 Queue<NpgsqlParameter> pending = new Queue<NpgsqlParameter>();
                 List<int> taken = new List<int>();
-                foreach (NpgsqlParameter p in _command.Parameters)
+                foreach (NpgsqlParameter p in inputOutputAndOutputParams)
                 {
-                    if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
+                    int idx = CurrentDescription.TryFieldIndex(p.CleanName);
+                    if (idx == -1)
                     {
-                        int idx = CurrentDescription.TryFieldIndex(p.CleanName);
-                        if (idx == -1)
-                        {
-                            pending.Enqueue(p);
-                        }
-                        else
-                        {
-                            if ((row = row ?? ParameterUpdateRow) == null)
-                            {
-                                return;
-                            }
-                            p.Value = row[idx];
-                            taken.Add(idx);
-                        }
+                        pending.Enqueue(p);
+                    }
+                    else
+                    {
+                        p.Value = row[idx];
+                        taken.Add(idx);
                     }
                 }
-                for (int i = 0; pending.Count != 0 && i != (row = row ?? ParameterUpdateRow).NumFields; ++i)
+                for (int i = 0; pending.Count != 0 && i != row.NumFields; ++i)
                 {
                     if (!taken.Contains(i))
                     {
@@ -1189,24 +1125,10 @@ namespace Npgsql
 
                         if (cleanup)
                         {
-                            if (reader is StringRowReaderV2)
-                            {
-                                // V2 rows need to step through their data to dispose, so we have
-                                // to finish construction.
-                                NpgsqlRow row;
+                            // V3 rows can dispose by simply reading MessageLength bytes.
+                            reader.Dispose();
 
-                                row = BuildRow(new ForwardsOnlyRow(reader));
-                                row.Dispose();
-
-                                return row;
-                            }
-                            else
-                            {
-                                // V3 rows can dispose by simply reading MessageLength bytes.
-                                reader.Dispose();
-
-                                return reader;
-                            }
+                            return reader;
                         }
                         else
                         {
@@ -1326,6 +1248,11 @@ namespace Npgsql
                 {
                     _pendingRow = null;
                 }
+                if (!_hasRows)
+                {
+                    // when rows are found, store that this result has rows.
+                    _hasRows = (ret != null);
+                }
                 return ret;
             }
             CurrentRow = null;
@@ -1338,6 +1265,11 @@ namespace Npgsql
             {
                 _pendingDescription = objNext as NpgsqlRowDescription;
                 return null;
+            }
+            if (!_hasRows)
+            {
+                // when rows are found, store that this result has rows.
+                _hasRows = objNext is NpgsqlRow;
             }
             return objNext as NpgsqlRow;
         }
@@ -1381,7 +1313,12 @@ namespace Npgsql
         /// </summary>
         public override Boolean HasRows
         {
-            get { return GetNextRow(false) != null; }
+            get
+            {
+                // Return true even after the last row has been read in this result.
+                // the first call to GetNextRow will set _hasRows to true if rows are found.
+                return _hasRows || (GetNextRow(false) != null);
+            }
         }
 
         private void CleanUp(bool finishedMessages)
@@ -1445,6 +1382,7 @@ namespace Npgsql
             {
                 CurrentRow = null;
                 _currentResultsetSchema = null;
+                _hasRows = false; // set to false and let the reading code determine if the set has rows.
                 return (_currentDescription = GetNextRowDescription()) != null;
             }
             catch (System.IO.IOException ex)
@@ -1589,6 +1527,7 @@ namespace Npgsql
         private ResultSet _currentResult;
         private DataRow _currentRow;
         private int _lastRecordsAffected;
+        private bool _hasRows;
 
         public CachingDataReader(ForwardsOnlyDataReader reader, CommandBehavior behavior)
             : base(reader._command, behavior)
@@ -1658,21 +1597,7 @@ namespace Npgsql
 
         public override bool HasRows
         {
-            get
-            {
-                if (_currentRow != null || _currentResult.Count != 0)
-                {
-                    return true;
-                }
-                foreach (ResultSet rs in _results)
-                {
-                    if (rs.Count != 0)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
+            get { return _hasRows; }
         }
 
         public override int RecordsAffected
@@ -1743,9 +1668,14 @@ namespace Npgsql
             if (_results.Count == 0)
             {
                 _currentResult = null;
+                // clear HasRows after moving past the end of the results.
+                _hasRows = false;
                 return false;
             }
             _lastRecordsAffected = (_currentResult = _results.Dequeue()).RecordsAffected;
+            // HasRows stores if the results has rows even after they have been read for the current results
+            // reset as you move to the next results.
+            _hasRows = _results.Count != 0;
             return true;
         }
 

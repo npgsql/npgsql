@@ -325,6 +325,13 @@ namespace Npgsql
             get { return settings.SSL; }
         }
 
+
+        public Boolean UseSslStream
+        {
+            get { return NpgsqlConnector.UseSslStream; }
+            set { NpgsqlConnector.UseSslStream = value; }
+        }
+
         /// <summary>
         /// Gets the time to wait while trying to establish a connection
         /// before terminating the attempt and generating an error.
@@ -414,9 +421,9 @@ namespace Npgsql
         {
             get
             {
-                CheckNotDisposed();
+                //CheckNotDisposed();
 
-                if (connector != null)
+                if (connector != null && !disposed)
                 {
                     return connector.State;
                 }
@@ -476,6 +483,7 @@ namespace Npgsql
         /// <summary>
         /// Protocol version in use.
         /// This can only be called when there is an active connection.
+        /// Always retuna Version3
         /// </summary>
         [Browsable(false)]
         public ProtocolVersion BackendProtocolVersion
@@ -483,7 +491,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return connector.BackendProtocolVersion;
+                return ProtocolVersion.Version3;
             }
         }
 
@@ -1024,7 +1032,7 @@ namespace Npgsql
             }
             else
             {
-                return false;
+                return true;
             }
         }
 
@@ -1057,15 +1065,14 @@ namespace Npgsql
         /// <param name="connectionString">The connection string to load the builder from</param>
         private void LoadConnectionStringBuilder(string connectionString)
         {
-            settings = cache[connectionString];
-            if (settings == null)
+            NpgsqlConnectionStringBuilder newSettings = cache[connectionString];
+            if (newSettings == null)
             {
-                settings = new NpgsqlConnectionStringBuilder(connectionString);
-                cache[connectionString] = settings;
+                newSettings = new NpgsqlConnectionStringBuilder(connectionString);
+                cache[connectionString] = newSettings;
             }
 
-            RefreshConnectionString();
-            LogConnectionString();
+            LoadConnectionStringBuilder(newSettings);
         }
 
         /// <summary>
@@ -1074,7 +1081,13 @@ namespace Npgsql
         /// <param name="connectionString">The connection string to load the builder from</param>
         private void LoadConnectionStringBuilder(NpgsqlConnectionStringBuilder connectionString)
         {
-            settings = connectionString;
+            // Clone the settings, because if Integrated Security is enabled, user ID can be different
+            settings = connectionString.Clone();
+
+            // Set the UserName explicitly to freeze any Integrated Security-determined names
+            if (settings.IntegratedSecurity)
+               settings.UserName = settings.UserName;
+
             RefreshConnectionString();
             LogConnectionString();
         }

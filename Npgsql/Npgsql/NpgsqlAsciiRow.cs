@@ -36,12 +36,12 @@ namespace Npgsql
     /// <summary>
     /// Implements <see cref="RowReader"/> for version 3 of the protocol.
     /// </summary>
-    internal sealed class StringRowReaderV3 : RowReader
+    internal sealed class StringRowReader : RowReader
     {
         private readonly int _messageSize;
         private int? _nextFieldSize = null;
 
-        public StringRowReaderV3(Stream inputStream)
+        public StringRowReader(Stream inputStream)
             : base(inputStream)
         {
             _messageSize = PGUtil.ReadInt32(inputStream);
@@ -170,101 +170,6 @@ namespace Npgsql
                 CurrentStreamer = null;
                 Skip(_rowDesc.NumFields - _currentField - 1);
             }
-        }
-    }
-
-    /// <summary>
-    /// Implements <see cref="RowReader"/> for version 2 of the protocol.
-    /// </summary>
-    internal sealed class StringRowReaderV2 : RowReader
-    {
-        /// <summary>
-        /// Encapsulates the null mapping bytes sent at the start of a version 2
-        /// datarow message, and the process of identifying the nullity of the data
-        /// at a particular index
-        /// </summary>
-        private sealed class NullMap
-        {
-            private readonly byte[] _map;
-
-            public NullMap(NpgsqlRowDescription desc, Stream inputStream)
-            {
-                _map = new byte[(desc.NumFields + 7)/8];
-                PGUtil.CheckedStreamRead(inputStream, _map, 0, _map.Length);
-            }
-
-            public bool IsNull(int index)
-            {
-                // Get the byte that holds the bit index position.
-                // Then check the bit that in MSB order corresponds
-                // to the index position.
-                return (_map[index/8] & (0x80 >> (index%8))) == 0;
-            }
-        }
-
-        private NullMap _nullMap;
-
-        public StringRowReaderV2(Stream inputStream)
-            : base(inputStream)
-        {
-        }
-
-        public override void SetRowDescription(NpgsqlRowDescription rowDesc)
-        {
-            _rowDesc = rowDesc;
-            _nullMap = new NullMap(rowDesc, Stream);
-        }
-
-        protected override object ReadNext()
-        {
-            if (_nullMap.IsNull(CurrentField))
-            {
-                return DBNull.Value;
-            }
-
-            NpgsqlRowDescription.FieldData field_descr = FieldData;
-            Int32 field_value_size = PGUtil.ReadInt32(Stream) - 4;
-            byte[] buffer = new byte[field_value_size];
-            PGUtil.CheckedStreamRead(Stream, buffer, 0, field_value_size);
-
-            try
-            {
-                return
-                    NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
-                                                                       field_descr.TypeSize, field_descr.TypeModifier);
-            }
-            catch (InvalidCastException ice)
-            {
-                return ice;
-            }
-            catch (Exception ex)
-            {
-                return new InvalidCastException(ex.Message, ex);
-            }
-        }
-
-        public override bool IsNextDBNull
-        {
-            get { return _nullMap.IsNull(CurrentField + 1); }
-        }
-
-        protected override void SkipOne()
-        {
-            if (!_nullMap.IsNull(CurrentField))
-            {
-                PGUtil.EatStreamBytes(Stream, PGUtil.ReadInt32(Stream) - 4);
-            }
-        }
-
-        protected override int GetNextFieldCount()
-        {
-            return _nullMap.IsNull(CurrentField) ? -1 : PGUtil.ReadInt32(Stream) - 4;
-        }
-
-        public override void Dispose()
-        {
-            CurrentStreamer = null;
-            Skip(_rowDesc.NumFields - _currentField - 1);
         }
     }
 }
