@@ -429,9 +429,9 @@ inner join pg_catalog.pg_namespace pgn on pgc.connamespace = pgn.oid
 inner join pg_catalog.pg_class pgt on pgc.conrelid = pgt.oid
 inner join pg_catalog.pg_namespace pgtn on pgt.relnamespace = pgtn.oid
 inner join (
-select 'PRIMARY KEY' ""CONSTRAINT_TYPE"", 'p' as ""contype"" union all
-select 'FOREIGN KEY' ""CONSTRAINT_TYPE"", 'f' as ""contype"" union all
-select 'UNIQUE KEY' ""CONSTRAINT_TYPE"", 'u' as ""contype""
+select 'PRIMARY KEY' as ""CONSTRAINT_TYPE"", 'p' as ""contype"" union all
+select 'FOREIGN KEY' as ""CONSTRAINT_TYPE"", 'f' as ""contype"" union all
+select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
 ) mapping_table on mapping_table.contype = pgc.contype");
             if ("ForeignKeys".Equals(constraint_type))
                 getConstraints.Append(" and pgc.contype='f'");
@@ -473,9 +473,9 @@ inner join pg_namespace n on n.oid = c.connamespace
 inner join pg_class t on t.oid = c.conrelid and t.relkind = 'r'
 inner join pg_attribute a on t.oid = a.attrelid and a.attnum = ANY(c.conkey)
 inner join (
-select 'PRIMARY KEY' constraint_type, 'p' as contype union all
-select 'FOREIGN KEY' constraint_type, 'f' as contype union all
-select 'UNIQUE KEY' constraint_type, 'u' as contype
+select 'PRIMARY KEY' as constraint_type, 'p' as contype union all
+select 'FOREIGN KEY' as constraint_type, 'f' as contype union all
+select 'UNIQUE KEY' as constraint_type, 'u' as contype
 ) mapping_table on mapping_table.contype = c.contype
 and n.nspname not in ('pg_catalog', 'pg_toast')");
 
