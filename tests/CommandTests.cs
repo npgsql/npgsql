@@ -3503,6 +3503,31 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug188BufferNpgsqlCopySerializer()
+        {
+            var cmd = new NpgsqlCommand("COPY data (field_int4, field_text) FROM STDIN", Conn);
+            var npgsqlCopySerializer = new NpgsqlCopySerializer(Conn);
+            var npgsqlCopyIn = new NpgsqlCopyIn(cmd, Conn, npgsqlCopySerializer.ToStream);
+
+            string str = "Very long string".PadRight(NpgsqlCopySerializer.DEFAULT_BUFFER_SIZE, 'z');
+
+            npgsqlCopyIn.Start();
+            npgsqlCopySerializer.AddInt32(12345678);
+            npgsqlCopySerializer.AddString(str);
+            npgsqlCopySerializer.EndRow();
+            npgsqlCopySerializer.Flush();
+            npgsqlCopyIn.End();
+
+
+
+            NpgsqlDataReader dr = new NpgsqlCommand("select field_int4, field_text from data", Conn).ExecuteReader();
+            dr.Read();
+
+            Assert.AreEqual(12345678, dr[0]);
+            Assert.AreEqual(str, dr[1]);
+        }
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:

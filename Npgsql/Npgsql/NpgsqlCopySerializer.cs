@@ -442,7 +442,10 @@ namespace Npgsql
                     FlushFields();
                     if (len >= SpaceInBuffer)
                     {
-                        BufferSize = len;
+                        int increaseBufferSize = len - SpaceInBuffer;
+
+                        // Increase the size of the buffer to allow len size
+                        BufferSize += increaseBufferSize;
                     }
                 }
             }
