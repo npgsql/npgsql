@@ -30,7 +30,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -97,7 +96,7 @@ namespace NpgsqlTypes
 			}
 
 
-			MemoryStream ms = new MemoryStream();
+			var ms = new List<byte>(byteAStringLength);
 
 			while (byteAPosition < byteAStringLength)
 			{
@@ -128,7 +127,7 @@ namespace NpgsqlTypes
 					byteAPosition++;
 				}
 
-				ms.WriteByte((Byte)octalValue);
+				ms.Add((Byte)octalValue);
 			}
 			return ms.ToArray();
 

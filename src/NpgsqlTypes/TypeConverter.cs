@@ -28,7 +28,11 @@ namespace NpgsqlTypes
 			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
 				canConvert = NpgsqlTypesHelper.TryGetNativeTypeInfo(type.GetGenericArguments()[0], out info);
 			else
+			{
+				if (type == typeof(string) && value != null)
+					return "'" + (value as string).Replace("'", "''") + "'";
 				canConvert = NpgsqlTypesHelper.TryGetNativeTypeInfo(type, out info);
+			}
 			if (!canConvert)
 				throw new NpgsqlException("Can't convert " + type.FullName + " to native value");
 			return info.ConvertToBackend(value, false);
