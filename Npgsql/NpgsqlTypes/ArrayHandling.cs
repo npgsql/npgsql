@@ -282,15 +282,10 @@ namespace NpgsqlTypes
 
         private bool WriteEnumeration(NpgsqlNativeTypeInfo TypeInfo, IEnumerable col, MemoryStream array, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options)
         {
-            // As this prcedure handles both prepared and plain query representations, in order to not keep if's inside the loops
-            // we simply set a placeholder here for both openElement ( '{' or '[' ) and closeElement ( '}', or ']' )
-            byte openElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyLeft : ASCIIBytes.BraceSquareLeft);
-            byte closeElement = (byte)(forExtendedQuery ? ASCIIBytes.BraceCurlyRight : ASCIIBytes.BraceSquareRight);
-
             bool writtenSomething = false;
             bool firstItem = true;
 
-            array.WriteByte(openElement);
+            array.WriteByte((byte)ASCIIBytes.BraceCurlyLeft);
 
             //write each item with a comma between them.
             foreach (object item in col)
@@ -309,7 +304,7 @@ namespace NpgsqlTypes
 
             if (writtenSomething)
             {
-                array.WriteByte(closeElement);
+                array.WriteByte((byte)ASCIIBytes.BraceCurlyRight);
 
             }
 
