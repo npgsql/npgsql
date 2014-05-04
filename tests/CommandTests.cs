@@ -28,6 +28,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using Npgsql;
 using NUnit.Framework;
 using System.Data;
@@ -3698,6 +3699,20 @@ namespace NpgsqlTests
             using (var command = new NpgsqlCommand("select -- lc;lc /* lc;lc */\r\n1", Conn))
             {
                 Assert.AreEqual(1, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestIEnumerableAsArray()
+        {
+            using (var command = new NpgsqlCommand("SELECT :array", Conn))
+            {
+                var expected = new[] { 1, 2, 3, 4 };
+                command.Parameters.AddWithValue("array", expected.Select(x => x));
+                var res = command.ExecuteScalar() as int[];
+
+                Assert.NotNull(res);
+                CollectionAssert.AreEqual(expected, res);
             }
         }
     }
