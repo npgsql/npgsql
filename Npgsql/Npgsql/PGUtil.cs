@@ -79,7 +79,9 @@ namespace Npgsql
         //this case purely because we don't care what gets put into it.
         private static readonly byte[] THRASH_CAN = new byte[THRASH_CAN_SIZE];
 
+        #pragma warning disable 414
         private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
+        #pragma warning restore 414
 
         ///<summary>
         /// This method takes a ProtocolVersion and returns an integer

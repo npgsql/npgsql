@@ -85,8 +85,10 @@ namespace Npgsql
 
         private class DurableResourceManager : ISinglePhaseNotification
         {
+            #pragma warning disable 414
             private CommittableTransaction _tx;
             private NpgsqlResourceManager _rm;
+            #pragma warning restore 414
             private readonly INpgsqlTransactionCallbacks _callbacks;
             private string _txName;
 

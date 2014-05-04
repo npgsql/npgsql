@@ -278,12 +278,14 @@ namespace Npgsql
                         case BackEndMessageCode.ParameterDescription:
 
                             // Do nothing,for instance,  just read...
+                            #pragma warning disable 219
                             int lenght = PGUtil.ReadInt32(stream);
                             int nb_param = PGUtil.ReadInt16(stream);
                             for (int i = 0; i < nb_param; i++)
                             {
                                 int typeoid = PGUtil.ReadInt32(stream);
                             }
+                            #pragma warning restore 219
 
                             break;
 
