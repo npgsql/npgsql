@@ -3528,6 +3528,83 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug219NpgsqlCopyInConcurrentUsage()
+        {
+
+            try
+            {
+                // Create temporary test tables
+
+                ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS Bug219_table1 (
+                                            id integer,
+                                            name character varying(100)
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+                ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS Bug219_table2 (
+                                            id integer,
+                                            null1 integer,
+                                            name character varying(100),
+                                            null2 integer,
+                                            description character varying(1000),
+                                            null3 integer
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+
+
+
+                using (var connection1 = new NpgsqlConnection(ConnectionString))
+                using (var connection2 = new NpgsqlConnection(ConnectionString))
+                {
+
+                    connection1.Open();
+                    connection2.Open();
+
+                    var copy1 = new NpgsqlCopyIn("COPY Bug219_table1 FROM STDIN;", connection1);
+                    var copy2 = new NpgsqlCopyIn("COPY Bug219_table2 FROM STDIN;", connection2);
+
+                    copy1.Start();
+                    copy2.Start();
+
+                    NpgsqlCopySerializer cs1 = new NpgsqlCopySerializer(connection1);
+                    //NpgsqlCopySerializer cs2 = new NpgsqlCopySerializer(connection2);
+
+                    for (int index = 0; index < 10; index++)
+                    {
+                        cs1.AddInt32(index);
+                        cs1.AddString(string.Format("Index {0} ", index));
+                        cs1.EndRow();
+
+                        /*cs2.AddInt32(index);
+                        cs2.AddNull();
+                        cs2.AddString(string.Format("Index {0} ", index));
+                        cs2.AddNull();
+                        cs2.AddString("jjjjj");
+                        cs2.AddNull();
+                        cs2.EndRow();*/
+
+                    }
+                    cs1.Close(); //Exception
+                    //cs2.Close();
+
+                    copy1.End();
+                    copy2.End();
+
+                }
+            }
+            finally
+            {
+                ExecuteNonQuery(@"DROP TABLE Bug219_table1");
+                ExecuteNonQuery(@"DROP TABLE Bug219_table2");
+            }
+        }
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:
