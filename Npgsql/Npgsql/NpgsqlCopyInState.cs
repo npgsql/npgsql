@@ -35,11 +35,10 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlCopyInState : NpgsqlState
     {
-        public static readonly NpgsqlCopyInState Instance = new NpgsqlCopyInState();
 
         private NpgsqlCopyFormat _copyFormat = null;
 
-        private NpgsqlCopyInState()
+        public NpgsqlCopyInState()
             : base()
         {
         }
