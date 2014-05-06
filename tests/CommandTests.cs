@@ -2409,6 +2409,20 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void ParameterExplicitType2DbTypeObjectTypeFirst()
+        {
+            using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_date=:param", Conn))
+            {
+                var sqlParam = command.CreateParameter();
+                sqlParam.ParameterName = "param";
+                sqlParam.DbType = DbType.Object;
+                sqlParam.Value = "2008-1-1";
+                command.Parameters.Add(sqlParam);
+                command.ExecuteScalar();
+            }
+        }
+
+        [Test]
         public void ParameterExplicitType2DbTypeObjectWithPrepare()
         {
             using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_date=:param", Conn))
@@ -2417,6 +2431,21 @@ namespace NpgsqlTests
                 sqlParam.ParameterName = "param";
                 sqlParam.Value = "2008-1-1";
                 sqlParam.DbType = DbType.Object;
+                command.Parameters.Add(sqlParam);
+                command.Prepare();
+                command.ExecuteScalar();
+            }
+        }
+
+        [Test]
+        public void ParameterExplicitType2DbTypeObjectWithPrepareTypeFirst()
+        {
+            using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_date=:param", Conn))
+            {
+                var sqlParam = command.CreateParameter();
+                sqlParam.ParameterName = "param";
+                sqlParam.DbType = DbType.Object;
+                sqlParam.Value = "2008-1-1";
                 command.Parameters.Add(sqlParam);
                 command.Prepare();
                 command.ExecuteScalar();
@@ -2441,6 +2470,34 @@ namespace NpgsqlTests
                 command.Parameters.Add(sqlParam);
 
                 command.Prepare();
+                command.ExecuteScalar();
+            }
+        }
+
+        [Test]
+        public void ParameterExplicitType2DbTypeObjectInt()
+        {
+            using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_int4=:param", Conn))
+            {
+                var sqlParam = command.CreateParameter();
+                sqlParam.ParameterName = "param";
+                sqlParam.DbType = DbType.Object;
+                sqlParam.Value = 1;
+                command.Parameters.Add(sqlParam);
+                command.ExecuteScalar();
+            }
+        }
+
+        [Test]
+        public void ParameterExplicitType2DbTypeObjectIntTypeFirst()
+        {
+            using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_int4=:param", Conn))
+            {
+                var sqlParam = command.CreateParameter();
+                sqlParam.ParameterName = "param";
+                sqlParam.DbType = DbType.Object;
+                sqlParam.Value = 1;
+                command.Parameters.Add(sqlParam);
                 command.ExecuteScalar();
             }
         }
