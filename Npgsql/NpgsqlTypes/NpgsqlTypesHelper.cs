@@ -288,7 +288,7 @@ namespace NpgsqlTypes
             // text but which are not really text.  Those types cause problems if they are encoded as binary.
             // The mapping NpgsqlDbType.Text => text_nonbinary is removed when text is mapped.
             // DBType.Object will be re-mapped to this type at the end.
-            nativeTypeMapping.AddType("text_nonbinary", NpgsqlDbType.Text, DbType.Object, true);
+            nativeTypeMapping.AddType("unknown", NpgsqlDbType.Text, DbType.Object, true);
 
             nativeTypeMapping.AddType("text", NpgsqlDbType.Text, DbType.String, false,
                                             BasicNativeToBackendTypeConverter.StringToTextText,
@@ -447,7 +447,7 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("interval", typeof (NpgsqlInterval));
             nativeTypeMapping.AddTypeAlias("interval", typeof (TimeSpan));
 
-            nativeTypeMapping.AddDbTypeAlias("text_nonbinary", DbType.Object);
+            nativeTypeMapping.AddDbTypeAlias("unknown", DbType.Object);
 
             return nativeTypeMapping;
         }
