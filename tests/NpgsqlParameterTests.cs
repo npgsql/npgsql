@@ -46,6 +46,26 @@ namespace NpgsqlTests
     [TestFixture]
     public class NpgsqlParameterTest
     {
+        /// <summary>
+        /// Test which validates that Clear() indeed cleans up the parameters in a command so they can be added to other commands safely.
+        /// </summary>
+        [Test]
+        public void NpgsqlParameterCollectionClearTest()
+        {
+            var p = new NpgsqlParameter();
+            var c1 = new NpgsqlCommand();
+            var c2 = new NpgsqlCommand();
+            c1.Parameters.Add(p);
+            Assert.AreEqual(1, c1.Parameters.Count);
+            Assert.AreEqual(0, c2.Parameters.Count);
+            c1.Parameters.Clear();
+            Assert.AreEqual(0, c1.Parameters.Count);
+            c2.Parameters.Add(p);
+            Assert.AreEqual(0, c1.Parameters.Count);
+            Assert.AreEqual(1, c2.Parameters.Count);
+        }
+
+
         [Test]
         public void Constructor1()
         {
