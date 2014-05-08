@@ -347,7 +347,7 @@ namespace Npgsql
         public override void RemoveAt(string parameterName)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", parameterName);
-			RemoveAt(this.IndexOf(parameterName));
+            RemoveAt(this.IndexOf(parameterName));
         }
 
         /// <summary>
@@ -486,7 +486,7 @@ namespace Npgsql
             {
                 throw new IndexOutOfRangeException();
             }
-			Remove(this.InternalList[index]);
+            Remove(this.InternalList[index]);
         }
 
         /// <summary>
@@ -525,7 +525,7 @@ namespace Npgsql
             {
                 throw new InvalidOperationException("No parameter with the specified name exists in the collection");
             }
-			RemoveAt(index);
+            RemoveAt(index);
         }
 
 
@@ -537,7 +537,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", oValue);
             CheckType(oValue);
-			Remove(oValue as NpgsqlParameter);
+            Remove(oValue as NpgsqlParameter);
         }
 
 
@@ -588,11 +588,11 @@ namespace Npgsql
         public override void Clear()
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Clear");
-			foreach(NpgsqlParameter toRemove in this.InternalList)
-			{
-				// clean up the parameter so it can be added to another command if required.
-				toRemove.Collection = null;
-			}
+            foreach(NpgsqlParameter toRemove in this.InternalList)
+            {
+                // clean up the parameter so it can be added to another command if required.
+                toRemove.Collection = null;
+            }
             this.InternalList.Clear();
             this.InvalidateHashLookups();
         }
@@ -837,14 +837,14 @@ namespace Npgsql
         /// <returns>True if the parameter was found and removed, otherwise false.</returns>
         public bool Remove(NpgsqlParameter item)
         {
-			if(item == null)
-			{
-				return false;
-			}
-			if(item.Collection != this)
-			{
-				throw new InvalidOperationException("The item does not belong to this collection");
-			}
+            if(item == null)
+            {
+                return false;
+            }
+            if(item.Collection != this)
+            {
+                throw new InvalidOperationException("The item does not belong to this collection");
+            }
             if(InternalList.Remove(item))
             {
                 item.Collection = null;
