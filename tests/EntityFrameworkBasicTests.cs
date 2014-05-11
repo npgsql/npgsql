@@ -74,7 +74,7 @@ namespace NpgsqlTests
             public string Title { get; set; }
             public string Content { get; set; }
             public byte Rating { get; set; }
-
+            public DateTime CreationDate { get; set; }
             public int BlogId { get; set; }
             public virtual Blog Blog { get; set; }
         }
@@ -148,6 +148,44 @@ namespace NpgsqlTests
             {
                 var posts = from p in context.Posts
                             where p.Rating < 3
+                            select p;
+                Assert.AreEqual(3, posts.Count());
+                foreach (var post in posts)
+                {
+                    Assert.Less(post.Rating, 3);
+                }
+            }
+        }
+        
+        [Test]
+        public void SelectWithWhere_Ef_TruncateTime()
+        {
+            DateTime createdOnDate = new DateTime(2014, 05, 08);
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                var blog = new Blog()
+                {
+                    Name = "Some blog name"
+                };
+                blog.Posts = new List<Post>();
+
+                for (int i = 0; i < 5; i++)
+                    blog.Posts.Add(new Post()
+                    {
+                        Content = "Some post content " + i,
+                        Rating = (byte)i,
+                        Title = "Some post Title " + i,
+                        CreationDate = createdOnDate.AddHours(i)
+                    });
+                context.Blogs.Add(blog);
+                context.SaveChanges();
+            }
+
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                var posts = from p in context.Posts
+                            let datePosted = DbFunctions.TruncateTime(p.CreationDate)
+                            where p.Rating < 3 && datePosted == createdOnDate
                             select p;
                 Assert.AreEqual(3, posts.Count());
                 foreach (var post in posts)

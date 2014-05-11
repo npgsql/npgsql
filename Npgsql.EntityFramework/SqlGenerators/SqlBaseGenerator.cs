@@ -1140,7 +1140,9 @@ namespace Npgsql.SqlGenerators
 
                     case "NewGuid":
                         return new FunctionExpression("uuid_generate_v4");
-
+                    case "TruncateTime":
+                        return new TruncateTimeExpression("day", args[0].Accept(this));
+                        
                     default:
                         throw new NotSupportedException("NotSupported " + function.Name);
                 }
