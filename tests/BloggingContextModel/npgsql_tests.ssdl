@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="dbo" Alias="Self" Provider="Npgsql" ProviderManifestToken="9.3.1" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+  <EntityContainer Name="npgsql_testsStoreContainer">
+    <EntitySet Name="Posts" EntityType="dbo.Posts" p3:Type="Tables" Schema="dbo" xmlns:p3="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" />
+    <EntitySet Name="Blogs" EntityType="dbo.Blogs" p3:Type="Tables" Schema="dbo" xmlns:p3="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" />
+    <AssociationSet Name="FK_Posts_Blogs_BlogId" Association="dbo.FK_Posts_Blogs_BlogId">
+      <End Role="Blogs" EntitySet="Blogs" />
+      <End Role="Posts" EntitySet="Posts" />
+    </AssociationSet>
+  </EntityContainer>
+  <Function Name="pass_thru_int" StoreFunctionName="pass_thru_int" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" BuiltIn="false" NiladicFunction="false" Aggregate="false">
+    <Parameter Name="p" Mode="In" Type="int4" />
+  </Function>
+  <Function Name="pass_thru_str" StoreFunctionName="pass_thru_str" IsComposable="false" ParameterTypeSemantics="AllowImplicitConversion" Schema="public" BuiltIn="false" NiladicFunction="false" Aggregate="false">
+    <Parameter Name="p" Mode="In" Type="varchar" />
+  </Function>
+  <EntityType Name="Posts">
+    <Key>
+      <PropertyRef Name="PostId" />
+    </Key>
+    <Property Name="PostId" Type="int4" Nullable="false" StoreGeneratedPattern="Identity" p3:StoreGeneratedPattern="Identity" xmlns:p3="http://schemas.microsoft.com/ado/2009/02/edm/annotation" />
+    <Property Name="Title" Type="text" />
+    <Property Name="Content" Type="text" />
+    <Property Name="Rating" Type="int2" Nullable="false" />
+    <Property Name="BlogId" Type="int4" Nullable="false" />
+  </EntityType>
+  <EntityType Name="Blogs">
+    <Key>
+      <PropertyRef Name="BlogId" />
+    </Key>
+    <Property Name="BlogId" Type="int4" Nullable="false" StoreGeneratedPattern="Identity" p3:StoreGeneratedPattern="Identity" xmlns:p3="http://schemas.microsoft.com/ado/2009/02/edm/annotation" />
+    <Property Name="Name" Type="text" />
+    <Property Name="IntComputedValue" Type="int4" Nullable="false" />
+  </EntityType>
+  <Association Name="FK_Posts_Blogs_BlogId">
+    <End Role="Blogs" Type="dbo.Blogs" Multiplicity="1" />
+    <End Role="Posts" Type="dbo.Posts" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Blogs">
+        <PropertyRef Name="BlogId" />
+      </Principal>
+      <Dependent Role="Posts">
+        <PropertyRef Name="BlogId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+</Schema>

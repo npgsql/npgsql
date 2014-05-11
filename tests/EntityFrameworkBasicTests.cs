@@ -8,6 +8,8 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity.Core.Objects;
+using System.Data.Entity.Core.EntityClient;
 
 namespace NpgsqlTests
 {
@@ -39,6 +41,24 @@ namespace NpgsqlTests
 
             }
             
+
+            // Create functions for ExecuteFunction test.
+            {
+                ExecuteNonQuery(""
+                    + "CREATE OR REPLACE FUNCTION pass_thru_int(p integer) "
+                    + "  RETURNS integer AS "
+                    + "'select $1;' "
+                    + "  LANGUAGE sql STABLE "
+                    + "  COST 100; "
+                    );
+                ExecuteNonQuery(""
+                    + "CREATE OR REPLACE FUNCTION pass_thru_str(p character varying) "
+                    + "  RETURNS character varying AS "
+                    + "'select $1;' "
+                    + "  LANGUAGE sql STABLE "
+                    + "  COST 100; "
+                    );
+            }
 
         }
 
@@ -468,6 +488,57 @@ namespace NpgsqlTests
                 Assert.AreEqual(dateDiffs.j, null);
                 Assert.AreEqual(dateDiffs.k, 183);
                 Assert.AreEqual(dateDiffs.l, null);
+            }
+        }
+
+        [Test]
+        public void GenerateObjectContext()
+        {
+            string csdl = "BloggingContextModel\\npgsql_tests.csdl";
+            string ssdl = "BloggingContextModel\\npgsql_tests.ssdl";
+            string msl = "BloggingContextModel\\npgsql_tests.msl";
+
+            // http://msdn.microsoft.com/en-US/library/bb738533(v=vs.110).aspx
+
+            EntityConnectionStringBuilder entityBuilder = new EntityConnectionStringBuilder();
+
+            entityBuilder.Provider = "Npgsql";
+            entityBuilder.ProviderConnectionString = Conn.ConnectionString;
+            entityBuilder.Metadata = csdl + "|" + ssdl + "|" + msl;
+
+            using (var context = new ObjectContext(new EntityConnection(entityBuilder.ToString()), true))
+            {
+
+            }
+        }
+
+        [Test]
+        public void ExecuteFunction()
+        {
+            string csdl = "BloggingContextModel\\npgsql_tests.csdl";
+            string ssdl = "BloggingContextModel\\npgsql_tests.ssdl";
+            string msl = "BloggingContextModel\\npgsql_tests.msl";
+
+            // http://msdn.microsoft.com/en-US/library/bb738533(v=vs.110).aspx
+
+            EntityConnectionStringBuilder entityBuilder = new EntityConnectionStringBuilder();
+
+            entityBuilder.Provider = "Npgsql";
+            entityBuilder.ProviderConnectionString = Conn.ConnectionString;
+            entityBuilder.Metadata = csdl + "|" + ssdl + "|" + msl;
+
+            using (var context = new ObjectContext(new EntityConnection(entityBuilder.ToString()), true))
+            {
+                {
+                    var res_int = context.ExecuteFunction<int>("npgsql_testsEntities.pass_thru_int", new ObjectParameter("p", 12345678)).ToArray();
+                    Assert.AreEqual(res_int.Length, 1);
+                    Assert.AreEqual(res_int[0], 12345678);
+                }
+                {
+                    var res_str = context.ExecuteFunction<string>("npgsql_testsEntities.pass_thru_str", new ObjectParameter("p", "Hello world!")).ToArray();
+                    Assert.AreEqual(res_str.Length, 1);
+                    Assert.AreEqual(res_str[0], "Hello world!");
+                }
             }
         }
 

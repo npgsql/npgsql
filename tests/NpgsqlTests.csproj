@@ -194,6 +194,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="BloggingContextModel\npgsql_tests.csdl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="BloggingContextModel\npgsql_tests.msl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="BloggingContextModel\npgsql_tests.ssdl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
     <None Include="xmlModel\XmlTest.csdl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
