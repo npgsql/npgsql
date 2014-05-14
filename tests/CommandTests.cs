@@ -3535,7 +3535,7 @@ namespace NpgsqlTests
             {
                 // Create temporary test tables
 
-                ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS Bug219_table1 (
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table1 (
                                             id integer,
                                             name character varying(100)
                                             )
@@ -3543,7 +3543,7 @@ namespace NpgsqlTests
                                             OIDS=FALSE
                                             );");
 
-                ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS Bug219_table2 (
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table2 (
                                             id integer,
                                             null1 integer,
                                             name character varying(100),
@@ -3554,7 +3554,6 @@ namespace NpgsqlTests
                                             WITH (
                                             OIDS=FALSE
                                             );");
-
 
 
 
@@ -3597,10 +3596,14 @@ namespace NpgsqlTests
 
                 }
             }
+            catch (Exception)
+            {
+                throw;
+            }
             finally
             {
-                ExecuteNonQuery(@"DROP TABLE Bug219_table1");
-                ExecuteNonQuery(@"DROP TABLE Bug219_table2");
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table1");
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table2");
             }
         }
 
