@@ -1,0 +1,510 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.Data.Core</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.Data.Core.DataClientObjectAttribute">
+      <summary>Specifies that instances of a DDEX support entity should not be directly returned to clients. Instead, they should be returned through a client wrapper object that interacts with the underlying provider object.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataClientObjectAttribute.#ctor(System.String)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataClientObjectAttribute" /> class, specifying the class ID.</summary>
+      <param name="classId">A string that contains a GUID in one of the formats that is recognized by the <see cref="T:System.Guid" /> constructor that takes a string input.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.DataClientObjectAttribute.ClassId">
+      <summary>Gets the class ID that identifies the client object class type.</summary>
+      <returns>The class ID that identifies the client object class type.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.DataDefaultObjectAttribute">
+      <summary>Specifies that a DDEX support entity has a default implementation that should be returned when a provider does not supply an implementation.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataDefaultObjectAttribute.#ctor(System.String)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataDefaultObjectAttribute" /> class, using the specified class ID.</summary>
+      <param name="classId">A string that contains a GUID in one of the formats recognized by the <see cref="T:System.Guid" /> constructor that takes a string input.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.DataDefaultObjectAttribute.ClassId">
+      <summary>Gets the class ID that identifies the default object class type.</summary>
+      <returns>The class ID that identifies the default object class type.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.DataProviderException">
+      <summary>Represents the exception that occurs when there is an unexpected problem with a DDEX provider, such as missing or invalid registration or support entities.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataProviderException.#ctor">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException" /> class.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataProviderException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException" /> class with serialized data.</summary>
+      <param name="info">The object that holds the serialized object data.</param>
+      <param name="context">The contextual information about the source or destination.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataProviderException.#ctor(System.String)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException" /> class, specifying an error message.</summary>
+      <param name="message">The message that describes the error.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.DataProviderException.#ctor(System.String,System.Exception)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException" /> class, specifying an error message and a reference to the inner exception that is the cause of this exception.</summary>
+      <param name="message">The message that describes the error.</param>
+      <param name="innerException">The exception that is the cause of the current exception. If the <paramref name="innerException" /> parameter is not null, the current exception is raised in a catch block that handles the inner exception.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataClientObject`1">
+      <summary>Represents a client wrapper object that interacts with an underlying provider object.</summary>
+      <typeparam name="T">The type of the parameter.</typeparam>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataClientObject`1.Initialize(`0)">
+      <summary>Initializes the client object with the underlying provider object implementation.</summary>
+      <param name="providerObj">The underlying provider object implementation.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="providerObj" /> parameter is null.</exception>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataDefaultObject">
+      <summary>Represents the default implementation of a DDEX support entity.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataHostService">
+      <summary>Provides the DDEX Host service.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.BeginInvokeOnUIThread(System.Delegate,System.Object[])">
+      <summary>Asynchronously executes a specified method on the main (UI) thread running in the Visual Studio process, with the specified list of arguments.</summary>
+      <returns>An IAsyncResult instance that represents the result of this operation.</returns>
+      <param name="method">A delegate to a method that takes parameters of the same number and type that are contained in the <paramref name="args" /> parameter.</param>
+      <param name="args">An array of objects to pass as arguments to the specified method. This parameter can be null if the method takes no arguments.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.GetService``2">
+      <summary>Gets a global Visual Studio service of the specified type that implements the specified interface.</summary>
+      <returns>The service instance.</returns>
+      <typeparam name="TService">The service.</typeparam>
+      <typeparam name="TInterface">The interface.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.ServiceNotFoundException">The service was not found.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.GetService``1">
+      <summary>Gets a global Visual Studio service of the specified type.</summary>
+      <returns>The service instance.</returns>
+      <typeparam name="T">The service.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.ServiceNotFoundException">The service was not found.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.GetService``1(System.Guid)">
+      <summary>Gets a global Visual Studio service that is registered with the specified class ID that implements the specified interface.</summary>
+      <returns>The service instance.</returns>
+      <param name="serviceGuid">The class ID of the service to retrieve.</param>
+      <typeparam name="T">The interface.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.ServiceNotFoundException">The service was not found.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.InvokeOnUIThread(System.Delegate,System.Object[])">
+      <summary>Synchronously executes a specified method on the main thread running in the Visual Studio process, with the specified list of arguments.</summary>
+      <returns>An <see cref="T:System.Object" /> that contains the return value from the delegate being invoked, or null if the delegate has no return value.</returns>
+      <param name="method">A delegate to a method that takes parameters of the same number and type that are contained in the <paramref name="args" /> parameter.</param>
+      <param name="args">An array of objects to pass as arguments to the specified method. This parameter can be null if the method takes no arguments.</param>
+      <exception cref="any">The specified method threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.TryGetService``1">
+      <summary>Tries to get a global Visual Studio service of the specified type.</summary>
+      <returns>The service instance, if found; otherwise, null.</returns>
+      <typeparam name="T">The type.</typeparam>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.TryGetService``2">
+      <summary>Tries to get a global Visual Studio service of the specified type that implements the specified interface.</summary>
+      <returns>The service instance, if found; otherwise, null.</returns>
+      <typeparam name="TService">The service.</typeparam>
+      <typeparam name="TInterface">The type.</typeparam>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataHostService.TryGetService``1(System.Guid)">
+      <summary>Tries to get a global Visual Studio service that is registered with the specified class ID that implements the specified interface.</summary>
+      <returns>The service instance, if found; otherwise, null.</returns>
+      <param name="serviceGuid">The class ID of the service to retrieve.</param>
+      <typeparam name="T">The interface.</typeparam>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataHostService.UIThread">
+      <summary>Gets the main (UI) thread running in the Visual Studio process.</summary>
+      <returns>The main (UI) thread running in the Visual Studio process.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataProvider">
+      <summary>Provides a DDEX provider.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject``1">
+      <summary>Creates an instance of the specified DDEX support entity that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider.</returns>
+      <typeparam name="TObject">The object.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject``1(System.Guid)">
+      <summary>Creates an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</returns>
+      <param name="source">An identifier of a DDEX data source, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <typeparam name="TObject">The object.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject(System.Guid,System.Type)">
+      <summary>Creates an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</returns>
+      <param name="source">An identifier of a DDEX data source, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject``1(System.Guid,System.Type,``0)">
+      <summary>Creates an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider, sited with the specified site object.</returns>
+      <param name="source">An identifier of a DDEX data source, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <param name="site">An instance of an object that should site the new DDEX support entity.</param>
+      <typeparam name="TSite">The site.</typeparam>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject``2(System.Guid,``1)">
+      <summary>Creates an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object.</returns>
+      <param name="source">An identifier of a DDEX data source, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="site">An instance of an object that should site the new DDEX support entity.</param>
+      <typeparam name="TObject">The object.</typeparam>
+      <typeparam name="TSite">The site.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.CreateObject(System.Type)">
+      <summary>Creates an instance of the specified DDEX support entity that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider.</returns>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">The DDEX provider does not support the support entity, or instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.DeriveSource(System.String)">
+      <summary>Derives a DDEX data source that is supported by the DDEX provider, given information about a target data source.</summary>
+      <returns>The derived DDEX data source that is supported by the DDEX provider, or <see cref="F:System.Guid.Empty" /> if no data source can be derived.</returns>
+      <param name="connectionString">A data connection string that contains information about a target data source.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.Description">
+      <summary>Gets a description of the DDEX provider.</summary>
+      <returns>A description of the DDEX provider.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.DisplayName">
+      <summary>Gets the display name of the DDEX provider.</summary>
+      <returns>The display name of the DDEX provider.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetAssembly(System.Guid,System.String)">
+      <summary>Resolves a provider-specific assembly string to its corresponding <see cref="T:System.Reflection.Assembly" /> representation, for a specific DDEX data source.</summary>
+      <returns>An <see cref="T:System.Reflection.Assembly" /> object that represents the assembly that is resolved from the specified assembly string for the specified DDEX data source, if found; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="assemblyString">A provider-specific assembly string.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="assemblyString" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.GetAssembly(System.Guid,System.String)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetAssembly(System.String)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetAssembly(System.String)">
+      <summary>Resolves a provider-specific assembly string to its corresponding <see cref="T:System.Reflection.Assembly" /> representation.</summary>
+      <returns>An <see cref="T:System.Reflection.Assembly" /> object that represents the assembly that is resolved from the specified assembly string, if found; otherwise, null.</returns>
+      <param name="assemblyString">A provider-specific assembly string.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="assemblyString" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetAssembly(System.String)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetMainAssembly">
+      <summary>Gets the provider’s main assembly.</summary>
+      <returns>An <see cref="T:System.Reflection.Assembly" /> object that represents the provider’s main assembly.</returns>
+      <exception cref="&lt;ANY&gt;">The DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetAssembly(System.String)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetProperty(System.String)">
+      <summary>Gets a registered property of the DDEX provider.</summary>
+      <returns>The value of the property, if exists; otherwise, null.</returns>
+      <param name="name">The name of the property to retrieve.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="name" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetString(System.String)">
+      <summary>Gets a localized string from the DDEX provider.</summary>
+      <returns>The localized value of the string resource, if the resource ID is valid and identifies an existing resource; otherwise, null.</returns>
+      <param name="resourceId">The identifier of the string resource to retrieve.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="resourceId" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetType(System.Guid,System.String)">
+      <summary>Resolves a provider-specific type name to its corresponding <see cref="T:System.Type" /> representation, for a specific DDEX data source.</summary>
+      <returns>A <see cref="T:System.Type" /> object that represents the type that is resolved from the specified type name for the specified DDEX data source, if it is found; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="typeName">A provider-specific type name.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="typeName" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.GetType(System.Guid,System.String)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetType(System.String)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetType(System.String)">
+      <summary>Resolves a provider-specific type name to its corresponding <see cref="T:System.Type" /> representation.</summary>
+      <returns>A <see cref="T:System.Type" /> object that represents the type that is resolved from the specified type name, if it is found; otherwise, null.</returns>
+      <param name="typeName">A provider-specific type name.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="typeName" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetType(System.String)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetUnsupportedReason(System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Gets a localized string that explains why an operation is not supported.</summary>
+      <returns>A localized string that explains why the specified operation is not supported, if the operation is in fact not supported; otherwise, null.</returns>
+      <param name="command">A command that identifies the operation.</param>
+      <param name="context">An object that represents the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.GetUnsupportedReason(System.Guid,System.ComponentModel.Design.CommandID,System.Object)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.GetUnsupportedReason(System.Guid,System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Gets a localized string that explains why an operation is not supported for the specified DDEX data source.</summary>
+      <returns>A localized string that explains why the specified operation is not supported, if the operation is in fact not supported; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="command">A command that identifies the operation.</param>
+      <param name="context">An object that represents the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.GetUnsupportedReason(System.Guid,System.ComponentModel.Design.CommandID,System.Object)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.Guid">
+      <summary>Gets the unique identifier of the DDEX provider.</summary>
+      <returns>The unique identifier of the DDEX provider.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.IsOperationSupported(System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Determines whether a specific operation is supported by the provider in the current environment.</summary>
+      <returns>true if the operation is supported by the provider in the current environment; otherwise, false.</returns>
+      <param name="command">A command that identifies the operation.</param>
+      <param name="context">An object that represents the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.IsOperationSupported(System.Guid,System.ComponentModel.Design.CommandID,System.Object)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.IsOperationSupported(System.Guid,System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Determines whether a specific operation is supported by the provider in the current environment, for the specified DDEX data source.</summary>
+      <returns>true if the operation is supported by the provider in the current environment; otherwise, false.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="command">A command that identifies the operation.</param>
+      <param name="context">An object that represents the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="&lt;ANY&gt;">The DDEX provider's <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.IsOperationSupported(System.Guid,System.ComponentModel.Design.CommandID,System.Object)" /> implementation threw an exception.</exception>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.Name">
+      <summary>Gets the programmatic name of the DDEX provider.</summary>
+      <returns>The programmatic name of the DDEX provider.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.ShortDisplayName">
+      <summary>Gets a short display name of the DDEX provider.</summary>
+      <returns>A short display name of the DDEX provider.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.SupportsObject(System.Guid,System.Type)">
+      <summary>Determines whether a DDEX provider supports the specified type of DDEX support entity for the specified DDEX data source.</summary>
+      <returns>true if the DDEX provider supports the specified type of DDEX support entity for the specified DDEX data source; otherwise, false.</returns>
+      <param name="source">A DDEX data source identifier, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.SupportsObject(System.Type)">
+      <summary>Determines whether a DDEX provider supports the specified type of DDEX support entity.</summary>
+      <returns>true if the DDEX provider supports the specified type of DDEX support entity; otherwise, false.</returns>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProvider.Technology">
+      <summary>Gets the unique identifier of the underlying technology employed and targeted by the DDEX provider.</summary>
+      <returns>The unique identifier of the underlying technology employed and targeted by the DDEX provider.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject``1">
+      <summary>Tries to create an instance of the specified DDEX support entity that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider, if the DDEX provider supports it; otherwise, the default instance of type <see cref="T:System.Object" />.</returns>
+      <typeparam name="TObject">The object.</typeparam>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject``1(System.Guid)">
+      <summary>Tries to create an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, if the DDEX provider supports it. Otherwise, the default instance of type TObject.</returns>
+      <param name="source">A DDEX data source identifier, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <typeparam name="TObject">The object.</typeparam>
+      <exception cref="DataProviderException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.CreateObject(System.Guid,System.Type)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject(System.Guid,System.Type)">
+      <summary>Tries to create an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, if the DDEX provider supports it; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:System.ArgumentNullException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.CreateObject(System.Guid,System.Type)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject``1(System.Guid,System.Type,``0)">
+      <summary>Tries to create an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider, sited with the specified site object, if the DDEX provider supports it; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <param name="site">An instance of an object that should site the new DDEX support entity.</param>
+      <typeparam name="TSite">The site.</typeparam>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+      <exception cref="DataProviderException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.CreateObject(System.Guid,System.Type)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject``2(System.Guid,``1)">
+      <summary>Tries to create an instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object.</summary>
+      <returns>An instance of the specified DDEX support entity for the specified DDEX data source that is implemented by the DDEX provider, sited with the specified site object, if the DDEX provider supports it. Otherwise, the default instance of type TObject.</returns>
+      <param name="source">A DDEX data source identifier, or <see cref="F:System.Guid.Empty" /> for no specific data source.</param>
+      <param name="site">An instance of an object that should site the new DDEX support entity.</param>
+      <typeparam name="TObject">The object.</typeparam>
+      <typeparam name="TSite">The site.</typeparam>
+      <exception cref="DataProviderException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.CreateObject(System.Guid,System.Type)" /> or <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProvider.TryCreateObject(System.Type)">
+      <summary>Tries to create an instance of the specified DDEX support entity that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider, if the DDEX provider supports it; otherwise, null.</returns>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:Microsoft.VisualStudio.Data.Core.DataProviderException">Instantiation of a new instance of the support entity threw an exception, whether by way of a CreateInstance call through reflection or through the DDEX provider’s <see cref="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)" /> method implementation, or creation of the default or client object implementation (if there is one) failed.</exception>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport">
+      <summary>Provides the ability to alter the support of a DDEX provider, its supported sources, and specific operations, based on the current environment.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.GetUnsupportedReason(System.Guid,System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Gets a localized string describing the reason an operation is not supported, for the specified DDEX data source.</summary>
+      <returns>A localized string describing why the specified operation is not supported, if the operation is in fact not supported; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="command">A command identifying the operation.</param>
+      <param name="context">An object representing the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="T:System.ArgumentException">The <paramref name="context" /> parameter is not an expected value for the specified operation.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.IsOperationSupported(System.Guid,System.ComponentModel.Design.CommandID,System.Object)">
+      <summary>Determines whether a specific operation is supported in the current environment, for the specified DDEX data source.</summary>
+      <returns>true if the operation is supported by the provider in the current environment; otherwise, false.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="command">A command identifying the operation.</param>
+      <param name="context">An object representing the context in which the operation exists.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="command" /> parameter is null.</exception>
+      <exception cref="T:System.ArgumentException">The <paramref name="context" /> parameter is not an expected value for the specified operation.</exception>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.IsProviderSupported">
+      <summary>Gets a value indicating whether the provider is supported in the current environment.</summary>
+      <returns>A value indicating whether the provider is supported in the current environment.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderDynamicSupport.IsSourceSupported(System.Guid)">
+      <summary>Gets a value indicating whether a particular DDEX data source is supported by this DDEX provider in the current environment.</summary>
+      <returns>true if the DDEX data source is supported by this DDEX provider in the current environment; otherwise, false.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataProviderManager">
+      <summary>Exposes the DDEX Provider Manager service, which allows discovery of registered DDEX providers.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataProviderManager.Providers">
+      <summary>Gets a dictionary of all registered DDEX providers.</summary>
+      <returns>A dictionary of all registered DDEX providers.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory">
+      <summary>Provides the ability to create DDEX provider implementations of support entities.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.CreateObject(System.Type)">
+      <summary>Creates an instance of the specified DDEX support entity that is implemented by the DDEX provider.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider, if the DDEX provider supports it; otherwise, null.</returns>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetAssembly(System.String)">
+      <summary>Resolves a provider-specific assembly string to its corresponding <see cref="T:System.Reflection.Assembly" /> representation.</summary>
+      <returns>An <see cref="T:System.Reflection.Assembly" /> object representing the assembly resolved from the specified assembly string, if found; otherwise, null.</returns>
+      <param name="assemblyString">A provider-specific assembly string.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="assemblyString" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataProviderObjectFactory.GetType(System.String)">
+      <summary>Resolves a provider-specific type name to its corresponding <see cref="T:System.Type" /> representation.</summary>
+      <returns>An <see cref="T:System.Type" /> object representing the type resolved from the specified type name, if found; otherwise, null.</returns>
+      <param name="typeName">A provider-specific type name.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="typeName" /> parameter is null.</exception>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSiteableObject`1">
+      <summary>Represents an object that can be sited with a specific type.</summary>
+      <typeparam name="T">The type of the parameter.</typeparam>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSiteableObject`1.Site">
+      <summary>Gets or sets the site.</summary>
+      <returns>The site object.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSource">
+      <summary>Represents a DDEX data source.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSource.DefaultProvider">
+      <summary>Gets the default provider that supports the DDEX data source.</summary>
+      <returns>The default provider that supports the DDEX data source.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSource.Description">
+      <summary>Gets the basic description of the DDEX data source.</summary>
+      <returns>The basic description of the DDEX data source.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSource.DisplayName">
+      <summary>Gets the display name of the DDEX data source.</summary>
+      <returns>The display name of the DDEX data source.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSource.GetDescription(System.Guid)">
+      <summary>Gets a localized description of the selection of the DDEX data source combined with a specific supporting DDEX provider.</summary>
+      <returns>A localized description of the selection of this DDEX data source combined with a specific supporting DDEX provider, or null if no description exists.</returns>
+      <param name="provider">The identifier of a supporting DDEX provider.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSource.GetProperty(System.Guid,System.String)">
+      <summary>Gets a property of the DDEX data source as registered by a specific supporting DDEX provider.</summary>
+      <returns>The value of the property, if exists; otherwise, null.</returns>
+      <param name="provider">The identifier of a supporting DDEX provider.</param>
+      <param name="name">The name of the property to retrieve.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="name" /> parameter was null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSource.GetProperty(System.String)">
+      <summary>Gets a property of the DDEX data source.</summary>
+      <returns>The value of the property, if it exists; otherwise, null.</returns>
+      <param name="name">The name of the property to retrieve.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="name" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSource.GetProviders">
+      <summary>Gets the DDEX providers that support this DDEX data source.</summary>
+      <returns>An array of DDEX provider identifiers that represent the valid, registered DDEX providers that support this DDEX data source.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSource.Guid">
+      <summary>Gets the unique identifier of the DDEX data source.</summary>
+      <returns>The unique identifier of the DDEX data source.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSource.Name">
+      <summary>Gets the programmatic name of the DDEX data source.</summary>
+      <returns>The programmatic name of the DDEX data source.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSourceManager">
+      <summary>Represents the DDEX Data Source Manager service, which enables discovery of registered DDEX data sources.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Data.Core.IVsDataSourceManager.Sources">
+      <summary>Gets a dictionary of all registered DDEX data sources.</summary>
+      <returns>A dictionary of all registered DDEX data sources.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer">
+      <summary>Provides the ability to specialize DDEX provider implementations of support entities for specific data sources based on a data connection string.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.CreateObject(System.Guid,System.Type)">
+      <summary>Creates an instance of the specified DDEX support entity that is implemented by the DDEX provider for a specific DDEX data source.</summary>
+      <returns>An instance of the specified DDEX support entity that is implemented by the DDEX provider for a specific DDEX data source, if the DDEX provider supports it; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="objType">A type of DDEX support entity.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="objType" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.DeriveSource(System.String)">
+      <summary>Derives a DDEX data source, when possible, from a DDEX provider-specific data connection string.</summary>
+      <returns>A valid, registered DDEX data source identifier that was determined to represent the type of the target data source identified by the connection string.</returns>
+      <param name="connectionString">A DDEX provider-specific data connection string that defines a target data source.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="connectionString" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.GetAssembly(System.Guid,System.String)">
+      <summary>Resolves a provider-specific assembly string to its corresponding <see cref="T:System.Reflection.Assembly" /> representation, for a specific DDEX data source.</summary>
+      <returns>An <see cref="T:System.Reflection.Assembly" /> object representing the assembly resolved from the specified assembly string, for the specified DDEX data source, if found; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="assemblyString">A provider-specific assembly string.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="assemblyString" /> parameter is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSourceSpecializer.GetType(System.Guid,System.String)">
+      <summary>Resolves a provider-specific type name to its corresponding <see cref="T:System.Type" /> representation, for a specific DDEX data source.</summary>
+      <returns>An <see cref="T:System.Type" /> object representing the type resolved from the specified type name, for the specified DDEX data source, if found; otherwise, null.</returns>
+      <param name="source">A DDEX data source identifier.</param>
+      <param name="typeName">A provider-specific type name.</param>
+      <exception cref="T:System.ArgumentNullException">The <paramref name="typeName" /> parameter is null.</exception>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSupport">
+      <summary>Provides the ability to supply a stream of XML that drives support for a particular area of data designer extensibility (DDEX).</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSupport.OpenSupportStream">
+      <summary>Opens and returns the stream of data support XML that is represented by the data support object.</summary>
+      <returns>An open stream containing the data support XML that is represented by the data support object.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSupportImportResolver">
+      <summary>Provides the ability to resolve Import statements in a stream of data support XML.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSupportImportResolver.ImportSupportStream(System.String)">
+      <summary>Imports and returns a stream of data support XML that is identified with a specified name.</summary>
+      <returns>An open stream containing the data support XML to be imported, or null if there is no stream found with this name.</returns>
+      <param name="name">The name of a stream to import.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Data.Core.IVsDataSupportObject`1">
+      <summary>Represents an object that was created based on reference information supplied in a data support XML stream.</summary>
+      <typeparam name="T">The type of the parameter.</typeparam>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Data.Core.IVsDataSupportObject`1.Invoke(System.String,System.Object[],System.Object[])">
+      <summary>Invokes a method on the object with additional parameters not present in the method signature.</summary>
+      <returns>The return value of the method, if any; otherwise, null.</returns>
+      <param name="name">The name of a method on the object.</param>
+      <param name="args">The regular arguments to pass to the method.</param>
+      <param name="parameters">Additional parameters to pass to the method.</param>
+      <exception cref="any">The method called threw an exception.</exception>
+    </member>
+  </members>
+</doc>

@@ -1,0 +1,523 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.Shell.Immutable.11.0</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.Shell.BlockingTaskEventArgs"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.BlockingTaskEventArgs.#ctor(Microsoft.VisualStudio.Shell.Interop.IVsTask,Microsoft.VisualStudio.Shell.Interop.IVsTask)"></member>
+    <member name="P:Microsoft.VisualStudio.Shell.BlockingTaskEventArgs.BlockedTask"></member>
+    <member name="P:Microsoft.VisualStudio.Shell.BlockingTaskEventArgs.BlockingTask"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.CircularTaskDependencyException">
+      <summary>Exception raised when a circular dependency would cause a deadlock during a requested task wait operation.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.CircularTaskDependencyException.#ctor">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.CircularTaskDependencyException" /> class.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.CircularTaskDependencyException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.CircularTaskDependencyException" /> class.</summary>
+      <param name="info">The object that holds the serialized object data.</param>
+      <param name="context">The contextual information about the source or destination.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.CircularTaskDependencyException.#ctor(System.String)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.CircularTaskDependencyException" /> class.</summary>
+      <param name="message">The message that describes the exception. The caller of this constructor is required to ensure that this string has been localized for the current system culture.</param>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.CircularTaskDependencyException.VS_E_CIRCULARTASKDEPENDENCY"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.FilterDescendantBehavior">
+      <summary>Specifies the descendant behavior when including items in a filtered tree.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.FilterDescendantBehavior.ExcludeDescendantsByDefault">
+      <summary>Exclude descendants, by default, in the filtered tree.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.FilterDescendantBehavior.IncludeDescendantsByDefault">
+      <summary>Include descendants, by default, in the filtered tree.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Collections.IList)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Collections.IList,System.Collections.IList)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Collections.IList,System.Collections.IList,System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Collections.IList,System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Collections.IList,System.Int32,System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Object)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Object,System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Object,System.Int32,System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Object,System.Object)"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.#ctor(System.UInt32,System.Collections.Specialized.NotifyCollectionChangedAction,System.Object,System.Object,System.Int32)"></member>
+    <member name="P:Microsoft.VisualStudio.Shell.HierarchyItemCollectionChangedEventArgs.HierarchyManipulationState"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.HierarchyItemEventArgs">
+      <summary>Provides event arguments that are used by <see cref="E:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.AfterInvalidateItems" /> and <see cref="E:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.OnItemAdded" /> events to denote which specific item was invalidated or added.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.HierarchyItemEventArgs.#ctor(Microsoft.VisualStudio.Shell.IVsHierarchyItem)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.HierarchyItemEventArgs" /> class.</summary>
+      <param name="item">The hierarchy item to be checked.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.HierarchyItemEventArgs.Item">
+      <summary>Gets the hierarchy item containing either the invalidated items or the item that was added. </summary>
+      <returns>The hierarchy item containing either the invalidated items or the item that was added.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IFilteredHierarchyItemSet">
+      <summary>Provides a flattened list of hierarchy items that represents all items in the hierarchy, and raises events when items are added to or removed from the hierarchy.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IInstalledToolboxItemInfo">
+      <summary>Supplies information about an existing toolbox item.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IInstalledToolboxItemInfo.AssemblyName">
+      <summary>Gets the assembly name of the item.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IInstalledToolboxItemInfo.CustomProperties">
+      <summary>Gets the strings to display in the dialog’s “custom” columns, or null if no custom properties are needed.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IInstalledToolboxItemInfo.TypeName">
+      <summary>Gets the full hierarchical type name of the item (not including the assembly name).</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet">
+      <summary>Provides a heterogeneous collection of objects (non-type safe).</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet.Contains(System.Object)">
+      <summary>Determines whether the <see cref="T:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet" /> contains a specific value.</summary>
+      <returns>true if the object is found in the IReadOnlyObservableSet, otherwise false.</returns>
+      <param name="item">The object to locate in the IReadOnlyObservableSet.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet.Count">
+      <summary>Gets the number of elements contained in the <see cref="T:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet" />.</summary>
+      <returns>The number of elements contained in the IReadOnlyObservableSet.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet`1">
+      <summary>Provides a homogeneous collection of objects of type <paramref name="T" />.</summary>
+      <typeparam name="T">The type of items stored in the set.</typeparam>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet`1.Contains(`0)">
+      <summary>Determines whether the <see cref="T:Microsoft.VisualStudio.Shell.IReadOnlyObservableSet`1" /> contains a specific value.</summary>
+      <returns>true if the object is found in the set, otherwise false.</returns>
+      <param name="item">The object to locate in the set.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISelectedGraphNode">
+      <summary>Holds a reference to a selected GraphNode.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISelectedGraphNode.Node">
+      <summary>Gets the selected GraphNode.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISolutionSearchOptions">
+      <summary>Represents the options a search provider should use when providing search results for a search of the solution.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionSearchOptions.SearchExternalItems">
+      <summary>Gets whether or not the content of files should be searched.</summary>
+      <returns>If true, search results from within file contents should be returned. If false, no file content searches should occur.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionSearchOptions.SearchFileContents">
+      <summary>Gets whether or not the content of external items should be searched.</summary>
+      <returns>If true, search results from within external items should be returned. If false, no external items searches should occur.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISolutionSearchParameters">
+      <summary>Represents the parameters required to provide search results for a search of the solution.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.MaximumResults">
+      <summary>Gets the maximum number of results that should be returned by the search. If more results than this are available, the search provider should call <see cref="M:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.OnMaximumResultsExceeded" /> to indicate that not all results were returned.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.OnMaximumResultsExceeded">
+      <summary>Callback that should be called by a provider that could have returned more results, but which limited itself to the number of results requested by <see cref="P:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.MaximumResults" />.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.Options">
+      <summary>Gets the search options.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionSearchParameters.SearchQuery">
+      <summary>Gets the search terms provided by the user.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISolutionTreeFilter">
+      <summary>A filter that controls a collection of items that should be included in the filtered tree.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ISolutionTreeFilter.GetFilterDescendantsBehavior(System.Object)">
+      <summary>Determines whether to include descendants if none are explicitly specified.</summary>
+      <returns>The value that specifies whether to exclude or include by default.</returns>
+      <param name="item">The item that requires the determination.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISolutionTreeFilter.IncludedItems">
+      <summary>Gets the set of items that are included by the filter.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISolutionTreeFilterProvider">
+      <summary>Factory used to create an <see cref="T:Microsoft.VisualStudio.Shell.ISolutionTreeFilter" />. ISolutionTreeFilter provides a list of included items that should be placed in the tree.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ISolutionTreeFilterProvider.CreateFilter(System.Collections.IEnumerable)">
+      <summary>Creates a new filter for the specified collection of root items.</summary>
+      <returns>An <see cref="T:Microsoft.VisualStudio.Shell.ISolutionTreeFilter" /> instance that can be applied to the tree to control which items are included in the tree's filtered subset.</returns>
+      <param name="rootItems">The current collection of root items in the tree.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ISolutionTreeFilterProvider.IsFilteringSupported(System.Collections.IEnumerable)">
+      <summary>Determines whether this type of filter is supported when the specified collection of items are at the root of the tree.</summary>
+      <returns>true if the filter is supported, otherwise false.</returns>
+      <param name="rootItems">The current collection of root items in the tree.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ISupportDisposalNotification">
+      <summary>Represents an object that may become disposed, and that can notify listeners of changes to the disposal state.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ISupportDisposalNotification.IsDisposed">
+      <summary>Determines if the item is disposed.</summary>
+      <returns>true if the item is disposed.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxAppDomainControl">
+      <summary>Controls the creation of the application domain in which the client’s <see cref="T:Microsoft.VisualStudio.Shell.IToolboxItemDiscovery" /> implementation is created.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxAppDomainControl.CreateAppDomain">
+      <summary>Creates an application domain for assembly loading.</summary>
+      <returns>The newly-created application domain.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxAppDomainControl.UnloadAppDomain(System.AppDomain)">
+      <summary>Unloads an application domain created by <see cref="M:Microsoft.VisualStudio.Shell.IToolboxAppDomainControl.CreateAppDomain" />.</summary>
+      <param name="appDomain">The application domain to unload.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxAssemblyInfo">
+      <summary>Supplies information about an assembly.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxAssemblyInfo.OriginalPath">
+      <summary>Gets the original path from which the assembly was loaded. This may differ from the Location property of the assembly, for example if the assembly is in the global assembly cache (GAC).</summary>
+      <returns>The original path from which the assembly was loaded.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo">
+      <summary>Supplies information about an extension SDK.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.AppliesTo">
+      <summary>Gets the value that is used to filter the extension SDKs.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.DisplayName">
+      <summary>Gets the display name for the extension SDK.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.Id">
+      <summary>Gets the identity of the extension SDK. This property contains the extension SDK path in the format “\[extensionssdks root]\[sdkname]\[sdkversion]”.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.MinVSVersion">
+      <summary>Gets the minimum Visual Studio version. This value is used to filter which extension SDKs show up in each version of Visual Studio.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.Path">
+      <summary>Gets the path on the disk to the extension SDK.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.TargetFramework">
+      <summary>Gets the value of the target frameworks to be used to filter extension SDKs in Toolbox.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkInfo.TargetPlatform">
+      <summary>Gets the supported target platform.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkType">
+      <summary>Represents a managed type from an extension SDK.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxExtensionsSdkType.SdkInfo">
+      <summary>Gets information about the extension SDK.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxItemCreator">
+      <summary>Creates new toolbox items and supplies information about existing toolbox items.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxItemCreator.CreateToolboxItem(System.String,System.Reflection.AssemblyName,System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.String}},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.String}})">
+      <summary>Creates a toolbox item from the specified type.</summary>
+      <returns>The toolbox item.</returns>
+      <param name="typeName">A full hierarchical type name.</param>
+      <param name="assemblyName">The assembly in which <paramref name="typeName" /> is found.</param>
+      <param name="itemProperties">Properties obtained from <see cref="M:Microsoft.VisualStudio.Shell.IToolboxItemInfo.GetPropertyValue(System.String)" /> for this item.</param>
+      <param name="extraInfo">Collection returned from <see cref="P:Microsoft.VisualStudio.Shell.IToolboxItemInfo.ExtraInfo" /> for this item.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxItemCreator.GetItemInfo(Microsoft.VisualStudio.OLE.Interop.IDataObject)">
+      <summary>Returns information about a control installed on the toolbox.</summary>
+      <returns>The information about this item, or null if the item is not recognized by this provider.</returns>
+      <param name="toolboxItem">Toolbox item from which to get the information.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxItemDiscovery">
+      <summary>Provides information about managed types from which toolbox items could be created.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemDiscovery.AdditionalAssemblyPaths">
+      <summary>Gets a collection of additional assembly paths to search for toolbox items.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxItemDiscovery.GetItemInfo(Microsoft.VisualStudio.Shell.IToolboxType)">
+      <summary>Returns the <see cref="T:Microsoft.VisualStudio.Shell.IToolboxItemInfo" /> corresponding to a given type.</summary>
+      <returns>The information about this type, or null if the type is not a valid toolbox control type recognized by this provider.</returns>
+      <param name="type">A valid toolbox control type.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory">
+      <summary>Creates various objects required for integration with the Choose Toolbox Items dialog.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory.AppDomainCreator">
+      <summary>Gets the object that is used to create and unload the application domain that is passed to <see cref="M:Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory.CreateItemDiscovery(System.AppDomain)" />.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory.CreateItemDiscovery(System.AppDomain)">
+      <summary>Creates an object in the given application domain that implements <see cref="T:Microsoft.VisualStudio.Shell.IToolboxItemDiscovery" />.</summary>
+      <returns>A handle to the created object.</returns>
+      <param name="domain">Domain in which the object should be created.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory.ItemCreator">
+      <summary>Gets the object that is used to create new toolbox items and get information about existing toolbox items.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxItemInfo">
+      <summary>Supplies information about a managed type from which a toolbox item can be created.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemInfo.DisplayName">
+      <summary>Gets the display name of the toolbox item.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemInfo.ExtraInfo">
+      <summary>Gets a collection of name-value pairs that will be passed to <see cref="M:Microsoft.VisualStudio.Shell.IToolboxItemCreator.CreateToolboxItem(System.String,System.Reflection.AssemblyName,System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.String}},System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{System.String,System.String}})" /> if the user chooses to create the item.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IToolboxItemInfo.GetPropertyValue(System.String)">
+      <summary>Returns the corresponding value for this item from a given property identifier.</summary>
+      <returns>The value for this item.</returns>
+      <param name="name">A non-localized identifier from the <see cref="P:Microsoft.VisualStudio.Shell.ProvideToolboxItemDiscoveryAttribute.ItemPropertyIdsAndNames" /> property.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemInfo.Icon">
+      <summary>Gets the icon for the toolbox item as a file path, byte array, Bitmap, or IntPtr.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxItemInfo.TransparentColor">
+      <summary>Gets the background color that will be rendered as transparent in the toolbox image.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxPlatformInfo">
+      <summary>Supplies information about a platform (such as Windows 8).</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxPlatformInfo.Identifier">
+      <summary>Gets the platform ID.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxPlatformInfo.Version">
+      <summary>Gets the version number of the platform.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxPlatformType">
+      <summary>Represents a managed type with an associated platform. Other interfaces derive from this interface to add additional metadata.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxPlatformType.TargetPlatform">
+      <summary>Gets the target platform information.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IToolboxType">
+      <summary>Represents a simple managed type. Other interfaces derive from this interface to add additional metadata.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxType.AssemblyInfo">
+      <summary>Gets information about an assembly.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IToolboxType.Type">
+      <summary>Gets the managed type.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem">
+      <summary>Contains instance property information for a single item in an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.AreChildrenRealized">
+      <summary>Indicates whether the child items of an <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem" /> have already been enumerated.</summary>
+      <returns>true if the child items have already been enumerated, otherwise false.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.CanonicalName">
+      <summary>Gets the canonical name of the item, corresponding to the <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy.GetCanonicalName(System.UInt32,System.String@)" />.</summary>
+      <returns>The canonical name of the item.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.Children">
+      <summary>Gets the child items of this <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem" />.</summary>
+      <returns>The child items of the hierarchy item.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.HierarchyIdentity">
+      <summary>Gets the identity that represents this item.</summary>
+      <returns>The identity that represents this item.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.IsBold">
+      <summary>Gets or sets whether this item should be rendered bold in an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />.</summary>
+      <returns>rrue if the item should be rendered bold, otherwise false.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.IsCut">
+      <summary>Gets or sets whether this item should be rendered as a cut item in an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />.</summary>
+      <returns>true if the item should be rendered as a cut item, otherwise false.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.Parent">
+      <summary>Gets the parent <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem" /> for this item.</summary>
+      <returns>The parent hierarchy item for this item, or null if the item is at the root of the <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItem.Text">
+      <summary>Gets the text caption for the item in the <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />, corresponding to the <see cref="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID.VSHPROPID_Caption" /> property from <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy.GetProperty(System.UInt32,System.Int32,System.Object@)" />.</summary>
+      <returns>The text caption for the item in the UI hierarchy window.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsHierarchyItemCollectionProvider">
+      <summary>Provides a read-only collection of hierarchy items that represent a subset of all hierarchy items under a specified hierarchy.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsHierarchyItemCollectionProvider.GetDescendantsAsync(System.Void,Microsoft.VisualStudio.Shell.IReadOnlyObservableSet{Microsoft.VisualStudio.Shell.IVsHierarchyItem})">
+      <summary>Asynchronously gets a flat list of hierarchy items that exist within the specified hierarchy.</summary>
+      <returns>A task that, when complete, provides the flattened set of hierarchy items.</returns>
+      <param name="hierarchy">The hierarchy from which the descendant hierarchy items are aggregated.</param>
+      <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous request.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsHierarchyItemCollectionProvider.GetFilteredHierarchyItemsAsync(System.Void,Microsoft.VisualStudio.Shell.IFilteredHierarchyItemSet,Microsoft.VisualStudio.Shell.IReadOnlyObservableSet{Microsoft.VisualStudio.Shell.IVsHierarchyItem},System.Predicate{Microsoft.VisualStudio.Shell.IVsHierarchyItem})">
+      <summary>Asynchronously gets a filtered set of hierarchy items from the specified hierarchy item set.</summary>
+      <returns>A task that, when complete, provides the filtered set of hierarchy items.</returns>
+      <param name="sourceCollection">The hierarchy items to filter.</param>
+      <param name="includeInFilter">The predicate used to determine what is included in the filtered set.</param>
+      <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous request.</param>
+      <param name="dependentProperties">An optional set of property identifiers that indicate the hierarchy item properties that affect the filter and as a result cause the <paramref name="includeInFilter" /> predicate to be re-queried.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity">
+      <summary>Contains the information necessary to define an item in an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" />.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.Hierarchy">
+      <summary>Gets the <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy" /> representing the outer hierarchy of the item.</summary>
+      <returns>The hierarchy representing the outer hierarchy of the item.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.IsNestedItem">
+      <summary>Gets whether this item is a nested item or not.</summary>
+      <returns>true if the item is a nested item, otherwise false.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.IsRoot">
+      <summary>Gets whether the item is the root of its <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy" />.</summary>
+      <returns>true if the item is the root of a hierarchy, otherwise false.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.ItemID">
+      <summary>Gets the item identifier representing the outer item in the hierarchy.</summary>
+      <returns>The item identifier representing the outer item in the hierarchy.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.NestedHierarchy">
+      <summary>Gets the nested <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy" /> representing the inner hierarchy of the item.</summary>
+      <returns>The nested hierarchy representing the inner hierarchy of the item.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.NestedItemID">
+      <summary>Gets the item identifier representing the inner item in the <see cref="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity.NestedHierarchy" />.</summary>
+      <returns>The item identifier representing the inner item in the nested hierarchy.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager">
+      <summary>Accesses the data model used by an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsUIHierarchyWindow" /> (like the Solution Explorer).</summary>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.AfterInvalidateItems">
+      <summary>Event raised after an <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnInvalidateItems(System.UInt32)" /> notification occurs for an item.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.GetHierarchyItem(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.UInt32)">
+      <summary>Gets or creates an <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem" /> corresponding to the specified hierarchy and item identifier.</summary>
+      <returns>The hierarchy item.</returns>
+      <param name="hierarchy">The hierarchy for which to get or create the new hierarchy item.</param>
+      <param name="itemid">The item identifier.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.IsChangingItems">
+      <summary>Gets whether item additions or removals from an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsHierarchy" /> are currently being processed.</summary>
+      <returns>true when changes from one of the following events are being processed:<see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnItemAdded(System.UInt32,System.UInt32,System.UInt32)" /><see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnItemDeleted(System.UInt32)" /><see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnItemsAppended(System.UInt32)" /><see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnInvalidateItems(System.UInt32)" /></returns>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.OnItemAdded">
+      <summary>Event raised after an <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsHierarchyEvents.OnItemAdded(System.UInt32,System.UInt32,System.UInt32)" /> notification occurs for an item.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.TryGetHierarchyItem(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.UInt32,Microsoft.VisualStudio.Shell.IVsHierarchyItem@)">
+      <summary>Gets a cached <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItem" /> representing the specified hierarchy and item identifier, if one has already been created.</summary>
+      <returns>true if the IVsHierarchyItem exists and was returned, otherwise false.</returns>
+      <param name="hierarchy">The hierarchy from which to retrieve the hierarchy item.</param>
+      <param name="itemid">The item identifier.</param>
+      <param name="item">Returns the hierarchy item.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsHierarchyItemManager.TryGetHierarchyItemIdentity(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.UInt32,Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity@)">
+      <summary>Gets a cached <see cref="T:Microsoft.VisualStudio.Shell.IVsHierarchyItemIdentity" /> representing the specified hierarchy and item identifier, if one has already been created.</summary>
+      <returns>true if the IVsHierarchyItemIdentity exists and was returned, otherwise false.</returns>
+      <param name="hierarchy">The hierarchy from which to retrieve the hierarchy item identity.</param>
+      <param name="itemid">The item identifier.</param>
+      <param name="identity">Returns the hierarchy item identity.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsTaskEvents">
+      <summary>Notifies clients of changes made to tasks.</summary>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsTaskEvents.OnBlockingWaitBegin">
+      <summary>Raised when a blocking wait call is made to an <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsTask" /> instance on the main thread of Visual Studio.</summary>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsTaskEvents.OnBlockingWaitEnd">
+      <summary>Raised when a blocking wait call to <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsTask" /> is finished on the main thread of Visual Studio.</summary>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsTaskEvents.OnMarkedAsBlocking"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsToolboxItemDiscoveryRegistrar">
+      <summary>Defines a toolbox item type. You can get an instance of the interface from the <see cref="T:Microsoft.VisualStudio.Shell.SVsToolboxItemDiscoveryRegistrar" /> service.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsToolboxItemDiscoveryRegistrar.RegisterItemDiscovery(System.Type,Microsoft.VisualStudio.Shell.IToolboxItemDiscoveryFactory)">
+      <summary>Registers a factory that can supply toolbox items corresponding to managed types.</summary>
+      <param name="itemType">A type that must match the <paramref name="discoveryType" /> argument to <see cref="T:Microsoft.VisualStudio.Shell.ProvideToolboxItemDiscoveryAttribute" />.</param>
+      <param name="factory">The factory to be registered.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.RssCommands">
+      <summary>Provides the routed commands supported by the Visual Studio shell RSS feed reader.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.RssCommands.EnableDownload">
+      <summary>Enables downloading of RSS content. There is no command parameter for this command.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.RssCommands.PromptForCredentials">
+      <summary>Prompts the user for Web proxy credentials. There is no command parameter for this command.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.RssCommands.SetUrl">
+      <summary>Sets the RSS feed URL. The command parameter for this command is the URL of the RSS feed.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.SolutionTreeFilterProviderAttribute">
+      <summary>Provides information for displaying the Solution Explorer filter.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.SolutionTreeFilterProviderAttribute.#ctor(System.String,System.UInt32)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.SolutionTreeFilterProviderAttribute" /> class.</summary>
+      <param name="filterCommandGroup">The group of the filter command that is used to handle showing the filter.</param>
+      <param name="filterCommandID">The identifier of the filter command identifier that is used to handle showing the filter.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.SolutionTreeFilterProviderAttribute.FilterCommandGroup">
+      <summary>Gets the group of the filter command that should handle showing the filter.</summary>
+      <returns>The filter command group.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.SolutionTreeFilterProviderAttribute.FilterCommandID">
+      <summary>Gets the identifier of the filter command that should handle showing the filter.</summary>
+      <returns>The filter command identifier.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.SVsToolboxItemDiscoveryRegistrar">
+      <summary>Passed to <see cref="M:System.IServiceProvider.GetService(System.Type)" /> to return a reference to the <see cref="T:Microsoft.VisualStudio.Shell.IVsToolboxItemDiscoveryRegistrar" /> interface.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.TaskSchedulingException">
+      <summary>Exception raised when task scheduling failed and could not be retried.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.TaskSchedulingException.#ctor">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.TaskSchedulingException" /> class.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.TaskSchedulingException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.TaskSchedulingException" /> class with serialized data.</summary>
+      <param name="info">The <see cref="T:System.Runtime.Serialization.SerializationInfo" /> that holds the serialized object data about the exception being thrown.</param>
+      <param name="context">The <see cref="T:System.Runtime.Serialization.StreamingContext" /> that contains contextual information about the source or destination.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.TaskSchedulingException.#ctor(System.String)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.TaskSchedulingException" /> class with a specified error message.</summary>
+      <param name="message">The message that describes the error.</param>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.TaskSchedulingException.VS_E_TASKSCHEDULERFAIL">
+      <summary>Visual Studio specific error HRESULT code returned when a task could not be scheduled at the requested time.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ThemeResourceKey">
+      <summary>Represents a key used in a Resource Dictionary for accessing theme color resources. Theme color resources include brushes and colors associated with a given color category and color name.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ThemeResourceKey.#ctor(System.Guid,System.String,Microsoft.VisualStudio.Shell.ThemeResourceKeyType)">
+      <summary>Initializes a new instance of the <see cref="T:Microsoft.VisualStudio.Shell.ThemeResourceKey" /> class.</summary>
+      <param name="category">The category associated with this key.</param>
+      <param name="name">The name associated with this key.</param>
+      <param name="keyType">The key type associated with this key.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ThemeResourceKey.Category">
+      <summary>Gets the category associated with this key. A combination of the name, category, and key type uniquely identify the resource being referenced by this key.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ThemeResourceKey.Equals(System.Object)">
+      <summary>Determines whether the specified object is equal to the current object.</summary>
+      <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+      <param name="obj">The object to compare with the current object.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.ThemeResourceKey.GetHashCode">
+      <summary>Serves as a hash function for a particular type.</summary>
+      <returns>A hash code for the current object.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ThemeResourceKey.KeyType">
+      <summary>Gets the type of resource specified by this key. A combination of the name, category, and key type uniquely identify the resource being referenced by this key.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ThemeResourceKey.Name">
+      <summary>Gets the name associated with this key. A combination of the name, category, and key type uniquely identify the resource being referenced by this key.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ThemeResourceKeyType">
+      <summary>Specifies the type of resource being referenced by a <see cref="T:Microsoft.VisualStudio.Shell.ThemeResourceKey" />.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.ThemeResourceKeyType.ForegroundColor">
+      <summary>Specifies the foreground color.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.ThemeResourceKeyType.BackgroundColor">
+      <summary>Specifies the background color.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.ThemeResourceKeyType.ForegroundBrush">
+      <summary>Specifies the foreground brush.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.ThemeResourceKeyType.BackgroundBrush">
+      <summary>Specifies the background brush.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.VSCommands">
+      <summary>Provides the routed commands supported by the Visual Studio shell.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.VSCommands.Browse">
+      <summary>Opens the Web Browser window in Visual Studio.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.VSCommands.ExecuteCommand">
+      <summary>Executes a Visual Studio command table command.</summary>
+    </member>
+  </members>
+</doc>

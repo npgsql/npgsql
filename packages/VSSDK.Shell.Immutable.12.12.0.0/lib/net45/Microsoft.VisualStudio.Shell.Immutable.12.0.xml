@@ -1,0 +1,247 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.Shell.Immutable.12.0</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.Shell.FocusChangeForCrossThreadClientEventArgs">
+      <summary>Event arguments for an event raised by a control on the Visual Studio UI thread when it has a child Win32 HWND that belongs to a different thread and has acquiredWin32 focus. It is required for proper focus restoration when Visual Studio loses or regains activation.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.FocusChangeForCrossThreadClientEventArgs.#ctor(System.IntPtr)">
+      <summary>Initializes a new instance of FocusChangeFOrCrossThreadClientEventArgs.</summary>
+      <param name="hwndGainingFocus">The HWND gaining focus.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.FocusChangeForCrossThreadClientEventArgs.#ctor(System.IntPtr,System.Object)">
+      <summary>Initializes a new instance of FocusChangeFOrCrossThreadClientEventArgs that is associated with the specified window.</summary>
+      <param name="hwndGainingFocus">The HWND of the window that is gaining focus</param>
+      <param name="source">The alternate source to list as the source of the event.</param>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.FocusChangeForCrossThreadClientEventArgs.FocusChangeForCrossThreadClientEvent">
+      <summary>An event raised to alert Visual Studio to the fact that a window belonging to a thread other than the Visual Studio UI thread is gaining Win32 focus.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.FocusChangeForCrossThreadClientEventArgs.HwndGainingFocus">
+      <summary>Gets the HWND of the window that is gaining focus.</summary>
+      <returns>The HWND of the window that is gaining focus.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IAsyncAttachedCollectionSource">
+      <summary>Represents an <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" /> object that can report on whether or not the <see cref="P:Microsoft.VisualStudio.Shell.IAttachedCollectionSource.HasItems" /> property is currently being initialized, and which raises an <see cref="T:System.ComponentModel.INotifyPropertyChanged" /> event when the IsInitializingHasItems value changes. </summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAsyncAttachedCollectionSource.IsUpdatingHasItems">
+      <summary>Determines whether the <see cref="P:Microsoft.VisualStudio.Shell.IAttachedCollectionSource.HasItems" /> property is currently being updated.  Because updating HasItems may be an asynchronous operation, consumers of the <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" /> may want to wait for this property to become false before deciding that there are no items.</summary>
+      <returns>Returns <see cref="T:System.Boolean" />.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IAttachedCollectionService">
+      <summary>Represents a service that can get attached collections for an item based on a known relationship, and that can enumerate the relationships that are supported for an item. </summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IAttachedCollectionService.GetOrCreateCollectionSource(System.Object,System.String)">
+      <summary>Gets or creates an <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" /> instance that represents an attached collection for the given relationship on the given item.</summary>
+      <returns>Returns <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" />.</returns>
+      <param name="item">The item.</param>
+      <param name="relationshipName">The name of the relationship.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IAttachedCollectionService.GetRelationship(System.Object,System.String)">
+      <summary>Given a name for a relationship, returns an <see cref="T:Microsoft.VisualStudio.IAttachedRelationship" /> containing a localizable description of the relationship.</summary>
+      <returns>Returns an <see cref="T:Microsoft.VisualStudio.Shell.IAttachedRelationship" /> corresponding to the relationship, or null if the relationship is unknown.</returns>
+      <param name="item">The item.</param>
+      <param name="relationshipName">The name of the relationship.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IAttachedCollectionService.GetRelationships(System.Object)">
+      <summary>Gets the set of relationships supported for a given item.</summary>
+      <returns>Returns <see cref="T:System.Collections.Generic.IEnumerable`1" /> of supported relationships.</returns>
+      <param name="item">The item.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource">
+      <summary>Represents an object instance that can return a collection of items, and that knows whether or not any items exist without realizing the items themselves. </summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAttachedCollectionSource.HasItems">
+      <summary>Determines whether this IAttachedCollectionSource has any items. </summary>
+      <returns>Returns true if this IAttachedCollectionSource has any items, otherwise false. Accessing HasItems does not necessarily create the items themselves.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAttachedCollectionSource.Items">
+      <summary>Gets (and creates, if necessary) the collection of items associatedwith this IAttachedCollectionSource.</summary>
+      <returns>Returns <see cref="T:System.Collections.IEnumerable" />.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAttachedCollectionSource.SourceItem">
+      <summary>Gets the object used to create this IAttachedCollectionSource.</summary>
+      <returns>Returns <see cref="T:System.Object" />.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSourceProvider">
+      <summary>Represents a service that can enumerate the relationships that exist for an object the service understands, and which can create attached collections for a relationship and object the service understands. </summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IAttachedCollectionSourceProvider.CreateCollectionSource(System.Object,System.String)">
+      <summary>For a given object and relationship, create an <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" />. This attached collection should contain items for the given relationship as they relate to the source item.</summary>
+      <returns>Returns a new <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" />, or null if this provider does not support the creation of collections for this object.</returns>
+      <param name="item">The source item for which the collection should be created.</param>
+      <param name="relationshipName">The name of the relationship for which a collection should be created.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IAttachedCollectionSourceProvider.GetRelationships(System.Object)">
+      <summary>For a given object, enumerate the possible relationship collections this provider knows about.</summary>
+      <returns>Returns an <see cref="T:System.Collections.Generic.IEnumerable`1" />of relationships.</returns>
+      <param name="item">The item.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IAttachedRelationship">
+      <summary>Contains metadata about an attached relationship, used by the <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionService" /> to describe relationships between objects. </summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAttachedRelationship.DisplayName">
+      <summary>Gets a localizable description of this relationship.</summary>
+      <returns>Returns <see cref="T:System.String" />.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IAttachedRelationship.Name">
+      <summary>Gets the non-localized uniquely-identifying name of this relationship.</summary>
+      <returns>Returns <see cref="T:System.String" />.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.ICacheableAttachedCollectionSource">
+      <summary>Represents an <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" /> that can potentially be cached. Cached sources do not need to be re-created each time they're requested. </summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.ICacheableAttachedCollectionSource.CanCache">
+      <summary>Gets whether or not the items from this <see cref="T:Microsoft.VisualStudio.Shell.IAttachedCollectionSource" /> can be cached. IAttachedCollectionSource instances that do not support observable changes to their items (via <see cref="T:System.ComponentModel.INotifyCollectionChanged" />) but which do change over time should not be cached, since caching the IAttachedCollectionSource will permanently cache a stale collection.</summary>
+      <returns>Returns <see cref="T:System.Boolean" />.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsManagedSettingsChangeEventSource">
+      <summary>Provides an event for changed settings. </summary>
+    </member>
+    <member name="E:Microsoft.VisualStudio.Shell.IVsManagedSettingsChangeEventSource.SettingChanged">
+      <summary>Occurs when settings have changed.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.IVsTaskJoinableTask">
+      <summary>An interface that allows attaching a single JoinableTask to an IVsTask instance.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.IVsTaskJoinableTask.AssociateJoinableTask(System.Object)">
+      <summary>Indicates that this IVsTask instance acts as a wrapper around the specified JoinableTask.</summary>
+      <param name="joinableTask">The JoinableTask.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.IVsTaskJoinableTask.CancellationToken">
+      <summary>Gets the cancellation token used for this task.</summary>
+      <returns>The cancellation token used for this task.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential">
+      <summary>Represents a credential for sign-in purposes.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential.GetProperty(System.String)">
+      <summary>Gets a property related to the credential out of storage. The name cannot be null or empty, or whitespace. If the property cannot be found or the underlying credential has been deleted null will be returned. Property names are case insensitive</summary>
+      <returns>The property.</returns>
+      <param name="name">The name of the property.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential.RefreshTokenValue">
+      <summary>Gets the token value (secret) for this credential. If the underlying credential has been deleted, TokenValue is an empty string, and false is returned.</summary>
+      <returns>true if the TokenValue exists, otherwise false.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential.SetProperty(System.String,System.String)">
+      <summary>Se s a property related to the credential in storage. To remove a property, you must remove the token itself from storage. The name cannot be null or empty, or whitespace. The value cannot be null. If the underlying credential could not be found, false is returned. Setting the same name again will overwrite the property. Property names are case-insensitive</summary>
+      <returns>true if the property was set, false if the credential could not be found.</returns>
+      <param name="name">The name.</param>
+      <param name="value">The value.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential.SetTokenValue(System.String)">
+      <summary>Sets the token value (secret) for this credential. If the underlying credential has already been deleted it gets re-added with the new token value. The token cannot be null or empty, or whitespace.</summary>
+      <param name="tokenValue">The token value.</param>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredential.TokenValue">
+      <summary>Gets or sets the last token value.</summary>
+      <returns>The last token value. If the value is empty call RefreshTokenValue. If RefreshToken fails, it is set to an empty string.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey">
+      <summary>Represents the credential key for sign-in purposes.</summary>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey.FeatureName">
+      <summary>Gets or sets the feature name. Feature names are case-sensitive.</summary>
+      <returns>The feature name. </returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey.Resource">
+      <summary>Gets or sets the credential resource name or URI. Resources are case-insensitive.</summary>
+      <returns>The credential resource name or URI. </returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey.Type">
+      <summary>The type of the credential. This can be any app-specific value, but is intended to convey the authentication type. Therefore some examples might be: "Federated", "OAuth", "Windows", "Basic", "ServiceIdentity", "S2S". The type is case-insensitive.</summary>
+      <returns>The type of the credential.</returns>
+    </member>
+    <member name="P:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey.UserName">
+      <summary>Gets or sets the credential user name, user ID, or any app-specific unique value. The user name is case-insensitive.</summary>
+      <returns>The credential user name, user ID, or any app-specific unique value.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService">
+      <summary>Represents credential storage.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService.Add(Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey,System.String)">
+      <summary>Add a new credential to the storage. If a key already exists it is overwritten.</summary>
+      <returns>The credential.</returns>
+      <param name="credentialKey">The credential key. It cannot be null.</param>
+      <param name="credentialValue">The credential value. It cannot be null.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService.CreateCredentialKey(System.String,System.String,System.String,System.String)">
+      <summary>Creates a credential key that can be used with the Retrieve and Remove methods.</summary>
+      <returns>The credential key.</returns>
+      <param name="featureName">The feature name. It cannot be null, empty, or whitespace.</param>
+      <param name="resource">The resource. It cannot be null, empty, or whitespace.</param>
+      <param name="userName">The user name. It cannot be null, empty, or whitespace.</param>
+      <param name="type">The type. It cannot be null, empty, or whitespace.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService.Remove(Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey)">
+      <summary>Removes a credential from storage. </summary>
+      <returns>true if the credential could be removed, false if the credential does not exist or cannot be removed.</returns>
+      <param name="credentialKey">The credential key.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService.Retrieve(Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialKey)">
+      <summary>Removes a credential from storage.</summary>
+      <returns>true if the credential could be removed, false if the credential does not exist or cannot be removed.</returns>
+      <param name="credentialKey">The credential key.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.IVsCredentialStorageService.RetrieveAll(System.String)">
+      <summary>Retrieves all the specified credentials for a given feature name. Each credential is a snapshot of what is in the credential store.</summary>
+      <returns>An enumeration of IVsCredential objects. If no credentials exist, an empty enumeration is returned.</returns>
+      <param name="featureName">The feature name.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.SVsCredentialStorageService">
+      <summary>Represents a service storing credentials.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.VsCredentialStorageException">
+      <summary>Represents a credentials exception.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.VsCredentialStorageException.#ctor(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+      <summary>Initializes a new instance of VsCredentialStorageException.</summary>
+      <param name="info">The information.</param>
+      <param name="context">The context.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.VsCredentialStorageException.#ctor(System.String)">
+      <summary>Initializes a new instance of VsCredentialStorageException.</summary>
+      <param name="message">The exception message.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Connected.CredentialStorage.VsCredentialStorageException.#ctor(System.String,System.Exception)">
+      <summary>Initializes a new instance of VsCredentialStorageException.</summary>
+      <param name="message">The exception message.</param>
+      <param name="e">The nested exception.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Services.BulletinHandler">
+      <summary>The delegate provided by subscribers that is called when a bulletin is published.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Services.IVsPublishSubscribeService">
+      <summary>Represents a service for publishing and subscribing to bulletins.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Services.IVsPublishSubscribeService.Publish(System.Object)">
+      <summary>Sends a bulletin to all the subscribers for that bulletin.</summary>
+      <param name="bulletin">The bulletin to be published.</param>
+      <exception cref="T:System.NullReferenceException">
+        <paramref name="bulletin" /> is null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Services.IVsPublishSubscribeService.Publish(System.Type,System.Object)">
+      <summary>Sends a bulletin to all the subscribers for that bulletin identified by a specific type.</summary>
+      <param name="bulletinType">The type for the bulletin.</param>
+      <param name="bulletin">The bulletin.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Services.IVsPublishSubscribeService.Subscribe(System.Type,Microsoft.VisualStudio.Shell.Services.BulletinHandler)">
+      <summary>Registers a handler for the specified bulletin.</summary>
+      <param name="bulletinType">The type of the bulletin being subscribed to.</param>
+      <param name="handler">The handler to be invoked when this bulletin is published.</param>
+      <exception cref="T:System.NullReferenceException">
+        <paramref name="bulletinType" /> or <paramref name="bulletin" /> are null.</exception>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Services.IVsPublishSubscribeService.Unsubscribe(System.Type,Microsoft.VisualStudio.Shell.Services.BulletinHandler)">
+      <summary>Unregisters a handler for the specified bulletin.</summary>
+      <param name="bulletinType">The type of the bulletin being unsubscribed from.</param>
+      <param name="handler">The handler that is associated with the bulletin type.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Services.SVsPublishSubscribeService">
+      <summary>Represents a service for publishing and subscribing to bulletins.</summary>
+    </member>
+  </members>
+</doc>
