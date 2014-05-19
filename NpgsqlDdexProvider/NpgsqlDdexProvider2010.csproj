@@ -55,7 +55,7 @@
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
     <CopyVsixExtensionFiles>False</CopyVsixExtensionFiles>
-    <DeployExtension>True</DeployExtension>
+    <DeployExtension>False</DeployExtension>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug-net40|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
