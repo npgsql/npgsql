@@ -21,6 +21,7 @@
     <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
     <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
     <VsixSchemaPath>$(VsSDKInstall)\schemas\VSIXManifestSchema.xsd</VsixSchemaPath>
+    <DeployExtension>False</DeployExtension>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -55,7 +56,6 @@
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
     <CopyVsixExtensionFiles>False</CopyVsixExtensionFiles>
-    <DeployExtension>False</DeployExtension>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug-net40|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
