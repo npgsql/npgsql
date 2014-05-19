@@ -1,0 +1,2163 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>VSLangProj80</name>
+  </assembly>
+  <members>
+    <member name="T:VSLangProj80.__COPYTOOUTPUTSTATE">
+      <summary>Supplies the value for the <see cref="P:VSLangProj80.FileProperties2.CopyToOutputDirectory" /> property.</summary>
+    </member>
+    <member name="F:VSLangProj80.__COPYTOOUTPUTSTATE.COPYTOOUTPUTSTATE_Never">
+      <summary>Remove metadata. Value = 0</summary>
+    </member>
+    <member name="F:VSLangProj80.__COPYTOOUTPUTSTATE.COPYTOOUTPUTSTATE_Always">
+      <summary>Metadata value is literal. Value = 1</summary>
+    </member>
+    <member name="F:VSLangProj80.__COPYTOOUTPUTSTATE.COPYTOOUTPUTSTATE_PreserveNewestFile">
+      <summary>Metadata value is literal. Value = 2</summary>
+    </member>
+    <member name="T:VSLangProj80.__PROJECTREFERENCETYPE">
+      <summary>Specifies the reference type for a Visual C# or Visual Basic project.</summary>
+    </member>
+    <member name="F:VSLangProj80.__PROJECTREFERENCETYPE.PROJREFTYPE_ASSEMBLY">
+      <summary>Project reference type is assembly. Value is 1.</summary>
+    </member>
+    <member name="F:VSLangProj80.__PROJECTREFERENCETYPE.PROJREFTYPE_ACTIVEX">
+      <summary>Project reference type is ActiveX. Value is 2.</summary>
+    </member>
+    <member name="F:VSLangProj80.__PROJECTREFERENCETYPE.PROJREFTYPE_NATIVE">
+      <summary>Project reference type is native. Values is 3.</summary>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents">
+      <summary>Refer to <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)" />.</summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)" />.</summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)" />.</summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents_Event">
+      <summary>Refer to <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.add_OnAfterWebReferenceAdded(VSLangProj80._dispVSLangProjWebReferencesEvents_OnAfterWebReferenceAddedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.add_OnBeforeWebReferenceRemoved(VSLangProj80._dispVSLangProjWebReferencesEvents_OnBeforeWebReferenceRemovedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.add_OnWebReferenceChanged(VSLangProj80._dispVSLangProjWebReferencesEvents_OnWebReferenceChangedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.OnAfterWebReferenceAdded">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)" />.</summary>
+    </member>
+    <member name="E:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.OnBeforeWebReferenceRemoved">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)" />.</summary>
+    </member>
+    <member name="E:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.OnWebReferenceChanged">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)" />.</summary>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.remove_OnAfterWebReferenceAdded(VSLangProj80._dispVSLangProjWebReferencesEvents_OnAfterWebReferenceAddedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.remove_OnBeforeWebReferenceRemoved(VSLangProj80._dispVSLangProjWebReferencesEvents_OnBeforeWebReferenceRemovedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_Event.remove_OnWebReferenceChanged(VSLangProj80._dispVSLangProjWebReferencesEvents_OnWebReferenceChangedEventHandler)">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)" />.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents_OnAfterWebReferenceAddedEventHandler">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnAfterWebReferenceAdded(System.Object)" />. </summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents_OnBeforeWebReferenceRemovedEventHandler">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnBeforeWebReferenceRemoved(System.Object)" />.</summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents_OnWebReferenceChangedEventHandler">
+      <summary>For functionality, see <see cref="M:VSLangProj80._dispVSLangProjWebReferencesEvents.OnWebReferenceChanged(System.Object)" />.</summary>
+      <param name="pDispatch"> </param>
+    </member>
+    <member name="T:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper">
+      <summary>Microsoft Internal Use Only. For functionality, see <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" />.</summary>
+    </member>
+    <member name="F:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.m_dwCookie">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.m_OnAfterWebReferenceAddedDelegate">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.m_OnBeforeWebReferenceRemovedDelegate">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.m_OnWebReferenceChangedDelegate">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.OnAfterWebReferenceAdded(System.Object)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.OnBeforeWebReferenceRemoved(System.Object)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj80._dispVSLangProjWebReferencesEvents_SinkHelper.OnWebReferenceChanged(System.Object)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj80._prjOriginatorKeyFileType">
+      <summary>The strong name key file format.</summary>
+    </member>
+    <member name="F:VSLangProj80._prjOriginatorKeyFileType.prjOriginatorKeyFileTypeSNK">
+      <summary>Key file type is a strong name type. Value is 1.</summary>
+    </member>
+    <member name="F:VSLangProj80._prjOriginatorKeyFileType.prjOriginatorKeyFileTypePFX">
+      <summary>Key file is public. Value is 2.</summary>
+    </member>
+    <member name="T:VSLangProj80._VSLangProjWebReferencesEvents">
+      <summary>For functionality, see <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" />.</summary>
+    </member>
+    <member name="T:VSLangProj80.CSharpProjectConfigurationProperties3">
+      <summary>This interface provides internal-only access to C# project configuration properties. </summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.AllowUnsafeBlocks">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.BaseAddress">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CheckForOverflowUnderflow">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisInputAssembly">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisLogFile">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisModuleSuppressionsFile">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisRuleAssemblies">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisRules">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisSpellCheckLanguages">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.CodeAnalysisUseTypeNameInSuppression">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.ConfigurationOverrideFile">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DebugInfo">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DebugSymbols">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DefineConstants">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DefineDebug">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DefineTrace">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.DocumentationFile">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.EnableASPDebugging">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.EnableASPXDebugging">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.EnableSQLServerDebugging">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.EnableUnmanagedDebugging">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.ErrorReport">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.Extender(System.String)">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.ExtenderCATID">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.ExtenderNames">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.FileAlignment">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.GenerateSerializationAssemblies">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.IncrementalBuild">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.IntermediatePath">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.LanguageVersion">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.NoStdLib">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.NoWarn">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.Optimize">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.OutputPath">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.PlatformTarget">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.RegisterForComInterop">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.RemoteDebugEnabled">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.RemoteDebugMachine">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.RemoveIntegerChecks">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.RunCodeAnalysis">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartAction">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartArguments">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartPage">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartProgram">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartURL">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartWithIE">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.StartWorkingDirectory">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.TreatSpecificWarningsAsErrors">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.TreatWarningsAsErrors">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.UseVSHostingProcess">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.CSharpProjectConfigurationProperties3.WarningLevel">
+      <summary>This member provides internal-only access to C# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.CSharpProjPropId">
+      <summary>Microsoft internal use only.</summary>
+    </member>
+    <member name="F:VSLangProj80.CSharpProjPropId.CSPROJPROPID_TreatSpecificWarningsAsErrors">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.CSharpProjPropId.CSPROJPROPID_LanguageVersion">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.CSharpProjPropId.CSPROJPROPID_ErrorReport">
+      <summary />
+    </member>
+    <member name="T:VSLangProj80.FileProperties2">
+      <summary>This interface provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.Author">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.BuildAction">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.CopyToOutputDirectory">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.CustomTool">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.CustomToolNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.CustomToolOutput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.DateCreated">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.DateModified">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.Extension">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.FileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.Filesize">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.FullPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.HTMLTitle">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.IsCustomToolOutput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.IsDependentFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.IsDesignTimeBuildInput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.IsLink">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.IsSharedDesignTimeBuildInput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.ItemType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.LocalPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.ModifiedBy">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.SubType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FileProperties2.URL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.FolderProperties2">
+      <summary>This interface provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.DefaultNamespace">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.Extender(System.String)">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.ExtenderCATID">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.ExtenderNames">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.FileName">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.FullPath">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.LocalPath">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.URL">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.UrlBehavior">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.WebReference">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.FolderProperties2.WebReferenceInterface">
+      <summary>This member provides internal-only access to folder properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.IVsApplicationSettings">
+      <summary>Microsoft internal use only.</summary>
+    </member>
+    <member name="M:VSLangProj80.IVsApplicationSettings.EnsureWebServiceUrlPropertyExpression(System.String,System.String,System.Object)">
+      <summary>Microsoft internal use only.</summary>
+      <param name="pszAppSettingsObjectName"> </param>
+      <param name="pszPropertyName"> </param>
+      <param name="varPropertyValue"> </param>
+    </member>
+    <member name="M:VSLangProj80.IVsApplicationSettings.GetAppSettingsPropertyExpression(System.String,System.String)">
+      <summary>Microsoft internal use only.</summary>
+      <param name="pszAppSettingsObjectName"> </param>
+      <param name="pszPropertyName"> </param>
+    </member>
+    <member name="M:VSLangProj80.IVsApplicationSettings.GetPropertyInfo(System.String,System.String@,System.String@)">
+      <summary>Microsoft internal use only.</summary>
+      <param name="pszWebServiceName"> </param>
+      <param name="pbstrAppSettingsObjectName"> </param>
+      <param name="pbstrPropertyName"> </param>
+    </member>
+    <member name="M:VSLangProj80.IVsApplicationSettings.SetPropertyInfo(System.String,System.String)">
+      <summary>Microsoft internal use only.</summary>
+    </member>
+    <member name="T:VSLangProj80.IVSWebReferenceDynamicProperties2">
+      <summary>Contains methods to get and set dynamic properties on a Web reference.</summary>
+    </member>
+    <member name="M:VSLangProj80.IVSWebReferenceDynamicProperties2.GetDynamicPropertyName(System.String)">
+      <summary>Returns the name of the Web service dynamic property.</summary>
+      <returns>Returns a string containing the name of a Web reference dynamic property.</returns>
+      <param name="pszWebServiceName">String specifying the name of the Web service.</param>
+    </member>
+    <member name="M:VSLangProj80.IVSWebReferenceDynamicProperties2.SetDynamicProperty(System.String,System.String)">
+      <summary>Sets a dynamic Web reference property.</summary>
+      <param name="pszUrl">Web reference URL.</param>
+      <param name="pszPropertyName">Name of the dynamic property.</param>
+    </member>
+    <member name="M:VSLangProj80.IVSWebReferenceDynamicProperties2.SupportsDynamicProperties">
+      <summary>Indicates if a Web service supports dynamic properties.</summary>
+      <returns>A boolean indicating whether a Web service supports dynamic properties (true) or not (false).</returns>
+    </member>
+    <member name="T:VSLangProj80.JSharpProjectConfigurationProperties3">
+      <summary>This interface provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.AllowUnsafeBlocks">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.BaseAddress">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CheckForOverflowUnderflow">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisInputAssembly">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisLogFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisModuleSuppressionsFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisRuleAssemblies">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisRules">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisSpellCheckLanguages">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodeAnalysisUseTypeNameInSuppression">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.CodePage">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.ConfigurationOverrideFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DebugInfo">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DebugSymbols">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DefineConstants">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DefineDebug">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DefineTrace">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DisableLangXtns">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.DocumentationFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.EnableASPDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.EnableASPXDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.EnableSQLServerDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.EnableUnmanagedDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.Extender(System.String)">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.ExtenderCATID">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.ExtenderNames">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.FileAlignment">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.GenerateSerializationAssemblies">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.IncrementalBuild">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.IntermediatePath">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.JCPA">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.NoStdLib">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.NoWarn">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.Optimize">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.OutputPath">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.PlatformTarget">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.RegisterForComInterop">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.RemoteDebugEnabled">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.RemoteDebugMachine">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.RemoveIntegerChecks">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.RunCodeAnalysis">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.SecureScoping">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartAction">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartArguments">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartPage">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartProgram">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartURL">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartWithIE">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.StartWorkingDirectory">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.TreatSpecificWarningsAsErrors">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.TreatWarningsAsErrors">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.UseVSHostingProcess">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.JSharpProjectConfigurationProperties3.WarningLevel">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.JSharpProjPropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.JSharpProjPropId.JSPROJPROPID_CodePage">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.JSharpProjPropId.JSPROJPROPID_JCPA">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.JSharpProjPropId.JSPROJPROPID_DisableLangXtns">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.JSharpProjPropId.JSPROJPROPID_SecureScoping">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.prjAssemblyType">
+      <summary>Specifies the type of assembly.</summary>
+    </member>
+    <member name="F:VSLangProj80.prjAssemblyType.prjAssemblyType_Library">
+      <summary>The assembly is a library.</summary>
+    </member>
+    <member name="F:VSLangProj80.prjAssemblyType.prjAssemblyType_Platform">
+      <summary>The assembly is a platform.</summary>
+    </member>
+    <member name="T:VSLangProj80.prjDisableLangXtns">
+      <summary>Specifies whether to disable language extensions, and if so, what type.</summary>
+    </member>
+    <member name="F:VSLangProj80.prjDisableLangXtns.prjDisableLangXtnsNone">
+      <summary>Allow all language extensions.</summary>
+    </member>
+    <member name="F:VSLangProj80.prjDisableLangXtns.prjDisableLangXtnsNET">
+      <summary>Disable .NET language extensions only.</summary>
+    </member>
+    <member name="F:VSLangProj80.prjDisableLangXtns.prjDisableLangXtnsAll">
+      <summary>Disable all language extensions, regardless of type.</summary>
+    </member>
+    <member name="T:VSLangProj80.ProjectConfigurationProperties3">
+      <summary>This interface provides internal-only access to project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.AllowUnsafeBlocks">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <returns>External components can access these properties through the <see cref="T:EnvDTE.Properties" /> collection for the appropriate Visual Studio automation object. (That is, <see cref="T:EnvDTE.ProjectItem" /> for project files and folders, <see cref="T:EnvDTE.Project" /> for projects, and <see cref="T:EnvDTE.Configuration" /> for configurations). This member name name can be used as an indexer into the <see cref="T:EnvDTE.Properties" /> collection. For more information about accessing project properties through automation, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</returns>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.BaseAddress">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <returns>External components can access these properties through the <see cref="T:EnvDTE.Properties" /> collection for the appropriate Visual Studio automation object. (That is, <see cref="T:EnvDTE.ProjectItem" /> for project files and folders, <see cref="T:EnvDTE.Project" /> for projects, and <see cref="T:EnvDTE.Configuration" /> for configurations). This member name name can be used as an indexer into the <see cref="T:EnvDTE.Properties" /> collection. For more information about accessing project properties through automation, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</returns>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CheckForOverflowUnderflow">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisInputAssembly">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisLogFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisModuleSuppressionsFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisRuleAssemblies">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisRules">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisSpellCheckLanguages">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.CodeAnalysisUseTypeNameInSuppression">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.ConfigurationOverrideFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DebugInfo">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DebugSymbols">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DefineConstants">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DefineDebug">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DefineTrace">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.DocumentationFile">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.EnableASPDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.EnableASPXDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.EnableSQLServerDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.EnableUnmanagedDebugging">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.Extender(System.String)">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.ExtenderCATID">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.ExtenderNames">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.FileAlignment">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.GenerateSerializationAssemblies">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.IncrementalBuild">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.IntermediatePath">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.NoStdLib">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.NoWarn">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.Optimize">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.OutputPath">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.PlatformTarget">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.RegisterForComInterop">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.RemoteDebugEnabled">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.RemoteDebugMachine">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.RemoveIntegerChecks">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.RunCodeAnalysis">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartAction">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartArguments">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartPage">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartProgram">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartURL">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartWithIE">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.StartWorkingDirectory">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.TreatSpecificWarningsAsErrors">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.TreatWarningsAsErrors">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.UseVSHostingProcess">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectConfigurationProperties3.WarningLevel">
+      <summary>This member provides internal-only access to J# project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.ProjectProperties3">
+      <summary>This interface provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.__project">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AbsoluteProjectDirectory">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ActiveConfigurationSettings">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ActiveFileSharePath">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ActiveWebAccessMethod">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ApplicationIcon">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AspnetVersion">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyFileVersion">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyGuid">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyKeyContainerName">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyKeyProviderName">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyName">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyOriginatorKeyFile">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyOriginatorKeyFileType">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyOriginatorKeyMode">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyType">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.AssemblyVersion">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Company">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ComVisible">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Copyright">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DebugSecurityZoneURL">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DefaultClientScript">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DefaultHTMLPageLayout">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DefaultNamespace">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DefaultTargetSchema">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.DelaySign">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Description">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.EnableSecurityDebugging">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ExcludedPermissions">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Extender(System.String)">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ExtenderCATID">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ExtenderNames">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.FileName">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.FileSharePath">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.FullPath">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.GenerateManifests">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.LinkRepair">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.LocalPath">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ManifestCertificateThumbprint">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ManifestKeyFile">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ManifestTimestampUrl">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.NeutralResourcesLanguage">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OfflineURL">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OptionCompare">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OptionExplicit">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OptionStrict">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OutputFileName">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.OutputType">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.PostBuildEvent">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.PreBuildEvent">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Product">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ProjectType">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Publish">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ReferencePath">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.RootNamespace">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.RunPostBuildEvent">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.ServerExtensionsVersion">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.SignAssembly">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.SignManifests">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.StartupObject">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.TargetZone">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Title">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Trademark">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.TypeComplianceDiagnostics">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.URL">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.WebAccessMethod">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.WebServer">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.WebServerVersion">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.ProjectProperties3.Win32ResourceFile">
+      <summary>This member provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.ProjectReferencesEvent">
+      <summary>Specifies the COM dispatch identifier (DISPID) for <see cref="T:VSLangProj.ReferencesEvents" />.</summary>
+    </member>
+    <member name="F:VSLangProj80.ProjectReferencesEvent.RefsEvt_RefAdded">
+      <summary>Value = 1. Reference was added to a project.</summary>
+    </member>
+    <member name="F:VSLangProj80.ProjectReferencesEvent.RefsEvt_RefRemoved">
+      <summary>A project reference was removed.</summary>
+    </member>
+    <member name="F:VSLangProj80.ProjectReferencesEvent.RefsEvt_RefChanged">
+      <summary>A project reference has changed.</summary>
+    </member>
+    <member name="T:VSLangProj80.Reference3">
+      <summary>Extends the <see cref="T:VSLangProj2.Reference2" /> interface of the <see cref="N:VSLangProj2" /> namespace.</summary>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Aliases">
+      <summary>Gets or sets the aliased names for the specified reference. This property applies to Visual C# only.</summary>
+      <returns>A string representing the name of the aliases.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.AutoReferenced">
+      <summary>Gets whether the reference is automatically referenced by the compiler.</summary>
+      <returns>A boolean value indicating whether the reference is auto-referenced.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.BuildNumber">
+      <summary>Gets the build number of the reference.</summary>
+      <returns>A Long value. The value returned depends on the reference type.Reference TypeValue ReturnedAssemblyBuild number of the reference; 0-9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Collection">
+      <summary>Gets a collection of <see cref="T:VSLangProj.References" />.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.References" /> collection containing one or more <see cref="T:VSLangProj80.Reference3" /> objects.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.ContainingProject">
+      <summary>Gets the <see cref="T:EnvDTE.Project" /> containing the reference.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object that contains the reference.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.CopyLocal">
+      <summary>Gets or sets whether the reference is copied to the local bin path.</summary>
+      <returns>A boolean value indicating whether the reference is copied.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Culture">
+      <summary>Gets the culture string of a reference.</summary>
+      <returns>The return value depends on the reference type.Reference TypeValue ReturnedAssemblyCulture string. For example, "EN-US" for English - United States.COMLocale ID. The string is the hex locale ID of the type library being referenced. For example, "0" for multilanguage or "409" for English - United States.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Description">
+      <summary>Gets a text description of the reference.</summary>
+      <returns>For a <see cref="T:VSLangProj.Reference" /> object, the return value depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly description.COMType library description.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Extender(System.String)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="ExtenderName">N/A</param>
+    </member>
+    <member name="P:VSLangProj80.Reference3.ExtenderCATID">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.Reference3.ExtenderNames">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Identity">
+      <summary>Gets the unique identifier of the reference.</summary>
+      <returns>The returned string depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly name (assembly name without path or extension)COMThe format is:"GUID\major.minor\localeid\wrappertool"For example,"{00000205-0000-0010-8000-00AA006D2EA4}\2.5\409\tlbimp"is returned for ActiveX Data Objects 2.5.NativeAssembly identity of the assembly being referenced.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Isolated">
+      <summary>Gets or sets whether the COM reference is isolated, that is, not registered with Windows.</summary>
+      <returns>A boolean value indicating whether the reference is isolated.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.MajorVersion">
+      <summary>Gets the major version number of the reference.</summary>
+      <returns>An integer whose value depends on the reference type.Reference TypeValue ReturnedAssemblyMajor release number of the reference; 0–9999.COMA Int value.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.MinorVersion">
+      <summary>Gets the minor version number of the reference.</summary>
+      <returns>An integer whose value depends on the reference type.Reference TypeValue ReturnedAssemblyMinor release number of the reference; 0–9999. COMA long value.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Name">
+      <summary>Gets the name of the object.</summary>
+      <returns>The returned string depends on the reference type.Reference TypeValue ReturnedAssemblyThe assembly name, which is the file name of the reference without the extension.COMThe name of the wrapper for the referenced type library, which is the file name without the extension.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Path">
+      <summary>Gets the path to the reference file.</summary>
+      <returns>A string representing the path.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.PublicKeyToken">
+      <summary>Gets the public key token from a strongly signed reference.</summary>
+      <returns>A string value representing a public key token.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.RefType">
+      <summary>Gets the type of reference: assembly, COM, or native.</summary>
+      <returns>A System.UInt32 value representing the reference type.</returns>
+    </member>
+    <member name="M:VSLangProj80.Reference3.Remove">
+      <summary>Removes the reference from the <see cref="T:VSLangProj.References" /> object that contains it.</summary>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Resolved">
+      <summary>Gets whether the current reference was resolved.</summary>
+      <returns>true if the reference was resolved, otherwise false.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.RevisionNumber">
+      <summary>Gets the revision number of the reference.</summary>
+      <returns>A Long. The number returned depends on the reference type.Reference TypeValue ReturnedAssemblyRevision version number of the reference; 0–9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.RuntimeVersion">
+      <summary>Gets the version of the runtime against which the reference was built. This is applicable only for .NET references.</summary>
+      <returns>A string representing the version of the runtime against which the .NET reference was built.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.SourceProject">
+      <summary>Gets a <see cref="T:EnvDTE.Project" /> object if the reference is a project. Otherwise, it returns Nothing (a null object).</summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.SpecificVersion">
+      <summary>Gets or sets whether only a specific version of the reference is used.</summary>
+      <returns>A boolean value indicating whether only a certain version of the reference is used.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.StrongName">
+      <summary>Gets whether the reference is signed with a public/private key pair.</summary>
+      <returns>A boolean value indicating whether the reference is signed with a public/private key pair.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.SubType">
+      <summary>Sets or Gets the assembly subtype.</summary>
+      <returns>A string value representing the assembly's subtype. For SQL Server Visual Basic or Visual C# projects, this property is set to SQLCLR if the reference was retrieved from the target SQL server.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Type">
+      <summary>Obsolete. Included for backward compatibility only. Use <see cref="P:VSLangProj80.Reference3.RefType" /> instead.</summary>
+      <returns>A <see cref="T:VSLangProj.prjReferenceType" /> enumeration value indicating the reference type.</returns>
+    </member>
+    <member name="P:VSLangProj80.Reference3.Version">
+      <summary>Gets the version of the specified reference.</summary>
+      <returns>A string representing the version number.</returns>
+    </member>
+    <member name="T:VSLangProj80.sgenGenerationOption">
+      <summary>Indicates the state of the serialization generation system.</summary>
+    </member>
+    <member name="F:VSLangProj80.sgenGenerationOption.sgenGenerationOption_Off">
+      <summary>Serialization assembly is off.</summary>
+    </member>
+    <member name="F:VSLangProj80.sgenGenerationOption.sgenGenerationOption_On">
+      <summary>Serialization assembly is on.</summary>
+    </member>
+    <member name="F:VSLangProj80.sgenGenerationOption.sgenGenerationOption_Auto">
+      <summary>Serialization assembly is automatically determined.</summary>
+    </member>
+    <member name="T:VSLangProj80.SVSWebReferenceDynamicProperties">
+      <summary>A service that exposes the unmanaged VSLangProj ::IVSWebReferenceDynamicProperties interface.</summary>
+    </member>
+    <member name="T:VSLangProj80.VBProjectProperties3">
+      <summary>This interface provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.__id">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.__project">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AbsoluteProjectDirectory">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ActiveConfigurationSettings">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ActiveFileSharePath">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ActiveWebAccessMethod">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ApplicationIcon">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AspnetVersion">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyFileVersion">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyGuid">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyKeyContainerName">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyKeyProviderName">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyName">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyOriginatorKeyFile">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyOriginatorKeyFileType">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyOriginatorKeyMode">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyType">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.AssemblyVersion">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Company">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ComVisible">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Copyright">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DebugSecurityZoneURL">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DefaultClientScript">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DefaultHTMLPageLayout">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DefaultNamespace">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DefaultTargetSchema">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.DelaySign">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Description">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.EnableSecurityDebugging">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ExcludedPermissions">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Extender(System.String)">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ExtenderCATID">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ExtenderNames">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.FileName">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.FileSharePath">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.FullPath">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.GenerateManifests">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.LinkRepair">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.LocalPath">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ManifestCertificateThumbprint">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ManifestKeyFile">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ManifestTimestampUrl">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.MyApplication">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.MyType">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.NeutralResourcesLanguage">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OfflineURL">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OptionCompare">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OptionExplicit">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OptionStrict">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OutputFileName">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.OutputType">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.PostBuildEvent">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.PreBuildEvent">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Product">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ProjectType">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Publish">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ReferencePath">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.RootNamespace">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.RunPostBuildEvent">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.ServerExtensionsVersion">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.SignAssembly">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.SignManifests">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.StartupObject">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.TargetZone">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Title">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Trademark">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.TypeComplianceDiagnostics">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.URL">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.WebAccessMethod">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.WebServer">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.WebServerVersion">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj80.VBProjectProperties3.Win32ResourceFile">
+      <summary>This member provides internal-only access to Visual Basic project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj80.VBProjPropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VBProjPropId.VBPROJPROPID_MyApplication">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VBProjPropId.VBPROJPROPID_MyType">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.vsContextGuids">
+      <summary>Contains context GUIDs, each of which represents a given IDE state, such as if a  Visual C# project is open, or the Visual Basic editor is open. This enumeration is passed as an argument to <see cref="M:EnvDTE.Commands.AddNamedCommand(EnvDTE.AddIn,System.String,System.String,System.String,System.Boolean,System.Int32,System.Object[]@,System.Int32)" /> and <see cref="M:EnvDTE80.Commands2.AddNamedCommand2(EnvDTE.AddIn,System.String,System.String,System.String,System.Boolean,System.Object,System.Object[]@,System.Int32,System.Int32,EnvDTE80.vsCommandControlType)" />.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVBEditor">
+      <summary>Represents whether Visual Basic code is open in the editor.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVBProject">
+      <summary>Represents whether a Visual Basic project is present in the IDE.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVCSEditor">
+      <summary>Represents whether Visual C# code is open in the editor.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVCSProject">
+      <summary>Represents whether a Visual C# project is present in the IDE.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVJSEditor">
+      <summary>Represents whether code is open in the editor.</summary>
+    </member>
+    <member name="F:VSLangProj80.vsContextGuids.vsContextGuidVJSProject">
+      <summary>Represents whether a project is present in the IDE.</summary>
+    </member>
+    <member name="T:VSLangProj80.VSLangProjWebReferencesEvents">
+      <summary>Provides access to events that are raised by adding, deleting, or changing project web references.</summary>
+    </member>
+    <member name="T:VSLangProj80.VSLangProjWebReferencesEventsClass">
+      <summary>Refer to <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj80.VSLangProjWebReferencesEventsClass.#ctor">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="T:VSLangProj80.VSProject2">
+      <summary>Contains the information specific to a Visual Basic or Visual C# project. The <see cref="P:EnvDTE.Project.Object" /> object returns it when the project is a Visual Basic or Visual C# project.</summary>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.AddWebReference(System.String)">
+      <summary>Adds a reference to a Web Service to the project. A new Web Service reference subfolder is added to the Web References folder of the project. This new folder contains several other project items related to the Web Service. The method returns the <see cref="T:EnvDTE.ProjectItem" /> object associated with the new Web Service folder.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.ProjectItem" /> object that is the new Web Reference folder.</returns>
+      <param name="bstrUrl">Required. Typically, this is a file name URL with a .disco or .vsdisco extension. </param>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.BuildManager">
+      <summary>Gets the BuildManager object of the <see cref="T:VSLangProj.VSProject" />.</summary>
+      <returns>A <see cref="T:VSLangProj.BuildManager" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.CopyProject(System.String,System.String,VSLangProj.prjCopyProjectOption,System.String,System.String)">
+      <summary>Copies some or all of a Web project to a new location.</summary>
+      <param name="bstrDestFolder">Required. The destination folder for the new project. The folder is created if it does not exist. This string takes the form, http://<paramref name="ServerName" />/<paramref name="CopyName" />/.</param>
+      <param name="bstrDestUNCPath">Required. The UNC path for file-sharing if the project to be copied is using file-share access. Use the empty string if the project is using FrontPage Server Extensions access.</param>
+      <param name="copyProjectOption">Required. A <see cref="T:VSLangProj.prjCopyProjectOption" /> value that determines which project files are copied — all files, all project files, or only files needed to run the application.</param>
+      <param name="bstrUsername">Required. The user's network login ID.</param>
+      <param name="bstrPassword">Required. The user's password.</param>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.CreateWebReferencesFolder">
+      <summary>Creates the Web References folder for the project.</summary>
+      <returns>A <see cref="T:EnvDTE.ProjectItem" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.Events">
+      <summary>Gets a <see cref="T:VSLangProj.VSProjectEvents" /> object that allows you to respond to events of the <see cref="T:VSLangProj.Imports" />, <see cref="T:VSLangProj.References" />, and <see cref="T:VSLangProj.BuildManager" /> objects.</summary>
+      <returns>A <see cref="T:VSLangProj.VSProjectEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.Events2">
+      <summary>Gets a <see cref="T:VSLangProj80.VSProjectEvents2" /> object that allows you to respond to events of the <see cref="T:VSLangProj.Imports" />, <see cref="T:VSLangProj.References" />, <see cref="T:VSLangProj.BuildManager" />, and <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> objects.</summary>
+      <returns>A <see cref="T:VSLangProj80.VSProjectEvents2" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.Exec(VSLangProj.prjExecCommand,System.Int32,System.Object,System.Object@)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="command"> </param>
+      <param name="bSuppressUI"> </param>
+      <param name="varIn"> </param>
+      <param name="pVarOut"> </param>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.GenerateKeyPairFiles(System.String,System.String)">
+      <summary>Generates a public/private key file used to form a strong name for the assembly.</summary>
+      <param name="strPublicPrivateFile">The name of the file to be generated.</param>
+      <param name="strPublicOnlyFile">If true, only the public key is generated.</param>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.GetUniqueFilename(System.Object,System.String,System.String)">
+      <summary>Generates a unique file name within the project. it is used for naming new project items.</summary>
+      <returns>A string representing a file name that is unique in the project or project folder. If the first parameter is a <see cref="T:EnvDTE.Project" /> instance, then the name generated is unique within the root project folder. The file name takes the form Root?.Extension, where ? is one or more numerals (1, 2, 3, and so on).</returns>
+      <param name="pDispatch">The name generated has this value as the extension.</param>
+      <param name="bstrRoot">A <see cref="T:EnvDTE.Project" /> object or a folder <see cref="T:EnvDTE.ProjectItem" /> object. The file name generated is unique within this context. </param>
+      <param name="bstrDesiredExt">The name generated starts with this string.</param>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.Imports">
+      <summary>Gets the <see cref="T:VSLangProj.Imports" /> object associated with the project. For C# projects, the Imports property is set to Nothing (a null reference).</summary>
+      <returns>An <see cref="T:VSLangProj.Imports" /> collection, each item representing an import statement.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.Project">
+      <summary>Gets the generic <see cref="T:EnvDTE.Project" /> object associated with the Visual Basic or Visual C# project.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.PublishManager">
+      <summary>Gets a <see cref="P:VSLangProj80.VSProject2.PublishManager" /> object to allow click once publishing.</summary>
+      <returns>A <see cref="P:VSLangProj80.VSProject2.PublishManager" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.References">
+      <summary>Gets the <see cref="T:VSLangProj.References" /> collection for the project.</summary>
+      <returns>A <see cref="T:VSLangProj.References" /> collection containing <see cref="T:VSLangProj.Reference" /> objects, each one representing a reference.</returns>
+    </member>
+    <member name="M:VSLangProj80.VSProject2.Refresh">
+      <summary>Refreshes the appearance of the project in Solution Explorer and refreshes the references.</summary>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.TemplatePath">
+      <summary>This property is deprecated in Microsoft Visual Studio 2005. Use <see cref="M:EnvDTE80.Solution2.GetProjectItemTemplate(System.String,System.String)" /> instead.</summary>
+      <returns>A string value representing the template path.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.WebReferencesFolder">
+      <summary>Gets the <see cref="T:EnvDTE.ProjectItem" /> object representing the Web References folder of the project. If the folder does not exist, this property returns Nothing (a null reference).</summary>
+      <returns>A <see cref="T:EnvDTE.ProjectItem" /> object representing the Web References folder.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProject2.WorkOffline">
+      <summary>Indicates whether a Web project is working online or offline. When it is working offline, development continues on an offline store of project files, so that the project files on the server are not changed. </summary>
+      <returns>A boolean value. For Web applications, this property returns true if working offline and false if working online. For local projects, this property returns false.</returns>
+    </member>
+    <member name="T:VSLangProj80.VSProjectEvents2">
+      <summary>Extends the <see cref="T:VSLangProj.VSProjectEvents" /> class. The new class provides access to certain web reference events.</summary>
+    </member>
+    <member name="P:VSLangProj80.VSProjectEvents2.BuildManagerEvents">
+      <summary>Gets a <see cref="T:VSLangProj.BuildManagerEvents" /> object that provides access to the BuildManager events.</summary>
+      <returns>A <see cref="T:VSLangProj.BuildManagerEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProjectEvents2.ImportsEvents">
+      <summary>Gets an <see cref="T:VSLangProj.ImportsEvents" /> object that provides access to the Imports object events.</summary>
+      <returns>An <see cref="T:VSLangProj.ImportsEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProjectEvents2.ReferencesEvents">
+      <summary>Gets a <see cref="T:VSLangProj.ReferencesEvents" /> object that provides access to the events of the <see cref="T:VSLangProj.References" /> collection.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.ReferencesEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj80.VSProjectEvents2.VSLangProjWebReferencesEvents">
+      <summary>Gets a <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> object that provides access to Web reference events.</summary>
+      <returns>A <see cref="T:VSLangProj80.VSLangProjWebReferencesEvents" /> object.</returns>
+    </member>
+    <member name="T:VSLangProj80.VsProjFilePropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_FileName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_Extension">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_Filesize">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_LocalPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_FullPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_URL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_HTMLTitle">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_Author">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_DateCreated">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_DateModified">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_ModifiedBy">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_SubType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_Extender">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_ExtenderNames">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_ExtenderCATID">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_BuildAction">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_CustomTool">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_CustomToolNamespace">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_CustomToolOutput">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_IsCustomToolOutput">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_IsDependentFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_IsLink">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId.DISPID_VBFile_IsDesignTimeBuildInput">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjFilePropId80">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId80.DISPID_VBFile_CopyToOutputDirectory">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId80.DISPID_VBFile_ItemType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFilePropId80.DISPID_VBFile_IsSharedDesignTimeBuildInput">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjFolderPropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_FileName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_LocalPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_FullPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_URL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_Extender">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_ExtenderNames">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_ExtenderCATID">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_WebReference">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_DefaultNamespace">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId.DISPID_VBFolder_UrlBehavior">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjFolderPropId80">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjFolderPropId80.DISPID_VBFolder_WebReferenceInterface">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjPropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID__First">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DebugSymbols">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartArguments">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartAction">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OutputPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefineConstants">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartProgram">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartWorkingDirectory">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartURL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OutputFileName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_IntermediatePath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ApplicationIcon">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_WebServer">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AssemblyName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_Unused1">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartupObject">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OutputType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_WebServerVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ServerExtensionsVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_LinkRepair">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OfflineURL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefaultClientScript">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefaultTargetSchema">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefaultHTMLPageLayout">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ProjectFolder">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ProjectURL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_FileName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_FullPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_LocalPath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_URL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_Extender">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ExtenderNames">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ExtenderCATID">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ActiveConfigurationSettings">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AbsoluteProjectDirectory">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID__Project">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefineDebug">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefineTrace">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartPage">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_StartWithIE">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_EnableASPDebugging">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_EnableASPXDebugging">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_RootNamespace">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AssemblyOriginatorKeyMode">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AssemblyOriginatorKeyFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AssemblyKeyContainerName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DelaySign">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_FileSharePath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ActiveFileSharePath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_WebAccessMethod">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ActiveWebAccessMethod">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OptionStrict">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_WarningLevel">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_TreatWarningsAsErrors">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_RemoveIntegerChecks">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_BaseAddress">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ReferencePath">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_EnableUnmanagedDebugging">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_EnableSQLServerDebugging">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OptionExplicit">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_OptionCompare">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_AllowUnsafeBlocks">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_CheckForOverflowUnderflow">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DocumentationFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_Optimize">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_IncrementalBuild">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_NoStandardLibraries">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ProjectType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DefaultNamespace">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_FileAlignment">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_DisableWarnings">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBAPROJPROPID_ProjectName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_RegisterForComInterop">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_ConfigurationOverrideFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_RemoteDebugEnabled">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId.VBPROJPROPID_RemoteDebugMachine">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjPropId2">
+      <summary>Microsoft internal use only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_NoStdLib">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_PreBuildEvent">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_PostBuildEvent">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_RunPostBuildEvent">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_NoWarn">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId2.VBPROJPROPID_AspnetVersion">
+      <summary />
+    </member>
+    <member name="T:VSLangProj80.VsProjPropId80">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_DebugInfo">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_PlatformTarget">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_UseVSHostingProcess">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_GenerateSerializationAssemblies">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_RunCodeAnalysis">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisLogFile">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisRuleAssemblies">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisRules">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisInputAssembly">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisSpellCheckLanguages">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisUseTypeNameInSuppression">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CodeAnalysisModuleSuppressionsFile">
+      <summary />
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_InstanceType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ShutdownMode">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyTitle">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyDescription">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyCompany">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyProduct">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyCopyright">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyTrademark">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_TypeComplianceDiagnostics">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CompatibilityChecks">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_CompatibleAssembly">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_Win32ResourceFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyOriginatorKeyFileType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyKeyProviderName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyFileVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_SecureDebugURL">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_GenerateManifests">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_EnableSecurityDebugging">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_TreatSpecificWarningsAsErrors">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_Publish">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ComVisible">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_AssemblyGuid">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_NeutralResourcesLanguage">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_SignAssembly">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_TargetZone">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ExcludedPermissions">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ManifestCertificateThumbprint">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ManifestKeyFile">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_ManifestTimestampUrl">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjPropId80.VBPROJPROPID_SignManifests">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjReferencePropId">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_DTE">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Collection">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_ContainingProject">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Remove">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Name">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Type">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Identity">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Path">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Description">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Culture">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_MajorVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_MinorVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_RevisionNumber">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_BuildNumber">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_StrongName">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_SourceProject">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_CopyLocal">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Extender">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_ExtenderNames">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_ExtenderCATID">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_PublicKeyToken">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId.DISPID_Reference_Version">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjReferencePropId2">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId2.DISPID_Reference_RuntimeVersion">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj80.VsProjReferencePropId80">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_SpecificVersion">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_SubType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_Isolated">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_Aliases">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_RefType">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_AutoReferenced">
+      <summary> </summary>
+    </member>
+    <member name="F:VSLangProj80.VsProjReferencePropId80.DISPID_Reference_Resolved">
+      <summary> </summary>
+    </member>
+  </members>
+</doc>

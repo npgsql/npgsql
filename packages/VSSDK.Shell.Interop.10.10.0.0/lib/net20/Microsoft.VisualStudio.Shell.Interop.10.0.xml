@@ -1,0 +1,2845 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.Shell.Interop.10.0</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USESHOWWINDOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USESIZE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USEPOSITION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USECOUNTCHARS">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USEFILLATTRIBUTE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_RUNFULLSCREEN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_FORCEONFEEDBACK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_FORCEOFFFEEDBACK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USESTDHANDLES">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_USECREATIONFLAGS">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__DSI_FLAGS.DSI_INHERITHANDLES">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_GotFocus">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_LostFocus">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_SysKeyDown">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_KeyDown">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_Character">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_DragDrop">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FILTERKEYSMESSAGES.FilterKeysMessage_TextChanged">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__FRD_FLAGS"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FRD_FLAGS.FRDF_SUPPORTS_RETARGETING">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FRD_FLAGS.FRDF_DEFAULT">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__FRD_OUTCOME"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FRD_OUTCOME.FRDO_RETARGET_TO_40">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FRD_OUTCOME.FRDO_LEAVE_UNLOADED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__FRD_OUTCOME.FRDO_GOTO_DOWNLOAD_SITE">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__GRADIENTTYPE3"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__GRADIENTTYPE3.VSGRADIENT_TOOLBOX_SELECTED_HEADING_TOP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__GRADIENTTYPE3.VSGRADIENT_TOOLBOX_SELECTED_HEADING_BOTTOM">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__ProjectReferenceOutputValidity"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__ProjectReferenceOutputValidity.PROV_DoDefaultCheck">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__ProjectReferenceOutputValidity.PROV_OutputValid">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__ProjectReferenceOutputValidity.PROV_OutputInvalid">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__PSFFILEID4"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__PSFFILEID4.PSFFILEID_WcfServiceReferencesConfig">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__PSFFILEID4.PSFFILEID_FIRST4">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS.VISUALEFFECTS_None">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS.VISUALEFFECTS_Animations">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS.VISUALEFFECTS_Gradients">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS.VISUALEFFECTS_AllRichEffects">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VISUALEFFECTS.VISUALEFFECTS_UseHardwareAcceleration">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSADDITEMFLAGS3"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSADDITEMFLAGS3.VSADDITEM_NoOnlineTemplates">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_LocalSettings">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_RoamingSettings">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_Configuration">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_Documents">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_UserExtensions">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsApplicationDataFolder.ApplicationDataFolder_ApplicationExtensions">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS">
+      <summary>Flags that determine some of the ways projects are loaded. They are passed to methods such as <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureProjectIsLoaded(System.Guid@,System.UInt32)" />, <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureProjectsAreLoaded(System.UInt32,System.Guid[],System.UInt32)" />, and <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureSolutionIsLoaded(System.UInt32)" />.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_None">
+      <summary>The default behavior.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_NotCancelable">
+      <summary>Disable the Cancel button on the wait dialog during project load. (The Cancel button is not implemented by Visual Studio 2010.)</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_LoadBuildDependencies">
+      <summary>Load all the build dependencies of the project. This includes references between projects and user-defined dependencies at the solution level. By default Visual Studio loads only the dependencies necessary for design-time features (IntelliSense, form designers, etc.).</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_ExpandProjectOnLoad">
+      <summary>If this project is loaded, expand it in the Solution Explorer.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_SelectProjectOnLoad">
+      <summary>If this project is loaded, select it in the Solution Explorer.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS.VSBSLFLAGS_LoadAllPendingProjects">
+      <summary>Force all projects to load except for F<see cref=":Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_ExplicitLoadOnly" /> projects. By default Visual Studio completes the loading only of <see cref="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_DemandLoad" /> and <see cref="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_BackgroundLoad" /> projects. This flag is valid only for <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureSolutionIsLoaded(System.UInt32)" />.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSCREATENEWPROJVIADLGEXFLAGS2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSCREATENEWPROJVIADLGEXFLAGS2.VNPVDE_NOONLINETEMPLATES">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSCREATENEWPROJVIADLGEXFLAGS2.VNPVDE_NORECENTTEMPLATES">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSCREATENEWPROJVIADLGEXFLAGS2.VNPVDE_NOFRAMEWORKSELECTION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSCREATENEWPROJVIADLGEXFLAGS2.VNPVDE_HIDESOLUTIONNAME">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSCREATETOOLWIN2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSCREATETOOLWIN2.CTW_fDocumentLikeTool">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSDBGLAUNCHFLAGS5"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSDBGLAUNCHFLAGS5.DBGLAUNCH_PrepForDebug">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSDBGLAUNCHFLAGS5.DBGLAUNCH_TerminateOnStop">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSDBGLAUNCHFLAGS5.DBGLAUNCH_BreakOneProcess">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VsEnclosingScopes"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsEnclosingScopes.EnclosingScopes_None">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsEnclosingScopes.EnclosingScopes_Configuration">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsEnclosingScopes.EnclosingScopes_UserSettings">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VsErrorType"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsErrorType.VsErrorType_Error">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsErrorType.VsErrorType_Warning">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID_Icon">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID_TabImage">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID_Thumbnail">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID_NavigationInterface">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID_NextCloneID">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFPROPID4.VSFPROPID4_FIRST">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKASSEMBLYTYPE"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKASSEMBLYTYPE.VSFRAMEWORKASSEMBLYTYPE_FRAMEWORK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKASSEMBLYTYPE.VSFRAMEWORKASSEMBLYTYPE_EXTENSIONS">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKASSEMBLYTYPE.VSFRAMEWORKASSEMBLYTYPE_ALL">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKCOMPATIBILITY"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKCOMPATIBILITY.VSFRAMEWORKCOMPATIBILITY_COMPATIBLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKCOMPATIBILITY.VSFRAMEWORKCOMPATIBILITY_INCOMPATIBLEIDENTITY">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKCOMPATIBILITY.VSFRAMEWORKCOMPATIBILITY_INCOMPATIBLEVERSION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSFRAMEWORKCOMPATIBILITY.VSFRAMEWORKCOMPATIBILITY_INCOMPATIBLEPROFILE">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_TargetFrameworkMoniker">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_ExternalItem">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_SupportsAspNetIntegration">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_DesignTimeDependencies">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_BuildDependencies">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_DescriptiveName">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSHPROPID4.VSHPROPID_FIRST4">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSLITETREEOPTS2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSLITETREEOPTS2.LT_ENABLEEXPLORERTHEME">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4">
+      <summary>Identifies property settings for a solution (in addition to <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSPROPID" />, <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSPROPID2" />, and <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSPROPID3" />).</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_NoFrameworkDialogState">
+      <summary>Returns an integer representing the state of the project load security dialog kept between different language packages.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_IsInBackgroundIdleLoadProjectBatch">
+      <summary>Returns true if Visual Studio is currently loading a batch of pending projects in the background at idle. <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeLoadProjectBatch(true)" /> has been called.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_IsInSyncDemandLoadProjectBatch">
+      <summary>Returns true if Visual Studio is currently loading a batch of pending projects synchronously, triggered by some user action or command invocation that requires a set of projects to be loaded. <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeLoadProjectBatch(false)" /> has been called.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_IsSolutionFullyLoaded">
+      <summary>Returns true if all projects have been loaded in the background.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_BaseSolutionExplorerCaption">
+      <summary>Gets or sets a string representing the base caption for the Solution Explorer tool window. The default is "SolutionExplorer". The full caption is built by concatenating <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_BaseSolutionExplorerCaption" /> and <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_SolutionExplorerCaptionSuffix" />.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_SolutionExplorerCaptionSuffix">
+      <summary>Gets or sets the suffix of the caption for the Solution Explorer tool window. The default is an empty string. The full caption is built by concatenating <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_BaseSolutionExplorerCaption" /> and <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_SolutionExplorerCaptionSuffix" />.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_SolutionExplorerCaption">
+      <summary>Gets the full caption of the Solution Explorer tool window. The full caption is built by concatenating <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_BaseSolutionExplorerCaption" /> and <see cref="F:Microsoft.VisualStudio.Shell.Interop.VSPROPID4.VSPROPID_SolutionExplorerCaptionSuffix" />.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_AddNewProjectAsSibling">
+      <summary>Gets or sets a boolean: true if new projects should be added on the sibling directory of the solution, otherwise false.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_ActiveSolutionLoadManager">
+      <summary>Gets or sets an object representing the active Solution Load Manager. The default is null. A solution load manager is able to control how projects are loaded during the Solution Open operation. It can control whether projects are loaded immediately, loaded in the background (at idle), left to be loaded if needed, or stay unloaded. A solution load manager is expected to implement <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManager" />. A common approach is to have the solution load manager package autoload for the <see cref="F:Microsoft.VisualStudio.Shell.Interop.UIContextGuids100.SolutionOpeningUIContext" />, for example [ProvideAutoLoad(UIContextGuids100.SolutionOpening)]. This property may also be set during <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeOpenSolution" /> or during <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsPersistSolutionProps.WriteSolutionProps(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,Microsoft.VisualStudio.OLE.Interop.IPropertyBag)" /> for the pre-solution section.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_FIRST4">
+      <summary>Represents the first VSPROPID in this set.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSRESTARTTYPE"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSRESTARTTYPE.RESTART_Normal">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSRESTARTTYPE.RESTART_Elevated">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VsSettingsScope"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsScope.SettingsScope_Configuration">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsScope.SettingsScope_UserSettings">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType.SettingsType_Invalid">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType.SettingsType_Int">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType.SettingsType_Int64">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType.SettingsType_String">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VsSettingsType.SettingsType_Binary">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_ShellInitialized">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_ZeroConfigProjectDir">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_LocalAppDataDir">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_LayoutIsRightToLeft">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_OpenFileStartDir">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_IsModal">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_MainWindowDataSource">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_VisualEffectsOption">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_VisualEffectsAllowed">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_IsExecutingCommand">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_ReuseSavedActiveDocWindow">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_ActivityLogPath">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_ConfigurationTimestampUtc">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSPROPID4.VSSPROPID_FIRST4">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ACTIVEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ACTIVECAPTION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_APPWORKSPACE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_BUTTONFACE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_BUTTONHIGHLIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_BUTTONSHADOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_BUTTONTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CAPTIONTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_GRAYTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_HIGHLIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_HIGHLIGHTTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_INACTIVEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_INACTIVECAPTION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_INACTIVECAPTIONTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_INFOBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_INFOTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_MENU">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_MENUTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_THREEDDARKSHADOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_THREEDFACE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_THREEDHIGHLIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_THREEDLIGHTSHADOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_THREEDSHADOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_WINDOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_WINDOWFRAME">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_WINDOWTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_MOUSEOVER_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_TAB_MOUSEOVER_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_AUTOHIDE_RESIZEGRIP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_CLASSCOMPARTMENT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_CLASSHEADERBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_COMMENTBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_COMMENTSHAPEBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_COMMENTTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_COMPARTMENTSEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_CONNECTIONROUTEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTCONNECTION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPETITLEBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPEBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPESUBTITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPETEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DEFAULTSHAPETITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DELEGATECOMPARTMENT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DELEGATEHEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_DIAGRAMBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_EMPHASISBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_ENUMHEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_FIELDASSOCIATION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_INHERITANCE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_INTERFACEHEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_INTERFACECOMPARTMENT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_LASSO">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_LOLLIPOP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_PROPERTYASSOCIATION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_REFERENCEDASSEMBLYBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_RESIZINGSHAPEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_SHAPEBORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_SHAPESHADOW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_TEMPCONNECTION">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_TYPEDEF">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_TYPEDEFHEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_UNRESOLVEDTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_VBMODULECOMPARTMENT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_CLASSDESIGNER_VBMODULEHEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_DISABLED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_DISABLED_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_DISABLED_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEDOWN_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEDOWN_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_MOUSEOVER_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_POPUP_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_POPUP_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMBOBOX_POPUP_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_CHECKBOX">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_BACKGROUND_GRADIENTBEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_BACKGROUND_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_ICONBACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_MOUSEOVER_SUBMENU_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_SEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MENU_SUBMENU_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEDOWN_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEDOWN_BACKGROUND_MIDDLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEDOWN_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEDOWN_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEDOWN_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEDOWN_BACKGROUND_MIDDLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEDOWN_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_OPTIONS_MOUSEOVER_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_SELECTED_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_TOOLBAR_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDBAR_TOOLBAR_SEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_BACKGROUND_GRADIENTBEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_BACKGROUND_GRADIENTMIDDLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_BACKGROUND_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_HIGHLIGHT_GRADIENTBEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_HIGHLIGHT_GRADIENTMIDDLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_COMMANDSHELF_HIGHLIGHT_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SECONDARYPAGE_HEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SECONDARYPAGE_SUBTITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SECONDARYPAGE_TITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SUMMARYPAGE_HEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SUMMARYPAGE_SUBTITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_SUMMARYPAGE_TITLE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DIAGREPORT_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_BUTTON_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_BUTTON_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_BUTTON_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_GLYPH_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_GLYPH_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_GLYPH_ARROW">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DOCKTARGET_GLYPH_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_DISABLED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_DISABLED_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_DISABLED_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEDOWN_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEDOWN_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_MOUSEOVER_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_POPUP_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_POPUP_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPDOWN_POPUP_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_DROPSHADOW_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ENVIRONMENT_BACKGROUND_GRADIENTMIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ENVIRONMENT_BACKGROUND_GRADIENTMIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ENVIRONMENT_BACKGROUND_TEXTURE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_ENVIRONMENT_BACKGROUND_TEXTURE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_EXTENSIONMANAGER_STAR_HIGHLIGHT1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_EXTENSIONMANAGER_STAR_HIGHLIGHT2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_EXTENSIONMANAGER_STAR_INACTIVE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_EXTENSIONMANAGER_STAR_INACTIVE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_HOT_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_HOT_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_HOT_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_INACTIVE_GRADIENTTOP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_INACTIVE_GRADIENTBOTTOM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_INACTIVE_DOCUMENTBORDER_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_INACTIVE_DOCUMENTBORDER_EDGE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_INACTIVE_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_GRADIENTTOP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_GRADIENTMIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_GRADIENTMIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_GRADIENTBOTTOM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_DOCUMENTBORDER_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_DOCUMENTBORDER_EDGE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_LASTACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_SELECTED_GRADIENTMIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_FILETAB_SELECTED_GRADIENTMIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_HOVER_FOREGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_HOVER_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_HOVER_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_HOVER_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_HOVER_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_INACTIVE_FOREGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_INACTIVE_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_PROVIDER_INACTIVE_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_ITEM_SELECTED_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_ITEM_SELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_ITEM_INACTIVE_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_ITEM_INACTIVE_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_NEWPROJECT_ITEM_INACTIVE_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_CONTENTEXPANDER_CHEVRON">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_CONTENTEXPANDER_SEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_BODY">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_CHEVRON">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_HEADER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_HEADER_HOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_HEADER_PRESSED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_SEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_PAGE_SIDEBAREXPANDER_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_ARROW_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_ARROW_DISABLED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_ARROW_MOUSEOVER_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_ARROW_PRESSED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_DISABLED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_THUMB_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_THUMB_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_THUMB_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_THUMB_MOUSEOVER_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SCROLLBAR_THUMB_PRESSED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_MOUSEOVER_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_PRESSED_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_SEARCHBOX_PRESSED_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BACKGROUND_GRADIENTBEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BACKGROUND_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_MOUSEOVER_BACKGROUND_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_MOUSEOVER_BACKGROUND_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_PINNED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_PIN_DOWN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_PIN_HOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTON_UNPINNED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTONTEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_BUTTONTEXT_HOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_SELECTEDITEM_BACKGROUND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_SELECTEDITEM_STROKE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_SEPARATOR">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TAB_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TAB_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TAB_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TAB_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_BODY">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_BODY_SELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_BODY_UNSELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_CONTROL_LINK_SELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_CONTROL_LINK_SELECTED_HOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_DATE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_HEADING">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_HEADING_MOUSEOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_HEADING_SELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_SUBHEADING">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_SUBHEADING_MOUSEOVER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_TEXT_SUBHEADING_SELECTED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_UNSELECTEDITEM_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_UNSELECTEDITEM_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STARTPAGE_UNSELECTEDITEM_STROKE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_STATUSBAR_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TITLEBAR_ACTIVE_GRADIENTMIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TITLEBAR_ACTIVE_GRADIENTMIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLBOX_SELECTED_HEADING_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLBOX_SELECTED_HEADING_MIDDLE1">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLBOX_SELECTED_HEADING_MIDDLE2">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLBOX_SELECTED_HEADING_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_INACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_INACTIVE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_INACTIVE_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_HOVER_INACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_DOWN_INACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_ACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_HOVER_ACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_BUTTON_DOWN_ACTIVE_GLYPH">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_CONTENTTAB_GRADIENTBEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_CONTENTTAB_GRADIENTEND">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_FLOATING_FRAME">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_TAB_MOUSEOVER_BACKGROUND_BEGIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_TAB_MOUSEOVER_BACKGROUND_END">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_TAB_MOUSEOVER_BORDER">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_TOOLWINDOW_TAB_MOUSEOVER_TEXT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_BROWN_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_BROWN_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_BROWN_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_DARKGOLD_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_DARKGOLD_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_DARKGOLD_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GOLD_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GOLD_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GOLD_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GREEN_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GREEN_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_GREEN_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_PLUM_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_PLUM_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_PLUM_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_RED_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_RED_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_RED_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_SOFTBLUE_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_SOFTBLUE_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_SOFTBLUE_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STEELBLUE_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STEELBLUE_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STEELBLUE_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STRONGBLUE_DARK">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STRONGBLUE_LIGHT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_VIZSURFACE_STRONGBLUE_MEDIUM">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSSYSCOLOREX3.VSCOLOR_LASTEX3">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSTABBEDMODE"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSTABBEDMODE.VSTABBEDMODE_NotTabbed">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSTABBEDMODE.VSTABBEDMODE_SelectedTab">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSTABBEDMODE.VSTABBEDMODE_Tabbed">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS.VSAM_NONE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS.VSAM_SHIFT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS.VSAM_CONTROL">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS.VSAM_ALT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIACCELMODIFIERS.VSAM_WINDOWS">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_RESERVED">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_INVALID">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_BUILTIN">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_WIN32">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_WINFORMS">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__VSUIDATAFORMAT.VSDF_WPF">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags.WINDOWFRAMETYPE_Document">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags.WINDOWFRAMETYPE_Tool">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags.WINDOWFRAMETYPE_All">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags.WINDOWFRAMETYPE_Uninitialized">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.__WindowFrameTypeFlags.WINDOWFRAMETYPE_AllStates">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop._BuildSystemKindFlags2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._BuildSystemKindFlags2.BSK_MSBUILD_VS9">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._BuildSystemKindFlags2.BSK_MSBUILD_VS10">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop._NoFrameworkDialogState"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._NoFrameworkDialogState.NOFXDS_AlwaysShowDialog">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._NoFrameworkDialogState.NOFXDS_HideDialog_KeepUnloaded">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._NoFrameworkDialogState.NOFXDS_HideDialog_RetargetToFramework40">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority">
+      <summary>Represents the different load priorities that can be set on a project. </summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_DemandLoad">
+      <summary>Load the project synchronously when the solution is opened. Load on the next idle point, or immediately if one of the EnsureXXXIsLoaded methods of <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsSolution4" /> is called.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_BackgroundLoad">
+      <summary>Load the project in the background on idle.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_LoadIfNeeded">
+      <summary>Load the project only if it is needed as a dependency of another project.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority.PLP_ExplicitLoadOnly">
+      <summary>Keep the project unloaded, even if it is needed as a dependency of another project, until it is explicitly loaded.</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus">
+      <summary>Represents different reasons for unloading a project.</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus.UNLOADSTATUS_UnloadedByUser">
+      <summary>The user unloaded the project. The project node caption has the suffix "(unavailable)".</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus.UNLOADSTATUS_LoadPendingIfNeeded">
+      <summary>The solution load manager unloaded the project with PLP_LoadIfNeeded. The project node caption has the suffix "(pending)".</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus.UNLOADSTATUS_StorageNotLoadable">
+      <summary>The project was unloaded because project storage is not loadable. The project node caption has the suffix "(unavailable)".</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus.UNLOADSTATUS_StorageNotAvailable">
+      <summary>The project was unloaded because project storage is not available. The project node caption has the suffix "(unavailable)". The item node caption is set to "The project file or web cannot be found."</summary>
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus.UNLOADSTATUS_UpgradeFailed">
+      <summary>The project was unloaded because project migration/upgrade failed. The project node caption has the suffix "(unavailable)". The item node caption is set to "The project has not been converted."</summary>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop._VSTREEFLAGS2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop._VSTREEFLAGS2.TF_AVOIDPRECACHE">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.ILocalRegistry5"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.ILocalRegistry5.CreateAggregatedManagedInstance(System.String,System.String,System.String,System.IntPtr,System.Guid@,System.IntPtr@)">
+      <param name="codeBase"></param>
+      <param name="AssemblyName"></param>
+      <param name="TypeName"></param>
+      <param name="pUnkOuter"></param>
+      <param name="riid"></param>
+      <param name="ppvObj"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsAddToolboxItems"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsAddToolboxItems.AddItem(Microsoft.VisualStudio.OLE.Interop.IDataObject,Microsoft.VisualStudio.Shell.Interop.TBXITEMINFO[],System.String,System.String)">
+      <param name="pDO"></param>
+      <param name="ptif"></param>
+      <param name="szItemID"></param>
+      <param name="lpszTab"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsAddToolboxItems.AddItemWithOwningPackage(Microsoft.VisualStudio.OLE.Interop.IDataObject,Microsoft.VisualStudio.Shell.Interop.TBXITEMINFO[],System.String,System.String,System.Guid@)">
+      <param name="pDO"></param>
+      <param name="ptif"></param>
+      <param name="szItemID"></param>
+      <param name="lpszTab"></param>
+      <param name="guidPkg"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.BeginOneOffBuild"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.EndOneOffBuild"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.Escape(System.String,System.String@)">
+      <param name="pwszUnescapedValue"></param>
+      <param name="pbstrEscapedValue"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.GetCurrentBatchBuildId(System.UInt32@)">
+      <param name="pBatchId"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.GetSolutionConfiguration(System.Object,System.String@)">
+      <param name="punkRootProject"></param>
+      <param name="pbstrXmlFragment"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.IsBuildInProgress"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.RegisterLogger(System.Int32,System.Object)">
+      <param name="submissionId"></param>
+      <param name="punkLogger"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.Unescape(System.String,System.String@)">
+      <param name="pwszEscapedValue"></param>
+      <param name="pbstrUnescapedValue"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildManagerAccessor.UnregisterLoggers(System.Int32)">
+      <param name="submissionId"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsBuildPropertyStorage2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsBuildPropertyStorage2.SetPropertyValueEx(System.String,System.String,System.UInt32,System.String)">
+      <param name="pszPropName"></param>
+      <param name="pszPropertyGroupCondition"></param>
+      <param name="storage"></param>
+      <param name="pszPropValue"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpClientEvents"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpClientEvents.OnAfterMessageProcessed(System.Boolean@)">
+      <param name="pfContinue"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpClientEvents.OnHandleSignaled(System.UInt32,System.Boolean@)">
+      <param name="nHandle"></param>
+      <param name="pfContinue"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpClientEvents.OnTimeout(System.Boolean@)">
+      <param name="pfContinue"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpFactory"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePumpFactory.CreateInstance(Microsoft.VisualStudio.Shell.Interop.IVsCommonMessagePump@)">
+      <param name="ppIVsCommonMessagePump"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsComponentEnumeratorFactory4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsComponentEnumeratorFactory4.GetReferencePathsForTargetFramework(System.String,Microsoft.VisualStudio.Shell.Interop.IEnumComponents@)">
+      <param name="TargetFrameworkMoniker"></param>
+      <param name="ppEnumerator"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsComponentModelHost"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsComponentModelHost.GetCatalogCacheFolder(System.String@)">
+      <param name="pbstrFolderPath"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsComponentModelHost.GetComponentAssemblies(System.UInt32,System.String[],System.UInt32@)">
+      <param name="cAssemblies"></param>
+      <param name="rgbstrAssemblyPaths"></param>
+      <param name="pcActualAssemblies"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsComponentModelHost.QueryLoadComponentAssemblies(System.UInt32,System.String[],System.Boolean[])">
+      <param name="cAssemblies"></param>
+      <param name="prgAssemblyPaths"></param>
+      <param name="rgCanLoad"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsComponentSelectorDlg4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsComponentSelectorDlg4.ComponentSelectorDlg5(System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsComponentUser,System.UInt32,System.IntPtr[],System.String,System.String,System.UInt32@,System.UInt32@,System.UInt32,Microsoft.VisualStudio.Shell.Interop.VSCOMPONENTSELECTORTABINIT[],System.Guid@,System.String,System.String@,System.String)">
+      <param name="grfFlags"></param>
+      <param name="pUser"></param>
+      <param name="cComponents"></param>
+      <param name="rgpcsdComponents"></param>
+      <param name="lpszDlgTitle"></param>
+      <param name="lpszHelpTopic"></param>
+      <param name="pxDlgSize"></param>
+      <param name="pyDlgSize"></param>
+      <param name="cTabInitializers"></param>
+      <param name="rgcstiTabInitializers"></param>
+      <param name="pguidStartOnThisTab"></param>
+      <param name="pszBrowseFilters"></param>
+      <param name="pbstrBrowseLocation"></param>
+      <param name="TargetFrameworkMoniker"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsConfigureToolboxItem"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsConfigureToolboxItem.ConfigureToolboxItem(System.Object)">
+      <param name="item"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapEvents"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapEvents.OnStringMapChanged(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.String)">
+      <param name="pObject"></param>
+      <param name="szStringMapName"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager.AdviseChanges(Microsoft.VisualStudio.OLE.Interop.IDataObject,Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapEvents,System.UInt32@)">
+      <param name="pObject"></param>
+      <param name="pStringMapEvents"></param>
+      <param name="pdwCookie"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager.CreateStringMap(Microsoft.VisualStudio.Shell.Interop.IVsStringMap@)">
+      <param name="ppStringMap"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager.ReadStringMap(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.String,Microsoft.VisualStudio.Shell.Interop.IVsStringMap@)">
+      <param name="pObject"></param>
+      <param name="szStringMapName"></param>
+      <param name="ppStringMap"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager.UnadviseChanges(System.UInt32)">
+      <param name="dwCookie"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDataObjectStringMapManager.WriteStringMap(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.String,System.Int32,Microsoft.VisualStudio.Shell.Interop.IVsStringMap)">
+      <param name="pObject"></param>
+      <param name="szStringMapName"></param>
+      <param name="fOverwriteExisting"></param>
+      <param name="pStringMap"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDebugger3"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDebugger3.IsProcessRecycleRequired(Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo[])">
+      <param name="pProcessInfo"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDebugger3.LaunchDebugTargets3(System.UInt32,Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3[],Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo[])">
+      <param name="DebugTargetCount"></param>
+      <param name="pDebugTargets"></param>
+      <param name="pLaunchResults"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook.IsProcessRecycleRequired(Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo[])">
+      <param name="pProcessInfo"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook.OnLaunchDebugTargets(System.UInt32,Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3[],Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo[])">
+      <param name="DebugTargetCount"></param>
+      <param name="pDebugTargets"></param>
+      <param name="pLaunchResults"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook.SetNextHook(Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook)">
+      <param name="pNextHook"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDesignerInfo"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDesignerInfo.get_DesignerTechnology(System.String@)">
+      <param name="pbstrTechnology"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsDesignTimeAssemblyResolution"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDesignTimeAssemblyResolution.GetTargetFramework(System.String@)">
+      <param name="ppTargetFramework"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsDesignTimeAssemblyResolution.ResolveAssemblyPathInTargetFx(System.String[],System.UInt32,Microsoft.VisualStudio.Shell.Interop.VsResolvedAssemblyPath[],System.UInt32@)">
+      <param name="prgAssemblySpecs"></param>
+      <param name="cAssembliesToResolve"></param>
+      <param name="prgResolvedAssemblyPaths"></param>
+      <param name="pcResolvedAssemblyPaths"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsEditorFactoryChooser"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsEditorFactoryChooser.ChooseEditorFactory(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.UInt32,System.IntPtr,System.Guid@,System.Guid@,System.Guid@)">
+      <param name="pszMkDocument"></param>
+      <param name="pHier"></param>
+      <param name="itemid"></param>
+      <param name="punkDocDataExisting"></param>
+      <param name="rguidLogicalView"></param>
+      <param name="pguidEditorTypeActual"></param>
+      <param name="pguidLogicalViewActual"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsErrorItem2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsErrorItem2.GetCustomIconIndex(System.Int32@)">
+      <param name="index"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.CheckFrameworkCompatibility(System.String,System.String,System.UInt32@)">
+      <param name="pwszTargetFrameworkMonikerSource"></param>
+      <param name="pwszTargetFrameworkMonikerTarget"></param>
+      <param name="pdwCompat"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.GetDisplayNameForTargetFx(System.String,System.String@)">
+      <param name="pwszTargetFrameworkMoniker"></param>
+      <param name="pbstrDisplayName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.GetFrameworkAssemblies(System.String,System.UInt32,System.Array@)">
+      <param name="pwszTargetFrameworkMoniker"></param>
+      <param name="atAssemblyType"></param>
+      <param name="prgAssemblyPaths"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.GetInstallableFrameworkForTargetFx(System.String,System.String@)">
+      <param name="pwszTargetFrameworkMoniker"></param>
+      <param name="pbstrInstallableFrameworkMoniker"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.GetSupportedFrameworks(System.Array@)">
+      <param name="prgSupportedFrameworks"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.GetTargetFramework(System.String,System.String,System.String@)">
+      <param name="pwszAssemblyPath"></param>
+      <param name="pwszTargetFrameworkIdentifier"></param>
+      <param name="pbstrTargetFrameworkMoniker"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.IsReferenceableInTargetFx(System.String,System.String,System.Boolean@)">
+      <param name="pwszAssemblySpec"></param>
+      <param name="pwszTargetFrameworkMoniker"></param>
+      <param name="pbIsReferenceable"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkMultiTargeting.ResolveAssemblyPathsInTargetFx(System.String,System.Array,System.UInt32,Microsoft.VisualStudio.Shell.Interop.VsResolvedAssemblyPath[],System.UInt32@)">
+      <param name="pwszTargetFrameworkMoniker"></param>
+      <param name="prgAssemblySpecs"></param>
+      <param name="cAssembliesToResolve"></param>
+      <param name="prgResolvedAssemblyPaths"></param>
+      <param name="pcResolvedAssemblyPaths"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkRetargetingDlg"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkRetargetingDlg.NavigateToFrameworkDownloadUrl"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsFrameworkRetargetingDlg.ShowFrameworkRetargetingDlg(System.String,System.String,System.String,System.UInt32,System.UInt32@,System.Int32@)">
+      <param name="pszProjectType"></param>
+      <param name="pszProjectName"></param>
+      <param name="pszTargetedFrameworkMoniker"></param>
+      <param name="dwFlags"></param>
+      <param name="pdwOutcome"></param>
+      <param name="pbDontShowAgain"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsHelpProvider"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsHelpProvider.DisplayTopic(System.Array,System.Array)">
+      <param name="Keywords"></param>
+      <param name="Attributes"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsLanguageServiceBuildErrorReporter"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsLanguageServiceBuildErrorReporter.ClearErrors"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsLanguageServiceBuildErrorReporter.ReportError(System.String,System.String,Microsoft.VisualStudio.Shell.Interop.VSTASKPRIORITY,System.Int32,System.Int32,System.String)">
+      <param name="bstrErrorMessage"></param>
+      <param name="bstrErrorId"></param>
+      <param name="nPriority"></param>
+      <param name="iLine"></param>
+      <param name="iColumn"></param>
+      <param name="bstrFileName"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.AddTypeLibRef(System.Guid@,System.UInt32,System.UInt32)">
+      <param name="guidTypeLib"></param>
+      <param name="uVerMaj"></param>
+      <param name="uVerMin"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.ExecuteLine(System.String)">
+      <param name="pszLine"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.GetCodeEmittedFlag(System.Int32@)">
+      <param name="pfFlag"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.GetKeyWord(System.UInt32,System.String@)">
+      <param name="uiKeyWordId"></param>
+      <param name="pbstrKeyWord"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.GetLastEmitterId(System.Guid@)">
+      <param name="pguidEmitter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.GetRecordMode(Microsoft.VisualStudio.Shell.Interop.VSRECORDMODE[])">
+      <param name="peRecordMode"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.GetStringLiteralExpression(System.String,System.String@)">
+      <param name="pszStringValue"></param>
+      <param name="pbstrLiteralExpression"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.IsValidIdentifier(System.String)">
+      <param name="pszIdentifier"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordCancel"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordEnd"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordLine(System.String,System.Guid@)">
+      <param name="pszLine"></param>
+      <param name="rguidEmitter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordPause"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordResume"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.RecordStart(System.String)">
+      <param name="pszReserved"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.ReplaceLine(System.String,System.Guid@)">
+      <param name="pszLine"></param>
+      <param name="rguidEmitter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.SetCodeEmittedFlag(System.Int32)">
+      <param name="fFlag"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacroRecorder.SetRecordMode(Microsoft.VisualStudio.Shell.Interop.VSRECORDMODE)">
+      <param name="eRecordMode"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsMacros"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsMacros.GetMacroCommands(System.IntPtr@)">
+      <param name="ppsaMacroCanonicalNames"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsOutputWindow3"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsOutputWindow3.CreatePane2(System.Guid@,System.String,System.Int32,System.Int32,System.String,System.String)"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4">
+      <summary>Adds, finds, renames, and removes commands from the user interface.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.AddCommandBar(System.String,System.UInt32,System.Object,System.UInt32,System.Object@)">
+      <summary>Adds a command bar to the user interface.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pszCmdBarName">[in] The name of the command bar.</param>
+      <param name="dwType">[in] A value from the <see cref="T:EnvDTE.vsCommandBarType" /> enumeration.</param>
+      <param name="pCmdBarParent">[in] The parent of the command bar. Use null for a top-level command bar.</param>
+      <param name="dwIndex">[in] The index location at which to insert the new command bar on the parent.</param>
+      <param name="ppCmdBar">[out] The new command bar.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.AddCommandBarControl(System.String,System.Object,System.UInt32,System.UInt32,System.Object@)">
+      <summary>Adds a control to a command bar.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pszCmdNameCanonical">[in] The fully qualified (canonical) name of the control to add.</param>
+      <param name="pCmdBarParent">[in] The parent command bar.</param>
+      <param name="dwIndex">[in] The index location at which to place the control.</param>
+      <param name="dwCmdType">[in] A value from the <see cref="T:EnvDTE.vsCommandBarType" /> enumeration.</param>
+      <param name="ppCmdBarCtrl">[out] The newly added control.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.AddNamedCommand(System.Guid@,System.Guid@,System.String,System.UInt32@,System.String,System.String,System.String,System.String,System.UInt32,System.UInt32,System.UInt32,System.UInt32,System.Guid[])">
+      <summary>Adds a named command.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pguidPackage">[in] The package GUID. Use null for addins.</param>
+      <param name="pguidCmdGroup">[in] The GUID for the group to receive the new command. Use GUID_Macro or GUID_AddIn defined in vbapkg.idl.</param>
+      <param name="pszCmdNameCanonical">[in] The full name of the command.</param>
+      <param name="pdwCmdId">[out] The ID for the new command.</param>
+      <param name="pszCmdNameLocalized">[in] A localized version of the string. May be null.</param>
+      <param name="pszBtnText">[in] The text to display on a button. Use null if the added command isn't a button.</param>
+      <param name="pszCmdTooltip">[in] The ToolTip text to display. May be null.</param>
+      <param name="pszSatelliteDLL">[in] The full path to a satellite DLL implementing the command. May be null.</param>
+      <param name="dwBitmapResourceId">[in] The resource identifier of the icon to display for the command. Use zero (0) if there is no bitmap.</param>
+      <param name="dwBitmapImageIndex">[in] The index of the bitmap within the bitmap file.</param>
+      <param name="dwCmdFlagsDefault">[in] Use zero (0) for the default values to make the command active and visible.</param>
+      <param name="cUIContexts">[in] The number of contexts pointed to by the <paramref name="rgguidUIContexts" /> parameter.</param>
+      <param name="rgguidUIContexts">[in] An array of GUIDs for the user interface contexts indicating options for displaying the command. For more information, see the UIContext_ members of <see cref="T:Microsoft.VisualStudio.VSConstants" />.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.AddNamedCommand2(System.Guid@,System.Guid@,System.String,System.UInt32@,System.String,System.String,System.String,System.String,System.UInt32,System.UInt32,System.UInt32,System.UInt32,System.Guid[],System.UInt32)">
+      <summary>Adds a named command. This version has a parameter that specifies a UI element.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pguidPackage">[in] The package GUID. Use null for addins.</param>
+      <param name="pguidCmdGroup">[in] The GUID for the group to receive the new command. Use GUID_Macro or GUID_AddIn defined in vbapkg.idl.</param>
+      <param name="pszCmdNameCanonical">[in] The full name of the command.</param>
+      <param name="pdwCmdId">[out] The ID for the new command.</param>
+      <param name="pszCmdNameLocalized">[in] A localized version of the string. May be null.</param>
+      <param name="pszBtnText">[in] The text to display on a button. Use null if the added command isn't a button.</param>
+      <param name="pszCmdTooltip">[in] The ToolTip text to display. May be null.</param>
+      <param name="pszSatelliteDLL">[in] The full path to a satellite DLL implementing the command. May be null.</param>
+      <param name="dwBitmapResourceId">[in] The resource identifier for the icon to display for the command. Use zero (0) if there is no bitmap.</param>
+      <param name="dwBitmapImageIndex">[in] The index of the bitmap within the bitmap file.</param>
+      <param name="dwCmdFlagsDefault">[in] Use zero (0) for the default values to make the command active and visible.</param>
+      <param name="cUIContexts">[in] The number of contexts pointed to by the <paramref name="rgguidUIContexts" /> parameter.</param>
+      <param name="rgguidUIContexts">[in] An array of GUIDs for the user interface contexts indicating options for displaying the command. For more information, see the UIContext_ members of <see cref="T:Microsoft.VisualStudio.VSConstants" />.</param>
+      <param name="dwUIElementType">[in] Integer. A value from the <see cref="T:EnvDTE80.vsCommandControlType" /> enumeration.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.AddNamedCommand3(System.Guid@,System.Guid@,System.String,System.UInt32@,System.String,System.String,System.String,System.Object,System.UInt32,System.UInt32,System.Guid[],System.UInt32)">
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pguidPackage">[in] The package GUID. Use null for addins.</param>
+      <param name="pguidCmdGroup">[in] The GUID for the group to receive the new command. Use GUID_Macro or GUID_AddIn defined in vbapkg.idl.</param>
+      <param name="pszCmdNameCanonical">[in] The full name of the command.</param>
+      <param name="pdwCmdId">[out] The ID for the new command.</param>
+      <param name="pszCmdNameLocalized">[in] A localized version of the string. May be null.</param>
+      <param name="pszBtnText">[in] The text to display on a button. Use null if the added command isn't a button.</param>
+      <param name="pszCmdTooltip">[in] The ToolTip text to display. May be null.</param>
+      <param name="punkImage">[in] The image. This can be a <see cref="T:System.Drawing.Bitmap" />, and <see cref="T:System.Drawing.Icon" />, or an IPicture.</param>
+      <param name="dwCmdFlagsDefault">[in] Use zero (0) for the default values to make the command active and visible.</param>
+      <param name="cUIContexts">[in] The number of contexts pointed to by the <paramref name="rgguidUIContexts" /> parameter.</param>
+      <param name="rgguidUIContexts">[in] An array of GUIDs for the user interface contexts indicating options for displaying the command. For more information, see the UIContext_ members of <see cref="T:Microsoft.VisualStudio.VSConstants" />.</param>
+      <param name="dwUIElementType">[in] A value from the <see cref="T:EnvDTE80.vsCommandControlType" /> enumeration.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.FindCommandBar(System.Object,System.Guid@,System.UInt32,System.Object@)">
+      <summary>Find the object implementing a specific command.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pToolbarSet">[in] The toolbar set to search. Use null to search the main (default) toolbar set.</param>
+      <param name="pguidCmdGroup">[in] The GUID for the command group to search. Use GUID_Macro or GUID_AddIn defined in vbapkg.idl.</param>
+      <param name="dwMenuId">[in] The id of the menu item corresponding to the command.</param>
+      <param name="ppdispCmdBar">[out] The object.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.RemoveCommandBar(System.Object)">
+      <summary>Removes a command bar.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pCmdBar">[in] The command bar to remove.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.RemoveCommandBarControl(System.Object)">
+      <summary>Removes a control from a command bar.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pCmdBarCtrl">[in] The control.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.RemoveNamedCommand(System.String)">
+      <summary>Removes a named command.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pszCmdNameCanonical">[in] The canonical (fully-qualified) name of the command to remove.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProfferCommands4.RenameNamedCommand(System.String,System.String,System.String)">
+      <summary>Renames a named command.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pszCmdNameCanonical">[in] The canonical (fully-qualified) name of the command.</param>
+      <param name="pszCmdNameCanonicalNew">[in] The new canonical name.</param>
+      <param name="pszCmdNameLocalizedNew">[in] The new localized canonical name. May be null.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsProject4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.AddItem(System.UInt32,Microsoft.VisualStudio.Shell.Interop.VSADDITEMOPERATION,System.String,System.UInt32,System.String[],System.IntPtr,Microsoft.VisualStudio.Shell.Interop.VSADDRESULT[])">
+      <param name="itemidLoc"></param>
+      <param name="dwAddItemOperation"></param>
+      <param name="pszItemName"></param>
+      <param name="cFilesToOpen"></param>
+      <param name="rgpszFilesToOpen"></param>
+      <param name="hwndDlgOwner"></param>
+      <param name="pResult"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.AddItemWithSpecific(System.UInt32,Microsoft.VisualStudio.Shell.Interop.VSADDITEMOPERATION,System.String,System.UInt32,System.String[],System.IntPtr,System.UInt32,System.Guid@,System.String,System.Guid@,Microsoft.VisualStudio.Shell.Interop.VSADDRESULT[])">
+      <param name="itemidLoc"></param>
+      <param name="dwAddItemOperation"></param>
+      <param name="pszItemName"></param>
+      <param name="cFilesToOpen"></param>
+      <param name="rgpszFilesToOpen"></param>
+      <param name="hwndDlgOwner"></param>
+      <param name="grfEditorFlags"></param>
+      <param name="rguidEditorType"></param>
+      <param name="pszPhysicalView"></param>
+      <param name="rguidLogicalView"></param>
+      <param name="pResult"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.ContainsFileEndingWith(System.String,System.Int32@)">
+      <param name="pszEndingWith"></param>
+      <param name="pfDoesContain"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.ContainsFileWithItemType(System.String,System.Int32@)">
+      <param name="pszItemType"></param>
+      <param name="pfDoesContain"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.GenerateUniqueItemName(System.UInt32,System.String,System.String,System.String@)">
+      <param name="itemidLoc"></param>
+      <param name="pszExt"></param>
+      <param name="pszSuggestedRoot"></param>
+      <param name="pbstrItemName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.GetFilesEndingWith(System.String,System.UInt32,System.UInt32[],System.UInt32@)">
+      <param name="pszEndingWith"></param>
+      <param name="celt"></param>
+      <param name="rgItemids"></param>
+      <param name="pcActual"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.GetFilesWithItemType(System.String,System.UInt32,System.UInt32[],System.UInt32@)">
+      <param name="pszItemType"></param>
+      <param name="celt"></param>
+      <param name="rgItemids"></param>
+      <param name="pcActual"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.GetItemContext(System.UInt32,Microsoft.VisualStudio.OLE.Interop.IServiceProvider@)">
+      <param name="itemid"></param>
+      <param name="ppSP"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.GetMkDocument(System.UInt32,System.String@)">
+      <param name="itemid"></param>
+      <param name="pbstrMkDocument"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.IsDocumentInProject(System.String,System.Int32@,Microsoft.VisualStudio.Shell.Interop.VSDOCUMENTPRIORITY[],System.UInt32@)">
+      <param name="pszMkDocument"></param>
+      <param name="pfFound"></param>
+      <param name="pdwPriority"></param>
+      <param name="pitemid"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.OpenItem(System.UInt32,System.Guid@,System.IntPtr,Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame@)">
+      <param name="itemid"></param>
+      <param name="rguidLogicalView"></param>
+      <param name="punkDocDataExisting"></param>
+      <param name="ppWindowFrame"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.OpenItemWithSpecific(System.UInt32,System.UInt32,System.Guid@,System.String,System.Guid@,System.IntPtr,Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame@)">
+      <param name="itemid"></param>
+      <param name="grfEditorFlags"></param>
+      <param name="rguidEditorType"></param>
+      <param name="pszPhysicalView"></param>
+      <param name="rguidLogicalView"></param>
+      <param name="punkDocDataExisting"></param>
+      <param name="ppWindowFrame"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.RemoveItem(System.UInt32,System.UInt32,System.Int32@)">
+      <param name="dwReserved"></param>
+      <param name="itemid"></param>
+      <param name="pfResult"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.ReopenItem(System.UInt32,System.Guid@,System.String,System.Guid@,System.IntPtr,Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame@)">
+      <param name="itemid"></param>
+      <param name="rguidEditorType"></param>
+      <param name="pszPhysicalView"></param>
+      <param name="rguidLogicalView"></param>
+      <param name="punkDocDataExisting"></param>
+      <param name="ppWindowFrame"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProject4.TransferItem(System.String,System.String,Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame)">
+      <param name="pszMkDocumentOld"></param>
+      <param name="pszMkDocumentNew"></param>
+      <param name="punkWindowFrame"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsProjectFlavorReferences2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProjectFlavorReferences2.QueryCheckIsProjectReferenceOutputValid(System.Object,System.String,System.UInt32@)">
+      <param name="pReferencedProject"></param>
+      <param name="pszReferencedProjectOutput"></param>
+      <param name="pOutputValidity"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsProjectUpgradeViaFactory3"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProjectUpgradeViaFactory3.CheckProjectUpgraded(System.String,System.Boolean@,System.String[])">
+      <param name="pszFileName"></param>
+      <param name="pUpgradeComplete"></param>
+      <param name="pbstrUpgradedProjectFileName"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsProvideTargetedToolboxItems"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProvideTargetedToolboxItems.AddNewTypesForNewFramework(System.String,System.String,Microsoft.VisualStudio.Shell.Interop.IVsAddToolboxItems)">
+      <param name="szHighestExistingTFMWithSameID"></param>
+      <param name="szNewTFM"></param>
+      <param name="pAdder"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsProvideTargetedToolboxItems.GetInstanceOfExistingTypeForNewFramework(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.String,Microsoft.VisualStudio.Shell.Interop.IVsAddToolboxItems)">
+      <param name="pExistingItem"></param>
+      <param name="szNewTFM"></param>
+      <param name="pAdder"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsRegisterDataSourceFactories"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsRegisterDataSourceFactories.GetDataSource(System.Guid@,System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsUIDataSource@)">
+      <param name="guid"></param>
+      <param name="dw"></param>
+      <param name="ppUIDataSource"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsRegisterDataSourceFactories.RegisterDataSourceFactory(System.Guid@,Microsoft.VisualStudio.Shell.Interop.IVsDataSourceFactory)">
+      <param name="guid"></param>
+      <param name="pDataSourceFactory"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsRegisterUIFactories"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsRegisterUIFactories.CreateUIElement(System.Guid@,System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsUIElement@)">
+      <param name="guid"></param>
+      <param name="dw"></param>
+      <param name="ppUIElement"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsRegisterUIFactories.RegisterUIFactory(System.Guid@,Microsoft.VisualStudio.Shell.Interop.IVsUIFactory)">
+      <param name="guid"></param>
+      <param name="pUIFactory"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsResourceManager2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsResourceManager2.AnnotateIDIfNecessary(System.String,System.Guid@,System.String,System.String@)">
+      <param name="szId"></param>
+      <param name="guidPackage"></param>
+      <param name="szDllPath"></param>
+      <param name="pbstrAnnotatedId"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsResourceManager2.ParseResourceID(System.String,System.UInt32,System.String@,System.Guid@,System.String@)">
+      <param name="szId"></param>
+      <param name="lcid"></param>
+      <param name="pbstrUnadornedId"></param>
+      <param name="pguidPackage"></param>
+      <param name="pbstrDllPath"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSetTargetFrameworkWorkerCallback"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSetTargetFrameworkWorkerCallback.UpdateTargetFramework(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String)">
+      <param name="pHier"></param>
+      <param name="currentTargetFramework"></param>
+      <param name="newTargetFramework"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetApplicationDataFolder(System.UInt32,System.String@)">
+      <param name="folder"></param>
+      <param name="folderPath"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetCollectionScopes(System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="scopes"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetCommonExtensionsSearchPaths(System.UInt32,System.String[],System.UInt32@)">
+      <param name="paths"></param>
+      <param name="commonExtensionsPaths"></param>
+      <param name="actualPaths"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetPropertyScopes(System.String,System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="scopes"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetReadOnlySettingsStore(System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore@)">
+      <param name="scope"></param>
+      <param name="store"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsManager.GetWritableSettingsStore(System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore@)">
+      <param name="scope"></param>
+      <param name="writableStore"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.CollectionExists(System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="pfExists"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetBinary(System.String,System.String,System.UInt32,System.Byte[],System.UInt32[])">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="byteLength"></param>
+      <param name="pBytes"></param>
+      <param name="actualByteLength"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetBool(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetBoolOrDefault(System.String,System.String,System.Int32,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetInt(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetInt64(System.String,System.String,System.Int64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetInt64OrDefault(System.String,System.String,System.Int64,System.Int64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetIntOrDefault(System.String,System.String,System.Int32,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetLastWriteTime(System.String,Microsoft.VisualStudio.Shell.Interop.SYSTEMTIME[])">
+      <param name="collectionPath"></param>
+      <param name="lastWriteTime"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetPropertyCount(System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyCount"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetPropertyName(System.String,System.UInt32,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="index"></param>
+      <param name="propertyName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetPropertyType(System.String,System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="type"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetString(System.String,System.String,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetStringOrDefault(System.String,System.String,System.String,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetSubCollectionCount(System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="subCollectionCount"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetSubCollectionName(System.String,System.UInt32,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="index"></param>
+      <param name="subCollectionName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetUnsignedInt(System.String,System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetUnsignedInt64(System.String,System.String,System.UInt64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetUnsignedInt64OrDefault(System.String,System.String,System.UInt64,System.UInt64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.GetUnsignedIntOrDefault(System.String,System.String,System.UInt32,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSettingsStore.PropertyExists(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="pfExists"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsShell4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsShell4.Restart(System.UInt32)">
+      <param name="rtRestartMode"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolution4">
+      <summary>Provides methods for managed loading of the projects in a solution.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureProjectIsLoaded(System.Guid@,System.UInt32)">
+      <summary>Ensures that this project and all required dependencies are loaded.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="guidProject">The GUID of the project.</param>
+      <param name="grfFlags">The <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS" /> that specify how the projects are to be loaded.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureProjectsAreLoaded(System.UInt32,System.Guid[],System.UInt32)">
+      <summary>Ensures that the specified list of projects and all required dependencies are loaded.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="cProjects">The number of projects in the array.</param>
+      <param name="guidProjects">An array of the GUIDs of the projects.</param>
+      <param name="grfFlags">The <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS" /> that specify how the projects are to be loaded.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.EnsureSolutionIsLoaded(System.UInt32)">
+      <summary>Forces the loading of the entire solution synchronously before this function returns. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="grfFlags">The <see cref="T:Microsoft.VisualStudio.Shell.Interop.__VSBSLFLAGS" /> that specify how the project is to be loaded.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.IsBackgroundSolutionLoadEnabled(System.Boolean@)">
+      <summary>Determines whether the background solution load feature has already been enabled (<see cref="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_ActiveSolutionLoadManager" /> has been set).</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pfIsEnabled">[out] true if background loading is enabled, otherwise false.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.ReloadProject(System.Guid@)">
+      <summary>Reloads a single unloaded project without requiring any dependencies to be loaded.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code. If the project was not previously unloaded, then this method does nothing and returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_FALSE" />.</returns>
+      <param name="guidProjectID">The GUID of the project</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.UnloadProject(System.Guid@,System.UInt32)">
+      <summary>Unloads a project and sets the reason for unloading it.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="guidProjectID">The GUID of the project</param>
+      <param name="dwUnloadStatus">The <see cref="T:Microsoft.VisualStudio.Shell.Interop._VSProjectUnloadStatus" />.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution4.WriteUserOptsFile">
+      <summary>Writes the solution user options file (.suo).</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionBuildManager4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionBuildManager4.UpdateProjectDependencies(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy)">
+      <param name="pHier"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents">
+      <summary>Implemented by clients interested in solution events. Subscribe to these events via <see cref="M:Microsoft.VisualStudio.Shell.Interop.IVsSolution.AdviseSolutionEvents(Microsoft.VisualStudio.Shell.Interop.IVsSolutionEvents,System.UInt32@)" />.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnAfterBackgroundSolutionLoadComplete">
+      <summary>Fired when the solution load process is fully complete, including all background loading of projects. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnAfterLoadProjectBatch(System.Boolean)">
+      <summary>Fired when the loading of a batch of dependent projects is complete.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="fIsBackgroundIdleBatch">true if the batch is loaded in the background, otherwise false.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeBackgroundSolutionLoadBegins">
+      <summary>Fired when background loading of projects is beginning again after the initial solution open operation has completed. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeLoadProjectBatch(System.Boolean)">
+      <summary>Fired when loading a batch of dependent projects as part of loading a solution in the background. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="fIsBackgroundIdleBatch">true if the batch is loaded in the background, otherwise false.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnBeforeOpenSolution(System.String)">
+      <summary>Fired before a solution open begins. Extenders can activate a solution load manager by setting <see cref="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_ActiveSolutionLoadManager" />.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pszSolutionFilename">The name of the solution file.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadEvents.OnQueryBackgroundLoadProjectBatch(System.Boolean@)">
+      <summary>Fired before background loading a batch of projects. Normally a background batch loads a single pending project. This is a cancelable event.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pfShouldDelayLoadToNextIdle">[out] true if other background operations should complete before starting to load the project, otherwise false.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManager">
+      <summary>Controls the loading of projects in a solution. Extenders can use this interface to set the load priority of projects or types of projects.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManager.OnBeforeOpenProject(System.Guid@,System.Guid@,System.String,Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManagerSupport)">
+      <summary>Fired before each project is opened. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="guidProjectID">The GUID of the individual project to be opened.</param>
+      <param name="guidProjectType">The GUID of the type of project to be opened (e.g. Visual Basic or C#).</param>
+      <param name="pszFileName">The name of the project file.</param>
+      <param name="pSLMgrSupport">The <see cref="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManagerSupport" /> service. </param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManager.OnDisconnect">
+      <summary>Called when <see cref="F:Microsoft.VisualStudio.Shell.Interop.__VSPROPID4.VSPROPID_ActiveSolutionLoadManager" /> is cleared. </summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManagerSupport">
+      <summary>Provides support for managing the way projects in a solution are loaded.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManagerSupport.GetProjectLoadPriority(System.Guid@,System.UInt32@)">
+      <summary>Gets the project load priority, which determines whether the project should be kept as an unloaded project the next time the solution is opened.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="refguidProject">The GUID of the project</param>
+      <param name="pLoadState">[out] The <see cref="T:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority" />.</param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLoadManagerSupport.SetProjectLoadPriority(System.Guid@,System.UInt32)">
+      <summary>Sets the project load priority, which determines whether the project should be kept as an unloaded project the next time the solution is opened.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="refguidProject">The GUID of the project</param>
+      <param name="loadState">The <see cref="T:Microsoft.VisualStudio.Shell.Interop._VSProjectLoadPriority" />.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLogger"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLogger.LogError(System.UInt32,System.String,System.String,System.Int32,System.Int32,System.String,System.String,System.String,System.String)">
+      <param name="ErrorType"></param>
+      <param name="pszMessage"></param>
+      <param name="pszFile"></param>
+      <param name="nLine"></param>
+      <param name="nColumn"></param>
+      <param name="pszErrorCode"></param>
+      <param name="pszTaskListMessage"></param>
+      <param name="pszUniqueProjectName"></param>
+      <param name="pszHelpKeyword"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsSolutionLogger.LogMessage(System.String)">
+      <param name="pszMessage"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsStringMap"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsStringMap.Clear"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsStringMap.EnumKeys(Microsoft.VisualStudio.OLE.Interop.IEnumString@)">
+      <param name="ppEnum"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsStringMap.GetValue(System.String,System.String@)">
+      <param name="szKey"></param>
+      <param name="pbstrValue"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsStringMap.RemoveValue(System.String)">
+      <param name="szKey"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsStringMap.SetValue(System.String,System.String)">
+      <param name="szKey"></param>
+      <param name="szValue"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.EndWaitDialog(System.Int32@)">
+      <param name="pfCanceled"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.HasCanceled(System.Boolean@)">
+      <param name="pfCanceled"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.StartCancelableProgressWithPercentageDialog(System.String,System.String,System.String,System.Object,System.String,System.Int32,System.Int32,System.Int32)">
+      <param name="szWaitCaption"></param>
+      <param name="szWaitMessage"></param>
+      <param name="szProgressText"></param>
+      <param name="varStatusBmpAnim"></param>
+      <param name="szStatusBarText"></param>
+      <param name="iDelayToShowDialog"></param>
+      <param name="iTotalSteps"></param>
+      <param name="iCurrentStep"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.StartCancelableWaitDialog(System.String,System.String,System.String,System.Object,System.String,System.Int32,System.Boolean)">
+      <param name="szWaitCaption"></param>
+      <param name="szWaitMessage"></param>
+      <param name="szProgressText"></param>
+      <param name="varStatusBmpAnim"></param>
+      <param name="szStatusBarText"></param>
+      <param name="iDelayToShowDialog"></param>
+      <param name="fShowMarqueeProgress"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.StartNonCancelableProgressWithPercentageDialog(System.String,System.String,System.String,System.Object,System.String,System.Int32,System.Int32,System.Int32)">
+      <param name="szWaitCaption"></param>
+      <param name="szWaitMessage"></param>
+      <param name="szProgressText"></param>
+      <param name="varStatusBmpAnim"></param>
+      <param name="szStatusBarText"></param>
+      <param name="iDelayToShowDialog"></param>
+      <param name="iTotalSteps"></param>
+      <param name="iCurrentStep"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsThreadedWaitDialog2.UpdateProgress(System.String,System.String,System.String,System.Int32,System.Int32,System.Boolean,System.Boolean@)">
+      <param name="szUpdatedWaitMessage"></param>
+      <param name="szProgressText"></param>
+      <param name="szStatusBarText"></param>
+      <param name="iCurrentStep"></param>
+      <param name="iTotalSteps"></param>
+      <param name="fDisableCancel"></param>
+      <param name="pfCanceled"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsToolbarTrayHost"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbarTrayHost.AddToolbar(System.Guid@,System.UInt32)">
+      <param name="pGuid"></param>
+      <param name="dwId"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbarTrayHost.Close"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbarTrayHost.GetToolbarTray(Microsoft.VisualStudio.Shell.Interop.IVsUIElement@)">
+      <param name="ppToolbarTray"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsToolbox5"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbox5.GetItemBitmap(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.IntPtr@)">
+      <param name="pDataObject"></param>
+      <param name="pBitmap"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbox5.GetItemFlags(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.UInt32@)">
+      <param name="pDataObject"></param>
+      <param name="pFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbox5.GetLastRefreshTime(System.DateTime[])">
+      <param name="pTime"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolbox5.IsItemEnabled(Microsoft.VisualStudio.OLE.Interop.IDataObject,System.Boolean,System.Boolean@)">
+      <param name="pDataObject"></param>
+      <param name="fForceEvaluation"></param>
+      <param name="pEnabled"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsToolboxPageChooser"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolboxPageChooser.GetPreferredToolboxPage(System.Guid@)">
+      <param name="pguidPage"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsToolWindowToolbarHost2"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsToolWindowToolbarHost2.AddToolbar2(Microsoft.VisualStudio.Shell.Interop.VSTWT_LOCATION,System.Guid@,System.UInt32,Microsoft.VisualStudio.OLE.Interop.IDropTarget)">
+      <param name="dwLoc"></param>
+      <param name="pGuid"></param>
+      <param name="dwId"></param>
+      <param name="pDropTarget"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsTrackBatchRetargetingEvents"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackBatchRetargetingEvents.OnBatchRetargetingBegin"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackBatchRetargetingEvents.OnBatchRetargetingEnd"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.AdviseTrackBatchRetargetingEvents(Microsoft.VisualStudio.Shell.Interop.IVsTrackBatchRetargetingEvents,System.UInt32@)">
+      <param name="pEventSink"></param>
+      <param name="pdwCookie"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.AdviseTrackProjectRetargetingEvents(Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents,System.UInt32@)">
+      <param name="pEventSink"></param>
+      <param name="pdwCookie"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.BatchRetargetProject(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.Boolean)">
+      <param name="pHier"></param>
+      <param name="newTargetFramework"></param>
+      <param name="unloadProjectIfErrorOrCancel"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.BeginRetargetingBatch"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.EndRetargetingBatch"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.OnSetTargetFramework(Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String,Microsoft.VisualStudio.Shell.Interop.IVsSetTargetFrameworkWorkerCallback,System.Boolean)">
+      <param name="pHier"></param>
+      <param name="currentTargetFramework"></param>
+      <param name="newTargetFramework"></param>
+      <param name="pWorkerCallback"></param>
+      <param name="ReloadProject"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.UnadviseTrackBatchRetargetingEvents(System.UInt32)">
+      <param name="dwCookie"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargeting.UnadviseTrackProjectRetargetingEvents(System.UInt32)">
+      <param name="dwCookie"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents.OnRetargetingAfterChange(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String)">
+      <param name="projRef"></param>
+      <param name="pAfterChangeHier"></param>
+      <param name="fromTargetFramework"></param>
+      <param name="toTargetFramework"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents.OnRetargetingBeforeChange(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String,System.Boolean@,System.String@)">
+      <param name="projRef"></param>
+      <param name="pBeforeChangeHier"></param>
+      <param name="currentTargetFramework"></param>
+      <param name="newTargetFramework"></param>
+      <param name="pCanceled"></param>
+      <param name="ppReasonMsg"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents.OnRetargetingBeforeProjectSave(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String)">
+      <param name="projRef"></param>
+      <param name="pBeforeChangeHier"></param>
+      <param name="currentTargetFramework"></param>
+      <param name="newTargetFramework"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents.OnRetargetingCanceledChange(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String)">
+      <param name="projRef"></param>
+      <param name="pBeforeChangeHier"></param>
+      <param name="currentTargetFramework"></param>
+      <param name="newTargetFramework"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsTrackProjectRetargetingEvents.OnRetargetingFailure(System.String,Microsoft.VisualStudio.Shell.Interop.IVsHierarchy,System.String,System.String)">
+      <param name="projRef"></param>
+      <param name="pHier"></param>
+      <param name="fromTargetFramework"></param>
+      <param name="toTargetFramework"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIAccelerator.get_Message(Microsoft.VisualStudio.OLE.Interop.MSG[])">
+      <param name="pMsg"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIAccelerator.get_Modifiers(System.UInt32@)">
+      <param name="pdwModifiers"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter.Convert(Microsoft.VisualStudio.Shell.Interop.IVsUIObject,Microsoft.VisualStudio.Shell.Interop.IVsUIObject@)">
+      <param name="pObject"></param>
+      <param name="ppConvertedObject"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter.get_ConvertibleFormats(System.UInt32@,System.UInt32@)">
+      <param name="pdwDataFormatFrom"></param>
+      <param name="pdwDataFormatTo"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter.get_Type(System.String@)">
+      <param name="pTypeName"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverterManager"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverterManager.GetConverter(System.String,System.UInt32,System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter@)">
+      <param name="TypeName"></param>
+      <param name="dwDataFormatFrom"></param>
+      <param name="dwDataFormatTo"></param>
+      <param name="ppConverter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverterManager.GetObjectConverter(Microsoft.VisualStudio.Shell.Interop.IVsUIObject,System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter@)">
+      <param name="pObject"></param>
+      <param name="dwDataFormatTo"></param>
+      <param name="ppConverter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverterManager.RegisterConverter(System.String,System.UInt32,System.UInt32,Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverter)">
+      <param name="TypeName"></param>
+      <param name="dwDataFormatFrom"></param>
+      <param name="dwDataFormatTo"></param>
+      <param name="pConverter"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDataConverterManager.UnregisterConverter(System.String,System.UInt32,System.UInt32)">
+      <param name="TypeName"></param>
+      <param name="dwDataFormatFrom"></param>
+      <param name="dwDataFormatTo"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIDispatch.EnumVerbs(Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs@)">
+      <param name="ppEnum"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs.Clone(Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs@)">
+      <param name="ppEnum"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs.Next(System.UInt32,System.String[],System.UInt32@)">
+      <param name="celt"></param>
+      <param name="rgelt"></param>
+      <param name="pceltFetched"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs.Reset"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIEnumDataSourceVerbs.Skip(System.UInt32)">
+      <param name="celt"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIEventSink"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIEventSink.Disconnect(Microsoft.VisualStudio.Shell.Interop.IVsUISimpleDataSource)">
+      <param name="pSource"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIObject"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIObject.Equals(Microsoft.VisualStudio.Shell.Interop.IVsUIObject,System.Boolean@)">
+      <param name="pOtherObject"></param>
+      <param name="pfAreEqual"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIObject.get_Data(System.Object@)">
+      <param name="pVar"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIObject.get_Format(System.UInt32@)">
+      <param name="pdwDataFormat"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIObject.get_Type(System.String@)">
+      <param name="pTypeName"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIShell4"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIShell4.CreateToolbarTray(Microsoft.VisualStudio.OLE.Interop.IOleCommandTarget,Microsoft.VisualStudio.Shell.Interop.IVsToolbarTrayHost@)">
+      <param name="pCmdTarget"></param>
+      <param name="ppToolbarTrayHost"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIShell4.GetWindowEnum(System.UInt32,Microsoft.VisualStudio.Shell.Interop.IEnumWindowFrames@)">
+      <param name="type"></param>
+      <param name="ppEnum"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIShell4.SetupToolbar2(System.IntPtr,Microsoft.VisualStudio.Shell.Interop.IVsToolWindowToolbar,Microsoft.VisualStudio.OLE.Interop.IOleCommandTarget,Microsoft.VisualStudio.Shell.Interop.IVsToolWindowToolbarHost@)">
+      <param name="hwnd"></param>
+      <param name="ptwt"></param>
+      <param name="pCmdTarget"></param>
+      <param name="pptwth"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIShell4.SetupToolbar3(Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame,Microsoft.VisualStudio.Shell.Interop.IVsToolWindowToolbarHost@)">
+      <param name="pFrame"></param>
+      <param name="pptwth"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Bitmap"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Bitmap.BitmapContainsAlphaInfo(System.Boolean@)">
+      <param name="pfHasAlpha"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Bitmap.GetHBITMAP(System.Int32@)">
+      <param name="phBitmap"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Element"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Element.Create(System.IntPtr,System.IntPtr@)">
+      <param name="parent"></param>
+      <param name="pHandle"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Element.Destroy"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Element.GetHandle(System.IntPtr@)">
+      <param name="pHandle"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Element.ShowModal(System.IntPtr,System.Int32@)">
+      <param name="parent"></param>
+      <param name="pDlgResult"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Icon"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32Icon.GetHICON(System.Int32@)">
+      <param name="phIcon"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32ImageList"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWin32ImageList.GetHIMAGELIST(System.Int32@)">
+      <param name="phImageList"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfElement"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfElement.CreateFrameworkElement(System.Object@)">
+      <param name="ppUnkElement"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfElement.GetFrameworkElement(System.Object@)">
+      <param name="ppUnkElement"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfLoader"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfLoader.CreateUIElement(System.String,System.String,Microsoft.VisualStudio.Shell.Interop.IVsUIElement@)">
+      <param name="elementFQN"></param>
+      <param name="codeBase"></param>
+      <param name="ppUIElement"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfLoader.CreateUIElementOfType(System.Object,Microsoft.VisualStudio.Shell.Interop.IVsUIElement@)">
+      <param name="pUnkElementType"></param>
+      <param name="ppUIElement"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsUIWpfLoader.ShowModalElement(Microsoft.VisualStudio.Shell.Interop.IVsUIElement,System.IntPtr,System.Int32@)">
+      <param name="pUIElement"></param>
+      <param name="hWndParent"></param>
+      <param name="pResult"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsVba"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsVba.GetVbaUnk(System.Object@)">
+      <param name="pUnknown"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsVba.ShowVBA"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame3"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame3.CreateThumbnail(System.Int32,System.Int32,System.IntPtr@)">
+      <param name="width"></param>
+      <param name="height"></param>
+      <param name="thumbnail"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrameSwitcher"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrameSwitcher.AddTool(System.Guid@,System.String)">
+      <param name="guidTool"></param>
+      <param name="switchContext"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrameSwitcher.GetActiveFrame(Microsoft.VisualStudio.Shell.Interop.IVsWindowFrame@)">
+      <param name="pFrame"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrameSwitcher.InitializeSwitcher(System.UInt32)">
+      <param name="selelem"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWindowFrameSwitcher.RemoveTool(System.Guid@,System.String)">
+      <param name="guidTool"></param>
+      <param name="switchContext"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore"></member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.CollectionExists(System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="pfExists"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.CreateCollection(System.String)">
+      <param name="collectionPath"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.DeleteCollection(System.String)">
+      <param name="collectionPath"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.DeleteProperty(System.String,System.String)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetBinary(System.String,System.String,System.UInt32,System.Byte[],System.UInt32[])">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="byteLength"></param>
+      <param name="pBytes"></param>
+      <param name="actualByteLength"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetBool(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetBoolOrDefault(System.String,System.String,System.Int32,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetInt(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetInt64(System.String,System.String,System.Int64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetInt64OrDefault(System.String,System.String,System.Int64,System.Int64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetIntOrDefault(System.String,System.String,System.Int32,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetLastWriteTime(System.String,Microsoft.VisualStudio.Shell.Interop.SYSTEMTIME[])">
+      <param name="collectionPath"></param>
+      <param name="lastWriteTime"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetPropertyCount(System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyCount"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetPropertyName(System.String,System.UInt32,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="index"></param>
+      <param name="propertyName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetPropertyType(System.String,System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="type"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetString(System.String,System.String,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetStringOrDefault(System.String,System.String,System.String,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetSubCollectionCount(System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="subCollectionCount"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetSubCollectionName(System.String,System.UInt32,System.String@)">
+      <param name="collectionPath"></param>
+      <param name="index"></param>
+      <param name="subCollectionName"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetUnsignedInt(System.String,System.String,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetUnsignedInt64(System.String,System.String,System.UInt64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetUnsignedInt64OrDefault(System.String,System.String,System.UInt64,System.UInt64@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.GetUnsignedIntOrDefault(System.String,System.String,System.UInt32,System.UInt32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="defaultValue"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.PropertyExists(System.String,System.String,System.Int32@)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="pfExists"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetBinary(System.String,System.String,System.UInt32,System.Byte[])">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="byteLength"></param>
+      <param name="pBytes"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetBool(System.String,System.String,System.Int32)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetInt(System.String,System.String,System.Int32)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetInt64(System.String,System.String,System.Int64)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetString(System.String,System.String,System.String)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetUnsignedInt(System.String,System.String,System.UInt32)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.Shell.Interop.IVsWritableSettingsStore.SetUnsignedInt64(System.String,System.String,System.UInt64)">
+      <param name="collectionPath"></param>
+      <param name="propertyName"></param>
+      <param name="value"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsBuildManagerAccessor"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsCommonMessagePumpFactory"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsComponentModelHost"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsDataObjectStringMapManager"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsDataSourceFactory"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsDesignTimeAssemblyResolution"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsFrameworkMultiTargeting"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsFrameworkRetargetingDlg"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsMacroRecorder"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsMacros"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsProfferCommands"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsThreadedWaitDialogFactory"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsTrackProjectRetargeting"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsUIDataConverters"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsUIFactory"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.SVsVba"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields.AssemblyName"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields.Frameworks"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields.ItemProvider"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields.TypeName"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.ToolboxMultitargetingFields.UseProjectTargetFrameworkVersionInTooltip"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.cbReserved2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwCreationFlags"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwFillAttribute"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwX"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwXCountChars"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwXSize"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwY"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwYCountChars"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.dwYSize"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.flags"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.hStdError"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.hStdInput"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.hStdOutput"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.lpDesktop"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.lpReserved"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.lpReserved2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.lpTitle"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugStartupInfo.wShowWindow"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrArg"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrCurDir"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrEnv"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrExe"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrOptions"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrPortName"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.bstrRemoteMachine"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.dlo"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.dwDebugEngineCount"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.dwProcessId"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.fSendToOutputWindow"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.guidLaunchDebugEngine"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.guidPortSupplier"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.guidProcessLanguage"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.LaunchFlags"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.pDebugEngines"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.pStartupInfo"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetInfo3.pUnknown"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo.creationTime"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsDebugTargetProcessInfo.dwProcessId"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VsMacrosGuids"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsMacrosGuids.Macro"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsMacrosGuids.MacroProject"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsMacrosGuids.ModeRecorder"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsMacrosGuids.VsVbaPackage"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VSRECORDMODE"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VSRECORDMODE.VSRECORDMODE_ABSOLUTE">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VSRECORDMODE.VSRECORDMODE_RELATIVE">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VsResolvedAssemblyPath"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsResolvedAssemblyPath.bstrOrigAssemblySpec"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VsResolvedAssemblyPath.bstrResolvedAssemblyPath"></member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.VSTREETEXTOPTIONS2"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.VSTREETEXTOPTIONS2.TTO_SORTTEXT2">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Shell.Interop.WellKnownToolboxStringMaps"></member>
+    <member name="F:Microsoft.VisualStudio.Shell.Interop.WellKnownToolboxStringMaps.MultiTargeting"></member>
+  </members>
+</doc>

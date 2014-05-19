@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>VslangProj90</name>
+  </assembly>
+  <members>
+    <member name="T:VslangProj90.CSharpProjectConfigurationProperties4">
+      <summary>This interface provides internal-only access to project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.CSharpProjectProperties4">
+      <summary>This interface provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.CSharpProjectProperties5">
+      <summary>This interface provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.pkgOptionInfer">
+      <summary>Determines whether local type inference in declaring variables is used in the package.</summary>
+    </member>
+    <member name="F:VslangProj90.pkgOptionInfer.pkgOptionInferOff">
+      <summary>Disables local type inference in the package.</summary>
+    </member>
+    <member name="F:VslangProj90.pkgOptionInfer.pkgOptionInferOn">
+      <summary>Enables local type inference in the package.</summary>
+    </member>
+    <member name="T:VslangProj90.prjApplicationManifestValues">
+      <summary>An enumeration representing the presence of the app.manifest file.</summary>
+    </member>
+    <member name="F:VslangProj90.prjApplicationManifestValues.prjApplicationManifest_Default">
+      <summary>An enumeration value indicating that the application is using the default app.manifest file.</summary>
+    </member>
+    <member name="F:VslangProj90.prjApplicationManifestValues.prjApplicationManifest_NoManifest">
+      <summary>An enumeration value indicating that the application has no app.manifest file.</summary>
+    </member>
+    <member name="T:VslangProj90.prjOptionInfer">
+      <summary>Determines whether local type inference in declaring variables is used in the project.</summary>
+    </member>
+    <member name="F:VslangProj90.prjOptionInfer.prjOptionInferOff">
+      <summary>Disables local type inference for the project.</summary>
+    </member>
+    <member name="F:VslangProj90.prjOptionInfer.prjOptionInferOn">
+      <summary>Enables local type inference for the project.</summary>
+    </member>
+    <member name="T:VslangProj90.VBPackageSettings2">
+      <summary>Represents the setting for Option Infer. Applies to Visual Basic only.</summary>
+    </member>
+    <member name="T:VslangProj90.VBProjectConfigurationProperties4">
+      <summary>This interface provides internal-only access to project configuration properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.VBProjectProperties4">
+      <summary>This interface provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.VBProjectProperties5">
+      <summary>This interface provides internal-only access to project properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VslangProj90.VBProjPropId90">
+      <summary>An enumeration that controls options in the Code Analysis page for Visual Basic projects. Applies to Visual Basic only.</summary>
+    </member>
+    <member name="F:VslangProj90.VBProjPropId90.VBPROJPROPID_OptionInfer">
+      <summary>Indicates whether local type inference in declaring variables is used in the project.</summary>
+    </member>
+    <member name="F:VslangProj90.VBProjPropId90.VBPROJPROPID_CodeAnalysisIgnoreGeneratedCode">
+      <summary>Indicates whether Code Analysis should fail silently when it analyzes invalid assemblies, such as those without managed code. The default value is true.</summary>
+    </member>
+    <member name="F:VslangProj90.VBProjPropId90.VBPROJPROPID_CodeAnalysisOverrideRuleVisibilities">
+      <summary>Indicates whether to run all overridable Code Analysis rules against all targets. This will cause specific rules, such as those within the Design and Naming categories, to run against both public and internal APIs instead of only public APIs. The default value is false.</summary>
+    </member>
+    <member name="F:VslangProj90.VBProjPropId90.VBPROJPROPID_CodeAnalysisCulture">
+      <summary>The Culture to use for Code Analysis spelling rules, such as "en-US" or "en-AU". The default value is the current user interface language for Windows.</summary>
+    </member>
+    <member name="F:VslangProj90.VBProjPropId90.VBPROJPROPID_CodeAnalysisDictionaries">
+      <summary>Indicates the dictionaries used by Code Analysis.</summary>
+    </member>
+    <member name="T:VslangProj90.VsProjPropId90">
+      <summary>An enumeration representing project properties for all Visual Studio projects.</summary>
+    </member>
+    <member name="F:VslangProj90.VsProjPropId90.VBPROJPROPID_TargetFramework">
+      <summary>The version of the  .NET Framework targeted by the project.</summary>
+    </member>
+    <member name="F:VslangProj90.VsProjPropId90.VBPROJPROPID_ApplicationManifest">
+      <summary>The app.manifest file used by the project.</summary>
+    </member>
+    <member name="F:VslangProj90.VsProjPropId90.VBPROJPROPID_TargetFrameworkSubset">
+      <summary>The version of the  .NET Framework subset targeted by the project.</summary>
+    </member>
+  </members>
+</doc>

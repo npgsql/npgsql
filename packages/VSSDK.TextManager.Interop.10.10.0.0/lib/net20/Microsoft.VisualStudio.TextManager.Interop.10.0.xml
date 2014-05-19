@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.TextManager.Interop.10.0</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsFindManager"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsFindManager.CurrentTarget(Microsoft.VisualStudio.TextManager.Interop.IVsFindTarget@)"></member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsHiddenTextSessionEx2"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsHiddenTextSessionEx2.EndBatch"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsHiddenTextSessionEx2.StartBatch"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsHiddenTextSessionEx2.StartOutlining(System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsHiddenTextSessionEx2.StopOutlining"></member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsMethodTipWindow3"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsMethodTipWindow3.GetMethodData(Microsoft.VisualStudio.TextManager.Interop.IVsMethodData@)"></member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagTipWindow2">
+      <summary>Represents additional functionality for the <see cref="T:Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagTipWindow" />.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagTipWindow2.GetSmartTagData(Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagData@)">
+      <summary>Gets the smart tag content.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pSmartTagData">The <see cref="T:Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagData" />.</param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsTextTipWindow2"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextTipWindow2.GetTextTipData(Microsoft.VisualStudio.TextManager.Interop.IVsTextTipData@)"></member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.SVsFindManager"></member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.TextViewInitFlags3"></member>
+    <member name="F:Microsoft.VisualStudio.TextManager.Interop.TextViewInitFlags3.VIF_NO_HWND_SUPPORT">
+      <summary />
+    </member>
+  </members>
+</doc>

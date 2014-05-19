@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.Designer.Interfaces</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION"></member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION.PGOPT_HOTCOMMANDS">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION.PGOPT_HELP">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION.PGOPT_TOOLBAR">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDSORT"></member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDSORT.PGSORT_NOSORT">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDSORT.PGSORT_ALPHABETICAL">
+      <summary />
+    </member>
+    <member name="F:Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDSORT.PGSORT_CATEGORIZED">
+      <summary />
+    </member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDCodeDomCreator"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDCodeDomCreator.CreateCodeDomProvider(System.Object,System.Int32)">
+      <param name="pHier"></param>
+      <param name="itemid"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDCodeDomProvider"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDCodeDomProvider.CodeDomProvider"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.CommandGuid"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.Dispose"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.Flush"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.GetLoadError"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.SelectionContainer"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesigner.View"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerLoader"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerLoader.Dispose"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerLoader.GetEditorCaption(System.Int32)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerLoader.Initialize(System.Object,System.Object,System.Int32,System.Object)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerLoader.SetBaseEditorCaption(System.String)"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.CreateDesigner(System.Object,System.Object)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.CreateDesignerForClass(System.Object,System.String)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.CreateDesignerLoader(System.String)"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.DesignViewAttribute"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.GetDesignerLoaderClassForFile(System.String)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDDesignerService.RegisterDesignViewAttribute(System.Object,System.Int32,System.Int32,System.String)"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPerPropertyBrowsing"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPerPropertyBrowsing.GetPropertyAttributes(System.Int32,System.UInt32@,System.IntPtr,System.IntPtr)"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyBrowser"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyBrowser.CreatePropertyGrid"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyBrowser.Refresh"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyBrowser.WindowGlyphResourceID"></member>
+    <member name="T:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.CommandsVisible"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.Dispose"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.GetOption(Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION)"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.GridSort"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.Handle"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.Refresh"></member>
+    <member name="P:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.SelectedPropertyName"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.SetOption(Microsoft.VisualStudio.Designer.Interfaces._PROPERTYGRIDOPTION,System.Object)"></member>
+    <member name="M:Microsoft.VisualStudio.Designer.Interfaces.IVSMDPropertyGrid.SetSelectedObjects(System.Int32,System.Int32)"></member>
+  </members>
+</doc>

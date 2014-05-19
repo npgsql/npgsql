@@ -1,0 +1,784 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>EnvDTE90</name>
+  </assembly>
+  <members>
+    <member name="T:EnvDTE90.Debugger3">
+      <summary>
+        <see cref="T:EnvDTE90.Debugger3" /> is used to interrogate and manipulate the state of the debugger and the program being debugged. <see cref="T:EnvDTE90.Debugger3" /> supersedes the <see cref="T:EnvDTE80.Debugger2" /> and <see cref="T:EnvDTE.Debugger" /> interfaces.</summary>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.AllBreakpointsLastHit">
+      <summary>Gets a collection of bound breakpoints that were last simultaneously hit.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoints" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.Break(System.Boolean)">
+      <summary>Causes the given process to pause its execution so that its current state can be analyzed.</summary>
+      <param name="WaitForBreakMode">Set to true to return only when the debugger has entered break mode. Set to false to break and return immediately. For more information, see How to: Break Execution.</param>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.BreakpointLastHit">
+      <summary>Gets the last breakpoint hit.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoint" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.Breakpoints">
+      <summary>Gets a collection of breakpoints.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoints" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.CurrentMode">
+      <summary>Gets the current mode of the debugger within the context of the IDE.</summary>
+      <returns>A <see cref="T:EnvDTE.dbgDebugMode" /> value.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.CurrentProcess">
+      <summary>Gets or sets the active process.</summary>
+      <returns>A <see cref="T:EnvDTE.Process" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.CurrentProgram">
+      <summary>Sets or returns the active program.</summary>
+      <returns>A <see cref="T:EnvDTE.Program" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.CurrentStackFrame">
+      <summary>Gets or sets the current stack frame.</summary>
+      <returns>A <see cref="T:EnvDTE.StackFrame" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.CurrentThread">
+      <summary>Gets or sets the current thread being debugged.</summary>
+      <returns>A <see cref="T:EnvDTE.Thread" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.DebuggedProcesses">
+      <summary>Gets the list of processes that are being debugged.</summary>
+      <returns>A <see cref="T:EnvDTE.Processes" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.DetachAll">
+      <summary>Detaches from all attached programs.</summary>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.ExceptionGroups">
+      <summary>Gets the exception settings for the debugger. For each exception, these settings determine whether the debugger gives the code an opportunity to handle the exception before the debugger breaks execution.</summary>
+      <returns>A <see cref="T:EnvDTE90.ExceptionGroups" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.ExecuteStatement(System.String,System.Int32,System.Boolean)">
+      <summary>Executes the specified statement. If the <paramref name="TreatAsExpression" /> flag is true, then the string is interpreted as an expression, and output is sent to the Command Window.</summary>
+      <param name="Statement">The statement to execute.</param>
+      <param name="Timeout">The timeout period, in milliseconds.</param>
+      <param name="TreatAsExpression">true if the string is to be interpreted as an expression; otherwise false.</param>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.ForceContinue">
+      <summary>Gets or sets a value that determines whether the debugger breaks or continues when a tracepoint or breakpoint finishes executing a macro. The default behavior is set by the user in the dialog box when the tracepoint or breakpoint is created. This property can be used to change the default behavior.</summary>
+      <returns>A Boolean value that is true if continuation will be forced; otherwise, false.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.GetExpression(System.String,System.Boolean,System.Int32)">
+      <summary>Evaluates an expression based on the current stack frame. If the expression can be parsed but not evaluated, an object is returned but does not contain a valid value.</summary>
+      <returns>An <see cref="T:EnvDTE.Expression" />.</returns>
+      <param name="ExpressionText">The expression text to be evaluated.</param>
+      <param name="UseAutoExpandRules">true if the auto-expand rules should be used; otherwise, false.</param>
+      <param name="Timeout">The timeout period in milliseconds.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.GetExpression2(System.String,System.Boolean,System.Boolean,System.Int32)">
+      <summary>Evaluates an expression based on the current stack frame. If the expression can be parsed but not evaluated, an object is returned but does not contain a valid value. This member function is similar to <see cref="M:EnvDTE90.Debugger3.GetExpression(System.String,System.Boolean,System.Int32)" /> but with an additional Boolean parameter, which can be set to true to indicate that the expression is to be evaluated as a statement.</summary>
+      <returns>An <see cref="T:EnvDTE.Expression" />.</returns>
+      <param name="ExpressionText">The expression text to be evaluated.</param>
+      <param name="UseAutoExpandRules">true if the auto-expand rules should be used; otherwise, false.</param>
+      <param name="TreatAsStatement">true if the expression text should be treated as a single statement; otherwise, false.</param>
+      <param name="Timeout">The timeout period in milliseconds.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.GetProcesses(EnvDTE80.Transport,System.String)"></member>
+    <member name="M:EnvDTE90.Debugger3.Go(System.Boolean)">
+      <summary>Starts executing the program from the current statement.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return, the debugger could be in Design, Break, or Run modes. See Execution Control for more information.</param>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.HexDisplayMode">
+      <summary>Gets or sets a value that indicates whether the expressions are output in hexadecimal or decimal format.</summary>
+      <returns>A Boolean that is true if hexadecimal format; otherwise, false.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.HexInputMode">
+      <summary>Gets or sets a value that indicates whether the expressions are evaluated in hexadecimal or decimal format.</summary>
+      <returns>A Boolean that is true if hexadecimal format; otherwise, false.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.Languages">
+      <summary>Gets a list of languages that the debugger supports.</summary>
+      <returns>A <see cref="T:EnvDTE.Languages" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.LastBreakReason">
+      <summary>Gets the last reason that a program was broken. If the program is running it returns DBG_REASON_NONE.</summary>
+      <returns>A <see cref="T:EnvDTE.dbgEventReason" /> value.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.LocalProcesses">
+      <summary>Gets the list of processes that currently running on this computer.</summary>
+      <returns>A <see cref="T:EnvDTE.Processes" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.OnlyLoadSymbolsManually">
+      <summary>Gets a value that determines whether symbols are loaded manually or automatically. The Visual Studio user can determine this setting in the Options dialog box. For more information about how to set this value within Visual Studio, see How to: Specify Symbol Locations and Loading Behavior.</summary>
+      <returns>A Boolean value that is true if symbols must be loaded manually; false if symbols are loaded automatically.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.Parent">
+      <summary>Gets the immediate parent object of the <see cref="T:EnvDTE90.Debugger3" /> object (<see cref="T:EnvDTE80.DTE2" />).</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.RunToCursor(System.Boolean)">
+      <summary>Executes the program to the current position of the source file cursor.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.For more information, see Code Stepping Overview.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.SetNextStatement">
+      <summary>Sets the next instruction to be executed, according to the cursor position in the current source file.</summary>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.SetSymbolSettings(System.String,System.String,System.String,System.Boolean,System.Boolean)">
+      <summary>Sets various settings  for the .PDB symbols used by Visual Studio for debugging and forces reloading of all symbols. </summary>
+      <param name="SymbolPath">The path to the location of the .PDB symbol files.</param>
+      <param name="SymbolPathState">A string that contains one character for each symbol path. If the symbol path is enabled, the character has a value of "1". If the symbol path not enabled, the character can have any other value.</param>
+      <param name="SymbolCachePath">The path to the location of the cache used for downloading symbols from a symbol server.</param>
+      <param name="OnlyLoadSymbolsManually">Set to true if symbols should only be loaded manually, false if symbols should be loaded automatically.</param>
+      <param name="LoadSymbolsNow">Set to true if symbols should be loaded immediately; otherwise false. </param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.StepInto(System.Boolean)">
+      <summary>Steps into the next function call, if possible.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run-mode.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.StepOut(System.Boolean)">
+      <summary>Steps out of the current function.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.StepOver(System.Boolean)">
+      <summary>Steps over the next function call.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.</param>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.Stop(System.Boolean)">
+      <summary>Stops debugging and terminates or detaches from all attached processes.</summary>
+      <param name="WaitForDesignMode">Set to true if the debugging session should stop only when it reaches Design mode. Set to false if you intend to stop debugging. However, you have to perform other tasks in the macro before the debugger enters design mode.</param>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.SymbolCachePath">
+      <summary>Gets a string that contains the path to the symbols cache used by Visual Studio when you download symbols from a symbols server. You can specify the symbols cache path in the Options dialog box. For more information, see How to: Use a Symbol Server.</summary>
+      <returns>A string that contains the path to the symbols cache.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.SymbolPath">
+      <summary>Gets a string that contains paths to .PDB symbol files that are used by Visual Studio for debugging. The Visual Studio user can specify symbols paths in the Options dialog box. For more information, see How to: Specify Symbol Locations and Loading Behavior.</summary>
+      <returns>A string that contains a semicolon delimited list of paths to the .PDB symbol files.</returns>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.SymbolPathState">
+      <summary>Gets a string that represents the state of all symbol paths for the .PDB symbol files that are used by Visual Studio for debugging.</summary>
+      <returns>A string that contains one character for each symbol path. If the symbol path is enabled, the character has a value of "1". If the symbol path not enabled, the character can have any other value.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.TerminateAll">
+      <summary>Terminates all currently running debugging processes.</summary>
+    </member>
+    <member name="P:EnvDTE90.Debugger3.Transports">
+      <summary>Gets a collection of supported debugging transports.</summary>
+      <returns>A <see cref="T:EnvDTE80.Transports" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Debugger3.WriteMinidump(System.String,EnvDTE80.dbgMinidumpOption)"></member>
+    <member name="T:EnvDTE90.enum_THREADCATEGORY"></member>
+    <member name="F:EnvDTE90.enum_THREADCATEGORY.THREADCATEGORY_Worker">
+      <summary />
+    </member>
+    <member name="F:EnvDTE90.enum_THREADCATEGORY.THREADCATEGORY_UI">
+      <summary />
+    </member>
+    <member name="F:EnvDTE90.enum_THREADCATEGORY.THREADCATEGORY_Main">
+      <summary />
+    </member>
+    <member name="F:EnvDTE90.enum_THREADCATEGORY.THREADCATEGORY_RPC">
+      <summary />
+    </member>
+    <member name="F:EnvDTE90.enum_THREADCATEGORY.THREADCATEGORY_Unknown">
+      <summary />
+    </member>
+    <member name="T:EnvDTE90.ExceptionGroups">
+      <summary>Represents the top-level groups available in the first-chance exception dialog in the debugger.</summary>
+    </member>
+    <member name="P:EnvDTE90.ExceptionGroups.Count">
+      <summary>Gets a value indicating the number of exception groups in the collection.</summary>
+      <returns>An integer representing the number of exception groups.</returns>
+    </member>
+    <member name="P:EnvDTE90.ExceptionGroups.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionGroups.GetEnumerator">
+      <summary>Gets an enumeration for items in a collection.</summary>
+      <returns>An <see cref="T:System.Collections.IEnumerator" />.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionGroups.Item(System.Object)">
+      <summary>Gets an indexed member of this collection.</summary>
+      <returns>A <see cref="T:EnvDTE90.ExceptionSettings" /> object.</returns>
+      <param name="Index">Required. The index of the <see cref="T:EnvDTE90.ExceptionSettings" /> object to return.</param>
+    </member>
+    <member name="P:EnvDTE90.ExceptionGroups.Parent">
+      <summary>Gets the immediate parent object of this collection, in this case the <see cref="T:EnvDTE90.Debugger3" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE90.Debugger3" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionGroups.ResetAll">
+      <summary>Resets the <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenThrown" /> and <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenUserUnhandled" /> properties to their original values for both user-defined and built-in types. User-defined exceptions are not removed.</summary>
+    </member>
+    <member name="T:EnvDTE90.ExceptionSetting"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.BreakWhenThrown"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.BreakWhenUserUnhandled"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.Code"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.Collection"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.DTE"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.Name"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.Parent"></member>
+    <member name="P:EnvDTE90.ExceptionSetting.UserDefined"></member>
+    <member name="T:EnvDTE90.ExceptionSettings">
+      <summary>A collection of <see cref="T:EnvDTE90.ExceptionSetting" /> objects, each representing a set of exception settings for the debugger.</summary>
+    </member>
+    <member name="P:EnvDTE90.ExceptionSettings.Count">
+      <summary>Gets a value indicating the number of exception settings in the <see cref="T:EnvDTE90.ExceptionSettings" /> collection.</summary>
+      <returns>An integer representing the number of exception settings.</returns>
+    </member>
+    <member name="P:EnvDTE90.ExceptionSettings.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.GetEnumerator">
+      <summary>Gets an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.Item(System.Object)">
+      <summary>Gets an indexed member of this collection.</summary>
+      <returns>A <see cref="T:EnvDTE90.ExceptionSetting" /> object.</returns>
+      <param name="Index">Required. The index of the <see cref="T:EnvDTE90.ExceptionSetting" /> to return.</param>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.ItemFromCode(System.UInt32)">
+      <returns>The <see cref="T:EnvDTE90.ExceptionSetting" />.</returns>
+      <param name="Code">The code.</param>
+    </member>
+    <member name="P:EnvDTE90.ExceptionSettings.Name">
+      <summary>Gets the name of the specified exception setting.</summary>
+      <returns>A string representing the name of the exception setting.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.NewException(System.String,System.UInt32)">
+      <summary>Creates a new <see cref="T:EnvDTE90.ExceptionSetting" /> object for this category.</summary>
+      <param name="Name">The name for the new <see cref="T:EnvDTE90.ExceptionSetting" /> object to create.</param>
+      <param name="Code">The code of the <see cref="T:EnvDTE90.ExceptionSetting" /> object to create.</param>
+    </member>
+    <member name="P:EnvDTE90.ExceptionSettings.Parent">
+      <summary>Gets the immediate parent object of this collection, in this case the <see cref="T:EnvDTE90.Debugger3" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE90.Debugger3" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.Remove(System.Object)">
+      <summary>Deletes the <see cref="T:EnvDTE90.ExceptionSetting" /> object specified by index from the <see cref="T:EnvDTE90.ExceptionSettings" /> collection.</summary>
+      <param name="Index">The index of the <see cref="T:EnvDTE90.ExceptionSetting" /> object to remove.  </param>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.RemoveByCode(System.UInt32)">
+      <summary>Deletes the <see cref="T:EnvDTE90.ExceptionSetting" /> object specified by code from the <see cref="T:EnvDTE90.ExceptionSettings" /> collection.</summary>
+      <param name="Code">The code of the <see cref="T:EnvDTE90.ExceptionSetting" /> object to remove.</param>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.SetBreakWhenThrown(System.Boolean,EnvDTE90.ExceptionSetting)">
+      <summary>Enables or disables the <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenThrown" /> property for the specified <see cref="T:EnvDTE90.ExceptionSetting" />. The property passed in by the <see cref="T:EnvDTE90.ExceptionSetting" /> object will now reflect this value.</summary>
+      <param name="BreakWhenThrown">A boolean value; true to enable the  <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenThrown" /> property, false to disable it.</param>
+      <param name="ExceptionSetting">The <see cref="T:EnvDTE90.ExceptionSetting" /> for which to enable or disable the <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenThrown" /> property.</param>
+    </member>
+    <member name="M:EnvDTE90.ExceptionSettings.SetBreakWhenUserUnhandled(System.Boolean,EnvDTE90.ExceptionSetting)">
+      <summary>Enables or disables the <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenUserUnhandled" /> property for the specified <see cref="T:EnvDTE90.ExceptionSetting" />. The property passed in by the <see cref="T:EnvDTE90.ExceptionSetting" /> object will now reflect this value.</summary>
+      <param name="BreakWhenUserUnhandled">A boolean value; true to enable the  <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenUserUnhandled" /> property, false to disable it.</param>
+      <param name="ExceptionSetting">The <see cref="T:EnvDTE90.ExceptionSetting" /> for which to enable or disable the <see cref="P:EnvDTE90.ExceptionSetting.BreakWhenUserUnhandled" /> property.</param>
+    </member>
+    <member name="P:EnvDTE90.ExceptionSettings.SupportsExceptionCodes">
+      <summary>Gets whether this exception settings group supports exception codes.</summary>
+      <returns>A boolean value; true if the group supports exception codes, false if otherwise.</returns>
+    </member>
+    <member name="T:EnvDTE90.HTMLWindow3">
+      <summary>Represents an HTML document window in the Visual Studio integrated development environment (IDE).</summary>
+    </member>
+    <member name="P:EnvDTE90.HTMLWindow3.CurrentPane">
+      <summary>Gets or sets the current HTML Editor window type.</summary>
+      <returns>A <see cref="T:EnvDTE90.vsHTMLPanes" /> enumeration value indicating the current HTML Editor window being viewed.</returns>
+    </member>
+    <member name="P:EnvDTE90.HTMLWindow3.CurrentView">
+      <summary>Gets or sets whether the HTML Editor window is in Source, Designer, or Split view.</summary>
+      <returns>A <see cref="T:EnvDTE90.vsHTMLViews" /> enumeration value indicating the current view.</returns>
+    </member>
+    <member name="M:EnvDTE90.HTMLWindow3.WaitForBackgroundProcessingComplete(EnvDTE90.vsHTMLBackgroundTasks)">
+      <summary>Pauses program execution until background processing completes.</summary>
+      <param name="Task">Specifies a <see cref="T:EnvDTE90.vsHTMLBackgroundTasks" /> value to complete.</param>
+    </member>
+    <member name="T:EnvDTE90.Module">
+      <summary>Represents a module in a process that is being debugged.</summary>
+    </member>
+    <member name="P:EnvDTE90.Module.Collection">
+      <summary>Represents the collection of <see cref="T:EnvDTE90.Module" /> objects.</summary>
+      <returns>A <see cref="T:EnvDTE90.Modules" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.EndAddress">
+      <summary>Gets the end of the address range for the module.</summary>
+      <returns>A ULong value representing the address.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Is64bit">
+      <summary>Gets whether the module is 64-bit.</summary>
+      <returns>A boolean value; true if the module is 64-bit, false if otherwise.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.LoadAddress">
+      <summary>Gets the beginning load address for the module.</summary>
+      <returns>A ULong value representing the address.</returns>
+    </member>
+    <member name="M:EnvDTE90.Module.LoadSymbols(System.String)">
+      <summary>Loads the symbols from the specified symbols file. This is equivalent to clicking the Load Symbols command on the context menu of the Modules window.</summary>
+      <param name="SymbolPath">A string representing the path to the symbols file for the module.</param>
+    </member>
+    <member name="P:EnvDTE90.Module.Name">
+      <summary>Gets the name of the module (such as, "kernel32.dll"). <see cref="P:EnvDTE90.Module.Name" /> corresponds to the Name column of the Modules window.</summary>
+      <returns>A string value representing the name of the module.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Optimized">
+      <summary>Gets whether the binary has been optimized. <see cref="P:EnvDTE90.Module.Optimized" /> corresponds to the Optimized column of the Modules window.</summary>
+      <returns>A boolean value; true if the binary is optimized, false if otherwise.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Order">
+      <summary>Returns the load order of the module. <see cref="P:EnvDTE90.Module.Order" /> corresponds to the Order column of the Modules window.</summary>
+      <returns>A UInt value representing the load order.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Parent">
+      <summary>Gets the immediate parent object of a <see cref="T:EnvDTE90.Module" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE90.Debugger3" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Path">
+      <summary>Gets the full path to the module, such as c:\windows\system32\kernel32.dll. <see cref="P:EnvDTE90.Module.Path" /> corresponds to the Path column of the Modules window.</summary>
+      <returns>A string value representing the path to the module.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Process">
+      <summary>Gets the process that contains this module.</summary>
+      <returns>A <see cref="T:EnvDTE90.Process3" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Rebased">
+      <summary>Gets whether the module loaded at its preferred load address.</summary>
+      <returns>A boolean value; true if the module was rebased, that is, did not load at its preferred load address, false if otherwise.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.SymbolFile">
+      <summary>Gets the path to the symbol file for this module. Returns null if symbols were not loaded.</summary>
+      <returns>A string representing the path to the module's symbol file.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.UserCode">
+      <summary>Gets whether the debugger is currently considers this module "UserCode." <see cref="P:EnvDTE90.Module.Name" /> corresponds to the UserCode column of the Modules window. Applies to managed code only.</summary>
+      <returns>A boolean value; true if "UserCode," false if otherwise.</returns>
+    </member>
+    <member name="P:EnvDTE90.Module.Version">
+      <summary>Gets the version string for the module.</summary>
+      <returns>A string value representing the version of the module.</returns>
+    </member>
+    <member name="T:EnvDTE90.Modules">
+      <summary>Represents the collection of modules available in a process being debugged.</summary>
+    </member>
+    <member name="P:EnvDTE90.Modules.Count">
+      <summary>Gets the number of modules in the process being debugged.</summary>
+      <returns>An integer representing the number of modules.</returns>
+    </member>
+    <member name="P:EnvDTE90.Modules.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.Modules.GetEnumerator">
+      <summary>Gets an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:EnvDTE90.Modules.Item(System.Object)">
+      <summary>Gets an indexed member of a <see cref="T:EnvDTE90.Modules" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE90.Module" /> object.</returns>
+      <param name="Index">Required. The index of the <see cref="T:EnvDTE90.Modules" /> to return.</param>
+    </member>
+    <member name="P:EnvDTE90.Modules.Parent">
+      <summary>Gets the immediate parent object of an <see cref="T:EnvDTE90.Modules" /> collection, in this case the <see cref="T:EnvDTE90.Debugger3" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE90.Debugger3" /> object.</returns>
+    </member>
+    <member name="T:EnvDTE90.Process3">
+      <summary>The <see cref="T:EnvDTE90.Process3" /> object is used to examine and manipulate processes. The <see cref="T:EnvDTE90.Process3" /> object supersedes the <see cref="T:EnvDTE80.Process2" /> and <see cref="T:EnvDTE.Process" /> objects.</summary>
+    </member>
+    <member name="M:EnvDTE90.Process3.Attach">
+      <summary>Causes the debugger to attach this process.</summary>
+    </member>
+    <member name="M:EnvDTE90.Process3.Attach2(System.Object)">
+      <summary>Similar to <see cref="M:EnvDTE90.Process3.Attach" />, causes the debugger to attach this process, except that it allows you to specify an engine or set of engines.</summary>
+      <param name="Engines">A <see cref="T:EnvDTE80.Engines" /> collection.</param>
+    </member>
+    <member name="M:EnvDTE90.Process3.Break(System.Boolean)">
+      <summary>Causes the given process to pause its execution so that its current state can be analyzed.</summary>
+      <param name="WaitForBreakMode">Set to true to return only when the debugger has entered break mode. Set to false to break and return immediately. See Breaking Execution for more information.</param>
+    </member>
+    <member name="P:EnvDTE90.Process3.Collection">
+      <summary>Gets a <see cref="T:EnvDTE.Processes" /> collection that contains the object that supports this property or is contained within this code construct.</summary>
+      <returns>A <see cref="T:EnvDTE.Processes" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Process3.Detach(System.Boolean)">
+      <summary>Causes the debugger to detach from this process.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if the debugging session should stop only when it reaches a break or the end. Set to false if you intend to stop debugging, but you have to perform other tasks in the macro before the debugger breaks or ends. See Breaking Execution for more information.</param>
+    </member>
+    <member name="P:EnvDTE90.Process3.DTE">
+      <summary>Gets the top-level extensibility object, the <see cref="T:EnvDTE.DTE" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.IsBeingDebugged">
+      <summary>Gets whether the current process is being debugged.</summary>
+      <returns>true if the process is being debugged, false otherwise.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.Modules">
+      <summary>Gets a collection of module objects associated with this process.</summary>
+      <returns>A <see cref="T:EnvDTE90.Modules" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.Name">
+      <summary>Gets the name of the process.</summary>
+      <returns>A string that represents the name of the process.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.Parent">
+      <summary>Gets the immediate parent object of a <see cref="T:EnvDTE80.Process2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.Debugger" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.ProcessID">
+      <summary>Gets the ID number assigned to this process.</summary>
+      <returns>An <see cref="F:System.Globalization.NumberStyles.Integer" /> value that represents the ID number of the process.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.Programs">
+      <summary>Gets a collection of <see cref="T:EnvDTE.Program" /> objects.</summary>
+      <returns>A <see cref="T:EnvDTE.Programs" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Process3.Terminate(System.Boolean)">
+      <summary>Terminates this process.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if the debugging session should stop only when it reaches a break or the end. Set to false if you intend to stop debugging, but you have to perform other tasks in the macro before the debugger breaks or ends. For more information, see Breaking Execution.</param>
+    </member>
+    <member name="P:EnvDTE90.Process3.Threads">
+      <summary>Gets the threads associated with this process.</summary>
+      <returns>A <see cref="T:EnvDTE.Threads" /> collection, each representing a thread in the process.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.Transport">
+      <summary>Gets the <see cref="T:EnvDTE80.Transport" /> being used to debug this process.</summary>
+      <returns>A <see cref="T:EnvDTE80.Transport" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.TransportQualifier">
+      <summary>Gets a computer name or an IP address.</summary>
+      <returns>A string that contains a transport qualifier.</returns>
+    </member>
+    <member name="P:EnvDTE90.Process3.UserName">
+      <summary>Gets the user name associated with this process.</summary>
+      <returns>A string that represents the user name.</returns>
+    </member>
+    <member name="T:EnvDTE90.Solution3">
+      <summary>Represents all projects and solution-wide properties in the integrated development environment (IDE). Supersedes <see cref="T:EnvDTE.Solution" /> and <see cref="T:EnvDTE80.Solution2" />.</summary>
+    </member>
+    <member name="M:EnvDTE90.Solution3.AddFromFile(System.String,System.Boolean)">
+      <summary>Adds a project to the solution that is based on a project file already stored in the system.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="FileName">Required. The full path and file name of the project file.</param>
+      <param name="Exclusive">Optional. Indicates whether the project loads in the current solution or its own solution; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+    </member>
+    <member name="M:EnvDTE90.Solution3.AddFromTemplate(System.String,System.String,System.String,System.Boolean)">
+      <summary>Copies an existing project file, and any items or subdirectories it contains, to the specified location and adds it to the solution.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="FileName">Required. The full path and file name with extension of the template project file.</param>
+      <param name="Destination">Required. The full path of the directory in which to copy the contents of <paramref name="FileName" />.</param>
+      <param name="ProjectName">Required. The name of the project file in the destination directory. This should include the extension. The displayed name is derived from <paramref name="ProjectName" />.</param>
+      <param name="Exclusive">Optional. Indicates whether the project loads in the current solution or its own; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.AddIns">
+      <summary>Gets an <see cref="T:EnvDTE.AddIns" /> collection, which contains all currently available add-ins associated with the solution.</summary>
+      <returns>An <see cref="T:EnvDTE.AddIns" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.AddSolutionFolder(System.String)">
+      <summary>Adds a solution folder to a <see cref="T:EnvDTE.ProjectItems" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="Name">The name of the solution folder.</param>
+    </member>
+    <member name="M:EnvDTE90.Solution3.Close(System.Boolean)">
+      <summary>Closes the current solution.</summary>
+      <param name="SaveFirst">Optional. Indicates whether to save the solution before closing it; true if the solution should be saved prior to closing it, false if not.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Count">
+      <summary>Gets a value indicating the number of projects in the solution.</summary>
+      <returns>The number of projects in the solution.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.Create(System.String,System.String)">
+      <summary>Creates an empty solution in the specified directory with the specified name.</summary>
+      <param name="Destination">Required. The directory in which to create the .sln and .suo (solution) files.</param>
+      <param name="Name">Required. The name to display in Solution Explorer. This is also the base name of the .sln and .suo files.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Extender(System.String)">
+      <summary>Gets the requested Extender object if it is available for this object.</summary>
+      <returns>An Extender object.</returns>
+      <param name="ExtenderName">Required. The name of the Extender to return.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.ExtenderCATID">
+      <summary>Gets the Extender category ID (CATID) for the object.</summary>
+      <returns>A GUID representing the CATID of the object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.ExtenderNames">
+      <summary>Gets a list of available Extenders for the object.</summary>
+      <returns>An object containing an automation-compliant array of strings.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.FileName">
+      <summary>Gets the file name.</summary>
+      <returns>The file name.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.FindProjectItem(System.String)">
+      <summary>Locates an item in a project.</summary>
+      <returns>A <see cref="T:EnvDTE.ProjectItem" /> object.</returns>
+      <param name="FileName">Required. The name of the project item to locate.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.FullName">
+      <summary>Gets the full path and name of the object's file.</summary>
+      <returns>Gets a string that is the full path and name of the object's file.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.GetEnumerator">
+      <summary>Returns an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.GetProjectItemTemplate(System.String,System.String)">
+      <summary>Returns a path to the indicated project item template.</summary>
+      <returns>The full name of the project item template.</returns>
+      <param name="TemplateName">The name of the template.</param>
+      <param name="Language">The language used to write the template.</param>
+    </member>
+    <member name="M:EnvDTE90.Solution3.GetProjectItemTemplates(System.String,System.String)">
+      <summary>Returns a collection of project item templates for the specified project.</summary>
+      <returns>A templates collection containing the names of all of the project item templates.</returns>
+      <param name="Language">The language used to write the project item template.</param>
+      <param name="CustomDataSignature">The signature for any metadata associated with the project item template.</param>
+    </member>
+    <member name="M:EnvDTE90.Solution3.GetProjectTemplate(System.String,System.String)">
+      <summary>Returns a path to the specified project template.</summary>
+      <returns>The full name of the project template.</returns>
+      <param name="TemplateName">The name of the template.</param>
+      <param name="Language">The language used to write the template.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Globals">
+      <summary>Gets the <see cref="T:EnvDTE.Globals" /> object that contains any variable values that may be saved in the solution (.sln) file, the project file, or the user's profile data.</summary>
+      <returns>A <see cref="T:EnvDTE.Globals" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.IsDirty">
+      <summary>Determines whether the solution is dirty (modified but not saved).</summary>
+      <returns>True if the solution is dirty, otherwise false.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.IsOpen">
+      <summary>Gets whether a solution is open.</summary>
+      <returns>true if a solution is open; otherwise, false.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.Item(System.Object)">
+      <summary>Returns an indexed member of a <see cref="T:EnvDTE.Projects" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.Open(System.String)">
+      <summary>Opens a specified solution.</summary>
+      <param name="FileName">Required. The file name of the solution file to open.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Parent">
+      <summary>Gets the immediate parent object of a <see cref="T:EnvDTE80.Solution2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.ProjectItemsTemplatePath(System.String)">
+      <summary>Superseded by <see cref="M:EnvDTE80.Solution2.GetProjectItemTemplate(System.String,System.String)" />.</summary>
+      <returns>The path to the templates of the given project type.</returns>
+      <param name="ProjectKind">Required. The EnvDTE.Constants.vsProjectKind* project template representing the project type.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Projects">
+      <summary>Gets a collection of the projects currently in the solution.</summary>
+      <returns>A <see cref="T:EnvDTE.Projects" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Properties">
+      <summary>Gets a collection of all properties that pertain to the <see cref="T:EnvDTE80.Solution2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.Properties" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Solution3.Remove(EnvDTE.Project)">
+      <summary>Removes the specified project from the solution.</summary>
+      <param name="proj">Required. The project to remove from the solution.</param>
+    </member>
+    <member name="M:EnvDTE90.Solution3.SaveAs(System.String)">
+      <summary>Saves the solution.</summary>
+      <param name="FileName">Required. The file name in which to save the solution. If the file exists, it is overwritten.</param>
+    </member>
+    <member name="P:EnvDTE90.Solution3.Saved">
+      <summary>Gets or sets a value indicating whether a solution has not been modified since last being saved or opened.</summary>
+      <returns>true if the object has not been modified since last being saved or opened; otherwise, false. The default is true.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.SolutionBuild">
+      <summary>Gets the <see cref="T:EnvDTE.SolutionBuild" /> object for the solution, which represents the root of the build automation model at the solution level.</summary>
+      <returns>A <see cref="T:EnvDTE.SolutionBuild" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Solution3.TemplatePath(System.String)">
+      <summary>Superseded by <see cref="M:EnvDTE80.Solution2.GetProjectTemplate(System.String,System.String)" />.</summary>
+      <returns>The full path and name of the directory that contains templates for the specified type of project. </returns>
+      <param name="ProjectType">Required. A GUID that identifies the type of project.</param>
+    </member>
+    <member name="T:EnvDTE90.Template">
+      <summary>Represents a Visual Studio template available in the current instance of the integrated development environment (IDE).</summary>
+    </member>
+    <member name="P:EnvDTE90.Template.BaseName">
+      <summary>Gets the root name of the template.</summary>
+      <returns>A string representing the base name of the template.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.CustomData">
+      <summary>Gets any metadata associated with the template.</summary>
+      <returns>A string representing the template's metadata.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.CustomDataSignature">
+      <summary>Gets the signature for any metadata associated with the template.</summary>
+      <returns>A string representing the metadata signature.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.Description">
+      <summary>Gets the description for the template.</summary>
+      <returns>A string description of the template.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.FilePath">
+      <summary>Gets the filename and path to the template file.</summary>
+      <returns>A string representing the path to the template.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.ID">
+      <summary>Gets the ID for the template.</summary>
+      <returns>A string representing the ID of the template.</returns>
+    </member>
+    <member name="P:EnvDTE90.Template.Name">
+      <summary>Gets the friendly name for the template.</summary>
+      <returns>A string representing the friendly name for the template.</returns>
+    </member>
+    <member name="T:EnvDTE90.Templates">
+      <summary>Represents all of the templates in the current project.</summary>
+    </member>
+    <member name="P:EnvDTE90.Templates.Count">
+      <summary>Gets the number of templates in the collection.</summary>
+      <returns>An integer representing the number of templates in the the <see cref="T:EnvDTE90.Templates" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.Templates.GetEnumerator">
+      <summary>Returns an enumeration for items in a collection.</summary>
+      <returns>An <see cref="T:System.Collections.IEnumerator" /> value.</returns>
+    </member>
+    <member name="P:EnvDTE90.Templates.Item(System.Int32)">
+      <summary>Represents a specific template in the <see cref="T:EnvDTE90.Templates" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE90.Template" /> object representing the specified template.</returns>
+      <param name="Index">The index to a specific template, either an integer value or the name of a template.</param>
+    </member>
+    <member name="T:EnvDTE90.Thread2">
+      <summary>Represents a thread in a Visual Studio application.</summary>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Category"></member>
+    <member name="P:EnvDTE90.Thread2.Collection">
+      <summary>Gets the collection that contains this thread.</summary>
+      <returns>A <see cref="T:EnvDTE.Threads" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.DisplayName"></member>
+    <member name="P:EnvDTE90.Thread2.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Flag">
+      <summary>Gets or sets a flag on an individual thread.</summary>
+      <returns>A boolean value representing whether a flag is set on a thread; true if there is, false otherwise.</returns>
+    </member>
+    <member name="M:EnvDTE90.Thread2.Freeze">
+      <summary>Stops the thread from executing.</summary>
+    </member>
+    <member name="P:EnvDTE90.Thread2.ID">
+      <summary>Gets the thread ID.</summary>
+      <returns>An integer representing the thread ID.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.IsAlive">
+      <summary>Gets whether the referenced thread is still alive.</summary>
+      <returns>A Boolean value.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.IsFrozen">
+      <summary>Gets whether or not a thread's execution has been suspended by the debugger.</summary>
+      <returns>A Boolean value of true if the thread is frozen by the debugger; otherwise it returns false. </returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Location">
+      <summary>Gets the address at which the thread was executing code at the time the process was stopped for debugging.</summary>
+      <returns>A string value representing the address at which the thread was executing code at the time the process was stopped for debugging.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Name">
+      <summary>Gets the name of the thread.</summary>
+      <returns>A string representing the name of the object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Parent">
+      <summary>Gets the immediate parent object of a <see cref="T:EnvDTE.Thread" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE90.Debugger3" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Priority">
+      <summary>Gets the scheduling priority of the thread.</summary>
+      <returns>A string value.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.Program">
+      <summary>Deprecated. Do not use.</summary>
+    </member>
+    <member name="P:EnvDTE90.Thread2.StackFrames">
+      <summary>Gets the collection of stack frames through which this thread is executing.</summary>
+      <returns>A <see cref="T:EnvDTE.StackFrames" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.Thread2.SuspendCount">
+      <summary>Gets the number of times this thread has been suspended by the debugger.</summary>
+      <returns>An integer representing the number of times this thread has been suspended by the debugger.</returns>
+    </member>
+    <member name="M:EnvDTE90.Thread2.Thaw">
+      <summary>Allows the thread to resume execution.</summary>
+    </member>
+    <member name="T:EnvDTE90.ToolBoxTab3">
+      <summary>Represents a tab in the Toolbox, along with any objects the tab contains. <see cref="T:EnvDTE90.ToolBoxTab3" /> supersedes the <see cref="T:EnvDTE.ToolBoxTab" /> and <see cref="T:EnvDTE80.ToolBoxTab2" /> interfaces.</summary>
+    </member>
+    <member name="M:EnvDTE90.ToolBoxTab3.Activate">
+      <summary>Moves the focus to the current item.</summary>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.Collection">
+      <summary>Gets the collection containing the <see cref="T:EnvDTE.ToolBoxTab" /> object supporting this property.</summary>
+      <returns>A <see cref="T:EnvDTE.ToolBoxTabs" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE90.ToolBoxTab3.Delete">
+      <summary>Removes the <see cref="T:EnvDTE90.ToolBoxTab3" /> from a collection.</summary>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.Expanded">
+      <summary>Gets or sets whether the Toolbox tab is displayed or rolled up.</summary>
+      <returns>A boolean value indicating whether the tab is expanded.</returns>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.ListView">
+      <summary>Gets or sets a value indicating whether items in a particular ToolBox tab display in List view or Icon view format.</summary>
+      <returns>true if the ToolBox tab is in List view; otherwise, false.</returns>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.Name">
+      <summary>Gets or sets the name of the <see cref="T:EnvDTE90.ToolBoxTab3" /> object.</summary>
+      <returns>A string containing the name of the tab.</returns>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.ToolBoxItems">
+      <summary>Gets the collection of <see cref="T:EnvDTE.ToolBoxItems" /> associated with a <see cref="T:EnvDTE90.ToolBoxTab3" />.</summary>
+      <returns>A <see cref="T:EnvDTE.ToolBoxItems" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE90.ToolBoxTab3.UniqueID">
+      <summary>Sets or gets a unique ID for the specified tab.</summary>
+      <returns>A unique ID string for the tab.</returns>
+    </member>
+    <member name="T:EnvDTE90.vsHTMLBackgroundTasks">
+      <summary>Indicates how a program execution is paused until background processing is completed.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLBackgroundTasks.vsHTMLBackgroundCompilation">
+      <summary>A program is being compiled.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLBackgroundTasks.vsHTMLBackgroundToolboxPopulation">
+      <summary>The Toolbox is being populated with controls.</summary>
+    </member>
+    <member name="T:EnvDTE90.vsHTMLPanes">
+      <summary>Represents the pane tabs in the HTML editor.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLPanes.vsHTMLPaneSource">
+      <summary>Represents the Source tab in the HTML editor.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLPanes.vsHTMLPaneDesign">
+      <summary>Represents the Design tab in the HTML editor.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLPanes.vsHTMLPaneSplit">
+      <summary>Represents the Split tab in the HTML editor.</summary>
+    </member>
+    <member name="T:EnvDTE90.vsHTMLViews">
+      <summary>Represents the currently active view in the the HTML editor.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLViews.vsHTMLViewSource">
+      <summary>The active view is Source view.</summary>
+    </member>
+    <member name="F:EnvDTE90.vsHTMLViews.vsHTMLViewDesign">
+      <summary>The active view is Design view.</summary>
+    </member>
+  </members>
+</doc>

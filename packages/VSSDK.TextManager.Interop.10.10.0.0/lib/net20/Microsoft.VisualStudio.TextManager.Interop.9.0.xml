@@ -1,0 +1,216 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>Microsoft.VisualStudio.TextManager.Interop.9.0</name>
+  </assembly>
+  <members>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.AfterCompletorCommit"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.BeforeCompletorCommit"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.Exec(System.Guid@,System.UInt32,System.UInt32,System.IntPtr,System.IntPtr)">
+      <param name="pguidCmdGroup"></param>
+      <param name="nCmdID"></param>
+      <param name="nCmdexecopt"></param>
+      <param name="pvaIn"></param>
+      <param name="pvaOut"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetContextBuffer(Microsoft.VisualStudio.TextManager.Interop.IVsTextLines@)">
+      <param name="ppCtxBuffer"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetContextCaretPos(System.Int32@,System.Int32@)">
+      <param name="piLine"></param>
+      <param name="piIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetContextFocalPoint(Microsoft.VisualStudio.TextManager.Interop.TextSpan[],System.Int32@)">
+      <param name="pSpan"></param>
+      <param name="piLen"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetContextLocation(System.Int32,System.Int32,System.Int32,Microsoft.VisualStudio.OLE.Interop.RECT[],System.Int32@)">
+      <param name="iPos"></param>
+      <param name="iLen"></param>
+      <param name="fUseCaretPosition"></param>
+      <param name="prc"></param>
+      <param name="piTopX"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetContextSelection(Microsoft.VisualStudio.TextManager.Interop.TextSpan[])">
+      <param name="pSelectionSpan"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetHostFlags(System.UInt32@)">
+      <param name="pdwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetHostWindow(System.IntPtr@)">
+      <param name="hwnd"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetServiceProvider(Microsoft.VisualStudio.OLE.Interop.IServiceProvider@)">
+      <param name="ppSP"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetSmartTagRect(Microsoft.VisualStudio.OLE.Interop.RECT[])">
+      <param name="rcSmartTag"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetSubjectCaretPos(System.Int32@)">
+      <param name="piIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetSubjectSelection(System.Int32@,System.Int32@)">
+      <param name="piAnchorIndex"></param>
+      <param name="piEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.GetSubjectText(System.String@)">
+      <param name="pbstrSubjectText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.HighlightMatchingBrace(System.UInt32,System.UInt32,Microsoft.VisualStudio.TextManager.Interop.TextSpan[])">
+      <param name="dwFlags"></param>
+      <param name="cSpans"></param>
+      <param name="rgBaseSpans"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.QueryStatus(System.Guid@,System.UInt32,Microsoft.VisualStudio.OLE.Interop.OLECMD[],System.IntPtr)">
+      <param name="pguidCmdGroup"></param>
+      <param name="cCmds"></param>
+      <param name="prgCmds"></param>
+      <param name="pCmdText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.ReplaceSubjectTextSpan(System.Int32,System.Int32,System.String)">
+      <param name="iStartIndex"></param>
+      <param name="iEndIndex"></param>
+      <param name="pszText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.SetContextCaretPos(System.Int32,System.Int32)">
+      <param name="iLine"></param>
+      <param name="iIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.SetContextSelection(System.Int32,System.Int32,System.Int32,System.Int32)">
+      <param name="iStartLine"></param>
+      <param name="iStartIndex"></param>
+      <param name="iEndLine"></param>
+      <param name="iEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.SetSubjectCaretPos(System.Int32)">
+      <param name="iIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.SetSubjectSelection(System.Int32,System.Int32)">
+      <param name="iAnchorIndex"></param>
+      <param name="iEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.UpdateCompletionStatus(Microsoft.VisualStudio.TextManager.Interop.IVsCompletionSet,System.UInt32)">
+      <param name="pCompSet"></param>
+      <param name="dwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.UpdateSmartTagWindow(Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagTipWindow,System.UInt32)">
+      <param name="pSmartTagWnd"></param>
+      <param name="dwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsIntellisenseHost_Corrected.UpdateTipWindow(Microsoft.VisualStudio.TextManager.Interop.IVsTipWindow,System.UInt32)">
+      <param name="pTipWindow"></param>
+      <param name="dwFlags"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsLanguageDebugInfoRemap">
+      <summary>Allows a language service to remap a pending breakpoint from one location to another.</summary>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsLanguageDebugInfoRemap.RemapBreakpoint(System.Object,System.Object@)">
+      <summary>Remaps a breakpoint.</summary>
+      <returns>If the method succeeds, it returns <see cref="F:Microsoft.VisualStudio.VSConstants.S_OK" />. If it fails, it returns an error code.</returns>
+      <param name="pUserBreakpointRequest"></param>
+      <param name="ppMappedBreakpointRequest"></param>
+    </member>
+    <member name="T:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.AfterCompletorCommit"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.BeforeCompletorCommit"></member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.Exec(System.Guid@,System.UInt32,System.UInt32,System.IntPtr,System.IntPtr)">
+      <param name="pguidCmdGroup"></param>
+      <param name="nCmdID"></param>
+      <param name="nCmdexecopt"></param>
+      <param name="pvaIn"></param>
+      <param name="pvaOut"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetContextBuffer(Microsoft.VisualStudio.TextManager.Interop.IVsTextLines@)">
+      <param name="ppCtxBuffer"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetContextCaretPos(System.Int32@,System.Int32@)">
+      <param name="piLine"></param>
+      <param name="piIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetContextFocalPoint(Microsoft.VisualStudio.TextManager.Interop.TextSpan[],System.Int32@)">
+      <param name="pSpan"></param>
+      <param name="piLen"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetContextLocation(System.Int32,System.Int32,System.Int32,Microsoft.VisualStudio.OLE.Interop.RECT[],System.Int32@)">
+      <param name="iPos"></param>
+      <param name="iLen"></param>
+      <param name="fUseCaretPosition"></param>
+      <param name="prc"></param>
+      <param name="piTopX"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetContextSelection(Microsoft.VisualStudio.TextManager.Interop.TextSpan[])">
+      <param name="pSelectionSpan"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetHostFlags(System.UInt32@)">
+      <param name="pdwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetHostWindow(System.IntPtr@)">
+      <param name="hwnd"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetServiceProvider(Microsoft.VisualStudio.OLE.Interop.IServiceProvider@)">
+      <param name="ppSP"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetSmartTagRect(Microsoft.VisualStudio.OLE.Interop.RECT[])">
+      <param name="rcSmartTag"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetSubjectCaretPos(System.Int32@)">
+      <param name="piIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetSubjectSelection(System.Int32@,System.Int32@)">
+      <param name="piAnchorIndex"></param>
+      <param name="piEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.GetSubjectText(System.String@)">
+      <param name="pbstrSubjectText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.HighlightMatchingBrace(System.UInt32,System.UInt32,Microsoft.VisualStudio.TextManager.Interop.TextSpan[])">
+      <param name="dwFlags"></param>
+      <param name="cSpans"></param>
+      <param name="rgBaseSpans"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.QueryStatus(System.Guid@,System.UInt32,Microsoft.VisualStudio.OLE.Interop.OLECMD[],System.IntPtr)">
+      <param name="pguidCmdGroup"></param>
+      <param name="cCmds"></param>
+      <param name="prgCmds"></param>
+      <param name="pCmdText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.ReplaceSubjectTextSpan(System.Int32,System.Int32,System.String)">
+      <param name="iStartIndex"></param>
+      <param name="iEndIndex"></param>
+      <param name="pszText"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.SetContextCaretPos(System.Int32,System.Int32)">
+      <param name="iLine"></param>
+      <param name="iIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.SetContextSelection(System.Int32,System.Int32,System.Int32,System.Int32)">
+      <param name="iStartLine"></param>
+      <param name="iStartIndex"></param>
+      <param name="iEndLine"></param>
+      <param name="iEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.SetSubjectCaretPos(System.Int32)">
+      <param name="iIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.SetSubjectFromPrimaryBuffer(Microsoft.VisualStudio.TextManager.Interop.TextSpan[])">
+      <param name="pSpanInPrimary"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.SetSubjectSelection(System.Int32,System.Int32)">
+      <param name="iAnchorIndex"></param>
+      <param name="iEndIndex"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.UpdateCompletionStatus(Microsoft.VisualStudio.TextManager.Interop.IVsCompletionSet,System.UInt32)">
+      <param name="pCompSet"></param>
+      <param name="dwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.UpdateSmartTagWindow(Microsoft.VisualStudio.TextManager.Interop.IVsSmartTagTipWindow,System.UInt32)">
+      <param name="pSmartTagWnd"></param>
+      <param name="dwFlags"></param>
+    </member>
+    <member name="M:Microsoft.VisualStudio.TextManager.Interop.IVsTextViewIntellisenseHost_Corrected.UpdateTipWindow(Microsoft.VisualStudio.TextManager.Interop.IVsTipWindow,System.UInt32)">
+      <param name="pTipWindow"></param>
+      <param name="dwFlags"></param>
+    </member>
+  </members>
+</doc>

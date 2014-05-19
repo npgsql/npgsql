@@ -1,0 +1,1226 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>VSLangProj</name>
+  </assembly>
+  <members>
+    <member name="T:VSLangProj._BuildManagerEvents">
+      <summary>Refer to <see cref="T:VSLangProj.BuildManager" /> for this functionality. Do not instantiate this class.</summary>
+    </member>
+    <member name="T:VSLangProj._dispBuildManagerEvents">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents.DesignTimeOutputDeleted(System.String)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrOutputMoniker"> </param>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents.DesignTimeOutputDirty(System.String)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrOutputMoniker"> </param>
+    </member>
+    <member name="T:VSLangProj._dispBuildManagerEvents_DesignTimeOutputDeletedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrOutputMoniker"> </param>
+    </member>
+    <member name="T:VSLangProj._dispBuildManagerEvents_DesignTimeOutputDirtyEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrOutputMoniker"> </param>
+    </member>
+    <member name="T:VSLangProj._dispBuildManagerEvents_Event">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents_Event.add_DesignTimeOutputDeleted(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDeletedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents_Event.add_DesignTimeOutputDirty(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDirtyEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj._dispBuildManagerEvents_Event.DesignTimeOutputDeleted">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="E:VSLangProj._dispBuildManagerEvents_Event.DesignTimeOutputDirty">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents_Event.remove_DesignTimeOutputDeleted(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDeletedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispBuildManagerEvents_Event.remove_DesignTimeOutputDirty(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDirtyEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj._dispImportsEvents">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents.ImportAdded(System.String)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrImport"> </param>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents.ImportRemoved(System.String)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrImport"> </param>
+    </member>
+    <member name="T:VSLangProj._dispImportsEvents_Event">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents_Event.add_ImportAdded(VSLangProj._dispImportsEvents_ImportAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents_Event.add_ImportRemoved(VSLangProj._dispImportsEvents_ImportRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj._dispImportsEvents_Event.ImportAdded">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="E:VSLangProj._dispImportsEvents_Event.ImportRemoved">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents_Event.remove_ImportAdded(VSLangProj._dispImportsEvents_ImportAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispImportsEvents_Event.remove_ImportRemoved(VSLangProj._dispImportsEvents_ImportRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj._dispImportsEvents_ImportAddedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrImport"> </param>
+    </member>
+    <member name="T:VSLangProj._dispImportsEvents_ImportRemovedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="bstrImport"> </param>
+    </member>
+    <member name="T:VSLangProj._dispReferencesEvents">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents.ReferenceAdded(VSLangProj.Reference)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents.ReferenceChanged(VSLangProj.Reference)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents.ReferenceRemoved(VSLangProj.Reference)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="T:VSLangProj._dispReferencesEvents_Event">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.add_ReferenceAdded(VSLangProj._dispReferencesEvents_ReferenceAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.add_ReferenceChanged(VSLangProj._dispReferencesEvents_ReferenceChangedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.add_ReferenceRemoved(VSLangProj._dispReferencesEvents_ReferenceRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj._dispReferencesEvents_Event.ReferenceAdded">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="E:VSLangProj._dispReferencesEvents_Event.ReferenceChanged">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="E:VSLangProj._dispReferencesEvents_Event.ReferenceRemoved">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.remove_ReferenceAdded(VSLangProj._dispReferencesEvents_ReferenceAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.remove_ReferenceChanged(VSLangProj._dispReferencesEvents_ReferenceChangedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj._dispReferencesEvents_Event.remove_ReferenceRemoved(VSLangProj._dispReferencesEvents_ReferenceRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj._dispReferencesEvents_ReferenceAddedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="T:VSLangProj._dispReferencesEvents_ReferenceChangedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="T:VSLangProj._dispReferencesEvents_ReferenceRemovedEventHandler">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="pReference"> </param>
+    </member>
+    <member name="T:VSLangProj._ImportsEvents">
+      <summary>Refer to <see cref="T:VSLangProj.ImportsEvents" /> for this functionality. Do not instantiate this class.</summary>
+    </member>
+    <member name="T:VSLangProj._ReferencesEvents">
+      <summary>Refer to <see cref="T:VSLangProj.ReferencesEvents" /> for this functionality. Do not instantiate this class.</summary>
+    </member>
+    <member name="T:VSLangProj.BuildManager">
+      <summary>Used by third-party developers to manage the portable executable (PE) files produced by running custom tools.</summary>
+    </member>
+    <member name="M:VSLangProj.BuildManager.BuildDesignTimeOutput(System.String)">
+      <summary>Builds a temporary portable executable (PE) and returns its description in an XML string.</summary>
+      <returns>The XML description of the portable executable follows this format, shown for a custom tool output file named DataSchema.cs: Copy Code&lt;root&gt;
+  &lt;Application private_binpath = "AbsoluteTemporaryOutputPath"/&gt;
+  &lt;Assembly
+    codebase = "DataSchema.cs.dll"
+    name = "DataSchema.cs"
+    version = "0.0.0.0"
+    snapshot_id = "0"
+    replaceable = "True"
+  /&gt;
+&lt;/root&gt;The attributes are described below.AttributeDescriptionprivate_binpathThe full path of the directory that contains the temporary PE. This path is combined with the <paramref name="codebase" /> attribute to create the full path to the temporary PE assembly.codebaseThe path and file name of the temporary PE relative to the <paramref name="private_binpath" />.nameThe .NET Framework simple name of the assembly being generated. versionThe major, minor, build, and revision version numbers. The value is always "0.0.0.0".snapshot_idAn integer that is incremented each time the PE is recompiled.replaceableIndicates whether the project system can replace the assembly, and whether a designer should not hold a write lock on the file. Is always set to true.</returns>
+      <param name="bstrOutputMoniker">Required. Moniker string for the temporary PE to build. The moniker string must be one of the strings returned by the <see cref="P:VSLangProj.BuildManager.DesignTimeOutputMonikers" /> property.</param>
+    </member>
+    <member name="P:VSLangProj.BuildManager.ContainingProject">
+      <summary>Gets the project of which the selected item is a part. Read-only.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.BuildManager.DesignTimeOutputMonikers">
+      <summary>Gets the temporary portable executable (PE) monikers for a project.</summary>
+      <returns>The returned object is an array of strings, where each string in the array is a temporary PE moniker.</returns>
+    </member>
+    <member name="P:VSLangProj.BuildManager.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.BuildManager.Parent">
+      <summary>Gets the immediate parent object of a given object.</summary>
+      <returns>Parent object</returns>
+    </member>
+    <member name="T:VSLangProj.BuildManagerEvents">
+      <summary>Provides access to the events of the <see cref="T:VSLangProj.BuildManager" />. Use this object for functionality and refer to <see cref="T:VSLangProj.BuildManagerEventsClass" /> for this object’s documentation.</summary>
+    </member>
+    <member name="T:VSLangProj.BuildManagerEventsClass">
+      <summary>Refer to <see cref="T:VSLangProj.BuildManagerEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj.BuildManagerEventsClass.#ctor">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj.BuildManagerEventsClass.add_DesignTimeOutputDeleted(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDeletedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.BuildManagerEventsClass.add_DesignTimeOutputDirty(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDirtyEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj.BuildManagerEventsClass.DesignTimeOutputDeleted">
+      <summary>Raised when a project item that generates a portable executable is deleted from the project.</summary>
+    </member>
+    <member name="E:VSLangProj.BuildManagerEventsClass.DesignTimeOutputDirty">
+      <summary>Raised when a custom tool that results in a portable executable being generated or updated is run on a project item.</summary>
+    </member>
+    <member name="M:VSLangProj.BuildManagerEventsClass.remove_DesignTimeOutputDeleted(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDeletedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.BuildManagerEventsClass.remove_DesignTimeOutputDirty(VSLangProj._dispBuildManagerEvents_DesignTimeOutputDirtyEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj.FileProperties">
+      <summary>Represents the various properties of the specified project file, such as its name, size, the date it was created and last modified, and so forth. This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.Author">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.BuildAction">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.CustomTool">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.CustomToolNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.CustomToolOutput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.DateCreated">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.DateModified">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj.FileProperties.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.Extension">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.FileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.Filesize">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.FullPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.HTMLTitle">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.IsCustomToolOutput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.IsDependentFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.IsDesignTimeBuildInput">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.IsLink">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.LocalPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.ModifiedBy">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.SubType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FileProperties.URL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj.FolderProperties">
+      <summary>This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.DefaultNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.FileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.FullPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.LocalPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.URL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.UrlBehavior">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.FolderProperties.WebReference">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj.Imports">
+      <summary>Contains the collection of all project imports for a Visual Basic project. The specified imports statements are passed directly to the compiler and apply to all the files in the project.</summary>
+    </member>
+    <member name="M:VSLangProj.Imports.Add(System.String)">
+      <summary>Adds a new import statement to the <see cref="T:VSLangProj.Imports" /> collection.</summary>
+      <param name="bstrImport">Required. The import statement string. The format of an import string is:[alias = ]namespace[.*]Items enclosed in square brackets are optional. </param>
+    </member>
+    <member name="P:VSLangProj.Imports.ContainingProject">
+      <summary>Gets the project that contains the selected item. Read-only.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.Imports.Count">
+      <summary>Gets a value indicating the number of objects in the collection. Read-only.</summary>
+      <returns>The number of objects in the collection.</returns>
+    </member>
+    <member name="P:VSLangProj.Imports.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj.Imports.GetEnumerator">
+      <summary>Gets an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:VSLangProj.Imports.Item(System.Int32)">
+      <summary>Returns an indexed member of the <see cref="T:VSLangProj.Imports" /> object. The Item method is the default method for the <see cref="T:VSLangProj.Imports" /> object.</summary>
+      <returns>Returns an imports statement string by its position in the collection.</returns>
+      <param name="lIndex">Required. A one-based index into <see cref="T:VSLangProj.Imports" /> object.</param>
+    </member>
+    <member name="P:VSLangProj.Imports.Parent">
+      <summary>Gets the immediate parent object of a given object.</summary>
+      <returns>Parent object.</returns>
+    </member>
+    <member name="M:VSLangProj.Imports.Remove(System.Object)">
+      <summary>Removes an imports statement from the <see cref="T:VSLangProj.Imports" /> collection. The imports statement to be removed may be indexed by either the string specifying the import or by a one-based index.</summary>
+      <param name="index">Required. Either a one-based index into the collection, or the imports statement string to remove.</param>
+    </member>
+    <member name="T:VSLangProj.ImportsEvents">
+      <summary>Provides access to events that are raised when a project Imports statement is added to or deleted from a Visual Basic project. Use this object for functionality and refer to <see cref="T:VSLangProj.ImportsEventsClass" /> for this object’s documentation.</summary>
+    </member>
+    <member name="T:VSLangProj.ImportsEventsClass">
+      <summary>Refer to <see cref="T:VSLangProj.ImportsEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj.ImportsEventsClass.#ctor">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj.ImportsEventsClass.add_ImportAdded(VSLangProj._dispImportsEvents_ImportAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ImportsEventsClass.add_ImportRemoved(VSLangProj._dispImportsEvents_ImportRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj.ImportsEventsClass.ImportAdded">
+      <summary>Occurs immediately after an Imports statement has been added to a Visual Basic project.</summary>
+    </member>
+    <member name="E:VSLangProj.ImportsEventsClass.ImportRemoved">
+      <summary>Occurs immediately after an Imports statement is removed from a Visual Basic project.</summary>
+    </member>
+    <member name="M:VSLangProj.ImportsEventsClass.remove_ImportAdded(VSLangProj._dispImportsEvents_ImportAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ImportsEventsClass.remove_ImportRemoved(VSLangProj._dispImportsEvents_ImportRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj.PrjBrowseObjectCATID">
+      <summary>The <see cref="T:VSLangProj.PrjBrowseObjectCATID" /> enumeration is used for extension of the properties that appear in the Properties window for projects and project items. Extension is typically used by ISVs to extend the automation interface. Developers may add or delete items from the Properties window, by using the appropriate Category ID (CATID) to extend the automation interface. For more information, see Spectrum of Visual Studio Automation.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpConfig">
+      <summary>Visual C# project configuration.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpFileBrowseObject">
+      <summary>Visual C# file project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpFolderBrowseObject">
+      <summary>Visual C# folder project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpProjectBrowseObject">
+      <summary>Visual C# project.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpProjectConfigBrowseObject">
+      <summary>Visual C# project configuration.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDCSharpReferenceBrowseObject">
+      <summary>Visual C# reference.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBConfig">
+      <summary>Visual Basic project configuration.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBFileBrowseObject">
+      <summary>Visual Basic file project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBFolderBrowseObject">
+      <summary>Visual Basic folder project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBProjectBrowseObject">
+      <summary>Visual Basic project.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBProjectConfigBrowseObject">
+      <summary>Visual Basic project configuration.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVBReferenceBrowseObject">
+      <summary>Visual Basic reference.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVSAConfig">
+      <summary>Macro project configuration CATID.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVSAFileBrowseObject">
+      <summary>Macro project file project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVSAFolderBrowseObject">
+      <summary>Macro project folder project item.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjBrowseObjectCATID.prjCATIDVSAReferenceBrowseObject">
+      <summary>Macro project reference.</summary>
+    </member>
+    <member name="T:VSLangProj.prjBuildAction">
+      <summary>Specifies a value indicating the type of build action for the current project item.</summary>
+    </member>
+    <member name="F:VSLangProj.prjBuildAction.prjBuildActionNone">
+      <summary>No action is taken.</summary>
+    </member>
+    <member name="F:VSLangProj.prjBuildAction.prjBuildActionCompile">
+      <summary>The file is compiled.</summary>
+    </member>
+    <member name="F:VSLangProj.prjBuildAction.prjBuildActionContent">
+      <summary>The file is included in the Content project output group (see Deploying Applications and Components)</summary>
+    </member>
+    <member name="F:VSLangProj.prjBuildAction.prjBuildActionEmbeddedResource">
+      <summary>The file is included in the main generated assembly or in a satellite assembly as a resource.</summary>
+    </member>
+    <member name="T:VSLangProj.PrjCATID">
+      <summary>Used for automation extension of the <see cref="T:EnvDTE.Project" /> object.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjCATID.prjCATIDProject">
+      <summary>Project automation object CATID.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjCATID.prjCATIDProjectItem">
+      <summary>ProjectItem automation object CATID.</summary>
+    </member>
+    <member name="T:VSLangProj.prjCompare">
+      <summary>Specifies the default string comparison method for a project.</summary>
+    </member>
+    <member name="F:VSLangProj.prjCompare.prjCompareBinary">
+      <summary>Comparison based on internal binary representations.</summary>
+    </member>
+    <member name="F:VSLangProj.prjCompare.prjCompareText">
+      <summary>Comparison based on case-insensitive text order determined by locale.</summary>
+    </member>
+    <member name="T:VSLangProj.prjCopyProjectOption">
+      <summary>This enumeration is used by the <see cref="M:VSLangProj.VSProject.CopyProject(System.String,System.String,VSLangProj.prjCopyProjectOption,System.String,System.String)" /> to determine which project files are copied when the project is copied.</summary>
+    </member>
+    <member name="F:VSLangProj.prjCopyProjectOption.prjRunFiles">
+      <summary>Copy only the files needed to run the application.</summary>
+    </member>
+    <member name="F:VSLangProj.prjCopyProjectOption.prjProjectFiles">
+      <summary>Copy all the project files.</summary>
+    </member>
+    <member name="F:VSLangProj.prjCopyProjectOption.prjAllFiles">
+      <summary>Copy all the files in the source project folder.</summary>
+    </member>
+    <member name="T:VSLangProj.prjExecCommand">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="F:VSLangProj.prjExecCommand.prjExecCommandHandleInvalidStartupObject">
+      <summary> </summary>
+    </member>
+    <member name="T:VSLangProj.prjHTMLPageLayout">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.DefaultHTMLPageLayout" /> of the Project.Properties collection object. The <see cref="P:VSLangProj.ProjectProperties.DefaultHTMLPageLayout" /> specifies the default layout for new HTML pages. </summary>
+    </member>
+    <member name="F:VSLangProj.prjHTMLPageLayout.prjHTMLPageLayoutFlow">
+      <summary>HTML elements are arranged according to the order that they occur in the HTML markup.</summary>
+    </member>
+    <member name="F:VSLangProj.prjHTMLPageLayout.prjHTMLPageLayoutGrid">
+      <summary>HTML elements are positioned using x and y coordinates.</summary>
+    </member>
+    <member name="T:VSLangProj.PrjKind">
+      <summary>Indicates the type of the Project object.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjKind.prjKindCSharpProject">
+      <summary>Visual C# Projects/Project automation object kind.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjKind.prjKindVBProject">
+      <summary>Visual Basic Projects/Project automation object kind.</summary>
+    </member>
+    <member name="F:VSLangProj.PrjKind.prjKindVSAProject">
+      <summary>Macro Projects/Project automation object kind.</summary>
+    </member>
+    <member name="T:VSLangProj.prjOptionExplicit">
+      <summary>Used by the <see cref="P:VSLangProj80.VBProjectProperties3.OptionExplicit" /> property.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOptionExplicit.prjOptionExplicitOff">
+      <summary>Variables do not need to be declared before use.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOptionExplicit.prjOptionExplicitOn">
+      <summary>Variables must be declared before use.</summary>
+    </member>
+    <member name="T:VSLangProj.prjOptionStrict">
+      <summary>Used by the <see cref="P:VSLangProj80.VBProjectProperties3.OptionStrict" /> property.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOptionStrict.prjOptionStrictOff">
+      <summary>Implicit conversions are allowed.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOptionStrict.prjOptionStrictOn">
+      <summary>Implicit narrowing conversions are prohibited.</summary>
+    </member>
+    <member name="T:VSLangProj.prjOriginatorKeyMode">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.AssemblyOriginatorKeyMode" />. If the project has an originator key, it may be supplied through a key file or a key container. </summary>
+    </member>
+    <member name="F:VSLangProj.prjOriginatorKeyMode.prjOriginatorKeyModeNone">
+      <summary>Assembly has no key.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOriginatorKeyMode.prjOriginatorKeyModeFile">
+      <summary>Key is in a file.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOriginatorKeyMode.prjOriginatorKeyModeContainer">
+      <summary>Key is in a container.</summary>
+    </member>
+    <member name="T:VSLangProj.prjOutputType">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.OutputType" />. Three output types are supported: Windows application, console application, and class library.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOutputType.prjOutputTypeWinExe">
+      <summary>Windows application.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOutputType.prjOutputTypeExe">
+      <summary>Console application.</summary>
+    </member>
+    <member name="F:VSLangProj.prjOutputType.prjOutputTypeLibrary">
+      <summary>Class library.</summary>
+    </member>
+    <member name="T:VSLangProj.prjProjectType">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.ProjectType" />. This enumeration lists the two types of projects, local and Web.</summary>
+    </member>
+    <member name="F:VSLangProj.prjProjectType.prjProjectTypeLocal">
+      <summary>Local project.</summary>
+    </member>
+    <member name="F:VSLangProj.prjProjectType.prjProjectTypeWeb">
+      <summary>Web project.</summary>
+    </member>
+    <member name="T:VSLangProj.prjReferenceType">
+      <summary>Indicates whether a Reference is a .NET Framework assembly or a COM component.</summary>
+    </member>
+    <member name="F:VSLangProj.prjReferenceType.prjReferenceTypeAssembly">
+      <summary>a .NET Framework Assembly.</summary>
+    </member>
+    <member name="F:VSLangProj.prjReferenceType.prjReferenceTypeActiveX">
+      <summary>A COM object.</summary>
+    </member>
+    <member name="T:VSLangProj.prjScriptLanguage">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.DefaultClientScript" />. Two script languages are supported, ECMAScript (JScript, JavaScript) and VBScript.</summary>
+    </member>
+    <member name="F:VSLangProj.prjScriptLanguage.prjScriptLanguageJScript">
+      <summary>ECMAScript (JScript, JavaScript)</summary>
+    </member>
+    <member name="F:VSLangProj.prjScriptLanguage.prjScriptLanguageVBScript">
+      <summary>VBScript</summary>
+    </member>
+    <member name="T:VSLangProj.prjStartAction">
+      <summary>Used by the StartAction property to indicate the start action of a project for debugging.</summary>
+    </member>
+    <member name="F:VSLangProj.prjStartAction.prjStartActionProject">
+      <summary>Indicates that the executable file (for Windows Application and Console Application projects) or the Start Page (for Web projects) should be started when the application is debugged. Class library projects cannot be started directly. </summary>
+    </member>
+    <member name="F:VSLangProj.prjStartAction.prjStartActionProgram">
+      <summary>Indicates that a specific program should be started when the application is debugged. </summary>
+    </member>
+    <member name="F:VSLangProj.prjStartAction.prjStartActionURL">
+      <summary>Indicates that a particular URL should be accessed when the application is debugged. </summary>
+    </member>
+    <member name="F:VSLangProj.prjStartAction.prjStartActionNone">
+      <summary>Indicates that no project, program, or URL should be started when the application is debugged.</summary>
+    </member>
+    <member name="T:VSLangProj.prjTargetSchema">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.DefaultTargetSchema" /> to define the HTML platform the application needs to be compatible with.</summary>
+    </member>
+    <member name="F:VSLangProj.prjTargetSchema.prjTargetSchemaIE32Nav30">
+      <summary>Internet Explorer 3.2 and Navigator 3.0.</summary>
+    </member>
+    <member name="F:VSLangProj.prjTargetSchema.prjTargetSchemaIE50">
+      <summary>Internet Explorer 4.0 and higher.</summary>
+    </member>
+    <member name="F:VSLangProj.prjTargetSchema.prjTargetSchemaNav40">
+      <summary>Netscape Navigator 4.0.</summary>
+    </member>
+    <member name="T:VSLangProj.prjWarningLevel">
+      <summary>Used by the WarningLevel property to indicate the types of warnings displayed during compilation.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWarningLevel.prjWarningLevel0">
+      <summary>Turns off emission of all warning messages.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWarningLevel.prjWarningLevel1">
+      <summary>Displays severe warning messages.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWarningLevel.prjWarningLevel2">
+      <summary>C# only. Displays level 1 warnings plus certain less-severe warnings, such as warnings about hiding class members.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWarningLevel.prjWarningLevel3">
+      <summary>C# only. Displays level 2 warnings plus certain less-severe warnings, such as warnings about expressions that always evaluate to true or false.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWarningLevel.prjWarningLevel4">
+      <summary>C# only. Displays all level 3 warnings plus informational warnings. This is the default warning level at the command line.</summary>
+    </member>
+    <member name="T:VSLangProj.prjWebAccessMethod">
+      <summary>Used by the <see cref="P:VSLangProj.ProjectProperties.WebAccessMethod" />.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWebAccessMethod.prjWebAccessMethodFileShare">
+      <summary>Use the Windows file system.</summary>
+    </member>
+    <member name="F:VSLangProj.prjWebAccessMethod.prjWebAccessMethodFrontPage">
+      <summary>Use FrontPage Server Extensions.</summary>
+    </member>
+    <member name="T:VSLangProj.ProjectConfigurationProperties">
+      <summary>This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.AllowUnsafeBlocks">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.BaseAddress">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.CheckForOverflowUnderflow">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.ConfigurationOverrideFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.DebugSymbols">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.DefineConstants">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.DefineDebug">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.DefineTrace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.DocumentationFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.EnableASPDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.EnableASPXDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.EnableSQLServerDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.EnableUnmanagedDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.FileAlignment">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.IncrementalBuild">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.IntermediatePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.Optimize">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.OutputPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.RegisterForComInterop">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.RemoteDebugEnabled">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.RemoteDebugMachine">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.RemoveIntegerChecks">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartAction">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartArguments">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartPage">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartProgram">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartURL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartWithIE">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.StartWorkingDirectory">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.TreatWarningsAsErrors">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectConfigurationProperties.WarningLevel">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj.ProjectProperties">
+      <summary>This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.__project">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.AbsoluteProjectDirectory">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ActiveConfigurationSettings">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ActiveFileSharePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ActiveWebAccessMethod">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ApplicationIcon">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.AssemblyKeyContainerName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.AssemblyName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.AssemblyOriginatorKeyFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.AssemblyOriginatorKeyMode">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.DefaultClientScript">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.DefaultHTMLPageLayout">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.DefaultNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.DefaultTargetSchema">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.DelaySign">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.FileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.FileSharePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.FullPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.LinkRepair">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.LocalPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OfflineURL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OptionCompare">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OptionExplicit">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OptionStrict">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OutputFileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.OutputType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ProjectType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ReferencePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.RootNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.ServerExtensionsVersion">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.StartupObject">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.URL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.WebAccessMethod">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.WebServer">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj.ProjectProperties.WebServerVersion">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj.Reference">
+      <summary>Represents one reference in the project. Including a reference in a project allows you to use any of the public members contained in the reference. Projects may include references to other .NET projects, .NET assemblies, and COM objects.</summary>
+    </member>
+    <member name="P:VSLangProj.Reference.BuildNumber">
+      <summary>Gets the build number of the reference. Read-only.</summary>
+      <returns>Long. The value returned depends on the reference type.Reference TypeValue ReturnedAssemblyBuild number of the reference; 0-9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Collection">
+      <summary>Gets the collection containing the object supporting this property or contained within this code construct.</summary>
+      <returns>Returns a collection relating to the object. See Remarks for more information.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.ContainingProject">
+      <summary>Gets the project that the selected item is a part of. Read-only.</summary>
+      <returns>Returns a Project object.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.CopyLocal">
+      <summary>Determines whether the reference is copied to the local bin path. </summary>
+      <returns>Boolean.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Culture">
+      <summary>Gets the culture string of a reference. Read-only.</summary>
+      <returns>The return value depends on the reference type.Reference TypeValue ReturnedAssemblyCulture string. For example, "EN-US" for English - United States.COMLocale ID. The string is the hex locale ID of the type library being reference. For example, "0" for multilanguage or "409" for English - United States.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Description">
+      <summary>Gets a text description of the reference. Read-only.</summary>
+      <returns>For a <see cref="T:VSLangProj.Reference" /> object, the return value depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly description.COMType library description.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a DTE object.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Extender(System.String)">
+      <summary>Gets the requested Extender object if it is available for this object.</summary>
+      <returns>This property returns Nothing or null is no Extender object is available.</returns>
+      <param name="ExtenderName">Required. The name of the Extender to return.</param>
+    </member>
+    <member name="P:VSLangProj.Reference.ExtenderCATID">
+      <summary>Gets the Extender category ID (CATID) for the object.</summary>
+      <returns>Returns the GUID representing the CATID of the object as a string.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.ExtenderNames">
+      <summary>Gets a list of available Extenders for the object.</summary>
+      <returns>An object containing an automation-compliant array of strings.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Identity">
+      <summary>Gets the unique identifier of the reference. Read-only. </summary>
+      <returns>The string returned depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly name (assembly name without path or extension)COMThe format is:"GUID\major.minor\localeid\wrappertool"For example,"{00000205-0000-0010-8000-00AA006D2EA4}\2.5\409\tlbimp"is returned for ActiveX Data Objects 2.5.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.MajorVersion">
+      <summary>Gets the major version number of the reference. Read-only. </summary>
+      <returns>Long. The number returned depends on the reference type.Reference TypeValue ReturnedAssemblyMajor release number of the reference; 0–9999.COMA long value.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.MinorVersion">
+      <summary>Gets the minor version number of the reference. Read-only. </summary>
+      <returns>Long. The number returned depends on the reference type.Reference TypeValue ReturnedAssemblyMinor release number of the reference; 0–9999. COMA long value.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Name">
+      <summary>Gets the name of the object. Read-only.</summary>
+      <returns>String.The string returned depends on the reference type.Reference TypeValue ReturnedAssemblyThe assembly name, which is the file name of the reference without the extension.COMThe name of the wrapper for the referenced type library, which is the file name without the extension.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Path">
+      <summary>Gets the path to the reference file. Read-only. </summary>
+      <returns>String. This property returns the path and file name of the reference, if it can be resolved. If the path cannot be resolved, then a blank string is returned. For information on resolving references, see <see cref="M:VSLangProj.References.Add(System.String)" />.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.PublicKeyToken">
+      <summary>Gets the public key token for the referenced assembly.</summary>
+      <returns>A string representing the public key token for the referenced assembly.</returns>
+    </member>
+    <member name="M:VSLangProj.Reference.Remove">
+      <summary>Gets the reference from the <see cref="T:VSLangProj.References" /> object that contains it.</summary>
+    </member>
+    <member name="P:VSLangProj.Reference.RevisionNumber">
+      <summary>Gets the revision number of the reference. Read-only. </summary>
+      <returns>Long. The number returned depends on the reference type.Reference TypeValue ReturnedAssemblyRevision version number of the reference; 0–9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.SourceProject">
+      <summary>Gets a Project object if the reference is a project. Otherwise, it returns Nothing (a null reference). Read-only. </summary>
+      <returns>Returns a Project object.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.StrongName">
+      <summary>Gets whether the reference is signed with a public/private key pair. Read-only. </summary>
+      <returns>true if the reference is signed with a public/private key pair.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Type">
+      <summary>Gets a <see cref="T:VSLangProj.prjReferenceType" /> value indicating whether the reference is an assembly or a COM component. Read-only.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.prjReferenceType" /> enumeration value.</returns>
+    </member>
+    <member name="P:VSLangProj.Reference.Version">
+      <summary>Gets the version of the selected reference.</summary>
+      <returns>A string representing the version of the selected reference.</returns>
+    </member>
+    <member name="T:VSLangProj.References">
+      <summary>Contains all the references to external components in a Visual Basic or C# project.</summary>
+    </member>
+    <member name="M:VSLangProj.References.Add(System.String)">
+      <summary>Adds a new reference to the project.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.Reference" /> object.</returns>
+      <param name="bstrPath">Required. The path of a COM or .NET Framework reference. This parameter may take three forms:A simple .NET Framework object name, such as "System". A .NET Framework file name (.tlb, .dll, or .ocx file).A COM library file (.tlb, .dll, .ocx, or .exe file). For COM objects, the path needs to include a full path and file name, such as, "D:\SomeApplication\SomeApp.dll". See restrictions in the "COM References" section below on adding COM .exe file references.</param>
+    </member>
+    <member name="M:VSLangProj.References.AddActiveX(System.String,System.Int32,System.Int32,System.Int32,System.String)">
+      <summary>Adds a reference to an ActiveX type library.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.Reference" /> object for the requested ActiveX library object.</returns>
+      <param name="bstrTypeLibGuid">Required. The type library's globally unique identifier (GUID), expressed as a string.</param>
+      <param name="lMajorVer">Optional. The major version number. If omitted, 0 is used.</param>
+      <param name="lMinorVer">Optional. The minor version number. If omitted, 0 is used.</param>
+      <param name="lLocaleId">Optional locale id. For more information, see <see cref="P:EnvDTE.DTEClass.LocaleID" />.</param>
+      <param name="bstrWrapperTool">The wrapper tool to be used when generating an assembly wrapper for the type library. The supported values are described in the following table. [1|1] Value[1|2] Result[2|1] "tlbimp"[2|2] The project system generates a generic wrapper suitable for accessing the COM object's methods and properties.[3|1] "aximp"[3|2] The project system generates a wrapper that Windows forms uses for ActiveX hosting. [4|1] "" (empty string)[4|2] The project system checks if a primary interoperability assembly for the specified type library exists. If found, then that assembly is used as the wrapper for the COM object's methods and properties. If not found, the behavior is the same as if "tlbimp" were specified.</param>
+    </member>
+    <member name="M:VSLangProj.References.AddProject(EnvDTE.Project)">
+      <summary>Adds a new project reference to the project and returns the newly created <see cref="T:VSLangProj.Reference" /> object.</summary>
+      <param name="pProject">Required. The Project object to be added.</param>
+    </member>
+    <member name="P:VSLangProj.References.ContainingProject">
+      <summary>Gets the project of which the selected item is a part. Read-only.</summary>
+      <returns>Returns a Project object.</returns>
+    </member>
+    <member name="P:VSLangProj.References.Count">
+      <summary>Gets a value indicating the number of objects in the collection. Read-only.</summary>
+      <returns>The number of objects in the collection.</returns>
+    </member>
+    <member name="P:VSLangProj.References.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj.References.Find(System.String)">
+      <summary>Searches the references in a project for an object that has the specified <see cref="P:VSLangProj.Reference.Identity" />.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.Reference" /> object.</returns>
+      <param name="bstrIdentity">Required. The <see cref="P:VSLangProj.Reference.Identity" /> of the <see cref="T:VSLangProj.Reference" /> object.</param>
+    </member>
+    <member name="M:VSLangProj.References.GetEnumerator">
+      <summary>Gets an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:VSLangProj.References.Item(System.Object)">
+      <summary>Returns an indexed <see cref="T:VSLangProj.Reference" /> object.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.Reference" /> object.</returns>
+      <param name="index">Required. Either the <see cref="P:VSLangProj.Reference.Identity" /> string of the <see cref="T:VSLangProj.Reference" /> object or a one-based index into the <see cref="T:VSLangProj.References" /> collection.</param>
+    </member>
+    <member name="P:VSLangProj.References.Parent">
+      <summary>Gets the immediate parent object of a given object.</summary>
+    </member>
+    <member name="T:VSLangProj.ReferencesEvents">
+      <summary>Provides access to events that are raised by adding, deleting, or changing project references. Use this object for functionality and refer to <see cref="T:VSLangProj.ReferencesEventsClass" /> for this object’s documentation.</summary>
+    </member>
+    <member name="T:VSLangProj.ReferencesEventsClass">
+      <summary>Refer to <see cref="T:VSLangProj.ReferencesEvents" /> for this functionality. Do not instantiate from this class.</summary>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.#ctor">
+      <summary>Microsoft Internal Use Only.</summary>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.add_ReferenceAdded(VSLangProj._dispReferencesEvents_ReferenceAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.add_ReferenceChanged(VSLangProj._dispReferencesEvents_ReferenceChangedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.add_ReferenceRemoved(VSLangProj._dispReferencesEvents_ReferenceRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="E:VSLangProj.ReferencesEventsClass.ReferenceAdded">
+      <summary>Occurs immediately after a reference is added to a project.</summary>
+    </member>
+    <member name="E:VSLangProj.ReferencesEventsClass.ReferenceChanged">
+      <summary>Occurs immediately after a reference is modified in a project.</summary>
+    </member>
+    <member name="E:VSLangProj.ReferencesEventsClass.ReferenceRemoved">
+      <summary>Occurs immediately after a reference is removed from a project.</summary>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.remove_ReferenceAdded(VSLangProj._dispReferencesEvents_ReferenceAddedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.remove_ReferenceChanged(VSLangProj._dispReferencesEvents_ReferenceChangedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="M:VSLangProj.ReferencesEventsClass.remove_ReferenceRemoved(VSLangProj._dispReferencesEvents_ReferenceRemovedEventHandler)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="A_1"> </param>
+    </member>
+    <member name="T:VSLangProj.tagWebPrjAuthoringAccess">
+      <summary>Used by the <see cref="T:VSLangProj.WebSettings" /> of the <see cref="N:VSLangProj" />.</summary>
+    </member>
+    <member name="F:VSLangProj.tagWebPrjAuthoringAccess.webPrjAuthoringAccess_FileShare">
+      <summary>Use the Windows file system.</summary>
+    </member>
+    <member name="F:VSLangProj.tagWebPrjAuthoringAccess.webPrjAuthoringAccess_FrontPage">
+      <summary>Use FrontPage Server Extensions.</summary>
+    </member>
+    <member name="T:VSLangProj.VSProject">
+      <summary>Contains the information specific to a Visual Basic or C# project. It is returned by the <see cref="P:EnvDTE.Project.Object" /> object when the project is a Visual Basic or Visual C# project.</summary>
+    </member>
+    <member name="M:VSLangProj.VSProject.AddWebReference(System.String)">
+      <summary>Adds a reference to a Web Service to the project. A new Web Service reference subfolder is added to the Web References folder of the project. This new folder contains several other project items related to the Web Service. The method returns the <see cref="T:EnvDTE.ProjectItem" /> object associated with the new Web Service folder.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.ProjectItem" /> object that is the new Web Reference folder.</returns>
+      <param name="bstrUrl">Required. Typically, this is a file name URL with a .disco or .vsdisco extension. </param>
+    </member>
+    <member name="P:VSLangProj.VSProject.BuildManager">
+      <summary>Gets the BuildManager object of the <see cref="T:VSLangProj.VSProject" />. Read-only.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.BuildManager" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj.VSProject.CopyProject(System.String,System.String,VSLangProj.prjCopyProjectOption,System.String,System.String)">
+      <summary>Copies some or all of a Web project to a new location. </summary>
+      <param name="bstrDestFolder">Required. The destination folder for the new project. The folder is created if it does not exist. This string takes the form "http://ServerName/CopyName/".</param>
+      <param name="bstrDestUNCPath">Required. The UNC path for file-sharing if the project to be copied is using file-share access. Use the empty string if the project is using FrontPage Server Extensions access.</param>
+      <param name="copyProjectOption">Required. A <see cref="T:VSLangProj.prjCopyProjectOption" /> value that determines which project files are copied — all the files, all the project files, or only the files needed to run the application.</param>
+      <param name="bstrUsername">Required. The user's network login ID.</param>
+      <param name="bstrPassword">Required. The user's password. </param>
+    </member>
+    <member name="M:VSLangProj.VSProject.CreateWebReferencesFolder">
+      <summary>Creates the Web References folder for the project.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.ProjectItem" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.Events">
+      <summary>Gets a <see cref="T:VSLangProj.VSProjectEvents" /> object that allows you to respond to events of the <see cref="T:VSLangProj.Imports" />, <see cref="T:VSLangProj.References" />, and <see cref="T:VSLangProj.BuildManager" /> objects.</summary>
+      <returns>A <see cref="T:VSLangProj.VSProjectEvents" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj.VSProject.Exec(VSLangProj.prjExecCommand,System.Int32,System.Object,System.Object@)">
+      <summary>Microsoft Internal Use Only.</summary>
+      <param name="command"> </param>
+      <param name="bSuppressUI"> </param>
+      <param name="varIn"> </param>
+      <param name="pVarOut"> </param>
+    </member>
+    <member name="M:VSLangProj.VSProject.GenerateKeyPairFiles(System.String,System.String)">
+      <summary>Generates a public/private key file used to form a strong name for the assembly.</summary>
+      <param name="strPublicPrivateFile">This name of the file to be generated.</param>
+      <param name="strPublicOnlyFile">If true, only the public key is generated.</param>
+    </member>
+    <member name="M:VSLangProj.VSProject.GetUniqueFilename(System.Object,System.String,System.String)">
+      <summary>Generates a unique file name within the project. Used for naming new project items.</summary>
+      <returns>A file name that is unique in the project or project folder. If the first parameter is a <see cref="T:EnvDTE.Project" /> instance, then the name generated will be unique within the root project folder. The file name will take the form Root?.Extension, where ? is one or more numerals (1, 2, 3, and so on).</returns>
+      <param name="pDispatch">The name generated will have this value as the extension.</param>
+      <param name="bstrRoot">A <see cref="T:EnvDTE.Project" /> object or a folder <see cref="T:EnvDTE.ProjectItem" /> object. The file name generated will be unique within this context. </param>
+      <param name="bstrDesiredExt">The name generated will start with this string.</param>
+    </member>
+    <member name="P:VSLangProj.VSProject.Imports">
+      <summary>Gets the <see cref="T:VSLangProj.Imports" /> object associated with the project. For C# projects, the Imports property is set to Nothing (a null reference). Read-only.</summary>
+      <returns>Returns an <see cref="T:VSLangProj.Imports" /> object collection.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.Project">
+      <summary>Gets the generic <see cref="T:EnvDTE.Project" /> object associated with the Visual Basic or Visual C# project. Read-only.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.References">
+      <summary>Gets the <see cref="T:VSLangProj.References" /> collection for the project. Read-only. </summary>
+      <returns>A <see cref="T:VSLangProj.References" /> collection containing <see cref="T:VSLangProj.Reference" /> objects, each one representing a reference.</returns>
+    </member>
+    <member name="M:VSLangProj.VSProject.Refresh">
+      <summary>Refreshes the appearance of the project in Solution Explorer, refreshes the references, and gets the latest compiled versions of the files.</summary>
+    </member>
+    <member name="P:VSLangProj.VSProject.TemplatePath">
+      <summary>Gets the full path of the directory that contains the project-item templates for Visual Basic or C#. Read-only.</summary>
+      <returns>Returns a string value representing the template path.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.WebReferencesFolder">
+      <summary>Gets the <see cref="T:EnvDTE.ProjectItem" /> object representing the Web References folder of the project. If the folder does not exist, this property returns Nothing (a null reference). Read-only.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.ProjectItem" /> object representing the Web References folder.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProject.WorkOffline">
+      <summary>Gets or sets whether a Web project is working online or offline. When it is working offline, development continues on an offline store of project files, so that the project files on the server are not changed.</summary>
+      <returns>For Web applications, this property returns true if working offline and false if working online. For local projects, this property returns false. </returns>
+    </member>
+    <member name="T:VSLangProj.VSProjectEvents">
+      <summary>Provides access to events of the <see cref="T:VSLangProj.References" />, <see cref="T:VSLangProj.Imports" />, and <see cref="T:VSLangProj.BuildManager" /> objects.</summary>
+    </member>
+    <member name="P:VSLangProj.VSProjectEvents.BuildManagerEvents">
+      <summary>Gets a <see cref="T:VSLangProj.BuildManagerEvents" /> object that provides access to the BuildManager events.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.BuildManagerEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProjectEvents.ImportsEvents">
+      <summary>Gets an <see cref="T:VSLangProj.ImportsEvents" /> object that provides access to the Imports object events.</summary>
+      <returns>Returns an <see cref="T:VSLangProj.ImportsEvents" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProjectEvents.ReferencesEvents">
+      <summary>Gets a <see cref="T:VSLangProj.ReferencesEvents" /> object that provides access to the events of the <see cref="T:VSLangProj.References" /> collection.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.ReferencesEvents" /> object.</returns>
+    </member>
+    <member name="T:VSLangProj.VSProjectItem">
+      <summary>Contains the information specific to a Visual Basic or C# project item. It is returned by the <see cref="P:EnvDTE.ProjectItem.Object" /> of the <see cref="T:EnvDTE.ProjectItem" /> object when the project is a Visual Basic or C# project.</summary>
+    </member>
+    <member name="P:VSLangProj.VSProjectItem.ContainingProject">
+      <summary>Gets the project that the selected item is a part of. Read-only.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProjectItem.DTE">
+      <summary>Returns the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj.VSProjectItem.ProjectItem">
+      <summary>Gets the <see cref="T:EnvDTE.ProjectItem" /> object associated with the given object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.ProjectItem" /> object.</returns>
+    </member>
+    <member name="M:VSLangProj.VSProjectItem.RunCustomTool">
+      <summary>Runs the custom tool associated with a ProjectItem object. A custom tool is a registered component that implements the IVsSingleFileGenerator interface. Custom tools are similar to designers and editors. </summary>
+    </member>
+    <member name="T:VSLangProj.webPrjAuthoringAccess">
+      <summary>Used by the AuthoringAccess property.</summary>
+    </member>
+    <member name="F:VSLangProj.webPrjAuthoringAccess.webPrjAuthoringAccess_FileShare">
+      <summary>Use the Windows file system.</summary>
+    </member>
+    <member name="F:VSLangProj.webPrjAuthoringAccess.webPrjAuthoringAccess_FrontPage">
+      <summary>Use FrontPage Server Extensions.</summary>
+    </member>
+    <member name="T:VSLangProj.webrefUrlBehavior">
+      <summary>Used by the UrlBehavior property. </summary>
+    </member>
+    <member name="F:VSLangProj.webrefUrlBehavior.webrefUrlBehaviorStatic">
+      <summary>Web reference URL is contained in the proxy code.</summary>
+    </member>
+    <member name="F:VSLangProj.webrefUrlBehavior.webrefUrlBehaviorDynamic">
+      <summary>Web reference URL is retrieved as a dynamic property.</summary>
+    </member>
+    <member name="T:VSLangProj.WebSettings">
+      <summary>Represents the settings for Web projects.</summary>
+    </member>
+    <member name="P:VSLangProj.WebSettings.AuthoringAccess">
+      <summary>Gets or sets the Web access method for new projects.</summary>
+      <returns>A <see cref="T:VSLangProj.webPrjAuthoringAccess" /> value.</returns>
+    </member>
+    <member name="P:VSLangProj.WebSettings.RepairLinks">
+      <summary>Gets or sets whether the link repair feature of FrontPage Server Extensions is enabled by default for new projects. Link repair fixes links to pages within the project if they change during project development.</summary>
+      <returns>A Boolean value indicating whether the link repair feature is enabled for new projects.</returns>
+    </member>
+    <member name="M:VSLangProj.WebSettings.SetDefaultWebProjectCacheDirectory">
+      <summary>Resets the Web Project Cache Directory to the default</summary>
+    </member>
+    <member name="P:VSLangProj.WebSettings.WebProjectCacheDirectory">
+      <summary>Gets or sets the offline location of project files.</summary>
+      <returns>A string specifying the default Web cache directory.</returns>
+    </member>
+  </members>
+</doc>

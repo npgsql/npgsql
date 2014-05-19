@@ -1,0 +1,432 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>VSLangProj2</name>
+  </assembly>
+  <members>
+    <member name="T:VSLangProj2.pkgCompare">
+      <summary>Used by the <see cref="P:VSLangProj2.VBPackageSettings.OptionCompare" /> property.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgCompare.pkgCompareBinary">
+      <summary>Comparison based on internal binary representations.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgCompare.pkgCompareText">
+      <summary>Comparison based on case-insensitive text order determined by locale.</summary>
+    </member>
+    <member name="T:VSLangProj2.pkgOptionExplicit">
+      <summary>Used by the OptionExplicit property.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgOptionExplicit.pkgOptionExplicitOff">
+      <summary>Variables do not need to be declared before use.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgOptionExplicit.pkgOptionExplicitOn">
+      <summary>Variables must be declared before use.</summary>
+    </member>
+    <member name="T:VSLangProj2.pkgOptionStrict">
+      <summary>Used by the OptionStrict property.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgOptionStrict.pkgOptionStrictOff">
+      <summary>Implicit conversions are allowed.</summary>
+    </member>
+    <member name="F:VSLangProj2.pkgOptionStrict.pkgOptionStrictOn">
+      <summary>Implicit narrowing conversions are prohibited.</summary>
+    </member>
+    <member name="T:VSLangProj2.PrjBrowseObjectCATID2">
+      <summary>CATID (Category ID) objects are used to extend the properties that appear in the Properties window for projects and project items.</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpConfig">
+      <summary>Config CATID</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpFileBrowseObject">
+      <summary>File browse object CATID</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpFolderBrowseObject">
+      <summary>Folder browse object CATID</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpProjectBrowseObject">
+      <summary>Project browse object CATID</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpProjectConfigBrowseObject">
+      <summary>Project config browse object CATID</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjBrowseObjectCATID2.prjCATIDVJSharpReferenceBrowseObject">
+      <summary>Reference browse object CATID</summary>
+    </member>
+    <member name="T:VSLangProj2.PrjKind2">
+      <summary>The PrjKind2 class supports Visual Basic Smart Device projects and Visual C# Smart Device projects.</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjKind2.prjKindSDECSharpProject">
+      <summary>Smart device (SDE) Visual C# Projects/Project automation object.</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjKind2.prjKindSDEVBProject">
+      <summary>Smart device (SDE) Visual Basic Projects/Project automation object.</summary>
+    </member>
+    <member name="F:VSLangProj2.PrjKind2.prjKindVJSharpProject">
+      <summary>Smart device (SDE) Projects/Project automation object.</summary>
+    </member>
+    <member name="T:VSLangProj2.prjRunPostBuildEvent">
+      <summary>Used by the RunPostBuildEvent property.</summary>
+    </member>
+    <member name="F:VSLangProj2.prjRunPostBuildEvent.prjRunPostBuildEventAlways">
+      <summary>Always run the event.</summary>
+    </member>
+    <member name="F:VSLangProj2.prjRunPostBuildEvent.prjRunPostBuildEventOnBuildSuccess">
+      <summary>Run only if the build is successful.</summary>
+    </member>
+    <member name="F:VSLangProj2.prjRunPostBuildEvent.prjRunPostBuildEventOnOutputUpdated">
+      <summary>Run only if the project output changes. </summary>
+    </member>
+    <member name="T:VSLangProj2.ProjectConfigurationProperties2">
+      <summary>This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.AllowUnsafeBlocks">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.BaseAddress">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.CheckForOverflowUnderflow">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.ConfigurationOverrideFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.DebugSymbols">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.DefineConstants">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.DefineDebug">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.DefineTrace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.DocumentationFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.EnableASPDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.EnableASPXDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.EnableSQLServerDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.EnableUnmanagedDebugging">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+      <param name="ExtenderName"> </param>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.FileAlignment">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.IncrementalBuild">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.IntermediatePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.NoStdLib">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.NoWarn">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.Optimize">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.OutputPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.RegisterForComInterop">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.RemoteDebugEnabled">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.RemoteDebugMachine">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.RemoveIntegerChecks">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartAction">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartArguments">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartPage">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartProgram">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartURL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartWithIE">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.StartWorkingDirectory">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.TreatWarningsAsErrors">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectConfigurationProperties2.WarningLevel">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj2.ProjectProperties2">
+      <summary>This type provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.__id">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.__project">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AbsoluteProjectDirectory">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ActiveConfigurationSettings">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ActiveFileSharePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ActiveWebAccessMethod">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ApplicationIcon">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AspnetVersion">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AssemblyKeyContainerName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AssemblyName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AssemblyOriginatorKeyFile">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.AssemblyOriginatorKeyMode">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.DefaultClientScript">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.DefaultHTMLPageLayout">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.DefaultNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.DefaultTargetSchema">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.DelaySign">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.Extender(System.String)">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ExtenderCATID">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ExtenderNames">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.FileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.FileSharePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.FullPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.LinkRepair">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.LocalPath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OfflineURL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OptionCompare">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OptionExplicit">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OptionStrict">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OutputFileName">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.OutputType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.PostBuildEvent">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.PreBuildEvent">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ProjectType">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ReferencePath">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.RootNamespace">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.RunPostBuildEvent">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.ServerExtensionsVersion">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.StartupObject">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.URL">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.WebAccessMethod">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.WebServer">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="P:VSLangProj2.ProjectProperties2.WebServerVersion">
+      <summary>This member provides internal-only access to file properties. For more information, see Accessing Project Type Specific Project, Project Item, and Configuration Properties.</summary>
+    </member>
+    <member name="T:VSLangProj2.Reference2">
+      <summary>Extends the <see cref="T:VSLangProj.Reference" /> interface of the <see cref="N:VSLangProj" /> namespace.</summary>
+    </member>
+    <member name="P:VSLangProj2.Reference2.BuildNumber">
+      <summary>Gets the build number of the reference. Read-only.</summary>
+      <returns>Long. The value returned depends on the reference type.Reference TypeValue ReturnedAssemblyBuild number of the reference; 0-9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Collection">
+      <summary>Gets a collection of <see cref="T:VSLangProj.References" />.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.References" /> collection containing one or more <see cref="T:VSLangProj80.Reference3" /> objects.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.ContainingProject">
+      <summary>Gets the <see cref="T:EnvDTE.Project" /> containing the reference.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object that contains the reference.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.CopyLocal">
+      <summary>Determines whether the reference is copied to the local bin path.</summary>
+      <returns>Boolean</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Culture">
+      <summary>Gets the culture string of a reference. Read-only.</summary>
+      <returns>The return value depends on the reference type.Reference TypeValue ReturnedAssemblyCulture string. For example, "EN-US" for English - United States.COMLocale ID. The string is the hex locale ID of the type library being reference. For example, "0" for multilanguage or "409" for English - United States.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Description">
+      <summary>Gets a text description of the reference. Read-only.</summary>
+      <returns>For a <see cref="T:VSLangProj.Reference" /> object, the return value depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly description.COMType library description.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>Returns a <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Extender(System.String)">
+      <summary>Returns the requested Extender object if it is available for this object.</summary>
+      <returns>This property returns Nothing or null is no Extender object is available.</returns>
+      <param name="ExtenderName">Required. The name of the Extender to return.</param>
+    </member>
+    <member name="P:VSLangProj2.Reference2.ExtenderCATID">
+      <summary>Gets the Extender category ID (CATID) for the object.</summary>
+    </member>
+    <member name="P:VSLangProj2.Reference2.ExtenderNames">
+      <summary>Gets a list of available Extenders for the object.</summary>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Identity">
+      <summary>Gets the unique identifier of the reference. Read-only. </summary>
+      <returns>The string returned depends on the reference type.Reference TypeValue ReturnedAssemblyAssembly name (assembly name without path or extension)COMThe format is:"GUID\major.minor\localeid\wrappertool"For example,"{00000205-0000-0010-8000-00AA006D2EA4}\2.5\409\tlbimp"is returned for ActiveX Data Objects 2.5.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.MajorVersion">
+      <summary>Gets the major version number of the reference. Read-only. </summary>
+      <returns>An integer whose value depends on the reference type.Reference TypeValue ReturnedAssemblyMajor release number of the reference; 0–9999.COMA long value.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.MinorVersion">
+      <summary>Gets the minor version number of the reference. Read-only. </summary>
+      <returns>An integer whose value depends on the reference type.Reference TypeValue ReturnedAssemblyMinor release number of the reference; 0–9999. COMA long value.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Name">
+      <summary>Gets the name of the object. Read-only.</summary>
+      <returns>String.The string returned depends on the reference type.Reference TypeValue ReturnedAssemblyThe assembly name, which is the file name of the reference without the extension.COMThe name of the wrapper for the referenced type library, which is the file name without the extension.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Path">
+      <summary>Gets the path to the reference file. Read-only. </summary>
+      <returns>String. This property returns the path and file name of the reference, if it can be resolved. If the path cannot be resolved, then a blank string is returned. For information on resolving references, see <see cref="M:VSLangProj.References.Add(System.String)" />.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.PublicKeyToken">
+      <summary>Gets the public key token for the referenced assembly.</summary>
+      <returns>A string representing the public key token for the referenced assembly.</returns>
+    </member>
+    <member name="M:VSLangProj2.Reference2.Remove">
+      <summary>Removes the reference from the <see cref="T:VSLangProj.References" /> object that contains it.</summary>
+    </member>
+    <member name="P:VSLangProj2.Reference2.RevisionNumber">
+      <summary>Gets the revision number of the reference. Read-only. </summary>
+      <returns>Long. The number returned depends on the reference type.Reference TypeValue ReturnedAssemblyRevision version number of the reference; 0–9999.COM0</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.RuntimeVersion">
+      <summary>Gets and sets the version of the runtime the reference was built against. Read-only.</summary>
+      <returns>A string representing the version of the runtime the reference was built against.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.SourceProject">
+      <summary>Gets a <see cref="T:EnvDTE.Project" /> object if the reference is a project. Otherwise, it returns Nothing (a null reference). Read-only. </summary>
+      <returns>Returns a <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.StrongName">
+      <summary>Gets whether the reference is signed with a public/private key pair. Read-only. </summary>
+      <returns>true if the reference is signed with a public/private key pair.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Type">
+      <summary>Gets a <see cref="T:VSLangProj.prjReferenceType" /> value indicating whether the reference is an assembly or a COM component. Read-only.</summary>
+      <returns>Returns a <see cref="T:VSLangProj.prjReferenceType" /> value.</returns>
+    </member>
+    <member name="P:VSLangProj2.Reference2.Version">
+      <summary>Gets the version of the selected reference.</summary>
+      <returns>String containing the version of the selected reference.</returns>
+    </member>
+    <member name="T:VSLangProj2.VBPackageSettings">
+      <summary>Defines a group of Visual Basic settings that are applied to all new projects.</summary>
+    </member>
+    <member name="P:VSLangProj2.VBPackageSettings.OptionCompare">
+      <summary>Gets or sets whether strings are compared using a binary or text method. Visual Basic projects only. </summary>
+    </member>
+    <member name="P:VSLangProj2.VBPackageSettings.OptionExplicit">
+      <summary>Gets or sets whether variables must be declared.</summary>
+    </member>
+    <member name="P:VSLangProj2.VBPackageSettings.OptionStrict">
+      <summary>Gets or sets whether implicit narrowing conversions are allowed.</summary>
+    </member>
+  </members>
+</doc>

@@ -1,0 +1,445 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>EnvDTE100</name>
+  </assembly>
+  <members>
+    <member name="T:EnvDTE100.Debugger5">
+      <summary>
+        <see cref="T:EnvDTE100.Debugger5" /> is used to interrogate and manipulate the state of the debugger and the program being debugged. <see cref="T:EnvDTE100.Debugger5" /> supersedes the <see cref="T:EnvDTE90a.Debugger4" /> interface.</summary>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.AllBreakpointsLastHit">
+      <summary>Gets a collection of bound breakpoints that were last simultaneously hit.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoints" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.Break(System.Boolean)">
+      <summary>Causes the given process to pause its execution so that its current state can be analyzed.</summary>
+      <param name="WaitForBreakMode">Set to true to return only when the debugger has entered break mode. Set to false to break and return immediately. See How to: Break Execution for more information.</param>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.BreakpointLastHit">
+      <summary>Gets the last breakpoint hit. To get a collection of multiple breakpoints hit simultaneously, see <see cref="P:EnvDTE90a.Debugger4.AllBreakpointsLastHit" />.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoint" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.Breakpoints">
+      <summary>Gets a collection of breakpoints.</summary>
+      <returns>A <see cref="T:EnvDTE.Breakpoints" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.CurrentMode">
+      <summary>Gets the current mode of the debugger within the context of the IDE.</summary>
+      <returns>A <see cref="T:EnvDTE.dbgDebugMode" /> value.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.CurrentProcess">
+      <summary>Gets or sets the active process.</summary>
+      <returns>A <see cref="T:EnvDTE.Process" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.CurrentProgram">
+      <summary>Sets or returns the active program.</summary>
+      <returns>A <see cref="T:EnvDTE.Program" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.CurrentStackFrame">
+      <summary>Gets or sets the current stack frame.</summary>
+      <returns>A <see cref="T:EnvDTE.StackFrame" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.CurrentThread">
+      <summary>Gets or sets the current thread being debugged.</summary>
+      <returns>A <see cref="T:EnvDTE.Thread" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.DebuggedProcesses">
+      <summary>Gets the list of processes that are currently being debugged.</summary>
+      <returns>A <see cref="T:EnvDTE.Processes" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.DeleteObjectID(System.String)">
+      <summary>Deletes the object ID.</summary>
+      <param name="ObjectIDExpression">The object ID.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.DetachAll">
+      <summary>Detaches from all attached programs.</summary>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.ExceptionGroups">
+      <summary>Gets the exception settings for the debugger. For each exception, these settings determine whether the debugger gives the code a chance to handle the exception before the debugger breaks execution.</summary>
+      <returns>A <see cref="T:ExceptionGroups" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.ExecuteStatement(System.String,System.Int32,System.Boolean)">
+      <summary>Executes the specified statement. If the <paramref name="TreatAsExpression" /> flag is true, then the string is interpreted as an expression, and output is sent to the Command Window.</summary>
+      <param name="Statement">The statement to execute.</param>
+      <param name="Timeout">The timeout period, in milliseconds.</param>
+      <param name="TreatAsExpression">true if the string is to be interpreted as an expression; otherwise false.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.ExportBreakpoints(System.String)">
+      <summary>Exports the breakpoints to a file.</summary>
+      <param name="FileName">The file name.</param>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.ForceContinue">
+      <summary>Gets or sets a value that determines whether the debugger breaks or continues when a tracepoint or breakpoint finishes executing a macro. The default behavior is set by the user in the dialog box when the tracepoint or breakpoint is created. This property can be used to change the default behavior.</summary>
+      <returns>A Boolean that is true if continuation will be forced; otherwise, false.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.GetExpression(System.String,System.Boolean,System.Int32)">
+      <summary>Evaluates an expression based on the current stack frame. If the expression can be parsed but not evaluated, an object is returned but does not contain a valid value.</summary>
+      <returns>An <see cref="T:EnvDTE.Expression" />.</returns>
+      <param name="ExpressionText">The expression text to be evaluated.</param>
+      <param name="UseAutoExpandRules">true if the auto-expand rules should be used; otherwise, false.</param>
+      <param name="Timeout">The timeout period in milliseconds.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.GetExpression2(System.String,System.Boolean,System.Boolean,System.Int32)">
+      <summary>Evaluates an expression based on the current stack frame. If the expression can be parsed but not evaluated, an object is returned but does not contain a valid value. This method is similar to <see cref="M:EnvDTE90.Debugger3.GetExpression(System.String,System.Boolean,System.Int32)" /> but with an additional Boolean parameter, which can be set to true to indicate that the expression is to be evaluated as a statement.</summary>
+      <returns>An <see cref="T:EnvDTE.Expression" />.</returns>
+      <param name="ExpressionText">The expression text to be evaluated.</param>
+      <param name="UseAutoExpandRules">true if the auto-expand rules should be used; otherwise, false.</param>
+      <param name="TreatAsStatement">true if the expression text should be treated as a single statement; otherwise, false.</param>
+      <param name="Timeout">The timeout period in milliseconds.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.GetExpression3(System.String,EnvDTE.StackFrame,System.Boolean,System.Boolean,System.Boolean,System.Int32)">
+      <summary>Evaluates an expression, similar to <see cref="M:EnvDTE90.Debugger2.GetExpression(System.String,System.Boolean,System.Boolean,System.Int32)" />. However, this method allows the caller to specify the stack frame that the evaluation will occur on. It also allows the caller to specify whether automatic evaluation of properties and implicit function calls should occur.</summary>
+      <returns>An <see cref="T:EnvDTE.Expression" />.</returns>
+      <param name="ExpressionText">The expression text to be evaluated.</param>
+      <param name="StackFrame">The stack frame where the expression is to be evaluated. This stack frame can be in any thread of any process that is currently being debugged, if and only if the process is in break mode.</param>
+      <param name="UseAutoExpandRules">true if the auto-expand rules should be used; otherwise, false.</param>
+      <param name="TreatAsStatement">true if the expression text should be treated as a single statement; otherwise, false.</param>
+      <param name="AllowAutoFuncEval">true if automatic evaluation of properties and implicit function calls should be performed; otherwise, false.</param>
+      <param name="Timeout">The timeout period in milliseconds.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.GetProcesses(EnvDTE80.Transport,System.String)">
+      <summary>Gets an object that represents the processes that are currently connected for debugging on the specified transport.</summary>
+      <returns>
+        <see cref="T:EnvDTE.Processes" />.</returns>
+      <param name="pTransport">A transport type or protocol that is used by the debugger to communicate with the computer that is running the process being debugged. See <see cref="P:EnvDTE90.Debugger3.Transports" />.</param>
+      <param name="TransportQualifier">A qualifier for the transport type. See <see cref="P:EnvDTE90.Debugger3.Transports" />.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.Go(System.Boolean)">
+      <summary>Starts executing the program from the current statement.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return, the debugger could be in Design, Break, or Run modes. See Execution Control for more information.</param>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.HexDisplayMode">
+      <summary>Gets or sets a value that indicates whether the expressions are output in hexadecimal or decimal format.</summary>
+      <returns>A Boolean that is true if hexadecimal format; otherwise, false.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.HexInputMode">
+      <summary>Gets or sets a value that indicates whether the expressions are evaluated in hexadecimal or decimal format.</summary>
+      <returns>A Boolean that is true if hexadecimal format; otherwise, false.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.ImportBreakpoints(System.String)">
+      <summary>Imports breakpoints from a file.</summary>
+      <param name="FileName">The file name. </param>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.Languages">
+      <summary>Gets a list of languages that the debugger supports.</summary>
+      <returns>A <see cref="T:EnvDTE.Languages" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.LastBreakReason">
+      <summary>Gets the last reason that a program was broken. If the program is running, it returns DBG_REASON_NONE.</summary>
+      <returns>A <see cref="T:EnvDTE.dbgEventReason" /> value.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.LocalProcesses">
+      <summary>Gets the list of processes that are currently running on this computer.</summary>
+      <returns>A <see cref="T:EnvDTE.Processes" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.OnlyLoadSymbolsManually">
+      <summary>Gets a value that determines whether symbols are loaded manually or automatically. The Visual Studio user can determine this setting in the Options dialog box. For more information about how to set this value within Visual Studio, see How to: Specify Symbol Locations and Loading Behavior.</summary>
+      <returns>A Boolean that is true if symbols must be loaded manually; false if symbols are loaded automatically.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.Parent">
+      <summary>Gets the immediate parent object (<see cref="T:EnvDTE.DTE" />).</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.RunToCursor(System.Boolean)">
+      <summary>Executes the program to the current position of the source file cursor.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.See Code Stepping Overview for more information.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.SetNextStatement">
+      <summary>Sets the next instruction to be executed, according to the cursor position in the current source file.</summary>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.SetSymbolSettings(System.String,System.String,System.String,System.Boolean,System.Boolean)">
+      <summary>Sets various settings for the .PDB symbols used by Visual Studio for debugging and forces reloading of all symbols. </summary>
+      <param name="SymbolPath">The path to the location of the .PDB symbol files.</param>
+      <param name="SymbolPathState">A string that contains one character for each symbol path. If the symbol path is enabled, the character has a value of "1". If the symbol path not enabled, the character can have any other value.</param>
+      <param name="SymbolCachePath">The path to the location of the cache used for downloading symbols from a symbol server.</param>
+      <param name="OnlyLoadSymbolsManually">Set to true if symbols should only be loaded manually, false if symbols should be loaded automatically.</param>
+      <param name="LoadSymbolsNow">Set to true if symbols should be loaded immediately; otherwise false. </param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.StepInto(System.Boolean)">
+      <summary>Steps into the next function call, if possible.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run-mode.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.StepOut(System.Boolean)">
+      <summary>Steps out of the current function.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.StepOver(System.Boolean)">
+      <summary>Steps over the next function call.</summary>
+      <param name="WaitForBreakOrEnd">Set to true if this function call should wait until either Break mode or Design mode is entered before returning. Set to false if you want this call to return immediately after causing the debugger to begin execution. Upon return the debugger could be in Design, Break, or Run modes.</param>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.Stop(System.Boolean)">
+      <summary>Stops debugging and terminates or detaches from all attached processes.</summary>
+      <param name="WaitForDesignMode">Set to true if the debugging session should stop only when it reaches Design mode. Set to false if you intend to stop debugging, but you have to perform other tasks in the macro before the debugger enters design mode.</param>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.SymbolCachePath">
+      <summary>Gets a string that contains the path to the symbols cache used by Visual Studio when you download symbols from a symbols server. You can specify the symbols cache path in the Options dialog box. For more information, see How to: Use a Symbol Server.</summary>
+      <returns>A string that contains the path to the symbols cache.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.SymbolPath">
+      <summary>Gets a string that contains paths to .PDB symbol files that are used by Visual Studio for debugging. The Visual Studio user can specify symbols paths in the Options dialog box. For more information, see How to: Specify Symbol Locations and Loading Behavior.</summary>
+      <returns>A string that contains a semicolon delimited list of paths to the .PDB symbol files.</returns>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.SymbolPathState">
+      <summary>Gets a string that represents the state of all symbol paths for the .PDB symbol files that are used by Visual Studio for debugging.</summary>
+      <returns>A string that contains one character for each symbol path. If the symbol path is enabled, the character has a value of "1". If the symbol path not enabled, the character can have any other value.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.TerminateAll">
+      <summary>Terminates all currently running debugging processes.</summary>
+    </member>
+    <member name="P:EnvDTE100.Debugger5.Transports">
+      <summary>Gets a collection of supported debugging transports.</summary>
+      <returns>A <see cref="T:EnvDTE90.Transports" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Debugger5.WriteMinidump(System.String,EnvDTE80.dbgMinidumpOption)">
+      <summary>If debugging a program and in Break mode, this function creates a minidump of the current debugging session.</summary>
+      <param name="FileName">The file name of the program being debugged.</param>
+      <param name="Option">A <see cref="T:EnvDTE90.dbgMinidumpOption" /> constant specifying whether a full or normal dump is written.</param>
+    </member>
+    <member name="T:EnvDTE100.Expression2">
+      <summary>The <see cref="T:EnvDTE100.Expression2" /> object contains properties used to examine items returned by an expression evaluation.</summary>
+    </member>
+    <member name="P:EnvDTE100.Expression2.Collection">
+      <summary>Gets the collection containing the object supporting this property or contained within this code construct.</summary>
+      <returns>An <see cref="T:EnvDTE.Expressions" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE100.Expression2.DataMembers">
+      <summary>If the expression represents a class or a structure, this property gets a list of member variables as an <see cref="T:EnvDTE.Expressions" /> collection.</summary>
+      <returns>An <see cref="T:EnvDTE.Expressions" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Expression2.DeleteObjectID">
+      <summary>Deletes the object ID.</summary>
+    </member>
+    <member name="P:EnvDTE100.Expression2.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Expression2.IsValidValue">
+      <summary>Indicates whether the specified value in an expression is valid.</summary>
+      <returns>A Boolean value.</returns>
+    </member>
+    <member name="M:EnvDTE100.Expression2.MakeObjectID">
+      <summary>Creates the object ID.</summary>
+    </member>
+    <member name="P:EnvDTE100.Expression2.Name">
+      <summary>Gets the name of the object.</summary>
+      <returns>A string representing the object's name.</returns>
+    </member>
+    <member name="P:EnvDTE100.Expression2.Parent">
+      <summary>Gets the immediate parent object of an <see cref="T:EnvDTE100.Expression2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.Debugger" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Expression2.Type">
+      <summary>Gets a constant indicating the object type.</summary>
+      <returns>A string constant representing the object type.</returns>
+    </member>
+    <member name="P:EnvDTE100.Expression2.Value">
+      <summary>Sets or gets the data for the object.</summary>
+      <returns>A string representing the value of the object.</returns>
+    </member>
+    <member name="T:EnvDTE100.Solution4">
+      <summary>Represents all projects and solution-wide properties in the integrated development environment (IDE). Supersedes <see cref="T:EnvDTE.Solution" />, <see cref="T:EnvDTE80.Solution2" />, and <see cref="T:EnvDTE90.Solution3" />.</summary>
+    </member>
+    <member name="M:EnvDTE100.Solution4.AddFromFile(System.String,System.Boolean)">
+      <summary>Adds a project to the solution that is based on a project file already stored in the system.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="FileName">Required. The full path and file name of the project file.</param>
+      <param name="Exclusive">Optional. Indicates whether the project loads in the current solution or its own solution; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.AddFromTemplate(System.String,System.String,System.String,System.Boolean)">
+      <summary>Copies an existing project file, and any items or subdirectories it contains, to the specified location and adds it to the solution.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="FileName">Required. The full path and file name with extension of the template project file.</param>
+      <param name="Destination">Required. The full path of the directory in which to copy the contents of <paramref name="FileName" />.</param>
+      <param name="ProjectName">Required. The name of the project file in the destination directory. This should include the extension. The displayed name is derived from <paramref name="ProjectName" />.</param>
+      <param name="Exclusive">Optional. Indicates whether the project loads in the current solution or its own; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.AddFromTemplateEx(System.String,System.String,System.String,System.String,System.Boolean,System.UInt32)">
+      <summary>Copies an existing project file, and any items or subdirectories it contains, to the specified location and adds it to the solution.</summary>
+      <returns>
+        <see cref="T:EnvDTE.Project" />.</returns>
+      <param name="FileName">Required. The full path and file name with extension of the template project file.</param>
+      <param name="Destination">Required. The full path of the directory in which to copy the contents of <paramref name="FileName" />.</param>
+      <param name="ProjectName">Required. The name of the project file in the destination directory. This should include the extension. The displayed name is derived from <paramref name="ProjectName" />.</param>
+      <param name="SolutionName">Optional. Indicates whether the project loads in the current solution or its own; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+      <param name="Exclusive">Optional. Indicates whether the project loads in the current solution or its own; true if the current solution is closed and the project is added to a new solution, false if the project is added to the existing, open solution.</param>
+      <param name="Options">The <see cref="T:EnvDTE100.vsAddFromTemplateOptions" />.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.AddIns">
+      <summary>Gets an <see cref="T:EnvDTE.AddIns" /> collection, which contains all currently available add-ins associated with the solution.</summary>
+      <returns>An <see cref="T:EnvDTE.AddIns" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.AddSolutionFolder(System.String)">
+      <summary>Adds a solution folder to a <see cref="T:EnvDTE.ProjectItems" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+      <param name="Name">The name of the solution folder.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.Close(System.Boolean)">
+      <summary>Closes the current solution.</summary>
+      <param name="SaveFirst">Optional. Indicates whether to save the solution before closing it; true if the solution should be saved prior to closing it, false if not.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Count">
+      <summary>Gets a value indicating the number of projects in the solution.</summary>
+      <returns>The number of projects in the solution.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.Create(System.String,System.String)">
+      <summary>Creates an empty solution in the specified directory with the specified name.</summary>
+      <param name="Destination">Required. The directory in which to create the .sln and .suo (solution) files.</param>
+      <param name="Name">Required. The name to display in Solution Explorer. This is also the base name of the .sln and .suo files.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.DTE">
+      <summary>Gets the top-level extensibility object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Extender(System.String)">
+      <summary>Gets the requested Extender object if it is available for this object.</summary>
+      <returns>An Extender object.</returns>
+      <param name="ExtenderName">Required. The name of the Extender to return.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.ExtenderCATID">
+      <summary>Gets the Extender category ID (CATID) for the object.</summary>
+      <returns>A GUID representing the CATID of the object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.ExtenderNames">
+      <summary>Gets a list of available Extenders for the object.</summary>
+      <returns>An object containing an automation-compliant array of strings.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.FileName">
+      <summary>Gets the file name.</summary>
+      <returns>The file name.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.FindProjectItem(System.String)">
+      <summary>Locates an item in a project.</summary>
+      <returns>A <see cref="T:EnvDTE.ProjectItem" /> object.</returns>
+      <param name="FileName">Required. The name of the project item to locate.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.FullName">
+      <summary>Gets the full path and name of the object's file.</summary>
+      <returns>Gets a string that is the full path and name of the object's file.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.GetEnumerator">
+      <summary>Returns an enumeration for items in a collection.</summary>
+      <returns>An enumerator.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.GetProjectItemTemplate(System.String,System.String)">
+      <summary>Returns a path to the indicated project item template.</summary>
+      <returns>The full name of the project item template.</returns>
+      <param name="TemplateName">The name of the template.</param>
+      <param name="Language">The language used to write the template.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.GetProjectItemTemplates(System.String,System.String)">
+      <summary>Returns a collection of project item templates for the specified project.</summary>
+      <returns>A templates collection containing the names of all of the project item templates.</returns>
+      <param name="Language">The language used to write the project item template.</param>
+      <param name="CustomDataSignature">The signature for any metadata associated with the project item template.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.GetProjectTemplate(System.String,System.String)">
+      <summary>Returns a path to the specified project template.</summary>
+      <returns>The full name of the project template.</returns>
+      <param name="TemplateName">The name of the template.</param>
+      <param name="Language">The language used to write the template.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Globals">
+      <summary>Gets the <see cref="T:EnvDTE.Globals" /> object that contains any variable values that may be saved in the solution (.sln) file, the project file, or the user's profile data.</summary>
+      <returns>A <see cref="T:EnvDTE.Globals" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.IsDirty">
+      <summary>Determines whether the solution is dirty (modified but not saved).</summary>
+      <returns>True if the solution is dirty, otherwise false.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.IsOpen">
+      <summary>Gets whether a solution is open.</summary>
+      <returns>true if a solution is open; otherwise, false.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.Item(System.Object)">
+      <summary>Returns an indexed member of a <see cref="T:EnvDTE.Projects" /> collection.</summary>
+      <returns>A <see cref="T:EnvDTE.Project" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.Open(System.String)">
+      <summary>Opens a specified solution.</summary>
+      <param name="FileName">Required. The file name of the solution file to open.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Parent">
+      <summary>Gets the immediate parent object of a <see cref="T:EnvDTE80.Solution2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.DTE" /> object.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.ProjectItemsTemplatePath(System.String)">
+      <summary>Superseded by <see cref="M:EnvDTE80.Solution2.GetProjectItemTemplate(System.String,System.String)" />.</summary>
+      <returns>The path to the templates of the given project type.</returns>
+      <param name="ProjectKind">Required. The EnvDTE.Constants.vsProjectKind* project template representing the project type.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Projects">
+      <summary>Gets a collection of the projects currently in the solution.</summary>
+      <returns>A <see cref="T:EnvDTE.Projects" /> collection.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Properties">
+      <summary>Gets a collection of all properties that pertain to the <see cref="T:EnvDTE80.Solution2" /> object.</summary>
+      <returns>A <see cref="T:EnvDTE.Properties" /> collection.</returns>
+    </member>
+    <member name="M:EnvDTE100.Solution4.Remove(EnvDTE.Project)">
+      <summary>Removes the specified project from the solution.</summary>
+      <param name="proj">Required. The project to remove from the solution.</param>
+    </member>
+    <member name="M:EnvDTE100.Solution4.SaveAs(System.String)">
+      <summary>Saves the solution.</summary>
+      <param name="FileName">Required. The file name in which to save the solution. If the file exists, it is overwritten.</param>
+    </member>
+    <member name="P:EnvDTE100.Solution4.Saved">
+      <summary>Gets or sets a value indicating whether a solution has not been modified since last being saved or opened.</summary>
+      <returns>true if the object has not been modified since last being saved or opened; otherwise, false. The default is true.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.SolutionBuild">
+      <summary>Gets the <see cref="T:EnvDTE.SolutionBuild" /> object for the solution, which represents the root of the build automation model at the solution level.</summary>
+      <returns>A <see cref="T:EnvDTE.SolutionBuild" /> object.</returns>
+    </member>
+    <member name="P:EnvDTE100.Solution4.TemplatePath(System.String)">
+      <summary>Superseded by <see cref="M:EnvDTE80.Solution2.GetProjectTemplate(System.String,System.String)" />.</summary>
+      <returns>The full path and name of the directory that contains templates for the specified type of project. </returns>
+      <param name="ProjectType">Required. A GUID that identifies the type of project.</param>
+    </member>
+    <member name="T:EnvDTE100.vsAddFromTemplateOptions">
+      <summary>Represents the options for the method <see cref="M:EnvDTE100.Solution4.AddFromTemplateEx(System.String,System.String,System.String,System.String,System.Boolean,System.UInt32)" />.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsAddFromTemplateOptions.vsAddFromTemplateOptionsNone">
+      <summary>No options.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsAddFromTemplateOptions.vsAddFromTemplateOptionsShowWizardUI">
+      <summary>Show the wizard UI for this template.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsAddFromTemplateOptions.vsAddFromTemplateOptionsLocalSolution">
+      <summary>The solution is local.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsAddFromTemplateOptions.vsAddFromTemplateOptionsDeferredSave">
+      <summary>Saving the solution is deferred.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsAddFromTemplateOptions.vsAddFromTemplateOptionsMultiProject">
+      <summary>The solution has multiple projects.</summary>
+    </member>
+    <member name="T:EnvDTE100.vsDocumentDockPreferenceOptions">
+      <summary>Represents document window docking preferences.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsDocumentDockPreferenceOptions.vsDocumentDockAtBeginning">
+      <summary>Docked at the beginning.</summary>
+    </member>
+    <member name="F:EnvDTE100.vsDocumentDockPreferenceOptions.vsDocumentDockAtEnd">
+      <summary>Docked at the end.</summary>
+    </member>
+    <member name="T:EnvDTE100.vsRichClientExperienceOptions"></member>
+    <member name="F:EnvDTE100.vsRichClientExperienceOptions.vsRichClientExperienceNone">
+      <summary />
+    </member>
+    <member name="F:EnvDTE100.vsRichClientExperienceOptions.vsRichClientExperienceAll">
+      <summary />
+    </member>
+    <member name="F:EnvDTE100.vsRichClientExperienceOptions.vsRichClientExperienceAnimations">
+      <summary />
+    </member>
+    <member name="F:EnvDTE100.vsRichClientExperienceOptions.vsRichClientExperienceGradients">
+      <summary />
+    </member>
+  </members>
+</doc>

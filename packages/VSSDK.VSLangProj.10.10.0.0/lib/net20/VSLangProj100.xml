@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<doc>
+  <assembly>
+    <name>VslangProj100</name>
+  </assembly>
+  <members>
+    <member name="T:VslangProj100.VBProjPropId100">
+      <summary>Enumerates properties specific to Visual Basic.</summary>
+    </member>
+    <member name="F:VslangProj100.VBProjPropId100.VBPROJPROPID_LanguageVersion">
+      <summary>Indicates the language version.</summary>
+    </member>
+    <member name="T:VslangProj100.VsProjPropId100">
+      <summary>Represents project properties for all Visual Studio projects.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_TargetFrameworkMoniker">
+      <summary>The target framework moniker used by the project.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisRuleSet">
+      <summary>The path to the file containing the rule set used by the project.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisRuleSetDirectories">
+      <summary>List of directories to search for rule sets used by the project.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisIgnoreBuiltInRuleSets">
+      <summary>Flag indicating whether to ignore built-in rule sets.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisRuleDirectories">
+      <summary>List of directories to search for rules specified in the rule set file.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisIgnoreBuiltInRules">
+      <summary>Flag indicating whether to ignore built-in rules.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjPropId100.VBPROJPROPID_CodeAnalysisFailOnMissingRules">
+      <summary>Flag indicating whether code analysis will fail if any rules are missing.</summary>
+    </member>
+    <member name="T:VslangProj100.VsProjReferencePropId100">
+      <summary>Enumerates the reference properties of a project.</summary>
+    </member>
+    <member name="F:VslangProj100.VsProjReferencePropId100.DISPID_Reference_EmbedInteropTypes">
+      <summary>Indicates whether interop types are embedded in the target assembly.</summary>
+    </member>
+  </members>
+</doc>
