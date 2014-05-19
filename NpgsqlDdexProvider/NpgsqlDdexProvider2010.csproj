@@ -17,6 +17,9 @@
     <IncludeDebugSymbolsInLocalVSIXDeployment>false</IncludeDebugSymbolsInLocalVSIXDeployment>
     <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
     <CopyOutputSymbolsToOutputDirectory>true</CopyOutputSymbolsToOutputDirectory>
+    <VsSDKInstall>..\vssdk_tools</VsSDKInstall> 
+    <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
+    <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

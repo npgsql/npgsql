@@ -31,9 +31,6 @@ PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
     <VSSDKTargetPlatformRegRoot>Software\Microsoft\VisualStudio\$(VSSDKTargetPlatformVersion)</VSSDKTargetPlatformRegRoot>
     <VSSDKTargetPlatformRegRootSuffix Condition="'$(VSSDKTargetPlatformRegRootSuffix)' == ''">Exp</VSSDKTargetPlatformRegRootSuffix>
     <ExtensionsDeploymentSubPath Condition="'$(ExtensionsDeploymentSubPath)' == ''">Microsoft\VisualStudio\$(VSSDKTargetPlatformVersion)$(VSSDKTargetPlatformRegRootSuffix)\Extensions\</ExtensionsDeploymentSubPath>
-    <VsSDKInstall>..\vssdk_tools</VsSDKInstall> 
-    <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
-    <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
   </PropertyGroup>
 
   <PropertyGroup Label="UserMacros">
