@@ -17,7 +17,7 @@
     <IncludeDebugSymbolsInLocalVSIXDeployment>false</IncludeDebugSymbolsInLocalVSIXDeployment>
     <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
     <CopyOutputSymbolsToOutputDirectory>true</CopyOutputSymbolsToOutputDirectory>
-    <VsSDKInstall>..\vssdk_tools</VsSDKInstall> 
+    <VsSDKInstall>..\Tools\vssdk_tools</VsSDKInstall> 
     <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
     <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
     <VsixSchemaPath>$(VsSDKInstall)\schemas\VSIXManifestSchema.xsd</VsixSchemaPath>
