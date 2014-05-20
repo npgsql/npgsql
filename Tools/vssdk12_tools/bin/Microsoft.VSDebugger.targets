@@ -1,0 +1,46 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--When compiling Native C++ code, pull in Microsoft.VSDebugger.Native.targets -->
+  <Import Condition="'$(Language)'=='C++' and '$(CLRSupport)'=='false'" Project="Microsoft.VSDebugger.Native.targets"/>
+
+  <!--Code for creating the .vsdconfig file. These are used for both managed and native project types-->
+  <PropertyGroup Condition="'$(OutputType)'=='library'">
+    <VsdConfigFile Condition="'$(VsdConfigFile)'==''">$(OutputPath)$(TargetName).vsdconfig</VsdConfigFile>
+    <CreateVsdbgConfigFileDependsOn Condition="'$(Language)'=='C++'">Link</CreateVsdbgConfigFileDependsOn>
+    <CreateVsdbgConfigFileDependsOn Condition="'$(Language)'!='C++'">CopyFilesToOutputDirectory</CreateVsdbgConfigFileDependsOn>
+  </PropertyGroup>
+
+  <Target Name="CreateVsdbgConfigFile"
+    Inputs="@(VsdConfigXmlFiles);$(OutputPath)$(AssemblyName).dll"
+    Condition="'@(VsdConfigXmlFiles)'!=''"
+    Outputs="$(VsdConfigFile)"
+    AfterTargets="$(CreateVsdbgConfigFileDependsOn)"
+    BeforeTargets="PostBuildEvent">
+
+    <Error Condition="'$(ConcordSDKDir)'==''"
+      Text="The 'ConcordSDKDir' property must be set in the root project file."/>
+    <Error Condition="!Exists('$(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe')"
+      Text="The 'ConcordSDKDir' property is not correctly set. $(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe does not exist"/>
+
+    <Exec Command="$(ConcordSDKDir)Tools\Bin\vsdconfigtool.exe @(VsdConfigXmlFiles, ' ') $(OutputPath)$(AssemblyName).dll $(VsdConfigFile)" />
+  </Target>
+
+  <!--Add the vsdconfig file to the BuiltProjectOutputGroup-->
+  <Target Name="AddVsdbgConfigFileToOutputGroup" Condition="'@(VsdConfigXmlFiles)'!=''">
+    <CreateItem Include="$(VsdConfigFile)">
+      <Output TaskParameter="Include" ItemName="BuiltProjectOutputGroupOutput"/>
+    </CreateItem>
+  </Target>
+  <PropertyGroup>
+    <BuiltProjectOutputGroupDependsOn>$(BuiltProjectOutputGroupDependsOn);AddVsdbgConfigFileToOutputGroup</BuiltProjectOutputGroupDependsOn>
+  </PropertyGroup>
+
+  <Target Name="CleanVsdbgConfigFile"
+    Condition="'@(VsdConfigXmlFiles)'!=''">
+    <Delete Files="$(VsdConfigFile)"/>
+  </Target>
+  <PropertyGroup Condition="'$(VsdConfigFile)'!=''">
+    <CleanDependsOn>$(CleanDependsOn);CleanVsdbgConfigFile</CleanDependsOn>
+  </PropertyGroup>
+
+</Project>
