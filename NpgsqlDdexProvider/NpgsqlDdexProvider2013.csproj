@@ -9,6 +9,9 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <OldToolsVersion>4.0</OldToolsVersion>
+    <VsSDKInstall>..\Tools\vssdk12_tools</VsSDKInstall> 
+    <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
+    <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
