@@ -60,11 +60,6 @@ PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
     <CopyVsixManifestToOutput Condition="'$(CopyVsixManifestToOutput)' == '' and ('$(CreateVsixContainer)' != 'false' or '$(DeployExtension)' != 'false' or '$(CopyVsixExtensionFiles)' != 'false')">true</CopyVsixManifestToOutput>
   </PropertyGroup>
 
-  <!--Target to set VsSDKToolsPath environment variable-->
-  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="VSCTCompile"> 
-    <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" /> 
-  </Target> 
-
   <!--
     =================================================================================
                           Find Source Vsix Manifest File

@@ -302,4 +302,8 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <!--Target to set VsSDKToolsPath environment variable-->
+  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="VSCTCompile"> 
+    <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" /> 
+  </Target> 
 </Project>
