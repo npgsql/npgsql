@@ -37,16 +37,6 @@ PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
   <UsingTask TaskName="CreateVsixSourceItemFromReferences" AssemblyFile="Microsoft.VsSDK.Build.Tasks.dll" />
   <UsingTask TaskName="SplitIncludeOutputGroupsInVSIX" AssemblyFile="Microsoft.VsSDK.Build.Tasks.dll" />
   <UsingTask TaskName="ReadInfoFromVsixManifest" AssemblyFile="Microsoft.VsSDK.Build.Tasks.dll" />
-  <UsingTask TaskName="SetVsSDKEnvironmentVariables" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll"> 
-    <ParameterGroup> 
-      <ProjectDirectory Required="true" /> 
-    </ParameterGroup> 
-    <Task> 
-      <Code Type="Fragment" Language="cs"> 
-        System.Environment.SetEnvironmentVariable("VsSDKToolsPath", System.IO.Path.GetFullPath(ProjectDirectory + @"\..\Tools\vssdk12_tools\bin")); 
-      </Code> 
-    </Task> 
-  </UsingTask> 
 
   <PropertyGroup>
     <DeployVSTemplates Condition="'$(DeployVSTemplates)' == ''">true</DeployVSTemplates>
