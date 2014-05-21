@@ -13,6 +13,7 @@
     <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
     <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
     <VsixSchemaPath>$(VsSDKInstall)\schemas\VSIXManifestSchema.xsd</VsixSchemaPath>
+    <DeployExtension>False</DeployExtension>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
