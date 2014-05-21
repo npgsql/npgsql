@@ -17,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Npgsql.snk = Npgsql.snk
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider", "NpgsqlDdexProvider\NpgsqlDdexProvider2013.csproj", "{249C6185-C3B5-4D28-A508-ABD975702A0B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlDdexProvider2013", "NpgsqlDdexProvider\NpgsqlDdexProvider2013.csproj", "{249C6185-C3B5-4D28-A508-ABD975702A0B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -290,19 +290,16 @@ Global
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|Any CPU.ActiveCfg = Debug-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|Any CPU.Build.0 = Debug-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|AnyCPU.ActiveCfg = Debug-net20|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|AnyCPU.Build.0 = Debug-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|Mixed Platforms.ActiveCfg = Debug-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net20|Mixed Platforms.Build.0 = Debug-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|Any CPU.ActiveCfg = Debug-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|Any CPU.Build.0 = Debug-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|AnyCPU.ActiveCfg = Debug-net35|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|AnyCPU.Build.0 = Debug-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|Mixed Platforms.ActiveCfg = Debug-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net35|Mixed Platforms.Build.0 = Debug-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|Any CPU.ActiveCfg = Debug-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|Any CPU.Build.0 = Debug-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|AnyCPU.ActiveCfg = Debug-net40|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|AnyCPU.Build.0 = Debug-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|Mixed Platforms.ActiveCfg = Debug-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net40|Mixed Platforms.Build.0 = Debug-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Debug-net45|Any CPU.ActiveCfg = Debug-net45|Any CPU
@@ -320,19 +317,16 @@ Global
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|Any CPU.ActiveCfg = Release-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|Any CPU.Build.0 = Release-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|AnyCPU.ActiveCfg = Release-net20|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|AnyCPU.Build.0 = Release-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|Mixed Platforms.ActiveCfg = Release-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net20|Mixed Platforms.Build.0 = Release-net20|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|Any CPU.ActiveCfg = Release-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|Any CPU.Build.0 = Release-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|AnyCPU.ActiveCfg = Release-net35|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|AnyCPU.Build.0 = Release-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|Mixed Platforms.ActiveCfg = Release-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net35|Mixed Platforms.Build.0 = Release-net35|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|Any CPU.ActiveCfg = Release-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|Any CPU.Build.0 = Release-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
-		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|AnyCPU.Build.0 = Release-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|Mixed Platforms.ActiveCfg = Release-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net40|Mixed Platforms.Build.0 = Release-net40|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net45|Any CPU.ActiveCfg = Release-net45|Any CPU
