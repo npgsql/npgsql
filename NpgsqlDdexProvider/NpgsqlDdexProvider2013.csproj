@@ -9,9 +9,9 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <OldToolsVersion>4.0</OldToolsVersion>
-    <VsSDKInstall>..\Tools\vssdk12_tools</VsSDKInstall> 
-    <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes> 
-    <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath> 
+    <VsSDKInstall>..\Tools\vssdk12_tools</VsSDKInstall>
+    <VsSDKIncludes>$(VsSDKInstall)\inc</VsSDKIncludes>
+    <VsSDKToolsPath>$(VsSDKInstall)\bin</VsSDKToolsPath>
     <VsixSchemaPath>$(VsSDKInstall)\schemas\VSIXManifestSchema.xsd</VsixSchemaPath>
     <DeployExtension>False</DeployExtension>
   </PropertyGroup>
@@ -52,90 +52,6 @@
     <DocumentationFile>bin\Release-net45\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <UseVSHostingProcess>true</UseVSHostingProcess>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net40|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release-net40\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release-net40\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net35|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug-net35\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug-net35\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net35|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release-net35\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;ENTITIES</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release-net35\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net20|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug-net20\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug-net20\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net20|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release-net20\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release-net20\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net45-EF6|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug-net45-EF6\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;NET45;ENTITIES;ENTITIES6</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug-net45-EF6\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45-EF6|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release-net45-EF6\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;NET40;NET45;ENTITIES;ENTITIES6</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release-net45-EF6\Npgsql.xml</DocumentationFile>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Build" />
@@ -305,17 +221,17 @@
   </Target>
   -->
   <!--Target to set VsSDKToolsPath environment variable-->
-  <UsingTask TaskName="SetVsSDKEnvironmentVariables" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll"> 
-    <ParameterGroup> 
-      <ProjectDirectory Required="true" /> 
-    </ParameterGroup> 
-    <Task> 
+  <UsingTask TaskName="SetVsSDKEnvironmentVariables" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <ProjectDirectory Required="true" />
+    </ParameterGroup>
+    <Task>
       <Code Type="Fragment" Language="cs"> 
         System.Environment.SetEnvironmentVariable("VsSDKToolsPath", System.IO.Path.GetFullPath(ProjectDirectory + @"\..\Tools\vssdk12_tools\bin")); 
-      </Code> 
-    </Task> 
-  </UsingTask> 
-  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="GeneratePkgDef"> 
-    <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" /> 
-  </Target> 
+      </Code>
+    </Task>
+  </UsingTask>
+  <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="GeneratePkgDef">
+    <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
 </Project>
