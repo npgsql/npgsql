@@ -47,16 +47,6 @@ namespace Npgsql.SqlGenerators
                 expression.WriteSql(sqlText);
             }
         }
-
-        internal virtual IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return ExpressionList.Aggregate(Enumerable.Empty<ColumnExpression>(), (list, ve) => list.Concat(ve.GetProjectedColumns()));
-        }
-
-        internal virtual IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return ExpressionList.Aggregate(Enumerable.Empty<PropertyExpression>(), (list, ve) => list.Concat(ve.GetAccessedProperties()));
-        }
     }
 
     internal class LiteralExpression : VisitedExpression
@@ -81,6 +71,22 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append(_literal);
+            base.WriteSql(sqlText);
+        }
+    }
+
+    internal class CommaSeparatedExpression : VisitedExpression
+    {
+        public readonly List<VisitedExpression> Arguments = new List<VisitedExpression>();
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            for (int i = 0; i < Arguments.Count; ++i)
+            {
+                if (i != 0)
+                    sqlText.Append(", ");
+                Arguments[i].WriteSql(sqlText);
+            }
             base.WriteSql(sqlText);
         }
     }
@@ -176,60 +182,6 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class ProjectionExpression : VisitedExpression
-    {
-        private bool requiresColumnSeperator;
-        private InputExpression _from;
-
-        public bool Distinct { get; set; }
-        public InputExpression From
-        {
-            get { return _from; }
-            set
-            {
-                _from = value;
-                Append(" FROM ");
-                Append(_from);
-            }
-        }
-
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            sqlText.Append("SELECT ");
-            if (Distinct)
-                sqlText.Append("DISTINCT ");
-            base.WriteSql(sqlText);
-        }
-
-        internal IEnumerable<ColumnExpression> Columns { get { return _columns; } }
-
-        private List<ColumnExpression> _columns = new List<ColumnExpression>();
-        public void AppendColumn(ColumnExpression column)
-        {
-            _columns.Add(column);
-            if (requiresColumnSeperator)
-                Append(",");
-            Append(column);
-            requiresColumnSeperator = true;
-        }
-
-        public void ReplaceColumn(ColumnExpression existingColumn, ColumnExpression newColumn)
-        {
-            int index = _columns.IndexOf(existingColumn);
-            if (index != -1)
-            {
-                _columns[index] = newColumn;
-                int baseIndex = ExpressionList.IndexOf(existingColumn);
-                ExpressionList[baseIndex] = newColumn;
-            }
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return _columns;
-        }
-    }
-
     internal class InsertExpression : VisitedExpression
     {
         public void AppendTarget(VisitedExpression target)
@@ -273,7 +225,7 @@ namespace Npgsql.SqlGenerators
             {
                 if (!first)
                     Append(",");
-                Append("\"" + (returingProperty as DbPropertyExpression).Property.Name + "\"");
+                Append(SqlBaseGenerator.QuoteIdentifier((returingProperty as DbPropertyExpression).Property.Name));
                 first = false;
             }
         }
@@ -317,11 +269,6 @@ namespace Npgsql.SqlGenerators
             sqlText.Append("UPDATE ");
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
     }
 
     internal class DeleteExpression : VisitedExpression
@@ -340,37 +287,6 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             sqlText.Append("DELETE FROM ");
-            base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
-    }
-
-    internal class AllColumnsExpression : VisitedExpression
-    {
-        private InputExpression _input;
-
-        public AllColumnsExpression(InputExpression input)
-        {
-            _input = input;
-        }
-
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            sqlText.Append("SELECT ");
-            bool first = true;
-            foreach (var column in _input.GetProjectedColumns())
-            {
-                if (!first)
-                    sqlText.Append(",");
-                first = false;
-                column.WriteSql(sqlText);
-            }
-            sqlText.Append(" FROM ");
-            _input.WriteSql(sqlText);
             base.WriteSql(sqlText);
         }
     }
@@ -411,15 +327,22 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(" AS " + SqlBaseGenerator.QuoteIdentifier(_columnName));
             base.WriteSql(sqlText);
         }
+    }
 
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return new ColumnExpression[] { this };
-        }
+    internal class ColumnReferenceExpression : VisitedExpression
+    {
+        public string Variable { get; set; }
+        public string Name { get; set; }
 
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
+        internal override void WriteSql(StringBuilder sqlText)
         {
-            return _column.GetAccessedProperties().Concat(base.GetAccessedProperties());
+            if (Variable != null)
+            {
+                sqlText.Append(SqlBaseGenerator.QuoteIdentifier(Variable));
+                sqlText.Append(".");
+            }
+            sqlText.Append(SqlBaseGenerator.QuoteIdentifier(Name));
+            base.WriteSql(sqlText);
         }
     }
 
@@ -441,24 +364,20 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(_scanString);
             base.WriteSql(sqlText);
         }
-
-        List<ColumnExpression> _projectedColumns;
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            if (_projectedColumns == null)
-            {
-                _projectedColumns = new List<ColumnExpression>();
-                foreach (var property in _target.ElementType.Members.OfType<EdmProperty>())
-                {
-                    _projectedColumns.Add(new ColumnExpression(new PropertyExpression(property), property.Name, property.TypeUsage));
-                }
-            }
-            return _projectedColumns;
-        }
     }
 
     internal class InputExpression : VisitedExpression
     {
+        public bool Distinct { get; set; }
+
+        public CommaSeparatedExpression Projection { get; set; }
+
+        public readonly Dictionary<Tuple<string, string>, string> ColumnsToProject = new Dictionary<Tuple<string, string>, string>(); // (from, name) -> newName
+        public readonly HashSet<string> ProjectNewNames = new HashSet<string>();
+
+        // Either FromExpression or JoinExpression
+        public VisitedExpression From { get; set; }
+
         private WhereExpression _where;
 
         public WhereExpression Where
@@ -508,45 +427,59 @@ namespace Npgsql.SqlGenerators
             }
         }
 
+        public InputExpression() { }
+
+        public InputExpression(VisitedExpression from, string asName)
+        {
+            From = new FromExpression(from, asName);
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
-            base.WriteSql(sqlText);
+            sqlText.Append("SELECT ");
+            if (Distinct) sqlText.Append("DISTINCT ");
+            if (Projection != null) Projection.WriteSql(sqlText);
+            else
+            {
+                if (ColumnsToProject.Count == 0) sqlText.Append("1"); // Could be arbitrary, let's pick 1
+                else
+                {
+                    bool first = true;
+                    foreach (var column in ColumnsToProject)
+                    {
+                        if (!first)
+                        {
+                            sqlText.Append(", ");
+                        }
+                        else first = false;
+                        sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Key.Item1));
+                        sqlText.Append(".");
+                        sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Key.Item2));
+                        sqlText.Append(" AS ");
+                        sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Value));
+                    }
+                }
+            }
+            sqlText.Append(" FROM ");
+            From.WriteSql(sqlText);
             if (Where != null) Where.WriteSql(sqlText);
             if (GroupBy != null) GroupBy.WriteSql(sqlText);
             if (OrderBy != null) OrderBy.WriteSql(sqlText);
             if (Skip != null) Skip.WriteSql(sqlText);
             if (Limit != null) Limit.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            var accessedProperties = base.GetAccessedProperties();
-            if (Where != null) accessedProperties = accessedProperties.Concat(Where.GetAccessedProperties());
-            if (GroupBy != null) accessedProperties = accessedProperties.Concat(GroupBy.GetAccessedProperties());
-            if (OrderBy != null) accessedProperties = accessedProperties.Concat(OrderBy.GetAccessedProperties());
-            if (Skip != null) accessedProperties = accessedProperties.Concat(Skip.GetAccessedProperties());
-            if (Limit != null) accessedProperties = accessedProperties.Concat(Limit.GetAccessedProperties());
-            return accessedProperties;
+            base.WriteSql(sqlText);
         }
     }
 
-    internal class FromExpression : InputExpression
+    internal class FromExpression : VisitedExpression
     {
         private VisitedExpression _from;
         private string _name;
-        static int _uniqueName = 1;
 
         public FromExpression(VisitedExpression from, string name)
         {
             _from = from;
-            if (name != null)
-            {
-                _name = name;
-            }
-            else
-            {
-                _name = "ALIAS" + _uniqueName++;
-            }
+            _name = name;
         }
 
         public string Name
@@ -554,52 +487,56 @@ namespace Npgsql.SqlGenerators
             get { return _name; }
         }
 
+        public bool ForceSubquery { get; set; }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrap = !(_from is LiteralExpression || _from is ScanExpression);
-            if (wrap)
-                sqlText.Append("(");
-            _from.WriteSql(sqlText);
-            if (wrap)
-                sqlText.Append(")");
-            sqlText.Append(" AS ");
-            sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
-            base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            Dictionary<string, string> emptySubstitution = new Dictionary<string, string>();
-            if (_from is ScanExpression)
+            if (_from is InputExpression)
             {
-                ScanExpression scan = (ScanExpression)_from;
-                foreach (var property in scan.Target.ElementType.Members.OfType<EdmProperty>())
+                InputExpression input = (InputExpression)_from;
+                if (!ForceSubquery && input.Projection == null && input.Where == null && input.Distinct == false && input.OrderBy == null &&
+                    input.Skip == null && input.Limit == null)
                 {
-                    yield return new ColumnExpression(new PropertyExpression(new VariableReferenceExpression(Name, emptySubstitution), property), property.Name, property.TypeUsage);
+                    // There is no point of writing
+                    // (SELECT ? FROM <from> AS <name>) AS <name>
+                    // so just write <from> AS <name>
+                    // <name> is always the same for both nodes
+                    // However, PostgreSQL needs a subquery in case we are in the right hand side of an Apply expression
+                    if (((FromExpression)input.From).Name != Name)
+                        throw new ArgumentException();
+                    input.From.WriteSql(sqlText);
+                }
+                else
+                {
+                    sqlText.Append("(");
+                    input.WriteSql(sqlText);
+                    sqlText.Append(") AS ");
+                    sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
                 }
             }
             else
             {
-                foreach (var column in _from.GetProjectedColumns())
-                {
-                    string columnRef = string.Format("{0}.{1}", SqlBaseGenerator.QuoteIdentifier(Name), column.Name);
-                    yield return new ColumnExpression(new LiteralExpression(columnRef), column.Name, column.ColumnType);
-                }
+                bool wrap = !(_from is LiteralExpression || _from is ScanExpression);
+                if (wrap)
+                    sqlText.Append("(");
+                _from.WriteSql(sqlText);
+                if (wrap)
+                    sqlText.Append(")");
+                sqlText.Append(" AS ");
+                sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
             }
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _from.GetAccessedProperties().Concat(base.GetAccessedProperties());
+            base.WriteSql(sqlText);
         }
     }
 
-    internal class JoinExpression : InputExpression
+    internal class JoinExpression : VisitedExpression
     {
-        private InputExpression _left;
+        private VisitedExpression _left;
         private DbExpressionKind _joinType;
-        private InputExpression _right;
+        private VisitedExpression _right;
         private VisitedExpression _condition;
+
+        public JoinExpression() { }
 
         public JoinExpression(InputExpression left, DbExpressionKind joinType, InputExpression right, VisitedExpression condition)
         {
@@ -609,9 +546,9 @@ namespace Npgsql.SqlGenerators
             _condition = condition;
         }
 
-        public InputExpression Left { get { return _left; } }
-        public DbExpressionKind JoinType { get { return _joinType; } }
-        public InputExpression Right { get { return _right; } }
+        public VisitedExpression Left { get { return _left; } set { _left = value; } }
+        public DbExpressionKind JoinType { get { return _joinType; } set { _joinType = value; } }
+        public VisitedExpression Right { get { return _right; } set { _right = value; } }
 
         public VisitedExpression Condition
         {
@@ -636,46 +573,24 @@ namespace Npgsql.SqlGenerators
                 case DbExpressionKind.CrossJoin:
                     sqlText.Append(" CROSS JOIN ");
                     break;
+                case DbExpressionKind.CrossApply:
+                    sqlText.Append(" CROSS JOIN LATERAL ");
+                    break;
+                case DbExpressionKind.OuterApply:
+                    sqlText.Append(" LEFT OUTER JOIN LATERAL ");
+                    break;
                 default:
                     throw new NotSupportedException();
             }
             _right.WriteSql(sqlText);
-            if (_joinType != DbExpressionKind.CrossJoin)
+            if (_joinType == DbExpressionKind.OuterApply)
+                sqlText.Append(" ON TRUE");
+            else if (_joinType != DbExpressionKind.CrossJoin && _joinType != DbExpressionKind.CrossApply)
             {
                 sqlText.Append(" ON ");
                 _condition.WriteSql(sqlText);
             }
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return GetProjectedColumns(this);
-        }
-
-        internal static IEnumerable<ColumnExpression> GetProjectedColumns(JoinExpression join)
-        {
-            IEnumerable<ColumnExpression> projectedColumns;
-            if (join.Left is FromExpression)
-                projectedColumns = ((FromExpression)join.Left).GetProjectedColumns();
-            else
-                projectedColumns = GetProjectedColumns((JoinExpression)join.Left);
-            if (join.Right is FromExpression)
-                projectedColumns = projectedColumns.Concat(((FromExpression)join.Right).GetProjectedColumns());
-            else
-                projectedColumns = projectedColumns.Concat(GetProjectedColumns((JoinExpression)join.Right));
-            return projectedColumns;
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            var accessedProperties = _left.GetAccessedProperties()
-                .Concat
-                (_right.GetAccessedProperties());
-            if (_joinType != DbExpressionKind.CrossJoin)
-                accessedProperties = accessedProperties.Concat(_condition.GetAccessedProperties());
-            accessedProperties = accessedProperties.Concat(base.GetAccessedProperties());
-            return accessedProperties;
         }
     }
 
@@ -699,104 +614,15 @@ namespace Npgsql.SqlGenerators
         {
             _where = new BooleanExpression("AND", _where, andAlso);
         }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _where.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
-    }
-
-    internal class VariableReferenceExpression : VisitedExpression
-    {
-        private string _name;
-        private IDictionary<string, string> _variableSubstitution;
-
-        public VariableReferenceExpression(string name, IDictionary<string, string> variableSubstitution)
-        {
-            _name = name;
-            _variableSubstitution = variableSubstitution;
-        }
-
-        internal VariableReferenceExpression(VariableReferenceExpression expression)
-        {
-            _name = expression._name;
-            _variableSubstitution = expression._variableSubstitution;
-        }
-
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            if (_variableSubstitution.ContainsKey(_name))
-                sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_variableSubstitution[_name]));
-            else
-            {
-                // TODO: come up with a better solution
-                // need some way of removing extra levels of dots
-                if (_name.Contains("."))
-                {
-                    sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name.Substring(_name.LastIndexOf('.') + 1)));
-                }
-                else
-                {
-                    sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_name));
-                }
-            }
-            base.WriteSql(sqlText);
-        }
-
-        // override ToString since we don't want variable substitution
-        // until writing out the SQL.
-        public override string ToString()
-        {
-            StringBuilder unsubstitutedText = new StringBuilder();
-            unsubstitutedText.Append(_name);
-            foreach (var expression in this.ExpressionList)
-            {
-                unsubstitutedText.Append(expression.ToString());
-            }
-            return unsubstitutedText.ToString();
-        }
-
-        internal void AdjustAccess(string projectName)
-        {
-            int projectIndex = _name.IndexOf(projectName);
-            // start substring at the end of the projectName
-            int substringAt = projectIndex + projectName.Length + 1;
-            // skip over the ending quote if it exists
-            if (_name[substringAt] == '"')
-                ++substringAt;
-            // skip over the connecting .
-            if (_name[substringAt] == '.')
-                ++substringAt;
-            _name = _name.Substring(substringAt);
-        }
     }
 
     internal class PropertyExpression : VisitedExpression
     {
-        private VariableReferenceExpression _variable;
         private EdmMember _property;
-
-        public PropertyExpression(VariableReferenceExpression variable, EdmMember property)
-        {
-            _variable = variable;
-            _property = property;
-        }
-
-        public PropertyExpression(PropertyExpression expression)
-        {
-            _variable = new VariableReferenceExpression(expression._variable);
-            _property = expression._property;
-        }
 
         // used for inserts or updates where the column is not qualified
         public PropertyExpression(EdmMember property)
         {
-            _variable = null;
             _property = property;
         }
 
@@ -806,11 +632,6 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            if (_variable != null)
-            {
-                _variable.WriteSql(sqlText);
-                sqlText.Append(".");
-            }
             sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_property.Name));
             base.WriteSql(sqlText);
         }
@@ -819,27 +640,7 @@ namespace Npgsql.SqlGenerators
         // until writing out the SQL.
         public override string ToString()
         {
-            StringBuilder unsubstitutedText = new StringBuilder();
-            if (_variable != null)
-            {
-                unsubstitutedText.Append(_variable.ToString());
-                unsubstitutedText.Append(".");
-            }
-            unsubstitutedText.Append(_property.Name);
-            return unsubstitutedText.ToString();
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return new PropertyExpression[] { this }.Concat(base.GetAccessedProperties());
-        }
-
-        internal void AdjustVariableAccess(string projectName)
-        {
-            if (_variable != null)
-            {
-                _variable.AdjustAccess(projectName);
-            }
+            return _property.Name;
         }
     }
 
@@ -873,19 +674,6 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(")");
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _args
-                .Aggregate(Enumerable.Empty<PropertyExpression>(),
-                    (list, ve) => list.Concat(ve.GetAccessedProperties()))
-                .Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
     }
 
     internal class CastExpression : VisitedExpression
@@ -905,16 +693,6 @@ namespace Npgsql.SqlGenerators
             _value.WriteSql(sqlText);
             sqlText.AppendFormat(" AS {0})", _type);
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _value.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 
@@ -936,16 +714,13 @@ namespace Npgsql.SqlGenerators
                 sqlText.Append(" GROUP BY ");
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
     }
 
     internal class LimitExpression : VisitedExpression
     {
         private VisitedExpression _arg;
+
+        public VisitedExpression Arg { get { return _arg; } set { _arg = value; } }
 
         public LimitExpression(VisitedExpression arg)
         {
@@ -957,16 +732,6 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(" LIMIT ");
             _arg.WriteSql(sqlText);
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _arg.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 
@@ -985,16 +750,6 @@ namespace Npgsql.SqlGenerators
             _arg.WriteSql(sqlText);
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _arg.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
     }
 
     internal class BooleanExpression : VisitedExpression
@@ -1012,8 +767,8 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
-            bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
+            bool wrapLeft = !(_left is PropertyExpression || _left is ColumnReferenceExpression || _left is ConstantExpression);
+            bool wrapRight = !(_right is PropertyExpression || _right is ColumnReferenceExpression || _right is ConstantExpression);
             if (wrapLeft)
                 sqlText.Append("(");
             _left.WriteSql(sqlText);
@@ -1026,20 +781,6 @@ namespace Npgsql.SqlGenerators
             if (wrapRight)
                 sqlText.Append(")");
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _left.GetAccessedProperties()
-                .Concat
-                (_right.GetAccessedProperties())
-                .Concat
-                (base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 
@@ -1058,8 +799,8 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrapLeft = !(_left is PropertyExpression || _left is ConstantExpression);
-            bool wrapRight = !(_right is PropertyExpression || _right is ConstantExpression);
+            bool wrapLeft = !(_left is PropertyExpression || _left is ColumnReferenceExpression || _left is ConstantExpression);
+            bool wrapRight = !(_right is PropertyExpression || _right is ColumnReferenceExpression || _right is ConstantExpression);
             if (wrapLeft)
                 sqlText.Append("(");
             _left.WriteSql(sqlText);
@@ -1118,19 +859,33 @@ namespace Npgsql.SqlGenerators
                 sqlText.Append(")");
             base.WriteSql(sqlText);
         }
+    }
 
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
+    internal class InExpression : VisitedExpression
+    {
+        private VisitedExpression _left;
+        private List<ConstantExpression> _list;
+
+        public InExpression(VisitedExpression left, List<ConstantExpression> list)
         {
-            return _left.GetAccessedProperties()
-                .Concat
-                (_right.GetAccessedProperties())
-                .Concat
-                (base.GetAccessedProperties());
+            _left = left;
+            _list = list;
         }
 
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
+        internal override void WriteSql(StringBuilder sqlText)
         {
-            return Enumerable.Empty<ColumnExpression>();
+            _left.WriteSql(sqlText);
+            sqlText.Append(" IN (");
+            bool first = true;
+            foreach (var constant in _list)
+            {
+                if (!first)
+                    sqlText.Append(",");
+                constant.WriteSql(sqlText);
+                first = false;
+            }
+            sqlText.Append(")");
+            base.WriteSql(sqlText);
         }
     }
 
@@ -1147,28 +902,23 @@ namespace Npgsql.SqlGenerators
             _second = second;
         }
 
+        public CombinedProjectionExpression(VisitedExpression first, DbExpressionKind setOperator, VisitedExpression second)
+        {
+            _first = first;
+            _setOperator = setOperator == DbExpressionKind.UnionAll ? "UNION ALL" : setOperator == DbExpressionKind.Except ? "EXCEPT" : "INTERSECT";
+            _second = second;
+        }
+
         internal override void WriteSql(StringBuilder sqlText)
         {
+            sqlText.Append("(");
             _first.WriteSql(sqlText);
-            sqlText.Append(" ");
+            sqlText.Append(") ");
             sqlText.Append(_setOperator);
-            sqlText.Append(" ");
+            sqlText.Append(" (");
             _second.WriteSql(sqlText);
+            sqlText.Append(")");
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _first.GetAccessedProperties()
-                .Concat
-                (_second.GetAccessedProperties())
-                .Concat
-                (base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return _first.GetProjectedColumns().Concat(_second.GetProjectedColumns());
         }
     }
 
@@ -1208,16 +958,6 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(")");
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _argument.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
-        }
     }
 
     internal class NegateExpression : NegatableExpression
@@ -1239,11 +979,6 @@ namespace Npgsql.SqlGenerators
             sqlText.Append(")");
             base.WriteSql(sqlText);
         }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _argument.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
     }
 
     internal class IsNullExpression : NegatableExpression
@@ -1263,16 +998,6 @@ namespace Npgsql.SqlGenerators
                 sqlText.Append("NOT ");
             sqlText.Append("NULL ");
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<PropertyExpression> GetAccessedProperties()
-        {
-            return _argument.GetAccessedProperties().Concat(base.GetAccessedProperties());
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 
@@ -1296,11 +1021,6 @@ namespace Npgsql.SqlGenerators
         {
             sqlText.Append(" ORDER BY ");
             base.WriteSql(sqlText);
-        }
-
-        internal override IEnumerable<ColumnExpression> GetProjectedColumns()
-        {
-            return Enumerable.Empty<ColumnExpression>();
         }
     }
 }

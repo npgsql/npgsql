@@ -14,52 +14,10 @@ namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
     {
-        internal class IdentifierEqualityComparer : IEqualityComparer<string>
-        {
-            #region IEqualityComparer<string> Members
 
-            public bool Equals(string x, string y)
-            {
-                // they are equal if they exactly match
-                if (x == y)
-                    return true;
-                // if either of them are null, they are
-                // not equal (both are not null because
-                // then they would be equal).  Test this
-                // early to avoid NullReferenceException.
-                if (x == null || y == null)
-                    return false;
-                // if they are both quoted or unquoted
-                // then they are definately different
-                if (x[0] != '"' && y[0] != '"' ||
-                    x[0] == '"' && y[0] == '"')
-                    return false;
-                // one is quoted while the other is not
-                // simplify to the unquoted form
-                return x.Replace("\"", "") == y.Replace("\"", "");
-            }
-
-            public int GetHashCode(string obj)
-            {
-                if (obj == null)
-                    throw new ArgumentNullException();
-                // normal hashcode if the value is unquoted
-                if (obj[0] != '"')
-                    return obj.GetHashCode();
-                // need to remove quotes to get the right hashcode
-                // since the hashcodes need to match for equivalent values.
-                return obj.Replace("\"", "").GetHashCode();
-            }
-
-            #endregion
-        }
-
-        // contains unquoted identifiers, but use a custom IEqualityComparer to allow tests against quoted identifiers
-        protected Dictionary<string, string> _variableSubstitution = new Dictionary<string, string>(new IdentifierEqualityComparer());
-        protected Stack<string> _projectVarName = new Stack<string>();
-        protected Stack<string> _filterVarName = new Stack<string>();
-        // store off current projection so the top one is the one being built
-        private Stack<ProjectionExpression> _projectExpressions = new Stack<ProjectionExpression>();
+        protected Dictionary<string, PendingProjectsNode> _refToNode = new Dictionary<string, PendingProjectsNode>();
+        protected HashSet<InputExpression> _currentExpressions = new HashSet<InputExpression>();
+        protected uint _aliasCounter = 0;
 
         private static Dictionary<string, string> AggregateFunctionNames = new Dictionary<string, string>()
         {
@@ -79,22 +37,428 @@ namespace Npgsql.SqlGenerators
         {
         }
 
-        private void SubstituteFilterVar(string value)
+        private void EnterExpression(PendingProjectsNode n)
         {
-            if (_filterVarName.Count != 0)
-                _variableSubstitution[_filterVarName.Peek()] = value;
+            _currentExpressions.Add(n.Last.Exp);
+        }
+        private void LeaveExpression(PendingProjectsNode n)
+        {
+            _currentExpressions.Remove(n.Last.Exp);
+        }
+
+        protected string NextAlias()
+        {
+            return "Alias" + _aliasCounter++;
+        }
+
+        private bool IsCompatible(InputExpression child, DbExpressionKind parentKind)
+        {
+            switch (parentKind)
+            {
+                case DbExpressionKind.Filter:
+                    return
+                        child.Projection == null &&
+                        child.GroupBy == null &&
+                        child.Skip == null &&
+                        child.Limit == null;
+                case DbExpressionKind.GroupBy:
+                    return
+                        child.Projection == null &&
+                        child.GroupBy == null &&
+                        child.Distinct == false &&
+                        child.OrderBy == null &&
+                        child.Skip == null &&
+                        child.Limit == null;
+                case DbExpressionKind.Distinct:
+                    return
+                        child.OrderBy == null &&
+                        child.Skip == null &&
+                        child.Limit == null;
+                case DbExpressionKind.Sort:
+                    return
+                        child.Projection == null &&
+                        child.GroupBy == null &&
+                        child.Skip == null &&
+                        child.Limit == null;
+                case DbExpressionKind.Skip:
+                    return
+                        child.Projection == null &&
+                        child.OrderBy == null &&
+                        child.Skip == null &&
+                        child.Limit == null;
+                case DbExpressionKind.Project:
+                    return
+                        child.Projection == null &&
+                        child.Distinct == false;
+                // Limit and NewInstance are always true
+                default:
+                    throw new ArgumentException("Unexpected parent expression kind");
+            }
+        }
+
+        private PendingProjectsNode GetInput(DbExpression expression, string childBindingName, string parentBindingName, DbExpressionKind parentKind)
+        {
+            PendingProjectsNode n = VisitInputWithBinding(expression, childBindingName);
+            if (!IsCompatible(n.Last.Exp, parentKind))
+            {
+                n.Selects.Add(new NameAndInputExpression(parentBindingName, new InputExpression(n.Last.Exp, n.Last.AsName)));
+            }
+            return n;
+        }
+
+        private PendingProjectsNode VisitInputWithBinding(DbExpression expression, string bindingName)
+        {
+            PendingProjectsNode n;
+            switch (expression.ExpressionKind)
+            {
+                case DbExpressionKind.Scan:
+                    {
+                        ScanExpression scan = (ScanExpression)expression.Accept(this);
+                        InputExpression input = new InputExpression(scan, bindingName);
+                        n = new PendingProjectsNode(bindingName, input);
+
+                        break;
+                    }
+                case DbExpressionKind.Filter:
+                    {
+                        DbFilterExpression exp = (DbFilterExpression)expression;
+                        n = GetInput(exp.Input.Expression, exp.Input.VariableName, bindingName, expression.ExpressionKind);
+                        EnterExpression(n);
+                        VisitedExpression pred = exp.Predicate.Accept(this);
+                        if (n.Last.Exp.Where == null)
+                            n.Last.Exp.Where = new WhereExpression(pred);
+                        else
+                            n.Last.Exp.Where.And(pred);
+                        LeaveExpression(n);
+
+                        break;
+                    }
+                case DbExpressionKind.Sort:
+                    {
+                        DbSortExpression exp = (DbSortExpression)expression;
+                        n = GetInput(exp.Input.Expression, exp.Input.VariableName, bindingName, expression.ExpressionKind);
+                        EnterExpression(n);
+                        n.Last.Exp.OrderBy = new OrderByExpression();
+                        foreach (var order in exp.SortOrder)
+                        {
+                            n.Last.Exp.OrderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
+                        }
+                        LeaveExpression(n);
+
+                        break;
+                    }
+                case DbExpressionKind.Skip:
+                    {
+                        DbSkipExpression exp = (DbSkipExpression)expression;
+                        n = GetInput(exp.Input.Expression, exp.Input.VariableName, bindingName, expression.ExpressionKind);
+                        EnterExpression(n);
+                        n.Last.Exp.OrderBy = new OrderByExpression();
+                        foreach (var order in exp.SortOrder)
+                        {
+                            n.Last.Exp.OrderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
+                        }
+                        n.Last.Exp.Skip = new SkipExpression(exp.Count.Accept(this));
+                        LeaveExpression(n);
+                        break;
+                    }
+                case DbExpressionKind.Distinct:
+                    {
+                        DbDistinctExpression exp = (DbDistinctExpression)expression;
+                        string childBindingName = NextAlias();
+
+                        n = VisitInputWithBinding(exp.Argument, childBindingName);
+                        if (!IsCompatible(n.Last.Exp, expression.ExpressionKind))
+                        {
+                            InputExpression prev = n.Last.Exp;
+                            string prevName = n.Last.AsName;
+                            InputExpression input = new InputExpression(prev, prevName);
+                            n.Selects.Add(new NameAndInputExpression(bindingName, input));
+
+                            // We need to copy all the projected columns so the DISTINCT keyword will work on the correct columns
+                            // A parent project expression is never compatible with this new expression,
+                            // so these are the columns that finally will be projected, as wanted
+                            foreach (ColumnExpression col in prev.Projection.Arguments)
+                            {
+                                input.ColumnsToProject.Add(new Tuple<string, string>(prevName, col.Name), col.Name);
+                                input.ProjectNewNames.Add(col.Name);
+                            }
+                        }
+                        n.Last.Exp.Distinct = true;
+                        break;
+                    }
+                case DbExpressionKind.Limit:
+                    {
+                        DbLimitExpression exp = (DbLimitExpression)expression;
+                        n = VisitInputWithBinding(exp.Argument, NextAlias());
+                        if (n.Last.Exp.Limit != null)
+                        {
+                            FunctionExpression least = new FunctionExpression("LEAST");
+                            least.AddArgument(n.Last.Exp.Limit.Arg);
+                            least.AddArgument(exp.Limit.Accept(this));
+                            n.Last.Exp.Limit.Arg = least;
+                        }
+                        else
+                        {
+                            n.Last.Exp.Limit = new LimitExpression(exp.Limit.Accept(this));
+                        }
+                        break;
+                    }
+                case DbExpressionKind.NewInstance:
+                    {
+                        DbNewInstanceExpression exp = (DbNewInstanceExpression)expression;
+                        if (exp.Arguments.Count == 1 && exp.Arguments[0].ExpressionKind == DbExpressionKind.Element)
+                        {
+                            n = VisitInputWithBinding(((DbElementExpression)exp.Arguments[0]).Argument, NextAlias());
+                            if (n.Last.Exp.Limit != null)
+                            {
+                                FunctionExpression least = new FunctionExpression("LEAST");
+                                least.AddArgument(n.Last.Exp.Limit.Arg);
+                                least.AddArgument(new LiteralExpression("1"));
+                                n.Last.Exp.Limit.Arg = least;
+                            }
+                            else
+                            {
+                                n.Last.Exp.Limit = new LimitExpression(new LiteralExpression("1"));
+                            }
+                        }
+                        else if (exp.Arguments.Count >= 1)
+                        {
+                            LiteralExpression result = new LiteralExpression("(");
+                            for (int i = 0; i < exp.Arguments.Count; ++i)
+                            {
+                                DbExpression arg = exp.Arguments[i];
+                                var visitedColumn = arg.Accept(this);
+                                if (!(visitedColumn is ColumnExpression))
+                                    visitedColumn = new ColumnExpression(visitedColumn, "C", arg.ResultType);
+
+                                result.Append(i == 0 ? "SELECT " : " UNION ALL SELECT ");
+                                result.Append(visitedColumn);
+                            }
+                            result.Append(")");
+                            n = new PendingProjectsNode(bindingName, new InputExpression(result, bindingName));
+                        }
+                        else
+                        {
+                            TypeUsage type = ((CollectionType)exp.ResultType.EdmType).TypeUsage;
+                            LiteralExpression result = new LiteralExpression("(SELECT ");
+                            result.Append(new CastExpression(new LiteralExpression("NULL"), GetDbType(type.EdmType)));
+                            result.Append(" LIMIT 0)");
+                            n = new PendingProjectsNode(bindingName, new InputExpression(result, bindingName));
+                        }
+                        break;
+                    }
+                case DbExpressionKind.UnionAll:
+                case DbExpressionKind.Intersect:
+                case DbExpressionKind.Except:
+                    {
+                        DbBinaryExpression exp = (DbBinaryExpression)expression;
+                        PendingProjectsNode l = VisitInputWithBinding(exp.Left, bindingName + "_1");
+                        PendingProjectsNode r = VisitInputWithBinding(exp.Right, bindingName + "_2");
+                        InputExpression input = new InputExpression(new CombinedProjectionExpression(l.Last.Exp, expression.ExpressionKind, r.Last.Exp), bindingName);
+                        n = new PendingProjectsNode(bindingName, input);
+                        break;
+                    }
+                case DbExpressionKind.Project:
+                    {
+                        DbProjectExpression exp = (DbProjectExpression)expression;
+                        PendingProjectsNode child = VisitInputWithBinding(exp.Input.Expression, exp.Input.VariableName);
+                        InputExpression input = child.Last.Exp;
+                        bool enterScope = false;
+                        if (!IsCompatible(input, expression.ExpressionKind))
+                        {
+                            input = new InputExpression(input, child.Last.AsName);
+                        }
+                        else enterScope = true;
+
+                        if (enterScope) EnterExpression(child);
+
+                        input.Projection = new CommaSeparatedExpression();
+
+                        DbNewInstanceExpression projection = (DbNewInstanceExpression)exp.Projection;
+                        RowType rowType = projection.ResultType.EdmType as RowType;
+                        for (int i = 0; i < rowType.Properties.Count && i < projection.Arguments.Count; ++i)
+                        {
+                            EdmProperty prop = rowType.Properties[i];
+                            input.Projection.Arguments.Add(new ColumnExpression(projection.Arguments[i].Accept(this), prop.Name, prop.TypeUsage));
+                        }
+
+                        if (enterScope) LeaveExpression(child);
+
+                        n = new PendingProjectsNode(bindingName, input);
+                        break;
+                    }
+                case DbExpressionKind.GroupBy:
+                    {
+                        DbGroupByExpression exp = (DbGroupByExpression)expression;
+                        PendingProjectsNode child = VisitInputWithBinding(exp.Input.Expression, exp.Input.VariableName);
+
+                        // I don't know why the input for GroupBy in EF have two names
+                        _refToNode[exp.Input.GroupVariableName] = child;
+
+                        InputExpression input = child.Last.Exp;
+                        bool enterScope = false;
+                        if (!IsCompatible(input, expression.ExpressionKind))
+                        {
+                            input = new InputExpression(input, child.Last.AsName);
+                        }
+                        else enterScope = true;
+
+                        if (enterScope) EnterExpression(child);
+
+                        input.Projection = new CommaSeparatedExpression();
+
+                        input.GroupBy = new GroupByExpression();
+                        RowType rowType = ((CollectionType)(exp.ResultType.EdmType)).TypeUsage.EdmType as RowType;
+                        int columnIndex = 0;
+                        foreach (var key in exp.Keys)
+                        {
+                            VisitedExpression keyColumnExpression = key.Accept(this);
+                            var prop = rowType.Properties[columnIndex];
+                            input.Projection.Arguments.Add(new ColumnExpression(keyColumnExpression, prop.Name, prop.TypeUsage));
+                            // have no idea why EF is generating a group by with a constant expression,
+                            // but postgresql doesn't need it.
+                            if (!(key is DbConstantExpression))
+                            {
+                                input.GroupBy.AppendGroupingKey(keyColumnExpression);
+                            }
+                            ++columnIndex;
+                        }
+                        foreach (var ag in exp.Aggregates)
+                        {
+                            DbFunctionAggregate function = (DbFunctionAggregate)ag;
+                            VisitedExpression functionExpression = VisitFunction(function);
+                            var prop = rowType.Properties[columnIndex];
+                            input.Projection.Arguments.Add(new ColumnExpression(functionExpression, prop.Name, prop.TypeUsage));
+                            ++columnIndex;
+                        }
+
+                        if (enterScope) LeaveExpression(child);
+
+                        n = new PendingProjectsNode(bindingName, input);
+                        break;
+                    }
+                case DbExpressionKind.CrossJoin:
+                case DbExpressionKind.FullOuterJoin:
+                case DbExpressionKind.InnerJoin:
+                case DbExpressionKind.LeftOuterJoin:
+                case DbExpressionKind.CrossApply:
+                case DbExpressionKind.OuterApply:
+                    {
+                        InputExpression input = new InputExpression();
+                        n = new PendingProjectsNode(bindingName, input);
+
+                        JoinExpression from = VisitJoinChildren(expression, input, n);
+
+                        input.From = from;
+
+                        break;
+                    }
+                default: throw new NotImplementedException();
+            }
+            _refToNode[bindingName] = n;
+            return n;
+        }
+
+        private bool IsJoin(DbExpressionKind kind)
+        {
+            switch (kind)
+            {
+                case DbExpressionKind.CrossJoin:
+                case DbExpressionKind.FullOuterJoin:
+                case DbExpressionKind.InnerJoin:
+                case DbExpressionKind.LeftOuterJoin:
+                case DbExpressionKind.CrossApply:
+                case DbExpressionKind.OuterApply:
+                    return true;
+            }
+            return false;
+        }
+
+        private JoinExpression VisitJoinChildren(DbExpression expression, InputExpression input, PendingProjectsNode n)
+        {
+            DbExpressionBinding left, right;
+            DbExpression condition = null;
+            if (expression.ExpressionKind == DbExpressionKind.CrossJoin)
+            {
+                left = ((DbCrossJoinExpression)expression).Inputs[0];
+                right = ((DbCrossJoinExpression)expression).Inputs[1];
+                if (((DbCrossJoinExpression)expression).Inputs.Count > 2)
+                {
+                    // I have never seen more than 2 inputs in CrossJoin
+                    throw new NotImplementedException();
+                }
+            }
+            else if (expression.ExpressionKind == DbExpressionKind.CrossApply || expression.ExpressionKind == DbExpressionKind.OuterApply)
+            {
+                left = ((DbApplyExpression)expression).Input;
+                right = ((DbApplyExpression)expression).Apply;
+            }
+            else
+            {
+                left = ((DbJoinExpression)expression).Left;
+                right = ((DbJoinExpression)expression).Right;
+                condition = ((DbJoinExpression)expression).JoinCondition;
+            }
+
+            return VisitJoinChildren(left.Expression, left.VariableName, right.Expression, right.VariableName, expression.ExpressionKind, condition, input, n);
+        }
+        private JoinExpression VisitJoinChildren(DbExpression left, string leftName, DbExpression right, string rightName, DbExpressionKind joinType, DbExpression condition, InputExpression input, PendingProjectsNode n)
+        {
+            JoinExpression join = new JoinExpression();
+            join.JoinType = joinType;
+
+            if (IsJoin(left.ExpressionKind))
+            {
+                join.Left = VisitJoinChildren(left, input, n);
+            }
+            else
+            {
+                PendingProjectsNode l = VisitInputWithBinding(left, leftName);
+                l.JoinParent = n;
+                join.Left = new FromExpression(l.Last.Exp, l.Last.AsName);
+            }
+
+            if (joinType == DbExpressionKind.OuterApply || joinType == DbExpressionKind.CrossApply)
+            {
+                EnterExpression(n);
+                PendingProjectsNode r = VisitInputWithBinding(right, rightName);
+                LeaveExpression(n);
+                r.JoinParent = n;
+                join.Right = new FromExpression(r.Last.Exp, r.Last.AsName) { ForceSubquery = true };
+            }
+            else
+            {
+                if (IsJoin(right.ExpressionKind))
+                {
+                    join.Right = VisitJoinChildren(right, input, n);
+                }
+                else
+                {
+                    PendingProjectsNode r = VisitInputWithBinding(right, rightName);
+                    r.JoinParent = n;
+                    join.Right = new FromExpression(r.Last.Exp, r.Last.AsName);
+                }
+            }
+
+            if (condition != null)
+            {
+                EnterExpression(n);
+                join.Condition = condition.Accept(this);
+                LeaveExpression(n);
+            }
+            return join;
         }
 
         public override VisitedExpression Visit(DbVariableReferenceExpression expression)
         {
-            return new VariableReferenceExpression(expression.VariableName, _variableSubstitution);
+            //return new VariableReferenceExpression(expression.VariableName, _variableSubstitution);
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbUnionAllExpression expression)
         {
-            // UNION ALL keyword
-            return new CombinedProjectionExpression(expression.Left.Accept(this),
-                "UNION ALL", expression.Right.Accept(this));
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbTreatExpression expression)
@@ -104,62 +468,14 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbSkipExpression expression)
         {
-            // almost the opposite of limit, need to skip first.
-            VisitedExpression skip = expression.Input.Expression.Accept(this);
-            InputExpression input;
-            if (!(skip is ProjectionExpression) || !(((ProjectionExpression)skip).From is FromExpression))
-            {
-                input = CheckedConvertFrom(skip, expression.Input.VariableName);
-                // return this value
-                skip = input;
-            }
-            else
-            {
-                input = ((ProjectionExpression)skip).From;
-                if (_variableSubstitution.ContainsKey(((FromExpression)input).Name))
-                    _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[((FromExpression)input).Name];
-                else
-                    _variableSubstitution[expression.Input.VariableName] = ((FromExpression)input).Name;
-            }
-            OrderByExpression orderBy = new OrderByExpression();
-            foreach (var order in expression.SortOrder)
-            {
-                orderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
-            }
-            input.OrderBy = orderBy;
-            input.Skip = new SkipExpression(expression.Count.Accept(this));
-            // ensure skip variable has the right name
-            if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
-                _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_projectVarName.Peek()];
-            return skip;
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbSortExpression expression)
         {
-            // order by
-            PushFilterVar(expression.Input.VariableName);
-            VisitedExpression inputExpression = expression.Input.Expression.Accept(this);
-            InputExpression from = inputExpression as InputExpression;
-            if (from == null)
-            {
-                from = new FromExpression(inputExpression, expression.Input.VariableName);
-                _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
-                SubstituteFilterVar(expression.Input.VariableName);
-            }
-            else
-            {
-                if (from is FromExpression)
-                {
-                    SubstituteFilterVar(((FromExpression)from).Name);
-                }
-            }
-            PopFilterVar();
-            from.OrderBy = new OrderByExpression();
-            foreach (var order in expression.SortOrder)
-            {
-                from.OrderBy.AppendSort(order.Expression.Accept(this), order.Ascending);
-            }
-            return from;
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbScanExpression expression)
@@ -179,9 +495,7 @@ namespace Npgsql.SqlGenerators
             {
                 tableName = expression.Target.Name;
             }
-            if (_projectVarName.Count != 0) // this can happen in dml
-                _variableSubstitution[_projectVarName.Peek()] = tableName;
-            SubstituteFilterVar(expression.Target.Name);
+
             if (expression.Target.MetadataProperties.Contains("DefiningQuery"))
             {
                 MetadataProperty definingQuery = expression.Target.MetadataProperties.GetValue("DefiningQuery", false);
@@ -223,40 +537,13 @@ namespace Npgsql.SqlGenerators
         {
             // TODO: EXISTS or NOT EXISTS depending on expression.ExpressionKind
             // comes with it's built in test (subselect for EXISTS)
+            // This kind of expression is never even created in the EF6 code base
             throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbProjectExpression expression)
         {
-            ProjectionExpression project = expression.Projection.Accept(this) as ProjectionExpression;
-            // TODO: test if this should always be true
-            if (project == null)
-                throw new NotSupportedException();
-            PushProjectVar(expression.Input.VariableName);
-            project.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
-            PopProjectVar();
-
-            return project;
-        }
-
-        internal InputExpression CheckedConvertFrom(VisitedExpression fromExpression, string variableName)
-        {
-            InputExpression result = fromExpression as InputExpression;
-            if (result == null)
-            {
-                // if fromExpression is at the top of _projectExpressions, it should be popped
-                // so that the previous expression is at the top
-                // A projection is either the root VisitedExpression or is a nested select
-                // and will always be converted to a from
-                // at this point the projection is complete and is no longer considered "current"
-                if (object.ReferenceEquals(fromExpression, _projectExpressions.Peek()))
-                    _projectExpressions.Pop();
-                result = new FromExpression(fromExpression, variableName);
-                if (string.IsNullOrEmpty(variableName)) variableName = ((FromExpression)result).Name;
-                _variableSubstitution[_projectVarName.Peek()] = variableName;
-                SubstituteFilterVar(variableName);
-            }
-            return result;
+            return VisitInputWithBinding(expression, NextAlias()).Last.Exp;
         }
 
         public override VisitedExpression Visit(DbParameterReferenceExpression expression)
@@ -301,74 +588,18 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbNewInstanceExpression expression)
         {
-            RowType rowType = expression.ResultType.EdmType as RowType;
-
-            if (rowType != null)
-            {
-                // should be the child of a project
-                // which means it's a select
-                ProjectionExpression visitedExpression = new ProjectionExpression();
-                _projectExpressions.Push(visitedExpression);
-                for (int i = 0; i < rowType.Properties.Count && i < expression.Arguments.Count; ++i)
-                {
-                    var prop = rowType.Properties[i];
-                    visitedExpression.AppendColumn(new ColumnExpression(expression.Arguments[i].Accept(this), prop.Name, prop.TypeUsage));
-                }
-
-                return visitedExpression;
-            }
-            else if (expression.ResultType.EdmType is CollectionType)
-            {
-                // TODO: handle no arguments
-                VisitedExpression previousExpression = null;
-                VisitedExpression resultExpression = null;
-                foreach (var arg in expression.Arguments)
-                {
-                    ProjectionExpression visitedExpression = new ProjectionExpression();
-                    var visitedColumn = arg.Accept(this);
-                    if (!(visitedColumn is ColumnExpression))
-                        visitedColumn = new ColumnExpression(visitedColumn, "C", arg.ResultType);
-                    visitedExpression.AppendColumn((ColumnExpression)visitedColumn);
-                    if (previousExpression != null)
-                    {
-                        resultExpression = new CombinedProjectionExpression(previousExpression, "UNION ALL", visitedExpression);
-                    }
-                    else
-                    {
-                        resultExpression = visitedExpression;
-                    }
-                    previousExpression = visitedExpression;
-                }
-                return resultExpression;
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbLimitExpression expression)
         {
-            // Need more complex operation where ties are needed
-            // TODO: implement WithTies
-            if (expression.WithTies)
-                throw new NotSupportedException();
-            // limit expressions should be structured like where clauses
-            // see Visit(DbFilterExpression)
-            VisitedExpression limit = expression.Argument.Accept(this);
-            InputExpression input;
-            if (!(limit is ProjectionExpression))
-            {
-                input = CheckedConvertFrom(limit, null);
-                // return this value
-                limit = input;
-            }
-            else
-            {
-                input = ((ProjectionExpression)limit).From;
-            }
-            input.Limit = new LimitExpression(expression.Limit.Accept(this));
-            return limit;
+            // Normally handled by VisitInputWithBinding
+
+            // Otherwise, it is (probably) a child of a DbElementExpression,
+            // in which case the child of this expression is (probably) a DbProjectExpression,
+            // so the correct columns will be projected since Limit is compatible with the result of a DbProjectExpression
+            return VisitInputWithBinding(expression, NextAlias()).Last.Exp;
         }
 
         public override VisitedExpression Visit(DbLikeExpression expression)
@@ -379,75 +610,8 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbJoinExpression expression)
         {
-            var joinCondition = expression.JoinCondition.Accept(this);
-            return new JoinExpression(VisitJoinPart(expression.Left, joinCondition),
-                expression.ExpressionKind,
-                VisitJoinPart(expression.Right, joinCondition),
-                joinCondition);
-        }
-
-        private InputExpression VisitJoinPart(DbExpressionBinding joinPart, VisitedExpression joinCondition)
-        {
-            PushProjectVar(joinPart.VariableName);
-            string variableName = null;
-            VisitedExpression joinPartExpression = null;
-            if (joinPart.Expression is DbFilterExpression)
-            {
-                joinPartExpression = VisitFilterExpression((DbFilterExpression)joinPart.Expression, true, joinCondition);
-            }
-            else
-            {
-                joinPartExpression = joinPart.Expression.Accept(this);
-            }
-            if (joinPartExpression is FromExpression)
-            {
-                // we can't let from expressions that contain limits or offsets
-                // participate directly in a join.
-                var fromExpression = (FromExpression)joinPartExpression;
-                if (fromExpression.Limit == null && fromExpression.Skip == null)
-                {
-                    variableName = fromExpression.Name;
-                }
-                else
-                {
-                    // Project all columns so that it can be used as a new from expression preserving the limits and/or offsets
-                    joinPartExpression = new FromExpression(new AllColumnsExpression(fromExpression), joinPart.VariableName);
-                    variableName = joinPart.VariableName;
-                }
-            }
-            else if (!(joinPartExpression is JoinExpression)) // don't alias join expressions at all
-            {
-                joinPartExpression = new FromExpression(joinPartExpression, joinPart.VariableName);
-                variableName = joinPart.VariableName;
-            }
-            PopProjectVar();
-            if (variableName != null)
-            {
-                _variableSubstitution[_projectVarName.Peek()] = variableName;
-                string[] dottedNames = _projectVarName.ToArray();
-                // reverse because the stack has them last in first out
-                Array.Reverse(dottedNames);
-                SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
-                //if (_filterVarName.Count != 0)
-                //{
-                //    dottedNames = _filterVarName.ToArray();
-                //    // reverse because the stack has them last in first out
-                //    Array.Reverse(dottedNames);
-                //    SubstituteAllNames(dottedNames, joinPart.VariableName, variableName);
-                //}
-                SubstituteFilterNames(joinPart.VariableName, variableName);
-                _variableSubstitution[joinPart.VariableName] = variableName;
-            }
-            return (InputExpression)joinPartExpression;
-        }
-
-        private void SubstituteAllNames(string[] dottedNames, string joinPartVariableName, string variableName)
-        {
-            int nameCount = dottedNames.Length;
-            for (int i = 0; i < dottedNames.Length; ++i)
-            {
-                _variableSubstitution[string.Join(".", dottedNames, i, nameCount - i) + "." + joinPartVariableName] = variableName;
-            }
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbIsOfExpression expression)
@@ -469,62 +633,17 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbIntersectExpression expression)
         {
             // INTERSECT keyword
-            return new CombinedProjectionExpression(expression.Left.Accept(this),
-                "INTERSECT", expression.Right.Accept(this));
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbGroupByExpression expression)
         {
-            // complicated
-            // GROUP BY expression
-            // first implementation this is a COUNT(column) query ???
-            //EnterNewVariableScope();
-            ProjectionExpression projectExpression = new ProjectionExpression();
-            _projectExpressions.Push(projectExpression);
-            GroupByExpression groupByExpression = new GroupByExpression();
-            RowType rowType = ((CollectionType)(expression.ResultType.EdmType)).TypeUsage.EdmType as RowType;
-            int columnIndex = 0;
-            foreach (var key in expression.Keys)
-            {
-                VisitedExpression keyColumnExpression = key.Accept(this);
-                var prop = rowType.Properties[columnIndex];
-                projectExpression.AppendColumn(new ColumnExpression(keyColumnExpression, prop.Name, prop.TypeUsage));
-                // have no idea why EF is generating a group by with a constant expression,
-                // but postgresql doesn't need it.
-                if (!(key is DbConstantExpression))
-                {
-                    groupByExpression.AppendGroupingKey(keyColumnExpression);
-                }
-                ++columnIndex;
-            }
-            foreach (var ag in expression.Aggregates)
-            {
-                DbFunctionAggregate function = ag as DbFunctionAggregate;
-                if (function == null)
-                    throw new NotSupportedException();
-                VisitedExpression functionExpression = VisitFunction(function);
-                var prop = rowType.Properties[columnIndex];
-                projectExpression.AppendColumn(new ColumnExpression(functionExpression, prop.Name, prop.TypeUsage));
-                ++columnIndex;
-            }
-            PushProjectVar(expression.Input.GroupVariableName);
-            PushFilterVar(expression.Input.VariableName);
-            projectExpression.From = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.GroupVariableName);
-            projectExpression.From.GroupBy = groupByExpression;
-            if (_variableSubstitution.ContainsKey(_projectVarName.Peek()))
-            {
-                _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_projectVarName.Peek()];
-            }
-            if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
-            {
-                _variableSubstitution[expression.Input.VariableName] = _variableSubstitution[_filterVarName.Peek()];
-            }
-            PopProjectVar();
-            PopFilterVar();
-            //LeaveVariableScope();
-            //_variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
-            //return new FromExpression(projectExpression, expression.Input.VariableName);
-            return projectExpression;
+            // Normally handled by VisitInputWithBinding
+
+            // Otherwise, it is (probably) a child of a DbElementExpression.
+            // Group by always projects the correct columns.
+            return VisitInputWithBinding(expression, NextAlias()).Last.Exp;
         }
 
         public override VisitedExpression Visit(DbRefKeyExpression expression)
@@ -546,208 +665,21 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbFilterExpression expression)
         {
-            return VisitFilterExpression(expression, false, null);
-        }
-
-        private VisitedExpression VisitFilterExpression(DbFilterExpression expression, bool partOfJoin, VisitedExpression joinCondition)
-        {
-            // complicated
-            // similar logic used for other expressions (such as group by)
-            // TODO: this is too simple.  Replace this
-            // need to move the from keyword out so that it can be used in the project
-            // when there is no where clause
-            PushFilterVar(expression.Input.VariableName);
-            InputExpression inputExpression;
-            if (expression.Input.Expression is DbFilterExpression)
-            {
-                inputExpression = CheckedConvertFrom(VisitFilterExpression((DbFilterExpression)expression.Input.Expression, partOfJoin, joinCondition), expression.Input.VariableName);
-            }
-            else
-            {
-                inputExpression = CheckedConvertFrom(expression.Input.Expression.Accept(this), expression.Input.VariableName);
-            }
-            if (!(inputExpression is JoinExpression))
-            {
-                //from = new FromExpression(inputExpression, expression.Input.VariableName);
-                FromExpression from = (FromExpression)inputExpression;
-                if (from.Where != null)
-                {
-                    _variableSubstitution[expression.Input.VariableName] = from.Name;
-                    from.Where.And(expression.Predicate.Accept(this));
-                }
-                else
-                {
-                    _variableSubstitution[_projectVarName.Peek()] = expression.Input.VariableName;
-                    if (_variableSubstitution.ContainsKey(_filterVarName.Peek()))
-                        _variableSubstitution[_filterVarName.Peek()] = expression.Input.VariableName;
-                    from.Where = new WhereExpression(expression.Predicate.Accept(this));
-                }
-            }
-            else
-            {
-                JoinExpression join = (JoinExpression)inputExpression;
-
-                // optimized query generation for inner joins
-                // just make filter part of join condition to avoid building extra
-                // nested queries
-                //
-                if (partOfJoin && join.JoinType == DbExpressionKind.InnerJoin)
-                {
-                    System.Diagnostics.Debug.Assert(join.Condition != null);
-                    join.Condition = new BooleanExpression("AND", join.Condition, expression.Predicate.Accept(this));
-                }
-                else
-                {
-                    VisitedExpression predicate = expression.Predicate.Accept(this);
-                    if (join.Where != null)
-                        join.Where.And(predicate);
-                    else
-                        join.Where = new WhereExpression(predicate);
-                    if (partOfJoin)
-                    {
-                        // get the working projection
-                        // will use columns from this projection to move
-                        // them into a new inner projection (existing ones will be replaced
-                        var previousProjection = _projectExpressions.Peek();
-                        var projection = new ProjectionExpression();
-                        // get the columns to move from previous working projection
-                        // to the new projection being built from the join          // call ToArray to avoid problems with changing the list later
-                        var movedColumns = GetColumnsForJoin(join, previousProjection, joinCondition).ToArray();
-                        // pair up moved column with it's replacement
-                        var replacementColumns = movedColumns
-                            .Select(c => new { Existing = c, Replacement = GetReplacementColumn(join, c) });
-                        // replace moved columns in the previous working projection
-                        foreach (var entry in replacementColumns)
-                        {
-                            previousProjection.ReplaceColumn(entry.Existing, entry.Replacement);
-                            // TODO: add join condition columns if missing from this projection
-                            projection.AppendColumn(entry.Existing);
-                        }
-                        // the moved columns need to have their qualification updated since
-                        // they moved in a level.
-                        AdjustPropertyAccess(movedColumns, _projectVarName.Peek());
-                        // for a short duration, now have a new current projection
-                        _projectExpressions.Push(projection);
-                        projection.From = join;
-                        // since this is wrapping a join inside a projection, need to replace all variables
-                        // that referenced the inner tables.
-                        string searchVar = _projectVarName.Peek() + ".";
-                        foreach (var key in _variableSubstitution.Keys.ToArray())
-                        {
-                            if (key.Contains(searchVar))
-                                _variableSubstitution[key] = _projectVarName.Peek();
-                        }
-                        // can't return a projection from VisitFilterExpression.  Convert to from.
-                        inputExpression = CheckedConvertFrom(projection, _projectVarName.Peek());
-                    }
-                }
-            }
-            PopFilterVar();
-            return inputExpression;
-        }
-
-        /// <summary>
-        /// Given a join expression and a projection, fetch all columns in the projection
-        /// that reference columns in the join.
-        /// </summary>
-        private IEnumerable<ColumnExpression> GetColumnsForJoin(JoinExpression join, ProjectionExpression projectionExpression, VisitedExpression joinCondition)
-        {
-            List<string> fromNames = new List<string>();
-            Dictionary<string, ColumnExpression> joinColumns = new Dictionary<string, ColumnExpression>();
-            GetFromNames(join, fromNames);
-            foreach (var prop in joinCondition.GetAccessedProperties())
-            {
-                System.Text.StringBuilder propName = new System.Text.StringBuilder();
-                prop.WriteSql(propName);
-                var propParts = propName.ToString().Split('.');
-                string table = propParts[0];
-                if (fromNames.Contains(table))
-                {
-                    string column = propParts.Last();
-                    // strip off quotes.
-                    column = column.Substring(1, column.Length - 2);
-                    joinColumns.Add(propName.ToString(), new ColumnExpression(new PropertyExpression(prop), column, prop.PropertyType));
-                }
-            }
-            foreach (var column in projectionExpression.Columns.OfType<ColumnExpression>())
-            {
-                var accessedProperties = column.GetAccessedProperties().ToArray();
-                foreach (var prop in accessedProperties)
-                {
-                    System.Text.StringBuilder propName = new System.Text.StringBuilder();
-                    prop.WriteSql(propName);
-                    string table = propName.ToString().Split('.')[0];
-                    if (fromNames.Contains(table))
-                    {
-                        // save off columns that are projections of a single property
-                        // for testing against join properties
-                        if (accessedProperties.Length == 1 && joinColumns.Count != 0)
-                        {
-                            // remove (if exists) the column from the join columns being returned
-                            joinColumns.Remove(propName.ToString());
-                        }
-                        yield return column;
-                        break;
-                    }
-                }
-            }
-            foreach (var joinColumn in joinColumns.Values)
-            {
-                yield return joinColumn;
-            }
-        }
-
-        /// <summary>
-        /// Given an InputExpression append all from names (including nested joins) to the list.
-        /// </summary>
-        private void GetFromNames(InputExpression input, List<string> fromNames)
-        {
-            if (input is FromExpression)
-            {
-                fromNames.Add(QuoteIdentifier(((FromExpression)input).Name));
-            }
-            else
-            {
-                var join = (JoinExpression)input;
-                GetFromNames(join.Left, fromNames);
-                GetFromNames(join.Right, fromNames);
-            }
-        }
-
-        /// <summary>
-        /// Get new ColumnExpression that will be used in projection that had it's existing columns moved.
-        /// These should be simple references to the inner column
-        /// </summary>
-        private ColumnExpression GetReplacementColumn(JoinExpression join, ColumnExpression reassociatedColumn)
-        {
-            return new ColumnExpression(new LiteralExpression(
-                QuoteIdentifier(_projectVarName.Peek()) + "." + QuoteIdentifier(reassociatedColumn.Name)),
-                reassociatedColumn.Name, reassociatedColumn.ColumnType);
-        }
-
-        /// <summary>
-        /// Every property accessed in the list of columns must be adjusted for a new scope
-        /// </summary>
-        private void AdjustPropertyAccess(ColumnExpression[] movedColumns, string projectName)
-        {
-            foreach (var column in movedColumns)
-            {
-                foreach (var prop in column.GetAccessedProperties())
-                {
-                    prop.AdjustVariableAccess(projectName);
-                }
-            }
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbExceptExpression expression)
         {
-            // Except keyword
-            return new CombinedProjectionExpression(expression.Left.Accept(this),
-                "EXCEPT", expression.Right.Accept(this));
+            // EXCEPT keyword
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbElementExpression expression)
         {
+            // If child of DbNewInstanceExpression, this is handled in VisitInputWithBinding
+
             // a scalar expression (ie ExecuteScalar)
             // so it will likely be translated into a select
             //throw new NotImplementedException();
@@ -759,13 +691,8 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbDistinctExpression expression)
         {
-            // the distinct clause for a select
-            VisitedExpression distinctArg = expression.Argument.Accept(this);
-            ProjectionExpression projection = distinctArg as ProjectionExpression;
-            if (projection == null)
-                throw new NotSupportedException();
-            projection.Distinct = true;
-            return new FromExpression(projection, _projectVarName.Peek());
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbDerefExpression expression)
@@ -776,10 +703,8 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbCrossJoinExpression expression)
         {
             // join without ON
-            return new JoinExpression(VisitJoinPart(expression.Inputs[0], null),
-                expression.ExpressionKind,
-                VisitJoinPart(expression.Inputs[1], null),
-                null);
+            // Handled by VisitInputWithBinding
+            throw new NotImplementedException();
         }
 
         public override VisitedExpression Visit(DbConstantExpression expression)
@@ -930,10 +855,12 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbApplyExpression expression)
         {
-            // like a join, but used when one of the arguments is a function.
+            // like a join, but used when the right hand side (the Apply part) is a function.
             // it lets you return the results of a function call given values from the
-            // other table.
-            // sql standard seems to be lateral join
+            // left hand side (the Input part).
+            // sql standard is lateral join
+
+            // Handled by VisitInputWithBinding
             throw new NotImplementedException();
         }
 
@@ -963,8 +890,7 @@ namespace Npgsql.SqlGenerators
                 try
                 {
                     aggregate = new FunctionExpression(AggregateFunctionNames[functionAggregate.Function.Name]);
-                }
-                catch (KeyNotFoundException)
+                } catch (KeyNotFoundException)
                 {
                     throw new NotSupportedException();
                 }
@@ -1067,7 +993,7 @@ namespace Npgsql.SqlGenerators
                     case "Trim":
                         return StringModifier("btrim", args);
 
-                        // date functions
+                    // date functions
                     // date functions
                     case "AddDays":
                     case "AddHours":
@@ -1113,7 +1039,7 @@ namespace Npgsql.SqlGenerators
                         // doesn't return DateTimeOffset.
                         return new LiteralExpression("CURRENT_TIMESTAMP");
 
-                        // bitwise operators
+                    // bitwise operators
                     case "BitwiseAnd":
                         return BitwiseOperator(args, " & ");
                     case "BitwiseOr":
@@ -1126,7 +1052,7 @@ namespace Npgsql.SqlGenerators
                         not.Append(args[0].Accept(this));
                         return not;
 
-                        // math operators
+                    // math operators
                     case "Abs":
                     case "Ceiling":
                     case "Floor":
@@ -1258,82 +1184,15 @@ namespace Npgsql.SqlGenerators
             return arg;
         }
 
-        private Stack<Stack<string>> _filterToProject = new Stack<Stack<string>>();
-        private void PushProjectVar(string projectVar)
-        {
-            _projectVarName.Push(projectVar);
-            foreach (var stack in _filterToProject)
-            {
-                stack.Push(projectVar);
-            }
-        }
-
-        private string PopProjectVar()
-        {
-            foreach (var stack in _filterToProject)
-            {
-                stack.Pop();
-            }
-            return _projectVarName.Pop();
-        }
-
-        private void PushFilterVar(string filterVar)
-        {
-            _filterVarName.Push(filterVar);
-            var stack = new Stack<string>();
-            stack.Push(filterVar);
-            _filterToProject.Push(stack);
-        }
-
-        private string PopFilterVar()
-        {
-            _filterToProject.Pop();
-            return _filterVarName.Pop();
-        }
-
-        private void SubstituteFilterNames(string joinPartVariableName, string variableName)
-        {
-            if (_filterVarName.Count != 0)
-            {
-                foreach (var stack in _filterToProject)
-                {
-                    string[] dottedNames = stack.ToArray();
-                    // reverse because the stack has them last in first out
-                    Array.Reverse(dottedNames);
-                    SubstituteAllNames(dottedNames, joinPartVariableName, variableName);
-                }
-            }
-        }
-
-        //private Stack<Dictionary<string, string>> _varScopeStack = new Stack<Dictionary<string, string>>();
-        //private Stack<Stack<string>> _projectScopeStack = new Stack<Stack<string>>();
-        //private Stack<Stack<string>> _filterScopeStack = new Stack<Stack<string>>();
-
-        //private void EnterNewVariableScope()
-        //{
-        //    _varScopeStack.Push(_variableSubstitution);
-        //    _projectScopeStack.Push(_projectVarName);
-        //    _filterScopeStack.Push(_filterVarName);
-        //    _variableSubstitution = new Dictionary<string, string>();
-        //    _projectVarName = new Stack<string>();
-        //    _filterVarName = new Stack<string>();
-        //}
-
-        //private void LeaveVariableScope()
-        //{
-        //    _variableSubstitution = _varScopeStack.Pop();
-        //    _projectVarName = _projectScopeStack.Pop();
-        //    _filterVarName = _filterScopeStack.Pop();
-        //}
-
 #if ENTITIES6
         public override VisitedExpression Visit(DbInExpression expression)
         {
-            throw new NotImplementedException("New in Entity Framework 6");
+            return new InExpression(expression.Item.Accept(this), expression.List.Select(e => (ConstantExpression)e.Accept(this)).ToList());
         }
 
         public override VisitedExpression Visit(DbPropertyExpression expression)
         {
+            // This is overridden in the other visitors
             throw new NotImplementedException("New in Entity Framework 6");
         }
 #endif
