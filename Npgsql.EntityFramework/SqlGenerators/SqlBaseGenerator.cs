@@ -83,7 +83,6 @@ namespace Npgsql.SqlGenerators
                 case DbExpressionKind.Skip:
                     return
                         child.Projection == null &&
-                        child.OrderBy == null &&
                         child.Skip == null &&
                         child.Limit == null;
                 case DbExpressionKind.Project:
