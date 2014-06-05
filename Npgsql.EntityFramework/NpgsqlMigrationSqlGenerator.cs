@@ -629,17 +629,7 @@ namespace Npgsql
                         sql.Append("int8");
                     break;
                 case PrimitiveTypeKind.String:
-                    //Seems like bug in EF 6.0.2 to set MaxLength to 1 instead of 0 if not specified
-                    //http://entityframework.codeplex.com/workitem/1784 TODO: Investigate and put back to
-                    //if (column.MaxLength != null && column.MaxLength > 0)
-                    if (column.MaxLength != null && column.MaxLength > 1)
-                    {
-                        sql.Append("varchar(");
-                        sql.Append(column.MaxLength);
-                        sql.Append(")");
-                    }
-                    else
-                        sql.Append("text");
+                    sql.Append("text");
                     break;
                 case PrimitiveTypeKind.Time:
                     if (column.Precision != null)
