@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="BuildOnlyMSBuild" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
@@ -229,7 +229,5 @@
   </UsingTask>
   <Target Name="SetVsSDKEnvironmentVariables" BeforeTargets="GeneratePkgDef">
     <SetVsSDKEnvironmentVariables ProjectDirectory="$(MSBuildProjectDirectory)" />
-  </Target>
-  <Target Name="BuildOnlyMSBuild" DependsOnTargets="Build" Condition="$(MONO) == ''">
   </Target>
 </Project>
