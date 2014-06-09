@@ -439,7 +439,9 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true);
             nativeTypeMapping.AddTypeAlias("uuid", typeof (Guid));
 
-            nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, true);
+            nativeTypeMapping.AddType("xml", NpgsqlDbType.Xml, DbType.Xml, false,
+                                            BasicNativeToBackendTypeConverter.StringToTextText,
+                                            BasicNativeToBackendTypeConverter.StringToTextBinary);
 
             nativeTypeMapping.AddType("interval", NpgsqlDbType.Interval, DbType.Object, true,
                                             ExtendedNativeToBackendTypeConverter.ToInterval);

@@ -1732,6 +1732,38 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TestXmlParameter()
+        {
+            TestXmlParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestXmlParameterPrepared()
+        {
+            TestXmlParameter_Internal(true);
+        }
+
+        
+        private void TestXmlParameter_Internal(bool prepare)
+        {
+            using (var command = new NpgsqlCommand("select @PrecisionXML", Conn))
+            {
+                var sXML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <strings type=\"array\"> <string> this is a test with ' single quote </string></strings>";
+                var parameter = command.CreateParameter();
+                parameter.DbType = DbType.Xml;  // To make it work we need to use DbType.String; and then CAST it in the sSQL: cast(@PrecisionXML as xml)
+                parameter.ParameterName = "@PrecisionXML";
+                parameter.Value = sXML;
+                command.Parameters.Add(parameter);
+
+                if (prepare)
+                    command.Prepare();
+                command.ExecuteScalar();
+            }
+
+        }
+
+
+        [Test]
         public void SetParameterValueNull()
         {
             var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
