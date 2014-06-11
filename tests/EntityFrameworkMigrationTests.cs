@@ -764,7 +764,7 @@ namespace NpgsqlTests
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someSByteColumn\" int2 DEFAULT -24", statments.ElementAt(12).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someSingleColumn\" float4 DEFAULT 12.4", statments.ElementAt(13).Sql);
             Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someStringColumn\" text DEFAULT 'Hello EF'", statments.ElementAt(14).Sql);
-            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someColumn\" interval DEFAULT '26:03:04.005007'", statments.ElementAt(15).Sql);
+            Assert.AreEqual("ALTER TABLE \"someTable\" ADD \"someColumn\" interval DEFAULT '1 day 02:03:04.005007'", statments.ElementAt(15).Sql);
 
         }
     }
