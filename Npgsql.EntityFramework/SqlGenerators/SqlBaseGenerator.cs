@@ -1186,7 +1186,15 @@ namespace Npgsql.SqlGenerators
 #if ENTITIES6
         public override VisitedExpression Visit(DbInExpression expression)
         {
-            return new InExpression(expression.Item.Accept(this), expression.List.Select(e => (ConstantExpression)e.Accept(this)).ToList());
+            VisitedExpression item = expression.Item.Accept(this);
+
+            ConstantExpression[] elements = new ConstantExpression[expression.List.Count];
+            for (int i = 0; i < expression.List.Count; i++)
+            {
+                elements[i] = (ConstantExpression)expression.List[i].Accept(this);
+            }
+
+            return new InExpression(item, elements);
         }
 
         public override VisitedExpression Visit(DbPropertyExpression expression)

@@ -22,7 +22,7 @@ namespace Npgsql.SqlGenerators
 
     /// <summary>
     /// A tree of subqueries, used when evaluating SQL text for DbPropertyExpressions in SqlSelectGenerator.
-    /// See <see cref="SqlSelectGenerator.Visit(DbPropertyExpression)"/> for more information.
+    /// See SqlSelectGenerator.Visit(DbPropertyExpression) for more information.
     /// </summary>
     internal class PendingProjectsNode
     {

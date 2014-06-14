@@ -864,9 +864,9 @@ namespace Npgsql.SqlGenerators
     internal class InExpression : VisitedExpression
     {
         private VisitedExpression _left;
-        private List<ConstantExpression> _list;
+        private IEnumerable<ConstantExpression> _list;
 
-        public InExpression(VisitedExpression left, List<ConstantExpression> list)
+        public InExpression(VisitedExpression left, IEnumerable<ConstantExpression> list)
         {
             _left = left;
             _list = list;
