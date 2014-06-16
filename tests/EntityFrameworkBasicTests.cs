@@ -279,6 +279,13 @@ namespace NpgsqlTests
 
                 context.Blogs.Where(b => b.Name == context.Blogs.Where(b2 => b2.BlogId < 100).FirstOrDefault().Name).ToArray();
 
+                // Similar to https://github.com/npgsql/Npgsql/issues/156 However EF is turning the GroupBy into a Distinct here
+                context.Posts.OrderBy(p => p.Title).ThenBy(p => p.Content).Take(100).GroupBy(p => p.Title).Select(p => p.Key).ToArray();
+
+                // Similar to https://github.com/npgsql/Npgsql/issues/216
+                (from d in context.Posts
+                 group d by new { d.Content, d.Title }).FirstOrDefault();
+
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
                 };
