@@ -302,7 +302,8 @@ namespace NpgsqlTests
         [Test]
         public void TestComplicatedQueriesWithApply()
         {
-            if (BackendVersion.Major >= 9 && BackendVersion.Minor >= 3) {
+            if ((BackendVersion.Major > 9) || (BackendVersion.Major == 9 && BackendVersion.Minor >= 3))
+            {
                 using (var context = new BloggingContext(ConnectionStringEF))
                 {
                     context.Database.Log = Console.Out.WriteLine;
