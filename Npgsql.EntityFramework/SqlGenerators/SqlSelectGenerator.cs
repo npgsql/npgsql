@@ -62,7 +62,7 @@ namespace Npgsql.SqlGenerators
                     if (_currentExpressions.Contains(item.Exp))
                         continue;
 
-                    var use = new Tuple<string, string>(from, name);
+                    var use = new StringPair(from, name);
 
                     if (!item.Exp.ColumnsToProject.ContainsKey(use))
                     {

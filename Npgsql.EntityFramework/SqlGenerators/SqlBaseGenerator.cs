@@ -178,7 +178,7 @@ namespace Npgsql.SqlGenerators
                             // so these are the columns that finally will be projected, as wanted
                             foreach (ColumnExpression col in prev.Projection.Arguments)
                             {
-                                input.ColumnsToProject.Add(new Tuple<string, string>(prevName, col.Name), col.Name);
+                                input.ColumnsToProject.Add(new StringPair(prevName, col.Name), col.Name);
                                 input.ProjectNewNames.Add(col.Name);
                             }
                         }

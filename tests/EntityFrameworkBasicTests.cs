@@ -259,11 +259,6 @@ namespace NpgsqlTests
             {
                 context.Database.Log = Console.Out.WriteLine;
 
-                // Test Apply
-                (from t1 in context.Blogs
-                 from t2 in context.Posts.Where(p => p.BlogId == t1.BlogId).Take(1)
-                 select new { t1, t2 }).ToArray();
-
                 // Test that the subqueries are evaluated in the correct order
                 context.Posts.Select(p => p.Content).Distinct().OrderBy(l => l).ToArray();
                 context.Posts.OrderByDescending(p => p.BlogId).Take(2).OrderBy(p => p.BlogId).Skip(1).Take(1).Select(l => l.BlogId).ToArray();
@@ -293,9 +288,6 @@ namespace NpgsqlTests
 
                 elinq("Select a.ID from (select distinct c.ID, c.ID2 From (select b.Name as ID, b.Name = '' as ID2 From Blogs as b order by ID asc limit 3) as c) as a where a.ID = 'a'");
 
-                // Joins, apply
-                elinq("Select value Blogs.BlogId From Blogs outer apply (Select p1.BlogId as bid, p1.PostId as bid2 from Posts as p1 left outer join (Select value p.PostId from Posts as p where p.PostId < Blogs.BlogId)) as b outer apply (Select p.PostId from Posts as p where p.PostId < b.bid)");
-
                 // a LEFT JOIN b LEFT JOIN c ON x ON y => Parsed as: a LEFT JOIN (b LEFT JOIN c ON x) ON y, which is correct
                 elinq("Select a.BlogId, d.id2, d.id3 from Blogs as a left outer join (Select b.BlogId as id2, c.BlogId as id3 From Blogs as b left outer join Blogs as c on true) as d on true");
                 // Aliasing
@@ -304,9 +296,32 @@ namespace NpgsqlTests
                 // Anyelement (creates DbNewInstanceExpressions)
                 elinq("Anyelement (Select Blogs.BlogId, Blogs.Name from Blogs)");
                 elinq("Select a.BlogId, Anyelement (Select value b.BlogId + 1 from Blogs as b) as c from Blogs as a");
+            }
+        }
 
-                // Just some really crazy query
-                context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
+        [Test]
+        public void TestComplicatedQueriesWithApply()
+        {
+            if (BackendVersion.Major >= 9 && BackendVersion.Minor >= 3) {
+                using (var context = new BloggingContext(ConnectionStringEF))
+                {
+                    context.Database.Log = Console.Out.WriteLine;
+
+                    // Test Apply
+                    (from t1 in context.Blogs
+                     from t2 in context.Posts.Where(p => p.BlogId == t1.BlogId).Take(1)
+                     select new { t1, t2 }).ToArray();
+
+                    Action<string> elinq = (string query) => {
+                        new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
+                    };
+
+                    // Joins, apply
+                    elinq("Select value Blogs.BlogId From Blogs outer apply (Select p1.BlogId as bid, p1.PostId as bid2 from Posts as p1 left outer join (Select value p.PostId from Posts as p where p.PostId < Blogs.BlogId)) as b outer apply (Select p.PostId from Posts as p where p.PostId < b.bid)");
+
+                    // Just some really crazy query that results in an apply as well
+                    context.Blogs.Select(b => new { b, b.BlogId, n = b.Posts.Select(p => new { t = p.Title + b.Name, n = p.Blog.Posts.Count(p2 => p2.BlogId < 4) }).Take(2) }).ToArray();
+                }   
             }
         }
     }

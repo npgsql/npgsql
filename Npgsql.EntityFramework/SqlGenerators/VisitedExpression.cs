@@ -372,7 +372,7 @@ namespace Npgsql.SqlGenerators
 
         public CommaSeparatedExpression Projection { get; set; }
 
-        public readonly Dictionary<Tuple<string, string>, string> ColumnsToProject = new Dictionary<Tuple<string, string>, string>(); // (from, name) -> newName
+        public readonly Dictionary<StringPair, string> ColumnsToProject = new Dictionary<StringPair, string>(); // (from, name) -> newName
         public readonly HashSet<string> ProjectNewNames = new HashSet<string>();
 
         // Either FromExpression or JoinExpression
