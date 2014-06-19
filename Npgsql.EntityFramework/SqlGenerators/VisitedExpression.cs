@@ -47,6 +47,11 @@ namespace Npgsql.SqlGenerators
                 expression.WriteSql(sqlText);
             }
         }
+
+        internal static bool MustWrap(VisitedExpression exp)
+        {
+            return !(exp is PropertyExpression || exp is ColumnReferenceExpression || exp is ConstantExpression);
+        }
     }
 
     internal class LiteralExpression : VisitedExpression
@@ -767,8 +772,8 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrapLeft = !(_left is PropertyExpression || _left is ColumnReferenceExpression || _left is ConstantExpression);
-            bool wrapRight = !(_right is PropertyExpression || _right is ColumnReferenceExpression || _right is ConstantExpression);
+            bool wrapLeft = MustWrap(_left);
+            bool wrapRight = MustWrap(_right);
             if (wrapLeft)
                 sqlText.Append("(");
             _left.WriteSql(sqlText);
@@ -799,8 +804,8 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrapLeft = !(_left is PropertyExpression || _left is ColumnReferenceExpression || _left is ConstantExpression);
-            bool wrapRight = !(_right is PropertyExpression || _right is ColumnReferenceExpression || _right is ConstantExpression);
+            bool wrapLeft = MustWrap(_left);
+            bool wrapRight = MustWrap(_right);
             if (wrapLeft)
                 sqlText.Append("(");
             _left.WriteSql(sqlText);
@@ -874,7 +879,13 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
+            bool wrapLeft = MustWrap(_left);
+            if (wrapLeft)
+                sqlText.Append("(");
             _left.WriteSql(sqlText);
+            if (wrapLeft)
+                sqlText.Append(")");
+
             sqlText.Append(" IN (");
             bool first = true;
             foreach (var constant in _list)
