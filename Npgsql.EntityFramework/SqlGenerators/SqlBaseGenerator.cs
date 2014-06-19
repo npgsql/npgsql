@@ -920,9 +920,11 @@ namespace Npgsql.SqlGenerators
                     // string functions
                     case "Concat":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
-                        arg = args[0].Accept(this);
+                        arg = new LiteralExpression("(");
+                        arg.Append(args[0].Accept(this));
                         arg.Append(" || ");
                         arg.Append(args[1].Accept(this));
+                        arg.Append(")");
                         return arg;
                     case "Contains":
                         System.Diagnostics.Debug.Assert(args.Count == 2);

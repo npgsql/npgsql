@@ -286,6 +286,10 @@ namespace NpgsqlTests
                 (from d in context.Posts
                  group d by new { d.Content, d.Title }).FirstOrDefault();
 
+                // Check precedence for ||
+                // http://stackoverflow.com/questions/21908464/wrong-query-generated-by-postgresql-provider-to-entity-framework-for-contains-an
+                context.Posts.Where(p => "a" != string.Concat("a", "b")).ToArray();
+
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
                 };
