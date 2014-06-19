@@ -35,6 +35,7 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    [TestFixture("9.4")]
     [TestFixture("9.3")]
     [TestFixture("9.2")]
     [TestFixture("9.1")]
