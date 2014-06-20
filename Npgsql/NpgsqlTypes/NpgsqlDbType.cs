@@ -73,7 +73,8 @@ namespace NpgsqlTypes
         Name,
         Abstime,
         MacAddr,
-        Json
+        Json,
+        Hstore
     }
 }
 

@@ -3889,10 +3889,7 @@ namespace NpgsqlTests
         public void InsertJsonValueDataType()
         {
             if (Conn.PostgreSqlVersion < new Version(9, 2, 0))
-            {
-                // json data type is not supported prior to 9.2
-                return;
-            }
+                Assert.Ignore("json data type only introduced in 9.2");
 
             var jsonValue = @"
             {
@@ -3907,7 +3904,19 @@ namespace NpgsqlTests
                 var result = cmd.ExecuteNonQuery();
 
                 Assert.AreEqual(1, result);
+            }
+        }
 
+        [Test]
+        public void InsertHstoreValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 1, 0))
+                Assert.Ignore("Loading the hstore extension in pre-9.1 is too complicated");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
             }
         }
     }

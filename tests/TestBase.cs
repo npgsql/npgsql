@@ -208,7 +208,6 @@ namespace NpgsqlTests
                     }
                 }
             }
-
             ExecuteNonQuery(@"CREATE TABLE data (
                                 field_pk                      SERIAL PRIMARY KEY,
                                 field_serial                  SERIAL,
@@ -236,6 +235,12 @@ namespace NpgsqlTests
                                 field_polygon                 POLYGON,
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 1, 0))
+            {
+                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore HSTORE");
+            }
 
             if (Conn.PostgreSqlVersion >= new Version(9, 2, 0))
             {
