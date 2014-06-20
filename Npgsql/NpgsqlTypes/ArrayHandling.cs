@@ -285,13 +285,13 @@ namespace NpgsqlTypes
             bool writtenSomething = false;
             bool firstItem = true;
 
-            array.WriteByte((byte)ASCIIBytes.BraceCurlyLeft);
 
             //write each item with a comma between them.
             foreach (object item in col)
             {
                 if (firstItem)
                 {
+                    array.WriteByte((byte)ASCIIBytes.BraceCurlyLeft);
                     firstItem = false;
                 }
                 else
