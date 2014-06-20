@@ -3888,29 +3888,33 @@ namespace NpgsqlTests
         [Test]
         public void InsertJsonValueDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(9, 2, 0))
+            if (Conn.PostgreSqlVersion < new Version(9, 2))
                 Assert.Ignore("json data type only introduced in 9.2");
-
-            var jsonValue = @"
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
             {
-              ""DisplayFieldName"" : ""ObjectName""
-            }
-            ";
-            using (var cmd = new NpgsqlCommand("insert into data (field_json) values (:paramJson)", Conn))
-            {
-                cmd.Parameters.AddWithValue("paramJson", jsonValue);
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
                 cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
 
-                var result = cmd.ExecuteNonQuery();
-
-                Assert.AreEqual(1, result);
+        [Test]
+        public void InsertJsonbValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 4))
+                Assert.Ignore("json data type only introduced in 9.4 (we're on {0})", Conn.PostgreSqlVersion);
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Jsonb;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
             }
         }
 
         [Test]
         public void InsertHstoreValueDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(9, 1, 0))
+            if (Conn.PostgreSqlVersion < new Version(9, 1))
                 Assert.Ignore("Loading the hstore extension in pre-9.1 is too complicated");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
             {

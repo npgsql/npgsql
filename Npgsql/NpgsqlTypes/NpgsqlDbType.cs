@@ -74,7 +74,8 @@ namespace NpgsqlTypes
         Abstime,
         MacAddr,
         Json,
-        Hstore
+        Jsonb,
+        Hstore,
     }
 }
 

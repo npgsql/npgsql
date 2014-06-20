@@ -236,15 +236,20 @@ namespace NpgsqlTests
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 1, 0))
+            if (Conn.PostgreSqlVersion >= new Version(9, 1))
             {
                 ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
                 ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore HSTORE");
             }
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 2, 0))
+            if (Conn.PostgreSqlVersion >= new Version(9, 2))
             {
                 ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
+            }
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 4))
+            {
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_jsonb JSONB");
             }
 
             _schemaCreated = true;

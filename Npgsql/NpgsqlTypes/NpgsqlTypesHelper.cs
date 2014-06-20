@@ -453,6 +453,10 @@ namespace NpgsqlTypes
                 BasicNativeToBackendTypeConverter.StringToTextText,
                 BasicNativeToBackendTypeConverter.StringToTextBinary);
 
+            nativeTypeMapping.AddType("jsonb", NpgsqlDbType.Jsonb, DbType.Object, false,
+                BasicNativeToBackendTypeConverter.StringToTextText,
+                BasicNativeToBackendTypeConverter.StringToTextBinary);
+
             nativeTypeMapping.AddType("hstore", NpgsqlDbType.Hstore, DbType.Object, false,
                 BasicNativeToBackendTypeConverter.StringToTextText,
                 BasicNativeToBackendTypeConverter.StringToTextBinary);
@@ -579,6 +583,10 @@ namespace NpgsqlTypes
             yield return new NpgsqlBackendTypeInfo(0, "xml", NpgsqlDbType.Xml, DbType.Xml, typeof (String), null);
 
             yield return new NpgsqlBackendTypeInfo(0, "json", NpgsqlDbType.Json, DbType.Object, typeof(String),
+                null,
+                BasicBackendToNativeTypeConverter.TextBinaryToString);
+
+            yield return new NpgsqlBackendTypeInfo(0, "jsonb", NpgsqlDbType.Jsonb, DbType.Object, typeof(String),
                 null,
                 BasicBackendToNativeTypeConverter.TextBinaryToString);
 
