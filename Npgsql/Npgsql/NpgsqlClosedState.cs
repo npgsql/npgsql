@@ -218,7 +218,7 @@ namespace Npgsql
 
                 context.Socket = socket;
                 context.BaseStream = baseStream;
-                context.Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
+                context.Stream = new BufferedNetworkStream(sslStream ?? baseStream);
 
                 NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, context.Host, context.Port);
                 ChangeState(context, NpgsqlConnectedState.Instance);

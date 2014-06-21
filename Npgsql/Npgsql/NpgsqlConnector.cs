@@ -109,10 +109,10 @@ namespace Npgsql
         private NpgsqlNetworkStream _baseStream;
 
         // The top level stream to the backend.
-        // This is a BufferedStream.
-        // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
-        // Otherwise, this stream sits directly on top of _baseStream.
-        private BufferedStream _stream;
+        // A special buffered stream is used: Write operations are buffered, read operations are unbuffered (already buffered in network stream).
+        // With SSL, this stream uses the SSL stream, which sits on top of _baseStream.
+        // Otherwise, this stream uses the _baseStream.
+        private BufferedNetworkStream _stream;
 
         // Mediator which will hold data generated from backend.
         private readonly NpgsqlMediator _mediator;
@@ -608,7 +608,7 @@ namespace Npgsql
         /// <summary>
         /// The top level stream to the backend.
         /// </summary>
-        internal BufferedStream Stream
+        internal BufferedNetworkStream Stream
         {
             get { return _stream; }
             set { _stream = value; }
@@ -1023,7 +1023,7 @@ namespace Npgsql
                         lock (connector._socket)
                         {
                             // 20 millisecond timeout
-                            if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                            if(this.connector.Stream.WaitAvailable(TimeSpan.FromMilliseconds(20)))
                             {
                                 this.connector.ProcessAndDiscardBackendResponses();
                             }
