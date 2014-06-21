@@ -3916,6 +3916,7 @@ namespace NpgsqlTests
         {
             if (Conn.PostgreSqlVersion < new Version(9, 1))
                 Assert.Ignore("Loading the hstore extension in pre-9.1 is too complicated");
+            ExecuteNonQuery(@"SET search_path = public, hstore");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
             {
                 cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");

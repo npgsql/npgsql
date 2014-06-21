@@ -238,8 +238,9 @@ namespace NpgsqlTests
 
             if (Conn.PostgreSqlVersion >= new Version(9, 1))
             {
-                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore HSTORE");
+                CreateSchema("hstore");
+                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
             }
 
             if (Conn.PostgreSqlVersion >= new Version(9, 2))
@@ -253,6 +254,20 @@ namespace NpgsqlTests
             }
 
             _schemaCreated = true;
+        }
+
+        private void CreateSchema(string schemaName)
+        {
+            if (Conn.PostgreSqlVersion >= new Version(9, 3))
+                ExecuteNonQuery(String.Format("CREATE SCHEMA IF NOT EXISTS {0}", schemaName));
+            else
+            {
+                try { ExecuteNonQuery(String.Format("CREATE SCHEMA {0}", schemaName)); }
+                catch (NpgsqlException e) {
+                    if (e.Code != "42P06")
+                        throw;
+                }
+            }
         }
 
         /// <summary>
