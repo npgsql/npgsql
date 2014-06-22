@@ -29,7 +29,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data.Common;
 using System.Diagnostics;
 using System.DirectoryServices;
@@ -46,6 +48,74 @@ namespace Npgsql
 {
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
+
+        [AttributeUsage(AttributeTargets.Property)]
+        private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute {
+            public Keywords Keyword;
+            public string UnderlyingConnectionKeyword;
+            public bool IsInternal = false;
+            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, bool is_internal = false) {
+                this.Keyword = keyword;
+                this.UnderlyingConnectionKeyword = keyword.ToString().ToUpperInvariant();
+                this.IsInternal = is_internal;
+            }
+            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, string underlying_connection_keyword) {
+                this.Keyword = keyword;
+                this.UnderlyingConnectionKeyword = underlying_connection_keyword;
+            }
+        }
+
+        [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+        private sealed class NpgsqlConnectionStringAcceptableKeywordAttribute : Attribute {
+            public string Keyword;
+            public NpgsqlConnectionStringAcceptableKeywordAttribute(string keyword) {
+                this.Keyword = keyword;
+            }
+        }
+
+        private sealed class NpgsqlConnectionStringCategoryAttribute : CategoryAttribute {
+            public NpgsqlConnectionStringCategoryAttribute(String category) : base(category) { }
+            protected override string GetLocalizedString(string value) {
+                return resman.GetString(value);
+            }
+        }
+
+        private sealed class NpgsqlConnectionStringDisplayNameAttribute : DisplayNameAttribute {
+            public NpgsqlConnectionStringDisplayNameAttribute(string resourceName)
+                : base(resourceName) {
+                try {
+                    string value = resman.GetString(resourceName);
+                    if (value != null)
+                        DisplayNameValue = value;
+                }
+                catch (Exception e) {
+                }
+            }
+        }
+
+        private sealed class NpgsqlConnectionStringDescriptionAttribute : DescriptionAttribute {
+            public NpgsqlConnectionStringDescriptionAttribute(string resourceName)
+                : base(resourceName) {
+                try {
+                    string value = resman.GetString(resourceName);
+                    if (value != null)
+                        DescriptionValue = value;
+                }
+                catch (Exception e) {
+                }
+            }
+        }
+
+        private sealed class NpgsqlEnumConverter<T> : EnumConverter {
+            public NpgsqlEnumConverter() : base(typeof(T)) { }
+            public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value) {
+                return value.ToString();
+            }
+            public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType) {
+                return (value != null) ? value.ToString() : String.Empty;
+            }
+        }
+
         private delegate string ValueNativeToString(object value);
 
         private class ValueDescription
@@ -307,6 +377,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the backend server host name.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Source")]
+        [NpgsqlConnectionStringKeyword(Keywords.Host)]
+        [NpgsqlConnectionStringAcceptableKeyword("SERVER")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Host")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Host")]
+        [RefreshProperties(RefreshProperties.All)]
         public string Host
         {
             get { return _host; }
@@ -317,6 +393,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the backend server port.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Source")]
+        [NpgsqlConnectionStringKeyword(Keywords.Port)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Port")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Port")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(5432)]
         public int Port
         {
             get { return _port; }
@@ -329,6 +411,12 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the database to be
         /// used after a connection is opened.</value>
+        [NpgsqlConnectionStringCategory("DataCategory_Source")]
+        [NpgsqlConnectionStringKeyword(Keywords.Database)]
+        [NpgsqlConnectionStringAcceptableKeyword("DB")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Database")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Database")]
+        [RefreshProperties(RefreshProperties.All)]
         public string Database
         {
             get { return _database; }
@@ -430,6 +518,15 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the login user name.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Security")]
+        [NpgsqlConnectionStringKeyword(Keywords.UserName, "USER ID")]
+        [NpgsqlConnectionStringAcceptableKeyword("USER NAME")]
+        [NpgsqlConnectionStringAcceptableKeyword("USERID")]
+        [NpgsqlConnectionStringAcceptableKeyword("USER ID")]
+        [NpgsqlConnectionStringAcceptableKeyword("UID")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_UserName")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_UserName")]
+        [RefreshProperties(RefreshProperties.All)]
         public string UserName
         {
             get
@@ -449,6 +546,7 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the login password as a UTF8 encoded byte array.
         /// </summary>
+        [Browsable(false)]
         public byte[] PasswordAsByteArray
         {
             get { return _password.PasswordAsByteArray; }
@@ -465,8 +563,17 @@ namespace Npgsql
         /// <summary>
         /// Sets the login password as a string.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Security")]
+        [NpgsqlConnectionStringKeyword(Keywords.Password)]
+        [NpgsqlConnectionStringAcceptableKeyword("PSW")]
+        [NpgsqlConnectionStringAcceptableKeyword("PWD")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Password")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Password")]
+        [RefreshProperties(RefreshProperties.All)]
+        [PasswordPropertyText(true)]
         public string Password
         {
+            get { return String.Empty; }
             set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
         }
 
@@ -474,6 +581,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to attempt to use SSL.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.SSL)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SSL")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SSL")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(false)]
         public bool SSL
         {
             get { return _ssl; }
@@ -484,6 +597,7 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to attempt to use SSL.
         /// </summary>
+        [Browsable(false)]
         public SslMode SslMode
         {
             get { return _sslmode; }
@@ -496,6 +610,12 @@ namespace Npgsql
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
+        [NpgsqlConnectionStringCategory("DataCategory_Initialization")]
+        [NpgsqlConnectionStringKeyword(Keywords.Timeout)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Timeout")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Timeout")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(15)]
         public int Timeout
         {
             get { return _timeout; }
@@ -506,6 +626,11 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the schema search path.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Context")]
+        [NpgsqlConnectionStringKeyword(Keywords.SearchPath)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SearchPath")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SearchPath")]
+        [RefreshProperties(RefreshProperties.All)]
         public string SearchPath
         {
             get { return _searchpath; }
@@ -516,6 +641,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether connection pooling should be used.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
+        [NpgsqlConnectionStringKeyword(Keywords.Pooling)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Pooling")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Pooling")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(true)]
         public bool Pooling
         {
             get { return _pooling; }
@@ -534,6 +665,12 @@ namespace Npgsql
         /// This strategy provide smooth change of connection count in the pool.
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
+        [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
+        [NpgsqlConnectionStringKeyword(Keywords.ConnectionLifeTime)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_ConnectionLifeTime")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_ConnectionLifeTime")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(15)]
         public int ConnectionLifeTime
         {
             get { return _connection_life_time; }
@@ -544,6 +681,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the minimum connection pool size.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
+        [NpgsqlConnectionStringKeyword(Keywords.MinPoolSize)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_MinPoolSize")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_MinPoolSize")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(1)]
         public int MinPoolSize
         {
             get { return _min_pool_size; }
@@ -554,6 +697,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the maximum connection pool size.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
+        [NpgsqlConnectionStringKeyword(Keywords.MaxPoolSize)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_MaxPoolSize")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_MaxPoolSize")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(20)]
         public int MaxPoolSize
         {
             get { return _max_pool_size; }
@@ -564,6 +713,12 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether to listen for notifications and report them between command activity.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.SyncNotification)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SyncNotification")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SyncNotification")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(false)]
         public bool SyncNotification
         {
             get { return _sync_notification; }
@@ -576,6 +731,12 @@ namespace Npgsql
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
+        [NpgsqlConnectionStringCategory("DataCategory_Initialization")]
+        [NpgsqlConnectionStringKeyword(Keywords.CommandTimeout)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_CommandTimeout")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_CommandTimeout")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(20)]
         public int CommandTimeout
         {
             get { return _command_timeout; }
@@ -583,6 +744,12 @@ namespace Npgsql
         }
 
         private bool _enlist;
+        [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
+        [NpgsqlConnectionStringKeyword(Keywords.Enlist)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Enlist")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Enlist")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(true)]
         public bool Enlist
         {
             get { return _enlist; }
@@ -593,6 +760,13 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a value indicating whether datareaders are loaded in their entirety (for compatibility with earlier code).
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.PreloadReader)]
+        [NpgsqlConnectionStringAcceptableKeyword("PRELOAD READER")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_PreloadReader")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_PreloadReader")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(true)]
         public bool PreloadReader
         {
             get { return _preloadReader; }
@@ -600,6 +774,13 @@ namespace Npgsql
         }
 
         private bool _useExtendedTypes;
+        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.UseExtendedTypes)]
+        [NpgsqlConnectionStringAcceptableKeyword("USE EXTENDED TYPES")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_UseExtendedTypes")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_UseExtendedTypes")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(true)]
         public bool UseExtendedTypes
         {
             get { return _useExtendedTypes; }
@@ -607,6 +788,13 @@ namespace Npgsql
         }
 
         private bool _integrated_security;
+        [NpgsqlConnectionStringCategory("DataCategory_Security")]
+        [NpgsqlConnectionStringKeyword(Keywords.IntegratedSecurity)]
+        [NpgsqlConnectionStringAcceptableKeyword("INTEGRATED SECURITY")]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_IntegratedSecurity")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_IntegratedSecurity")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(false)]
         public bool IntegratedSecurity
         {
             get { return _integrated_security; }
@@ -645,16 +833,22 @@ namespace Npgsql
         /// Compatibilty version. When possible, behaviour caused by breaking changes will be preserved
         /// if this version is less than that where the breaking change was introduced.
         /// </summary>
+        [Browsable(false)]
         public Version Compatible
         {
             get { return _compatible; }
             set { SetValue(GetKeyName(Keywords.Compatible), Keywords.Compatible, value); }
         }
-
+        
         private string _application_name;
         /// <summary>
         /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Context")]
+        [NpgsqlConnectionStringKeyword(Keywords.ApplicationName)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_ApplicationName")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_ApplicationName")]
+        [RefreshProperties(RefreshProperties.All)]
         public string ApplicationName
         {
             get { return _application_name; }
@@ -757,6 +951,7 @@ namespace Npgsql
                 case "USEEXTENDEDTYPES":
                 case "USE EXTENDED TYPES":
                     return Keywords.UseExtendedTypes;
+                case "INTEGRATEDSECURITY":
                 case "INTEGRATED SECURITY":
                     return Keywords.IntegratedSecurity;
                 case "INCLUDEREALM":
@@ -865,6 +1060,17 @@ namespace Npgsql
         public bool ContainsKey(Keywords keyword)
         {
             return base.ContainsKey(GetKeyName(keyword));
+        }
+
+        public override bool TryGetValue(string keyword, out object value) {
+            try {
+                value = GetValue(GetKey(keyword));
+                return true;
+            }
+            catch (ArgumentException) {
+                value = null;
+                return false;
+            }
         }
 
         /// <summary>
