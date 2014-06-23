@@ -3924,5 +3924,18 @@ namespace NpgsqlTests
                 Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
             }
         }
+
+        public void TestEmptyIEnumerableAsArray()
+        {
+            using (var command = new NpgsqlCommand("SELECT :array", Conn))
+            {
+                var expected = new[] { 1, 2, 3, 4 };
+                command.Parameters.AddWithValue("array", expected.Where(x => false));
+                var res = command.ExecuteScalar() as int[];
+
+                Assert.NotNull(res);
+                Assert.AreEqual(0, res.Length);
+            }
+        }
     }
 }
