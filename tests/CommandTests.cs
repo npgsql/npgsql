@@ -28,6 +28,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using Npgsql;
 using NUnit.Framework;
 using System.Data;
@@ -1729,6 +1730,38 @@ namespace NpgsqlTests
             Assert.AreEqual(3, circle.Center.Y);
             Assert.AreEqual(5, circle.Radius);
         }
+
+        [Test]
+        public void TestXmlParameter()
+        {
+            TestXmlParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestXmlParameterPrepared()
+        {
+            TestXmlParameter_Internal(true);
+        }
+
+        
+        private void TestXmlParameter_Internal(bool prepare)
+        {
+            using (var command = new NpgsqlCommand("select @PrecisionXML", Conn))
+            {
+                var sXML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <strings type=\"array\"> <string> this is a test with ' single quote </string></strings>";
+                var parameter = command.CreateParameter();
+                parameter.DbType = DbType.Xml;  // To make it work we need to use DbType.String; and then CAST it in the sSQL: cast(@PrecisionXML as xml)
+                parameter.ParameterName = "@PrecisionXML";
+                parameter.Value = sXML;
+                command.Parameters.Add(parameter);
+
+                if (prepare)
+                    command.Prepare();
+                command.ExecuteScalar();
+            }
+
+        }
+
 
         [Test]
         public void SetParameterValueNull()
@@ -3585,6 +3618,86 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug219NpgsqlCopyInConcurrentUsage()
+        {
+
+            try
+            {
+                // Create temporary test tables
+
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table1 (
+                                            id integer,
+                                            name character varying(100)
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table2 (
+                                            id integer,
+                                            null1 integer,
+                                            name character varying(100),
+                                            null2 integer,
+                                            description character varying(1000),
+                                            null3 integer
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+
+
+                using (var connection1 = new NpgsqlConnection(ConnectionString))
+                using (var connection2 = new NpgsqlConnection(ConnectionString))
+                {
+
+                    connection1.Open();
+                    connection2.Open();
+
+                    var copy1 = new NpgsqlCopyIn("COPY Bug219_table1 FROM STDIN;", connection1);
+                    var copy2 = new NpgsqlCopyIn("COPY Bug219_table2 FROM STDIN;", connection2);
+
+                    copy1.Start();
+                    copy2.Start();
+
+                    NpgsqlCopySerializer cs1 = new NpgsqlCopySerializer(connection1);
+                    //NpgsqlCopySerializer cs2 = new NpgsqlCopySerializer(connection2);
+
+                    for (int index = 0; index < 10; index++)
+                    {
+                        cs1.AddInt32(index);
+                        cs1.AddString(string.Format("Index {0} ", index));
+                        cs1.EndRow();
+
+                        /*cs2.AddInt32(index);
+                        cs2.AddNull();
+                        cs2.AddString(string.Format("Index {0} ", index));
+                        cs2.AddNull();
+                        cs2.AddString("jjjjj");
+                        cs2.AddNull();
+                        cs2.EndRow();*/
+
+                    }
+                    cs1.Close(); //Exception
+                    //cs2.Close();
+
+                    copy1.End();
+                    copy2.End();
+
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table1");
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table2");
+            }
+        }
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:
@@ -3755,6 +3868,73 @@ namespace NpgsqlTests
             using (var command = new NpgsqlCommand("select -- lc;lc /* lc;lc */\r\n1", Conn))
             {
                 Assert.AreEqual(1, command.ExecuteScalar());
+            }
+        }
+
+        [Test]
+        public void TestIEnumerableAsArray()
+        {
+            using (var command = new NpgsqlCommand("SELECT :array", Conn))
+            {
+                var expected = new[] { 1, 2, 3, 4 };
+                command.Parameters.AddWithValue("array", expected.Select(x => x));
+                var res = command.ExecuteScalar() as int[];
+
+                Assert.NotNull(res);
+                CollectionAssert.AreEqual(expected, res);
+            }
+        }
+
+        [Test]
+        public void InsertJsonValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 2))
+                Assert.Ignore("json data type only introduced in 9.2");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void InsertJsonbValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 4))
+                Assert.Ignore("json data type only introduced in 9.4 (we're on {0})", Conn.PostgreSqlVersion);
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Jsonb;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void InsertHstoreValueDataType()
+        {
+            if (Conn.PostgreSqlVersion < new Version(9, 1))
+                Assert.Ignore("Loading the hstore extension in pre-9.1 is too complicated");
+            ExecuteNonQuery(@"SET search_path = public, hstore");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        public void TestEmptyIEnumerableAsArray()
+        {
+            using (var command = new NpgsqlCommand("SELECT :array", Conn))
+            {
+                var expected = new[] { 1, 2, 3, 4 };
+                command.Parameters.AddWithValue("array", expected.Where(x => false));
+                var res = command.ExecuteScalar() as int[];
+
+                Assert.NotNull(res);
+                Assert.AreEqual(0, res.Length);
             }
         }
     }

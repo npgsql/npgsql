@@ -393,7 +393,7 @@ namespace Npgsql
                         case BackEndMessageCode.CopyInResponse:
                             // Enter COPY sub protocol and start pushing data to server
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
-                            ChangeState(context, NpgsqlCopyInState.Instance);
+                            ChangeState(context, new NpgsqlCopyInState());
                             PGUtil.ReadInt32(stream); // length redundant
                             context.CurrentState.StartCopy(context, ReadCopyHeader(stream));
                             yield break;

@@ -625,12 +625,12 @@ namespace Npgsql
             if (!settings.ContainsKey(Keywords.Host))
             {
                 throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            NpgsqlConnectionStringBuilder.GetKeyName(Keywords.Host));
+                                            Keywords.Host.ToString());
             }
             if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
             {
                 throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            NpgsqlConnectionStringBuilder.GetKeyName(Keywords.UserName));
+                                            Keywords.UserName.ToString());
             }
 
             // Get a Connector, either from the pool or creating one ourselves.
@@ -1196,6 +1196,8 @@ namespace Npgsql
                         // custom collections for npgsql
                     case "Databases":
                         return NpgsqlSchema.GetDatabases(tempConn, restrictions);
+                    case "Schemata":
+                        return NpgsqlSchema.GetSchemata(tempConn, restrictions);
                     case "Tables":
                         return NpgsqlSchema.GetTables(tempConn, restrictions);
                     case "Columns":
@@ -1208,8 +1210,13 @@ namespace Npgsql
                         return NpgsqlSchema.GetIndexes(tempConn, restrictions);
                     case "IndexColumns":
                         return NpgsqlSchema.GetIndexColumns(tempConn, restrictions);
+                    case "Constraints":
+                    case "PrimaryKey":
+                    case "UniqueKeys":
                     case "ForeignKeys":
-                        return NpgsqlSchema.GetForeignKeys(tempConn, restrictions);
+                        return NpgsqlSchema.GetConstraints(tempConn, restrictions, collectionName);
+                    case "ConstraintColumns":
+                        return NpgsqlSchema.GetConstraintColumns(tempConn, restrictions);
                     default:
                         throw new ArgumentOutOfRangeException("collectionName", collectionName, "Invalid collection name");
                 }

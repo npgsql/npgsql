@@ -1034,4 +1034,26 @@ namespace Npgsql.SqlGenerators
             base.WriteSql(sqlText);
         }
     }
+
+    internal class TruncateTimeExpression : VisitedExpression
+    {
+        readonly VisitedExpression _arg;
+        readonly string _truncationType;
+        public TruncateTimeExpression(string truncationType, VisitedExpression visitedExpression)
+        {
+            _arg = visitedExpression;
+            _truncationType = truncationType;
+        }
+
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            sqlText.Append("date_trunc");
+            sqlText.Append("(");
+            sqlText.Append("'" + _truncationType + "',");
+            _arg.WriteSql(sqlText);
+            sqlText.Append(")");
+            base.WriteSql(sqlText);
+        }
+    }
 }
