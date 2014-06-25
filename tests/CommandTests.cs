@@ -1349,6 +1349,8 @@ namespace NpgsqlTests
         [TestCase(null, NpgsqlDbType.Double,  "field_float8",  7.4D,     TestName = "NpgsqlDouble")]
         [TestCase(null, NpgsqlDbType.Real,    "field_float4",  7.4F,     TestName = "NpgsqlSingle")]
         [TestCase(null, NpgsqlDbType.Text,    "field_text",    @"\test", TestName = "StringWithBackslashes")]
+        [TestCase(null, NpgsqlDbType.Double,  "field_float8",  Double.NaN, TestName = "DoubleNaN")]
+        [TestCase(null, NpgsqlDbType.Real,    "field_float4",  Single.NaN, TestName = "SingleNaN")]
         public void InsertValue(DbType? dbType, NpgsqlDbType? npgsqlDbType, string fieldName, object value)
         {
             if (dbType.HasValue && npgsqlDbType.HasValue || (!dbType.HasValue && !npgsqlDbType.HasValue))
