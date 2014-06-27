@@ -12,6 +12,7 @@ namespace Npgsql.SqlGenerators
     class SqlUpdateGenerator : SqlBaseGenerator
     {
         private DbUpdateCommandTree _commandTree;
+        private string _tableName;
 
         public SqlUpdateGenerator(DbUpdateCommandTree commandTree)
         {
@@ -21,7 +22,7 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbPropertyExpression expression)
         {
             DbVariableReferenceExpression variable = expression.Instance as DbVariableReferenceExpression;
-            if (variable == null || variable.VariableName != _projectVarName.Peek())
+            if (variable == null || variable.VariableName != _tableName)
                 throw new NotSupportedException();
             return new PropertyExpression(expression.Property);
         }
@@ -30,7 +31,7 @@ namespace Npgsql.SqlGenerators
         {
             // TODO: handle _commandTree.Returning and _commandTree.Parameters
             UpdateExpression update = new UpdateExpression();
-            _projectVarName.Push(_commandTree.Target.VariableName);
+            _tableName = _commandTree.Target.VariableName;
             update.AppendTarget(_commandTree.Target.Expression.Accept(this));
             foreach (DbSetClause clause in _commandTree.SetClauses)
             {
@@ -40,7 +41,7 @@ namespace Npgsql.SqlGenerators
             {
                 update.AppendWhere(_commandTree.Predicate.Accept(this));
             }
-            _projectVarName.Pop();
+            _tableName = null;
             command.CommandText = update.ToString();
         }
     }

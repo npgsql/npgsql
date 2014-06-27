@@ -120,11 +120,13 @@
     <Compile Include="NpgsqlServices.cs" />
     <Compile Include="NpgsqlProviderManifest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SqlGenerators\PendingProjectsNode.cs" />
     <Compile Include="SqlGenerators\SqlBaseGenerator.cs" />
     <Compile Include="SqlGenerators\SqlDeleteGenerator.cs" />
     <Compile Include="SqlGenerators\SqlInsertGenerator.cs" />
     <Compile Include="SqlGenerators\SqlSelectGenerator.cs" />
     <Compile Include="SqlGenerators\SqlUpdateGenerator.cs" />
+    <Compile Include="SqlGenerators\StringPair.cs" />
     <Compile Include="SqlGenerators\VisitedExpression.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>

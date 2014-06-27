@@ -291,6 +291,11 @@ namespace Npgsql
             return argument.Replace("%", "\\%").Replace("_", "\\_");
         }
 #endif
-
+#if ENTITIES6
+        public override bool SupportsInExpression()
+        {
+            return true;
+        }
+#endif
     }
 }
