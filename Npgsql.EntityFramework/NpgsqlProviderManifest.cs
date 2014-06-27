@@ -288,7 +288,7 @@ namespace Npgsql
 
         public override string EscapeLikeArgument(string argument)
         {
-            return argument.Replace("%", "\\%").Replace("_", "\\_");
+            return argument.Replace("\\","\\\\").Replace("%", "\\%").Replace("_", "\\_");
         }
 #endif
 #if ENTITIES6

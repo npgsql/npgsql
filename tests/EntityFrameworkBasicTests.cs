@@ -195,6 +195,62 @@ namespace NpgsqlTests
             }
         }
 
+		[Test]
+		public void SelectWithLike_SpecialCharacters()
+		{
+			DateTime createdOnDate = new DateTime(2014, 05, 08);
+			using (var context = new BloggingContext(ConnectionStringEF))
+			{
+				var blog = new Blog()
+				{
+					Name = "Special Characters Test"
+				};
+				blog.Posts = new List<Post>();
+
+				blog.Posts.Add(new Post()
+				{
+					Content = "C:\\blog\\Some_post_title%",
+					Rating = (byte)1,
+					Title = "Some post Title ",
+					CreationDate = createdOnDate.AddHours(1)
+				});
+				blog.Posts.Add(new Post()
+				{
+					Content = "C:\\blog\\Some_post_title\\",
+					Rating = (byte)2,
+					Title = "Some post Title ",
+					CreationDate = createdOnDate.AddHours(2)
+				});
+				blog.Posts.Add(new Post()
+				{
+					Content = "%Test",
+					Rating = (byte)3,
+					Title = "Some post Title ",
+					CreationDate = createdOnDate.AddHours(3)
+				});
+				context.Blogs.Add(blog);
+				context.SaveChanges();
+			}
+
+			using (var context = new BloggingContext(ConnectionStringEF))
+			{
+				var posts1 = from p in context.Posts
+				             where p.Content.Contains("_")
+				             select p;
+				Assert.AreEqual(2, posts1.Count());
+
+				var posts2 = from p in context.Posts
+				             where p.Content.EndsWith("\\")
+				             select p;
+				Assert.AreEqual(1, posts2.Count());
+
+				var posts3 = from p in context.Posts
+				             where p.Content.StartsWith("%")
+				             select p;
+				Assert.AreEqual(1, posts3.Count());
+			}
+		}
+
         [Test]
         public void OrderBy()
         {
