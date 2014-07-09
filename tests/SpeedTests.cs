@@ -19,6 +19,32 @@ namespace NpgsqlTests
 
         private static readonly TimeSpan TestRunTime = new TimeSpan(0, 0, 10); // 10 seconds
 
+        [Test, Description("A minimal, simple, non-query scenario")]
+        public void ExecuteUpdateNonQuery()
+        {
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    ExecuteNonQuery("set ");
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+
+        [Test, Description("A minimal, simple, scalar scenario")]
+        public void ExecuteScalar()
+        {
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    ExecuteScalar("SELECT 1 + 1");
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+
         [Test, Description("A normal insert command with one parameter")]
         public void ParameterizedInsert()
         {
