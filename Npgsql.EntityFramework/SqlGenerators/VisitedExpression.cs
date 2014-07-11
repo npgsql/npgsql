@@ -147,7 +147,7 @@ namespace Npgsql.SqlGenerators
                     sqlText.AppendFormat(ni, "cast({0} as float4)", _value);
                     break;
                 case PrimitiveTypeKind.Boolean:
-                    sqlText.AppendFormat(ni, "cast({0} as boolean)", ((bool)_value) ? "TRUE" : "FALSE");
+                    sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
                 case PrimitiveTypeKind.String:
@@ -329,7 +329,14 @@ namespace Npgsql.SqlGenerators
         internal override void WriteSql(StringBuilder sqlText)
         {
             _column.WriteSql(sqlText);
-            sqlText.Append(" AS " + SqlBaseGenerator.QuoteIdentifier(_columnName));
+
+            ColumnReferenceExpression column = _column as ColumnReferenceExpression;
+            if (column == null || column.Name != _columnName)
+            {
+                sqlText.Append(" AS ");
+                sqlText.Append(SqlBaseGenerator.QuoteIdentifier(_columnName));
+            }
+            
             base.WriteSql(sqlText);
         }
     }
@@ -460,8 +467,11 @@ namespace Npgsql.SqlGenerators
                         sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Key.Item1));
                         sqlText.Append(".");
                         sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Key.Item2));
-                        sqlText.Append(" AS ");
-                        sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Value));
+                        if (column.Key.Item2 != column.Value)
+                        {
+                            sqlText.Append(" AS ");
+                            sqlText.Append(SqlBaseGenerator.QuoteIdentifier(column.Value));
+                        }
                     }
                 }
             }
