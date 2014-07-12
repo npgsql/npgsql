@@ -342,13 +342,13 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("int8", typeof(Int64));
 
             nativeTypeMapping.AddType("float4", NpgsqlDbType.Real, DbType.Single, false,
-                                            BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text,
+                                            BasicNativeToBackendTypeConverter.SingleToFloat4Text,
                                             BasicNativeToBackendTypeConverter.SingleToFloat4Binary);
 
             nativeTypeMapping.AddTypeAlias("float4", typeof(Single));
 
             nativeTypeMapping.AddType("float8", NpgsqlDbType.Double, DbType.Double, false,
-                                            BasicNativeToBackendTypeConverter.SingleDoubleToFloat4Float8Text,
+                                            BasicNativeToBackendTypeConverter.DoubleToFloat8Text,
                                             BasicNativeToBackendTypeConverter.DoubleToFloat8Binary);
 
             nativeTypeMapping.AddTypeAlias("float8", typeof(Double));
