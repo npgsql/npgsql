@@ -2987,6 +2987,45 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void DoubleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { double.NaN, 12345.12345d };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                if (prepareCommand)
+                    cmd.Prepare();
+
+                var retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void SingleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { float.NaN, 12345.12345f };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Real | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                if (prepareCommand)
+                    cmd.Prepare();
+
+                var retVal = (float[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+
+        [Test]
         public void ByteaArrayHandling()
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))

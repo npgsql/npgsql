@@ -465,7 +465,7 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (NativeData.Equals(float.NaN))
+            if (NativeData.Equals(float.NaN) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
@@ -476,7 +476,7 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (NativeData.Equals(double.NaN))
+            if (NativeData.Equals(double.NaN) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
