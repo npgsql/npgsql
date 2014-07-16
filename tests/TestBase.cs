@@ -286,6 +286,12 @@ namespace NpgsqlTests
             }
         }
 
+        static TestBase()
+        {
+            NpgsqlEventLog.Level = LogLevel.Debug;
+            NpgsqlEventLog.EchoMessages = true;
+        }
+
         #endregion
 
         #region Utilities for use by tests
