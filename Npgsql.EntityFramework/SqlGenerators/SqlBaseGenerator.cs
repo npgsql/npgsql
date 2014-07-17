@@ -609,7 +609,7 @@ namespace Npgsql.SqlGenerators
                 // that will (probably) be an ancestor to a DbProjectExpression.
 
                 // Since this is (probably) a child of DbElementExpression, we want the first column,
-                // so make sure it is propagated from the innermost projection.
+                // so make sure it is propagated from the nearest explicit projection.
 
                 CommaSeparatedExpression projection = node.Selects[0].Exp.Projection;
                 for (int i = 1; i < node.Selects.Count; i++)
