@@ -553,7 +553,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbOrExpression expression)
         {
-            return new BooleanExpression("OR", expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(Operator.Or, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbOfTypeExpression expression)
@@ -573,16 +573,7 @@ namespace Npgsql.SqlGenerators
             // argument can be a "NOT EXISTS" or similar operator that can be negated.
             // Convert the not if that's the case
             VisitedExpression argument = expression.Argument.Accept(this);
-            NegatableExpression negatable = argument as NegatableExpression;
-            if (negatable != null)
-            {
-                negatable.Negate();
-                return negatable;
-            }
-            else
-            {
-                return new NegateExpression(argument);
-            }
+            return OperatorExpression.Negate(argument);
         }
 
         public override VisitedExpression Visit(DbNewInstanceExpression expression)
@@ -604,7 +595,7 @@ namespace Npgsql.SqlGenerators
         public override VisitedExpression Visit(DbLikeExpression expression)
         {
             // LIKE keyword
-            return new NegatableBooleanExpression(DbExpressionKind.Like, expression.Argument.Accept(this), expression.Pattern.Accept(this));
+            return OperatorExpression.Build(Operator.Like, expression.Argument.Accept(this), expression.Pattern.Accept(this));
         }
 
         public override VisitedExpression Visit(DbJoinExpression expression)
@@ -620,13 +611,13 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbIsNullExpression expression)
         {
-            return new IsNullExpression(expression.Argument.Accept(this));
+            return OperatorExpression.Build(Operator.IsNull, expression.Argument.Accept(this));
         }
 
         public override VisitedExpression Visit(DbIsEmptyExpression expression)
         {
             // NOT EXISTS
-            return new ExistsExpression(expression.Argument.Accept(this)).Negate();
+            return OperatorExpression.Negate(new ExistsExpression(expression.Argument.Accept(this)));
         }
 
         public override VisitedExpression Visit(DbIntersectExpression expression)
@@ -717,22 +708,19 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbComparisonExpression expression)
         {
-            DbExpressionKind comparisonOperator;
+            Operator comparisonOperator;
             switch (expression.ExpressionKind)
             {
-                case DbExpressionKind.Equals:
-                case DbExpressionKind.GreaterThan:
-                case DbExpressionKind.GreaterThanOrEquals:
-                case DbExpressionKind.LessThan:
-                case DbExpressionKind.LessThanOrEquals:
-                case DbExpressionKind.Like:
-                case DbExpressionKind.NotEquals:
-                    comparisonOperator = expression.ExpressionKind;
-                    break;
-                default:
-                    throw new NotSupportedException();
+                case DbExpressionKind.Equals: comparisonOperator = Operator.Equals; break;
+                case DbExpressionKind.GreaterThan: comparisonOperator = Operator.GreaterThan; break;
+                case DbExpressionKind.GreaterThanOrEquals: comparisonOperator = Operator.GreaterThanOrEquals; break;
+                case DbExpressionKind.LessThan: comparisonOperator = Operator.LessThan; break;
+                case DbExpressionKind.LessThanOrEquals: comparisonOperator = Operator.LessThanOrEquals; break;
+                case DbExpressionKind.Like: comparisonOperator = Operator.Like; break;
+                case DbExpressionKind.NotEquals: comparisonOperator = Operator.NotEquals; break;
+                default: throw new NotSupportedException();
             }
-            return new NegatableBooleanExpression(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(comparisonOperator, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbCastExpression expression)
@@ -801,27 +789,27 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbArithmeticExpression expression)
         {
-            LiteralExpression arithmeticOperator;
+            Operator arithmeticOperator;
 
             switch (expression.ExpressionKind)
             {
                 case DbExpressionKind.Divide:
-                    arithmeticOperator = new LiteralExpression("/");
+                    arithmeticOperator = Operator.Div;
                     break;
                 case DbExpressionKind.Minus:
-                    arithmeticOperator = new LiteralExpression("-");
+                    arithmeticOperator = Operator.Sub;
                     break;
                 case DbExpressionKind.Modulo:
-                    arithmeticOperator = new LiteralExpression("%");
+                    arithmeticOperator = Operator.Mod;
                     break;
                 case DbExpressionKind.Multiply:
-                    arithmeticOperator = new LiteralExpression("*");
+                    arithmeticOperator = Operator.Mul;
                     break;
                 case DbExpressionKind.Plus:
-                    arithmeticOperator = new LiteralExpression("+");
+                    arithmeticOperator = Operator.Add;
                     break;
                 case DbExpressionKind.UnaryMinus:
-                    arithmeticOperator = new LiteralExpression("-");
+                    arithmeticOperator = Operator.UnaryMinus;
                     break;
                 default:
                     throw new NotSupportedException();
@@ -830,25 +818,12 @@ namespace Npgsql.SqlGenerators
             if (expression.ExpressionKind == DbExpressionKind.UnaryMinus)
             {
                 System.Diagnostics.Debug.Assert(expression.Arguments.Count == 1);
-                arithmeticOperator.Append("(");
-                arithmeticOperator.Append(expression.Arguments[0].Accept(this));
-                arithmeticOperator.Append(")");
-                return arithmeticOperator;
+                return OperatorExpression.Build(arithmeticOperator, expression.Arguments[0].Accept(this));
             }
             else
             {
-                LiteralExpression math = new LiteralExpression("");
-                bool first = true;
-                foreach (DbExpression arg in expression.Arguments)
-                {
-                    if (!first)
-                        math.Append(arithmeticOperator);
-                    math.Append("(");
-                    math.Append(arg.Accept(this));
-                    math.Append(")");
-                    first = false;
-                }
-                return math;
+                System.Diagnostics.Debug.Assert(expression.Arguments.Count == 2);
+                return OperatorExpression.Build(arithmeticOperator, expression.Arguments[0].Accept(this), expression.Arguments[1].Accept(this));
             }
         }
 
@@ -865,7 +840,7 @@ namespace Npgsql.SqlGenerators
 
         public override VisitedExpression Visit(DbAndExpression expression)
         {
-            return new BooleanExpression("AND", expression.Left.Accept(this), expression.Right.Accept(this));
+            return OperatorExpression.Build(Operator.And, expression.Left.Accept(this), expression.Right.Accept(this));
         }
 
         public override VisitedExpression Visit(DbExpression expression)
@@ -920,12 +895,7 @@ namespace Npgsql.SqlGenerators
                     // string functions
                     case "Concat":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
-                        arg = new LiteralExpression("(");
-                        arg.Append(args[0].Accept(this));
-                        arg.Append(" || ");
-                        arg.Append(args[1].Accept(this));
-                        arg.Append(")");
-                        return arg;
+                        return OperatorExpression.Build(Operator.Concat, args[0].Accept(this), args[1].Accept(this));
                     case "Contains":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
                         FunctionExpression contains = new FunctionExpression("position");
@@ -934,7 +904,7 @@ namespace Npgsql.SqlGenerators
                         arg.Append(args[0].Accept(this));
                         contains.AddArgument(arg);
                         // if position returns zero, then contains is false
-                        return new NegatableBooleanExpression(DbExpressionKind.GreaterThan, contains, new LiteralExpression("0"));
+                        return OperatorExpression.Build(Operator.GreaterThan, contains, new LiteralExpression("0"));
                     // case "EndsWith": - depends on a reverse function to be able to implement with parameterized queries
                     case "IndexOf":
                         System.Diagnostics.Debug.Assert(args.Count == 2);
@@ -970,9 +940,7 @@ namespace Npgsql.SqlGenerators
                             var start = new FunctionExpression("char_length");
                             start.AddArgument(arg0);
                             // add one before subtracting count since strings are 1 based in postgresql
-                            start.Append("+1-");
-                            start.Append(arg1);
-                            return Substring(arg0, start);
+                            return Substring(arg0, OperatorExpression.Build(Operator.Sub, OperatorExpression.Build(Operator.Add, start, new LiteralExpression("1")), arg1));
                         }
                     case "RTrim":
                         return StringModifier("rtrim", args);
@@ -986,7 +954,7 @@ namespace Npgsql.SqlGenerators
                         arg.Append(" in ");
                         arg.Append(args[0].Accept(this));
                         startsWith.AddArgument(arg);
-                        return new NegatableBooleanExpression(DbExpressionKind.Equals, startsWith, new LiteralExpression("1"));
+                        return OperatorExpression.Build(Operator.Equals, startsWith, new LiteralExpression("1"));
                     case "ToLower":
                         return StringModifier("lower", args);
                     case "ToUpper":
@@ -1042,16 +1010,14 @@ namespace Npgsql.SqlGenerators
 
                     // bitwise operators
                     case "BitwiseAnd":
-                        return BitwiseOperator(args, " & ");
+                        return BitwiseOperator(args, Operator.BitwiseAnd);
                     case "BitwiseOr":
-                        return BitwiseOperator(args, " | ");
+                        return BitwiseOperator(args, Operator.BitwiseOr);
                     case "BitwiseXor":
-                        return BitwiseOperator(args, " # ");
+                        return BitwiseOperator(args, Operator.BitwiseXor);
                     case "BitwiseNot":
                         System.Diagnostics.Debug.Assert(args.Count == 1);
-                        LiteralExpression not = new LiteralExpression("~ ");
-                        not.Append(args[0].Accept(this));
-                        return not;
+                        return OperatorExpression.Build(Operator.BitwiseNot, args[0].Accept(this));
 
                     // math operators
                     case "Abs":
@@ -1145,17 +1111,17 @@ namespace Npgsql.SqlGenerators
         /// <returns></returns>
         private VisitedExpression DateAdd(string functionName, IList<DbExpression> args)
         {
-            string operation = "";
+            Operator operation = null;
             string part = "";
             bool nano = false;
             if (functionName.Contains("Add"))
             {
-                operation = "+";
+                operation = Operator.Add;
                 part = functionName.Substring(3);
             }
             else if (functionName.Contains("Diff"))
             {
-                operation = "-";
+                operation = Operator.Sub;
                 part = functionName.Substring(4);
             }
             else throw new NotSupportedException();
@@ -1167,24 +1133,17 @@ namespace Npgsql.SqlGenerators
             }
 
             System.Diagnostics.Debug.Assert(args.Count == 2);
-            VisitedExpression dateAddDiff = new LiteralExpression("");
-            dateAddDiff.Append(args[0].Accept(this));
-            dateAddDiff.Append(operation);
-            dateAddDiff.Append(args[1].Accept(this));
-            dateAddDiff.Append(nano
-                                   ? String.Format("/ 1000 * INTERVAL '1 {0}'", part)
-                                   : String.Format(" * INTERVAL '1 {0}'", part));
-
-            return dateAddDiff;
+            OperatorExpression mulLeft = OperatorExpression.Build(operation, args[0].Accept(this), args[1].Accept(this));
+            if (nano)
+                mulLeft = OperatorExpression.Build(Operator.Div, mulLeft, new LiteralExpression("1000"));
+            LiteralExpression mulRight = new LiteralExpression(String.Format("INTERVAL '1 {0}'", part));
+            return OperatorExpression.Build(Operator.Mul, mulLeft, mulRight);
         }
 
-        private VisitedExpression BitwiseOperator(IList<DbExpression> args, string oper)
+        private VisitedExpression BitwiseOperator(IList<DbExpression> args, Operator oper)
         {
             System.Diagnostics.Debug.Assert(args.Count == 2);
-            VisitedExpression arg = args[0].Accept(this);
-            arg.Append(oper);
-            arg.Append(args[1].Accept(this));
-            return arg;
+            return OperatorExpression.Build(oper, args[0].Accept(this), args[1].Accept(this));
         }
 
 #if ENTITIES6
@@ -1198,7 +1157,7 @@ namespace Npgsql.SqlGenerators
                 elements[i] = (ConstantExpression)expression.List[i].Accept(this);
             }
 
-            return new InExpression(item, elements);
+            return OperatorExpression.Build(Operator.In, item, new ConstantListExpression(elements));
         }
 
         public override VisitedExpression Visit(DbPropertyExpression expression)
