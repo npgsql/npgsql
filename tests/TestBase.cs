@@ -288,7 +288,7 @@ namespace NpgsqlTests
 
         static TestBase()
         {
-            NpgsqlEventLog.Level = LogLevel.Debug;
+            NpgsqlEventLog.Level = LogLevel.None;
             NpgsqlEventLog.EchoMessages = true;
         }
 
