@@ -26,7 +26,7 @@ namespace NpgsqlTests
             {
                 while (!metrics.TimesUp)
                 {
-                    ExecuteNonQuery("set ");
+                    ExecuteNonQuery("set lock_timeout = 1000");
                     metrics.IncrementIterations();
                 }
             }
