@@ -596,9 +596,30 @@ namespace Npgsql.SqlGenerators
             // Normally handled by VisitInputWithBinding
 
             // Otherwise, it is (probably) a child of a DbElementExpression,
-            // in which case the child of this expression is (probably) a DbProjectExpression,
-            // so the correct columns will be projected since Limit is compatible with the result of a DbProjectExpression
-            return VisitInputWithBinding(expression, NextAlias()).Last.Exp;
+            // in which case the child of this expression might be a DbProjectExpression,
+            // then the correct columns will be projected since Limit is compatible with the result of a DbProjectExpression,
+            // which will result in having a Projection on the node after visiting it.
+            PendingProjectsNode node = VisitInputWithBinding(expression, NextAlias());
+            if (node.Last.Exp.Projection == null)
+            {
+                // This DbLimitExpression is (probably) a child of DbElementExpression
+                // and this expression's child is not a DbProjectExpression, but we should
+                // find a DbProjectExpression if we look deeper in the command tree.
+                // The child of this expression is (probably) a DbSortExpression or something else
+                // that will (probably) be an ancestor to a DbProjectExpression.
+
+                // Since this is (probably) a child of DbElementExpression, we want the first column,
+                // so make sure it is propagated from the nearest explicit projection.
+
+                CommaSeparatedExpression projection = node.Selects[0].Exp.Projection;
+                for (int i = 1; i < node.Selects.Count; i++)
+                {
+                    ColumnExpression column = (ColumnExpression)projection.Arguments[0];
+                    
+                    node.Selects[i].Exp.ColumnsToProject[new StringPair(node.Selects[i - 1].AsName, column.Name)] = column.Name;
+                }
+            }
+            return node.Last.Exp;
         }
 
         public override VisitedExpression Visit(DbLikeExpression expression)

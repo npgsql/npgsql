@@ -383,7 +383,17 @@ namespace NpgsqlTests
                 // Check precedence for ||
                 // http://stackoverflow.com/questions/21908464/wrong-query-generated-by-postgresql-provider-to-entity-framework-for-contains-an
                 context.Posts.Where(p => "a" != string.Concat("a", "b")).ToArray();
-
+                
+                // NewInstance(Column(Element(Limit(Sort(Project(...))))))
+                // https://github.com/npgsql/Npgsql/issues/280
+                (from postsGrouped in context.Posts.GroupBy(x => x.BlogId)
+                 let lastPostDate = postsGrouped.OrderByDescending(x => x.CreationDate)
+                                                                 .Select(x => x.CreationDate)
+                                                                  .FirstOrDefault()
+                 select new {
+                     LastPostDate = lastPostDate
+                 }).ToArray();
+                
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
                 };
