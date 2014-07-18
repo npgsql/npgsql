@@ -740,6 +740,8 @@ namespace NpgsqlTests
         [SetUp]
         public void Setup()
         {
+            NpgsqlEventLog.Level = LogLevel.None;
+            NpgsqlEventLog.EchoMessages = false;
             _watch = new Stopwatch();
             _watch.Start();
         }

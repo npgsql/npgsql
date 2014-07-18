@@ -60,9 +60,9 @@ namespace Npgsql
     public class NpgsqlEventLog
     {
         // Logging related values
+        public static LogLevel Level { get; set; }
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static String logfile;
-        private static LogLevel level;
         private static Boolean echomessages;
 
         private static readonly ResourceManager LogResMan;
@@ -75,24 +75,6 @@ namespace Npgsql
         static NpgsqlEventLog()
         {
             LogResMan = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-        }
-
-        ///<summary>
-        /// Sets/Returns the level of information to log to the logfile.
-        /// </summary>
-        /// <value>The current <see cref="Npgsql.LogLevel">LogLevel</see></value>
-        public static LogLevel Level
-        {
-            get
-            {
-                LogPropertyGet(LogLevel.Debug, CLASSNAME, "LogLevel");
-                return level;
-            }
-            set
-            {
-                LogPropertySet(LogLevel.Debug, CLASSNAME, "LogLevel", value);
-                level = value;
-            }
         }
 
         ///<summary>
@@ -144,7 +126,7 @@ namespace Npgsql
         /// <param name="msglevel">The minimum <see cref="Npgsql.LogLevel">LogLevel</see> for which this message should be logged.</param>
         private static void LogMsg(String message, LogLevel msglevel)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -181,7 +163,7 @@ namespace Npgsql
         internal static void LogMsg(ResourceManager resman, string ResourceString, LogLevel msglevel,
                                     params Object[] Parameters)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -208,7 +190,7 @@ namespace Npgsql
         /// <param name="IndexerParam">The parameter given to the Indexer</param>
         internal static void LogIndexerGet(LogLevel msglevel, string ClassName, object IndexerParam)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -225,7 +207,7 @@ namespace Npgsql
         /// <param name="value">The value the Indexer is set to</param>
         internal static void LogIndexerSet(LogLevel msglevel, string ClassName, object IndexerParam, object value)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -241,7 +223,7 @@ namespace Npgsql
         /// <param name="PropertyName">The name of the Property</param>
         internal static void LogPropertyGet(LogLevel msglevel, string ClassName, string PropertyName)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -258,7 +240,7 @@ namespace Npgsql
         /// <param name="value">The value the Property is set to</param>
         internal static void LogPropertySet(LogLevel msglevel, string ClassName, string PropertyName, object value)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -274,7 +256,7 @@ namespace Npgsql
         /// <param name="MethodName">The name of the Method</param>
         internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -291,7 +273,7 @@ namespace Npgsql
         /// <param name="MethodParameter">The value of the Argument of the Method</param>
         internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -310,7 +292,7 @@ namespace Npgsql
         internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter1,
                                             object MethodParameter2)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -331,7 +313,7 @@ namespace Npgsql
         internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName, object MethodParameter1,
                                             object MethodParameter2, object MethodParameter3)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
@@ -351,7 +333,7 @@ namespace Npgsql
         internal static void LogMethodEnter(LogLevel msglevel, string ClassName, string MethodName,
                                             params object[] MethodParameters)
         {
-            if (msglevel > level)
+            if (msglevel > Level)
             {
                 return;
             }
