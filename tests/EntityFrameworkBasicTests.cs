@@ -343,6 +343,107 @@ namespace NpgsqlTests
 
         }
 
+        [Test]
+        public void Operators()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                int one = 1, two = 2, three = 3, four = 4;
+                bool True = true, False = false;
+                bool[] boolArr = { true, false };
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+                Assert.AreEqual(oneRow.Select(p => one & (two ^ three)).First(), 1);
+                Assert.AreEqual(oneRow.Select(p => ~(one & two)).First(), ~(one & two));
+                Assert.AreEqual(oneRow.Select(p => one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four).First(),
+                                                   one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four);
+                Assert.AreEqual(oneRow.Select(p => one - (two - three) - four - (- one - two) - (- three)).First(),
+                                                   one - (two - three) - four - (- one - two) - (- three));
+                Assert.AreEqual(oneRow.Select(p => boolArr.Contains(True == true)).First(), true);
+                Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False == true)).First(), false);
+                Assert.AreEqual(oneRow.Select(p => !boolArr.Contains(False != true)).First(), false);
+            }
+        }
+
+        [Test]
+        public void DataTypes()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+
+                Assert.AreEqual(oneRow.Select(p => (byte)1).First(), (byte)1);
+                Assert.AreEqual(oneRow.Select(p => (sbyte)1).First(), (sbyte)1);
+                Assert.AreEqual(oneRow.Select(p => (short)1).First(), (short)1);
+                Assert.AreEqual(oneRow.Select(p => (long)1).First(), (long)1);
+                Assert.AreEqual(oneRow.Select(p => 1.25M).First(), 1.25M);
+
+                // A literal TimeSpan is written as an interval
+                Assert.AreEqual(oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First(), new TimeSpan(1, 2, 3, 4));
+
+                // DateTimeOffset -> timestamptz
+                Assert.AreEqual(oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First(), new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero));
+
+                // DateTime -> timestamp
+                Assert.AreEqual(oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First(), new DateTime(2014, 2, 3, 4, 5, 6, 0));
+            }
+        }
+
+        [Test]
+        public void DateFunctions()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+
+                var dateAdds = oneRow.Select(p => new List<DateTime?>
+                {
+                    DbFunctions.AddDays(new DateTime(2014, 2, 28), 1),
+                    DbFunctions.AddHours(new DateTime(2014, 2, 28, 23, 0, 0), 1),
+                    DbFunctions.AddMinutes(new DateTime(2014, 2, 28, 23, 59, 0), 1),
+                    DbFunctions.AddSeconds(new DateTime(2014, 2, 28, 23, 59, 59), 1),
+                    DbFunctions.AddMilliseconds(new DateTime(2014, 2, 28, 23, 59, 59, 999), 2 - p),
+                    DbFunctions.AddMicroseconds(DbFunctions.AddMicroseconds(new DateTime(2014, 2, 28, 23, 59, 59, 999), 500), 500),
+                    DbFunctions.AddNanoseconds(new DateTime(2014, 2, 28, 23, 59, 59, 999), 999999 + p),
+                    DbFunctions.AddMonths(new DateTime(2014, 2, 1), 1),
+                    DbFunctions.AddYears(new DateTime(2013, 3, 1), 1)
+                }).First();
+                foreach (var result in dateAdds)
+                {
+                    Assert.IsTrue(result.Value == new DateTime(2014, 3, 1, 0, 0, 0));
+                }
+
+                var dateDiffs = oneRow.Select(p => new {
+                    a = DbFunctions.DiffDays(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    b = DbFunctions.DiffHours(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    c = DbFunctions.DiffMinutes(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    d = DbFunctions.DiffSeconds(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    e = DbFunctions.DiffMilliseconds(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    f = DbFunctions.DiffMicroseconds(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    g = DbFunctions.DiffNanoseconds(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(2000, 1, 1, 0, 0, 0)),
+                    h = DbFunctions.DiffMonths(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(3000, 1, 1, 0, 0, 0)),
+                    i = DbFunctions.DiffYears(new DateTime(1999, 12, 31, 23, 59, 59, 999), new DateTime(3000, 1, 1, 0, 0, 0)),
+                    j = DbFunctions.DiffYears(null, new DateTime(2000, 1, 1)),
+                    k = DbFunctions.DiffMinutes(new TimeSpan(1, 2, 3), new TimeSpan(4, 5, 6)),
+                    l = DbFunctions.DiffMinutes(new TimeSpan(1, 2, 3), null)
+                }).First();
+                Assert.AreEqual(dateDiffs.a, 1);
+                Assert.AreEqual(dateDiffs.b, 1);
+                Assert.AreEqual(dateDiffs.c, 1);
+                Assert.AreEqual(dateDiffs.d, 1);
+                Assert.AreEqual(dateDiffs.e, 1);
+                Assert.AreEqual(dateDiffs.f, 1000);
+                Assert.AreEqual(dateDiffs.g, 1000000);
+                Assert.AreEqual(dateDiffs.h, 12001);
+                Assert.AreEqual(dateDiffs.i, 1001);
+                Assert.AreEqual(dateDiffs.j, null);
+                Assert.AreEqual(dateDiffs.k, 183);
+                Assert.AreEqual(dateDiffs.l, null);
+            }
+        }
 
         //Hunting season is open Happy hunting on OrderBy,GroupBy,Min,Max,Skip,Take,ThenBy... and all posible combinations
         
@@ -393,13 +494,6 @@ namespace NpgsqlTests
                  select new {
                      LastPostDate = lastPostDate
                  }).ToArray();
-
-                int one = 1, two = 2, three = 3, four = 4;
-                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
-                Assert.AreEqual(oneRow.Select(p => one & (two ^ three)).First(), 1);
-                Assert.AreEqual(oneRow.Select(p => ~(one & two)).First(), ~(one & two));
-                Assert.AreEqual(oneRow.Select(p => one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four).First(),
-                                                   one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four);
 
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();

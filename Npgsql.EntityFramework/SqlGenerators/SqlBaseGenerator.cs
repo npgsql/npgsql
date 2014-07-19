@@ -776,6 +776,10 @@ namespace Npgsql.SqlGenerators
                     return "float8";
                 case PrimitiveTypeKind.DateTime:
                     return "timestamp";
+                case PrimitiveTypeKind.DateTimeOffset:
+                    return "timestamptz";
+                case PrimitiveTypeKind.Time:
+                    return "interval";
                 case PrimitiveTypeKind.Binary:
                     return "bytea";
                 case PrimitiveTypeKind.Guid:

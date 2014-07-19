@@ -132,6 +132,9 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Double:
                     sqlText.AppendFormat(ni, "cast({0} as float8)", _value);
                     break;
+                case PrimitiveTypeKind.Byte:
+                case PrimitiveTypeKind.SByte:
+                    // PostgreSQL has no support for bytes. int2 is used instead in Npgsql.
                 case PrimitiveTypeKind.Int16:
                     sqlText.AppendFormat(ni, "cast({0} as int2)", _value);
                     break;
@@ -158,10 +161,8 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
                     break;
                 case PrimitiveTypeKind.Time:
-                    sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
+                    sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);
                     break;
-                case PrimitiveTypeKind.Byte:
-                case PrimitiveTypeKind.SByte:
                 default:
                     // TODO: must support more constant value types.
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
@@ -949,19 +950,21 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            WriteSql(sqlText, null, null);
+            WriteSql(sqlText, null);
         }
 
-        internal void WriteSql(StringBuilder sqlText, OperatorExpression leftParent, OperatorExpression rightParent)
+        private void WriteSql(StringBuilder sqlText, OperatorExpression rightParent)
         {
             OperatorExpression leftOp = left as OperatorExpression;
             OperatorExpression rightOp = right as OperatorExpression;
 
             bool wrapLeft = leftOp != null && (op.RightAssoc ? leftOp.op.RightPrecedence <= op.LeftPrecedence : leftOp.op.RightPrecedence < op.LeftPrecedence);
             bool wrapRight = rightOp != null && (!op.RightAssoc ? rightOp.op.LeftPrecedence <= op.RightPrecedence : rightOp.op.LeftPrecedence < op.RightPrecedence);
-            
-            // Avoid parentheses for prefix operators if possible
-            if (wrapRight && rightOp.left == null && (rightParent == null || rightOp.op.RightPrecedence >= rightParent.op.LeftPrecedence))
+
+            // Avoid parentheses for prefix operators if possible,
+            // e.g. BitwiseNot: (a & (~ b)) & c is written as a & ~ b & c
+            // but (a + (~ b)) + c must be written as a + (~ b) + c
+            if (wrapRight && rightOp.left == null && (rightParent == null || (!rightParent.op.RightAssoc ? rightOp.op.RightPrecedence >= rightParent.op.LeftPrecedence : rightOp.op.RightPrecedence > rightParent.op.LeftPrecedence)))
                 wrapRight = false;
 
             if (left != null)
@@ -969,7 +972,7 @@ namespace Npgsql.SqlGenerators
                 if (wrapLeft)
                     sqlText.Append("(");
                 if (leftOp != null && !wrapLeft)
-                    leftOp.WriteSql(sqlText, leftParent, this);
+                    leftOp.WriteSql(sqlText, this);
                 else
                     left.WriteSql(sqlText);
                 if (wrapLeft)
@@ -983,7 +986,7 @@ namespace Npgsql.SqlGenerators
                 if (wrapRight)
                     sqlText.Append("(");
                 if (rightOp != null && !wrapRight)
-                    rightOp.WriteSql(sqlText, this, rightParent);
+                    rightOp.WriteSql(sqlText, rightParent);
                 else
                     right.WriteSql(sqlText);
                 if (wrapRight)
