@@ -393,7 +393,14 @@ namespace NpgsqlTests
                  select new {
                      LastPostDate = lastPostDate
                  }).ToArray();
-                
+
+                int one = 1, two = 2, three = 3, four = 4;
+                IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
+                Assert.AreEqual(oneRow.Select(p => one & (two ^ three)).First(), 1);
+                Assert.AreEqual(oneRow.Select(p => ~(one & two)).First(), ~(one & two));
+                Assert.AreEqual(oneRow.Select(p => one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four).First(),
+                                                   one + ~(two * three) + ~(two ^ ~three) - one ^ three * ~two / three | four);
+
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
                 };

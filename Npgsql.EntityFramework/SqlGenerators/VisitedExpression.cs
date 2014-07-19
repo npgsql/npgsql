@@ -21,14 +21,16 @@ namespace Npgsql.SqlGenerators
             ExpressionList = new List<VisitedExpression>();
         }
 
-        public void Append(VisitedExpression expression)
+        public VisitedExpression Append(VisitedExpression expression)
         {
             ExpressionList.Add(expression);
+            return this;
         }
 
-        public void Append(string literal)
+        public VisitedExpression Append(string literal)
         {
             ExpressionList.Add(new LiteralExpression(literal));
+            return this;
         }
 
         public override string ToString()
@@ -58,9 +60,10 @@ namespace Npgsql.SqlGenerators
             _literal = literal;
         }
 
-        public new void Append(VisitedExpression expresion)
+        public new LiteralExpression Append(VisitedExpression expresion)
         {
             base.Append(expresion);
+            return this;
         }
 
         public new void Append(string literal)
@@ -664,9 +667,16 @@ namespace Npgsql.SqlGenerators
             _name = name;
         }
 
-        internal void AddArgument(VisitedExpression visitedExpression)
+        internal FunctionExpression AddArgument(VisitedExpression visitedExpression)
         {
             _args.Add(visitedExpression);
+            return this;
+        }
+
+        internal FunctionExpression AddArgument(string argument)
+        {
+            _args.Add(new LiteralExpression(argument));
+            return this;
         }
 
         internal override void WriteSql(StringBuilder sqlText)

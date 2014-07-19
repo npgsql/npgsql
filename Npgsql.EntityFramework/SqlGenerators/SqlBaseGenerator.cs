@@ -994,6 +994,7 @@ namespace Npgsql.SqlGenerators
                     case "AddNanoseconds":
                     case "AddSeconds":
                     case "AddYears":
+                        return DateAdd(function.Name, args);
                     case "DiffDays":
                     case "DiffHours":
                     case "DiffMicroseconds":
@@ -1003,8 +1004,8 @@ namespace Npgsql.SqlGenerators
                     case "DiffNanoseconds":
                     case "DiffSeconds":
                     case "DiffYears":
-                        return DateAdd(function.Name, args);
-                    //    return
+                        System.Diagnostics.Debug.Assert(args.Count == 2);
+                        return DateDiff(function.Name, args[0].Accept(this), args[1].Accept(this));
                     case "Day":
                     case "Hour":
                     case "Minute":
@@ -1016,8 +1017,7 @@ namespace Npgsql.SqlGenerators
                         return DatePart("milliseconds", args);
                     case "GetTotalOffsetMinutes":
                         VisitedExpression timezone = DatePart("timezone", args);
-                        timezone.Append("/60");
-                        return timezone;
+                        return OperatorExpression.Build(Operator.Div, timezone, new LiteralExpression("60"));
                     case "CurrentDateTime":
                         return new LiteralExpression("LOCALTIMESTAMP");
                     case "CurrentUtcDateTime":
@@ -1132,20 +1132,8 @@ namespace Npgsql.SqlGenerators
         /// <returns></returns>
         private VisitedExpression DateAdd(string functionName, IList<DbExpression> args)
         {
-            Operator operation = null;
-            string part = "";
             bool nano = false;
-            if (functionName.Contains("Add"))
-            {
-                operation = Operator.Add;
-                part = functionName.Substring(3);
-            }
-            else if (functionName.Contains("Diff"))
-            {
-                operation = Operator.Sub;
-                part = functionName.Substring(4);
-            }
-            else throw new NotSupportedException();
+            string part = functionName.Substring(3);
 
             if (part == "Nanoseconds")
             {
@@ -1154,11 +1142,101 @@ namespace Npgsql.SqlGenerators
             }
 
             System.Diagnostics.Debug.Assert(args.Count == 2);
-            OperatorExpression mulLeft = OperatorExpression.Build(operation, args[0].Accept(this), args[1].Accept(this));
+            VisitedExpression time = args[0].Accept(this);
+            VisitedExpression mulLeft = args[1].Accept(this);
             if (nano)
                 mulLeft = OperatorExpression.Build(Operator.Div, mulLeft, new LiteralExpression("1000"));
             LiteralExpression mulRight = new LiteralExpression(String.Format("INTERVAL '1 {0}'", part));
-            return OperatorExpression.Build(Operator.Mul, mulLeft, mulRight);
+            return OperatorExpression.Build(Operator.Add, time, OperatorExpression.Build(Operator.Mul, mulLeft, mulRight));
+        }
+
+        private VisitedExpression DateDiff(string functionName, VisitedExpression start, VisitedExpression end)
+        {
+            switch (functionName)
+            {
+                case "DiffDays":
+                    start = new FunctionExpression("date_trunc").AddArgument("'day'").AddArgument(start);
+                    end = new FunctionExpression("date_trunc").AddArgument("'day'").AddArgument(end);
+                    return new FunctionExpression("date_part").AddArgument("'day'").AddArgument(
+                        OperatorExpression.Build(Operator.Sub, end, start)
+                    ).Append("::int4");
+                case "DiffHours":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'hour'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'hour'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return OperatorExpression.Build(Operator.Div, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("3600"));
+                    }
+                case "DiffMicroseconds":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000")), "int4");
+                    }
+                case "DiffMilliseconds":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'milliseconds'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'milliseconds'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000")), "int4");
+                    }
+                case "DiffMinutes":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'minute'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'minute'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return OperatorExpression.Build(Operator.Div, new FunctionExpression("extract").AddArgument(epoch).Append("::int4"), new LiteralExpression("60"));
+                    }
+                case "DiffMonths":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'month'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'month'").AddArgument(end);
+                        VisitedExpression age = new FunctionExpression("age").AddArgument(end).AddArgument(start);
+
+                        // A month is 30 days and a year is 365.25 days after conversion from interval to seconds.
+                        // After rounding and casting, the result will contain the correct number of months as an int4.
+                        FunctionExpression seconds = new FunctionExpression("extract").AddArgument(new LiteralExpression("epoch from ").Append(age));
+                        VisitedExpression months = OperatorExpression.Build(Operator.Div, seconds, new LiteralExpression("2629800.0"));
+                        return new FunctionExpression("round").AddArgument(months).Append("::int4");
+                    }
+                case "DiffNanoseconds":
+                    {
+                        // PostgreSQL only supports microseconds precision, so the value will be a multiple of 1000
+                        // This date_trunc will make sure start and end are of type timestamp, e.g. if the arguments is of type date
+                        start = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'microseconds'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return new CastExpression(OperatorExpression.Build(Operator.Mul, new FunctionExpression("extract").AddArgument(epoch), new LiteralExpression("1000000000")), "int4");
+                    }
+                case "DiffSeconds":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'second'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'second'").AddArgument(end);
+                        LiteralExpression epoch = new LiteralExpression("epoch from ");
+                        OperatorExpression diff = OperatorExpression.Build(Operator.Sub, end, start);
+                        epoch.Append(diff);
+                        return new FunctionExpression("extract").AddArgument(epoch).Append("::int4");
+                    }
+                case "DiffYears":
+                    {
+                        start = new FunctionExpression("date_trunc").AddArgument("'year'").AddArgument(start);
+                        end = new FunctionExpression("date_trunc").AddArgument("'year'").AddArgument(end);
+                        VisitedExpression age = new FunctionExpression("age").AddArgument(end).AddArgument(start);
+                        return new FunctionExpression("date_part").AddArgument("'year'").AddArgument(age).Append("::int4");
+                    }
+                default: throw new NotSupportedException("Internal error: unknown function name " + functionName);
+            }
         }
 
         private VisitedExpression BitwiseOperator(IList<DbExpression> args, Operator oper)
