@@ -3,8 +3,6 @@
     <PropertyGroup>
         <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">$(MSBuildProjectDirectory)\..\</SolutionDir>
 
-        <NuGetToolsPath>$(SolutionDir).nuget</NuGetToolsPath>
-
         <!-- Enable the restore command to run before builds -->
         <RestorePackages Condition="  '$(RestorePackages)' == '' ">false</RestorePackages>
 
@@ -27,19 +25,15 @@
         -->
     </ItemGroup>
 
-        <!-- Windows specific commands -->
-    <!--
     <PropertyGroup Condition=" '$(OS)' == 'Windows_NT'">
+        <!-- Windows specific commands -->
         <NuGetToolsPath>$([System.IO.Path]::Combine($(SolutionDir), ".nuget"))</NuGetToolsPath>
     </PropertyGroup>
-    -->
-    
-    <!-- We need to launch nuget.exe with the mono command if we're not on windows -->
-    <!--
+
     <PropertyGroup Condition=" '$(OS)' != 'Windows_NT'">
+        <!-- We need to launch nuget.exe with the mono command if we're not on windows -->
         <NuGetToolsPath>$(SolutionDir).nuget</NuGetToolsPath>
     </PropertyGroup>
-    -->
 
     <PropertyGroup>
         <PackagesProjectConfig Condition=" '$(OS)' == 'Windows_NT'">$(MSBuildProjectDirectory)\packages.$(MSBuildProjectName.Replace(' ', '_')).config</PackagesProjectConfig>
@@ -103,8 +97,8 @@
         <Exec Command="$(RestoreCommand)"
               Condition="'$(OS)' != 'Windows_NT' And Exists('$(PackagesConfig)')" />
 
-        <!--               LogStandardErrorAsError="true" -->
         <Exec Command="$(RestoreCommand)"
+              LogStandardErrorAsError="true"
               Condition="'$(OS)' == 'Windows_NT' And Exists('$(PackagesConfig)')" />
     </Target>
 
