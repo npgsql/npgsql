@@ -288,8 +288,8 @@ namespace NpgsqlTests
 
         static TestBase()
         {
-            NpgsqlEventLog.Level = LogLevel.Debug;
-            NpgsqlEventLog.EchoMessages = true;
+            //NpgsqlEventLog.Level = LogLevel.Debug;
+            //NpgsqlEventLog.EchoMessages = true;
         }
 
         #endregion
