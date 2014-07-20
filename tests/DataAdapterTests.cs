@@ -39,6 +39,7 @@ namespace NpgsqlTests
         public DataAdapterTests(string backendVersion) : base(backendVersion) { }
 
         [Test]
+        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void InsertWithDataSet()
         {
             var ds = new DataSet();
@@ -241,6 +242,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void UpdateLettingNullFieldValue()
         {
             var command = new NpgsqlCommand(@"INSERT INTO data (field_int2) VALUES (2)", Conn);

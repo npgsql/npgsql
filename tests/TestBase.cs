@@ -396,4 +396,21 @@ namespace NpgsqlTests
 
         #endregion
     }
+
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
+    public class MonoIgnore : Attribute, ITestAction
+    {
+        readonly string _ignoreText;
+
+        public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+
+        public void BeforeTest(TestDetails testDetails)
+        {
+            if (Type.GetType("Mono.Runtime") != null)
+                Assert.Ignore("Ignored on mono " + (_ignoreText ?? _ignoreText));
+        }
+
+        public void AfterTest(TestDetails testDetails) { }
+        public ActionTargets Targets { get { return ActionTargets.Test; } }
+    }
 }
