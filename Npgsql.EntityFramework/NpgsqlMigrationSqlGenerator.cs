@@ -47,7 +47,7 @@ namespace Npgsql
             addedSchemas = new List<string>();
             addedExtensions = new List<string>();
             serverVersion = new Version(providerManifestToken);
-			Convert(migrationOperations);
+            Convert(migrationOperations);
             return migrationStatments;
         }
 
@@ -59,18 +59,18 @@ namespace Npgsql
         {
             foreach (var migrationOperation in operations)
             {
-	            if (migrationOperation is SqlOperation)
-	            {
-					AddStatment((migrationOperation as SqlOperation).Sql, (migrationOperation as SqlOperation).SuppressTransaction);
-				} 
-				else if (migrationOperation is UpdateDatabaseOperation) 
-				{
-					Convert((migrationOperation as UpdateDatabaseOperation).Migrations as IEnumerable<MigrationOperation>);
-				}
+                if (migrationOperation is SqlOperation)
+                {
+                    AddStatment((migrationOperation as SqlOperation).Sql, (migrationOperation as SqlOperation).SuppressTransaction);
+                } 
+                else if (migrationOperation is UpdateDatabaseOperation) 
+                {
+                    Convert((migrationOperation as UpdateDatabaseOperation).Migrations as IEnumerable<MigrationOperation>);
+                }
                 
                 else
                 {
-		            Convert((dynamic) migrationOperation);
+                    Convert((dynamic) migrationOperation);
                 }
             }
         }
@@ -93,12 +93,12 @@ namespace Npgsql
 
         #endregion
 
-		// This provides a base method that can be used by child MigrationSqlGenerators in order to create custom migration operations		
-		protected virtual void Convert(MigrationOperation migrationOperation) {
-			throw new NotImplementedException("Unhandled MigrationOperation " + migrationOperation.GetType().Name + " in " + GetType().Name);
-		}
-		
-		#region History
+        // This provides a base method that can be used by child MigrationSqlGenerators in order to create custom migration operations		
+        protected virtual void Convert(MigrationOperation migrationOperation) {
+            throw new NotImplementedException("Unhandled MigrationOperation " + migrationOperation.GetType().Name + " in " + GetType().Name);
+        }
+        
+        #region History
 
         private void Convert(HistoryOperation historyOperation)
         {
