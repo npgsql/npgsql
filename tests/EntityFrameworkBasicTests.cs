@@ -477,23 +477,9 @@ namespace NpgsqlTests
                 // Similar to https://github.com/npgsql/Npgsql/issues/156 However EF is turning the GroupBy into a Distinct here
                 context.Posts.OrderBy(p => p.Title).ThenBy(p => p.Content).Take(100).GroupBy(p => p.Title).Select(p => p.Key).ToArray();
 
-                // Similar to https://github.com/npgsql/Npgsql/issues/216
-                (from d in context.Posts
-                 group d by new { d.Content, d.Title }).FirstOrDefault();
-
                 // Check precedence for ||
                 // http://stackoverflow.com/questions/21908464/wrong-query-generated-by-postgresql-provider-to-entity-framework-for-contains-an
                 context.Posts.Where(p => "a" != string.Concat("a", "b")).ToArray();
-                
-                // NewInstance(Column(Element(Limit(Sort(Project(...))))))
-                // https://github.com/npgsql/Npgsql/issues/280
-                (from postsGrouped in context.Posts.GroupBy(x => x.BlogId)
-                 let lastPostDate = postsGrouped.OrderByDescending(x => x.CreationDate)
-                                                                 .Select(x => x.CreationDate)
-                                                                  .FirstOrDefault()
-                 select new {
-                     LastPostDate = lastPostDate
-                 }).ToArray();
 
                 Action<string> elinq = (string query) => {
                     new System.Data.Entity.Core.Objects.ObjectQuery<System.Data.Common.DbDataRecord>(query, ((System.Data.Entity.Infrastructure.IObjectContextAdapter)context).ObjectContext).ToArray();
@@ -512,6 +498,30 @@ namespace NpgsqlTests
                 // Anyelement (creates DbNewInstanceExpressions)
                 elinq("Anyelement (Select Blogs.BlogId, Blogs.Name from Blogs)");
                 elinq("Select a.BlogId, Anyelement (Select value b.BlogId + 1 from Blogs as b) as c from Blogs as a");
+            }
+        }
+
+        [Test]
+        [MonoIgnore("Probably bug in mono. See https://github.com/npgsql/Npgsql/issues/289.")]
+        public void TestComplicatedQueriesMonoFails()
+        {
+            using (var context = new BloggingContext(ConnectionStringEF))
+            {
+                context.Database.Log = Console.Out.WriteLine;
+
+                // Similar to https://github.com/npgsql/Npgsql/issues/216
+                (from d in context.Posts
+                 group d by new { d.Content, d.Title }).FirstOrDefault();
+
+                // NewInstance(Column(Element(Limit(Sort(Project(...))))))
+                // https://github.com/npgsql/Npgsql/issues/280
+                (from postsGrouped in context.Posts.GroupBy(x => x.BlogId)
+                 let lastPostDate = postsGrouped.OrderByDescending(x => x.CreationDate)
+                                                                 .Select(x => x.CreationDate)
+                                                                  .FirstOrDefault()
+                 select new {
+                     LastPostDate = lastPostDate
+                 }).ToArray();
             }
         }
 
