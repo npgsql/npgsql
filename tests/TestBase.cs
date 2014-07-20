@@ -407,7 +407,12 @@ namespace NpgsqlTests
         public void BeforeTest(TestDetails testDetails)
         {
             if (Type.GetType("Mono.Runtime") != null)
-                Assert.Ignore("Ignored on mono " + (_ignoreText ?? _ignoreText));
+            {
+                var msg = "Ignored on mono";
+                if (_ignoreText != null)
+                    msg += ": " + _ignoreText;
+                Assert.Ignore(msg);
+            }
         }
 
         public void AfterTest(TestDetails testDetails) { }
