@@ -21,14 +21,16 @@ namespace Npgsql.SqlGenerators
             ExpressionList = new List<VisitedExpression>();
         }
 
-        public void Append(VisitedExpression expression)
+        public VisitedExpression Append(VisitedExpression expression)
         {
             ExpressionList.Add(expression);
+            return this;
         }
 
-        public void Append(string literal)
+        public VisitedExpression Append(string literal)
         {
             ExpressionList.Add(new LiteralExpression(literal));
+            return this;
         }
 
         public override string ToString()
@@ -47,11 +49,6 @@ namespace Npgsql.SqlGenerators
                 expression.WriteSql(sqlText);
             }
         }
-
-        internal static bool MustWrap(VisitedExpression exp)
-        {
-            return !(exp is PropertyExpression || exp is ColumnReferenceExpression || exp is ConstantExpression);
-        }
     }
 
     internal class LiteralExpression : VisitedExpression
@@ -63,9 +60,10 @@ namespace Npgsql.SqlGenerators
             _literal = literal;
         }
 
-        public new void Append(VisitedExpression expresion)
+        public new LiteralExpression Append(VisitedExpression expresion)
         {
             base.Append(expresion);
+            return this;
         }
 
         public new void Append(string literal)
@@ -134,6 +132,9 @@ namespace Npgsql.SqlGenerators
                 case PrimitiveTypeKind.Double:
                     sqlText.AppendFormat(ni, "cast({0} as float8)", _value);
                     break;
+                case PrimitiveTypeKind.Byte:
+                case PrimitiveTypeKind.SByte:
+                    // PostgreSQL has no support for bytes. int2 is used instead in Npgsql.
                 case PrimitiveTypeKind.Int16:
                     sqlText.AppendFormat(ni, "cast({0} as int2)", _value);
                     break;
@@ -160,10 +161,8 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
                     break;
                 case PrimitiveTypeKind.Time:
-                    sqlText.AppendFormat(ni, "TIME '{0:T}'", _value);
+                    sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);
                     break;
-                case PrimitiveTypeKind.Byte:
-                case PrimitiveTypeKind.SByte:
                 default:
                     // TODO: must support more constant value types.
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
@@ -627,7 +626,7 @@ namespace Npgsql.SqlGenerators
 
         internal void And(VisitedExpression andAlso)
         {
-            _where = new BooleanExpression("AND", _where, andAlso);
+            _where = OperatorExpression.Build(Operator.And, _where, andAlso);
         }
     }
 
@@ -669,9 +668,16 @@ namespace Npgsql.SqlGenerators
             _name = name;
         }
 
-        internal void AddArgument(VisitedExpression visitedExpression)
+        internal FunctionExpression AddArgument(VisitedExpression visitedExpression)
         {
             _args.Add(visitedExpression);
+            return this;
+        }
+
+        internal FunctionExpression AddArgument(string argument)
+        {
+            _args.Add(new LiteralExpression(argument));
+            return this;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
@@ -767,136 +773,242 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class BooleanExpression : VisitedExpression
+    internal class Operator
     {
-        private string _booleanOperator;
-        private VisitedExpression _left;
-        private VisitedExpression _right;
+        private string op;
+        private int leftPrecedence;
+        private int rightPrecedence;
+        private UnaryTypes unaryType;
+        private bool rightAssoc;
 
-        public BooleanExpression(string booleanOperator, VisitedExpression left, VisitedExpression right)
-        {
-            _booleanOperator = booleanOperator;
-            _left = left;
-            _right = right;
+        public string Op { get { return op; } }
+        public int LeftPrecedence { get { return leftPrecedence; } }
+        public int RightPrecedence { get { return rightPrecedence; } }
+        public UnaryTypes UnaryType { get { return unaryType; } }
+        public bool RightAssoc { get { return rightAssoc; } }
+
+        internal enum UnaryTypes {
+            Binary,
+            Prefix,
+            Postfix
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        private Operator(string op, int precedence)
         {
-            bool wrapLeft = MustWrap(_left);
-            bool wrapRight = MustWrap(_right);
-            if (wrapLeft)
-                sqlText.Append("(");
-            _left.WriteSql(sqlText);
-            if (wrapLeft)
-                sqlText.Append(") ");
-            sqlText.Append(_booleanOperator);
-            if (wrapRight)
-                sqlText.Append(" (");
-            _right.WriteSql(sqlText);
-            if (wrapRight)
-                sqlText.Append(")");
-            base.WriteSql(sqlText);
-        }
-    }
-
-    internal class NegatableBooleanExpression : NegatableExpression
-    {
-        private DbExpressionKind _booleanOperator;
-        private VisitedExpression _left;
-        private VisitedExpression _right;
-
-        public NegatableBooleanExpression(DbExpressionKind booleanOperator, VisitedExpression left, VisitedExpression right)
-        {
-            _booleanOperator = booleanOperator;
-            _left = left;
-            _right = right;
+            this.op = ' ' + op + ' ';
+            this.leftPrecedence = precedence;
+            this.rightPrecedence = precedence;
+            this.unaryType = UnaryTypes.Binary;
         }
 
-        internal override void WriteSql(StringBuilder sqlText)
+        private Operator(string op, int leftPrecedence, int rightPrecedence)
         {
-            bool wrapLeft = MustWrap(_left);
-            bool wrapRight = MustWrap(_right);
-            if (wrapLeft)
-                sqlText.Append("(");
-            _left.WriteSql(sqlText);
-            if (wrapLeft)
-                sqlText.Append(") ");
-            switch (_booleanOperator)
+            this.op = ' ' + op + ' ';
+            this.leftPrecedence = leftPrecedence;
+            this.rightPrecedence = rightPrecedence;
+            this.unaryType = UnaryTypes.Binary;
+        }
+
+        private Operator(string op, int precedence, UnaryTypes unaryType, bool rightAssoc)
+        {
+            this.op = unaryType == UnaryTypes.Binary ? ' ' + op + ' ' : unaryType == UnaryTypes.Prefix ? op + ' ' : ' ' + op;
+            this.leftPrecedence = precedence;
+            this.rightPrecedence = precedence;
+            this.unaryType = unaryType;
+            this.rightAssoc = rightAssoc;
+        }
+
+        /*
+         * Operator table
+         * Corresponds to the operator precedence table at
+         * http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html
+         * 
+         * Note that NOT IN and NOT LIKE have different precedences depending on
+         * if the other operator is to the left or to the right.
+         * For example, "a = b NOT LIKE c" is parsed as "(a = b) NOT LIKE c"
+         * but "a NOT LIKE b = c" is parsed as "(a NOT LIKE b) = c"
+         * This is because PostgreSQL's parser uses Bison's automatic
+         * operator precedence handling, and NOT and LIKE has different precedences,
+         * so this happens when the two keywords are put together like this.
+         * 
+         */
+        public static readonly Operator UnaryMinus = new Operator("-", 17, UnaryTypes.Prefix, true);
+        public static readonly Operator Mul = new Operator("*", 15);
+        public static readonly Operator Div = new Operator("/", 15);
+        public static readonly Operator Mod = new Operator("%", 15);
+        public static readonly Operator Add = new Operator("+", 14);
+        public static readonly Operator Sub = new Operator("-", 14);
+        public static readonly Operator IsNull = new Operator("IS NULL", 13, UnaryTypes.Postfix, false);
+        public static readonly Operator IsNotNull = new Operator("IS NOT NULL", 13, UnaryTypes.Postfix, false);
+        public static readonly Operator LessThanOrEquals = new Operator("<=", 10);
+        public static readonly Operator GreaterThanOrEquals = new Operator(">=", 10);
+        public static readonly Operator NotEquals = new Operator("!=", 10);
+        public static readonly Operator BitwiseAnd = new Operator("&", 10);
+        public static readonly Operator BitwiseOr = new Operator("|", 10);
+        public static readonly Operator BitwiseXor = new Operator("#", 10);
+        public static readonly Operator BitwiseNot = new Operator("~", 10, UnaryTypes.Prefix, false);
+        public static readonly Operator Concat = new Operator("||", 10);
+        public static readonly Operator In = new Operator("IN", 9);
+        public static readonly Operator NotIn = new Operator("NOT IN", 3, 9);
+        public static readonly Operator Like = new Operator("LIKE", 6);
+        public static readonly Operator NotLike = new Operator("NOT LIKE", 3, 6);
+        public static readonly Operator LessThan = new Operator("<", 5);
+        public static readonly Operator GreaterThan = new Operator(">", 5);
+        public static readonly new Operator Equals = new Operator("=", 4, UnaryTypes.Binary, true);
+        public static readonly Operator Not = new Operator("NOT", 3, UnaryTypes.Prefix, true);
+        public static readonly Operator And = new Operator("AND", 2);
+        public static readonly Operator Or = new Operator("OR", 1);
+
+        public static readonly Dictionary<Operator, Operator> NegateDict;
+
+        static Operator()
+        {
+            NegateDict = new Dictionary<Operator, Operator>()
             {
-                case DbExpressionKind.Equals:
-                    if (Negated)
-                        sqlText.Append("!=");
-                    else
-                        sqlText.Append("=");
-                    break;
-                case DbExpressionKind.GreaterThan:
-                    if (Negated)
-                        sqlText.Append("<=");
-                    else
-                        sqlText.Append(">");
-                    break;
-                case DbExpressionKind.GreaterThanOrEquals:
-                    if (Negated)
-                        sqlText.Append("<");
-                    else
-                        sqlText.Append(">=");
-                    break;
-                case DbExpressionKind.LessThan:
-                    if (Negated)
-                        sqlText.Append(">=");
-                    else
-                        sqlText.Append("<");
-                    break;
-                case DbExpressionKind.LessThanOrEquals:
-                    if (Negated)
-                        sqlText.Append(">");
-                    else
-                        sqlText.Append("<=");
-                    break;
-                case DbExpressionKind.Like:
-                    if (Negated)
-                        sqlText.Append(" NOT");
-                    sqlText.Append(" LIKE ");
-                    break;
-                case DbExpressionKind.NotEquals:
-                    if (Negated)
-                        sqlText.Append("=");
-                    else
-                        sqlText.Append("!=");
-                    break;
-                default:
-                    throw new NotSupportedException();
+                {IsNull, IsNotNull},
+                {IsNotNull, IsNull},
+                {LessThanOrEquals, GreaterThan},
+                {GreaterThanOrEquals, LessThan},
+                {NotEquals, Equals},
+                {In, NotIn},
+                {NotIn, In},
+                {Like, NotLike},
+                {NotLike, Like},
+                {LessThan, GreaterThanOrEquals},
+                {GreaterThan, LessThanOrEquals},
+                {Equals, NotEquals}
+            };
+        }
+    }
+
+    internal class OperatorExpression : VisitedExpression
+    {
+        private Operator op;
+        private VisitedExpression left;
+        private VisitedExpression right;
+
+        private OperatorExpression(Operator op, VisitedExpression left, VisitedExpression right)
+        {
+            this.op = op;
+            this.left = left;
+            this.right = right;
+        }
+
+        public static OperatorExpression Build(Operator op, VisitedExpression left, VisitedExpression right)
+        {
+            if (op.UnaryType == Operator.UnaryTypes.Binary)
+            {
+                return new OperatorExpression(op, left, right);
             }
-            if (wrapRight)
-                sqlText.Append(" (");
-            _right.WriteSql(sqlText);
-            if (wrapRight)
-                sqlText.Append(")");
+            else
+            {
+                throw new InvalidOperationException("Unary operator with two operands");
+            }
+        }
+
+        public static OperatorExpression Build(Operator op, VisitedExpression exp)
+        {
+            if (op.UnaryType == Operator.UnaryTypes.Prefix)
+            {
+                return new OperatorExpression(op, null, exp);
+            }
+            else if (op.UnaryType == Operator.UnaryTypes.Postfix)
+            {
+                return new OperatorExpression(op, exp, null);
+            }
+            else
+            {
+                throw new InvalidOperationException("Binary operator with one operand");
+            }
+        }
+
+        /// <summary>
+        /// Negates an expression.
+        /// If possible, replaces the operator of exp if exp is a negatable OperatorExpression,
+        /// else return a new OperatorExpression of type Not that wraps exp.
+        /// </summary>
+        public static VisitedExpression Negate(VisitedExpression exp)
+        {
+            OperatorExpression expOp = exp as OperatorExpression;
+            if (expOp != null)
+            {
+                Operator op = expOp.op;
+                Operator newOp = null;
+                if (Operator.NegateDict.TryGetValue(op, out newOp))
+                {
+                    expOp.op = newOp;
+                    return expOp;
+                }
+                if (expOp.op == Operator.Not)
+                {
+                    return expOp.right;
+                }
+            }
+
+            return OperatorExpression.Build(Operator.Not, exp);
+        }
+
+        internal override void WriteSql(StringBuilder sqlText)
+        {
+            WriteSql(sqlText, null);
+        }
+
+        private void WriteSql(StringBuilder sqlText, OperatorExpression rightParent)
+        {
+            OperatorExpression leftOp = left as OperatorExpression;
+            OperatorExpression rightOp = right as OperatorExpression;
+
+            bool wrapLeft = leftOp != null && (op.RightAssoc ? leftOp.op.RightPrecedence <= op.LeftPrecedence : leftOp.op.RightPrecedence < op.LeftPrecedence);
+            bool wrapRight = rightOp != null && (!op.RightAssoc ? rightOp.op.LeftPrecedence <= op.RightPrecedence : rightOp.op.LeftPrecedence < op.RightPrecedence);
+
+            // Avoid parentheses for prefix operators if possible,
+            // e.g. BitwiseNot: (a & (~ b)) & c is written as a & ~ b & c
+            // but (a + (~ b)) + c must be written as a + (~ b) + c
+            if (wrapRight && rightOp.left == null && (rightParent == null || (!rightParent.op.RightAssoc ? rightOp.op.RightPrecedence >= rightParent.op.LeftPrecedence : rightOp.op.RightPrecedence > rightParent.op.LeftPrecedence)))
+                wrapRight = false;
+
+            if (left != null)
+            {
+                if (wrapLeft)
+                    sqlText.Append("(");
+                if (leftOp != null && !wrapLeft)
+                    leftOp.WriteSql(sqlText, this);
+                else
+                    left.WriteSql(sqlText);
+                if (wrapLeft)
+                    sqlText.Append(")");
+            }
+
+            sqlText.Append(op.Op);
+
+            if (right != null)
+            {
+                if (wrapRight)
+                    sqlText.Append("(");
+                if (rightOp != null && !wrapRight)
+                    rightOp.WriteSql(sqlText, rightParent);
+                else
+                    right.WriteSql(sqlText);
+                if (wrapRight)
+                    sqlText.Append(")");
+            }
+
             base.WriteSql(sqlText);
         }
     }
 
-    internal class InExpression : VisitedExpression
+    internal class ConstantListExpression : VisitedExpression
     {
-        private VisitedExpression _left;
         private IEnumerable<ConstantExpression> _list;
 
-        public InExpression(VisitedExpression left, IEnumerable<ConstantExpression> list)
+        public ConstantListExpression(IEnumerable<ConstantExpression> list)
         {
-            _left = left;
             _list = list;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            bool wrapLeft = MustWrap(_left);
-            if (wrapLeft)
-                sqlText.Append("(");
-            _left.WriteSql(sqlText);
-            if (wrapLeft)
-                sqlText.Append(")");
-
-            sqlText.Append(" IN (");
+            sqlText.Append("(");
             bool first = true;
             foreach (var constant in _list)
             {
@@ -943,25 +1055,7 @@ namespace Npgsql.SqlGenerators
         }
     }
 
-    internal class NegatableExpression : VisitedExpression
-    {
-        private bool _negated;
-
-        protected bool Negated
-        {
-            get { return _negated; }
-            set { _negated = value; }
-        }
-
-        public NegatableExpression Negate()
-        {
-            _negated = !_negated;
-            // allows to be used inline
-            return this;
-        }
-    }
-
-    internal class ExistsExpression : NegatableExpression
+    internal class ExistsExpression : VisitedExpression
     {
         private VisitedExpression _argument;
 
@@ -972,52 +1066,9 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            if (Negated)
-                sqlText.Append("NOT ");
             sqlText.Append("EXISTS (");
             _argument.WriteSql(sqlText);
             sqlText.Append(")");
-            base.WriteSql(sqlText);
-        }
-    }
-
-    internal class NegateExpression : NegatableExpression
-    {
-        private VisitedExpression _argument;
-
-        public NegateExpression(VisitedExpression argument)
-        {
-            _argument = argument;
-            Negated = true;
-        }
-
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            if (Negated)
-                sqlText.Append(" NOT ");
-            sqlText.Append("(");
-            _argument.WriteSql(sqlText);
-            sqlText.Append(")");
-            base.WriteSql(sqlText);
-        }
-    }
-
-    internal class IsNullExpression : NegatableExpression
-    {
-        private VisitedExpression _argument;
-
-        public IsNullExpression(VisitedExpression argument)
-        {
-            _argument = argument;
-        }
-
-        internal override void WriteSql(StringBuilder sqlText)
-        {
-            _argument.WriteSql(sqlText);
-            sqlText.Append(" IS ");
-            if (Negated)
-                sqlText.Append("NOT ");
-            sqlText.Append("NULL ");
             base.WriteSql(sqlText);
         }
     }

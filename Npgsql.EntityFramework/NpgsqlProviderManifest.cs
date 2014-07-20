@@ -127,6 +127,7 @@ namespace Npgsql
                         return TypeUsage.CreateDateTimeOffsetTypeUsage(primitiveType, null);
                     }
                 case "time":
+                case "timetz":
                 case "interval":
                     if (storeType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
                         !facet.IsUnbounded && facet.Value != null)
@@ -155,7 +156,7 @@ namespace Npgsql
                     //TypeUsage.CreateDecimalTypeUsage
                     //TypeUsage.CreateStringTypeUsage
             }
-            throw new NotSupportedException();
+            throw new NotSupportedException("Not supported store type: " + storeTypeName);
         }
 
         public override TypeUsage GetStoreType(TypeUsage edmType)
@@ -271,7 +272,7 @@ namespace Npgsql
                     return TypeUsage.CreateDefaultTypeUsage(StoreTypeNameToStorePrimitiveType["int2"]);
             }
 
-            throw new NotSupportedException();
+            throw new NotSupportedException("Not supported edm type: " + edmType);
         }
 
         private static XmlReader CreateXmlReaderForResource(string resourceName)
