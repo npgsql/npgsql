@@ -255,7 +255,7 @@ namespace Npgsql
             get { return settings.SslMode; }
         }
 
-        internal static Boolean UseSslStream = false;
+        internal static Boolean UseSslStream = true;
 
         internal Boolean UseMonoSsl
         {
