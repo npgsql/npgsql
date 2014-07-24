@@ -191,7 +191,9 @@ namespace Npgsql
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly Dictionary<Keywords, ValueDescription> valueDescriptions = new Dictionary<Keywords, ValueDescription>();
 
+        #pragma warning disable 414
         private string originalConnectionString;
+        #pragma warning restore 414
 
         private const int POOL_SIZE_LIMIT = 1024;
         private const int TIMEOUT_LIMIT = 1024;

@@ -164,9 +164,11 @@ namespace Npgsql
             NotificationDelegate = new NotificationEventHandler(OnNotification);
 
             ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
+            #pragma warning disable 618
             CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
             CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
             PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+            #pragma warning restore 618
             ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
 
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
@@ -325,7 +327,9 @@ namespace Npgsql
             get { return settings.SSL; }
         }
 
-
+        /// <summary>
+        /// 
+        /// </summary>
         public Boolean UseSslStream
         {
             get { return NpgsqlConnector.UseSslStream; }
@@ -966,6 +970,7 @@ namespace Npgsql
         /// <summary>
         /// Default SSL CertificateSelectionCallback implementation.
         /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         internal X509Certificate DefaultCertificateSelectionCallback(X509CertificateCollection clientCertificates,
                                                                      X509Certificate serverCertificate, string targetHost,
                                                                      X509CertificateCollection serverRequestedCertificates)
@@ -983,6 +988,7 @@ namespace Npgsql
         /// <summary>
         /// Default SSL CertificateValidationCallback implementation.
         /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         internal bool DefaultCertificateValidationCallback(X509Certificate certificate, int[] certificateErrors)
         {
             if (CertificateValidationCallback != null)
@@ -998,6 +1004,7 @@ namespace Npgsql
         /// <summary>
         /// Default SSL PrivateKeySelectionCallback implementation.
         /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
         internal AsymmetricAlgorithm DefaultPrivateKeySelectionCallback(X509Certificate certificate, string targetHost)
         {
             if (PrivateKeySelectionCallback != null)

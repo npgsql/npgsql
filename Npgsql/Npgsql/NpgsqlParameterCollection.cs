@@ -677,7 +677,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CopyTo", array, index);
             (InternalList as ICollection).CopyTo(array, index);
-            IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
+            //IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
         }
 
         /// <summary>

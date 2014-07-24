@@ -150,11 +150,13 @@ namespace NpgsqlTypes
                     switch (c)
                     {
                         case 'A': // Asynchronous Notify
+                            #pragma warning disable 219
                             Int32 msglen = PGUtil.ReadInt32(stream);
                             Int32 pid = PGUtil.ReadInt32(stream);
                             String msg = PGUtil.ReadString(stream);
                             PGUtil.ReadString(stream);
                             String param = PGUtil.ReadString(stream);
+                            #pragma warning restore 219
 
                             break;
                             //------------------------------
@@ -166,14 +168,18 @@ namespace NpgsqlTypes
                             //------------------------------
                             // Notice from backend
                         case 'N':
+                            #pragma warning disable 219
                             Int32 l_nlen = PGUtil.ReadInt32(stream);
+                            #pragma warning restore 219
 
                             conn.Connector.FireNotice(new NpgsqlError(stream));
 
                             break;
 
                         case 'V':
+                            #pragma warning disable 219
                             Int32 l_msgLen = PGUtil.ReadInt32(stream);
+                            #pragma warning restore 219
                             Int32 l_valueLen = PGUtil.ReadInt32(stream);
 
                             if (l_valueLen == -1)

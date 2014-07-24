@@ -999,7 +999,9 @@ namespace Npgsql
         internal class NpgsqlContextHolder
         {
             private readonly NpgsqlConnector connector;
+            #pragma warning disable 414
             private readonly NpgsqlState state;
+            #pragma warning restore 414
 
             internal NpgsqlContextHolder(NpgsqlConnector connector, NpgsqlState state)
             {
