@@ -433,24 +433,15 @@ namespace Npgsql
         /// <param name="adapter">The <see cref="T:System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
         protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
         {
+            var npgsqlAdapter = adapter as NpgsqlDataAdapter;
+            if (npgsqlAdapter == null)
+                throw new ArgumentException("adapter needs to be a NpgsqlDataAdapter", "adapter");
 
-            /* Disabling this handler makes the ado.net updating code works.
-             * Check if this code is really necessary or how to implement it correctly.
-             * By having this handler specified, ADO.Net was reusing strangely NpgsqlParameters when updating datasets.
-             * See bug 1010973 for more info.
-             */
-
-            /*
-            if (!(adapter is NpgsqlDataAdapter))
-            {
-                throw new InvalidOperationException("adapter needs to be a NpgsqlDataAdapter");
-            }
-
-            this.rowUpdatingHandler = new NpgsqlRowUpdatingEventHandler(this.RowUpdatingHandler);
-
-            ((NpgsqlDataAdapter) adapter).RowUpdating += this.rowUpdatingHandler;
-             */
-
+            // Being called twice for the same adapter means unregister
+            if (adapter == DataAdapter)
+                npgsqlAdapter.RowUpdating -= RowUpdatingHandler;
+            else
+                npgsqlAdapter.RowUpdating += RowUpdatingHandler;
         }
 
         /// <summary>
@@ -459,7 +450,6 @@ namespace Npgsql
         /// <param name="sender">The sender</param>
         /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs"/> instance containing information about the event.</param>
         private void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e)
-
         {
             base.RowUpdatingHandler(e);
         }
