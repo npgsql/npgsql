@@ -59,7 +59,10 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlEventLog
     {
-        // Logging related values
+        ///<summary>
+        /// Sets/Returns the <see cref="Npgsql.LogLevel">LogLevel</see> to use for logging.
+        /// </summary>
+        /// <value>The current <see cref="Npgsql.LogLevel">LogLevel</see> to use for logging.</value>
         public static LogLevel Level { get; set; }
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static String logfile;

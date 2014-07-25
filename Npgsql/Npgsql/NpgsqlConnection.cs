@@ -325,7 +325,9 @@ namespace Npgsql
             get { return settings.SSL; }
         }
 
-
+        /// <summary>
+        /// If true, the connection will attempt to use SslStream instead of Mono.Security.
+        /// </summary>
         public Boolean UseSslStream
         {
             get { return NpgsqlConnector.UseSslStream; }

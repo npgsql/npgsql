@@ -32,7 +32,10 @@ using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Spatial;
 
 namespace Npgsql
-{
+{        
+    /// <summary>
+    /// Used to generate migration sql
+    /// </summary>
     public class NpgsqlMigrationSqlGenerator : MigrationSqlGenerator
     {
         List<MigrationStatement> migrationStatments;
@@ -40,6 +43,11 @@ namespace Npgsql
         private List<string> addedExtensions;
         private Version serverVersion;
 
+        /// <summary>
+        /// Generates the migration sql.
+        /// </summary>
+        /// <param name="migrationOperations">The operations in the migration</param>
+        /// <param name="providerManifestToken">The provider manifest token used for server versioning.</param>
         public override IEnumerable<MigrationStatement> Generate(
             IEnumerable<MigrationOperation> migrationOperations, string providerManifestToken)
         {
