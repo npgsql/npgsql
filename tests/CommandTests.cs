@@ -3991,6 +3991,102 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void Bug296()
+        {
+            NpgsqlEventLog.Level = LogLevel.Debug;
+            NpgsqlEventLog.EchoMessages = true;
+
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = @"SELECT desktop.veerunimi as veerunimi,
+           coalesce( desktop.width, 30) as width,
+           trim(desktop.controlsrc) as controlsrc,
+           TRIM(desktop.juhtbaas) AS juhtbaas,
+           desktop.doublewidt,
+           coalesce(andmetp.andmeklass,'') as andmeklass,
+           CASE WHEN andmetp.otsbaas in ('vkasutaj','fkasutaj') THEN 'kasutaja' ELSE                        
+           coalesce(andmetp.otsbaas,'') END as otsbaas,
+           coalesce(andmetp.kiirpref,'') as kiirpref,
+          coalesce(case when not andmetp.userlang or upper(andmetp.kiirnimi)=            
+              upper(andmetp.inlahte)
+            then
+            andmetp.kiirnimi 
+          else
+        substring( ''||andmetp.kiirnimi for 10 )
+         end
+        ,'')
+        as kiirnimi,
+
+         coalesce(andmetp.inlahte,'') as inlahte,
+         coalesce(andmetp.valivaljad,'') as valivaljad,
+         coalesce(andmetp.valivali2,'') as valivali2,
+         coalesce(andmetp.valifilter,'') as valifilter,
+         coalesce(andmetp.tyhjakeeld, false) as tyhjakeeld,
+         TRUE AS nait2,
+         desktop.format,
+         desktop.InputMask,
+         coalesce(andmetp.andmetp,'') as andmetp,
+         coalesce(CASE WHEN DynBackCol is not NULL AND DynBackCol<>'' THEN 0 ELSE                       
+         desktop.backcolor END,0)::int as backcolor,
+         coalesce(CASE WHEN DynForeCol is NOT NULL AND DynForeCol<>'' THEN 0 ELSE  
+         desktop.Forecolor END,0)::int as forecolor,
+         TRIM(coalesce(desktop.juhtbaas,''))=''  AS ISReadONly
+    FROM prpalk, desktop 
+     LEFT JOIN andmetp ON desktop.AlamKlass=AndmeTp.andmetp AND 
+     ( andmetp.otsbaas is null or ANDMETP.otsbaas not ilike 'FIRMA' )
+    left join kasutaja on kasutaja.kasutaja=upper(:p6)
+    WHERE ( desktop.baas=:p0 OR ( :p0='KontoPrint' AND desktop.baas='TRYKK' AND         
+      LOWER(desktop.controlsrc)='keel' ))
+AND desktop.liigid=:p1
+AND ( (prpalk.naitkonf=3 AND desktop.nait3) OR (prpalk.naitkonf<>3 AND desktop.nait2) )
+AND ( :p4 OR desktop.layoutnumb=:p2 )
+AND desktop.recordtype='Veerg' 
+AND ( 
+   desktop.controlsrc is null
+--  OR trim(desktop.controlsrc) like 'http://%'
+--  OR trim(desktop.controlsrc) ilike '%.jpg'
+--  OR trim(desktop.controlsrc) ilike '%.jpeg'
+--  OR trim(desktop.controlsrc) ilike '%.png'
+
+OR lower(desktop.controlsrc) IN ( 'thisform.docsum', 'thisform.tasusumm()')
+  OR ( -- todo: add check for identifier
+    desktop.controlsrc NOT LIKE '%$%'
+AND desktop.controlsrc NOT LIKE '%""%'
+AND desktop.controlsrc NOT LIKE '%(%'
+AND desktop.controlsrc NOT LIKE '%*%'
+AND desktop.controlsrc NOT LIKE '%/%'
+AND desktop.controlsrc NOT LIKE '%+%'
+AND desktop.controlsrc NOT LIKE '%-%' 
+AND desktop.controlsrc NOT ILIKE '%sissedok.%' 
+AND desktop.controlsrc NOT ILIKE '%sisserid.%' 
+AND trim(desktop.controlsrc) NOT ILIKE 'thisform.%'
+) 
+) 
+AND ( keel is null OR keel='' OR keel=:p3 )
+AND (:p0<>'RAPORT' OR upper(desktop.controlsrc) NOT IN ('OLEGRAPH') )
+AND (NOT :p5 OR upper(desktop.controlsrc) NOT IN ('FORMAAT') )
+AND (andmetp.otsbaas IS NULL OR andmetp.otsbaas<>'repolist')
+AND (desktop.veeruting IS NULL OR desktop.veeruting not ilike 'type(''m.response'')#''O''%')
+
+AND (andmetp.andmeklass IS NULL OR andmetp.andmeklass<>'CommandBut' )
+AND ( desktop.privileeg is null or kasutaja.administr or ( :p6 is not null and
+    desktop.privileeg in (select privileeg from kaspriv where kasutaja=upper(:p6) ) ))
+ORDER BY desktop.layoutnumb,desktop.jrk,desktop.id
+            ";
+
+                for (int i = 0; i < 7; i++)
+                {
+                    IDbDataParameter param = cmd.CreateParameter();
+                    param.ParameterName = "p" + i.ToString();
+                    var value = DBNull.Value;
+                    cmd.Parameters.Add(param);
+                }
+                // syntax error at or near ":"
+                cmd.ExecuteReader();
+            }
+        }
+
         public void TestEmptyIEnumerableAsArray()
         {
             using (var command = new NpgsqlCommand("SELECT :array", Conn))
