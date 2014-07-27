@@ -1884,12 +1884,6 @@ namespace NpgsqlTests
         [Test]
         public void ReturnRecordSupportWithResultset()
         {
-            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
-            {
-                // RETURNS TABLE is not supported prior to 8.4
-                return;
-            }
-
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testreturnrecordresultset(x int4, y int4) returns table (a int4, b int4) as
                               $BODY$
                               begin

@@ -40,7 +40,6 @@ namespace NpgsqlTests
     [TestFixture("9.2")]
     [TestFixture("9.1")]
     [TestFixture("9.0")]
-    [TestFixture("8.4")]
     public abstract class TestBase
     {
         protected Version BackendVersion { get; private set; }
