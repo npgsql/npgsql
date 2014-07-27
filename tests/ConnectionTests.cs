@@ -289,12 +289,6 @@ namespace NpgsqlTests
             var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             connection.Open();
 
-            if (connection.PostgreSqlVersion < new Version(8, 3, 0))
-            {
-                connection.Close();
-                return;
-            }
-
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = "SHOW SEARCH_PATH";
