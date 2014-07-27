@@ -36,6 +36,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -92,6 +93,7 @@ namespace Npgsql
 
         private UpdateRowSource updateRowSource = UpdateRowSource.Both;
 
+        private bool disposed;
         private static readonly Array ParamNameCharTable;
 
         // Constructors
@@ -544,26 +546,54 @@ namespace Npgsql
             return new NpgsqlParameter();
         }
 
-        /*
         /// <summary>
         /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
-        protected override void Dispose (bool disposing)
+        protected override void Dispose(bool disposing)
         {
+            if (disposed)
+                return;
 
-            if (disposing)
+            try
             {
-                // Only if explicitly calling Close or dispose we still have access to
-                // managed resources.
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-                if (connection != null)
+                if (disposing)
                 {
-                    connection.Dispose();
+                    if (m_Connector.CurrentReader != null)
+                        m_Connector.CurrentReader.Dispose();
                 }
-                base.Dispose(disposing);
 
+                if (prepared == PrepareStatus.Prepared)
+                {
+                    // We may send commands to the server only if we're exiting a using block (i.e. disposing=true)
+                    // If we're being called from a finalizer (i.e. disposing=false) we're not allowed to touch
+                    // the socket (in use by someone)
+
+                    // TODO: Implement a fast-path by checking if the connection is currently in use
+                    // (e.g. with some sort of TryLock). We currently don't have a connection lock...
+                    var cmd = "DEALLOCATE " + planName;
+                    if (disposing)
+                        ExecuteBlind(m_Connector, cmd);
+                    else
+                    {
+                        lock (m_Connector.PendingActionsQueue)
+                        {
+                            m_Connector.PendingActionsQueue.Enqueue(cmd);
+                        }
+                    }
+                }
             }
-        }*/
+            catch (Exception e)
+            {
+                // We've failed to release resources. When the connection is closed DISCARD ALL
+                // should automatically take care of it.
+
+                // TODO: Clearer logging needed here
+                NpgsqlEventLog.LogMsg(resman, "Log_ExceptionDisposing", LogLevel.Normal);
+            }
+
+            disposed = true;
+            base.Dispose(disposing);
+        }
 
         private void SetCommandTimeout()
         {

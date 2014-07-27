@@ -239,6 +239,8 @@ namespace Npgsql
                 IEnumerable<IServerResponseObject> responseEnum;
                 ForwardsOnlyDataReader reader;
 
+                ExecutePendingActions();
+
                 m_Connector.SetBackendCommandTimeout(CommandTimeout);
 
                 if (prepared == PrepareStatus.NeedsPrepare)
@@ -519,6 +521,38 @@ namespace Npgsql
             execute = new NpgsqlExecute(portalName, 0);
 
             prepared = PrepareStatus.Prepared;
+        }
+
+        /// <summary>
+        /// In certain cases, an SQL action needs to be executed "out-of-order"; for example, if a
+        /// prepared statement goes out of scope, it may be finalized at any point and needs to be
+        /// deallocated at the backend. These actions are queued up, and this method is called to
+        /// execute them at the earliest possible convenience.
+        /// </summary>
+        void ExecutePendingActions()
+        {
+            var queue = m_Connector.PendingActionsQueue;
+            if (queue.Count == 0)
+                return;
+
+            lock (queue)
+            {
+                while (queue.Count > 0)
+                {
+                    var cmd = queue.Dequeue();
+                    try
+                    {
+                        ExecuteBlind(m_Connector, cmd);
+                    }
+                    catch (Exception e)
+                    {
+                        // We've failed to release resources. When the connection is closed DISCARD ALL
+                        // should automatically take care of it.
+                        // TODO: Clearer logging needed here
+                        NpgsqlEventLog.LogMsg(resman, "Log_ExceptionPendingAction", LogLevel.Normal);
+                    }
+                }
+            }
         }
     }
 }
