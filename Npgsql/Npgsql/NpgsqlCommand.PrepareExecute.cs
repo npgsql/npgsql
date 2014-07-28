@@ -419,6 +419,7 @@ namespace Npgsql
         {
             if (prepared == PrepareStatus.Prepared)
             {
+                ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
                 bind = null;
                 execute = null;
                 currentRowDescription = null;

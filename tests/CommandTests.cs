@@ -499,6 +499,26 @@ namespace NpgsqlTests
             dr.Close();
         }
 
+        [Test, Description("Makes sure that calling Prepare() twice on a command deallocates the first prepared statement")]
+        public void PrepareStatementDoublePrepare()
+        {
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0)", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
+                cmd.Parameters["p0"].Value = "test";
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = "INSERT INTO data (field_int4) VALUES (:p0)";
+                cmd.Parameters.Clear();
+                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
+                cmd.Parameters["p0"].Value = 8;
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+            }
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
+        }
+
         [Test]
         public void FunctionCallWithImplicitParameters()
         {
