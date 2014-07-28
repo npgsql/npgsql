@@ -28,6 +28,7 @@
 //                  - 06/??/2004 - Glen Parker<glenebob@nwlink.com> rewritten
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -174,6 +175,13 @@ namespace Npgsql
 
         private string initQueries;
 
+        // TODO: Switch to ConcurrentQueue when dropping .NET 2.0/3.5
+        /// <summary>
+        /// Pending SQL queries to be sent to the backend at the earliest possible convenience.
+        /// See <see cref="ExecutePendingActions"/> for more details.
+        /// </summary>
+        internal Queue<string> PendingActionsQueue { get; private set; }
+
 #if WINDOWS && UNMANAGED
 
         private SSPIHandler _sspi;
@@ -209,6 +217,7 @@ namespace Npgsql
             _planIndex = 0;
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
+            PendingActionsQueue = new Queue<string>();
         }
 
 
