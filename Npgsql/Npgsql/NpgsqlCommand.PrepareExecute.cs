@@ -531,6 +531,11 @@ namespace Npgsql
         /// </summary>
         void ExecutePendingActions()
         {
+            // Not a good idea to execute unrelated pending actions within a transaction, since
+            // if these fail for any reason the transaction will abort
+            if (m_Connector.Transaction != null)
+                return;
+
             var queue = m_Connector.PendingActionsQueue;
             if (queue.Count == 0)
                 return;
