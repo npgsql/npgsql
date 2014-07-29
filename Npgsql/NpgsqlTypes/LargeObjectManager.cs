@@ -87,16 +87,9 @@ namespace NpgsqlTypes
             try
             {
                 sql = new StringBuilder();
-                if (conn.PostgreSqlVersion > new Version(7, 3, 0))
-                {
-                    sql.Append("SELECT p.proname,p.oid ");
-                    sql.Append(" FROM pg_catalog.pg_proc p, pg_catalog.pg_namespace n ");
-                    sql.Append(" WHERE p.pronamespace=n.oid AND n.nspname='pg_catalog' AND (");
-                }
-                else
-                {
-                    sql.Append("SELECT proname,oid FROM pg_proc WHERE ");
-                }
+                sql.Append("SELECT p.proname,p.oid ");
+                sql.Append(" FROM pg_catalog.pg_proc p, pg_catalog.pg_namespace n ");
+                sql.Append(" WHERE p.pronamespace=n.oid AND n.nspname='pg_catalog' AND (");
                 sql.Append(" proname = 'lo_open'");
                 sql.Append(" or proname = 'lo_close'");
                 sql.Append(" or proname = 'lo_creat'");
@@ -105,11 +98,7 @@ namespace NpgsqlTypes
                 sql.Append(" or proname = 'lo_tell'");
                 sql.Append(" or proname = 'loread'");
                 sql.Append(" or proname = 'lowrite'");
-
-                if (conn.PostgreSqlVersion > new Version(7, 3, 0))
-                {
-                    sql.Append(")");
-                }
+                sql.Append(")");
 
                 using (IDbCommand cmd = new NpgsqlCommand(sql.ToString()))
                 {

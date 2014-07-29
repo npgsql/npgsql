@@ -189,24 +189,7 @@ namespace NpgsqlTests
         {
             Console.WriteLine("Creating test database schema");
 
-            if (Conn.PostgreSqlVersion >= new Version(8, 2, 0))
-            {
-                ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
-            }
-            else
-            {
-                try
-                {
-                    ExecuteNonQuery("DROP TABLE DATA CASCADE");
-                }
-                catch (NpgsqlException e)
-                {
-                    if (! e.Message.ToLower().Contains("\"data\" does not exist"))
-                    {
-                        throw;
-                    }
-                }
-            }
+            ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
             ExecuteNonQuery(@"CREATE TABLE data (
                                 field_pk                      SERIAL PRIMARY KEY,
                                 field_serial                  SERIAL,

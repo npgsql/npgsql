@@ -423,14 +423,7 @@ namespace NpgsqlTests
             using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
             {
                 string extraDigits = (string)c.ExecuteScalar();
-                if (Conn.PostgreSqlVersion >= new Version(9, 0, 0))
-                {
-                    Assert.AreEqual(extraDigits, "3");
-                }
-                else
-                {
-                    Assert.AreEqual(extraDigits, "2");
-                }
+                Assert.AreEqual(extraDigits, "3");
             }
         }
 

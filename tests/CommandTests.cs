@@ -2696,9 +2696,6 @@ namespace NpgsqlTests
         [Test]
         public void TestSavePoint()
         {
-            if (Conn.PostgreSqlVersion < new Version("8.0.0"))
-                Assert.Ignore("Postgres version is {0} (< 8.0.0))", Conn.PostgreSqlVersion);
-
             const String theSavePoint = "theSavePoint";
 
             using (var transaction = Conn.BeginTransaction())
@@ -2720,9 +2717,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof (InvalidOperationException))]
         public void TestSavePointWithSemicolon()
         {
-            if (Conn.PostgreSqlVersion < new Version("8.0.0"))
-                Assert.Ignore("Postgres version is {0} (< 8.0.0))", Conn.PostgreSqlVersion);
-
             const String theSavePoint = "theSavePoint;";
 
             using (var transaction = Conn.BeginTransaction())
@@ -3314,12 +3308,6 @@ namespace NpgsqlTests
         [Test]
         public void SelectInfinityValueDateDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
-            {
-                // INFINITY is not supported prior to 8.4
-                return;
-            }
-
             ExecuteNonQuery(@"INSERT INTO data (field_date) VALUES ('-infinity'::date)");
             using (var cmd = new NpgsqlCommand(@"SELECT field_date FROM data", Conn))
             using (var dr = cmd.ExecuteReader())
@@ -3748,13 +3736,10 @@ namespace NpgsqlTests
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Boolean), result.GetType());
 
-            if (Conn.PostgreSqlVersion >= new Version(8, 1, 0))
-            {
-                // boolean
-                cmd.CommandText = "select 1::boolean";
-                result = cmd.ExecuteScalar();
-                Assert.AreEqual(typeof (Boolean), result.GetType());
-            }
+            // boolean
+            cmd.CommandText = "select 1::boolean";
+            result = cmd.ExecuteScalar();
+            Assert.AreEqual(typeof (Boolean), result.GetType());
 
             // box
             cmd.CommandText = "select '((7,4),(8,3))'::box";
