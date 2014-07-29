@@ -187,6 +187,7 @@
     </Compile>
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
+    <Compile Include="TestUtil.cs" />
     <Compile Include="TypesTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
     <Compile Include="xmlModel\XmlTest.Views.cs" />

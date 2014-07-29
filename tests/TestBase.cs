@@ -60,7 +60,7 @@ namespace NpgsqlTests
         /// <summary>
         /// A connection to the test database, set up prior to running each test.
         /// </summary>
-        protected NpgsqlConnection Conn { get; private set; }
+        internal NpgsqlConnection Conn { get; private set; }
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
@@ -377,27 +377,5 @@ namespace NpgsqlTests
         }
 
         #endregion
-    }
-
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class MonoIgnore : Attribute, ITestAction
-    {
-        readonly string _ignoreText;
-
-        public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
-
-        public void BeforeTest(TestDetails testDetails)
-        {
-            if (Type.GetType("Mono.Runtime") != null)
-            {
-                var msg = "Ignored on mono";
-                if (_ignoreText != null)
-                    msg += ": " + _ignoreText;
-                Assert.Ignore(msg);
-            }
-        }
-
-        public void AfterTest(TestDetails testDetails) { }
-        public ActionTargets Targets { get { return ActionTargets.Test; } }
     }
 }

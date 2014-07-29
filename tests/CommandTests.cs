@@ -3896,10 +3896,9 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 2, 0, "json data type not yet introduced")]
         public void InsertJsonValueDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(9, 2))
-                Assert.Ignore("json data type only introduced in 9.2");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
             {
                 cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
@@ -3909,10 +3908,9 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 4, 0, "jsonb data type not yet introduced")]
         public void InsertJsonbValueDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(9, 4))
-                Assert.Ignore("json data type only introduced in 9.4 (we're on {0})", Conn.PostgreSqlVersion);
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
             {
                 cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
@@ -3922,10 +3920,9 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 1, 0, "hstore data type not yet introduced")]
         public void InsertHstoreValueDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(9, 1))
-                Assert.Ignore("Loading the hstore extension in pre-9.1 is too complicated");
             ExecuteNonQuery(@"SET search_path = public, hstore");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
             {
