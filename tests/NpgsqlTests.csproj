@@ -168,6 +168,7 @@
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AdvisoryLockTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="EntityFrameworkBasicTests.cs" />
     <Compile Include="EntityFrameworkMigrationTests.cs" />

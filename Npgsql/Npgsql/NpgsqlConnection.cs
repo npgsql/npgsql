@@ -1250,6 +1250,15 @@ namespace Npgsql
             Promotable.Enlist(transaction);
         }
 
+        /// <summary>
+        /// Instructs the backend to release any advisory locks held by this connection.
+        /// </summary>
+        public void ReleaseAllAdvisoryLocks()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT pg_advisory_unlock_all()", this))
+                cmd.ExecuteNonQuery();            
+        }
+
 #if NET35
         /// <summary>
         /// DB provider factory.
