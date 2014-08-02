@@ -321,7 +321,8 @@ namespace Npgsql
             BlockCommentEnd,
             Param,
             Colon,
-            FullTextMatchOp
+            FullTextMatchOp,
+            PossibleDoubleCharEscape
         }
 
         /// <summary>
@@ -814,29 +815,36 @@ namespace Npgsql
                         switch (ch)
                         {
                             case '\'' :
+                                currTokenType = TokenType.PossibleDoubleCharEscape;
                                 currTokenLen++;
 
                                 break;
 
                             default :
-                                if (currTokenLen > 1 && lastChar == '\'')
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-
-                                    currTokenType = TokenType.None;
-                                    currTokenBeg = currCharOfs;
-                                    currTokenLen = 0;
-
-                                    // Re-evaluate this character
-                                    goto ProcessCharacter;
-                                }
-                                else
-                                {
-                                    currTokenLen++;
-                                }
+                                currTokenLen++;
 
                                 break;
 
+                        }
+
+                        break;
+
+                    case TokenType.PossibleDoubleCharEscape :
+                        if (ch == lastChar)
+                        {
+                            currTokenType = TokenType.Quoted;
+                            currTokenLen++;
+                        }
+                        else
+                        {
+                            dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
+
+                            currTokenType = TokenType.None;
+                            currTokenBeg = currCharOfs;
+                            currTokenLen = 0;
+
+                            // Re-evaluate this character
+                            goto ProcessCharacter;
                         }
 
                         break;
