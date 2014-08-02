@@ -240,7 +240,7 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
+                    backendSerialization = BasicNativeToBackendTypeConverter.QuoteASCIIString(backendSerialization, false, arrayElement);
                 }
 
                 return backendSerialization;
@@ -259,7 +259,7 @@ namespace NpgsqlTypes
                         )
                     );
 
-                backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
+                backendSerialization = BasicNativeToBackendTypeConverter.QuoteASCIIString(backendSerialization, false, arrayElement);
 
                 return backendSerialization;
             }
@@ -278,7 +278,7 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, false, arrayElement);
+                    backendSerialization = BasicNativeToBackendTypeConverter.QuoteASCIIString(backendSerialization, false, arrayElement);
                 }
 
                 return backendSerialization;
@@ -304,7 +304,7 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, true, arrayElement);
+                    backendSerialization = BasicNativeToBackendTypeConverter.QuoteASCIIString(backendSerialization, true, arrayElement);
                 }
 
                 return backendSerialization;
@@ -332,45 +332,11 @@ namespace NpgsqlTypes
 
                 if (Quote)
                 {
-                    backendSerialization = QuoteASCIIString(backendSerialization, true, arrayElement);
+                    backendSerialization = BasicNativeToBackendTypeConverter.QuoteASCIIString(backendSerialization, true, arrayElement);
                 }
 
                 return backendSerialization;
             }
-        }
-
-        private static byte[] QuoteASCIIString(byte[] src, bool forExtendedQuery, bool arrayElement)
-        {
-            byte[] ret = null;
-
-            if (arrayElement)
-            {
-                // Array elements always require double-quotes
-                ret = new byte[src.Length + 2];
-
-                ret[0] = (byte)ASCIIBytes.DoubleQuote;
-                src.CopyTo(ret, 1);
-                ret[ret.Length - 1] = (byte)ASCIIBytes.DoubleQuote;
-            }
-            else
-            {
-                if (forExtendedQuery)
-                {
-                    // Non-array-element values sent via Bind are not quoted
-                    ret = src;
-                }
-                else
-                {
-                    // Non-array-element values sent via simple query require single-quotes
-                    ret = new byte[src.Length + 2];
-
-                    ret[0] = (byte)ASCIIBytes.SingleQuote;
-                    src.CopyTo(ret, 1);
-                    ret[ret.Length - 1] = (byte)ASCIIBytes.SingleQuote;
-                }
-            }
-
-            return ret;
         }
 
         /// <summary>

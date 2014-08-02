@@ -132,6 +132,55 @@ namespace NpgsqlTypes
             return hashValue;
         }
 
+        internal static byte[] QuoteASCIIString(byte[] src, bool forExtendedQuery, bool arrayElement, byte[] singleQuotedValue = null, byte[] doubleQuotedValue = null)
+        {
+            if (arrayElement)
+            {
+                // Array elements always require double-quotes
+                if (doubleQuotedValue != null)
+                {
+                    return doubleQuotedValue;
+                }
+                else
+                {
+                    return WrapASCIIString(src, (byte)ASCIIBytes.DoubleQuote);
+                }
+            }
+            else
+            {
+                if (forExtendedQuery)
+                {
+                    // Non-array-element values sent via Bind are not quoted
+                    return src;
+                }
+                else
+                {
+                    // Non-array-element values sent via simple query require single-quotes
+                    if (singleQuotedValue != null)
+                    {
+                        return singleQuotedValue;
+                    }
+                    else
+                    {
+                        return WrapASCIIString(src, (byte)ASCIIBytes.SingleQuote);
+                    }
+                }
+            }
+        }
+
+        private static byte[] WrapASCIIString(byte[] src, byte quote)
+        {
+            byte[] ret;
+
+            ret = new byte[src.Length + 2];
+
+            ret[0] = quote;
+            src.CopyTo(ret, 1);
+            ret[ret.Length - 1] = quote;
+
+            return ret;
+        }
+
         /// <summary>
         /// Convert a string to UTF8 encoded text, escaped and quoted as required.
         /// </summary>
@@ -466,7 +515,9 @@ namespace NpgsqlTypes
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
             if (NativeData.Equals(float.NaN) && !arrayElement)
-                return ASCIIByteArrays.NAN_QUOTED;
+            {
+                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_SingleQuoted, ASCIIByteArrays.NaN_DoubleQuoted);
+            }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
@@ -477,7 +528,9 @@ namespace NpgsqlTypes
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
             if (NativeData.Equals(double.NaN) && !arrayElement)
-                return ASCIIByteArrays.NAN_QUOTED;
+            {
+                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_SingleQuoted, ASCIIByteArrays.NaN_DoubleQuoted);
+            }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
