@@ -514,9 +514,10 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
+            //NaN must be quoted for use outside of an array.  In an array, no quoting is needed.
             if (NativeData.Equals(float.NaN) && !arrayElement)
             {
-                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_SingleQuoted, ASCIIByteArrays.NaN_DoubleQuoted);
+                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_Quoted);
             }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
@@ -527,9 +528,10 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
+            //NaN must be quoted for use outside of an array.  In an array, no quoting is needed.
             if (NativeData.Equals(double.NaN) && !arrayElement)
             {
-                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_SingleQuoted, ASCIIByteArrays.NaN_DoubleQuoted);
+                return QuoteASCIIString(ASCIIByteArrays.NaN, forExtendedQuery, arrayElement, ASCIIByteArrays.NaN_Quoted);
             }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
