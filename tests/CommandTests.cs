@@ -3973,6 +3973,36 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void Bugs_240_and_296()
+        {
+            // Query from bug #240 (modified):
+            // Original: @"INSERT INTO TestTable (StringColumn, ByteaColumn) VALUES ('b''la', @SomeValue)"
+            Excecute_Bugs_240_and_296_query(@"SELECT 'b''la', @p");
+            //              Query processing breaks here ^
+
+            // Query from bug #296 (line breaks removed):
+            Excecute_Bugs_240_and_296_query(@"SELECT 1 WHERE ''= 'type(''m.response'')#''O''%' AND :p");
+            //                              Query processing breaks here ^
+
+            // Simplified query used to find the root cause of the bug:
+            Excecute_Bugs_240_and_296_query(@"SELECT '''a' || :p");
+            //             Query processing breaks here ^
+        }
+
+        private void Excecute_Bugs_240_and_296_query(string query)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = query;
+
+                cmd.Parameters.AddWithValue("p", DBNull.Value);
+
+                // syntax error at or near ":"
+                cmd.ExecuteReader().Dispose();
+            }
+        }
+
         public void TestEmptyIEnumerableAsArray()
         {
             using (var command = new NpgsqlCommand("SELECT :array", Conn))
