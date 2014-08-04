@@ -3994,9 +3994,6 @@ namespace NpgsqlTests
         [Test]
         public void Bugs_240_and_296()
         {
-            NpgsqlEventLog.Level = LogLevel.Debug;
-            NpgsqlEventLog.EchoMessages = true;
-
             // Query from bug #240 (modified):
             // Original: @"INSERT INTO TestTable (StringColumn, ByteaColumn) VALUES ('b''la', @SomeValue)"
             Excecute_Bugs_240_and_296_query(@"SELECT 'b''la', @p");
