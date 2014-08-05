@@ -79,6 +79,11 @@ namespace NpgsqlTests
             public virtual Blog Blog { get; set; }
         }
 
+        public class NoColumnsEntity
+        {
+            public int Id { get; set; }
+        }
+
         public class BloggingContext : DbContext
         {
             public BloggingContext(string connection)
@@ -88,6 +93,7 @@ namespace NpgsqlTests
 
             public DbSet<Blog> Blogs { get; set; }
             public DbSet<Post> Posts { get; set; }
+            public DbSet<NoColumnsEntity> NoColumnsEntities { get; set; }
         }
 
         [Test]
@@ -108,6 +114,7 @@ namespace NpgsqlTests
                         Title = "Some post Title " + i
                     });
                 context.Blogs.Add(blog);
+                context.NoColumnsEntities.Add(new NoColumnsEntity());
                 context.SaveChanges();
             }
 
@@ -120,6 +127,7 @@ namespace NpgsqlTests
                 {
                     StringAssert.StartsWith("Some post Title ", post.Title);
                 }
+                Assert.AreEqual(1, context.NoColumnsEntities.Count());
             }
         }
 
