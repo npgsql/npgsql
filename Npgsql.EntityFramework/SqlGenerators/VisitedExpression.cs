@@ -195,6 +195,9 @@ namespace Npgsql.SqlGenerators
 
         public void AppendColumns(IEnumerable<VisitedExpression> columns)
         {
+            if (!columns.Any())
+                return;
+
             Append("(");
             bool first = true;
             foreach (VisitedExpression expression in columns)
@@ -209,16 +212,23 @@ namespace Npgsql.SqlGenerators
 
         public void AppendValues(IEnumerable<VisitedExpression> columns)
         {
-            Append(" VALUES (");
-            bool first = true;
-            foreach (VisitedExpression expression in columns)
+            if (columns.Any())
             {
-                if (!first)
-                    Append(",");
-                Append(expression);
-                first = false;
+                Append(" VALUES (");
+                bool first = true;
+                foreach (VisitedExpression expression in columns)
+                {
+                    if (!first)
+                        Append(",");
+                    Append(expression);
+                    first = false;
+                }
+                Append(")");
             }
-            Append(")");
+            else
+            {
+                Append(" DEFAULT VALUES");
+            }
         }
 
         internal void AppendReturning(DbNewInstanceExpression expression)
