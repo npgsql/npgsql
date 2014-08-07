@@ -203,6 +203,7 @@ namespace Npgsql
             {
                 if (Connection.Timeout > 0)
                 {
+                    NpgsqlEventLog.LogMsg(GetPoolAllocations(Connection), LogLevel.None);
                     throw new Exception("Timeout while getting a connection from pool.");
                 }
                 else
@@ -351,7 +352,7 @@ namespace Npgsql
                         // Check if the connector is still valid.
 
                         Connector = Queue.Available.Dequeue();
-                        Queue.Busy.Add(Connector, null);
+                        Queue.Busy.Add(Connector, new System.Diagnostics.StackTrace(true).ToString());
                     }
                 }
 
@@ -364,7 +365,7 @@ namespace Npgsql
                 if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
                 {
                     Connector = new NpgsqlConnector(Connection);
-                    Queue.Busy.Add(Connector, null);
+                    Queue.Busy.Add(Connector, new System.Diagnostics.StackTrace(true).ToString());
                 }
             }
 
@@ -611,6 +612,31 @@ namespace Npgsql
                 }
                 PooledConnectors.Clear();
             }
+        }
+
+        internal string GetPoolAllocations(NpgsqlConnection Connection)
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+            // Prevent multithread access to connection pool count.
+            lock (locker)
+            {
+                ConnectorQueue queue;
+                // Try to find a queue.
+                if (PooledConnectors.TryGetValue(Connection.ConnectionString, out queue))
+                {
+                    if (queue != null)
+                        foreach (object stackTrace in queue.Busy.Values)
+                        {
+                            sb.Append("\n\n Connection allocation stackTrace: \n");
+                            sb.Append(stackTrace);
+                        }
+                }
+
+
+            }
+
+            return sb.ToString();
         }
     }
 }
