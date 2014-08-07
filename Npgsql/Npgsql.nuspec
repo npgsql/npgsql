@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/npgsql/Npgsql</projectUrl>
     <copyright>Copyright 2002 - 2014 Npgsql Development Team</copyright>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Npgsql is a .Net data provider for Postgresql. It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Works with Postgresql 7.x and above.</description>
+    <description>Npgsql is a .Net data provider for Postgresql. It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Postgresql 9.x and above is officially supported.</description>
     <summary>Npgsql is a .Net data provider for Postgresql.</summary>
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql</tags>
