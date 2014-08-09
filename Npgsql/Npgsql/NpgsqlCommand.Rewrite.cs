@@ -426,6 +426,11 @@ namespace Npgsql
             return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
         }
 
+        private static bool IsIdentifier(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
+        }
+
         /// <summary>
         /// Append a region of a source command text to an output command, performing parameter token
         /// substitutions.
@@ -481,7 +486,7 @@ namespace Npgsql
                     case '/':                                           goto BlockCommentBegin;
                     case '-':                                           goto LineCommentBegin;
                     case '\'': if (standardConformantStrings)           goto Quoted;                else goto Escaped;
-                    case '$':  if (!IsDollarTagIdentifier(lastChar))    goto DollarQuotedStart;     else break;
+                    case '$':  if (!IsIdentifier(lastChar))             goto DollarQuotedStart;     else break;
                     case '"':                                           goto DoubleQuoted;
                     case ':':  if (lastChar != ':')                     goto ParamStart;            else break;
                     case '@':  if (lastChar != '@')                     goto ParamStart;            else break;
