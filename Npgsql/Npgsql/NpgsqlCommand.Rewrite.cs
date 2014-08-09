@@ -233,7 +233,9 @@ namespace Npgsql
                 foreach (var table in commandText.Split(';'))
                 {
                     if (table.Trim().Length == 0)
+                    {
                         continue;
+                    }
 
                     commandBuilder
                         .WriteString("SELECT * FROM ")
@@ -254,7 +256,7 @@ namespace Npgsql
 
                 if (commandText.TrimEnd().EndsWith(")"))
                 {
-                    if (AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare))
+                    if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, false))
                     {
                         throw new NpgsqlException("Multiple queries not supported for stored procedures");
                     }
@@ -284,7 +286,7 @@ namespace Npgsql
             }
             else
             {
-                if (AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare) && prepare)
+                if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, !prepare))
                 {
                     throw new NpgsqlException("Multiple queries not supported for prepared statements");
                 }
@@ -431,17 +433,16 @@ namespace Npgsql
         /// <param name="dest">Stream to which to append output.</param>
         /// <param name="src">Command text.</param>
         /// <param name="prepare"></param>
-        /// <returns>true if the query has multiple statements</returns>
-        private bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare)
+        /// <param name="allowMultipleStatements"></param>
+        /// <returns>false if the query has multiple statements which are not allowed</returns>
+        private bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool allowMultipleStatements)
         {
             bool standardConformantStrings = connection != null && connection.Connector != null && connection.Connector.IsInitialized ? connection.UseConformantStrings : true;
-            bool isMultiQuery = false;
 
             int currCharOfs = 0;
             int end = src.Length;
             char ch = '\0';
             char lastChar = '\0';
-            char paramMarker = '\0';
             int dollarTagStart = 0;
             int dollarTagEnd = 0;
             int currTokenBeg = 0;
@@ -459,56 +460,66 @@ namespace Npgsql
                 }
             }
 
-            if (end == 0)
-                return false;
-
-            if (!prepare && parameters.Count == 0)
+            if (allowMultipleStatements && parameters.Count == 0)
             {
                 dest.WriteString(src);
-                return false;
+                return true;
             }
 
-            NoneWithoutEndCheck:
+        None:
+            if (currCharOfs >= end)
+            {
+                goto Finish;
+            }
             lastChar = ch;
             ch = src[currCharOfs++];
-            NoneContinue:
-            switch (ch)
+        NoneContinue:
+            for (; ; lastChar = ch, ch = src[currCharOfs++])
             {
-                case '/': goto BlockCommentBegin;
-                case '-': goto LineCommentBegin;
-                case '\'': if (standardConformantStrings) goto Quoted; else goto Escaped;
-                case '$': if (!IsDollarTagIdentifier(lastChar)) goto DollarQuotedStart; else break;
-                case '"': goto DoubleQuoted;
-                case ':': if (lastChar != ':') goto ParamStart; else break;
-                case '@': if (lastChar != '@') goto ParamStart; else break;
-                case ';': goto SemiColon;
-                    
-                case 'e':
-                case 'E': if (!IsLetter(lastChar)) goto EscapedStart; else break;
+                switch (ch)
+                {
+                    case '/':                                           goto BlockCommentBegin;
+                    case '-':                                           goto LineCommentBegin;
+                    case '\'': if (standardConformantStrings)           goto Quoted;                else goto Escaped;
+                    case '$':  if (!IsDollarTagIdentifier(lastChar))    goto DollarQuotedStart;     else break;
+                    case '"':                                           goto DoubleQuoted;
+                    case ':':  if (lastChar != ':')                     goto ParamStart;            else break;
+                    case '@':  if (lastChar != '@')                     goto ParamStart;            else break;
+                    case ';':  if (!allowMultipleStatements)            goto SemiColon;             else break;
 
+                    case 'e':
+                    case 'E':  if (!IsLetter(lastChar))                 goto EscapedStart;          else break;
+                }
+
+                if (currCharOfs >= end)
+                {
+                    goto Finish;
+                }
             }
-            None:
-            if (currCharOfs < end) goto NoneWithoutEndCheck;
-            goto Finish;
             
-            ParamStart:
-            if (currCharOfs >= end) goto Finish;
-            paramMarker = ch;
-            ch = src[currCharOfs];
-            if (IsParamNameChar(ch))
+        ParamStart:
+            if (currCharOfs < end)
             {
-                if (currCharOfs - 1 > currTokenBeg)
-                    dest.WriteString(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
-                currTokenBeg = currCharOfs++ - 1;
-                goto Param;
+                lastChar = ch;
+                ch = src[currCharOfs];
+                if (IsParamNameChar(ch))
+                {
+                    if (currCharOfs - 1 > currTokenBeg)
+                    {
+                        dest.WriteString(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                    }
+                    currTokenBeg = currCharOfs++ - 1;
+                    goto Param;
+                }
+                else
+                {
+                    currCharOfs++;
+                    goto NoneContinue;
+                }
             }
-            else
-            {
-                ch = paramMarker;
-                goto NoneWithoutEndCheck;
-            }
+            goto Finish;
 
-            Param:
+        Param:
             // We have already at least one character of the param name
             for (; ; )
             {
@@ -523,24 +534,32 @@ namespace Npgsql
                         if (parameter.Direction == ParameterDirection.Input || parameter.Direction == ParameterDirection.InputOutput)
                         {
                             if (prepare)
+                            {
                                 AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                            }
                             else
+                            {
                                 AppendParameterValue(dest, parameter);
+                            }
                         }
                         currTokenBeg = currCharOfs;
                     }
 
                     if (currCharOfs >= end)
+                    {
                         goto Finish;
+                    }
 
                     currCharOfs++;
                     goto NoneContinue;
                 }
                 else
+                {
                     currCharOfs++;
+                }
             }
 
-            Quoted:
+        Quoted:
             while (currCharOfs < end)
             {
                 if (src[currCharOfs++] == '\'')
@@ -551,7 +570,7 @@ namespace Npgsql
             }
             goto Finish;
 
-            DoubleQuoted:
+        DoubleQuoted:
             while (currCharOfs < end)
             {
                 if (src[currCharOfs++] == '"')
@@ -562,32 +581,39 @@ namespace Npgsql
             }
             goto Finish;
 
-            EscapedStart:
-            if (currCharOfs >= end) goto Finish;
-            lastChar = ch;
-            ch = src[currCharOfs++];
-            if (ch == '\'')
+        EscapedStart:
+            if (currCharOfs < end)
             {
-                goto Escaped;
+                lastChar = ch;
+                ch = src[currCharOfs++];
+                if (ch == '\'')
+                {
+                    goto Escaped;
+                }
+                goto NoneContinue;
             }
-            goto NoneContinue;
+            goto Finish;
 
-            Escaped:
+        Escaped:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '\'')
+                {
                     goto MaybeConcatenatedEscaped;
+                }
                 if (ch == '\\')
                 {
                     if (currCharOfs >= end)
+                    {
                         goto Finish;
+                    }
                     currCharOfs++;
                 }
             }
             goto Finish;
 
-            MaybeConcatenatedEscaped:
+        MaybeConcatenatedEscaped:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
@@ -603,19 +629,25 @@ namespace Npgsql
             }
             goto Finish;
 
-            MaybeConcatenatedEscaped2:
+        MaybeConcatenatedEscaped2:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '\'')
+                {
                     goto Escaped;
+                }
                 if (ch == '-')
                 {
                     if (currCharOfs >= end)
+                    {
                         goto Finish;
+                    }
                     ch = src[currCharOfs++];
                     if (ch == '-')
+                    {
                         goto MaybeConcatenatedEscapeAfterComment;
+                    }
                     lastChar = '\0';
                     goto NoneContinue;
 
@@ -628,16 +660,18 @@ namespace Npgsql
             }
             goto Finish;
 
-            MaybeConcatenatedEscapeAfterComment:
+        MaybeConcatenatedEscapeAfterComment:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
+                {
                     goto MaybeConcatenatedEscaped2;
+                }
             }
             goto Finish;
 
-            DollarQuotedStart:
+        DollarQuotedStart:
             if (currCharOfs < end)
             {
                 ch = src[currCharOfs];
@@ -660,7 +694,7 @@ namespace Npgsql
             }
             goto Finish;
 
-            DollarQuotedInFirstDelim:
+        DollarQuotedInFirstDelim:
             while (currCharOfs < end)
             {
                 lastChar = ch;
@@ -677,7 +711,7 @@ namespace Npgsql
             }
             goto Finish;
 
-            DollarQuoted:
+        DollarQuoted:
             {
                 string tag = src.Substring(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
                 int pos = src.IndexOf(tag, dollarTagEnd + 1); // Not linear time complexity, but that's probably not a problem, since PostgreSQL backend's isn't either
@@ -691,25 +725,31 @@ namespace Npgsql
                 goto None;
             }
 
-            LineCommentBegin:
-            if (currCharOfs >= end)
-                goto Finish;
-            ch = src[currCharOfs++];
-            if (ch == '-')
-                goto LineComment;
-            lastChar = '\0';
-            goto NoneContinue;
+        LineCommentBegin:
+            if (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '-')
+                {
+                    goto LineComment;
+                }
+                lastChar = '\0';
+                goto NoneContinue;
+            }
+            goto Finish;
 
-            LineComment:
+        LineComment:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
+                {
                     goto None;
+                }
             }
             goto Finish;
 
-            BlockCommentBegin:
+        BlockCommentBegin:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
@@ -721,56 +761,63 @@ namespace Npgsql
                 if (ch != '/')
                 {
                     if (blockCommentLevel > 0)
+                    {
                         goto BlockComment;
+                    }
                     lastChar = '\0';
                     goto NoneContinue;
                 }
             }
             goto Finish;
 
-            BlockComment:
+        BlockComment:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '*')
+                {
                     goto BlockCommentEnd;
+                }
                 if (ch == '/')
+                {
                     goto BlockCommentBegin;
+                }
             }
             goto Finish;
 
-            BlockCommentEnd:
+        BlockCommentEnd:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch == '/')
                 {
                     if (--blockCommentLevel > 0)
+                    {
                         goto BlockComment;
+                    }
                     goto None;
                 }
                 if (ch != '*')
+                {
                     goto BlockComment;
+                }
             }
             goto Finish;
 
-            SemiColon:
+        SemiColon:
             while (currCharOfs < end)
             {
                 ch = src[currCharOfs++];
                 if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f') // We don't check for comments after the last ; yet
                 {
-                    isMultiQuery = true;
-                    lastChar = '\0';
-                    goto NoneContinue;
+                    return false;
                 }
             }
             // implicit goto Finish
 
-            Finish:
+        Finish:
             dest.WriteString(src.Substring(currTokenBeg, end - currTokenBeg));
-
-            return isMultiQuery;
+            return true;
         }
 
         private byte[] GetExecuteCommandText()
