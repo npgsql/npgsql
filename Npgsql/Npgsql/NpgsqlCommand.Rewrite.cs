@@ -546,8 +546,8 @@ namespace Npgsql
                             {
                                 AppendParameterValue(dest, parameter);
                             }
+                            currTokenBeg = currCharOfs;
                         }
-                        currTokenBeg = currCharOfs;
                     }
 
                     if (currCharOfs >= end)
