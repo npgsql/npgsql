@@ -3752,6 +3752,33 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug221MillisecondsFieldNotCopied()
+        {
+
+            // Test for https://github.com/npgsql/Npgsql/issues/221
+            // The milliseconds field is not properly copied in NpgsqlCopySerializer.cs in method AddDateTime
+
+            var cmd = new NpgsqlCommand("COPY data (field_timestamp) FROM STDIN", Conn);
+            var npgsqlCopySerializer = new NpgsqlCopySerializer(Conn);
+            var npgsqlCopyIn = new NpgsqlCopyIn(cmd, Conn, npgsqlCopySerializer.ToStream);
+            var testDate = DateTime.Parse("2002-02-02 09:00:23.005");
+
+            npgsqlCopyIn.Start();
+            npgsqlCopySerializer.AddDateTime(testDate);
+            npgsqlCopySerializer.EndRow();
+            npgsqlCopySerializer.Flush();
+            npgsqlCopyIn.End();
+
+
+
+            NpgsqlDataReader dr = new NpgsqlCommand("select field_timestamp from data", Conn).ExecuteReader();
+            dr.Read();
+
+            Assert.AreEqual(testDate, dr[0]);
+        }
+
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:
