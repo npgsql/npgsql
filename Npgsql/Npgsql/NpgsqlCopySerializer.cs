@@ -609,7 +609,8 @@ namespace Npgsql
         /// <param name="fieldValue"></param>
         public void AddDateTime(DateTime fieldValue)
         {
-            AddString(string.Format("{0}-{1}-{2} {3}:{4}:{5}.{6}", fieldValue.Year, fieldValue.Month, fieldValue.Day, fieldValue.Hour, fieldValue.Minute, fieldValue.Second, fieldValue.Millisecond));
+            AddString(fieldValue.ToString("yyyy-MM-dd HH:mm:ss.ffffff"));
         }
+
     }
 }
