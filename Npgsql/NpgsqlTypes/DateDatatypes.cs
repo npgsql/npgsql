@@ -3451,11 +3451,11 @@ namespace NpgsqlTypes
                 default:
                     try
                     {
-                        return new DateTimeOffset(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp.Time.Ticks, timestamp.TimeZone);
+                        return new DateTimeOffset(timestamp.Date.DaysSinceEra * NpgsqlInterval.TicksPerDay + timestamp.Time.Ticks, (TimeSpan)timestamp.TimeZone);
                     }
-                    catch
+                    catch (Exception innerException)
                     {
-                        throw new InvalidCastException();
+                        throw new InvalidCastException(string.Format("Unable to cast '{0}' to DateTimeOffset.", timestamp), innerException);
                     }
             }
         }
