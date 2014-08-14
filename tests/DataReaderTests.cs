@@ -59,6 +59,28 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void RecordsAffectedSelect()
+        {
+            var command = new NpgsqlCommand("SELECT * FROM data", Conn);
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Close();
+                Assert.That(dr.RecordsAffected, Is.EqualTo(-1));
+            }
+        }
+
+        [Test]
+        public void RecordsAffectedUpdateZero()
+        {
+            var command = new NpgsqlCommand("UPDATE data SET field_int4=8", Conn);
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Close();
+                Assert.That(dr.RecordsAffected, Is.EqualTo(0));
+            }
+        }
+
+        [Test]
         public void GetBoolean()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_bool) VALUES (true)");

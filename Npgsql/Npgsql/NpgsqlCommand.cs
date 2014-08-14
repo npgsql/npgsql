@@ -92,6 +92,7 @@ namespace Npgsql
 
         private UpdateRowSource updateRowSource = UpdateRowSource.Both;
 
+        private bool disposed;
         private static readonly Array ParamNameCharTable;
 
         // Constructors
@@ -544,26 +545,29 @@ namespace Npgsql
             return new NpgsqlParameter();
         }
 
-        /*
         /// <summary>
         /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
-        protected override void Dispose (bool disposing)
+        protected override void Dispose(bool disposing)
         {
+            if (disposed)
+                return;
 
             if (disposing)
             {
-                // Only if explicitly calling Close or dispose we still have access to
-                // managed resources.
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-                if (connection != null)
-                {
-                    connection.Dispose();
-                }
-                base.Dispose(disposing);
-
+                // Note: we only actually perform cleanup here if called from Dispose() (disposing=true), and not
+                // if called from a finalizer (disposing=false). This is because we cannot perform any SQL
+                // operations from the finalizer (connection may be in use by someone else).
+                // We can implement a queue-based solution that will perform cleanup during the next possible
+                // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
+                // etc.).
+                if (prepared == PrepareStatus.Prepared)
+                    ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
             }
-        }*/
+
+            disposed = true;
+            base.Dispose(disposing);
+        }
 
         private void SetCommandTimeout()
         {

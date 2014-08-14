@@ -53,15 +53,12 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ExceptionFieldsArePopulated()
         {
             const string dropTable = @"DROP TABLE IF EXISTS public.uniqueviolation";
             const string createTable = @"CREATE TABLE public.uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))";
             const string insertStatement = @"INSERT INTO public.uniqueviolation (id) VALUES(1)";
-
-            // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (Conn.PostgreSqlVersion < new Version("9.3"))
-                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             // In this case we'll test a simple unique violation, we're not too interested in testing more
             // cases than this as the same code is executed in all error situations.
@@ -91,15 +88,12 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void ColumnNameExceptionFieldIsPopulated()
         {
             const string dropTable = @"DROP TABLE IF EXISTS public.notnullviolation";
             const string createTable = @"CREATE TABLE public.notnullviolation (id INT NOT NULL)";
             const string insertStatement = @"INSERT INTO public.notnullviolation (id) VALUES(NULL)";
-
-            // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (Conn.PostgreSqlVersion < new Version("9.3"))
-                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             try
             {
@@ -123,6 +117,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MinPgVersion(9, 3, 0, "5 error fields haven't been added yet")]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
             // On reading the source code for PostgreSQL9.3beta1, the only time that the
@@ -132,10 +127,6 @@ namespace NpgsqlTests
             const string dropDomain = @"DROP DOMAIN IF EXISTS public.intnotnull";
             const string createDomain = @"CREATE DOMAIN public.intnotnull AS INT NOT NULL";
             const string castStatement = @"SELECT CAST(NULL AS public.intnotnull)";
-
-            // Since the 5 error fields were added as of PostgreSQL 9.3, we'll skip testing for versions previous to that.
-            if (Conn.PostgreSqlVersion < new Version("9.3"))
-                Assert.Ignore("Postgres version is {0} (< 9.3))", Conn.PostgreSqlVersion);
 
             try
             {

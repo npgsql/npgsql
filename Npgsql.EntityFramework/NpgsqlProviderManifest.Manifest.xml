@@ -73,6 +73,11 @@
         <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
       </FacetDescriptions>
     </Type>
+    <Type Name="timetz" PrimitiveTypeKind="Time">
+      <FacetDescriptions>
+        <Precision Minimum="0" Maximum="6" DefaultValue="6" Constant="false"/>
+      </FacetDescriptions>
+    </Type>
     <Type Name="timestamptz" PrimitiveTypeKind="DateTimeOffset">
       <FacetDescriptions>
         <Precision Minimum="0" Maximum="10" DefaultValue="7" Constant="false"/>

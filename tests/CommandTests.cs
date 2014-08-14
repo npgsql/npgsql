@@ -220,7 +220,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC();", Conn);
+            var command = new NpgsqlCommand("funcC()", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var result = command.ExecuteScalar();
             Assert.AreEqual(1, result);
@@ -417,15 +417,26 @@ namespace NpgsqlTests
             dr.Close();
         }
 
-        [Test]
+        [Test, Description("Basic prepared system scenario. Checks proper backend deallocation of the statement.")]
         public void PreparedStatementInsert()
         {
-            var command = new NpgsqlCommand("insert into data(field_text) values (:p0);", Conn);
-            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-            command.Parameters["p0"].Value = "test";
-            command.Prepare();
-            var dr = command.ExecuteReader();
-            Assert.IsNotNull(dr);
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0);", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
+                cmd.Parameters["p0"].Value = "test";
+                cmd.Prepare();
+                using (var dr = cmd.ExecuteReader())
+                {
+                    Assert.IsNotNull(dr);
+                    dr.Close();
+                    Assert.That(dr.RecordsAffected, Is.EqualTo(1));
+                }
+                Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+            }
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'test'"), Is.EqualTo(1));
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
         }
 
         [Test]
@@ -486,6 +497,26 @@ namespace NpgsqlTests
             var dr = command.ExecuteReader();
             Assert.IsNotNull(dr);
             dr.Close();
+        }
+
+        [Test, Description("Makes sure that calling Prepare() twice on a command deallocates the first prepared statement")]
+        public void PrepareStatementDoublePrepare()
+        {
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0)", Conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
+                cmd.Parameters["p0"].Value = "test";
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = "INSERT INTO data (field_int4) VALUES (:p0)";
+                cmd.Parameters.Clear();
+                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
+                cmd.Parameters["p0"].Value = 8;
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+            }
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
         }
 
         [Test]
@@ -1352,6 +1383,8 @@ namespace NpgsqlTests
         [TestCase(null, NpgsqlDbType.Double,  "field_float8",  7.4D,     TestName = "NpgsqlDouble")]
         [TestCase(null, NpgsqlDbType.Real,    "field_float4",  7.4F,     TestName = "NpgsqlSingle")]
         [TestCase(null, NpgsqlDbType.Text,    "field_text",    @"\test", TestName = "StringWithBackslashes")]
+        [TestCase(null, NpgsqlDbType.Double,  "field_float8",  Double.NaN, TestName = "DoubleNaN")]
+        [TestCase(null, NpgsqlDbType.Real,    "field_float4",  Single.NaN, TestName = "SingleNaN")]
         public void InsertValue(DbType? dbType, NpgsqlDbType? npgsqlDbType, string fieldName, object value)
         {
             if (dbType.HasValue && npgsqlDbType.HasValue || (!dbType.HasValue && !npgsqlDbType.HasValue))
@@ -1735,6 +1768,38 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TestXmlParameter()
+        {
+            TestXmlParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestXmlParameterPrepared()
+        {
+            TestXmlParameter_Internal(true);
+        }
+
+        
+        private void TestXmlParameter_Internal(bool prepare)
+        {
+            using (var command = new NpgsqlCommand("select @PrecisionXML", Conn))
+            {
+                var sXML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <strings type=\"array\"> <string> this is a test with ' single quote </string></strings>";
+                var parameter = command.CreateParameter();
+                parameter.DbType = DbType.Xml;  // To make it work we need to use DbType.String; and then CAST it in the sSQL: cast(@PrecisionXML as xml)
+                parameter.ParameterName = "@PrecisionXML";
+                parameter.Value = sXML;
+                command.Parameters.Add(parameter);
+
+                if (prepare)
+                    command.Prepare();
+                command.ExecuteScalar();
+            }
+
+        }
+
+
+        [Test]
         public void SetParameterValueNull()
         {
             var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
@@ -1855,12 +1920,6 @@ namespace NpgsqlTests
         [Test]
         public void ReturnRecordSupportWithResultset()
         {
-            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
-            {
-                // RETURNS TABLE is not supported prior to 8.4
-                return;
-            }
-
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testreturnrecordresultset(x int4, y int4) returns table (a int4, b int4) as
                               $BODY$
                               begin
@@ -2642,9 +2701,6 @@ namespace NpgsqlTests
         [Test]
         public void TestSavePoint()
         {
-            if (Conn.PostgreSqlVersion < new Version("8.0.0"))
-                Assert.Ignore("Postgres version is {0} (< 8.0.0))", Conn.PostgreSqlVersion);
-
             const String theSavePoint = "theSavePoint";
 
             using (var transaction = Conn.BeginTransaction())
@@ -2666,9 +2722,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof (InvalidOperationException))]
         public void TestSavePointWithSemicolon()
         {
-            if (Conn.PostgreSqlVersion < new Version("8.0.0"))
-                Assert.Ignore("Postgres version is {0} (< 8.0.0))", Conn.PostgreSqlVersion);
-
             const String theSavePoint = "theSavePoint;";
 
             using (var transaction = Conn.BeginTransaction())
@@ -2954,6 +3007,45 @@ namespace NpgsqlTests
                 Assert.AreEqual(inVal.Length, retVal.Length);
             }
         }
+
+        [Test]
+        public void DoubleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { double.NaN, 12345.12345d };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                if (prepareCommand)
+                    cmd.Prepare();
+
+                var retVal = (Double[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void SingleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                var inVal = new[] { float.NaN, 12345.12345f };
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Real | NpgsqlDbType.Array);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+                if (prepareCommand)
+                    cmd.Prepare();
+
+                var retVal = (float[])cmd.ExecuteScalar();
+                Assert.AreEqual(inVal.Length, retVal.Length);
+                Assert.AreEqual(inVal[0], retVal[0]);
+                Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
 
         [Test]
         public void ByteaArrayHandling()
@@ -3260,12 +3352,6 @@ namespace NpgsqlTests
         [Test]
         public void SelectInfinityValueDateDataType()
         {
-            if (Conn.PostgreSqlVersion < new Version(8, 4, 0))
-            {
-                // INFINITY is not supported prior to 8.4
-                return;
-            }
-
             ExecuteNonQuery(@"INSERT INTO data (field_date) VALUES ('-infinity'::date)");
             using (var cmd = new NpgsqlCommand(@"SELECT field_date FROM data", Conn))
             using (var dr = cmd.ExecuteReader())
@@ -3589,6 +3675,86 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void Bug219NpgsqlCopyInConcurrentUsage()
+        {
+
+            try
+            {
+                // Create temporary test tables
+
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table1 (
+                                            id integer,
+                                            name character varying(100)
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+                ExecuteNonQuery(@"CREATE TABLE Bug219_table2 (
+                                            id integer,
+                                            null1 integer,
+                                            name character varying(100),
+                                            null2 integer,
+                                            description character varying(1000),
+                                            null3 integer
+                                            )
+                                            WITH (
+                                            OIDS=FALSE
+                                            );");
+
+
+
+                using (var connection1 = new NpgsqlConnection(ConnectionString))
+                using (var connection2 = new NpgsqlConnection(ConnectionString))
+                {
+
+                    connection1.Open();
+                    connection2.Open();
+
+                    var copy1 = new NpgsqlCopyIn("COPY Bug219_table1 FROM STDIN;", connection1);
+                    var copy2 = new NpgsqlCopyIn("COPY Bug219_table2 FROM STDIN;", connection2);
+
+                    copy1.Start();
+                    copy2.Start();
+
+                    NpgsqlCopySerializer cs1 = new NpgsqlCopySerializer(connection1);
+                    //NpgsqlCopySerializer cs2 = new NpgsqlCopySerializer(connection2);
+
+                    for (int index = 0; index < 10; index++)
+                    {
+                        cs1.AddInt32(index);
+                        cs1.AddString(string.Format("Index {0} ", index));
+                        cs1.EndRow();
+
+                        /*cs2.AddInt32(index);
+                        cs2.AddNull();
+                        cs2.AddString(string.Format("Index {0} ", index));
+                        cs2.AddNull();
+                        cs2.AddString("jjjjj");
+                        cs2.AddNull();
+                        cs2.EndRow();*/
+
+                    }
+                    cs1.Close(); //Exception
+                    //cs2.Close();
+
+                    copy1.End();
+                    copy2.End();
+
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            finally
+            {
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table1");
+                ExecuteNonQuery(@"DROP TABLE IF EXISTS Bug219_table2");
+            }
+        }
+
+        [Test]
         public void DataTypeTests()
         {
             // Test all types according to this table:
@@ -3614,13 +3780,10 @@ namespace NpgsqlTests
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Boolean), result.GetType());
 
-            if (Conn.PostgreSqlVersion >= new Version(8, 1, 0))
-            {
-                // boolean
-                cmd.CommandText = "select 1::boolean";
-                result = cmd.ExecuteScalar();
-                Assert.AreEqual(typeof (Boolean), result.GetType());
-            }
+            // boolean
+            cmd.CommandText = "select 1::boolean";
+            result = cmd.ExecuteScalar();
+            Assert.AreEqual(typeof (Boolean), result.GetType());
 
             // box
             cmd.CommandText = "select '((7,4),(8,3))'::box";
@@ -3773,6 +3936,214 @@ namespace NpgsqlTests
 
                 Assert.NotNull(res);
                 CollectionAssert.AreEqual(expected, res);
+            }
+        }
+
+        [Test]
+        [MinPgVersion(9, 2, 0, "json data type not yet introduced")]
+        public void InsertJsonValueDataType()
+        {
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [MinPgVersion(9, 4, 0, "jsonb data type not yet introduced")]
+        public void InsertJsonbValueDataType()
+        {
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Jsonb;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [MinPgVersion(9, 1, 0, "hstore data type not yet introduced")]
+        public void InsertHstoreValueDataType()
+        {
+            ExecuteNonQuery(@"SET search_path = public, hstore");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
+            {
+                cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
+                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
+                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void Bugs_240_and_296()
+        {
+            // Query from bug #240 (modified):
+            // Original: @"INSERT INTO TestTable (StringColumn, ByteaColumn) VALUES ('b''la', @SomeValue)"
+            Excecute_Bugs_240_and_296_query(@"SELECT 'b''la', @p");
+            //              Query processing breaks here ^
+
+            // Query from bug #296 (line breaks removed):
+            Excecute_Bugs_240_and_296_query(@"SELECT 1 WHERE ''= 'type(''m.response'')#''O''%' AND :p");
+            //                              Query processing breaks here ^
+
+            // Simplified query used to find the root cause of the bug:
+            Excecute_Bugs_240_and_296_query(@"SELECT '''a' || :p");
+            //             Query processing breaks here ^
+        }
+
+        private void Excecute_Bugs_240_and_296_query(string query)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = query;
+
+                cmd.Parameters.AddWithValue("p", DBNull.Value);
+
+                // syntax error at or near ":"
+                cmd.ExecuteReader().Dispose();
+            }
+        }
+
+        [Test]
+        public void ParameterSubstitutionLexerTest()
+        {
+            using (var r = PSLT(@"SELECT :str, :int, :null"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+                Assert.IsTrue(r.IsDBNull(2));
+            }
+            if (Conn.Supports_E_StringPrefix)
+            {
+                using (var r = PSLT(@"SELECT e'ab\'c:str', :int"))
+                {
+                    Assert.AreEqual("ab'c:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+                using (var r = PSLT(@"SELECT E'a\'b'
+-- a comment here :str)'
+'c\'d:str', :int, E''
+'\':str', :int"))
+                {
+                    Assert.AreEqual("a'bc'd:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                    Assert.AreEqual("':str", r.GetString(2));
+                    Assert.AreEqual(123, r.GetInt32(3));
+                }
+            }
+            using (var r = PSLT(@"SELECT 'abc'::text, :text, 246/:int, 122<@int, (ARRAY[1,2,3,4])[1:@int-121]::text, (ARRAY[1,2,3,4])[1: :int-121]::text, (ARRAY[1,2,3,4])[1:two]::text FROM (SELECT 2 AS two) AS a"))
+            {
+                Assert.AreEqual("abc", r.GetString(0));
+                Assert.AreEqual("tt", r.GetString(1));
+                Assert.AreEqual(2, r.GetInt32(2));
+                Assert.IsTrue(r.GetBoolean(3));
+                Assert.AreEqual("{1,2}", r.GetString(4));
+                Assert.AreEqual("{1,2}", r.GetString(5));
+                Assert.AreEqual("{1,2}", r.GetString(6));
+            }
+            using (var r = PSLT("SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/:str"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+            }
+            using (var r = PSLT("SELECT--comment\r:str"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+            }
+            using (var r = PSLT("SELECT $\u00ffabc0$literal string :str :int$\u00ffabc0 $\u00ffabc0$, :int, $$:str$$"))
+            {
+                Assert.AreEqual("literal string :str :int$\u00ffabc0 ", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+                Assert.AreEqual(":str", r.GetString(2));
+            }
+            if (!Conn.UseConformantStrings)
+            {
+                using (var r = PSLT(@"SELECT 'abc\':str''a:str', :int"))
+                {
+                    Assert.AreEqual("abc':str'a:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+            }
+            else
+            {
+                using (var r = PSLT(@"SELECT 'abc'':str''a:str', :int"))
+                {
+                    Assert.AreEqual("abc':str'a:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+            }
+
+            // Don't touch output parameters
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = @"SELECT (ARRAY[1,2,3])[1:abc]::text AS abc FROM (SELECT 2 AS abc) AS a";
+                var param = new NpgsqlParameter { Direction = ParameterDirection.Output, DbType = DbType.String, ParameterName = "abc" };
+                cmd.Parameters.Add(param);
+                using (var r = cmd.ExecuteReader())
+                {
+                    r.Read();
+                    Assert.AreEqual("{1,2}", param.Value);
+                }
+            }
+        }
+
+        [Test]
+        [ExpectedException(typeof(Npgsql.NpgsqlException), ExpectedMessage="ERROR: 42P01: relation \":str\" does not exist")]
+        public void ParameterSubstitutionLexerTestDoubleQuoted()
+        {
+            using (var r = PSLT("SELECT 1 FROM \":str\""))
+            {
+            }
+        }
+
+        private NpgsqlDataReader PSLT(string query)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = query;
+
+                cmd.Parameters.AddWithValue("str", "string");
+                cmd.Parameters.AddWithValue("int", 123);
+                cmd.Parameters.AddWithValue("text", "tt");
+                cmd.Parameters.AddWithValue("null", DBNull.Value);
+
+                // syntax error at or near ":"
+                var rdr = cmd.ExecuteReader();
+                Assert.IsTrue(rdr.Read());
+                return rdr;
+            }
+        }
+
+        [Test]
+        public void TableDirect()
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "(select 1) as a; (select 1) as b;";
+                cmd.CommandType = CommandType.TableDirect;
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    do
+                    {
+                        rdr.Read();
+                        Assert.AreEqual(rdr.GetInt32(0), 1);
+                    } while (rdr.NextResult());
+                }
+            }
+        }
+
+        [Test]
+        public void TestEmptyIEnumerableAsArray()
+        {
+            using (var command = new NpgsqlCommand("SELECT :array", Conn))
+            {
+                var expected = new[] { 1, 2, 3, 4 };
+                command.Parameters.AddWithValue("array", expected.Where(x => false));
+                var res = command.ExecuteScalar() as int[];
+
+                Assert.NotNull(res);
+                Assert.AreEqual(0, res.Length);
             }
         }
     }

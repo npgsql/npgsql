@@ -460,11 +460,25 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgres double with maximum precision.
         /// </summary>
-        internal static byte[] SingleDoubleToFloat4Float8Text(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        internal static byte[] SingleToFloat4Text(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
+            if (NativeData.Equals(float.NaN) && !arrayElement)
+                return ASCIIByteArrays.NAN_QUOTED;
+
+            return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
+        }
+
+        internal static byte[] DoubleToFloat8Text(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
+            //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
+            //to happen.
+            if (NativeData.Equals(double.NaN) && !arrayElement)
+                return ASCIIByteArrays.NAN_QUOTED;
+
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
 

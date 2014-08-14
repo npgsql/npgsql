@@ -8,6 +8,7 @@
             <xs:complexType>
               <xs:sequence>
                 <xs:element name="CompositeIdentifierSeparatorPattern" type="xs:string" minOccurs="0" />
+                <xs:element name="DefaultCatalog" type="xs:string" minOccurs="0" />
                 <xs:element name="DataSourceProductName" type="xs:string" minOccurs="0" />
                 <xs:element name="DataSourceProductVersion" type="xs:string" minOccurs="0" />
                 <xs:element name="DataSourceProductVersionNormalized" type="xs:string" minOccurs="0" />
@@ -51,7 +52,7 @@
     </xs:element>
   </xs:schema>
   <DataSourceInformation>
-    <CompositeIdentifierSeparatorPattern>.</CompositeIdentifierSeparatorPattern>
+    <CompositeIdentifierSeparatorPattern>\.</CompositeIdentifierSeparatorPattern>
     <DataSourceProductName>Npgsql</DataSourceProductName>
     <GroupByBehavior>2</GroupByBehavior>
     <IdentifierPattern>(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\"[^\"\0]|\"\"+\"$)</IdentifierPattern>
@@ -61,7 +62,7 @@
     <ParameterMarkerPattern>@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterMarkerPattern>
     <ParameterNameMaxLength>128</ParameterNameMaxLength>
     <ParameterNamePattern>^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)</ParameterNamePattern>
-    <QuotedIdentifierPattern>"^(([^"]|"")*)$"</QuotedIdentifierPattern>
+    <QuotedIdentifierPattern>(^"([^"]|"")*"$)</QuotedIdentifierPattern>
     <QuotedIdentifierCase>2</QuotedIdentifierCase>
     <StatementSeparatorPattern>;</StatementSeparatorPattern>
     <StringLiteralPattern>'(([^']|'')*)'</StringLiteralPattern>

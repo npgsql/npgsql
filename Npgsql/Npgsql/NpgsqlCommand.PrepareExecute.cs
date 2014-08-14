@@ -419,6 +419,7 @@ namespace Npgsql
         {
             if (prepared == PrepareStatus.Prepared)
             {
+                ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
                 bind = null;
                 execute = null;
                 currentRowDescription = null;
@@ -449,7 +450,7 @@ namespace Npgsql
             planName = m_Connector.NextPlanName();
             String portalName = "";
 
-            preparedCommandText = GetCommandText(true, true);
+            preparedCommandText = GetCommandText(true);
             NpgsqlParse parse = new NpgsqlParse(planName, preparedCommandText, new Int32[] { });
             NpgsqlDescribe statementDescribe = new NpgsqlDescribeStatement(planName);
             IEnumerable<IServerResponseObject> responseEnum;

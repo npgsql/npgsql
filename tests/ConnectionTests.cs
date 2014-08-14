@@ -289,12 +289,6 @@ namespace NpgsqlTests
             var connection = new NpgsqlConnection(ConnectionString + ";SearchPath=public");
             connection.Open();
 
-            if (connection.PostgreSqlVersion < new Version(8, 3, 0))
-            {
-                connection.Close();
-                return;
-            }
-
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = "SHOW SEARCH_PATH";
@@ -429,14 +423,7 @@ namespace NpgsqlTests
             using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
             {
                 string extraDigits = (string)c.ExecuteScalar();
-                if (Conn.PostgreSqlVersion >= new Version(9, 0, 0))
-                {
-                    Assert.AreEqual(extraDigits, "3");
-                }
-                else
-                {
-                    Assert.AreEqual(extraDigits, "2");
-                }
+                Assert.AreEqual(extraDigits, "3");
             }
         }
 

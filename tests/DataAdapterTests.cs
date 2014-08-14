@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using System.Data.SqlClient;
 using System.Web.UI.WebControls;
 using Npgsql;
 
@@ -39,6 +40,7 @@ namespace NpgsqlTests
         public DataAdapterTests(string backendVersion) : base(backendVersion) { }
 
         [Test]
+        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void InsertWithDataSet()
         {
             var ds = new DataSet();
@@ -241,6 +243,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public void UpdateLettingNullFieldValue()
         {
             var command = new NpgsqlCommand(@"INSERT INTO data (field_int2) VALUES (2)", Conn);
@@ -416,6 +419,31 @@ namespace NpgsqlTests
             da.SelectCommand = command;
             System.Data.Common.DbDataAdapter common = da;
             Assert.IsNotNull(common.SelectCommand);
+        }
+
+        [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter (issue #179)")]
+        public void AutoPopulateAdapterCommands()
+        {
+            var da = new NpgsqlDataAdapter("SELECT field_pk,field_int4 FROM data", Conn);
+            var builder = new NpgsqlCommandBuilder(da);
+            var ds = new DataSet();
+            da.Fill(ds);
+
+            var table = ds.Tables[0];
+            var row = table.NewRow();
+            row["field_pk"] = 1;
+            row["field_int4"] = 8;
+            table.Rows.Add(row);
+            da.Update(ds);
+            Assert.That(ExecuteScalar(@"SELECT field_int4 FROM data"), Is.EqualTo(8));
+
+            row["field_int4"] = 9;
+            da.Update(ds);
+            Assert.That(ExecuteScalar(@"SELECT field_int4 FROM data"), Is.EqualTo(9));
+
+            row.Delete();
+            da.Update(ds);
+            Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
     }
     /*

@@ -35,11 +35,11 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    [TestFixture("9.4")]
     [TestFixture("9.3")]
     [TestFixture("9.2")]
     [TestFixture("9.1")]
     [TestFixture("9.0")]
-    [TestFixture("8.4")]
     public abstract class TestBase
     {
         protected Version BackendVersion { get; private set; }
@@ -60,7 +60,7 @@ namespace NpgsqlTests
         /// <summary>
         /// A connection to the test database, set up prior to running each test.
         /// </summary>
-        protected NpgsqlConnection Conn { get; private set; }
+        internal NpgsqlConnection Conn { get; private set; }
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
@@ -189,25 +189,7 @@ namespace NpgsqlTests
         {
             Console.WriteLine("Creating test database schema");
 
-            if (Conn.PostgreSqlVersion >= new Version(8, 2, 0))
-            {
-                ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
-            }
-            else
-            {
-                try
-                {
-                    ExecuteNonQuery("DROP TABLE DATA CASCADE");
-                }
-                catch (NpgsqlException e)
-                {
-                    if (! e.Message.ToLower().Contains("\"data\" does not exist"))
-                    {
-                        throw;
-                    }
-                }
-            }
-
+            ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
             ExecuteNonQuery(@"CREATE TABLE data (
                                 field_pk                      SERIAL PRIMARY KEY,
                                 field_serial                  SERIAL,
@@ -235,7 +217,39 @@ namespace NpgsqlTests
                                 field_polygon                 POLYGON,
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 1))
+            {
+                CreateSchema("hstore");
+                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
+            }
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 2))
+            {
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
+            }
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 4))
+            {
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_jsonb JSONB");
+            }
+
             _schemaCreated = true;
+        }
+
+        private void CreateSchema(string schemaName)
+        {
+            if (Conn.PostgreSqlVersion >= new Version(9, 3))
+                ExecuteNonQuery(String.Format("CREATE SCHEMA IF NOT EXISTS {0}", schemaName));
+            else
+            {
+                try { ExecuteNonQuery(String.Format("CREATE SCHEMA {0}", schemaName)); }
+                catch (NpgsqlException e) {
+                    if (e.Code != "42P06")
+                        throw;
+                }
+            }
         }
 
         /// <summary>
@@ -252,6 +266,12 @@ namespace NpgsqlTests
                     .Select(a => new Version((string) a.Arguments[0]))
                     .Max();
             }
+        }
+
+        static TestBase()
+        {
+            //NpgsqlEventLog.Level = LogLevel.Debug;
+            //NpgsqlEventLog.EchoMessages = true;
         }
 
         #endregion

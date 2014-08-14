@@ -307,66 +307,65 @@ namespace Npgsql
         /// </summary>
         private NpgsqlConnector GetPooledConnector(NpgsqlConnection Connection)
         {
-            ConnectorQueue Queue;
+            ConnectorQueue Queue = null;
             NpgsqlConnector Connector = null;
 
-            // We only need to lock all pools when trying to get one pool or create one.
-
-            lock (locker)
+            do
             {
-
-                // Try to find a queue.
-                if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
+                if (Connector != null)
                 {
+                    //This means Connector was found to be invalid at the end of the loop
 
-                    Queue = new ConnectorQueue();
-                    Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
-                    Queue.MinPoolSize = Connection.MinPoolSize;
-                    PooledConnectors[Connection.ConnectionString] = Queue;
-                }
-            }
-
-            // Now we can simply lock on the pool itself.
-            lock (Queue)
-            {
-
-                if (Queue.Available.Count > 0)
-                {
-                    // Found a queue with connectors.  Grab the top one.
-
-                    // Check if the connector is still valid.
-
-                    Connector = Queue.Available.Dequeue();
-                    Queue.Busy.Add(Connector, null);
-                }
-            }
-
-            if (Connector != null)
-            {
-                if (!Connector.IsValid())
-                {
                     lock (Queue)
                     {
                         Queue.Busy.Remove(Connector);
                     }
 
                     Connector.Close();
-                    return GetPooledConnector(Connection); //Try again
+                    Connector = null;
                 }
 
-                return Connector;
-            }
+                // We only need to lock all pools when trying to get one pool or create one.
+
+                lock (locker)
+                {
+
+                    // Try to find a queue.
+                    if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
+                    {
+
+                        Queue = new ConnectorQueue();
+                        Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
+                        Queue.MinPoolSize = Connection.MinPoolSize;
+                        PooledConnectors[Connection.ConnectionString] = Queue;
+                    }
+                }
+
+                // Now we can simply lock on the pool itself.
+                lock (Queue)
+                {
+                    if (Queue.Available.Count > 0)
+                    {
+                        // Found a queue with connectors.  Grab the top one.
+
+                        // Check if the connector is still valid.
+
+                        Connector = Queue.Available.Dequeue();
+                        Queue.Busy.Add(Connector, null);
+                    }
+                }
+
+            } while (Connector != null && !Connector.IsValid());
+
+            if (Connector != null) return Connector;
 
             lock (Queue)
             {
-
                 if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
                 {
                     Connector = new NpgsqlConnector(Connection);
                     Queue.Busy.Add(Connector, null);
-
                 }
-
             }
 
             if (Connector != null)

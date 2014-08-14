@@ -72,7 +72,10 @@ namespace NpgsqlTypes
         TimeTZ,
         Name,
         Abstime,
-        MacAddr
+        MacAddr,
+        Json,
+        Jsonb,
+        Hstore,
     }
 }
 
