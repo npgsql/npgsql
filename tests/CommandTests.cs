@@ -220,7 +220,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC();", Conn);
+            var command = new NpgsqlCommand("funcC()", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var result = command.ExecuteScalar();
             Assert.AreEqual(1, result);
@@ -4003,6 +4003,134 @@ namespace NpgsqlTests
             }
         }
 
+        [Test]
+        public void ParameterSubstitutionLexerTest()
+        {
+            using (var r = PSLT(@"SELECT :str, :int, :null"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+                Assert.IsTrue(r.IsDBNull(2));
+            }
+            if (Conn.Supports_E_StringPrefix)
+            {
+                using (var r = PSLT(@"SELECT e'ab\'c:str', :int"))
+                {
+                    Assert.AreEqual("ab'c:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+                using (var r = PSLT(@"SELECT E'a\'b'
+-- a comment here :str)'
+'c\'d:str', :int, E''
+'\':str', :int"))
+                {
+                    Assert.AreEqual("a'bc'd:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                    Assert.AreEqual("':str", r.GetString(2));
+                    Assert.AreEqual(123, r.GetInt32(3));
+                }
+            }
+            using (var r = PSLT(@"SELECT 'abc'::text, :text, 246/:int, 122<@int, (ARRAY[1,2,3,4])[1:@int-121]::text, (ARRAY[1,2,3,4])[1: :int-121]::text, (ARRAY[1,2,3,4])[1:two]::text FROM (SELECT 2 AS two) AS a"))
+            {
+                Assert.AreEqual("abc", r.GetString(0));
+                Assert.AreEqual("tt", r.GetString(1));
+                Assert.AreEqual(2, r.GetInt32(2));
+                Assert.IsTrue(r.GetBoolean(3));
+                Assert.AreEqual("{1,2}", r.GetString(4));
+                Assert.AreEqual("{1,2}", r.GetString(5));
+                Assert.AreEqual("{1,2}", r.GetString(6));
+            }
+            using (var r = PSLT("SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/:str"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+            }
+            using (var r = PSLT("SELECT--comment\r:str"))
+            {
+                Assert.AreEqual("string", r.GetString(0));
+            }
+            using (var r = PSLT("SELECT $\u00ffabc0$literal string :str :int$\u00ffabc0 $\u00ffabc0$, :int, $$:str$$"))
+            {
+                Assert.AreEqual("literal string :str :int$\u00ffabc0 ", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+                Assert.AreEqual(":str", r.GetString(2));
+            }
+            if (!Conn.UseConformantStrings)
+            {
+                using (var r = PSLT(@"SELECT 'abc\':str''a:str', :int"))
+                {
+                    Assert.AreEqual("abc':str'a:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+            }
+            else
+            {
+                using (var r = PSLT(@"SELECT 'abc'':str''a:str', :int"))
+                {
+                    Assert.AreEqual("abc':str'a:str", r.GetString(0));
+                    Assert.AreEqual(123, r.GetInt32(1));
+                }
+            }
+
+            // Don't touch output parameters
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = @"SELECT (ARRAY[1,2,3])[1:abc]::text AS abc FROM (SELECT 2 AS abc) AS a";
+                var param = new NpgsqlParameter { Direction = ParameterDirection.Output, DbType = DbType.String, ParameterName = "abc" };
+                cmd.Parameters.Add(param);
+                using (var r = cmd.ExecuteReader())
+                {
+                    r.Read();
+                    Assert.AreEqual("{1,2}", param.Value);
+                }
+            }
+        }
+
+        [Test]
+        [ExpectedException(typeof(Npgsql.NpgsqlException), ExpectedMessage="ERROR: 42P01: relation \":str\" does not exist")]
+        public void ParameterSubstitutionLexerTestDoubleQuoted()
+        {
+            using (var r = PSLT("SELECT 1 FROM \":str\""))
+            {
+            }
+        }
+
+        private NpgsqlDataReader PSLT(string query)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = query;
+
+                cmd.Parameters.AddWithValue("str", "string");
+                cmd.Parameters.AddWithValue("int", 123);
+                cmd.Parameters.AddWithValue("text", "tt");
+                cmd.Parameters.AddWithValue("null", DBNull.Value);
+
+                // syntax error at or near ":"
+                var rdr = cmd.ExecuteReader();
+                Assert.IsTrue(rdr.Read());
+                return rdr;
+            }
+        }
+
+        [Test]
+        public void TableDirect()
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "(select 1) as a; (select 1) as b;";
+                cmd.CommandType = CommandType.TableDirect;
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    do
+                    {
+                        rdr.Read();
+                        Assert.AreEqual(rdr.GetInt32(0), 1);
+                    } while (rdr.NextResult());
+                }
+            }
+        }
+
+        [Test]
         public void TestEmptyIEnumerableAsArray()
         {
             using (var command = new NpgsqlCommand("SELECT :array", Conn))

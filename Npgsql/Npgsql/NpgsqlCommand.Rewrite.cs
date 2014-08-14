@@ -77,7 +77,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false, false) : GetExecuteCommandText();
+            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
 
             return ret;
         }
@@ -221,315 +221,78 @@ namespace Npgsql
         /// tokens.
         /// </summary>
         /// <param name="prepare"></param>
-        /// <param name="forExtendQuery"></param>
         /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
-        private byte[] GetCommandText(bool prepare, bool forExtendQuery)
+        private byte[] GetCommandText(bool prepare)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
             MemoryStream commandBuilder = new MemoryStream();
-            StringChunk[] chunks;
 
-            chunks = GetDistinctTrimmedCommands(commandText);
-
-            if (chunks.Length > 1)
+            if (commandType == CommandType.TableDirect)
             {
-                if (prepare || commandType == CommandType.StoredProcedure)
+                foreach (var table in commandText.Split(';'))
                 {
-                    throw new NpgsqlException("Multiple queries not supported for this command type");
-                }
-            }
-
-            foreach (StringChunk chunk in chunks)
-            {
-                if (commandBuilder.Length > 0)
-                {
-                    commandBuilder
-                        .WriteBytes((byte)ASCIIBytes.SemiColon)
-                        .WriteBytes(ASCIIByteArrays.LineTerminator);
-                }
-
-                if (prepare && ! forExtendQuery)
-                {
-                    commandBuilder
-                        .WriteString("PREPARE ")
-                        .WriteString(planName)
-                        .WriteString(" AS ");
-                }
-
-                if (commandType == CommandType.StoredProcedure)
-                {
-                    if (! prepare && ! functionChecksDone)
+                    if (table.Trim().Length == 0)
                     {
-                        functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
-
-                        functionChecksDone = true;
+                        continue;
                     }
 
-                    commandBuilder.WriteString("SELECT * FROM ");
-
-                    if (commandText[chunk.Begin + chunk.Length - 1] == ')')
-                    {
-                        AppendCommandReplacingParameterValues(commandBuilder, commandText, chunk.Begin, chunk.Length, prepare, forExtendQuery);
-                    }
-                    else
-                    {
-                        commandBuilder
-                            .WriteString(commandText.Substring(chunk.Begin, chunk.Length))
-                            .WriteBytes((byte)ASCIIBytes.ParenLeft);
-
-                        if (prepare)
-                        {
-                            AppendParameterPlaceHolders(commandBuilder);
-                        }
-                        else
-                        {
-                            AppendParameterValues(commandBuilder);
-                        }
-
-                        commandBuilder.WriteBytes((byte)ASCIIBytes.ParenRight);
-                    }
-
-                    if (! prepare && functionNeedsColumnListDefinition)
-                    {
-                        AddFunctionColumnListSupport(commandBuilder);
-                    }
-                }
-                else if (commandType == CommandType.TableDirect)
-                {
                     commandBuilder
                         .WriteString("SELECT * FROM ")
-                        .WriteString(commandText.Substring(chunk.Begin, chunk.Length));
+                        .WriteString(table)
+                        .WriteString(";");
+                }
+            }
+            else if (commandType == CommandType.StoredProcedure)
+            {
+                if (!prepare && !functionChecksDone)
+                {
+                    functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
+
+                    functionChecksDone = true;
+                }
+
+                commandBuilder.WriteString("SELECT * FROM ");
+
+                if (commandText.TrimEnd().EndsWith(")"))
+                {
+                    if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, false))
+                    {
+                        throw new NpgsqlException("Multiple queries not supported for stored procedures");
+                    }
                 }
                 else
                 {
-                    AppendCommandReplacingParameterValues(commandBuilder, commandText, chunk.Begin, chunk.Length, prepare, forExtendQuery);
+                    commandBuilder
+                        .WriteString(commandText)
+                        .WriteBytes((byte)ASCIIBytes.ParenLeft);
+
+                    if (prepare)
+                    {
+                        AppendParameterPlaceHolders(commandBuilder);
+                    }
+                    else
+                    {
+                        AppendParameterValues(commandBuilder);
+                    }
+
+                    commandBuilder.WriteBytes((byte)ASCIIBytes.ParenRight);
+                }
+
+                if (!prepare && functionNeedsColumnListDefinition)
+                {
+                    AddFunctionColumnListSupport(commandBuilder);
+                }
+            }
+            else
+            {
+                if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, !prepare))
+                {
+                    throw new NpgsqlException("Multiple queries not supported for prepared statements");
                 }
             }
 
             return commandBuilder.ToArray();
-        }
-
-        private enum TokenType
-        {
-            None,
-            LineComment,
-            BlockComment,
-            Quoted,
-            LineCommentBegin,
-            BlockCommentBegin,
-            BlockCommentEnd,
-            Param,
-            Colon,
-            FullTextMatchOp,
-            PossibleDoubleCharEscape
-        }
-
-        /// <summary>
-        /// Find the beginning and end of each distinct SQL command and produce
-        /// a list of descriptors, one for each command.  Commands described are trimmed of
-        /// leading and trailing white space and their terminating semi-colons.
-        /// </summary>
-        /// <param name="src">Raw command text.</param>
-        /// <returns>List of chunk descriptors.</returns>
-        private static StringChunk[] GetDistinctTrimmedCommands(string src)
-        {
-            TokenType currTokenType = TokenType.None;
-            bool quoteEscape = false;
-            int currCharOfs = -1;
-            int currChunkBeg = 0;
-            int currChunkRawLen = 0;
-            int currChunkTrimLen = 0;
-            List<StringChunk> chunks = new List<StringChunk>();
-
-            foreach (char ch in src)
-            {
-                currCharOfs++;
-
-                // goto label for character re-evaluation:
-                ProcessCharacter:
-
-                switch (currTokenType)
-                {
-                    case TokenType.None :
-                        switch (ch)
-                        {
-                            case '\'' :
-                                currTokenType = TokenType.Quoted;
-
-                                currChunkRawLen++;
-                                currChunkTrimLen = currChunkRawLen;
-
-                                break;
-
-                            case ';' :
-                                if (currChunkTrimLen > 0)
-                                {
-                                    chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
-                                }
-
-                                currChunkBeg = currCharOfs + 1;
-                                currChunkRawLen = 0;
-                                currChunkTrimLen = 0;
-
-                                break;
-
-                            case ' ' :
-                            case '\t' :
-                            case '\r' :
-                            case '\n' :
-                                if (currChunkTrimLen == 0)
-                                {
-                                    currChunkBeg++;
-                                }
-                                else
-                                {
-                                    currChunkRawLen++;
-                                }
-
-                                break;
-
-                            case '/' :
-                                currTokenType = TokenType.BlockCommentBegin;
-
-                                currChunkRawLen++;
-                                currChunkTrimLen = currChunkRawLen;
-
-                                break;
-
-                            case '-' :
-                                currTokenType = TokenType.LineCommentBegin;
-
-                                currChunkRawLen++;
-                                currChunkTrimLen = currChunkRawLen;
-
-                                break;
-
-                            default :
-                                currChunkRawLen++;
-                                currChunkTrimLen = currChunkRawLen;
-
-                                break;
-
-                        }
-
-                        break;
-
-                    case TokenType.LineCommentBegin :
-                        if (ch == '-')
-                        {
-                            currTokenType = TokenType.LineComment;
-                        }
-                        else
-                        {
-                            currTokenType = TokenType.None;
-                        }
-
-                        currChunkRawLen++;
-                        currChunkTrimLen = currChunkRawLen;
-
-                        break;
-
-                    case TokenType.BlockCommentBegin :
-                        if (ch == '*')
-                        {
-                            currTokenType = TokenType.BlockComment;
-                        }
-                        else
-                        {
-                            currTokenType = TokenType.None;
-                        }
-
-                        currChunkRawLen++;
-                        currChunkTrimLen = currChunkRawLen;
-
-                        break;
-
-                    case TokenType.BlockCommentEnd :
-                        if (ch == '/')
-                        {
-                            currTokenType = TokenType.None;
-                        }
-                        else
-                        {
-                            currTokenType = TokenType.BlockComment;
-                        }
-
-                        currChunkRawLen++;
-                        currChunkTrimLen = currChunkRawLen;
-
-                        break;
-
-                    case TokenType.Quoted :
-                        switch (ch)
-                        {
-                            case '\'' :
-                                if (quoteEscape)
-                                {
-                                    quoteEscape = false;
-                                }
-                                else
-                                {
-                                    quoteEscape = true;
-                                }
-
-                                currChunkRawLen++;
-                                currChunkTrimLen = currChunkRawLen;
-
-                                break;
-
-                            default :
-                                if (quoteEscape)
-                                {
-                                    quoteEscape = false;
-                                    currTokenType = TokenType.None;
-
-                                    // Re-evaluate this character
-                                    goto ProcessCharacter;
-                                }
-                                else
-                                {
-                                    currChunkRawLen++;
-                                    currChunkTrimLen = currChunkRawLen;
-                                }
-
-                                break;
-
-                        }
-
-                        break;
-
-                    case TokenType.LineComment :
-                        if (ch == '\n')
-                        {
-                            currTokenType = TokenType.None;
-                        }
-
-                        currChunkRawLen++;
-                        currChunkTrimLen = currChunkRawLen;
-
-                        break;
-
-                    case TokenType.BlockComment :
-                        if (ch == '*')
-                        {
-                            currTokenType = TokenType.BlockCommentEnd;
-                        }
-
-                        currChunkRawLen++;
-                        currChunkTrimLen = currChunkRawLen;
-
-                        break;
-
-                }
-            }
-
-            if (currChunkTrimLen > 0)
-            {
-                chunks.Add(new StringChunk(currChunkBeg, currChunkTrimLen));
-            }
-
-            return chunks.ToArray();
         }
 
         private void AppendParameterPlaceHolders(Stream dest)
@@ -648,25 +411,49 @@ namespace Npgsql
             }
         }
 
+        private static bool IsLetter(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
+        }
+
+        private static bool IsIdentifierStart(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
+        }
+
+        private static bool IsDollarTagIdentifier(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
+        }
+
+        private static bool IsIdentifier(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
+        }
+
         /// <summary>
         /// Append a region of a source command text to an output command, performing parameter token
         /// substitutions.
         /// </summary>
         /// <param name="dest">Stream to which to append output.</param>
         /// <param name="src">Command text.</param>
-        /// <param name="begin">Starting index within src.</param>
-        /// <param name="length">Length of region to be processed.</param>
         /// <param name="prepare"></param>
-        /// <param name="forExtendedQuery"></param>
-        private void AppendCommandReplacingParameterValues(Stream dest, string src, int begin, int length, bool prepare, bool forExtendedQuery)
+        /// <param name="allowMultipleStatements"></param>
+        /// <returns>false if the query has multiple statements which are not allowed</returns>
+        private bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool allowMultipleStatements)
         {
+            bool standardConformantStrings = connection != null && connection.Connector != null && connection.Connector.IsInitialized ? connection.UseConformantStrings : true;
+
+            int currCharOfs = 0;
+            int end = src.Length;
+            char ch = '\0';
             char lastChar = '\0';
-            TokenType currTokenType = TokenType.None;
-            char paramMarker = '\0';
-            int currTokenBeg = begin;
-            int currTokenLen = 0;
+            int dollarTagStart = 0;
+            int dollarTagEnd = 0;
+            int currTokenBeg = 0;
+            int blockCommentLevel = 0;
+
             Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
-            int end = begin + length;
 
             if (prepare)
             {
@@ -678,303 +465,78 @@ namespace Npgsql
                 }
             }
 
-            for (int currCharOfs = begin ; currCharOfs < end ; currCharOfs++)
+            if (allowMultipleStatements && parameters.Count == 0)
             {
-                char ch = src[currCharOfs];
-
-                // goto label for character re-evaluation:
-                ProcessCharacter:
-
-                switch (currTokenType)
-                {
-                    case TokenType.None :
-                        switch (ch)
-                        {
-                            case '\'' :
-                                if (currTokenLen > 0)
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                                }
-
-                                currTokenType = TokenType.Quoted;
-
-                                currTokenBeg = currCharOfs;
-                                currTokenLen = 1;
-
-                                break;
-
-                            case ':' :
-                                if (currTokenLen > 0)
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                                }
-
-                                currTokenType = TokenType.Colon;
-
-                                currTokenBeg = currCharOfs;
-                                currTokenLen = 1;
-
-                                break;
-
-                            case '<' :
-                            case '@' :
-                                if (currTokenLen > 0)
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                                }
-
-                                currTokenType = TokenType.FullTextMatchOp;
-
-                                currTokenBeg = currCharOfs;
-                                currTokenLen = 1;
-
-                                break;
-
-                            case '-' :
-                                if (currTokenLen > 0)
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                                }
-
-                                currTokenType = TokenType.LineCommentBegin;
-
-                                currTokenBeg = currCharOfs;
-                                currTokenLen = 1;
-
-                                break;
-
-                            case '/' :
-                                if (currTokenLen > 0)
-                                {
-                                    dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                                }
-
-                                currTokenType = TokenType.BlockCommentBegin;
-
-                                currTokenBeg = currCharOfs;
-                                currTokenLen = 1;
-
-                                break;
-
-                            default :
-                                currTokenLen++;
-
-                                break;
-
-                        }
-
-                        break;
-
-                    case TokenType.Param :
-                        if (IsParamNameChar(ch))
-                        {
-                            currTokenLen++;
-                        }
-                        else
-                        {
-                            string paramName = src.Substring(currTokenBeg, currTokenLen);
-                            NpgsqlParameter parameter;
-                            bool wroteParam = false;
-
-                            if (parameters.TryGetValue(paramName, out parameter))
-                            {
-                                if (
-                                    (parameter.Direction == ParameterDirection.Input) ||
-                                    (parameter.Direction == ParameterDirection.InputOutput)
-                                )
-                                {
-                                    if (prepare)
-                                    {
-                                        AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
-                                    }
-                                    else
-                                    {
-                                        AppendParameterValue(dest, parameter);
-                                    }
-                                }
-
-                                wroteParam = true;
-                            }
-
-                            if (! wroteParam)
-                            {
-                                dest.WriteString("{0}{1}", paramMarker, paramName);
-                            }
-
-                            currTokenType = TokenType.None;
-                            currTokenBeg = currCharOfs;
-                            currTokenLen = 0;
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
-                        }
-
-                        break;
-
-                    case TokenType.Quoted :
-                        switch (ch)
-                        {
-                            case '\'' :
-                                currTokenType = TokenType.PossibleDoubleCharEscape;
-                                currTokenLen++;
-
-                                break;
-
-                            default :
-                                currTokenLen++;
-
-                                break;
-
-                        }
-
-                        break;
-
-                    case TokenType.PossibleDoubleCharEscape :
-                        if (ch == lastChar)
-                        {
-                            currTokenType = TokenType.Quoted;
-                            currTokenLen++;
-                        }
-                        else
-                        {
-                            dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-
-                            currTokenType = TokenType.None;
-                            currTokenBeg = currCharOfs;
-                            currTokenLen = 0;
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
-                        }
-
-                        break;
-
-                    case TokenType.LineComment :
-                        if (ch == '\n')
-                        {
-                            currTokenType = TokenType.None;
-                        }
-
-                        currTokenLen++;
-
-                        break;
-
-                    case TokenType.BlockComment :
-                        if (ch == '*')
-                        {
-                            currTokenType = TokenType.BlockCommentEnd;
-                        }
-
-                        currTokenLen++;
-
-                        break;
-
-                    case TokenType.Colon :
-                        if (IsParamNameChar(ch))
-                        {
-                            // Switch to parameter name token, include this character.
-                            currTokenType = TokenType.Param;
-
-                            currTokenBeg = currCharOfs;
-                            currTokenLen = 1;
-                            paramMarker = ':';
-                        }
-                        else
-                        {
-                            // Demote to the unknown token type and continue.
-                            currTokenType = TokenType.None;
-                            currTokenLen++;
-                        }
-
-                        break;
-
-                    case TokenType.FullTextMatchOp :
-                        if (lastChar == '@' && IsParamNameChar(ch))
-                        {
-                            // Switch to parameter name token, include this character.
-                            currTokenType = TokenType.Param;
-
-                            currTokenBeg = currCharOfs;
-                            currTokenLen = 1;
-                            paramMarker = '@';
-                        }
-                        else
-                        {
-                            // Demote to the unknown token type.
-                            currTokenType = TokenType.None;
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
-                        }
-
-                        break;
-
-                    case TokenType.LineCommentBegin :
-                        if (ch == '-')
-                        {
-                            currTokenType = TokenType.LineComment;
-                            currTokenLen++;
-                        }
-                        else
-                        {
-                            // Demote to the unknown token type.
-                            currTokenType = TokenType.None;
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
-                        }
-
-                        break;
-
-                    case TokenType.BlockCommentBegin :
-                        if (ch == '*')
-                        {
-                            currTokenType = TokenType.BlockComment;
-                            currTokenLen++;
-                        }
-                        else
-                        {
-                            // Demote to the unknown token type.
-                            currTokenType = TokenType.None;
-
-                            // Re-evaluate this character
-                            goto ProcessCharacter;
-                        }
-
-                        break;
-
-                    case TokenType.BlockCommentEnd :
-                        if (ch == '/')
-                        {
-                            currTokenType = TokenType.None;
-                            currTokenLen++;
-                        }
-                        else
-                        {
-                            currTokenType = TokenType.BlockComment;
-                            currTokenLen++;
-                        }
-
-                        break;
-
-                }
-
-                lastChar = ch;
+                dest.WriteString(src);
+                return true;
             }
 
-            switch (currTokenType)
+        None:
+            if (currCharOfs >= end)
             {
-                case TokenType.Param :
-                    string paramName = src.Substring(currTokenBeg, currTokenLen);
+                goto Finish;
+            }
+            lastChar = ch;
+            ch = src[currCharOfs++];
+        NoneContinue:
+            for (; ; lastChar = ch, ch = src[currCharOfs++])
+            {
+                switch (ch)
+                {
+                    case '/':                                           goto BlockCommentBegin;
+                    case '-':                                           goto LineCommentBegin;
+                    case '\'': if (standardConformantStrings)           goto Quoted;                else goto Escaped;
+                    case '$':  if (!IsIdentifier(lastChar))             goto DollarQuotedStart;     else break;
+                    case '"':                                           goto DoubleQuoted;
+                    case ':':  if (lastChar != ':')                     goto ParamStart;            else break;
+                    case '@':  if (lastChar != '@')                     goto ParamStart;            else break;
+                    case ';':  if (!allowMultipleStatements)            goto SemiColon;             else break;
+
+                    case 'e':
+                    case 'E':  if (!IsLetter(lastChar))                 goto EscapedStart;          else break;
+                }
+
+                if (currCharOfs >= end)
+                {
+                    goto Finish;
+                }
+            }
+            
+        ParamStart:
+            if (currCharOfs < end)
+            {
+                lastChar = ch;
+                ch = src[currCharOfs];
+                if (IsParamNameChar(ch))
+                {
+                    if (currCharOfs - 1 > currTokenBeg)
+                    {
+                        dest.WriteString(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                    }
+                    currTokenBeg = currCharOfs++ - 1;
+                    goto Param;
+                }
+                else
+                {
+                    currCharOfs++;
+                    goto NoneContinue;
+                }
+            }
+            goto Finish;
+
+        Param:
+            // We have already at least one character of the param name
+            for (; ; )
+            {
+                lastChar = ch;
+                if (currCharOfs >= end || !IsParamNameChar(ch = src[currCharOfs]))
+                {
+                    string paramName = src.Substring(currTokenBeg, currCharOfs - currTokenBeg);
                     NpgsqlParameter parameter;
-                    bool wroteParam = false;
 
                     if (parameters.TryGetValue(paramName, out parameter))
                     {
-                        if (
-                            (parameter.Direction == ParameterDirection.Input) ||
-                            (parameter.Direction == ParameterDirection.InputOutput)
-                        )
+                        if (parameter.Direction == ParameterDirection.Input || parameter.Direction == ParameterDirection.InputOutput)
                         {
                             if (prepare)
                             {
@@ -984,27 +546,283 @@ namespace Npgsql
                             {
                                 AppendParameterValue(dest, parameter);
                             }
+                            currTokenBeg = currCharOfs;
                         }
-
-                        wroteParam = true;
                     }
 
-                    if (! wroteParam)
+                    if (currCharOfs >= end)
                     {
-                        dest.WriteString("{0}{1}", paramMarker, paramName);
+                        goto Finish;
                     }
 
-                    break;
-
-                default :
-                    if (currTokenLen > 0)
-                    {
-                        dest.WriteString(src.Substring(currTokenBeg, currTokenLen));
-                    }
-
-                    break;
-
+                    currCharOfs++;
+                    goto NoneContinue;
+                }
+                else
+                {
+                    currCharOfs++;
+                }
             }
+
+        Quoted:
+            while (currCharOfs < end)
+            {
+                if (src[currCharOfs++] == '\'')
+                {
+                    ch = '\0';
+                    goto None;
+                }
+            }
+            goto Finish;
+
+        DoubleQuoted:
+            while (currCharOfs < end)
+            {
+                if (src[currCharOfs++] == '"')
+                {
+                    ch = '\0';
+                    goto None;
+                }
+            }
+            goto Finish;
+
+        EscapedStart:
+            if (currCharOfs < end)
+            {
+                lastChar = ch;
+                ch = src[currCharOfs++];
+                if (ch == '\'')
+                {
+                    goto Escaped;
+                }
+                goto NoneContinue;
+            }
+            goto Finish;
+
+        Escaped:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '\'')
+                {
+                    goto MaybeConcatenatedEscaped;
+                }
+                if (ch == '\\')
+                {
+                    if (currCharOfs >= end)
+                    {
+                        goto Finish;
+                    }
+                    currCharOfs++;
+                }
+            }
+            goto Finish;
+
+        MaybeConcatenatedEscaped:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '\r' || ch == '\n')
+                {
+                    goto MaybeConcatenatedEscaped2;
+                }
+                if (ch != ' ' && ch != '\t' && ch != '\f')
+                {
+                    lastChar = '\0';
+                    goto NoneContinue;
+                }
+            }
+            goto Finish;
+
+        MaybeConcatenatedEscaped2:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '\'')
+                {
+                    goto Escaped;
+                }
+                if (ch == '-')
+                {
+                    if (currCharOfs >= end)
+                    {
+                        goto Finish;
+                    }
+                    ch = src[currCharOfs++];
+                    if (ch == '-')
+                    {
+                        goto MaybeConcatenatedEscapeAfterComment;
+                    }
+                    lastChar = '\0';
+                    goto NoneContinue;
+
+                }
+                if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f')
+                {
+                    lastChar = '\0';
+                    goto NoneContinue;
+                }
+            }
+            goto Finish;
+
+        MaybeConcatenatedEscapeAfterComment:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '\r' || ch == '\n')
+                {
+                    goto MaybeConcatenatedEscaped2;
+                }
+            }
+            goto Finish;
+
+        DollarQuotedStart:
+            if (currCharOfs < end)
+            {
+                ch = src[currCharOfs];
+                if (ch == '$')
+                {
+                    // Empty tag
+                    dollarTagStart = dollarTagEnd = currCharOfs;
+                    currCharOfs++;
+                    goto DollarQuoted;
+                }
+                if (IsIdentifierStart(ch))
+                {
+                    dollarTagStart = currCharOfs;
+                    currCharOfs++;
+                    goto DollarQuotedInFirstDelim;
+                }
+                lastChar = '$';
+                currCharOfs++;
+                goto NoneContinue;
+            }
+            goto Finish;
+
+        DollarQuotedInFirstDelim:
+            while (currCharOfs < end)
+            {
+                lastChar = ch;
+                ch = src[currCharOfs++];
+                if (ch == '$')
+                {
+                    dollarTagEnd = currCharOfs - 1;
+                    goto DollarQuoted;
+                }
+                if (!IsDollarTagIdentifier(ch))
+                {
+                    goto NoneContinue;
+                }
+            }
+            goto Finish;
+
+        DollarQuoted:
+            {
+                string tag = src.Substring(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+                int pos = src.IndexOf(tag, dollarTagEnd + 1); // Not linear time complexity, but that's probably not a problem, since PostgreSQL backend's isn't either
+                if (pos == -1)
+                {
+                    currCharOfs = end;
+                    goto Finish;
+                }
+                currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
+                ch = '\0';
+                goto None;
+            }
+
+        LineCommentBegin:
+            if (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '-')
+                {
+                    goto LineComment;
+                }
+                lastChar = '\0';
+                goto NoneContinue;
+            }
+            goto Finish;
+
+        LineComment:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '\r' || ch == '\n')
+                {
+                    goto None;
+                }
+            }
+            goto Finish;
+
+        BlockCommentBegin:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '*')
+                {
+                    blockCommentLevel++;
+                    goto BlockComment;
+                }
+                if (ch != '/')
+                {
+                    if (blockCommentLevel > 0)
+                    {
+                        goto BlockComment;
+                    }
+                    lastChar = '\0';
+                    goto NoneContinue;
+                }
+            }
+            goto Finish;
+
+        BlockComment:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '*')
+                {
+                    goto BlockCommentEnd;
+                }
+                if (ch == '/')
+                {
+                    goto BlockCommentBegin;
+                }
+            }
+            goto Finish;
+
+        BlockCommentEnd:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch == '/')
+                {
+                    if (--blockCommentLevel > 0)
+                    {
+                        goto BlockComment;
+                    }
+                    goto None;
+                }
+                if (ch != '*')
+                {
+                    goto BlockComment;
+                }
+            }
+            goto Finish;
+
+        SemiColon:
+            while (currCharOfs < end)
+            {
+                ch = src[currCharOfs++];
+                if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f') // We don't check for comments after the last ; yet
+                {
+                    return false;
+                }
+            }
+            // implicit goto Finish
+
+        Finish:
+            dest.WriteString(src.Substring(currTokenBeg, end - currTokenBeg));
+            return true;
         }
 
         private byte[] GetExecuteCommandText()
