@@ -16,7 +16,7 @@ using Npgsql.SqlGenerators;
 
 namespace Npgsql
 {
-    internal class NpgsqlServices : DbProviderServices
+    public class NpgsqlServices : DbProviderServices
     {
         private static readonly NpgsqlServices _instance = new NpgsqlServices();
 
