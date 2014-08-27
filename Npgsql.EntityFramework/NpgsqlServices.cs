@@ -16,7 +16,11 @@ using Npgsql.SqlGenerators;
 
 namespace Npgsql
 {
+#if ENTITIES6
+    public class NpgsqlServices : DbProviderServices
+#else
     internal class NpgsqlServices : DbProviderServices
+#endif
     {
         private static readonly NpgsqlServices _instance = new NpgsqlServices();
 
