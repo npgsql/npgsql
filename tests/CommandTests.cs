@@ -29,6 +29,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Npgsql;
 using NUnit.Framework;
 using System.Data;
@@ -4162,6 +4163,25 @@ namespace NpgsqlTests
 
                 Assert.NotNull(res);
                 Assert.AreEqual(0, res.Length);
+            }
+        }
+
+        [Test, Description("Basic cancellation scenario")]
+        [Timeout(1000)]
+        public void Cancel()
+        {
+            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(3)", Conn))
+            {
+                var cancelTask = Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(100);
+                    cmd.Cancel();
+                });
+                Assert.That(() => cmd.ExecuteNonQuery(),
+                    Throws.TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("57014")
+                );
+                cancelTask.Wait();
             }
         }
     }
