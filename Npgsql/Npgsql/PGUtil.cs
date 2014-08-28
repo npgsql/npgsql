@@ -756,6 +756,14 @@ namespace Npgsql
                 return ReadBytes(src, start, length, forceCopy);
             }
         }
+
+        internal static byte[] NullTerminateArray(byte[] input)
+        {
+            byte[] output = new byte[input.Length + 1];
+            input.CopyTo(output, 0);
+
+            return output;
+        }
     }
 
     /// <summary>
