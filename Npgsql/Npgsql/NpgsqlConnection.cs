@@ -423,15 +423,30 @@ namespace Npgsql
         {
             get
             {
-                //CheckNotDisposed();
-
-                if (connector != null && !disposed)
-                {
-                    return connector.State;
-                }
-                else
-                {
+                if (connector == null || disposed) {
                     return ConnectionState.Closed;
+                }
+
+                switch (connector.State)
+                {
+                    case NpgsqlState.Closed:
+                        return ConnectionState.Closed;
+                    case NpgsqlState.Connecting:
+                        return ConnectionState.Connecting;
+                    case NpgsqlState.Ready:
+                        return ConnectionState.Open;
+                    case NpgsqlState.Executing:
+                        return ConnectionState.Open | ConnectionState.Executing;
+                    case NpgsqlState.Fetching:
+                        return ConnectionState.Open | ConnectionState.Fetching;
+                    case NpgsqlState.Broken:
+                        return ConnectionState.Broken;
+                    case NpgsqlState.CopyIn:
+                        return ConnectionState.Open | ConnectionState.Fetching;
+                    case NpgsqlState.CopyOut:
+                        return ConnectionState.Closed | ConnectionState.Fetching;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unknown connector state: " + connector.State);
                 }
             }
         }
@@ -439,13 +454,18 @@ namespace Npgsql
         /// <summary>
         /// Gets whether the current state of the connection is Open or Closed
         /// </summary>
-        /// <value>ConnectionState.Open or ConnectionState.Closed</value>
+        /// <value>ConnectionState.Open, ConnectionState.Closed or ConnectionState.Connecting</value>
         [Browsable(false)]
         public override ConnectionState State
         {
             get
             {
-                return (FullState & ConnectionState.Open) == ConnectionState.Open ? ConnectionState.Open : ConnectionState.Closed;
+                var s = FullState;
+                if (s.HasFlag(ConnectionState.Open))
+                    return ConnectionState.Open;
+                if (s.HasFlag(ConnectionState.Connecting))
+                    return ConnectionState.Connecting;
+                return ConnectionState.Closed;
             }
         }
 

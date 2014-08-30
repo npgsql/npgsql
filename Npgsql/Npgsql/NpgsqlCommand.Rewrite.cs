@@ -55,15 +55,27 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckConnectionState");
 
-            // Check the connection state.
-            if (Connector == null || Connector.State == ConnectionState.Closed)
+            if (Connector == null)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
             }
-            if (Connector.State != ConnectionState.Open)
+
+            switch (Connector.State)
             {
-                throw new InvalidOperationException(
-                    "There is already an open DataReader associated with this Command which must be closed first.");
+                case NpgsqlState.Ready:
+                    return;
+                case NpgsqlState.Closed:
+                case NpgsqlState.Broken:
+                case NpgsqlState.Connecting:
+                    throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
+                case NpgsqlState.Executing:
+                case NpgsqlState.Fetching:
+                    throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
+                case NpgsqlState.CopyIn:
+                case NpgsqlState.CopyOut:
+                    throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
+                default:
+                    throw new ArgumentOutOfRangeException("Unknown state: " + Connector.State);
             }
         }
 

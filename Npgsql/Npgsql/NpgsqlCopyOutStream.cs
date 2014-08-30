@@ -45,7 +45,7 @@ namespace Npgsql
         /// </summary>
         private bool IsActive
         {
-            get { return _context != null && _context.CurrentState is NpgsqlCopyOutState && _context.Mediator.CopyStream == this; }
+            get { return _context != null && _context.State == NpgsqlState.CopyOut && _context.Mediator.CopyStream == this; }
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    while (_context.CurrentState.GetCopyData(_context) != null)
+                    while (_context.GetCopyOutData() != null)
                     {
                         ; // flush rest
                     }
@@ -199,7 +199,7 @@ namespace Npgsql
             byte[] result;
             if (_buf == null)
             {
-                result = _context.CurrentState.GetCopyData(_context);
+                result = _context.GetCopyOutData();
             }
             else if (_bufOffset < 1)
             {

@@ -29,6 +29,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -104,6 +105,14 @@ namespace Npgsql
 
         internal ForwardsOnlyDataReader CurrentReader;
 
+        private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
+            new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+
+        public IDictionary<string, NpgsqlParameterStatus> ServerParameters
+        {
+            get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
+        }
+
         // Some kinds of messages only get one response, and do not
         // expect a ready_for_query response.
         internal bool RequireReadyForQuery { get; set; }
@@ -132,12 +141,11 @@ namespace Npgsql
         /// <param name="shared">Controls whether the connector can be shared.</param>
         public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled, bool shared)
         {
+            State = NpgsqlState.Closed;
             settings = connectionString;
-            _connection_state = ConnectionState.Closed;
             Pooled = pooled;
             Shared = shared;
             IsInitialized = false;
-            _state = NpgsqlClosedState.Instance;
             Mediator = new NpgsqlMediator();
             NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
@@ -172,28 +180,50 @@ namespace Npgsql
 
         #region State management
 
-        private ConnectionState _connection_state;
-        private NpgsqlState _state;
+        volatile int _state;
 
         /// <summary>
-        /// Gets the current state of the connection.
+        /// Gets the current state of the connector
         /// </summary>
-        internal ConnectionState State
+        internal NpgsqlState State
         {
-            get
+            get { return (NpgsqlState)_state; }
+            set
             {
-                if (_connection_state != ConnectionState.Closed && CurrentReader != null && !CurrentReader._cleanedUp)
-                {
-                    return ConnectionState.Open | ConnectionState.Fetching;
-                }
-                return _connection_state;
+                var newState = (int) value;
+                if (newState == _state)
+                    return;
+                Interlocked.Exchange(ref _state, newState);
             }
         }
 
-        internal NpgsqlState CurrentState
+        /// <summary>
+        /// Returns whether the connector is open, regardless of any task it is currently performing
+        /// </summary>
+        internal bool IsConnected
         {
-            get { return _state; }
-            set { _state = value; }
+            get
+            {
+                return State.HasFlag(NpgsqlState.Ready) ||
+                       State.HasFlag(NpgsqlState.Executing) ||
+                       State.HasFlag(NpgsqlState.Fetching) ||
+                       State.HasFlag(NpgsqlState.CopyIn) ||
+                       State.HasFlag(NpgsqlState.CopyOut);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether the connector is open and performing a task, i.e. not ready for a query
+        /// </summary>
+        internal bool IsBusy
+        {
+            get
+            {
+                return State.HasFlag(NpgsqlState.Executing) ||
+                       State.HasFlag(NpgsqlState.Fetching) ||
+                       State.HasFlag(NpgsqlState.CopyIn) ||
+                       State.HasFlag(NpgsqlState.CopyOut);
+            }
         }
 
         #endregion
@@ -207,44 +237,40 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
-            ServerVersion = null;
-            // If Connection.ConnectionString specifies a protocol version, we will
-            // not try to fall back to version 2 on failure.
+            if (State != NpgsqlState.Closed) {
+                throw new InvalidOperationException("Can't open, state is " + State);
+            }
 
-            // Reset state to initialize new connector in pool.
-            CurrentState = NpgsqlClosedState.Instance;
+            State = NpgsqlState.Connecting;
+
+            ServerVersion = null;
 
             // Keep track of time remaining; Even though there may be multiple timeout-able calls,
             // this allows us to still respect the caller's timeout expectation.
-            int connectTimeRemaining = this.ConnectionTimeout * 1000;
-            DateTime attemptStart = DateTime.Now;
+            var connectTimeRemaining = ConnectionTimeout * 1000;
 
             // Get a raw connection, possibly SSL...
-            CurrentState.Open(this, connectTimeRemaining);
+            RawOpen(connectTimeRemaining);
             try
             {
                 // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this, settings);
+                Startup();
             }
             catch (NpgsqlException)
             {
                 if (Stream != null)
                 {
-                    try
-                    {
+                    try {
                         Stream.Dispose();
                     }
-                    catch
-                    {
-                    }
+                    catch {}
                 }
 
                 throw;
             }
 
             // Change the state of connection to open and ready.
-            _connection_state = ConnectionState.Open;
-            CurrentState = NpgsqlReadyState.Instance;
+            State = NpgsqlState.Ready;
 
             // After attachment, the stream will close the connector (this) when the stream gets disposed.
             BaseStream.AttachConnector(this);
@@ -417,7 +443,6 @@ namespace Npgsql
                 Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
 
                 NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, Host, Port);
-                ChangeState(context, NpgsqlConnectedState.Instance);
             }
             catch (Exception e)
             {
@@ -425,7 +450,7 @@ namespace Npgsql
             }
         }
 
-        public void Startup(NpgsqlConnectionStringBuilder settings)
+        public void Startup()
         {
             NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(Database, UserName, settings);
 
@@ -443,6 +468,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Query");
             query.WriteToStream(Stream);
+            State = NpgsqlState.Executing;
         }
 
         internal void Authenticate(byte[] password)
@@ -528,12 +554,11 @@ namespace Npgsql
                     // If timeout occurs when establishing the session with server then
                     // throw an exception instead of trying to cancel query. This helps to prevent loop as
                     // CancelRequest will also try to stablish a connection and sends commands.
-                    if (!((this is NpgsqlStartupState || this is NpgsqlConnectedState)))
+                    if (State != NpgsqlState.Connecting)
                     {
                         try
                         {
                             CancelRequest();
-
                             ProcessAndDiscardBackendResponses();
                         }
                         catch (Exception)
@@ -617,8 +642,6 @@ namespace Npgsql
                                     NpgsqlEventLog.LogMsg(resman, "Log_AuthenticationClearTextRequest", LogLevel.Debug);
 
                                     // Send the PasswordPacket.
-
-                                    ChangeState(context, NpgsqlStartupState.Instance);
                                     Authenticate(PGUtil.NullTerminateArray(Password));
 
                                     break;
@@ -654,7 +677,6 @@ namespace Npgsql
 
                                     Stream.Read(crypt_buf, prehashbytes.Length, 4);
                                     // Send the PasswordPacket.
-                                    ChangeState(context, NpgsqlStartupState.Instance);
 
                                     // 2.
                                     prehashbytes.CopyTo(crypt_buf, 0);
@@ -679,7 +701,6 @@ namespace Npgsql
                                     {
                                         // For GSSAPI we have to use the supplied hostname
                                         SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                                        ChangeState(context, NpgsqlStartupState.Instance);
                                         Authenticate(SSPI.Continue(null));
                                         break;
                                     }
@@ -697,7 +718,6 @@ namespace Npgsql
                                         // For SSPI we have to get the IP-Address (hostname doesn't work)
                                         string ipAddressString = ((IPEndPoint) Socket.RemoteEndPoint).Address.ToString();
                                         SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                                        ChangeState(context, NpgsqlStartupState.Instance);
                                         Authenticate(SSPI.Continue(null));
                                         break;
                                     }
@@ -749,6 +769,7 @@ namespace Npgsql
                             break;
 
                         case BackEndMessageCode.DataRow:
+                            State = NpgsqlState.Fetching;
                             yield return new StringRowReader(Stream);
                             break;
 
@@ -764,7 +785,7 @@ namespace Npgsql
                             PGUtil.ReadInt32(Stream);
                             Stream.ReadByte();
 
-                            ChangeState(context, NpgsqlReadyState.Instance);
+                            State = NpgsqlState.Ready;
 
                             if (errors.Count != 0)
                             {
@@ -855,7 +876,7 @@ namespace Npgsql
                         case BackEndMessageCode.CopyInResponse:
                             // Enter COPY sub protocol and start pushing data to server
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
-                            ChangeState(context, new NpgsqlCopyInState());
+                            State = NpgsqlState.CopyIn;
                             PGUtil.ReadInt32(Stream); // length redundant
                             StartCopyIn(ReadCopyHeader());
                             yield break;
@@ -864,7 +885,7 @@ namespace Npgsql
                         case BackEndMessageCode.CopyOutResponse:
                             // Enter COPY sub protocol and start pulling data from server
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyOutResponse");
-                            ChangeState(context, NpgsqlCopyOutState.Instance);
+                            State = NpgsqlState.CopyOut;
                             PGUtil.ReadInt32(Stream); // length redundant
                             StartCopyOut(ReadCopyHeader());
                             yield break;
@@ -1227,7 +1248,7 @@ namespace Npgsql
             try
             {
                 // Get a raw connection, possibly SSL...
-                cancelConnector.CurrentState.Open(cancelConnector, cancelConnector.ConnectionTimeout * 1000);
+                cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
 
                 // Cancel current request.
                 cancelConnector.SendCancelRequest();
@@ -1256,11 +1277,11 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
 
-            switch (_connection_state)
+            switch (State)
             {
-                case ConnectionState.Closed:
+                case NpgsqlState.Closed:
                     return;
-                case READY:
+                case NpgsqlState.Ready:
                     try
                     {
                         Stream
@@ -1279,9 +1300,9 @@ namespace Npgsql
             catch { }
 
             Stream = null;
-            ChangeState(context, NpgsqlClosedState.Instance);
             _serverParameters.Clear();
             ServerVersion = null;
+            State = NpgsqlState.Closed;
         }
 
         /// <summary>
@@ -1289,7 +1310,7 @@ namespace Npgsql
         /// </summary>
         internal void ReleaseResources()
         {
-            if (_connection_state != ConnectionState.Closed)
+            if (State != NpgsqlState.Closed)
             {
                 if (SupportsDiscard)
                 {
@@ -1368,11 +1389,8 @@ namespace Npgsql
         internal void AddNotificationThread()
         {
             _notificationThreadStopCount = 0;
-
-            NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this, CurrentState);
-
+            NpgsqlContextHolder contextHolder = new NpgsqlContextHolder(this);
             _notificationThread = new Thread(new ThreadStart(contextHolder.ProcessServerMessages));
-
             _notificationThread.Start();
         }
 
@@ -1448,12 +1466,10 @@ namespace Npgsql
         internal class NpgsqlContextHolder
         {
             private readonly NpgsqlConnector connector;
-            private readonly NpgsqlState state;
 
-            internal NpgsqlContextHolder(NpgsqlConnector connector, NpgsqlState state)
+            internal NpgsqlContextHolder(NpgsqlConnector connector)
             {
                 this.connector = connector;
-                this.state = state;
             }
 
             internal void ProcessServerMessages()
@@ -1472,16 +1488,16 @@ namespace Npgsql
                         lock (connector.Socket)
                         {
                             // 20 millisecond timeout
-                            if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
+                            if (connector.Socket.Poll(20000, SelectMode.SelectRead))
                             {
-                                this.connector.ProcessAndDiscardBackendResponses();
+                                connector.ProcessAndDiscardBackendResponses();
                             }
                         }
                     }
                 }
                 catch (IOException ex)
                 {
-                    this.connector._notificationException = ex;
+                    connector._notificationException = ex;
                 }
 
             }
@@ -1529,6 +1545,23 @@ namespace Npgsql
         #endregion Supported features
 
         #region Misc
+
+        public void AddParameterStatus(NpgsqlParameterStatus ps)
+        {
+            if (_serverParameters.ContainsKey(ps.Parameter))
+            {
+                _serverParameters[ps.Parameter] = ps;
+            }
+            else
+            {
+                _serverParameters.Add(ps.Parameter, ps);
+            }
+
+            if (ps.Parameter == "standard_conforming_strings")
+            {
+                NativeToBackendTypeConverterOptions.UseConformantStrings = (ps.ParameterValue == "on");
+            }
+        }
 
         /// <summary>
         /// Modify the backend statement_timeout value if needed.
@@ -1605,31 +1638,6 @@ namespace Npgsql
             return true;
         }
 
-        private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
-          new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
-
-        public IDictionary<string, NpgsqlParameterStatus> ServerParameters
-        {
-            get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
-        }
-
-        public void AddParameterStatus(NpgsqlParameterStatus ps)
-        {
-            if (_serverParameters.ContainsKey(ps.Parameter))
-            {
-                _serverParameters[ps.Parameter] = ps;
-            }
-            else
-            {
-                _serverParameters.Add(ps.Parameter, ps);
-            }
-
-            if (ps.Parameter == "standard_conforming_strings")
-            {
-                NativeToBackendTypeConverterOptions.UseConformantStrings = (ps.ParameterValue == "on");
-            }
-        }
-
         // Unused, can be deleted?
         internal void TestConnector()
         {
@@ -1678,6 +1686,46 @@ namespace Npgsql
         }
 
         #endregion Misc
+    }
+
+    /// <summary>
+    /// Expresses the exact state of a connector.
+    /// </summary>
+    internal enum NpgsqlState
+    {
+        /// <summary>
+        /// The connector has either not yet been opened or has been closed.
+        /// </summary>
+        Closed,
+        /// <summary>
+        /// The connector is currently connecting to a Postgresql server.
+        /// </summary>
+        Connecting,
+        /// <summary>
+        /// The connector is connected and may be used to send a new query.
+        /// </summary>
+        Ready,
+        /// <summary>
+        /// The connector is waiting for a response to a query which has been sent to the server.
+        /// </summary>
+        Executing,
+        /// <summary>
+        /// The connector is currently fetching and processing query results.
+        /// </summary>
+        Fetching,
+        /// <summary>
+        /// The connection was broken because an unexpected error occurred which left it in an unknown state.
+        /// This state isn't implemented yet.
+        /// </summary>
+        Broken,
+        /// <summary>
+        /// The connector is engaged in a COPY IN operation.
+        /// </summary>
+        CopyIn,
+        /// <summary>
+        /// The connector is engaged in a COPY OUT operation.
+        /// </summary>
+        CopyOut,
     }
 
     /// <summary>

@@ -833,7 +833,7 @@ namespace NpgsqlTests
         [Test]
         public void ByteaSupport()
         {
-            ExecuteNonQuery(string.Format(@"INSERT INTO data(field_bytea) VALUES ({0}'\123\056')", Conn.Supports_E_StringPrefix ? "E" : ""));
+            ExecuteNonQuery(string.Format(@"INSERT INTO data(field_bytea) VALUES (E'\123\056')"));
             var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
             var result = (Byte[]) command.ExecuteScalar();
             Assert.AreEqual(2, result.Length);
@@ -3814,16 +3814,13 @@ namespace NpgsqlTests
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (NpgsqlBox), result.GetType());
 
-            if (Conn.SupportsHexByteFormat)
-            {
-                // bytea
-                cmd.CommandText = string.Format(@"SELECT {0}'\{1}xDEADBEEF'::bytea;", Conn.UseConformantStrings ? "" : "E", Conn.UseConformantStrings ? "" : @"\");
-                result = cmd.ExecuteScalar();
-                Assert.AreEqual(typeof (Byte[]), result.GetType());
-            }
+            // bytea
+            cmd.CommandText = string.Format(@"SELECT {0}'\{1}xDEADBEEF'::bytea;", Conn.UseConformantStrings ? "" : "E", Conn.UseConformantStrings ? "" : @"\");
+            result = cmd.ExecuteScalar();
+            Assert.AreEqual(typeof (Byte[]), result.GetType());
 
             // bytea
-            cmd.CommandText = string.Format(@"SELECT {0}'\{1}001\{1}002\{1}003\{1}377\{1}376\{1}375'::bytea;", ! Conn.UseConformantStrings && Conn.Supports_E_StringPrefix ? "E" : "", Conn.UseConformantStrings ? "" : @"\");
+            cmd.CommandText = string.Format(@"SELECT {0}'\{1}001\{1}002\{1}003\{1}377\{1}376\{1}375'::bytea;", ! Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\");
             result = cmd.ExecuteScalar();
             Assert.AreEqual(typeof (Byte[]), result.GetType());
 
@@ -4039,23 +4036,20 @@ namespace NpgsqlTests
                 Assert.AreEqual(123, r.GetInt32(1));
                 Assert.IsTrue(r.IsDBNull(2));
             }
-            if (Conn.Supports_E_StringPrefix)
+            using (var r = PSLT(@"SELECT e'ab\'c:str', :int"))
             {
-                using (var r = PSLT(@"SELECT e'ab\'c:str', :int"))
-                {
-                    Assert.AreEqual("ab'c:str", r.GetString(0));
-                    Assert.AreEqual(123, r.GetInt32(1));
-                }
-                using (var r = PSLT(@"SELECT E'a\'b'
+                Assert.AreEqual("ab'c:str", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+            }
+            using (var r = PSLT(@"SELECT E'a\'b'
 -- a comment here :str)'
 'c\'d:str', :int, E''
 '\':str', :int"))
-                {
-                    Assert.AreEqual("a'bc'd:str", r.GetString(0));
-                    Assert.AreEqual(123, r.GetInt32(1));
-                    Assert.AreEqual("':str", r.GetString(2));
-                    Assert.AreEqual(123, r.GetInt32(3));
-                }
+            {
+                Assert.AreEqual("a'bc'd:str", r.GetString(0));
+                Assert.AreEqual(123, r.GetInt32(1));
+                Assert.AreEqual("':str", r.GetString(2));
+                Assert.AreEqual(123, r.GetInt32(3));
             }
             using (var r = PSLT(@"SELECT 'abc'::text, :text, 246/:int, 122<@int, (ARRAY[1,2,3,4])[1:@int-121]::text, (ARRAY[1,2,3,4])[1: :int-121]::text, (ARRAY[1,2,3,4])[1:two]::text FROM (SELECT 2 AS two) AS a"))
             {
