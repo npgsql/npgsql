@@ -52,9 +52,9 @@ namespace Npgsql
 
         internal NpgsqlNotificationEventArgs(Stream stream, bool readAdditional)
         {
-            PID = PGUtil.ReadInt32(stream);
-            Condition = PGUtil.ReadString(stream);
-            AdditionalInformation = readAdditional ? PGUtil.ReadString(stream) : string.Empty;
+            PID = stream.ReadInt32();
+            Condition = stream.ReadString();
+            AdditionalInformation = readAdditional ? stream.ReadString() : string.Empty;
         }
     }
 }

@@ -150,11 +150,11 @@ namespace NpgsqlTypes
                     switch (c)
                     {
                         case 'A': // Asynchronous Notify
-                            Int32 msglen = PGUtil.ReadInt32(stream);
-                            Int32 pid = PGUtil.ReadInt32(stream);
-                            String msg = PGUtil.ReadString(stream);
-                            PGUtil.ReadString(stream);
-                            String param = PGUtil.ReadString(stream);
+                            Int32 msglen = stream.ReadInt32();
+                            Int32 pid = stream.ReadInt32();
+                            String msg = stream.ReadString();
+                            stream.ReadString();
+                            String param = stream.ReadString();
 
                             break;
                             //------------------------------
@@ -166,15 +166,15 @@ namespace NpgsqlTypes
                             //------------------------------
                             // Notice from backend
                         case 'N':
-                            Int32 l_nlen = PGUtil.ReadInt32(stream);
+                            Int32 l_nlen = stream.ReadInt32();
 
                             conn.Connector.FireNotice(new NpgsqlError(stream));
 
                             break;
 
                         case 'V':
-                            Int32 l_msgLen = PGUtil.ReadInt32(stream);
-                            Int32 l_valueLen = PGUtil.ReadInt32(stream);
+                            Int32 l_msgLen = stream.ReadInt32();
+                            Int32 l_valueLen = stream.ReadInt32();
 
                             if (l_valueLen == -1)
                             {
@@ -189,7 +189,7 @@ namespace NpgsqlTypes
                                 // Return an Integer if
                                 if (resulttype)
                                 {
-                                    result = PGUtil.ReadInt32(stream);
+                                    result = stream.ReadInt32();
                                 }
                                 else
                                 {
@@ -213,7 +213,7 @@ namespace NpgsqlTypes
 
                         case 'Z':
                             //TODO: use size better
-                            if (PGUtil.ReadInt32(stream) != 5)
+                            if (stream.ReadInt32() != 5)
                             {
                                 throw new NpgsqlException("Received Z");
                             }

@@ -143,12 +143,12 @@ namespace Npgsql
 
             foreach (short code in _parameterFormatCodes)
             {
-                PGUtil.WriteInt16(outputStream, code);
+                outputStream.WriteInt16(code);
             }
 
             if (_parameterValues != null)
             {
-                PGUtil.WriteInt16(outputStream, (Int16)_parameterValues.Length);
+                outputStream.WriteInt16((Int16)_parameterValues.Length);
 
                 for (int i = 0 ; i < _parameterValues.Length ; i++)
                 {
@@ -156,7 +156,7 @@ namespace Npgsql
 
                     if (parameterValue == null)
                     {
-                        PGUtil.WriteInt32(outputStream, -1);
+                        outputStream.WriteInt32(-1);
                     }
                     else
                     {
@@ -168,14 +168,14 @@ namespace Npgsql
             }
             else
             {
-                PGUtil.WriteInt16(outputStream, 0);
+                outputStream.WriteInt16(0);
             }
 
-            PGUtil.WriteInt16(outputStream, (Int16)_resultFormatCodes.Length);
+            outputStream.WriteInt16((Int16)_resultFormatCodes.Length);
 
             foreach (short code in  _resultFormatCodes)
             {
-                PGUtil.WriteInt16(outputStream, code);
+                outputStream.WriteInt16(code);
             }
         }
     }

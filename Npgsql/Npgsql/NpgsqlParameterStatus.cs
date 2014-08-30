@@ -42,9 +42,9 @@ namespace Npgsql
         public NpgsqlParameterStatus(Stream stream)
         {
             //Read message length
-            PGUtil.EatStreamBytes(stream, 4);
-            Parameter = PGUtil.ReadString(stream);
-            ParameterValue = PGUtil.ReadString(stream);
+            stream.EatStreamBytes(4);
+            Parameter = stream.ReadString();
+            ParameterValue = stream.ReadString();
         }
         public NpgsqlParameterStatus(string parameter, string parameterValue)
         {

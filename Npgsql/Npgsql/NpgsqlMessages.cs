@@ -42,7 +42,7 @@ namespace Npgsql
 
         public CompletedResponse(Stream stream)
         {
-            string[] tokens = PGUtil.ReadString(stream).Split();
+            string[] tokens = stream.ReadString().Split();
             if (tokens.Length > 1)
             {
                 int rowsAffected;

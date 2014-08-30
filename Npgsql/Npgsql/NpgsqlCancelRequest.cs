@@ -50,10 +50,10 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            PGUtil.WriteInt32(outputStream, CancelRequestMessageSize);
-            PGUtil.WriteInt32(outputStream, CancelRequestCode);
-            PGUtil.WriteInt32(outputStream, BackendKeydata.ProcessID);
-            PGUtil.WriteInt32(outputStream, BackendKeydata.SecretKey);
+            outputStream.WriteInt32(CancelRequestMessageSize);
+            outputStream.WriteInt32(CancelRequestCode);
+            outputStream.WriteInt32(BackendKeydata.ProcessID);
+            outputStream.WriteInt32(BackendKeydata.SecretKey);
         }
     }
 }

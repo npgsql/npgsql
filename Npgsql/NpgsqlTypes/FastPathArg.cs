@@ -112,13 +112,13 @@ namespace NpgsqlTypes
             if (type)
             {
                 // argument is an integer
-                PGUtil.WriteInt32(s, 4);
-                PGUtil.WriteInt32(s, value); // integer value of argument
+                s.WriteInt32(4);
+                s.WriteInt32(value); // integer value of argument
             }
             else
             {
                 // argument is a byte array
-                PGUtil.WriteInt32(s, bytes.Length);
+                s.WriteInt32(bytes.Length);
                 s.Write(bytes, 0, bytes.Length);
             }
         }

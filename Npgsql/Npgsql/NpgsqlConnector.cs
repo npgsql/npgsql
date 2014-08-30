@@ -648,9 +648,9 @@ namespace Npgsql
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "AuthenticationRequest");
 
                             // Get the length in case we're getting AuthenticationGSSContinue
-                            int authDataLength = PGUtil.ReadInt32(Stream) - 8;
+                            int authDataLength = Stream.ReadInt32() - 8;
 
-                            AuthenticationRequestType authType = (AuthenticationRequestType) PGUtil.ReadInt32(Stream);
+                            AuthenticationRequestType authType = (AuthenticationRequestType) Stream.ReadInt32();
                             switch (authType)
                             {
                                 case AuthenticationRequestType.AuthenticationOk:
@@ -749,7 +749,7 @@ namespace Npgsql
                                 case AuthenticationRequestType.AuthenticationGSSContinue:
                                 {
                                     byte[] authData = new byte[authDataLength];
-                                    PGUtil.CheckedStreamRead(Stream, authData, 0, authDataLength);
+                                    Stream.CheckedStreamRead(authData, 0, authDataLength);
                                     byte[] passwd_read = SSPI.Continue(authData);
                                     if (passwd_read.Length != 0)
                                     {
@@ -777,11 +777,11 @@ namespace Npgsql
                         case BackEndMessageCode.ParameterDescription:
 
                             // Do nothing,for instance,  just read...
-                            int lenght = PGUtil.ReadInt32(Stream);
-                            int nb_param = PGUtil.ReadInt16(Stream);
+                            int lenght = Stream.ReadInt32();
+                            int nb_param = Stream.ReadInt16();
                             for (int i = 0; i < nb_param; i++)
                             {
-                                int typeoid = PGUtil.ReadInt32(Stream);
+                                int typeoid = Stream.ReadInt32();
                             }
 
                             break;
@@ -800,7 +800,7 @@ namespace Npgsql
                             //   T = In transaction, ready for more.
                             //   E = Error in transaction, queries will fail until transaction aborted.
                             // Just eat the status byte, we have no use for it at this time.
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             Stream.ReadByte();
 
                             State = NpgsqlState.Ready;
@@ -829,26 +829,26 @@ namespace Npgsql
                             break;
 
                         case BackEndMessageCode.CompletedResponse:
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             yield return new CompletedResponse(Stream);
                             break;
                         case BackEndMessageCode.ParseComplete:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ParseComplete");
                             // Just read up the message length.
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             break;
                         case BackEndMessageCode.BindComplete:
                             //                            NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "BindComplete");
                             // Just read up the message length.
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             break;
                         case BackEndMessageCode.EmptyQueryResponse:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "EmptyQueryResponse");
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             break;
                         case BackEndMessageCode.NotificationResponse:
                             // Eat the length
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             FireNotification(new NpgsqlNotificationEventArgs(Stream, true));
                             if (IsNotificationThreadRunning)
                             {
@@ -888,14 +888,14 @@ namespace Npgsql
                             // for example insert, update or delete.
                             // Just eat the message.
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "ParameterStatus");
-                            PGUtil.ReadInt32(Stream);
+                            Stream.ReadInt32();
                             break;
 
                         case BackEndMessageCode.CopyInResponse:
                             // Enter COPY sub protocol and start pushing data to server
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
                             State = NpgsqlState.CopyIn;
-                            PGUtil.ReadInt32(Stream); // length redundant
+                            Stream.ReadInt32(); // length redundant
                             StartCopyIn(ReadCopyHeader());
                             yield break;
                             // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
@@ -904,23 +904,23 @@ namespace Npgsql
                             // Enter COPY sub protocol and start pulling data from server
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyOutResponse");
                             State = NpgsqlState.CopyOut;
-                            PGUtil.ReadInt32(Stream); // length redundant
+                            Stream.ReadInt32(); // length redundant
                             StartCopyOut(ReadCopyHeader());
                             yield break;
                             // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
                         case BackEndMessageCode.CopyData:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyData");
-                            Int32 len = PGUtil.ReadInt32(Stream) - 4;
+                            Int32 len = Stream.ReadInt32() - 4;
                             byte[] buf = new byte[len];
-                            PGUtil.ReadBytes(Stream, buf, 0, len);
+                            Stream.ReadBytes(buf, 0, len);
                             Mediator.ReceivedCopyData = buf;
                             yield break;
                                 // read data from server one chunk at a time while staying in copy operation mode
 
                         case BackEndMessageCode.CopyDone:
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyDone");
-                            PGUtil.ReadInt32(Stream); // CopyDone can not have content so this is always 4
+                            Stream.ReadInt32(); // CopyDone can not have content so this is always 4
                             // This will be followed by normal CommandComplete + ReadyForQuery so no op needed
                             break;
 
@@ -995,11 +995,11 @@ namespace Npgsql
         private NpgsqlCopyFormat ReadCopyHeader()
         {
             byte copyFormat = (byte)Stream.ReadByte();
-            Int16 numCopyFields = PGUtil.ReadInt16(Stream);
+            Int16 numCopyFields = Stream.ReadInt16();
             Int16[] copyFieldFormats = new Int16[numCopyFields];
             for (Int16 i = 0; i < numCopyFields; i++)
             {
-                copyFieldFormats[i] = PGUtil.ReadInt16(Stream);
+                copyFieldFormats[i] = Stream.ReadInt16();
             }
             return new NpgsqlCopyFormat(copyFormat, copyFieldFormats);
         }

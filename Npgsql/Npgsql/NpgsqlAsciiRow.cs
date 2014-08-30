@@ -44,12 +44,12 @@ namespace Npgsql
         public StringRowReader(Stream inputStream)
             : base(inputStream)
         {
-            _messageSize = PGUtil.ReadInt32(inputStream);
+            _messageSize = inputStream.ReadInt32();
         }
 
         public override void SetRowDescription(NpgsqlRowDescription rowDesc)
         {
-            if (PGUtil.ReadInt16(Stream) != rowDesc.NumFields)
+            if (Stream.ReadInt16() != rowDesc.NumFields)
             {
                 throw new DataException();
             }
@@ -75,7 +75,7 @@ namespace Npgsql
             NpgsqlRowDescription.FieldData field_descr = FieldData;
 
             byte[] buffer = new byte[fieldSize];
-            PGUtil.CheckedStreamRead(Stream, buffer, 0, fieldSize);
+            Stream.CheckedStreamRead(buffer, 0, fieldSize);
 
             try
             {
@@ -137,7 +137,7 @@ namespace Npgsql
                 AbandonShip();
             }
             _nextFieldSize = null;
-            PGUtil.EatStreamBytes(Stream, fieldSize);
+            Stream.EatStreamBytes(fieldSize);
         }
 
         public override bool IsNextDBNull
@@ -147,7 +147,7 @@ namespace Npgsql
 
         private int GetThisFieldCount()
         {
-            return (_nextFieldSize = _nextFieldSize ?? PGUtil.ReadInt32(Stream)).Value;
+            return (_nextFieldSize = _nextFieldSize ?? Stream.ReadInt32()).Value;
         }
 
         protected override int GetNextFieldCount()
@@ -163,7 +163,7 @@ namespace Npgsql
             {
                 // If _rowdesc is null, then only the message length integer has been read;
                 // read the entire message and disgard it.
-                PGUtil.EatStreamBytes(Stream, this._messageSize - 4);
+                Stream.EatStreamBytes(this._messageSize - 4);
             }
             else
             {

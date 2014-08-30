@@ -234,7 +234,7 @@ namespace Npgsql
 
             public void Dispose()
             {
-                PGUtil.EatStreamBytes(_stream, _remainingBytes);
+                _stream.EatStreamBytes(_remainingBytes);
             }
         }
 
@@ -285,12 +285,12 @@ namespace Npgsql
 
             public override int DoRead(char[] output, int outputIdx, int length)
             {
-                return PGUtil.ReadChars(_stream, output, length, ref _remainingBytes, outputIdx);
+                return _stream.ReadChars(output, length, ref _remainingBytes, outputIdx);
             }
 
             public override int DoSkip(int length)
             {
-                return PGUtil.SkipChars(_stream, length, ref _remainingBytes);
+                return _stream.SkipChars(length, ref _remainingBytes);
             }
         }
 
@@ -306,12 +306,12 @@ namespace Npgsql
 
             public override int DoRead(byte[] output, int outputIdx, int length)
             {
-                return PGUtil.ReadEscapedBytes(_stream, output, length, ref _remainingBytes, outputIdx);
+                return _stream.ReadEscapedBytes(output, length, ref _remainingBytes, outputIdx);
             }
 
             public override int DoSkip(int length)
             {
-                return PGUtil.SkipEscapedBytes(_stream, length, ref _remainingBytes);
+                return _stream.SkipEscapedBytes(length, ref _remainingBytes);
             }
         }
 

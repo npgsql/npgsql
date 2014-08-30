@@ -209,19 +209,19 @@ namespace NpgsqlTypes
             MemoryStream dst = new MemoryStream();
 
             // Write the number of dimensions in the array.
-            PGUtil.WriteInt32(dst, NativeData.Rank);
+            dst.WriteInt32(NativeData.Rank);
             // Placeholder for null bitmap flag, which isn't used?
-            PGUtil.WriteInt32(dst, 0);
+            dst.WriteInt32(0);
             // Write the OID of the elements of the array.
-            PGUtil.WriteInt32(dst, options.OidToNameMapping[_elementConverter.Name].OID);
+            dst.WriteInt32(options.OidToNameMapping[_elementConverter.Name].OID);
 
             // White dimension descriptors.
             for (int i = 0 ; i < NativeData.Rank ; i++)
             {
                 // Number of elements in the dimension.
-                PGUtil.WriteInt32(dst, NativeData.GetLength(i));
+                dst.WriteInt32(NativeData.GetLength(i));
                 // Lower bounds of the dimension, 1-based for SQL.
-                PGUtil.WriteInt32(dst, NativeData.GetLowerBound(i) + 1);
+                dst.WriteInt32(NativeData.GetLowerBound(i) + 1);
             }
 
             int[] dimensionOffsets = new int[NativeData.Rank];
@@ -263,7 +263,7 @@ namespace NpgsqlTypes
                     if (elementNative == null || elementNative == DBNull.Value)
                     {
                         // Write length identifier -1 indicating NULL value.
-                        PGUtil.WriteInt32(dst, -1);
+                        dst.WriteInt32(-1);
                     }
                     else
                     {
@@ -272,7 +272,7 @@ namespace NpgsqlTypes
                         elementBinary = (byte[])_elementConverter.ConvertToBackend(elementNative, true, options);
 
                         // Write lenght identifier.
-                        PGUtil.WriteInt32(dst, elementBinary.Length);
+                        dst.WriteInt32(elementBinary.Length);
                         // Write element data.
                         dst.Write(elementBinary, 0, elementBinary.Length);
                     }

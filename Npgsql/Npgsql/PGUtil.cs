@@ -164,7 +164,7 @@ namespace Npgsql
         /// It returns the resultant string of bytes read.
         /// This string is sent from backend.
         /// </summary>
-        public static String ReadString(Stream network_stream)
+        public static String ReadString(this Stream network_stream)
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadString");
 
@@ -187,7 +187,7 @@ namespace Npgsql
             return BackendEncoding.UTF8Encoding.GetString(buffer.ToArray());
         }
 
-        public static char ReadChar(Stream stream)
+        public static char ReadChar(this Stream stream)
         {
             byte[] buffer = new byte[4]; //No character is more than 4 bytes long.
             for (int i = 0; i != 4; ++i)
@@ -206,7 +206,7 @@ namespace Npgsql
             throw new InvalidDataException();
         }
 
-        public static int ReadChars(Stream stream, char[] output, int maxChars, ref int maxRead, int outputIdx)
+        public static int ReadChars(this Stream stream, char[] output, int maxChars, ref int maxRead, int outputIdx)
         {
             if (maxChars == 0 || maxRead == 0)
             {
@@ -224,7 +224,7 @@ namespace Npgsql
             do
             {
                 int toRead = Math.Min(maxRead, maxChars - charsSoFar);
-                CheckedStreamRead(stream, buffer, bytesSoFar, toRead);
+                stream.CheckedStreamRead(buffer, bytesSoFar, toRead);
                 maxRead -= toRead;
                 bytesSoFar += toRead;
             }
@@ -232,7 +232,7 @@ namespace Npgsql
             return BackendEncoding.UTF8Encoding.GetDecoder().GetChars(buffer, 0, bytesSoFar, output, outputIdx, false);
         }
 
-        public static int SkipChars(Stream stream, int maxChars, ref int maxRead)
+        public static int SkipChars(this Stream stream, int maxChars, ref int maxRead)
         {
             //This is the same as ReadChars, but it just discards the characters read.
             if (maxChars == 0 || maxRead == 0)
@@ -245,7 +245,7 @@ namespace Npgsql
             do
             {
                 int toRead = Math.Min(maxRead, maxChars - charsSoFar);
-                CheckedStreamRead(stream, buffer, bytesSoFar, toRead);
+                stream.CheckedStreamRead(buffer, bytesSoFar, toRead);
                 maxRead -= toRead;
                 bytesSoFar += toRead;
             }
@@ -310,7 +310,7 @@ namespace Npgsql
         /// <param name="offset">starting position to fill the buffer</param>
         /// <param name="count">number of bytes to read</param>
         /// <returns>The number of bytes read.  May be less than count if no more bytes are available.</returns>
-        public static int ReadBytes(Stream stream, byte[] buffer, int offset, int count)
+        public static int ReadBytes(this Stream stream, byte[] buffer, int offset, int count)
         {
             int end = offset + count;
             int got = 0;
@@ -543,7 +543,7 @@ namespace Npgsql
             return network_stream;
         }
 
-        public static void CheckedStreamRead(Stream stream, Byte[] buffer, Int32 offset, Int32 size)
+        public static void CheckedStreamRead(this Stream stream, Byte[] buffer, Int32 offset, Int32 size)
         {
             Int32 bytes_from_stream = 0;
             Int32 total_bytes_read = 0;
@@ -562,7 +562,7 @@ namespace Npgsql
             }
         }
 
-        public static void EatStreamBytes(Stream stream, int size)
+        public static void EatStreamBytes(this Stream stream, int size)
         {
 //See comment on THRASH_CAN and THRASH_CAN_SIZE.
             while (size > 0)
@@ -571,18 +571,18 @@ namespace Npgsql
             }
         }
 
-        public static int ReadEscapedBytes(Stream stream, byte[] output, int maxBytes, ref int maxRead, int outputIdx)
+        public static int ReadEscapedBytes(this Stream stream, byte[] output, int maxBytes, ref int maxRead, int outputIdx)
         {
             maxBytes = maxBytes > output.Length - outputIdx ? output.Length - outputIdx : maxBytes;
             int i;
             for (i = 0; i != maxBytes && maxRead > 0; ++i)
             {
-                char c = ReadChar(stream);
+                char c = stream.ReadChar();
                 --maxRead;
                 if (c == '\\')
                 {
                     --maxRead;
-                    switch (c = ReadChar(stream))
+                    switch (c = stream.ReadChar())
                     {
                         case '0':
                         case '1':
@@ -597,8 +597,8 @@ namespace Npgsql
                             maxRead -= 2;
                             output[outputIdx++] =
                                 (byte)
-                                ((int.Parse(c.ToString()) << 6) | (int.Parse(ReadChar(stream).ToString()) << 3) |
-                                 int.Parse(ReadChar(stream).ToString()));
+                                ((int.Parse(c.ToString()) << 6) | (int.Parse(stream.ReadChar().ToString()) << 3) |
+                                 int.Parse(stream.ReadChar().ToString()));
                             break;
                         default:
                             output[outputIdx++] = (byte) c;
@@ -613,16 +613,16 @@ namespace Npgsql
             return i;
         }
 
-        public static int SkipEscapedBytes(Stream stream, int maxBytes, ref int maxRead)
+        public static int SkipEscapedBytes(this Stream stream, int maxBytes, ref int maxRead)
         {
             int i;
             for (i = 0; i != maxBytes && maxRead > 0; ++i)
             {
                 --maxRead;
-                if (ReadChar(stream) == '\\')
+                if (stream.ReadChar() == '\\')
                 {
                     --maxRead;
-                    switch (ReadChar(stream))
+                    switch (stream.ReadChar())
                     {
                         case '0':
                         case '1':
@@ -635,7 +635,7 @@ namespace Npgsql
                         case '8':
                         case '9':
                             maxRead -= 2;
-                            EatStreamBytes(stream, 2); //note assumes all representations of '0' through '9' are single-byte.
+                            stream.EatStreamBytes(2); //note assumes all representations of '0' through '9' are single-byte.
                             break;
                     }
                 }
@@ -656,10 +656,10 @@ namespace Npgsql
         /// <summary>
         /// Read a 32-bit integer from the given stream in the correct byte order.
         /// </summary>
-        public static Int32 ReadInt32(Stream stream)
+        public static Int32 ReadInt32(this Stream stream)
         {
             byte[] buffer = new byte[4];
-            CheckedStreamRead(stream, buffer, 0, 4);
+            stream.CheckedStreamRead(buffer, 0, 4);
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
         }
 
@@ -684,10 +684,10 @@ namespace Npgsql
         /// <summary>
         /// Read a 16-bit integer from the given stream in the correct byte order.
         /// </summary>
-        public static Int16 ReadInt16(Stream stream)
+        public static Int16 ReadInt16(this Stream stream)
         {
             byte[] buffer = new byte[2];
-            CheckedStreamRead(stream, buffer, 0, 2);
+            stream.CheckedStreamRead(buffer, 0, 2);
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
         }
 

@@ -88,13 +88,13 @@ namespace Npgsql
 
             public FieldData(Stream stream, NpgsqlBackendTypeMapping typeMapping)
             {
-                Name = PGUtil.ReadString(stream);
-                TableOID = PGUtil.ReadInt32(stream);
-                ColumnAttributeNumber = PGUtil.ReadInt16(stream);
-                TypeInfo = typeMapping[TypeOID = PGUtil.ReadInt32(stream)];
-                TypeSize = PGUtil.ReadInt16(stream);
-                TypeModifier = PGUtil.ReadInt32(stream);
-                FormatCode = (FormatCode) PGUtil.ReadInt16(stream);
+                Name = stream.ReadString();
+                TableOID = stream.ReadInt32();
+                ColumnAttributeNumber = stream.ReadInt16();
+                TypeInfo = typeMapping[TypeOID = stream.ReadInt32()];
+                TypeSize = stream.ReadInt16();
+                TypeModifier = stream.ReadInt32();
+                FormatCode = (FormatCode) stream.ReadInt16();
             }
 
             public string Name
@@ -190,8 +190,8 @@ namespace Npgsql
 
         private int ReadNumFields(Stream stream)
         {
-            PGUtil.EatStreamBytes(stream, 4);
-            return PGUtil.ReadInt16(stream);
+            stream.EatStreamBytes(4);
+            return stream.ReadInt16();
         }
 
         public FieldData this[int index]

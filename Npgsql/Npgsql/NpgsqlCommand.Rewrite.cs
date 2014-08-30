@@ -186,7 +186,7 @@ namespace Npgsql
         {
             bool isFirstOutputOrInputOutput = true;
 
-            PGUtil.WriteString(st, " AS (");
+            st.WriteString(" AS (");
 
             for (int i = 0 ; i < Parameters.Count ; i++)
             {
@@ -872,7 +872,7 @@ namespace Npgsql
 
                     if (p.UseCast)
                     {
-                        PGUtil.WriteString(result, string.Format("::{0}", p.TypeInfo.CastName));
+                        result.WriteString(string.Format("::{0}", p.TypeInfo.CastName));
 
                         if (p.TypeInfo.UseSize && (p.Size > 0))
                         {
