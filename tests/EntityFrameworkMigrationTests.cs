@@ -22,6 +22,7 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+using System.Net;
 #if NET40
 using Npgsql;
 using NUnit.Framework;
@@ -457,6 +458,29 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TestCustomOperation()
+        {
+            var operations = new List<MigrationOperation>();
+            var operation = new CustomOperation("someMessage");
+            operations.Add(operation);
+            var statements = new CustomMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            Assert.AreEqual(1, statements.Count());
+            Assert.AreEqual("Custom Operation: someMessage", statements.ElementAt(0).Sql);
+        }
+
+        [Test]
+        [ExpectedException(typeof(NotImplementedException))]
+        public void TestImproperCustomOperation()
+        {
+            var operations = new List<MigrationOperation>();
+            var operation = new CustomOperation("someMessage");
+            operations.Add(operation);
+            var statements = new ImproperCustomMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            //Assert.AreEqual(1, statements.Count());
+            //Assert.AreEqual("Custom Operation: someMessage", statements.ElementAt(0).Sql);
+        }
+
+        [Test]
         public void TestCreateIndexOperationUnique()
         {
             var operations = new List<MigrationOperation>();
@@ -768,5 +792,39 @@ namespace NpgsqlTests
 
         }
     }
+    #region Utilities for use by tests
+
+    public class CustomMigrationSqlGenerator : NpgsqlMigrationSqlGenerator
+    {
+        protected override void Convert(MigrationOperation migrationOperation)
+        {
+            var operation = migrationOperation as CustomOperation;
+            if (operation != null)
+            {
+                var sql = string.Format("Custom Operation: {0}", operation.Message);
+                AddStatment(sql, false);
+            }
+        }
+    }
+
+    public class ImproperCustomMigrationSqlGenerator : NpgsqlMigrationSqlGenerator { }
+
+    public class CustomOperation : MigrationOperation
+    {
+        public string Message { get; set; }
+        public CustomOperation(string message)
+            : base(new { })
+        {
+            Message = message;
+        }
+
+        public override bool IsDestructiveChange
+        {
+            get { return false; }
+        }
+    }
+
+    
+    #endregion
 }
 #endif

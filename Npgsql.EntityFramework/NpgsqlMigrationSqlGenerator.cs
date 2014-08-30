@@ -67,82 +67,23 @@ namespace Npgsql
         {
             foreach (var migrationOperation in operations)
             {
-                if (migrationOperation is AddColumnOperation)
-                {
-                    Convert(migrationOperation as AddColumnOperation);
-                }
-                else if (migrationOperation is AlterColumnOperation)
-                {
-                    Convert(migrationOperation as AlterColumnOperation);
-                }
-                else if (migrationOperation is CreateTableOperation)
-                {
-                    Convert(migrationOperation as CreateTableOperation);
-                }
-                else if (migrationOperation is DropForeignKeyOperation)
-                {
-                    Convert(migrationOperation as DropForeignKeyOperation);
-                }
-                else if (migrationOperation is DropTableOperation)
-                {
-                    Convert(migrationOperation as DropTableOperation);
-                }
-                else if (migrationOperation is MoveTableOperation)
-                {
-                    Convert(migrationOperation as MoveTableOperation);
-                }
-                else if (migrationOperation is RenameTableOperation)
-                {
-                    Convert(migrationOperation as RenameTableOperation);
-                }
-                else if (migrationOperation is AddForeignKeyOperation)
-                {
-                    Convert(migrationOperation as AddForeignKeyOperation);
-                }
-                else if (migrationOperation is DropIndexOperation)
-                {
-                    Convert(migrationOperation as DropIndexOperation);
-                }
-                else if (migrationOperation is SqlOperation)
+                if (migrationOperation is SqlOperation)
                 {
                     AddStatment((migrationOperation as SqlOperation).Sql, (migrationOperation as SqlOperation).SuppressTransaction);
-                }
-                else if (migrationOperation is AddPrimaryKeyOperation)
-                {
-                    Convert(migrationOperation as AddPrimaryKeyOperation);
-                }
-                else if (migrationOperation is CreateIndexOperation)
-                {
-                    Convert(migrationOperation as CreateIndexOperation);
-                }
-                else if (migrationOperation is DropColumnOperation)
-                {
-                    Convert(migrationOperation as DropColumnOperation);
-                }
-                else if (migrationOperation is DropPrimaryKeyOperation)
-                {
-                    Convert(migrationOperation as DropPrimaryKeyOperation);
-                }
-                else if (migrationOperation is HistoryOperation)
-                {
-                    Convert(migrationOperation as HistoryOperation);
-                }
-                else if (migrationOperation is RenameColumnOperation)
-                {
-                    Convert(migrationOperation as RenameColumnOperation);
-                }
-                else if (migrationOperation is UpdateDatabaseOperation)
+                } 
+                else if (migrationOperation is UpdateDatabaseOperation) 
                 {
                     Convert((migrationOperation as UpdateDatabaseOperation).Migrations as IEnumerable<MigrationOperation>);
                 }
+                
                 else
                 {
-                    throw new NotImplementedException("Unhandled MigrationOperation " + migrationOperation.GetType().Name + " in " + GetType().Name);
+                    Convert((dynamic) migrationOperation);
                 }
             }
         }
 
-        private void AddStatment(string sql, bool suppressTransacion = false)
+        public void AddStatment(string sql, bool suppressTransacion = false)
         {
             migrationStatments.Add(new MigrationStatement()
             {
@@ -153,13 +94,18 @@ namespace Npgsql
             });
         }
 
-        private void AddStatment(StringBuilder sql, bool suppressTransacion = false)
+        public void AddStatment(StringBuilder sql, bool suppressTransacion = false)
         {
             AddStatment(sql.ToString(), suppressTransacion);
         }
 
         #endregion
 
+        // This provides a base method that can be used by child MigrationSqlGenerators in order to create custom migration operations		
+        protected virtual void Convert(MigrationOperation migrationOperation) {
+            throw new NotImplementedException("Unhandled MigrationOperation " + migrationOperation.GetType().Name + " in " + GetType().Name);
+        }
+        
         #region History
 
         private void Convert(HistoryOperation historyOperation)
@@ -469,7 +415,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="tableName"></param>
         /// <returns></returns>
-        private string GetTableNameFromFullTableName(string tableName)
+        public string GetTableNameFromFullTableName(string tableName)
         {
             int dotIndex = tableName.IndexOf('.');
             if (dotIndex != -1)
@@ -701,7 +647,7 @@ namespace Npgsql
             }
         }
 
-        private void AppendTableName(string tableName, StringBuilder sql)
+        public void AppendTableName(string tableName, StringBuilder sql)
         {
             int dotIndex = tableName.IndexOf('.');
             if (dotIndex == -1)
