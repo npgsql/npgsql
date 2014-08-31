@@ -31,6 +31,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
 using System.Text;
@@ -1013,6 +1014,35 @@ namespace Npgsql
         IEnumerator IEnumerable.GetEnumerator()
         {
             return _inner.GetEnumerator();
+        }
+    }
+
+    internal class NpgsqlNetworkStream : NetworkStream
+    {
+        NpgsqlConnector mContext = null;
+
+        public NpgsqlNetworkStream(Socket socket, Boolean owner)
+            : base(socket, owner)
+        {
+        }
+
+        public void AttachConnector(NpgsqlConnector context)
+        {
+            mContext = context;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposing)
+            {
+                if (mContext != null)
+                {
+                    mContext.Close();
+                    mContext = null;
+                }
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

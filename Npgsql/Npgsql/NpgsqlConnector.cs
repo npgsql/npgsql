@@ -18,18 +18,11 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-//
-//    Connector.cs
-// ------------------------------------------------------------------
-//    Project
-//        Npgsql
-//    Status
-//        0.00.0000 - 06/17/2002 - ulrich sprick - created
-//                  - 06/??/2004 - Glen Parker<glenebob@nwlink.com> rewritten
 
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Security;
@@ -47,20 +40,6 @@ using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 namespace Npgsql
 {
     /// <summary>
-    /// Represents the method that allows the application to provide a certificate collection to be used for SSL clien authentication
-    /// </summary>
-    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
-    public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
-
-    /// <summary>
-    /// Represents the method that is called to validate the certificate provided by the server during an SSL handshake
-    /// </summary>
-    /// <param name="cert">The server's certificate</param>
-    /// <param name="chain">The certificate chain containing the certificate's CA and any intermediate authorities</param>
-    /// <param name="errors">Any errors that were detected</param>
-    public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
-
-    /// <summary>
     /// !!! Helper class, for compilation only.
     /// Connector implements the logic for the Connection Objects to
     /// access the physical connection to the database, and isolate
@@ -72,108 +51,62 @@ namespace Npgsql
         private readonly NpgsqlConnectionStringBuilder settings;
 
         /// <summary>
-        /// Occurs on NoticeResponses from the PostgreSQL backend.
+        /// The physical connection socket to the backend.
         /// </summary>
-        internal event NoticeEventHandler Notice;
+        internal Socket Socket { get; set; }
 
         /// <summary>
-        /// Occurs on NotificationResponses from the PostgreSQL backend.
+        /// The physical connection stream to the backend.
         /// </summary>
-        internal event NotificationEventHandler Notification;
-
-        /// <summary>
-        /// Called to provide client certificates for SSL handshake.
-        /// </summary>
-        internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-        /// </summary>
-        internal event CertificateSelectionCallback CertificateSelectionCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-        /// </summary>
-        internal event CertificateValidationCallback CertificateValidationCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-        /// </summary>
-        internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
-
-        /// <summary>
-        /// Called to validate server's certificate during SSL handshake
-        /// </summary>
-        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
-
-        private ConnectionState _connection_state;
-
-        // The physical network connection socket and stream to the backend.
-        private Socket _socket;
-        private NpgsqlNetworkStream _baseStream;
+        internal NpgsqlNetworkStream BaseStream { get; set; }
 
         // The top level stream to the backend.
         // This is a BufferedStream.
         // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
         // Otherwise, this stream sits directly on top of _baseStream.
-        private BufferedStream _stream;
+        internal BufferedStream Stream { get; set; }
 
-        // Mediator which will hold data generated from backend.
-        private readonly NpgsqlMediator _mediator;
+        /// <summary>
+        /// The connection mediator.
+        /// </summary>
+        internal NpgsqlMediator Mediator { get; private set; }
 
-        private Version _serverVersion;
+        /// <summary>
+        /// Version of backend server this connector is connected to.
+        /// </summary>
+        internal Version ServerVersion { get; set; }
 
-        // Values for possible CancelRequest messages.
-        private NpgsqlBackEndKeyData _backend_keydata;
+        internal NpgsqlBackEndKeyData BackEndKeyData { get; set; }
 
-        // Flag for transaction status.
-        //        private Boolean                         _inTransaction = false;
-        private NpgsqlTransaction _transaction = null;
+        /// <summary>
+        /// Report if the connection is in a transaction.
+        /// </summary>
+        internal NpgsqlTransaction Transaction { get; set; }
 
-        private Boolean _supportsSavepoint = false;
+        /// <summary>
+        /// Reports if this connector is fully connected.
+        /// </summary>
+        internal Boolean IsInitialized { get; set; }
 
-        private Boolean _supportsDiscard = false;
+        internal bool Pooled { get; private set; }
+        internal bool Shared { get; private set; }
 
-        private Boolean _supportsApplicationName = false;
+        /// <summary>
+        /// Options that control certain aspects of native to backend conversions that depend
+        /// on backend version and status.
+        /// </summary>
+        internal NativeToBackendTypeConverterOptions NativeToBackendTypeConverterOptions { get; private set; }
 
-        private Boolean _supportsExtraFloatDigits3 = false;
-
-        private Boolean _supportsExtraFloatDigits = false;
-
-        private Boolean _supportsSslRenegotiationLimit = false;
-
-        private Boolean _isInitialized;
-
-        private readonly Boolean _pooled;
-        private readonly Boolean _shared;
-
-        private NpgsqlState _state;
-
-        private Int32 _planIndex;
-        private Int32 _portalIndex;
-
-        private const String _planNamePrefix = "s";
-        private const String _portalNamePrefix = "p";
-
-        private NativeToBackendTypeConverterOptions _NativeToBackendTypeConverterOptions;
-
-        private Thread _notificationThread;
-
-        // Counter of notification thread start/stop requests in order to
-        internal Int16 _notificationThreadStopCount;
-
-        private Exception _notificationException;
+        internal NpgsqlBackendTypeMapping OidToNameMapping
+        {
+            get { return NativeToBackendTypeConverterOptions.OidToNameMapping; }
+        }
 
         internal ForwardsOnlyDataReader CurrentReader;
 
         // Some kinds of messages only get one response, and do not
         // expect a ready_for_query response.
-        private bool _requireReadyForQuery = true;
-
-        internal NpgsqlCopyFormat CopyFormat { get; private set; }
-
-        private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
-            new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+        internal bool RequireReadyForQuery { get; set; }
 
         // For IsValid test
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
@@ -184,15 +117,7 @@ namespace Npgsql
         protected readonly static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 #if WINDOWS && UNMANAGED
-
-        private SSPIHandler _sspi;
-
-        internal SSPIHandler SSPI
-        {
-            get { return _sspi; }
-            set { _sspi = value; }
-        }
-
+        internal SSPIHandler SSPI { get; set; }
 #endif
 
         public NpgsqlConnector(NpgsqlConnection Connection)
@@ -202,104 +127,53 @@ namespace Npgsql
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="ConnectionString">Connection string.</param>
-        /// <param name="Pooled">Pooled</param>
-        /// <param name="Shared">Controls whether the connector can be shared.</param>
-        public NpgsqlConnector(NpgsqlConnectionStringBuilder ConnectionString, bool Pooled, bool Shared)
+        /// <param name="connectionString">Connection string.</param>
+        /// <param name="pooled">Pooled</param>
+        /// <param name="shared">Controls whether the connector can be shared.</param>
+        public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled, bool shared)
         {
-            this.settings = ConnectionString;
+            settings = connectionString;
             _connection_state = ConnectionState.Closed;
-            _pooled = Pooled;
-            _shared = Shared;
-            _isInitialized = false;
+            Pooled = pooled;
+            Shared = shared;
+            IsInitialized = false;
             _state = NpgsqlClosedState.Instance;
-            _mediator = new NpgsqlMediator();
-            _NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
+            Mediator = new NpgsqlMediator();
+            NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
         }
 
+        #region Configuration settings
 
-        //Finalizer should never be used, but if some incident has left to a connector being abandoned (most likely
-        //case being a user not cleaning up a connection properly) then this way we can at least reduce the damage.
-
-        //~NpgsqlConnector()
-        //{
-        //    Close();
-        //}
-
-        internal String Host
-        {
-            get { return settings.Host; }
-        }
-
-        internal Int32 Port
-        {
-            get { return settings.Port; }
-        }
-
-        internal String Database
-        {
-            get { return settings.ContainsKey(Keywords.Database) ? settings.Database : settings.UserName; }
-        }
-
-        internal String UserName
-        {
-            get { return settings.UserName; }
-        }
-
-        internal byte[] Password
-        {
-            get { return settings.PasswordAsByteArray; }
-        }
-
-        internal Boolean SSL
-        {
-            get { return settings.SSL; }
-        }
-
-        internal SslMode SslMode
-        {
-            get { return settings.SslMode; }
-        }
-
+        /// <summary>
+        /// Return Connection String.
+        /// </summary>
         internal static Boolean UseSslStream = true;
+        internal string ConnectionString { get { return settings.ConnectionString; } }
+        internal String Host { get { return settings.Host; } }
+        internal Int32 Port { get { return settings.Port; } }
+        internal String Database { get { return settings.ContainsKey(Keywords.Database) ? settings.Database : settings.UserName; } }
+        internal String UserName { get { return settings.UserName; } }
+        internal byte[] Password { get { return settings.PasswordAsByteArray; } }
+        internal Boolean SSL { get { return settings.SSL; } }
+        internal SslMode SslMode { get { return settings.SslMode; } }
+        internal Boolean UseMonoSsl { get { return ValidateRemoteCertificateCallback == null; } }
+        internal Int32 ConnectionTimeout { get { return settings.Timeout; } }
+        internal Int32 DefaultCommandTimeout { get { return settings.CommandTimeout; } }
+        internal Boolean Enlist { get { return settings.Enlist; } }
+        public bool UseExtendedTypes { get { return settings.UseExtendedTypes; } }
+        internal Boolean IntegratedSecurity { get { return settings.IntegratedSecurity; } }
+        internal Boolean AlwaysPrepare { get { return settings.AlwaysPrepare; } }
+        internal Version CompatVersion { get { return settings.Compatible; } }
 
-        internal Boolean UseMonoSsl
-        {
-            get { return ValidateRemoteCertificateCallback == null; }
-        }
+        #endregion Configuration settings
 
-        internal Int32 ConnectionTimeout
-        {
-            get { return settings.Timeout; }
-        }
+        #region State management
 
-        internal Int32 DefaultCommandTimeout
-        {
-            get { return settings.CommandTimeout; }
-        }
-
-        internal Boolean Enlist
-        {
-            get { return settings.Enlist; }
-        }
-
-        public bool UseExtendedTypes
-        {
-            get { return settings.UseExtendedTypes; }
-        }
-
-        internal Boolean IntegratedSecurity
-        {
-            get { return settings.IntegratedSecurity; }
-        }
-
-        internal Boolean AlwaysPrepare
-        {
-            get { return settings.AlwaysPrepare; }
-        }
+        private ConnectionState _connection_state;
+        private NpgsqlState _state;
 
         /// <summary>
         /// Gets the current state of the connection.
@@ -316,13 +190,254 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Return Connection String.
-        /// </summary>
-        internal string ConnectionString
+        internal NpgsqlState CurrentState
         {
-            get { return settings.ConnectionString; }
+            get { return _state; }
+            set { _state = value; }
         }
+
+        #endregion
+
+        #region Open
+
+        /// <summary>
+        /// Opens the physical connection to the server.
+        /// </summary>
+        /// <remarks>Usually called by the RequestConnector
+        /// Method of the connection pool manager.</remarks>
+        internal void Open()
+        {
+            ServerVersion = null;
+            // If Connection.ConnectionString specifies a protocol version, we will
+            // not try to fall back to version 2 on failure.
+
+            // Reset state to initialize new connector in pool.
+            CurrentState = NpgsqlClosedState.Instance;
+
+            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+            // this allows us to still respect the caller's timeout expectation.
+            int connectTimeRemaining = this.ConnectionTimeout * 1000;
+            DateTime attemptStart = DateTime.Now;
+
+            // Get a raw connection, possibly SSL...
+            CurrentState.Open(this, connectTimeRemaining);
+            try
+            {
+                // Establish protocol communication and handle authentication...
+                CurrentState.Startup(this, settings);
+            }
+            catch (NpgsqlException)
+            {
+                if (Stream != null)
+                {
+                    try
+                    {
+                        Stream.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                throw;
+            }
+
+            // Change the state of connection to open and ready.
+            _connection_state = ConnectionState.Open;
+            CurrentState = NpgsqlReadyState.Instance;
+
+            // After attachment, the stream will close the connector (this) when the stream gets disposed.
+            BaseStream.AttachConnector(this);
+
+            // Fall back to the old way, SELECT VERSION().
+            // This should not happen for protocol version 3+.
+            if (ServerVersion == null)
+            {
+                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
+                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
+                using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
+                {
+                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
+                }
+            }
+
+            ProcessServerVersion();
+
+            StringWriter sbInitQueries = new StringWriter();
+
+            // Some connection parameters for protocol 3 had been sent in the startup packet.
+            // The rest will be setted here.
+            sbInitQueries.WriteLine("SET extra_float_digits=3;");
+            sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
+
+            initQueries = sbInitQueries.ToString();
+
+            NpgsqlCommand.ExecuteBlind(this, initQueries);
+
+            // Make a shallow copy of the type mapping that the connector will own.
+            // It is possible that the connector may add types to its private
+            // mapping that will not be valid to another connector, even
+            // if connected to the same backend version.
+            NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
+
+            // The connector is now fully initialized. Beyond this point, it is
+            // safe to release it back to the pool rather than closing it.
+            IsInitialized = true;
+        }
+
+        public void RawOpen(Int32 timeout)
+        {
+            try
+            {
+                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
+
+                IAsyncResult result;
+                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+                // this allows us to still respect the caller's timeout expectation.
+                DateTime attemptStart;
+
+                attemptStart = DateTime.Now;
+
+                result = Dns.BeginGetHostAddresses(Host, null, null);
+
+                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+                {
+                    // Timeout was used up attempting the Dns lookup
+                    throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
+                }
+
+                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
+                IPAddress[] ips = Dns.EndGetHostAddresses(result);
+                Socket socket = null;
+                Exception lastSocketException = null;
+
+                // try every ip address of the given hostname, use the first reachable one
+                // make sure not to exceed the caller's timeout expectation by splitting the
+                // time we have left between all the remaining ip's in the list.
+                for (int i = 0; i < ips.Length; i++)
+                {
+                    NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
+
+                    IPEndPoint ep = new IPEndPoint(ips[i], Port);
+                    socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+                    attemptStart = DateTime.Now;
+
+                    try
+                    {
+                        result = socket.BeginConnect(ep, null, null);
+
+                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
+                        {
+                            throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
+                        }
+
+                        socket.EndConnect(result);
+
+                        // connect was successful, leave the loop
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
+
+                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+                        lastSocketException = e;
+
+                        socket.Close();
+                        socket = null;
+                    }
+                }
+
+                if (socket == null)
+                {
+                    throw lastSocketException;
+                }
+
+                var baseStream = new NpgsqlNetworkStream(socket, true);
+                Stream sslStream = null;
+
+                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
+                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
+                {
+                    baseStream
+                        .WriteInt32(8)
+                        .WriteInt32(80877103);
+
+                    // Receive response
+                    Char response = (Char)baseStream.ReadByte();
+
+                    if (response == 'S')
+                    {
+                        //create empty collection
+                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
+
+                        //trigger the callback to fetch some certificates
+                        DefaultProvideClientCertificatesCallback(clientCertificates);
+
+                        //if (context.UseMonoSsl)
+                        if (!NpgsqlConnector.UseSslStream)
+                        {
+                            SslClientStream sslStreamPriv;
+
+                            sslStreamPriv = new SslClientStream(
+                                    baseStream,
+                                    Host,
+                                    true,
+                                    SecurityProtocolType.Default,
+                                    clientCertificates);
+
+                            sslStreamPriv.ClientCertSelectionDelegate =
+                                    new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
+                            sslStreamPriv.ServerCertValidationDelegate =
+                                    new CertificateValidationCallback(DefaultCertificateValidationCallback);
+                            sslStreamPriv.PrivateKeyCertSelectionDelegate =
+                                    new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+                            sslStream = sslStreamPriv;
+                        }
+                        else
+                        {
+                            SslStream sslStreamPriv;
+
+                            sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
+
+                            sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                            sslStream = sslStreamPriv;
+                        }
+                    }
+                    else if (SslMode == SslMode.Require)
+                    {
+                        throw new InvalidOperationException(resman.GetString("Exception_Ssl_RequestError"));
+                    }
+                }
+
+                Socket = socket;
+                BaseStream = baseStream;
+                Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
+
+                NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, Host, Port);
+                ChangeState(context, NpgsqlConnectedState.Instance);
+            }
+            catch (Exception e)
+            {
+                throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), Host), e);
+            }
+        }
+
+        public void Startup(NpgsqlConnectionStringBuilder settings)
+        {
+            NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(Database, UserName, settings);
+
+            startupPacket.WriteToStream(Stream);
+            RequireReadyForQuery = false;
+
+            ProcessAndDiscardBackendResponses();
+        }
+
+        #endregion
+
+        #region Outgoing messages
 
         internal void Query(NpgsqlQuery query)
         {
@@ -341,52 +456,6 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Parse");
             parse.WriteToStream(Stream);
-        }
-
-        internal void TestConnector()
-        {
-            NpgsqlSync.Default.WriteToStream(Stream);
-            Stream.Flush();
-            Queue<int> buffer = new Queue<int>();
-            //byte[] compareBuffer = new byte[6];
-            int[] messageSought = new int[] { 'Z', 0, 0, 0, 5 };
-            int newByte;
-            for (; ; )
-            {
-                switch (newByte = Stream.ReadByte())
-                {
-                    case -1:
-                        throw new EndOfStreamException();
-                    case 'E':
-                    case 'I':
-                    case 'T':
-                        if (buffer.Count > 4)
-                        {
-                            bool match = true;
-                            int i = 0;
-                            foreach (byte cmp in buffer)
-                            {
-                                if (cmp != messageSought[i++])
-                                {
-                                    match = false;
-                                    break;
-                                }
-                            }
-                            if (match)
-                            {
-                                return;
-                            }
-                        }
-                        break;
-                    default:
-                        buffer.Enqueue(newByte);
-                        if (buffer.Count > 5)
-                        {
-                            buffer.Dequeue();
-                        }
-                        break;
-                }
-            }
         }
 
         internal void Sync()
@@ -412,6 +481,10 @@ namespace Npgsql
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Execute");
             execute.WriteToStream(Stream);
         }
+
+        #endregion Outgoing messages
+
+        #region Backend message processing
 
         /// <summary>
         /// Call ProcessBackendResponsesEnum(), and scan and discard all results.
@@ -784,7 +857,7 @@ namespace Npgsql
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyInResponse");
                             ChangeState(context, new NpgsqlCopyInState());
                             PGUtil.ReadInt32(Stream); // length redundant
-                            context.CurrentState.StartCopy(context, ReadCopyHeader(Stream));
+                            StartCopyIn(ReadCopyHeader());
                             yield break;
                             // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
@@ -793,7 +866,7 @@ namespace Npgsql
                             NpgsqlEventLog.LogMsg(resman, "Log_ProtocolMessage", LogLevel.Debug, "CopyOutResponse");
                             ChangeState(context, NpgsqlCopyOutState.Instance);
                             PGUtil.ReadInt32(Stream); // length redundant
-                            context.CurrentState.StartCopy(context, ReadCopyHeader(Stream));
+                            StartCopyOut(ReadCopyHeader());
                             yield break;
                             // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
@@ -874,14 +947,20 @@ namespace Npgsql
             return socketPoolResponse || Socket.Poll(1000000 * secondsToWait, selectMode);
         }
 
-        private static NpgsqlCopyFormat ReadCopyHeader(Stream stream)
+        #endregion Backend message processing
+
+        #region Copy In / Out
+
+        internal NpgsqlCopyFormat CopyFormat { get; private set; }
+
+        private NpgsqlCopyFormat ReadCopyHeader()
         {
-            byte copyFormat = (byte)stream.ReadByte();
-            Int16 numCopyFields = PGUtil.ReadInt16(stream);
+            byte copyFormat = (byte)Stream.ReadByte();
+            Int16 numCopyFields = PGUtil.ReadInt16(Stream);
             Int16[] copyFieldFormats = new Int16[numCopyFields];
             for (Int16 i = 0; i < numCopyFields; i++)
             {
-                copyFieldFormats[i] = PGUtil.ReadInt16(stream);
+                copyFieldFormats[i] = PGUtil.ReadInt16(Stream);
             }
             return new NpgsqlCopyFormat(copyFormat, copyFieldFormats);
         }
@@ -989,117 +1068,19 @@ namespace Npgsql
             return Mediator.ReceivedCopyData;
         }
 
-        /// <summary>
-        /// This method checks if the connector is still ok.
-        /// We try to send a simple query text, select 1 as ConnectionTest;
-        /// </summary>
-        internal Boolean IsValid()
-        {
-            try
-            {
-                // Here we use a fake NpgsqlCommand, just to send the test query string.
+        #endregion Copy In / Out
 
-                // Get random test value.
-                Byte[] testBytes = new Byte[2];
-                rng.GetNonZeroBytes(testBytes);
-                String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
-
-                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
-                string compareValue = string.Empty;
-                string sql = "select '" + testValue + "'";
-                // restore initial connection parameters resetted by "Discard ALL"
-                if (SupportsDiscard)
-                {
-                    sql = this.initQueries + sql;
-                }
-                using(NpgsqlCommand cmd = new NpgsqlCommand(sql, this))
-                {
-                    compareValue = (string) cmd.ExecuteScalar();
-                }
-
-                if (compareValue != testValue)
-                {
-                    return false;
-                }
-
-                this.RequireReadyForQuery = true;
-            }
-            catch
-            {
-                return false;
-            }
-
-            return true;
-        }
+        #region Notifications
 
         /// <summary>
-        /// This method is responsible for releasing all resources associated with this Connector.
+        /// Occurs on NoticeResponses from the PostgreSQL backend.
         /// </summary>
-        internal void ReleaseResources()
-        {
-            if (_connection_state != ConnectionState.Closed)
-            {
-                if (SupportsDiscard)
-                {
-                    ReleaseWithDiscard();
-                }
-                else
-                {
-                    ReleasePlansPortals();
-                    ReleaseRegisteredListen();
-                }
-            }
-        }
-
-        internal void ReleaseWithDiscard()
-        {
-            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.DiscardAll);
-
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
-        }
-
-        internal void ReleaseRegisteredListen()
-        {
-            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.UnlistenAll);
-        }
+        internal event NoticeEventHandler Notice;
 
         /// <summary>
-        /// This method is responsible to release all portals used by this Connector.
+        /// Occurs on NotificationResponses from the PostgreSQL backend.
         /// </summary>
-        internal void ReleasePlansPortals()
-        {
-            Int32 i = 0;
-
-            if (_planIndex > 0)
-            {
-                for (i = 1; i <= _planIndex; i++)
-                {
-                    try
-                    {
-                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", _planNamePrefix, i));
-                    }
-                    // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
-                    catch {}
-                }
-            }
-
-            _portalIndex = 0;
-            _planIndex = 0;
-        }
-
-        /// <summary>
-        /// Modify the backend statement_timeout value if needed.
-        /// </summary>
-        /// <param name="timeout">New timeout</param>
-        internal void SetBackendCommandTimeout(int timeout)
-        {
-            if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
-            {
-                NpgsqlCommand.ExecuteSetStatementTimeoutBlind(this, timeout);
-
-                Mediator.BackendCommandTimeout = timeout;
-            }
-        }
+        internal event NotificationEventHandler Notification;
 
         internal void FireNotice(NpgsqlError e)
         {
@@ -1128,6 +1109,10 @@ namespace Npgsql
                 } //Eat exceptions from user code.
             }
         }
+
+        #endregion Notifications
+
+        #region SSL
 
         /// <summary>
         /// Default SSL CertificateSelectionCallback implementation.
@@ -1203,269 +1188,66 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Version of backend server this connector is connected to.
+        /// Called to provide client certificates for SSL handshake.
         /// </summary>
-        internal Version ServerVersion
-        {
-            get { return _serverVersion; }
-            set { _serverVersion = value; }
-        }
+        internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
 
         /// <summary>
-        /// The physical connection socket to the backend.
+        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
         /// </summary>
-        internal Socket Socket
-        {
-            get { return _socket; }
-            set { _socket = value; }
-        }
+        internal event CertificateSelectionCallback CertificateSelectionCallback;
 
         /// <summary>
-        /// The physical connection stream to the backend.
+        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
         /// </summary>
-        internal NpgsqlNetworkStream BaseStream
-        {
-            get { return _baseStream; }
-            set { _baseStream = value; }
-        }
+        internal event CertificateValidationCallback CertificateValidationCallback;
 
         /// <summary>
-        /// The top level stream to the backend.
+        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
         /// </summary>
-        internal BufferedStream Stream
-        {
-            get { return _stream; }
-            set { _stream = value; }
-        }
+        internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
 
         /// <summary>
-        /// Reports if this connector is fully connected.
+        /// Called to validate server's certificate during SSL handshake
         /// </summary>
-        internal Boolean IsInitialized
-        {
-            get { return _isInitialized; }
-            set { _isInitialized = value; }
-        }
+        internal event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
 
-        internal NpgsqlState CurrentState
-        {
-            get { return _state; }
-            set { _state = value; }
-        }
+        #endregion SSL
 
-        internal bool Pooled
-        {
-            get { return _pooled; }
-        }
-
-        internal bool Shared
-        {
-            get { return _shared; }
-        }
-
-        internal NpgsqlBackEndKeyData BackEndKeyData
-        {
-            get { return _backend_keydata; }
-            set { _backend_keydata = value; }
-        }
-
-        internal NpgsqlBackendTypeMapping OidToNameMapping
-        {
-            get { return _NativeToBackendTypeConverterOptions.OidToNameMapping; }
-        }
-
-        internal Version CompatVersion
-        {
-            get
-            {
-                return settings.Compatible;
-            }
-        }
+        #region Cancel
 
         /// <summary>
-        /// The connection mediator.
+        /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal NpgsqlMediator Mediator
+        internal void CancelRequest()
         {
-            get { return _mediator; }
-        }
+            NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
+            cancelConnector.BackEndKeyData = BackEndKeyData;
 
-        /// <summary>
-        /// Report if the connection is in a transaction.
-        /// </summary>
-        internal NpgsqlTransaction Transaction
-        {
-            get { return _transaction; }
-            set { _transaction = value; }
-        }
-
-        internal Boolean SupportsApplicationName
-        {
-            get { return _supportsApplicationName; }
-        }
-
-        internal Boolean SupportsExtraFloatDigits3
-        {
-            get { return _supportsExtraFloatDigits3; }
-        }
-
-        internal Boolean SupportsExtraFloatDigits
-        {
-            get { return _supportsExtraFloatDigits; }
-        }
-
-        internal Boolean SupportsSslRenegotiationLimit
-        {
-            get { return _supportsSslRenegotiationLimit; }
-        }
-
-        internal Boolean SupportsSavepoint
-        {
-            get { return _supportsSavepoint; }
-            set { _supportsSavepoint = value; }
-        }
-
-        internal Boolean SupportsDiscard
-        {
-            get { return _supportsDiscard; }
-        }
-
-        /// <summary>
-        /// Options that control certain aspects of native to backend conversions that depend
-        /// on backend version and status.
-        /// </summary>
-        public NativeToBackendTypeConverterOptions NativeToBackendTypeConverterOptions
-        {
-            get
-            {
-                return _NativeToBackendTypeConverterOptions;
-            }
-        }
-
-        /// <summary>
-        /// This method is required to set all the version dependent features flags.
-        /// SupportsPrepare means the server can use prepared query plans (7.3+)
-        /// </summary>
-        private void ProcessServerVersion()
-        {
-            this._supportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
-            this._supportsDiscard = (ServerVersion >= new Version(8, 3, 0));
-            this._supportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
-            this._supportsExtraFloatDigits3 =(ServerVersion >= new Version(9, 0, 0));
-            this._supportsExtraFloatDigits = (ServerVersion >= new Version(7, 4, 0)); 
-            this._supportsSslRenegotiationLimit = ((ServerVersion >= new Version(8, 4, 3)) ||
-                     (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
-                     (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
-                     (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
-                     (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
-                     (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)) );
-
-            // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
-            // Note that it is possible that support for this prefix will vanish in some future version
-            // of Postgres, in which case this test will need to be revised.
-            // At that time it may also be necessary to set UseConformantStrings = true here.
-            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 1, 0));
-
-            // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
-            NativeToBackendTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
-        }
-
-        /*/// <value>Counts the numbers of Connections that share
-        /// this Connector. Used in Release() to decide wether this
-        /// connector is to be moved to the PooledConnectors list.</value>
-        // internal int mShareCount;*/
-
-        /// <summary>
-        /// Opens the physical connection to the server.
-        /// </summary>
-        /// <remarks>Usually called by the RequestConnector
-        /// Method of the connection pool manager.</remarks>
-        internal void Open()
-        {
-            ServerVersion = null;
-            // If Connection.ConnectionString specifies a protocol version, we will
-            // not try to fall back to version 2 on failure.
-
-            // Reset state to initialize new connector in pool.
-            CurrentState = NpgsqlClosedState.Instance;
-
-            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-            // this allows us to still respect the caller's timeout expectation.
-            int connectTimeRemaining = this.ConnectionTimeout * 1000;
-            DateTime attemptStart = DateTime.Now;
-
-            // Get a raw connection, possibly SSL...
-            CurrentState.Open(this, connectTimeRemaining);
             try
             {
-                // Establish protocol communication and handle authentication...
-                CurrentState.Startup(this,settings);
+                // Get a raw connection, possibly SSL...
+                cancelConnector.CurrentState.Open(cancelConnector, cancelConnector.ConnectionTimeout * 1000);
+
+                // Cancel current request.
+                cancelConnector.SendCancelRequest();
             }
-            catch (NpgsqlException)
+            finally
             {
-                if (_stream != null)
-                {
-                    try
-                    {
-                        _stream.Dispose();
-                    }
-                    catch
-                    {
-                    }
-                }
-
-                throw;
+                cancelConnector.Close();
             }
-
-            // Change the state of connection to open and ready.
-            _connection_state = ConnectionState.Open;
-            CurrentState = NpgsqlReadyState.Instance;
-
-            // After attachment, the stream will close the connector (this) when the stream gets disposed.
-            _baseStream.AttachConnector(this);
-
-            // Fall back to the old way, SELECT VERSION().
-            // This should not happen for protocol version 3+.
-            if (ServerVersion == null)
-            {
-                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                using (NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
-                {
-                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
-                }
-            }
-
-            ProcessServerVersion();
-
-            StringWriter sbInitQueries = new StringWriter();
-
-            // Some connection parameters for protocol 3 had been sent in the startup packet.
-            // The rest will be setted here.
-            if (SupportsExtraFloatDigits3)
-            {
-                sbInitQueries.WriteLine("SET extra_float_digits=3;");
-            }
-
-            if (SupportsSslRenegotiationLimit)
-            {
-                sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
-            }
-
-            initQueries = sbInitQueries.ToString();
-
-            NpgsqlCommand.ExecuteBlind(this, initQueries);
-
-            // Make a shallow copy of the type mapping that the connector will own.
-            // It is possible that the connector may add types to its private
-            // mapping that will not be valid to another connector, even
-            // if connected to the same backend version.
-            NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
-
-            // The connector is now fully initialized. Beyond this point, it is
-            // safe to release it back to the pool rather than closing it.
-            IsInitialized = true;
         }
+
+        void SendCancelRequest()
+        {
+            var CancelRequestMessage = new NpgsqlCancelRequest(BackEndKeyData);
+            CancelRequestMessage.WriteToStream(Stream);
+            Stream.Flush();
+        }
+
+        #endregion Cancel
+
+        #region Close
 
         /// <summary>
         /// Closes the physical connection to the server.
@@ -1500,207 +1282,78 @@ namespace Npgsql
             ChangeState(context, NpgsqlClosedState.Instance);
             _serverParameters.Clear();
             ServerVersion = null;
-        }        
+        }
 
         /// <summary>
-        /// Creates another connector and sends a cancel request through it for this connector.
+        /// This method is responsible for releasing all resources associated with this Connector.
         /// </summary>
-        internal void CancelRequest()
+        internal void ReleaseResources()
         {
-            NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
-            cancelConnector._backend_keydata = BackEndKeyData;
-
-            try
+            if (_connection_state != ConnectionState.Closed)
             {
-                // Get a raw connection, possibly SSL...
-                cancelConnector.CurrentState.Open(cancelConnector, cancelConnector.ConnectionTimeout * 1000);
-
-                // Cancel current request.
-                cancelConnector.SendCancelRequest();
-            }
-            finally
-            {
-                cancelConnector.Close();
+                if (SupportsDiscard)
+                {
+                    ReleaseWithDiscard();
+                }
+                else
+                {
+                    ReleasePlansPortals();
+                    ReleaseRegisteredListen();
+                }
             }
         }
 
-        public void RawOpen(Int32 timeout)
+        internal void ReleaseWithDiscard()
         {
-            try
+            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.DiscardAll);
+
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
+        }
+
+        internal void ReleaseRegisteredListen()
+        {
+            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.UnlistenAll);
+        }
+
+        /// <summary>
+        /// This method is responsible to release all portals used by this Connector.
+        /// </summary>
+        internal void ReleasePlansPortals()
+        {
+            Int32 i = 0;
+
+            if (_planIndex > 0)
             {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
-
-                IAsyncResult result;
-                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-                // this allows us to still respect the caller's timeout expectation.
-                DateTime attemptStart;
-
-                attemptStart = DateTime.Now;
-
-                result = Dns.BeginGetHostAddresses(Host, null, null);
-
-                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+                for (i = 1; i <= _planIndex; i++)
                 {
-                    // Timeout was used up attempting the Dns lookup
-                    throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
-                }
-
-                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-                IPAddress[] ips = Dns.EndGetHostAddresses(result);
-                Socket socket = null;
-                Exception lastSocketException = null;
-
-                // try every ip address of the given hostname, use the first reachable one
-                // make sure not to exceed the caller's timeout expectation by splitting the
-                // time we have left between all the remaining ip's in the list.
-                for (int i = 0; i < ips.Length; i++)
-                {
-                    NpgsqlEventLog.LogMsg(resman, "Log_ConnectingTo", LogLevel.Debug, ips[i]);
-
-                    IPEndPoint ep = new IPEndPoint(ips[i], Port);
-                    socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-                    attemptStart = DateTime.Now;
-
                     try
                     {
-                        result = socket.BeginConnect(ep, null, null);
-
-                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
-                        {
-                            throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
-                        }
-
-                        socket.EndConnect(result);
-
-                        // connect was successful, leave the loop
-                        break;
+                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", _planNamePrefix, i));
                     }
-                    catch (Exception e)
-                    {
-                        NpgsqlEventLog.LogMsg(resman, "Log_FailedConnection", LogLevel.Normal, ips[i]);
-
-                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-                        lastSocketException = e;
-
-                        socket.Close();
-                        socket = null;
-                    }
+                    // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
+                    catch { }
                 }
-
-                if (socket == null)
-                {
-                    throw lastSocketException;
-                }
-
-                NpgsqlNetworkStream baseStream = new NpgsqlNetworkStream(socket, true);
-                Stream sslStream = null;
-
-                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
-                {
-                    baseStream
-                        .WriteInt32(8)
-                        .WriteInt32(80877103);
-
-                    // Receive response
-                    Char response = (Char)baseStream.ReadByte();
-
-                    if (response == 'S')
-                    {
-                        //create empty collection
-                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
-
-                        //trigger the callback to fetch some certificates
-                        DefaultProvideClientCertificatesCallback(clientCertificates);
-
-                        //if (context.UseMonoSsl)
-                        if (!NpgsqlConnector.UseSslStream)
-                        {
-                            SslClientStream sslStreamPriv;
-
-                            sslStreamPriv = new SslClientStream(
-                                    baseStream,
-                                    Host,
-                                    true,
-                                    SecurityProtocolType.Default,
-                                    clientCertificates);
-
-                            sslStreamPriv.ClientCertSelectionDelegate =
-                                    new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-                            sslStreamPriv.ServerCertValidationDelegate =
-                                    new CertificateValidationCallback(DefaultCertificateValidationCallback);
-                            sslStreamPriv.PrivateKeyCertSelectionDelegate =
-                                    new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
-                            sslStream = sslStreamPriv;
-                        }
-                        else
-                        {
-                            SslStream sslStreamPriv;
-
-                            sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
-
-                            sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                            sslStream = sslStreamPriv;
-                        }
-                    }
-                    else if (SslMode == SslMode.Require)
-                    {
-                        throw new InvalidOperationException(resman.GetString("Exception_Ssl_RequestError"));
-                    }
-                }
-
-                Socket = socket;
-                BaseStream = baseStream;
-                Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
-
-                NpgsqlEventLog.LogMsg(resman, "Log_ConnectedTo", LogLevel.Normal, Host, Port);
-                ChangeState(context, NpgsqlConnectedState.Instance);
             }
-            catch (Exception e)
-            {
-                throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), Host), e);
-            }
+
+            _portalIndex = 0;
+            _planIndex = 0;
         }
 
-        public void Startup(NpgsqlConnectionStringBuilder settings)
-        {
-            NpgsqlStartupPacket startupPacket = new NpgsqlStartupPacket(Database, UserName, settings);
+        #endregion Close
 
-            startupPacket.WriteToStream(Stream);
-            RequireReadyForQuery = false;
+        #region Notification thread
 
-            ProcessAndDiscardBackendResponses();
-        }
+        private Thread _notificationThread;
 
-        void SendCancelRequest()
-        {
-            var CancelRequestMessage = new NpgsqlCancelRequest(BackEndKeyData);
-            CancelRequestMessage.WriteToStream(Stream);
-            Stream.Flush();
-        }
+        // Counter of notification thread start/stop requests in order to
+        internal Int16 _notificationThreadStopCount;
 
-        ///<summary>
-        /// Returns next portal index.
-        ///</summary>
-        internal String NextPortalName()
-        {
-            return _portalNamePrefix + (++_portalIndex).ToString();
-        }
-
-        ///<summary>
-        /// Returns next plan index.
-        ///</summary>
-        internal String NextPlanName()
-        {
-            return _planNamePrefix + (++_planIndex).ToString();
-        }
+        private Exception _notificationException;
 
         internal void RemoveNotificationThread()
         {
             // Wait notification thread finish its work.
-            lock (_socket)
+            lock (Socket)
             {
                 // Kill notification thread.
                 _notificationThread.Abort();
@@ -1772,7 +1425,7 @@ namespace Npgsql
 
             if (_notificationThreadStopCount == 1) // If this call was the first to increment.
             {
-                Monitor.Enter(_socket);
+                Monitor.Enter(Socket);
             }
         }
 
@@ -1783,7 +1436,7 @@ namespace Npgsql
             if (_notificationThreadStopCount == 0)
             {
                 // Release the synchronization handle.
-                Monitor.Exit(_socket);
+                Monitor.Exit(Socket);
             }
         }
 
@@ -1812,11 +1465,11 @@ namespace Npgsql
                         // Mono's implementation of System.Threading.Monitor does not appear to give threads
                         // priority on a first come/first serve basis, as does Microsoft's.  As a result, 
                         // under mono, this loop may execute many times even after another thread has attempted
-                        // to lock on _socket.  A short Sleep() seems to solve the problem effectively.
+                        // to lock on Socket.  A short Sleep() seems to solve the problem effectively.
                         // Note that Sleep(0) does not work.
                         Thread.Sleep(1);
 
-                        lock (connector._socket)
+                        lock (connector.Socket)
                         {
                             // 20 millisecond timeout
                             if (this.connector.Socket.Poll(20000, SelectMode.SelectRead))
@@ -1834,10 +1487,130 @@ namespace Npgsql
             }
         }
 
-        public bool RequireReadyForQuery
+        #endregion Notification thread
+
+        #region Supported features
+
+        internal Boolean SupportsApplicationName { get; private set; }
+        internal Boolean SupportsExtraFloatDigits3 { get; private set; }
+        internal Boolean SupportsExtraFloatDigits { get; private set; }
+        internal Boolean SupportsSslRenegotiationLimit { get; private set; }
+        internal Boolean SupportsSavepoint { get; private set; }
+        internal Boolean SupportsDiscard { get; private set; }
+
+        /// <summary>
+        /// This method is required to set all the version dependent features flags.
+        /// SupportsPrepare means the server can use prepared query plans (7.3+)
+        /// </summary>
+        private void ProcessServerVersion()
         {
-            get { return _requireReadyForQuery; }
-            set { _requireReadyForQuery = value; }
+            SupportsSavepoint = (ServerVersion >= new Version(8, 0, 0));
+            SupportsDiscard = (ServerVersion >= new Version(8, 3, 0));
+            SupportsApplicationName = (ServerVersion >= new Version(9, 0, 0));
+            SupportsExtraFloatDigits3 = (ServerVersion >= new Version(9, 0, 0));
+            SupportsExtraFloatDigits = (ServerVersion >= new Version(7, 4, 0));
+            SupportsSslRenegotiationLimit = ((ServerVersion >= new Version(8, 4, 3)) ||
+                     (ServerVersion >= new Version(8, 3, 10) && ServerVersion < new Version(8, 4, 0)) ||
+                     (ServerVersion >= new Version(8, 2, 16) && ServerVersion < new Version(8, 3, 0)) ||
+                     (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
+                     (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
+                     (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)));
+
+            // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
+            // Note that it is possible that support for this prefix will vanish in some future version
+            // of Postgres, in which case this test will need to be revised.
+            // At that time it may also be necessary to set UseConformantStrings = true here.
+            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 1, 0));
+
+            // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
+            NativeToBackendTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
+        }
+
+        #endregion Supported features
+
+        #region Misc
+
+        /// <summary>
+        /// Modify the backend statement_timeout value if needed.
+        /// </summary>
+        /// <param name="timeout">New timeout</param>
+        internal void SetBackendCommandTimeout(int timeout)
+        {
+            if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
+            {
+                NpgsqlCommand.ExecuteSetStatementTimeoutBlind(this, timeout);
+                Mediator.BackendCommandTimeout = timeout;
+            }
+        }
+
+        ///<summary>
+        /// Returns next portal index.
+        ///</summary>
+        internal String NextPortalName()
+        {
+            return _portalNamePrefix + (++_portalIndex).ToString();
+        }
+
+        private Int32 _portalIndex;
+        private const String _portalNamePrefix = "p";
+
+        ///<summary>
+        /// Returns next plan index.
+        ///</summary>
+        internal String NextPlanName()
+        {
+            return _planNamePrefix + (++_planIndex).ToString();
+        }
+
+        private Int32 _planIndex;
+        private const String _planNamePrefix = "s";
+
+        /// <summary>
+        /// This method checks if the connector is still ok.
+        /// We try to send a simple query text, select 1 as ConnectionTest;
+        /// </summary>
+        internal Boolean IsValid()
+        {
+            try
+            {
+                // Here we use a fake NpgsqlCommand, just to send the test query string.
+
+                // Get random test value.
+                Byte[] testBytes = new Byte[2];
+                rng.GetNonZeroBytes(testBytes);
+                String testValue = String.Format("Npgsql{0}{1}", testBytes[0], testBytes[1]);
+
+                //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
+                string compareValue = string.Empty;
+                string sql = "select '" + testValue + "'";
+                // restore initial connection parameters resetted by "Discard ALL"
+                sql = initQueries + sql;
+                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, this))
+                {
+                    compareValue = (string)cmd.ExecuteScalar();
+                }
+
+                if (compareValue != testValue)
+                {
+                    return false;
+                }
+
+                this.RequireReadyForQuery = true;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
+          new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);
+
+        public IDictionary<string, NpgsqlParameterStatus> ServerParameters
+        {
+            get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
         }
 
         public void AddParameterStatus(NpgsqlParameterStatus ps)
@@ -1857,9 +1630,67 @@ namespace Npgsql
             }
         }
 
-        public IDictionary<string, NpgsqlParameterStatus> ServerParameters
+        // Unused, can be deleted?
+        internal void TestConnector()
         {
-            get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
+            NpgsqlSync.Default.WriteToStream(Stream);
+            Stream.Flush();
+            Queue<int> buffer = new Queue<int>();
+            //byte[] compareBuffer = new byte[6];
+            int[] messageSought = new int[] { 'Z', 0, 0, 0, 5 };
+            int newByte;
+            for (; ; )
+            {
+                switch (newByte = Stream.ReadByte())
+                {
+                    case -1:
+                        throw new EndOfStreamException();
+                    case 'E':
+                    case 'I':
+                    case 'T':
+                        if (buffer.Count > 4)
+                        {
+                            bool match = true;
+                            int i = 0;
+                            foreach (byte cmp in buffer)
+                            {
+                                if (cmp != messageSought[i++])
+                                {
+                                    match = false;
+                                    break;
+                                }
+                            }
+                            if (match)
+                            {
+                                return;
+                            }
+                        }
+                        break;
+                    default:
+                        buffer.Enqueue(newByte);
+                        if (buffer.Count > 5)
+                        {
+                            buffer.Dequeue();
+                        }
+                        break;
+                }
+            }
         }
+
+        #endregion Misc
     }
+
+    /// <summary>
+    /// Represents the method that allows the application to provide a certificate collection to be used for SSL clien authentication
+    /// </summary>
+    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
+    public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
+
+    /// <summary>
+    /// Represents the method that is called to validate the certificate provided by the server during an SSL handshake
+    /// </summary>
+    /// <param name="cert">The server's certificate</param>
+    /// <param name="chain">The certificate chain containing the certificate's CA and any intermediate authorities</param>
+    /// <param name="errors">Any errors that were detected</param>
+    public delegate bool ValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors);
 }
