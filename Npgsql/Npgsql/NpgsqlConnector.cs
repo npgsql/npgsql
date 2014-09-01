@@ -204,11 +204,21 @@ namespace Npgsql
         {
             get
             {
-                return State.HasFlag(NpgsqlState.Ready) ||
-                       State.HasFlag(NpgsqlState.Executing) ||
-                       State.HasFlag(NpgsqlState.Fetching) ||
-                       State.HasFlag(NpgsqlState.CopyIn) ||
-                       State.HasFlag(NpgsqlState.CopyOut);
+                switch (State)
+                {
+                    case NpgsqlState.Ready:
+                    case NpgsqlState.Executing:
+                    case NpgsqlState.Fetching:
+                    case NpgsqlState.CopyIn:
+                    case NpgsqlState.CopyOut:
+                        return true;
+                    case NpgsqlState.Closed:
+                    case NpgsqlState.Connecting:
+                    case NpgsqlState.Broken:
+                        return false;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                }
             }
         }
 
@@ -219,10 +229,21 @@ namespace Npgsql
         {
             get
             {
-                return State.HasFlag(NpgsqlState.Executing) ||
-                       State.HasFlag(NpgsqlState.Fetching) ||
-                       State.HasFlag(NpgsqlState.CopyIn) ||
-                       State.HasFlag(NpgsqlState.CopyOut);
+                switch (State)
+                {
+                    case NpgsqlState.Executing:
+                    case NpgsqlState.Fetching:
+                    case NpgsqlState.CopyIn:
+                    case NpgsqlState.CopyOut:
+                        return true;
+                    case NpgsqlState.Ready:
+                    case NpgsqlState.Closed:
+                    case NpgsqlState.Connecting:
+                    case NpgsqlState.Broken:
+                        return false;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                }
             }
         }
 

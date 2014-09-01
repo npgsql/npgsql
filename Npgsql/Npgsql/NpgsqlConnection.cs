@@ -461,9 +461,9 @@ namespace Npgsql
             get
             {
                 var s = FullState;
-                if (s.HasFlag(ConnectionState.Open))
+                if ((s & ConnectionState.Open) != 0)
                     return ConnectionState.Open;
-                if (s.HasFlag(ConnectionState.Connecting))
+                if ((s & ConnectionState.Connecting) != 0)
                     return ConnectionState.Connecting;
                 return ConnectionState.Closed;
             }
