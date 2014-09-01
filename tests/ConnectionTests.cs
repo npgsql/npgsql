@@ -22,6 +22,8 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql;
 using System.Data;
 using System.Resources;
@@ -35,6 +37,65 @@ namespace NpgsqlTests
     public class ConnectionTests : TestBase
     {
         public ConnectionTests(string backendVersion) : base(backendVersion) { }
+
+        [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
+        public void BasicLifecycle()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+
+                // TODO: Connecting state?
+
+                conn.Open();
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
+                    Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+                }
+
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+
+                using (var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn))
+                {
+                    var exitFlag = false;
+                    var pollingTask = Task.Run(() =>
+                    {
+                        while (true)
+                        {
+                            if (exitFlag) {
+                                Assert.Fail();
+                            }
+                            if (conn.FullState.HasFlag(ConnectionState.Executing))
+                            {
+                                Assert.That(Conn.State, Is.EqualTo(ConnectionState.Open));
+                                return;
+                            }
+                        }
+                    });
+                    cmd.ExecuteNonQuery();
+                    exitFlag = true;
+                    pollingTask.Wait();
+                }
+
+                conn.Close();
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+
+                conn.Open();
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+
+                // TODO: Broken, when implemented
+            }
+        }
 
         [Test]
         public void ChangeDatabase()
@@ -95,8 +156,8 @@ namespace NpgsqlTests
             }
             catch (NpgsqlException e)
             {
-                var type_NpgsqlState = typeof(NpgsqlConnection).Assembly.GetType("Npgsql.NpgsqlState");
-                var resman = new ResourceManager(type_NpgsqlState);
+                var type_NpgsqlConnector = typeof(NpgsqlConnection).Assembly.GetType("Npgsql.NpgsqlConnector");
+                var resman = new ResourceManager(type_NpgsqlConnector);
                 var expected = string.Format(resman.GetString("Exception_FailedConnection"), "127.0.0.1");
                 Assert.AreEqual(expected, e.Message);
             }

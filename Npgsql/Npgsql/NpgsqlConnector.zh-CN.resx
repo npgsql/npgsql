@@ -118,6 +118,45 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Log_ConnectedTo" xml:space="preserve">
-    <value>{0}:{1} に接続されました。</value>
+    <value>已连接到: {0}:{1}.</value>
+  </data>
+  <data name="Log_ErrorResponse" xml:space="preserve">
+    <value>来自服务器: {0} 的 ErrorResponse 消息。</value>
+  </data>
+  <data name="Log_NoticeResponse" xml:space="preserve">
+    <value>来自服务器: {0} 的 NoticeResponse 消息。</value>
+  </data>  
+  <data name="Log_AuthenticationOK" xml:space="preserve">
+    <value>收到了AuthenticationOK。</value>
+  </data>
+  <data name="Log_AuthenticationClearTextRequest" xml:space="preserve">
+    <value>服务器请求了明文密码认证。</value>
+  </data>
+  <data name="Log_AuthenticationMD5Request" xml:space="preserve">
+    <value>服务器请求了MD5密码认证。</value>
+  </data>
+  <data name="Exception_AuthenticationMethodNotSupported" xml:space="preserve">
+    <value>现在只支持 AuthenticationClearTextPassword 和 AuthenticationMD5Password。 收到了: {0}</value>
+  </data>
+  <data name="Log_ProtocolMessage" xml:space="preserve">
+    <value>来自服务器的 {0} 消息。</value>
+  </data>
+  <data name="Log_Listen" xml:space="preserve">
+    <value>来自服务器的 {0} 消息。</value>
+  </data>
+  <data name="Log_CompletedResponse" xml:space="preserve">
+    <value>来自服务器: {0} 的 CompletedResponse 消息。</value>
+  </data>
+  <data name="Log_ParameterStatus" xml:space="preserve">
+    <value>来自服务器: Param = {0}, Value = {1} 的 ParameterStatus 消息。</value>
+  </data>
+  <data name="Log_QuerySent" xml:space="preserve">
+    <value>发送的查询: {0}。</value>
+  </data>
+  <data name="Exception_Ssl_RequestError" xml:space="preserve">
+    <value>请求了 Ssl 连接。没有配置来自于这个主机的 Ssl 连接。</value>
+  </data>
+  <data name="Exception_ConnectionTimeout" xml:space="preserve">
+    <value>建立连接超时。增加 ConnectionString 的 Timeout 值。</value>
   </data>
 </root>

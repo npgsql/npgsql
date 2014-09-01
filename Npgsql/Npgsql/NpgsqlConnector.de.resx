@@ -117,55 +117,55 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Log_ConnectedTo" xml:space="preserve">
+    <value>Verbunden mit: {0}:{1}.</value>
+  </data>
   <data name="Log_ErrorResponse" xml:space="preserve">
-    <value>Message ErrorResponse reçu du serveur : {0}.</value>
+    <value>ErrorResponse Nachricht vom Server: {0}.</value>
   </data>
   <data name="Log_NoticeResponse" xml:space="preserve">
-    <value>Message NoticeResponse reçu du serveur : {0}.</value>
-  </data>
+    <value>NoticeResponse Nachricht vom Server: {0}.</value>
+  </data>  
   <data name="Log_AuthenticationOK" xml:space="preserve">
-    <value>Message AuthenticationOK reçu du serveur.</value>
+    <value>AuthenticationOK empfangen.</value>
   </data>
   <data name="Log_AuthenticationClearTextRequest" xml:space="preserve">
-    <value>Le serveur demande une authentification par mot de passe en clair.</value>
+    <value>Server erwartet Klartext-Passwort-Authentifizierung.</value>
   </data>
   <data name="Log_AuthenticationMD5Request" xml:space="preserve">
-    <value>Le serveur demande une authentification par mot de passe encrypté via MD5.</value>
+    <value>Server erwartet MD5-Passwort-Authentifizierung.</value>
   </data>
   <data name="Exception_AuthenticationMethodNotSupported" xml:space="preserve">
-    <value>Les seules méthodes d'authentification supportées pour l'instant sont AuthenticationClearTextPassword et AuthenticationMD5Password. Méthode demandée : {0}</value>
+    <value>Nur Klartext-Passwort-Authentifizierung und MD5-Passwort-Authentifizierung werden derzeit unterstützt. Empfangen: {0}</value>
   </data>
   <data name="Log_ProtocolMessage" xml:space="preserve">
-    <value>Message {0} reçu du serveur.</value>
+    <value>{0} Nachricht vom Server empfangen.</value>
   </data>
   <data name="Log_Listen" xml:space="preserve">
-    <value>Message {0} reçu du serveur.</value>
+    <value>{0} Nachricht vom Server empfangen.</value>
   </data>
   <data name="Log_CompletedResponse" xml:space="preserve">
-    <value>Message CompletedResponse reçu du serveur : {0}.</value>
+    <value>CompletedResponse Nachricht vom Server: {0}.</value>
   </data>
   <data name="Log_ParameterStatus" xml:space="preserve">
-    <value>Message ParameterStatus reçu du serveur : Param = {0}, Value = {1}</value>
-  </data>
-  <data name="Log_ConnectedTo" xml:space="preserve">
-    <value>Connecté à : {0}:{1}.</value>
+    <value>ParameterStatus Nachricht von Server: Parameter = {0}, Wert = {1}</value>
   </data>
   <data name="Log_QuerySent" xml:space="preserve">
-    <value>Requête envoyée : {0}.</value>
+    <value>Abfrage gesendet: {0}.</value>
   </data>
   <data name="Exception_Ssl_RequestError" xml:space="preserve">
-    <value>Une connexion Ssl est demandée, mais aucune connexion Ssl n'est configuré pour cet hôte.</value>
+    <value>SSL-Verbindung wurde angefordert. SSL ist für diesen Host nicht konfiguriert.</value>
   </data>
   <data name="Exception_ConnectionTimeout" xml:space="preserve">
-    <value>Le temps d'attente pour l'établissement de la connexion a expiré. Augmentez la valeur du paramètre Timeout dans la chaîne de connexion.</value>
+    <value>Verbindungsversuch erzeugte eine Zeitüberschreitung. Timeout-Wert in der Verbindungszeichenfolge erhöhen.</value>
   </data>
   <data name="Log_ConnectingTo" xml:space="preserve">
-    <value>Tentative de connection à '{0}'.</value>
+    <value>Versuch zu verbinden mit '{0}'.</value>
   </data>
   <data name="Log_FailedConnection" xml:space="preserve">
-    <value>La tentative de connection à '{0}' a échoué.</value>
+    <value>Verbindungsversuch mit  '{0}' schlug fehl.</value>
   </data>
   <data name="Exception_FailedConnection" xml:space="preserve">
-    <value>La tentative de connection à '{0}' a échoué.</value>
+    <value>Verbindung zu '{0}' konnte nicht hergestellt werden.</value>
   </data>
 </root>

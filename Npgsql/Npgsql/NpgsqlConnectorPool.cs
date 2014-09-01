@@ -503,7 +503,7 @@ namespace Npgsql
 
             bool inQueue = queue.Busy.ContainsKey(Connector);
 
-            if (Connector.State == ConnectionState.Open)
+            if (Connector.State == NpgsqlState.Ready)
             {
                 //If thread is good
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)

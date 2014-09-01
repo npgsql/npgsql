@@ -76,7 +76,7 @@ namespace Npgsql
             get
             {
                 return
-                    _context != null && _context.CurrentState is NpgsqlCopyOutState && _context.Mediator.CopyStream == _copyStream;
+                    _context != null && _context.State == NpgsqlState.CopyOut && _context.Mediator.CopyStream == _copyStream;
             }
         }
 
@@ -101,7 +101,7 @@ namespace Npgsql
         /// </summary>
         public bool IsBinary
         {
-            get { return IsActive && _context.CurrentState.CopyFormat.IsBinary; }
+            get { return IsActive && _context.CopyFormat.IsBinary; }
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Npgsql
         /// </summary>
         public bool FieldIsBinary(int fieldNumber)
         {
-            return IsActive && _context.CurrentState.CopyFormat.FieldIsBinary(fieldNumber);
+            return IsActive && _context.CopyFormat.FieldIsBinary(fieldNumber);
         }
 
         /// <summary>
@@ -117,7 +117,7 @@ namespace Npgsql
         /// </summary>
         public int FieldCount
         {
-            get { return IsActive ? _context.CurrentState.CopyFormat.FieldCount : -1; }
+            get { return IsActive ? _context.CopyFormat.FieldCount : -1; }
         }
 
         /// <summary>
@@ -127,20 +127,20 @@ namespace Npgsql
         /// </summary>
         public void Start()
         {
-            if (_context.CurrentState is NpgsqlReadyState)
+            if (_context.State == NpgsqlState.Ready)
             {
                 _context.Mediator.CopyStream = _copyStream;
                 _cmd.ExecuteNonQuery();
                 _disposeCopyStream = _copyStream == null;
                 _copyStream = _context.Mediator.CopyStream;
-                if (_copyStream == null && ! (_context.CurrentState is NpgsqlReadyState))
+                if (_copyStream == null && _context.State != NpgsqlState.Ready)
                 {
                     throw new NpgsqlException("Not a COPY OUT query: " + _cmd.CommandText);
                 }
             }
             else
             {
-                throw new NpgsqlException("Copy can only start in Ready state, not in " + _context.CurrentState);
+                throw new NpgsqlException("Copy can only start in Ready state, not in " + _context.State);
             }
         }
 
@@ -168,7 +168,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        while (_context.CurrentState.GetCopyData(_context) != null)
+                        while (_context.GetCopyOutData() != null)
                         {
                             ; // flush rest
                         }

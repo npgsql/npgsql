@@ -43,7 +43,7 @@ namespace Npgsql
         /// </summary>
         private bool IsActive
         {
-            get { return _context != null && _context.CurrentState is NpgsqlCopyInState && _context.Mediator.CopyStream == this; }
+            get { return _context != null && _context.State == NpgsqlState.CopyIn && _context.Mediator.CopyStream == this; }
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    _context.CurrentState.SendCopyDone(_context);
+                    _context.SendCopyInDone();
                 }
                 if (_context.Mediator.CopyStream == this)
                 {
@@ -126,7 +126,7 @@ namespace Npgsql
                 NpgsqlConnector c = _context;
                 _context = null;
                 c.Mediator.CopyStream = null;
-                c.CurrentState.SendCopyFail(_context, message ?? "Cancel Copy");
+                c.SendCopyInFail(message ?? "Cancel Copy");
             }
         }
 
@@ -140,7 +140,7 @@ namespace Npgsql
             {
                 throw new ObjectDisposedException("Writing to closed " + this);
             }
-            _context.CurrentState.SendCopyData(_context, buf, off, len);
+            _context.SendCopyInData(buf, off, len);
             _bytesPassed += len;
         }
 

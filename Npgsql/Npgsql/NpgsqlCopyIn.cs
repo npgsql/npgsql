@@ -75,7 +75,7 @@ namespace Npgsql
         /// </summary>
         public bool IsActive
         {
-            get { return _context != null && _context.CurrentState is NpgsqlCopyInState && _context.Mediator.CopyStream == _copyStream; }
+            get { return _context != null && _context.State == NpgsqlState.CopyIn && _context.Mediator.CopyStream == _copyStream; }
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace Npgsql
         /// </summary>
         public bool IsBinary
         {
-            get { return IsActive && _context.CurrentState.CopyFormat.IsBinary; }
+            get { return IsActive && _context.CopyFormat.IsBinary; }
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace Npgsql
         /// </summary>
         public bool FieldIsBinary(int fieldNumber)
         {
-            return IsActive && _context.CurrentState.CopyFormat.FieldIsBinary(fieldNumber);
+            return IsActive && _context.CopyFormat.FieldIsBinary(fieldNumber);
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Npgsql
         /// </summary>
         public int FieldCount
         {
-            get { return IsActive ? _context.CurrentState.CopyFormat.FieldCount : -1; }
+            get { return IsActive ? _context.CopyFormat.FieldCount : -1; }
         }
 
         /// <summary>
@@ -137,20 +137,20 @@ namespace Npgsql
         /// </summary>
         public void Start()
         {
-            if (_context.CurrentState is NpgsqlReadyState)
+            if (_context.State == NpgsqlState.Ready)
             {
                 _context.Mediator.CopyStream = _copyStream;
                 _cmd.ExecuteNonQuery();
                 _disposeCopyStream = _copyStream == null;
                 _copyStream = _context.Mediator.CopyStream;
-                if (_copyStream == null && ! (_context.CurrentState is NpgsqlReadyState))
+                if (_copyStream == null && _context.State != NpgsqlState.CopyIn)
                 {
                     throw new NpgsqlException("Not a COPY IN query: " + _cmd.CommandText);
                 }
             }
             else
             {
-                throw new NpgsqlException("Copy can only start in Ready state, not in " + _context.CurrentState);
+                throw new NpgsqlException("Copy can only start in Ready state, not in " + _context.State);
             }
         }
 
@@ -169,7 +169,7 @@ namespace Npgsql
                         // See bug 1010796
                         using (_context.BlockNotificationThread())
                         {
-                            _context.CurrentState.SendCopyDone(_context);
+                            _context.SendCopyInDone();
                         }
                     }
                 }
@@ -203,7 +203,7 @@ namespace Npgsql
                         // See bug 1010796
                         using (_context.BlockNotificationThread())
                         {
-                            _context.CurrentState.SendCopyFail(_context, message);
+                            _context.SendCopyInFail(message);
                         }
                     }
                 }

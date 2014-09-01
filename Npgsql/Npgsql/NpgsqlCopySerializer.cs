@@ -97,7 +97,7 @@ namespace Npgsql
         /// </summary>
         public bool IsActive
         {
-            get { return _toStream != null && _context.Mediator.CopyStream == _toStream && _context.CurrentState is NpgsqlCopyInState; }
+            get { return _toStream != null && _context.Mediator.CopyStream == _toStream && _context.State == NpgsqlState.CopyIn; }
         }
 
         /// <summary>
@@ -472,12 +472,12 @@ namespace Npgsql
         {
             if (_context != null)
             {
-                while (_atField < _context.CurrentState.CopyFormat.FieldCount)
+                while (_atField < _context.CopyFormat.FieldCount)
                 {
                     AddNull();
                 }
             }
-            if (_context == null || ! _context.CurrentState.CopyFormat.IsBinary)
+            if (_context == null || ! _context.CopyFormat.IsBinary)
             {
                 AddBytes(SeparatorBytes);
             }
@@ -492,7 +492,7 @@ namespace Npgsql
         {
             if (_atField > 0)
             {
-                if (_atField >= _context.CurrentState.CopyFormat.FieldCount)
+                if (_atField >= _context.CopyFormat.FieldCount)
                 {
                     throw new NpgsqlException("Tried to add too many fields to a copy record with " + _atField + " fields");
                 }
