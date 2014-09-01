@@ -90,7 +90,6 @@ namespace Npgsql
         internal Boolean IsInitialized { get; set; }
 
         internal bool Pooled { get; private set; }
-        internal bool Shared { get; private set; }
 
         /// <summary>
         /// Options that control certain aspects of native to backend conversions that depend
@@ -130,7 +129,7 @@ namespace Npgsql
 #endif
 
         public NpgsqlConnector(NpgsqlConnection Connection)
-            : this(Connection.CopyConnectionStringBuilder(), Connection.Pooling, false)
+            : this(Connection.CopyConnectionStringBuilder(), Connection.Pooling)
         {}
 
         /// <summary>
@@ -138,13 +137,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="connectionString">Connection string.</param>
         /// <param name="pooled">Pooled</param>
-        /// <param name="shared">Controls whether the connector can be shared.</param>
-        public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled, bool shared)
+        public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled)
         {
             State = NpgsqlState.Closed;
             settings = connectionString;
             Pooled = pooled;
-            Shared = shared;
             IsInitialized = false;
             Mediator = new NpgsqlMediator();
             NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
@@ -1263,7 +1260,7 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false, false);
+            NpgsqlConnector cancelConnector = new NpgsqlConnector(settings, false);
             cancelConnector.BackEndKeyData = BackEndKeyData;
 
             try
