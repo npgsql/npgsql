@@ -4167,14 +4167,14 @@ namespace NpgsqlTests
         }
 
         [Test, Description("Basic cancellation scenario")]
-        [Timeout(1000)]
+        [Timeout(6000)]
         public void Cancel()
         {
-            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(3)", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn))
             {
                 var cancelTask = Task.Factory.StartNew(() =>
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(300);
                     cmd.Cancel();
                 });
                 Assert.That(() => cmd.ExecuteNonQuery(),
