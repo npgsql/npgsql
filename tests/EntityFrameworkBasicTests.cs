@@ -1,5 +1,4 @@
-﻿#if NET40
-using Npgsql;
+﻿using Npgsql;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -561,4 +560,3 @@ namespace NpgsqlTests
         }
     }
 }
-#endif

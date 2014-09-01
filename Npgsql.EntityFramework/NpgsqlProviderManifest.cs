@@ -280,7 +280,6 @@ namespace Npgsql
             return XmlReader.Create(System.Reflection.Assembly.GetAssembly(typeof(NpgsqlProviderManifest)).GetManifestResourceStream(resourceName));
         }
 
-#if NET40
         public override bool SupportsEscapingLikeArgument(out char escapeCharacter)
         {
             escapeCharacter = '\\';
@@ -291,7 +290,7 @@ namespace Npgsql
         {
             return argument.Replace("\\","\\\\").Replace("%", "\\%").Replace("_", "\\_");
         }
-#endif
+
 #if ENTITIES6
         public override bool SupportsInExpression()
         {

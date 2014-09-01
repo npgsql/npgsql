@@ -1270,7 +1270,6 @@ namespace Npgsql
             Promotable.Enlist(transaction);
         }
 
-#if NET35
         /// <summary>
         /// DB provider factory.
         /// </summary>
@@ -1281,6 +1280,5 @@ namespace Npgsql
                 return NpgsqlFactory.Instance;
             }
         }
-#endif
     }
 }

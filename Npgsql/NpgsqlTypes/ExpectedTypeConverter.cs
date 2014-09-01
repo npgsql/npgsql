@@ -48,7 +48,6 @@ namespace NpgsqlTypes
             Type currentType = value.GetType();
             if (value is DBNull || currentType == expectedType)
                 return value;
-#if NET35
             if (expectedType == typeof(DateTimeOffset))
             {
                 if (currentType == typeof(NpgsqlDate))
@@ -90,9 +89,7 @@ namespace NpgsqlTypes
                     return DateTimeOffset.Parse(value.ToString(), CultureInfo.InvariantCulture);
                 }
             }
-            else
-#endif
-            if (expectedType == typeof(TimeSpan))
+            else if (expectedType == typeof(TimeSpan))
             {
                 if (currentType == typeof(NpgsqlDate))
                 {
@@ -128,11 +125,7 @@ namespace NpgsqlTypes
                 }
                 else
                 {
-#if NET40
                     return TimeSpan.Parse(value.ToString(), CultureInfo.InvariantCulture);
-#else
-                    return TimeSpan.Parse(value.ToString());
-#endif
                 }
             }
             else if (expectedType == typeof(string))
@@ -176,12 +169,10 @@ namespace NpgsqlTypes
                 {
                     return new DateTime(((TimeSpan)(NpgsqlInterval)value).Ticks);
                 }
-#if NET35
                 else if (currentType == typeof(DateTimeOffset))
                 {
                     return ((DateTimeOffset)value).LocalDateTime;
                 }
-#endif
                 else if (currentType == typeof(TimeSpan))
                 {
                     return new DateTime(((TimeSpan)value).Ticks);
