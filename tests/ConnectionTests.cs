@@ -44,6 +44,15 @@ namespace NpgsqlTests
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
+                bool eventOpen = false, eventClosed = false;
+                conn.StateChange += (s, e) =>
+                {
+                    if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
+                        eventOpen = true;
+                    if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
+                        eventClosed = true;
+                };
+
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
 
@@ -53,6 +62,7 @@ namespace NpgsqlTests
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.Connector.State, Is.EqualTo(NpgsqlState.Ready));
+                Assert.That(eventOpen, Is.True);
 
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -93,6 +103,7 @@ namespace NpgsqlTests
                 conn.Close();
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(eventClosed, Is.True);
 
                 conn.Open();
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
@@ -432,31 +443,6 @@ namespace NpgsqlTests
         {
             var dt = Conn.GetSchema("ForeignKeys");
             Assert.IsNotNull(dt);
-        }
-
-        [Test]
-        public void ChangeState()
-        {
-            using (var c = new NpgsqlConnection(ConnectionString))
-            {
-                var stateChangeCalledForOpen = false;
-                var stateChangeCalledForClose = false;
-
-                c.StateChange += new StateChangeEventHandler(delegate(object sender, StateChangeEventArgs e)
-                {
-                    if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
-                        stateChangeCalledForOpen = true;
-
-                    if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
-                        stateChangeCalledForClose = true;
-                });
-
-                c.Open();
-                c.Close();
-
-                Assert.IsTrue(stateChangeCalledForOpen);
-                Assert.IsTrue(stateChangeCalledForClose);
-            }
         }
 
         [Test]
