@@ -186,7 +186,6 @@ namespace NpgsqlTests
             Assert.AreEqual("field_serial", field_serial.ColumnName);
             Assert.AreEqual(typeof(int), field_serial.DataType);
             Assert.AreEqual(0, field_serial.Ordinal);
-            // version 2 of the protocol doesn't know how to populate the unique field
             Assert.IsTrue(field_serial.Unique);
 
             Assert.IsTrue(field_int2.AllowDBNull);
@@ -446,20 +445,4 @@ namespace NpgsqlTests
             Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
     }
-    /*
-    [TestFixture]
-    public class DataAdapterTestsV2 : DataAdapterTests
-    {
-        public DataAdapterTestsV2(int backendProtocolVersion) : base(backendProtocolVersion) {}
-
-        public override void DoInsertWithCommandBuilderCaseSensitive()
-        {
-            //Not possible with V2?
-        }
-        public override void DoUpdateWithDataSet()
-        {
-            //Not possible with V2?
-        }
-    }
-     */
 }

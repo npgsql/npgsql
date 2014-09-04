@@ -1012,15 +1012,4 @@ namespace NpgsqlTests
             }
         }
     }
-/*
-    [TestFixture]
-    public class DataReaderTestsV2 : DataReaderTests
-    {
-        protected override int BackendProtocolVersion { get { return 2; } }
-        public override void DoIsIdentityMetadataSupport()
-        {
-            //Not possible with V2?
-        }
-    }
- */
 }

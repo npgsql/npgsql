@@ -43,7 +43,6 @@ namespace NpgsqlTests
     public abstract class TestBase
     {
         protected Version BackendVersion { get; private set; }
-        protected ProtocolVersion BackendProtocolVersion = ProtocolVersion.Version3;
 
         /// <summary>
         /// Constructs the parameterized test fixture
@@ -124,10 +123,6 @@ namespace NpgsqlTests
             }
             else
                 Console.WriteLine("Using connection string provided in env var {0}: {1}", connStringEnvVar, _connectionString);
-
-            if (_connectionString.Contains("protocol"))
-                throw new Exception("Connection string base cannot contain protocol");
-            _connectionString += ";protocol=" + (int)BackendProtocolVersion;
 
             if (!_schemaCreated)
             {

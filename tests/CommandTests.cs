@@ -653,10 +653,6 @@ namespace NpgsqlTests
         [Test]
         public void StringEscapeSyntax()
         {
-            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
-            //regardless of this setting, Npgsql will always use the E string prefix when possible,
-            //therefore, this test is not fully functional on version 2.
-
             //the next command will fail on earlier postgres versions, but that is not a bug in itself.
             try
             {
@@ -706,10 +702,6 @@ namespace NpgsqlTests
         [Test]
         public void FunctionCallStringEscape()
         {
-            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
-            //regardless of this setting, Npgsql will always use the E string prefix when possible,
-            //therefore, this test is not fully functional on version 2.
-
             int warnings = 0;
             NoticeEventHandler countWarn = delegate(Object c, NpgsqlNoticeEventArgs e) { warnings += 1; };
             Conn.Notice += countWarn;
@@ -3474,10 +3466,6 @@ namespace NpgsqlTests
         [Test]
         public void TimeoutFirstParameters()
         {
-            //on protocol version 2 connections, standard_conforming_strings is always assumed off by Npgsql.
-            //regardless of this setting, Npgsql will always use the E string prefix when possible,
-            //therefore, this test is not fully functional on version 2.
-
             var conn = new NpgsqlConnection(ConnectionString);
             conn.Open();
             try//the next command will fail on earlier postgres versions, but that is not a bug in itself.
@@ -3584,9 +3572,6 @@ namespace NpgsqlTests
         [Test]
         public void Bug1010788UpdateRowSource()
         {
-            if (((int)BackendProtocolVersion) < 3)
-                Assert.Ignore("Don't have the right metadata with protocol version 2");
-
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
@@ -3615,9 +3600,6 @@ namespace NpgsqlTests
         [SetCulture("nl-BE")]
         public void InvariantCultureNpgsqlCopySerializer()
         {
-            //if (BACKEND_PROTOCOL_VERSION < 3)
-            //    Assert.Ignore("This test hangs when running with protocol version 2");
-
             // Test for https://github.com/npgsql/Npgsql/pull/92
             // SetCulture is used to set a culture where a comma is used to separate decimal values (0,5) which will cause problems if Npgsql 
             // doesn't convert correctly to use a point. (0.5)
@@ -3634,17 +3616,12 @@ namespace NpgsqlTests
             npgsqlCopySerializer.Flush();
             npgsqlCopyIn.End();
 
-
-
             NpgsqlDataReader dr = new NpgsqlCommand("select field_int4, field_int8, field_float4 from data", Conn).ExecuteReader();
             dr.Read();
 
             Assert.AreEqual(300000, dr[0]);
             Assert.AreEqual(1000000, dr[1]);
             Assert.AreEqual(0.5, dr[2]);
-
-
-
         }
 
         [Test]
