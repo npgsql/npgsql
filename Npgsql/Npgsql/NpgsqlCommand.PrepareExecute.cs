@@ -205,17 +205,6 @@ namespace Npgsql
 
             try
             {
-                if (connection != null)
-                {
-                    if (connection.PreloadReader)
-                    {
-                        //Adjust behaviour so source reader is sequential access - for speed - and doesn't close the connection - or it'll do so at the wrong time.
-                        CommandBehavior adjusted = (cb | CommandBehavior.SequentialAccess) & ~CommandBehavior.CloseConnection;
-
-                        return new CachingDataReader(GetReader(adjusted), cb);
-                    }
-                }
-
                 return GetReader(cb);
             }
             catch (Exception)
@@ -229,7 +218,7 @@ namespace Npgsql
             }
         }
 
-        internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
+        internal NpgsqlDataReader GetReader(CommandBehavior cb)
         {
             CheckConnectionState();
 
@@ -237,7 +226,7 @@ namespace Npgsql
             using (m_Connector.BlockNotificationThread())
             {
                 IEnumerable<IServerResponseObject> responseEnum;
-                ForwardsOnlyDataReader reader;
+                NpgsqlDataReader reader;
 
                 m_Connector.SetBackendCommandTimeout(CommandTimeout);
 
@@ -270,7 +259,7 @@ namespace Npgsql
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                     // Construct the return reader.
-                    reader = new ForwardsOnlyDataReader(
+                    reader = new NpgsqlDataReader(
                         responseEnum,
                         cb,
                         this,
@@ -314,7 +303,7 @@ namespace Npgsql
                         responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                         // Construct the return reader.
-                        reader = new ForwardsOnlyDataReader(
+                        reader = new NpgsqlDataReader(
                             responseEnum,
                             cb,
                             this,
@@ -339,7 +328,7 @@ namespace Npgsql
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                     // Construct the return reader, possibly with a saved row description from Prepare().
-                    reader = new ForwardsOnlyDataReader(
+                    reader = new NpgsqlDataReader(
                         responseEnum,
                         cb,
                         this,

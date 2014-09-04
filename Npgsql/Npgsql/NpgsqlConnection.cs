@@ -390,14 +390,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Whether datareaders are loaded in their entirety (for compatibility with earlier code).
-        /// </summary>
-        public bool PreloadReader
-        {
-            get { return settings.PreloadReader; }
-        }
-
-        /// <summary>
         /// Gets the database server name.
         /// </summary>
         public override string DataSource

@@ -544,5 +544,14 @@ namespace NpgsqlTests
             DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
             Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
         }
+
+        [Test, Description("Makes sure the preload connstring param triggers the right exception")]
+        [ExpectedException(typeof(NotSupportedException))]
+        public void PreloadReaderNotSupported()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";PRELOADREADER=true")) {
+                conn.Open();
+            }
+        }
     }
 }

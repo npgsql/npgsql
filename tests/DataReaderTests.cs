@@ -869,9 +869,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteReaderBeforeClosingReader()
         {
-            if (Conn.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
-                throw new InvalidOperationException();
-
             var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
             using (var dr1 = cmd1.ExecuteReader())
             using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
@@ -884,9 +881,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteScalarBeforeClosingReader()
         {
-            if (Conn.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
-                throw new InvalidOperationException();
-
             var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
 
             using (var dr1 = cmd1.ExecuteReader())
@@ -900,9 +894,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void ExecuteNonQueryBeforeClosingReader()
         {
-            if (Conn.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
-                throw new InvalidOperationException();
-
             var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
             using (var dr1 = cmd1.ExecuteReader())
             using (var cmd2 = new NpgsqlCommand("select * from data", Conn))
@@ -915,9 +906,6 @@ namespace NpgsqlTests
         [ExpectedException(typeof(InvalidOperationException))]
         public void PrepareBeforeClosingReader()
         {
-            if (Conn.PreloadReader)//this behavior won't happen in this case so we fake it for the sake of the test.
-                throw new InvalidOperationException();
-
             var cmd1 = new NpgsqlCommand("select field_serial from data", Conn);
             using (var dr1 = cmd1.ExecuteReader())
             using (var cmd2 = new NpgsqlCommand("select * from data", Conn))

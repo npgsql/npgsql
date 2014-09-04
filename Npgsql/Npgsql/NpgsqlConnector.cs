@@ -102,7 +102,7 @@ namespace Npgsql
             get { return NativeToBackendTypeConverterOptions.OidToNameMapping; }
         }
 
-        internal ForwardsOnlyDataReader CurrentReader;
+        internal NpgsqlDataReader CurrentReader;
 
         private readonly Dictionary<string, NpgsqlParameterStatus> _serverParameters =
             new Dictionary<string, NpgsqlParameterStatus>(StringComparer.InvariantCultureIgnoreCase);

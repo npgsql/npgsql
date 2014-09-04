@@ -756,23 +756,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Enlist), Keywords.Enlist, value); }
         }
 
-        private bool _preloadReader;
-        /// <summary>
-        /// Gets or sets a value indicating whether datareaders are loaded in their entirety (for compatibility with earlier code).
-        /// </summary>
-        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.PreloadReader)]
-        [NpgsqlConnectionStringAcceptableKeyword("PRELOAD READER")]
-        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_PreloadReader")]
-        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_PreloadReader")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(true)]
-        public bool PreloadReader
-        {
-            get { return _preloadReader; }
-            set { SetValue(GetKeyName(Keywords.PreloadReader), Keywords.PreloadReader, value); }
-        }
-
         private bool _useExtendedTypes;
         [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
         [NpgsqlConnectionStringKeyword(Keywords.UseExtendedTypes)]
@@ -1170,7 +1153,10 @@ namespace Npgsql
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
                     case Keywords.PreloadReader:
-                        return this._preloadReader = ToBoolean(value);
+                        var b = ToBoolean(value);
+                        if (b)
+                            throw new NotSupportedException("Support for the preload reader has been removed in Npgsql 3.0. Please see https://github.com/npgsql/Npgsql/wiki/Preload-Removal");
+                        return false;
                     case Keywords.UseExtendedTypes:
                         return this._useExtendedTypes = ToBoolean(value);
                     case Keywords.IntegratedSecurity:
@@ -1284,8 +1270,6 @@ namespace Npgsql
                     return this._command_timeout;
                 case Keywords.Enlist:
                     return this._enlist;
-                case Keywords.PreloadReader:
-                    return this._preloadReader;
                 case Keywords.UseExtendedTypes:
                     return this._useExtendedTypes;
                 case Keywords.IntegratedSecurity:
