@@ -205,17 +205,6 @@ namespace Npgsql
 
             try
             {
-                if (connection != null)
-                {
-                    if (connection.PreloadReader)
-                    {
-                        //Adjust behaviour so source reader is sequential access - for speed - and doesn't close the connection - or it'll do so at the wrong time.
-                        CommandBehavior adjusted = (cb | CommandBehavior.SequentialAccess) & ~CommandBehavior.CloseConnection;
-
-                        return new CachingDataReader(GetReader(adjusted), cb);
-                    }
-                }
-
                 return GetReader(cb);
             }
             catch (Exception)
