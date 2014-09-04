@@ -206,17 +206,11 @@ namespace Npgsql
             // implicit default.
             valueDescriptions.Add(Keywords.Host, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Port, new ValueDescription((Int32)5432));
-#pragma warning disable 618
-            valueDescriptions.Add(Keywords.Protocol, new ValueDescription(ProtocolVersion.Version3, false));
-#pragma warning restore 618
             valueDescriptions.Add(Keywords.Database, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.UserName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Password, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.SSL, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
-#pragma warning disable 618
-            valueDescriptions.Add(Keywords.Encoding, new ValueDescription("UTF8", false));
-#pragma warning restore 618
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
             valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.Pooling, new ValueDescription(true));
@@ -849,31 +843,6 @@ namespace Npgsql
         }
 
         #endregion
-        #region DeprecatedProperties
-
-        /// <summary>
-        /// Gets or sets the specified backend communication protocol version.
-        /// </summary>
-        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
-        public ProtocolVersion Protocol
-        {
-#pragma warning disable 618
-            get { return (ProtocolVersion)valueDescriptions[Keywords.Protocol].ExplicitDefault; }
-#pragma warning restore 618
-        }
-
-        /// <summary>
-        /// Gets the backend encoding.  Always returns "UTF8".
-        /// </summary>
-        [Obsolete("UTF8 is always used regardless of this setting.")]
-        public string Encoding
-        {
-#pragma warning disable 618
-            get { return (string)valueDescriptions[Keywords.Encoding].ExplicitDefault; }
-#pragma warning restore 618
-        }
-
-        #endregion
 
         private static Keywords GetKey(string key)
         {
@@ -884,10 +853,6 @@ namespace Npgsql
                     return Keywords.Host;
                 case "PORT":
                     return Keywords.Port;
-                case "PROTOCOL":
-#pragma warning disable 618
-                    return Keywords.Protocol;
-#pragma warning restore 618
                 case "DATABASE":
                 case "DB":
                     return Keywords.Database;
@@ -906,10 +871,6 @@ namespace Npgsql
                     return Keywords.SSL;
                 case "SSLMODE":
                     return Keywords.SslMode;
-                case "ENCODING":
-#pragma warning disable 618
-                    return Keywords.Encoding;
-#pragma warning restore 618
                 case "TIMEOUT":
                     return Keywords.Timeout;
                 case "SEARCHPATH":
@@ -958,10 +919,6 @@ namespace Npgsql
                     return "HOST";
                 case Keywords.Port:
                     return "PORT";
-#pragma warning disable 618
-                case Keywords.Protocol:
-#pragma warning restore 618
-                    return "PROTOCOL";
                 case Keywords.Database:
                     return "DATABASE";
                 case Keywords.UserName:
@@ -972,10 +929,6 @@ namespace Npgsql
                     return "SSL";
                 case Keywords.SslMode:
                     return "SSLMODE";
-#pragma warning disable 618
-                case Keywords.Encoding:
-#pragma warning restore 618
-                    return "ENCODING";
                 case Keywords.Timeout:
                     return "TIMEOUT";
                 case Keywords.SearchPath:
@@ -1115,10 +1068,6 @@ namespace Npgsql
                         return this._host = Convert.ToString(value);
                     case Keywords.Port:
                         return this._port = Convert.ToInt32(value);
-#pragma warning disable 618
-                    case Keywords.Protocol:
-                        return Protocol;
-#pragma warning restore 618
                     case Keywords.Database:
                         return this._database = Convert.ToString(value);
                     case Keywords.UserName:
@@ -1130,10 +1079,6 @@ namespace Npgsql
                         return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
                         return this._sslmode = ToSslMode(value);
-#pragma warning disable 618
-                    case Keywords.Encoding:
-                        return Encoding;
-#pragma warning restore 618
                     case Keywords.Timeout:
                         return this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, keyword);
                     case Keywords.SearchPath:
@@ -1201,11 +1146,6 @@ namespace Npgsql
                     case Keywords.SyncNotification:
                         exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
-#pragma warning disable 618
-                    case Keywords.Protocol:
-#pragma warning restore 618
-                        exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
-                        break;
                 }
 
                 if (!string.IsNullOrEmpty(exception_template))
@@ -1234,10 +1174,6 @@ namespace Npgsql
                     return this._host;
                 case Keywords.Port:
                     return this._port;
-#pragma warning disable 618
-                case Keywords.Protocol:
-                    return Protocol;
-#pragma warning restore 618
                 case Keywords.Database:
                     return this._database;
                 case Keywords.UserName:
@@ -1248,10 +1184,6 @@ namespace Npgsql
                     return this._ssl;
                 case Keywords.SslMode:
                     return this._sslmode;
-#pragma warning disable 618
-                case Keywords.Encoding:
-                    return Encoding;
-#pragma warning restore 618
                 case Keywords.Timeout:
                     return this._timeout;
                 case Keywords.SearchPath:
@@ -1347,15 +1279,11 @@ namespace Npgsql
     {
         Host,
         Port,
-        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
-        Protocol,
         Database,
         UserName,
         Password,
         SSL,
         SslMode,
-        [Obsolete("UTF-8 is always used regardless of this setting.")]
-        Encoding,
         Timeout,
         SearchPath,
         // These are for the connection pool
