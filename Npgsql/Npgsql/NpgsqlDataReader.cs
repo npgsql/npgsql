@@ -39,20 +39,10 @@ using NpgsqlTypes;
 namespace Npgsql
 {
     /// <summary>
-    /// Provides a means of reading a forward-only stream of rows from a PostgreSQL backend.  This class cannot be inherited.
+    /// Provides a means of reading a forward-only stream of rows from a PostgreSQL backend.
     /// </summary>
-    public abstract class NpgsqlDataReader : DbDataReader
+    public class NpgsqlDataReader : DbDataReader, IStreamOwner
     {
-        //NpgsqlDataReader is abstract because the desired implementation depends upon whether the user
-        //is using the backwards-compatibility option of preloading the entire reader (configurable from the
-        //connection string).
-        //Everything that can be done here is, but where the implementation must be different between the
-        //two modi operandi, that code will differ between the two implementations, ForwardsOnlyDataReader
-        //and CachingDataReader.
-        //Since the concrete classes are internal and returned to the user through an NpgsqlDataReader reference,
-        //the differences between the two is hidden from the user. Because CachingDataReader is a less efficient
-        //class supplied only to resolve some backwards-compatibility issues that are possible with some code, all
-        //internal use uses ForwardsOnlyDataReader directly.
         internal NpgsqlConnector _connector;
         internal NpgsqlConnection _connection;
         internal DataTable _currentResultsetSchema;
@@ -61,13 +51,6 @@ namespace Npgsql
 
         internal Version Npgsql205 = new Version("2.0.5");
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior)
-        {
-            _behavior = behavior;
-            _connection = (_command = command).Connection;
-            _connector = command.Connector;
-        }
-
         internal bool _isClosed = false;
 
         /// <summary>
@@ -75,7 +58,506 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        internal abstract long? LastInsertedOID { get; }
+        private readonly IEnumerator<IServerResponseObject> _dataEnumerator;
+        private NpgsqlRowDescription _currentDescription;
+        private NpgsqlRow _currentRow = null;
+        private int? _recordsAffected = null;
+        private int? _nextRecordsAffected;
+        private long? _lastInsertOID = null;
+        private long? _nextInsertOID = null;
+        internal bool _cleanedUp = false;
+        private bool _hasRows = false;
+        private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
+
+        //Unfortunately we sometimes don't know we're going to be dealing with
+        //a description until it comes when we look for a row or a message, and
+        //we may also need test if we may have rows for HasRows before the first call
+        //to Read(), so we need to be able to cache one of each.
+        private NpgsqlRowDescription _pendingDescription = null;
+        private NpgsqlRow _pendingRow = null;
+        private readonly bool _preparedStatement;
+
+        // Logging related values
+        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+
+        internal NpgsqlDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
+                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
+                                        bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
+        {
+            _behavior = behavior;
+            _connection = (_command = command).Connection;
+            _connector = command.Connector;
+            _dataEnumerator = dataEnumeration.GetEnumerator();
+            _connector.CurrentReader = this;
+            _threadBlock = threadBlock;
+            _preparedStatement = preparedStatement;
+            _currentDescription = rowDescription;
+
+            // For un-prepared statements, the first response is always a row description.
+            // For prepared statements, we may be recycling a row description from a previous Execute.
+            if (CurrentDescription == null)
+            {
+                NextResultInternal();
+            }
+
+            UpdateOutputParameters();
+        }
+
+        internal NpgsqlRowDescription CurrentDescription
+        {
+            get { return _currentDescription; }
+        }
+
+        private void UpdateOutputParameters()
+        {
+            if (CurrentDescription != null)
+            {
+                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = _command.Parameters.Cast<NpgsqlParameter>()
+                    .Where(p => p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output);
+                if (!inputOutputAndOutputParams.Any())
+                {
+                    return;
+                }
+
+                NpgsqlRow row = ParameterUpdateRow;
+                if (row == null)
+                {
+                    return;
+                }
+
+                Queue<NpgsqlParameter> pending = new Queue<NpgsqlParameter>();
+                List<int> taken = new List<int>();
+                foreach (NpgsqlParameter p in inputOutputAndOutputParams)
+                {
+                    int idx = CurrentDescription.TryFieldIndex(p.CleanName);
+                    if (idx == -1)
+                    {
+                        pending.Enqueue(p);
+                    }
+                    else
+                    {
+                        p.Value = row[idx];
+                        taken.Add(idx);
+                    }
+                }
+                for (int i = 0; pending.Count != 0 && i != row.NumFields; ++i)
+                {
+                    if (!taken.Contains(i))
+                    {
+                        pending.Dequeue().Value = row[i];
+                    }
+                }
+            }
+        }
+
+        // We always receive a ForwardsOnlyRow, but if we are not
+        // doing SequentialAccess we want the flexibility of CachingRow,
+        // so here we either return the ForwardsOnlyRow we received, or
+        // build a CachingRow from it, as appropriate.
+        private NpgsqlRow BuildRow(ForwardsOnlyRow fo)
+        {
+            if (fo == null)
+            {
+                return null;
+            }
+            else
+            {
+                fo.SetRowDescription(CurrentDescription);
+
+                if ((_behavior & CommandBehavior.SequentialAccess) == CommandBehavior.SequentialAccess)
+                {
+                    return fo;
+                }
+                else
+                {
+                    return new CachingRow(fo);
+                }
+            }
+        }
+
+        private NpgsqlRow ParameterUpdateRow
+        {
+            get
+            {
+                NpgsqlRow ret = CurrentRow ?? _pendingRow ?? GetNextRow(false);
+                if (ret is ForwardsOnlyRow)
+                {
+                    ret = _pendingRow = new CachingRow((ForwardsOnlyRow) ret);
+                }
+                return ret;
+            }
+        }
+
+        /// <summary>
+        /// Iterate through the objects returned through from the server.
+        /// If it's a CompletedResponse the rowsaffected count is updated appropriately,
+        /// and we iterate again, otherwise we return it (perhaps updating our cache of pending
+        /// rows if appropriate).
+        /// </summary>
+        /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
+        private IServerResponseObject GetNextResponseObject(bool cleanup = false)
+        {
+            try
+            {
+                CurrentRow = null;
+                if (_pendingRow != null)
+                {
+                    _pendingRow.Dispose();
+                }
+                _pendingRow = null;
+                while (_dataEnumerator.MoveNext())
+                {
+                    IServerResponseObject respNext = _dataEnumerator.Current;
+
+                    if (respNext is RowReader)
+                    {
+                        RowReader reader = respNext as RowReader;
+
+                        if (cleanup)
+                        {
+                            // V3 rows can dispose by simply reading MessageLength bytes.
+                            reader.Dispose();
+
+                            return reader;
+                        }
+                        else
+                        {
+                            return _pendingRow = BuildRow(new ForwardsOnlyRow(reader));
+                        }
+                    }
+                    else if (respNext is CompletedResponse)
+                    {
+                        CompletedResponse cr = respNext as CompletedResponse;
+                        if (cr.RowsAffected.HasValue)
+                        {
+                            _nextRecordsAffected = (_nextRecordsAffected ?? 0) + cr.RowsAffected.Value;
+                        }
+                        _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
+                    }
+                    else
+                    {
+                        return respNext;
+                    }
+                }
+                CleanUp(true);
+                return null;
+            }
+            catch
+            {
+                CleanUp(true);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
+        /// </summary>
+        /// <returns>True if the reader was advanced, otherwise false.</returns>
+        private NpgsqlRowDescription GetNextRowDescription()
+        {
+            if ((_behavior & CommandBehavior.SingleResult) != 0 && CurrentDescription != null)
+            {
+                CleanUp(false);
+                return null;
+            }
+            NpgsqlRowDescription rd = _pendingDescription;
+            while (rd == null)
+            {
+                object objNext = GetNextResponseObject();
+                if (objNext == null)
+                {
+                    break;
+                }
+                if (objNext is NpgsqlRow)
+                {
+                    (objNext as NpgsqlRow).Dispose();
+                }
+
+                rd = objNext as NpgsqlRowDescription;
+            }
+
+            _pendingDescription = null;
+
+            // If there were records affected before,  keep track of their values.
+                        if (_recordsAffected != null)
+                            _recordsAffected += (_nextRecordsAffected ?? 0);
+                        else
+                            _recordsAffected = _nextRecordsAffected;
+
+            _nextRecordsAffected = null;
+            _lastInsertOID = _nextInsertOID;
+            _nextInsertOID = null;
+            return rd;
+        }
+
+        private NpgsqlRow CurrentRow
+        {
+            get { return _currentRow; }
+            set
+            {
+                if (_currentRow != null)
+                {
+                    _currentRow.Dispose();
+                }
+                _currentRow = value;
+            }
+        }
+
+        private NpgsqlRow GetNextRow(bool clearPending)
+        {
+            if (_pendingDescription != null)
+            {
+                return null;
+            }
+            if (((_behavior & CommandBehavior.SingleRow) != 0 && CurrentRow != null && _pendingDescription == null) ||
+                ((_behavior & CommandBehavior.SchemaOnly) != 0))
+            {
+                if (!clearPending)
+                {
+                    return null;
+                }
+                //We should only have one row, and we've already had it. Move to end
+                //of recordset.
+                CurrentRow = null;
+                for (object skip = GetNextResponseObject();
+                     skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
+                     skip = GetNextResponseObject())
+                {
+                    if (skip is NpgsqlRow)
+                    {
+                        (skip as NpgsqlRow).Dispose();
+                    }
+                }
+
+                return null;
+            }
+            if (_pendingRow != null)
+            {
+                NpgsqlRow ret = _pendingRow;
+                if (clearPending)
+                {
+                    _pendingRow = null;
+                }
+                if (!_hasRows)
+                {
+                    // when rows are found, store that this result has rows.
+                    _hasRows = (ret != null);
+                }
+                return ret;
+            }
+            CurrentRow = null;
+            object objNext = GetNextResponseObject();
+            if (clearPending)
+            {
+                _pendingRow = null;
+            }
+            if (objNext is NpgsqlRowDescription)
+            {
+                _pendingDescription = objNext as NpgsqlRowDescription;
+                return null;
+            }
+            if (!_hasRows)
+            {
+                // when rows are found, store that this result has rows.
+                _hasRows = objNext is NpgsqlRow;
+            }
+            return objNext as NpgsqlRow;
+        }
+
+        internal void CheckHaveRow()
+        {
+            if (CurrentRow == null)
+            {
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            }
+        }
+
+        /// <summary>
+        /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
+            base.Dispose(disposing);
+        }
+
+        /// <summary>
+        /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
+        /// </summary>
+        public override Int32 RecordsAffected
+        {
+            get
+            {
+                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "RecordsAffected");
+                return _recordsAffected ?? -1;
+            }
+        }
+
+        internal long? LastInsertedOID
+        {
+            get { return _lastInsertOID; }
+        }
+
+        /// <summary>
+        /// Indicates if NpgsqlDatareader has rows to be read.
+        /// </summary>
+        public override Boolean HasRows
+        {
+            get
+            {
+                // Return true even after the last row has been read in this result.
+                // the first call to GetNextRow will set _hasRows to true if rows are found.
+                return _hasRows || (GetNextRow(false) != null);
+            }
+        }
+
+        private void CleanUp(bool finishedMessages)
+        {
+            lock (this)
+            {
+                if (_cleanedUp)
+                {
+                    return;
+                }
+                _cleanedUp = true;
+            }
+            if (!finishedMessages)
+            {
+                do
+                {
+                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                    {
+                        _connection.EmergencyClose();
+                        return;
+                    }
+                }
+                while (GetNextResponseObject(true) != null);
+            }
+            _connector.CurrentReader = null;
+            _threadBlock.Dispose();
+        }
+
+        /// <summary>
+        /// Closes the data reader object.
+        /// </summary>
+        public override void Close()
+        {
+            CleanUp(false);
+            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+            {
+                _connection.Close();
+            }
+            _isClosed = true;
+            SendClosedEvent();
+        }
+
+        /// <summary>
+        /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
+        /// </summary>
+        /// <returns>True if the reader was advanced, otherwise false.</returns>
+        public override Boolean NextResult()
+        {
+            if (_preparedStatement)
+            {
+                // Prepared statements can never have multiple results.
+                return false;
+            }
+
+            return NextResultInternal();
+        }
+
+        private Boolean NextResultInternal()
+        {
+            try
+            {
+                CurrentRow = null;
+                _currentResultsetSchema = null;
+                _hasRows = false; // set to false and let the reading code determine if the set has rows.
+                return (_currentDescription = GetNextRowDescription()) != null;
+            }
+            catch (System.IO.IOException ex)
+            {
+                throw _command.ClearPoolAndCreateException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Advances the data reader to the next row.
+        /// </summary>
+        /// <returns>True if the reader was advanced, otherwise false.</returns>
+        public override Boolean Read()
+        {
+            try
+            {
+                //CurrentRow = null;
+                return (CurrentRow = GetNextRow(true)) != null;
+            }
+            catch (System.IO.IOException ex)
+            {
+                throw _command.ClearPoolAndCreateException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Return the value of the column at index <param name="Index"></param>.
+        /// </summary>
+        public override Object GetValue(Int32 Index)
+        {
+            object providerValue = GetProviderSpecificValue(Index);
+            NpgsqlBackendTypeInfo backendTypeInfo;
+            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
+            {
+                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
+            }
+            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+                return backendTypeInfo.ConvertToFrameworkType(providerValue);
+            return providerValue;
+        }
+
+        public override object  GetProviderSpecificValue(int ordinal)
+        {
+            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
+
+            if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
+            {
+                throw new IndexOutOfRangeException("Column index out of range");
+            }
+
+            CheckHaveRow();
+
+            object ret = CurrentRow[ordinal];
+            if (ret is Exception)
+            {
+                throw (Exception) ret;
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Gets raw data from a column.
+        /// </summary>
+        public override Int64 GetBytes(Int32 i, Int64 fieldOffset, Byte[] buffer, Int32 bufferoffset, Int32 length)
+        {
+            return CurrentRow.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
+        }
+
+        /// <summary>
+        /// Gets raw data from a column.
+        /// </summary>
+        public override Int64 GetChars(Int32 i, Int64 fieldoffset, Char[] buffer, Int32 bufferoffset, Int32 length)
+        {
+            return CurrentRow.GetChars(i, fieldoffset, buffer, bufferoffset, length);
+        }
+
+        /// <summary>
+        /// Report whether the value in a column is DBNull.
+        /// </summary>
+        public override Boolean IsDBNull(Int32 i)
+        {
+            CheckHaveRow();
+
+            return CurrentRow.IsDBNull(i);
+        }
 
         internal bool TryGetTypeInfo(int fieldIndex, out NpgsqlBackendTypeInfo backendTypeInfo)
         {
@@ -85,9 +567,6 @@ namespace Npgsql
             }
             return (backendTypeInfo = CurrentDescription[fieldIndex].TypeInfo) != null;
         }
-
-        internal abstract void CheckHaveRow();
-        internal abstract NpgsqlRowDescription CurrentDescription { get; }
 
         /// <summary>
         /// Return the data type name of the column at index <param name="Index"></param>.
@@ -104,7 +583,7 @@ namespace Npgsql
         public override Type GetFieldType(Int32 Index)
         {
             NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof (string); //Default type is string.
+            return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof(string); //Default type is string.
         }
 
         /// <summary>
@@ -123,13 +602,14 @@ namespace Npgsql
         /// </summary>
         public override Int32 FieldCount
         {
-            get {
-                    if (_connector.CompatVersion <= Npgsql205)
-                        return CurrentDescription == null ? -1 : CurrentDescription.NumFields;
-                    else
-                        // We read msdn documentation and bug report #1010649 that the common return value is 0.
-                        return CurrentDescription == null ? 0 : CurrentDescription.NumFields;
-                }
+            get
+            {
+                if (_connector.CompatVersion <= Npgsql205)
+                    return CurrentDescription == null ? -1 : CurrentDescription.NumFields;
+                else
+                    // We read msdn documentation and bug report #1010649 that the common return value is 0.
+                    return CurrentDescription == null ? 0 : CurrentDescription.NumFields;
+            }
         }
 
         /// <summary>
@@ -174,7 +654,7 @@ namespace Npgsql
         /// <returns></returns>
         public bool HasOrdinal(string fieldName)
         {
-            if(CurrentDescription == null)
+            if (CurrentDescription == null)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             return CurrentDescription.HasOrdinal(fieldName);
         }
@@ -226,7 +706,7 @@ namespace Npgsql
         public BitString GetBitString(int i)
         {
             object ret = GetValue(i);
-            if(ret is bool)
+            if (ret is bool)
                 return new BitString((bool)ret);
             else
                 return (BitString)ret;
@@ -311,7 +791,7 @@ namespace Npgsql
         /// </summary>
         public override Guid GetGuid(Int32 i)
         {
-            return (Guid) GetValue(i);
+            return (Guid)GetValue(i);
         }
 
         /// <summary>
@@ -319,7 +799,7 @@ namespace Npgsql
         /// </summary>
         public override Int16 GetInt16(Int32 i)
         {
-            return (Int16) GetValue(i);
+            return (Int16)GetValue(i);
         }
 
         /// <summary>
@@ -327,7 +807,7 @@ namespace Npgsql
         /// </summary>
         public override Int32 GetInt32(Int32 i)
         {
-            return (Int32) GetValue(i);
+            return (Int32)GetValue(i);
         }
 
         /// <summary>
@@ -335,7 +815,7 @@ namespace Npgsql
         /// </summary>
         public override Int64 GetInt64(Int32 i)
         {
-            return (Int64) GetValue(i);
+            return (Int64)GetValue(i);
         }
 
         /// <summary>
@@ -343,7 +823,7 @@ namespace Npgsql
         /// </summary>
         public override Single GetFloat(Int32 i)
         {
-            return (Single) GetValue(i);
+            return (Single)GetValue(i);
         }
 
         /// <summary>
@@ -351,7 +831,7 @@ namespace Npgsql
         /// </summary>
         public override Double GetDouble(Int32 i)
         {
-            return (Double) GetValue(i);
+            return (Double)GetValue(i);
         }
 
         /// <summary>
@@ -359,7 +839,7 @@ namespace Npgsql
         /// </summary>
         public override String GetString(Int32 i)
         {
-            return (String) GetValue(i);
+            return (String)GetValue(i);
         }
 
         /// <summary>
@@ -367,7 +847,7 @@ namespace Npgsql
         /// </summary>
         public override Decimal GetDecimal(Int32 i)
         {
-            return (Decimal) GetValue(i);
+            return (Decimal)GetValue(i);
         }
 
         /// <summary>
@@ -375,7 +855,7 @@ namespace Npgsql
         /// </summary>
         public TimeSpan GetTimeSpan(Int32 i)
         {
-            return (TimeSpan) GetValue(i);
+            return (TimeSpan)GetValue(i);
         }
 
         /// <summary>
@@ -438,7 +918,7 @@ namespace Npgsql
         {
             // Should this be done using the GetValue directly and not by converting to String
             // and parsing from there?
-            return (Boolean) GetValue(i);
+            return (Boolean)GetValue(i);
         }
 
         /// <summary>
@@ -482,7 +962,7 @@ namespace Npgsql
         /// </summary>
         public override DateTime GetDateTime(Int32 i)
         {
-            return (DateTime) GetValue(i);
+            return (DateTime)GetValue(i);
         }
 
         /// <summary>
@@ -500,28 +980,28 @@ namespace Npgsql
             {
                 result = new DataTable("SchemaTable");
 
-                result.Columns.Add("ColumnName", typeof (string));
-                result.Columns.Add("ColumnOrdinal", typeof (int));
-                result.Columns.Add("ColumnSize", typeof (int));
-                result.Columns.Add("NumericPrecision", typeof (int));
-                result.Columns.Add("NumericScale", typeof (int));
-                result.Columns.Add("IsUnique", typeof (bool));
-                result.Columns.Add("IsKey", typeof (bool));
-                result.Columns.Add("BaseCatalogName", typeof (string));
-                result.Columns.Add("BaseColumnName", typeof (string));
-                result.Columns.Add("BaseSchemaName", typeof (string));
-                result.Columns.Add("BaseTableName", typeof (string));
-                result.Columns.Add("DataType", typeof (Type));
-                result.Columns.Add("AllowDBNull", typeof (bool));
-                result.Columns.Add("ProviderType", typeof (string));
-                result.Columns.Add("IsAliased", typeof (bool));
-                result.Columns.Add("IsExpression", typeof (bool));
-                result.Columns.Add("IsIdentity", typeof (bool));
-                result.Columns.Add("IsAutoIncrement", typeof (bool));
-                result.Columns.Add("IsRowVersion", typeof (bool));
-                result.Columns.Add("IsHidden", typeof (bool));
-                result.Columns.Add("IsLong", typeof (bool));
-                result.Columns.Add("IsReadOnly", typeof (bool));
+                result.Columns.Add("ColumnName", typeof(string));
+                result.Columns.Add("ColumnOrdinal", typeof(int));
+                result.Columns.Add("ColumnSize", typeof(int));
+                result.Columns.Add("NumericPrecision", typeof(int));
+                result.Columns.Add("NumericScale", typeof(int));
+                result.Columns.Add("IsUnique", typeof(bool));
+                result.Columns.Add("IsKey", typeof(bool));
+                result.Columns.Add("BaseCatalogName", typeof(string));
+                result.Columns.Add("BaseColumnName", typeof(string));
+                result.Columns.Add("BaseSchemaName", typeof(string));
+                result.Columns.Add("BaseTableName", typeof(string));
+                result.Columns.Add("DataType", typeof(Type));
+                result.Columns.Add("AllowDBNull", typeof(bool));
+                result.Columns.Add("ProviderType", typeof(string));
+                result.Columns.Add("IsAliased", typeof(bool));
+                result.Columns.Add("IsExpression", typeof(bool));
+                result.Columns.Add("IsIdentity", typeof(bool));
+                result.Columns.Add("IsAutoIncrement", typeof(bool));
+                result.Columns.Add("IsRowVersion", typeof(bool));
+                result.Columns.Add("IsHidden", typeof(bool));
+                result.Columns.Add("IsLong", typeof(bool));
+                result.Columns.Add("IsReadOnly", typeof(bool));
 
                 FillSchemaTable(result);
             }
@@ -582,7 +1062,7 @@ namespace Npgsql
                 }
                 else
                 {
-                    row["ColumnSize"] = (int) CurrentDescription[i].TypeSize;
+                    row["ColumnSize"] = (int)CurrentDescription[i].TypeSize;
                 }
                 if (CurrentDescription[i].TypeModifier != -1 && CurrentDescription[i].TypeInfo != null &&
                     CurrentDescription[i].TypeInfo.Name == "numeric")
@@ -614,7 +1094,7 @@ namespace Npgsql
                 {
                     row["ProviderType"] = CurrentDescription[i].TypeInfo.Name;
                 }
-                row["IsAliased"] = string.CompareOrdinal((string) row["ColumnName"], baseColumnName) != 0;
+                row["IsAliased"] = string.CompareOrdinal((string)row["ColumnName"], baseColumnName) != 0;
                 row["IsExpression"] = false;
                 row["IsIdentity"] = false;
                 row["IsAutoIncrement"] = IsAutoIncrement(columnLookup, i);
@@ -669,7 +1149,6 @@ namespace Npgsql
         }
 
         private static bool IsKey(KeyLookup keyLookup, string fieldName)
-
         {
             return keyLookup.primaryKey.Contains(fieldName);
         }
@@ -958,515 +1437,6 @@ namespace Npgsql
         public override IEnumerator GetEnumerator()
         {
             return new DbEnumerator(this);
-        }
-    }
-
-    /// <summary>
-    /// This is the primary implementation of NpgsqlDataReader. It is the one used in normal cases (where the
-    /// preload-reader option is not set in the connection string to resolve some potential backwards-compatibility
-    /// issues), the only implementation used internally, and in cases where CachingDataReader is used, it is still
-    /// used to do the actual "leg-work" of turning a response stream from the server into a datareader-style
-    /// object - with CachingDataReader then filling it's cache from here.
-    /// </summary>
-    internal class ForwardsOnlyDataReader : NpgsqlDataReader, IStreamOwner
-    {
-        private readonly IEnumerator<IServerResponseObject> _dataEnumerator;
-        private NpgsqlRowDescription _currentDescription;
-        private NpgsqlRow _currentRow = null;
-        private int? _recordsAffected = null;
-        private int? _nextRecordsAffected;
-        private long? _lastInsertOID = null;
-        private long? _nextInsertOID = null;
-        internal bool _cleanedUp = false;
-        private bool _hasRows = false;
-        private readonly NpgsqlConnector.NotificationThreadBlock _threadBlock;
-
-        //Unfortunately we sometimes don't know we're going to be dealing with
-        //a description until it comes when we look for a row or a message, and
-        //we may also need test if we may have rows for HasRows before the first call
-        //to Read(), so we need to be able to cache one of each.
-        private NpgsqlRowDescription _pendingDescription = null;
-        private NpgsqlRow _pendingRow = null;
-        private readonly bool _preparedStatement;
-
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
-        internal ForwardsOnlyDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
-                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-                                        bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
-            : base(command, behavior)
-        {
-            _dataEnumerator = dataEnumeration.GetEnumerator();
-            _connector.CurrentReader = this;
-            _threadBlock = threadBlock;
-            _preparedStatement = preparedStatement;
-            _currentDescription = rowDescription;
-
-            // For un-prepared statements, the first response is always a row description.
-            // For prepared statements, we may be recycling a row description from a previous Execute.
-            if (CurrentDescription == null)
-            {
-                NextResultInternal();
-            }
-
-            UpdateOutputParameters();
-        }
-
-        internal override NpgsqlRowDescription CurrentDescription
-        {
-            get { return _currentDescription; }
-        }
-
-        private void UpdateOutputParameters()
-        {
-            if (CurrentDescription != null)
-            {
-                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = _command.Parameters.Cast<NpgsqlParameter>()
-                    .Where(p => p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output);
-                if (!inputOutputAndOutputParams.Any())
-                {
-                    return;
-                }
-
-                NpgsqlRow row = ParameterUpdateRow;
-                if (row == null)
-                {
-                    return;
-                }
-
-                Queue<NpgsqlParameter> pending = new Queue<NpgsqlParameter>();
-                List<int> taken = new List<int>();
-                foreach (NpgsqlParameter p in inputOutputAndOutputParams)
-                {
-                    int idx = CurrentDescription.TryFieldIndex(p.CleanName);
-                    if (idx == -1)
-                    {
-                        pending.Enqueue(p);
-                    }
-                    else
-                    {
-                        p.Value = row[idx];
-                        taken.Add(idx);
-                    }
-                }
-                for (int i = 0; pending.Count != 0 && i != row.NumFields; ++i)
-                {
-                    if (!taken.Contains(i))
-                    {
-                        pending.Dequeue().Value = row[i];
-                    }
-                }
-            }
-        }
-
-        // We always receive a ForwardsOnlyRow, but if we are not
-        // doing SequentialAccess we want the flexibility of CachingRow,
-        // so here we either return the ForwardsOnlyRow we received, or
-        // build a CachingRow from it, as appropriate.
-        private NpgsqlRow BuildRow(ForwardsOnlyRow fo)
-        {
-            if (fo == null)
-            {
-                return null;
-            }
-            else
-            {
-                fo.SetRowDescription(CurrentDescription);
-
-                if ((_behavior & CommandBehavior.SequentialAccess) == CommandBehavior.SequentialAccess)
-                {
-                    return fo;
-                }
-                else
-                {
-                    return new CachingRow(fo);
-                }
-            }
-        }
-
-        private NpgsqlRow ParameterUpdateRow
-        {
-            get
-            {
-                NpgsqlRow ret = CurrentRow ?? _pendingRow ?? GetNextRow(false);
-                if (ret is ForwardsOnlyRow)
-                {
-                    ret = _pendingRow = new CachingRow((ForwardsOnlyRow) ret);
-                }
-                return ret;
-            }
-        }
-
-        /// <summary>
-        /// Iterate through the objects returned through from the server.
-        /// If it's a CompletedResponse the rowsaffected count is updated appropriately,
-        /// and we iterate again, otherwise we return it (perhaps updating our cache of pending
-        /// rows if appropriate).
-        /// </summary>
-        /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
-        private IServerResponseObject GetNextResponseObject(bool cleanup = false)
-        {
-            try
-            {
-                CurrentRow = null;
-                if (_pendingRow != null)
-                {
-                    _pendingRow.Dispose();
-                }
-                _pendingRow = null;
-                while (_dataEnumerator.MoveNext())
-                {
-                    IServerResponseObject respNext = _dataEnumerator.Current;
-
-                    if (respNext is RowReader)
-                    {
-                        RowReader reader = respNext as RowReader;
-
-                        if (cleanup)
-                        {
-                            // V3 rows can dispose by simply reading MessageLength bytes.
-                            reader.Dispose();
-
-                            return reader;
-                        }
-                        else
-                        {
-                            return _pendingRow = BuildRow(new ForwardsOnlyRow(reader));
-                        }
-                    }
-                    else if (respNext is CompletedResponse)
-                    {
-                        CompletedResponse cr = respNext as CompletedResponse;
-                        if (cr.RowsAffected.HasValue)
-                        {
-                            _nextRecordsAffected = (_nextRecordsAffected ?? 0) + cr.RowsAffected.Value;
-                        }
-                        _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
-                    }
-                    else
-                    {
-                        return respNext;
-                    }
-                }
-                CleanUp(true);
-                return null;
-            }
-            catch
-            {
-                CleanUp(true);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
-        /// </summary>
-        /// <returns>True if the reader was advanced, otherwise false.</returns>
-        private NpgsqlRowDescription GetNextRowDescription()
-        {
-            if ((_behavior & CommandBehavior.SingleResult) != 0 && CurrentDescription != null)
-            {
-                CleanUp(false);
-                return null;
-            }
-            NpgsqlRowDescription rd = _pendingDescription;
-            while (rd == null)
-            {
-                object objNext = GetNextResponseObject();
-                if (objNext == null)
-                {
-                    break;
-                }
-                if (objNext is NpgsqlRow)
-                {
-                    (objNext as NpgsqlRow).Dispose();
-                }
-
-                rd = objNext as NpgsqlRowDescription;
-            }
-
-            _pendingDescription = null;
-
-            // If there were records affected before,  keep track of their values.
-                        if (_recordsAffected != null)
-                            _recordsAffected += (_nextRecordsAffected ?? 0);
-                        else
-                            _recordsAffected = _nextRecordsAffected;
-
-            _nextRecordsAffected = null;
-            _lastInsertOID = _nextInsertOID;
-            _nextInsertOID = null;
-            return rd;
-        }
-
-        private NpgsqlRow CurrentRow
-        {
-            get { return _currentRow; }
-            set
-            {
-                if (_currentRow != null)
-                {
-                    _currentRow.Dispose();
-                }
-                _currentRow = value;
-            }
-        }
-
-        private NpgsqlRow GetNextRow(bool clearPending)
-        {
-            if (_pendingDescription != null)
-            {
-                return null;
-            }
-            if (((_behavior & CommandBehavior.SingleRow) != 0 && CurrentRow != null && _pendingDescription == null) ||
-                ((_behavior & CommandBehavior.SchemaOnly) != 0))
-            {
-                if (!clearPending)
-                {
-                    return null;
-                }
-                //We should only have one row, and we've already had it. Move to end
-                //of recordset.
-                CurrentRow = null;
-                for (object skip = GetNextResponseObject();
-                     skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
-                     skip = GetNextResponseObject())
-                {
-                    if (skip is NpgsqlRow)
-                    {
-                        (skip as NpgsqlRow).Dispose();
-                    }
-                }
-
-                return null;
-            }
-            if (_pendingRow != null)
-            {
-                NpgsqlRow ret = _pendingRow;
-                if (clearPending)
-                {
-                    _pendingRow = null;
-                }
-                if (!_hasRows)
-                {
-                    // when rows are found, store that this result has rows.
-                    _hasRows = (ret != null);
-                }
-                return ret;
-            }
-            CurrentRow = null;
-            object objNext = GetNextResponseObject();
-            if (clearPending)
-            {
-                _pendingRow = null;
-            }
-            if (objNext is NpgsqlRowDescription)
-            {
-                _pendingDescription = objNext as NpgsqlRowDescription;
-                return null;
-            }
-            if (!_hasRows)
-            {
-                // when rows are found, store that this result has rows.
-                _hasRows = objNext is NpgsqlRow;
-            }
-            return objNext as NpgsqlRow;
-        }
-
-        internal override void CheckHaveRow()
-        {
-            if (CurrentRow == null)
-            {
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
-            }
-        }
-
-        /// <summary>
-        /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
-        /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-            base.Dispose(disposing);
-        }
-
-        /// <summary>
-        /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
-        /// </summary>
-        public override Int32 RecordsAffected
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "RecordsAffected");
-                return _recordsAffected ?? -1;
-            }
-        }
-
-        internal override long? LastInsertedOID
-        {
-            get { return _lastInsertOID; }
-        }
-
-        /// <summary>
-        /// Indicates if NpgsqlDatareader has rows to be read.
-        /// </summary>
-        public override Boolean HasRows
-        {
-            get
-            {
-                // Return true even after the last row has been read in this result.
-                // the first call to GetNextRow will set _hasRows to true if rows are found.
-                return _hasRows || (GetNextRow(false) != null);
-            }
-        }
-
-        private void CleanUp(bool finishedMessages)
-        {
-            lock (this)
-            {
-                if (_cleanedUp)
-                {
-                    return;
-                }
-                _cleanedUp = true;
-            }
-            if (!finishedMessages)
-            {
-                do
-                {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                    {
-                        _connection.EmergencyClose();
-                        return;
-                    }
-                }
-                while (GetNextResponseObject(true) != null);
-            }
-            _connector.CurrentReader = null;
-            _threadBlock.Dispose();
-        }
-
-        /// <summary>
-        /// Closes the data reader object.
-        /// </summary>
-        public override void Close()
-        {
-            CleanUp(false);
-            if ((_behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-            {
-                _connection.Close();
-            }
-            _isClosed = true;
-            SendClosedEvent();
-        }
-
-        /// <summary>
-        /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
-        /// </summary>
-        /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public override Boolean NextResult()
-        {
-            if (_preparedStatement)
-            {
-                // Prepared statements can never have multiple results.
-                return false;
-            }
-
-            return NextResultInternal();
-        }
-
-        private Boolean NextResultInternal()
-        {
-            try
-            {
-                CurrentRow = null;
-                _currentResultsetSchema = null;
-                _hasRows = false; // set to false and let the reading code determine if the set has rows.
-                return (_currentDescription = GetNextRowDescription()) != null;
-            }
-            catch (System.IO.IOException ex)
-            {
-                throw _command.ClearPoolAndCreateException(ex);
-            }
-        }
-
-        /// <summary>
-        /// Advances the data reader to the next row.
-        /// </summary>
-        /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public override Boolean Read()
-        {
-            try
-            {
-                //CurrentRow = null;
-                return (CurrentRow = GetNextRow(true)) != null;
-            }
-            catch (System.IO.IOException ex)
-            {
-                throw _command.ClearPoolAndCreateException(ex);
-            }
-        }
-
-        /// <summary>
-        /// Return the value of the column at index <param name="Index"></param>.
-        /// </summary>
-        public override Object GetValue(Int32 Index)
-        {
-            object providerValue = GetProviderSpecificValue(Index);
-            NpgsqlBackendTypeInfo backendTypeInfo;
-            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
-            {
-                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
-            }
-            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
-                return backendTypeInfo.ConvertToFrameworkType(providerValue);
-            return providerValue;
-        }
-
-        public override object  GetProviderSpecificValue(int ordinal)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
-
-            if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
-            {
-                throw new IndexOutOfRangeException("Column index out of range");
-            }
-
-            CheckHaveRow();
-
-            object ret = CurrentRow[ordinal];
-            if (ret is Exception)
-            {
-                throw (Exception) ret;
-            }
-            return ret;
-        }
-
-        /// <summary>
-        /// Gets raw data from a column.
-        /// </summary>
-        public override Int64 GetBytes(Int32 i, Int64 fieldOffset, Byte[] buffer, Int32 bufferoffset, Int32 length)
-        {
-            return CurrentRow.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
-        }
-
-        /// <summary>
-        /// Gets raw data from a column.
-        /// </summary>
-        public override Int64 GetChars(Int32 i, Int64 fieldoffset, Char[] buffer, Int32 bufferoffset, Int32 length)
-        {
-            return CurrentRow.GetChars(i, fieldoffset, buffer, bufferoffset, length);
-        }
-
-        /// <summary>
-        /// Report whether the value in a column is DBNull.
-        /// </summary>
-        public override Boolean IsDBNull(Int32 i)
-        {
-            CheckHaveRow();
-
-            return CurrentRow.IsDBNull(i);
         }
     }
 }

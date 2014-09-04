@@ -218,7 +218,7 @@ namespace Npgsql
             }
         }
 
-        internal ForwardsOnlyDataReader GetReader(CommandBehavior cb)
+        internal NpgsqlDataReader GetReader(CommandBehavior cb)
         {
             CheckConnectionState();
 
@@ -226,7 +226,7 @@ namespace Npgsql
             using (m_Connector.BlockNotificationThread())
             {
                 IEnumerable<IServerResponseObject> responseEnum;
-                ForwardsOnlyDataReader reader;
+                NpgsqlDataReader reader;
 
                 m_Connector.SetBackendCommandTimeout(CommandTimeout);
 
@@ -259,7 +259,7 @@ namespace Npgsql
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                     // Construct the return reader.
-                    reader = new ForwardsOnlyDataReader(
+                    reader = new NpgsqlDataReader(
                         responseEnum,
                         cb,
                         this,
@@ -303,7 +303,7 @@ namespace Npgsql
                         responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                         // Construct the return reader.
-                        reader = new ForwardsOnlyDataReader(
+                        reader = new NpgsqlDataReader(
                             responseEnum,
                             cb,
                             this,
@@ -328,7 +328,7 @@ namespace Npgsql
                     responseEnum = m_Connector.ProcessBackendResponsesEnum();
 
                     // Construct the return reader, possibly with a saved row description from Prepare().
-                    reader = new ForwardsOnlyDataReader(
+                    reader = new NpgsqlDataReader(
                         responseEnum,
                         cb,
                         this,
