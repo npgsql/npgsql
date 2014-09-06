@@ -31,6 +31,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
+using Common.Logging;
 
 namespace Npgsql
 {
@@ -53,9 +54,6 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlDataAdapter : DbDataAdapter
     {
-        // Log support
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         /// <summary>
         /// Row updated event.
         /// </summary>
@@ -65,6 +63,8 @@ namespace Npgsql
         /// Row updating event.
         /// </summary>
         public event NpgsqlRowUpdatingEventHandler RowUpdating;
+
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// Default constructor.
@@ -79,7 +79,7 @@ namespace Npgsql
         /// <param name="selectCommand"></param>
         public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+            _log.Trace("Create NpgsqlDataAdapter");
             SelectCommand = selectCommand;
         }
 
@@ -115,7 +115,7 @@ namespace Npgsql
                                                                      StatementType statementType,
                                                                      DataTableMapping tableMapping)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatedEvent");
+            _log.Trace("CreateRowUpdatedEvent");
             return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -131,7 +131,7 @@ namespace Npgsql
                                                                        StatementType statementType,
                                                                        DataTableMapping tableMapping)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateRowUpdatingEvent");
+            _log.Trace("CreateRowUpdatingEvent");
             return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
         }
 
@@ -141,7 +141,7 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdated(RowUpdatedEventArgs value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdated");
+            _log.Trace("OnRowUpdated");
             //base.OnRowUpdated(value);
             if ((RowUpdated != null) && (value is NpgsqlRowUpdatedEventArgs))
             {
@@ -155,7 +155,7 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdating(RowUpdatingEventArgs value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "OnRowUpdating");
+            _log.Trace("OnRowUpdating");
             if ((RowUpdating != null) && (value is NpgsqlRowUpdatingEventArgs))
             {
                 RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
@@ -169,7 +169,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.DeleteCommand");
                 return (NpgsqlCommand)base.DeleteCommand;
             }
 
@@ -183,7 +182,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.SelectCommand");
                 return (NpgsqlCommand)base.SelectCommand;
             }
 
@@ -197,7 +195,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.UpdateCommand");
                 return (NpgsqlCommand)base.UpdateCommand;
             }
 
@@ -211,7 +208,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgDataAdapter.InsertCommand");
                 return (NpgsqlCommand)base.InsertCommand;
             }
 

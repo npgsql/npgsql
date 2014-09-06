@@ -14,6 +14,9 @@
     <summary>Npgsql is a .Net data provider for Postgresql.</summary>
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql</tags>
+    <dependencies>
+      <dependency id="Common.Logging" version="2.2.0" />
+    </dependencies>
   </metadata>
   <files>
     <file src="bin\Release-net20\**\*.dll" target="lib\net20" exclude="**\policy.*" />

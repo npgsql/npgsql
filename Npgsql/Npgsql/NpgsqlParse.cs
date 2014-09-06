@@ -38,9 +38,6 @@ namespace Npgsql
     ///
     internal sealed class NpgsqlParse : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         private readonly byte[] _bPrepareName;
         private readonly byte[] _bQueryString;
         private readonly Int32[] _parameterIDs;

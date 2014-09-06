@@ -36,6 +36,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
+using Common.Logging;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -61,9 +62,8 @@ namespace Npgsql
             Prepared
         }
 
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         private NpgsqlConnection connection;
         private NpgsqlConnector m_Connector; //renamed to account for hiding it in a local function
@@ -165,8 +165,6 @@ namespace Npgsql
         /// <param name="transaction">The <see cref="Npgsql.NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see> executes.</param>
         public NpgsqlCommand(String cmdText, NpgsqlConnection connection, NpgsqlTransaction transaction)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-
             planName = String.Empty;
             commandText = cmdText;
             this.connection = connection;
@@ -193,8 +191,6 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlCommand(String cmdText, NpgsqlConnector connector, int CommandTimeout = 20)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-
             planName = String.Empty;
             commandText = cmdText;
             this.m_Connector = connector;
@@ -216,15 +212,11 @@ namespace Npgsql
         public override String CommandText
         {
             get { return commandText; }
-
             set
             {
                 // [TODO] Validate commandtext.
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandText", value);
                 commandText = value;
-
                 UnPrepare();
-
                 functionChecksDone = false;
             }
         }
@@ -239,19 +231,14 @@ namespace Npgsql
         public override Int32 CommandTimeout
         {
             get { return timeout; }
-
             set
             {
-                if (value < 0)
-                {
+                if (value < 0) {
                     throw new ArgumentOutOfRangeException("value", resman.GetString("Exception_CommandTimeoutLessZero"));
                 }
 
                 timeout = value;
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandTimeout", value);
-
                 commandTimeoutSet = true;
-
             }
         }
 
@@ -264,12 +251,7 @@ namespace Npgsql
         public override CommandType CommandType
         {
             get { return commandType; }
-
-            set
-            {
-                commandType = value;
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "CommandType", value);
-            }
+            set { commandType = value; }
         }
 
         /// <summary>
@@ -278,12 +260,7 @@ namespace Npgsql
         protected override DbConnection DbConnection
         {
             get { return Connection; }
-
-            set
-            {
-                Connection = (NpgsqlConnection)value;
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "DbConnection", value);
-            }
+            set { Connection = (NpgsqlConnection)value; }
         }
 
         /// <summary>
@@ -294,12 +271,7 @@ namespace Npgsql
         [Category("Behavior"), DefaultValue(null)]
         public new NpgsqlConnection Connection
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Connection");
-                return connection;
-            }
-
+            get { return connection; }
             set
             {
                 if (this.Connection == value)
@@ -332,8 +304,6 @@ namespace Npgsql
                 }
 
                 SetCommandTimeout();
-
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "Connection", value);
             }
         }
 
@@ -368,14 +338,7 @@ namespace Npgsql
         [Category("Data"), DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
 #endif
 
-        public new NpgsqlParameterCollection Parameters
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Parameters");
-                return parameters;
-            }
-        }
+        public new NpgsqlParameterCollection Parameters { get { return parameters; } }
 
         /// <summary>
         /// DB transaction.
@@ -383,11 +346,7 @@ namespace Npgsql
         protected override DbTransaction DbTransaction
         {
             get { return Transaction; }
-            set
-            {
-                Transaction = (NpgsqlTransaction)value;
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "IDbCommand.Transaction", value);
-            }
+            set { Transaction = (NpgsqlTransaction)value; }
         }
 
         /// <summary>
@@ -404,19 +363,14 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Transaction");
-
                 if (this.transaction != null && this.transaction.Connection == null)
                 {
                     this.transaction = null;
                 }
                 return this.transaction;
             }
-
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "Transaction", value);
-
                 this.transaction = value;
             }
         }
@@ -433,12 +387,7 @@ namespace Npgsql
 
         public override UpdateRowSource UpdatedRowSource
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "UpdatedRowSource");
-
-                return updateRowSource;
-            }
+            get { return updateRowSource; }
             set
             {
                 switch (value)
@@ -467,11 +416,9 @@ namespace Npgsql
         /// <summary>
         /// Attempts to cancel the execution of a <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
-        /// <remarks>This Method isn't implemented yet.</remarks>
         public override void Cancel()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Cancel");
-
+            _log.Debug("Cancelling command");
             try
             {
                 // get copy for thread safety of null test
@@ -529,8 +476,6 @@ namespace Npgsql
         /// <returns>An <see cref="System.Data.Common.DbParameter">DbParameter</see> object.</returns>
         protected override DbParameter CreateDbParameter()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateDbParameter");
-
             return CreateParameter();
         }
 
@@ -540,8 +485,6 @@ namespace Npgsql
         /// <returns>A <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public new NpgsqlParameter CreateParameter()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateParameter");
-
             return new NpgsqlParameter();
         }
 

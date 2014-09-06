@@ -25,6 +25,7 @@
 using System;
 using System.Reflection;
 using System.Transactions;
+using Common.Logging;
 
 namespace Npgsql
 {
@@ -38,7 +39,7 @@ namespace Npgsql
         private bool _inTransaction;
         internal bool InLocalTransaction { get { return _npgsqlTx != null;  } }
 
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         public NpgsqlPromotableSinglePhaseNotification(NpgsqlConnection connection)
         {
@@ -47,7 +48,7 @@ namespace Npgsql
 
         public void Enlist(Transaction tx)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Enlist");
+            _log.Debug("Enlist");
             if (tx != null)
             {
                 _isolationLevel = tx.IsolationLevel;
@@ -74,7 +75,7 @@ namespace Npgsql
         /// </summary>
         public void Prepare()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
+            _log.Debug("Prepare");
             if (_inTransaction)
             {
                 // may not be null if Promote or Enlist is called first
@@ -99,14 +100,14 @@ namespace Npgsql
 
         public void Initialize()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Initialize");
+            _log.Debug("Initialize");
             _npgsqlTx = _connection.BeginTransaction(ConvertIsolationLevel(_isolationLevel));
             _inTransaction = true;
         }
 
         public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Rollback");
+            _log.Debug("Rollback");
             // try to rollback the transaction with either the
             // ADO.NET transaction or the callbacks that managed the
             // two phase commit transaction.
@@ -137,7 +138,7 @@ namespace Npgsql
 
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "SinglePhaseCommit");
+            _log.Debug("Single Phase Commit");
             if (_npgsqlTx != null)
             {
                 _npgsqlTx.Commit();
@@ -169,7 +170,7 @@ namespace Npgsql
 
         public byte[] Promote()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Promote");
+            _log.Debug("Promote");
             _rm = CreateResourceManager();
             // may not be null if Prepare or Enlist is called first
             if (_callbacks == null)

@@ -45,8 +45,6 @@ namespace Npgsql
     {
         private readonly NpgsqlError[] errors;
 
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         // To allow deserialization.
@@ -67,8 +65,6 @@ namespace Npgsql
         internal NpgsqlException(IList<NpgsqlError> errors)
             : base(errors[0].ToString())
         {
-            NpgsqlEventLog.LogMsg(resman, "Log_ExceptionOccured", LogLevel.Normal, Message);
-
             this.errors = new NpgsqlError[errors.Count];
             errors.CopyTo(this.errors, 0);
         }
@@ -81,8 +77,6 @@ namespace Npgsql
         internal NpgsqlException(String message, Exception innerException)
             : base(message, innerException)
         {
-            NpgsqlEventLog.LogMsg(resman, "Log_ExceptionOccured", LogLevel.Normal, Message);
-
             errors = new NpgsqlError[] { new NpgsqlError(message) };
         }
 

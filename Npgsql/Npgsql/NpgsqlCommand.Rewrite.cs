@@ -53,8 +53,6 @@ namespace Npgsql
         ///</summary>
         private void CheckConnectionState()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckConnectionState");
-
             if (Connector == null)
             {
                 throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
@@ -87,11 +85,7 @@ namespace Npgsql
         /// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
         internal byte[] GetCommandText()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
-
-            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
-
-            return ret;
+            return string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
         }
 
         private Boolean CheckFunctionNeedsColumnDefinitionList()
@@ -236,8 +230,6 @@ namespace Npgsql
         /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
         private byte[] GetCommandText(bool prepare)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
-
             MemoryStream commandBuilder = new MemoryStream();
 
             if (commandType == CommandType.TableDirect)
@@ -839,8 +831,6 @@ namespace Npgsql
 
         private byte[] GetExecuteCommandText()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
-
             MemoryStream result = new MemoryStream();
 
             result.WriteString("EXECUTE {0}", planName);

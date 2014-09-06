@@ -44,9 +44,6 @@ namespace NpgsqlTypes
     /// </summary>
     internal static class NpgsqlTypesHelper
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         // This is used by the test suite to test both text and binary encodings on version 3 connections.
         // See NpgsqlTests.BaseClassTests.TestFixtureSetup() and InitBinaryBackendSuppression().
         // If this field is changed or removed, some tests will become partially non-functional, and an error will be issued.
@@ -220,8 +217,6 @@ namespace NpgsqlTypes
         public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
                                                              Int32 typeModifier)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendBytesToStytemType");
-
             if (TypeInfo != null)
             {
                 return TypeInfo.ConvertBackendBinaryToNative(data, fieldValueSize, typeModifier);
@@ -241,8 +236,6 @@ namespace NpgsqlTypes
         public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int16 typeSize,
                                                               Int32 typeModifier)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ConvertBackendStringToSystemType");
-
             if (TypeInfo != null)
             {
                 return TypeInfo.ConvertBackendTextToNative(data, typeSize, typeModifier);
@@ -699,8 +692,6 @@ namespace NpgsqlTypes
         /// </returns>
         public static NpgsqlBackendTypeMapping CreateAndLoadInitialTypesMapping(NpgsqlConnector conn)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "LoadTypesMapping");
-
             MappingKey key = new MappingKey(conn);
             // Check the cache for an initial types map.
             NpgsqlBackendTypeMapping oidToNameMapping = null;

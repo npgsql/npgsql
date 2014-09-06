@@ -37,6 +37,8 @@ using System.Resources;
 using System.Text;
 
 // Keep the xml comment warning quiet for this file.
+using Common.Logging;
+
 #pragma warning disable 1591
 
 namespace Npgsql
@@ -47,8 +49,6 @@ namespace Npgsql
     /// </summary>
     internal static class PGUtil
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         internal static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         //TODO: What should this value be?
         //There is an obvious balancing act in setting this value. The larger the value, the fewer times
@@ -81,6 +81,8 @@ namespace Npgsql
         private static readonly byte[] THRASH_CAN = new byte[THRASH_CAN_SIZE];
 
         private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
+
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         ///<summary>
         /// This method takes a ProtocolVersion and returns an integer
@@ -166,8 +168,6 @@ namespace Npgsql
         /// </summary>
         public static String ReadString(this Stream network_stream)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReadString");
-
             List<byte> buffer = new List<byte>();
             for (int bRead = network_stream.ReadByte(); bRead != 0; bRead = network_stream.ReadByte())
             {
@@ -181,8 +181,8 @@ namespace Npgsql
                 }
             }
 
-            if (NpgsqlEventLog.Level >= LogLevel.Debug)
-                NpgsqlEventLog.LogMsg(resman, "Log_StringRead", LogLevel.Debug, BackendEncoding.UTF8Encoding.GetString(buffer.ToArray()));
+            if (_log.IsTraceEnabled)
+                _log.Trace("Read string: " + BackendEncoding.UTF8Encoding.GetString(buffer.ToArray()));
 
             return BackendEncoding.UTF8Encoding.GetString(buffer.ToArray());
         }
@@ -366,14 +366,9 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteString(this Stream stream, String theString)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
-
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
+            _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
             stream.Write(bytes, 0, bytes.Length);
-
             return stream;
         }
 
@@ -382,16 +377,10 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteString(this Stream stream, String format, params object[] parameters)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteString");
-
             string theString = string.Format(format, parameters);
-
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
+            _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
             stream.Write(bytes, 0, bytes.Length);
-
             return stream;
         }
 
@@ -401,15 +390,10 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteStringNullTerminated(this Stream stream, String theString)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
-
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
+            _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
             stream.Write(bytes, 0, bytes.Length);
             stream.WriteByte(0);
-
             return stream;
         }
 
@@ -419,17 +403,11 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteStringNullTerminated(this Stream stream, String format, params object[] parameters)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteStringNullTerminated");
-
             string theString = string.Format(format, parameters);
-
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
+            _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-
             stream.Write(bytes, 0, bytes.Length);
             stream.WriteByte(0);
-
             return stream;
         }
 
@@ -438,11 +416,8 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteBytes(this Stream stream, byte the_byte)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteByte");
-            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_byte);
-
+            _log.Trace("Sending byte: " + the_byte);
             stream.WriteByte(the_byte);
-
             return stream;
         }
 
@@ -451,12 +426,9 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteBytesNullTerminated(this Stream stream, byte the_byte)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteByte");
-            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_byte);
-
+            _log.Trace("Sending byte: " + the_byte);
             stream.WriteByte(the_byte);
             stream.WriteByte(0);
-
             return stream;
         }
 
@@ -465,11 +437,8 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteBytes(this Stream stream, byte[] the_bytes)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
-            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
-
+            _log.Trace("Sending bytes: " + String.Join(", ", the_bytes));
             stream.Write(the_bytes, 0, the_bytes.Length);
-
             return stream;
         }
 
@@ -478,12 +447,9 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteBytesNullTerminated(this Stream stream, byte[] the_bytes)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteBytes");
-            NpgsqlEventLog.LogMsg(resman, "Log_BytesWritten", LogLevel.Debug, the_bytes);
-
+            _log.Trace("Sending bytes: " + String.Join(", ", the_bytes));
             stream.Write(the_bytes, 0, the_bytes.Length);
             stream.WriteByte(0);
-
             return stream;
         }
 
@@ -494,8 +460,6 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteLimString(this Stream network_stream, String the_string, Int32 n)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimString");
-
             //Note: We do not know the size in bytes until after we have converted the string.
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(the_string);
             if (bytes.Length > n)
@@ -523,8 +487,6 @@ namespace Npgsql
         /// </summary>
         public static Stream WriteLimBytes(this Stream network_stream, byte[] bytes, Int32 n)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteLimBytes");
-
             if (bytes.Length > n)
             {
                 throw new ArgumentOutOfRangeException("bytes", bytes,
@@ -711,12 +673,6 @@ namespace Npgsql
             while(sb.Length != 0 && char.IsWhiteSpace(sb[sb.Length - 1]))
                 sb.Remove(sb.Length - 1, 1);
             return sb;
-        }
-
-        internal static void LogStringWritten(string theString)
-        {
-            NpgsqlEventLog.LogMsg(resman, "Log_StringWritten", LogLevel.Debug, theString);
-
         }
 
         /// <summary>
