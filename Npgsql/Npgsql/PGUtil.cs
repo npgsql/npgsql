@@ -35,9 +35,10 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
 using System.Text;
-
-// Keep the xml comment warning quiet for this file.
 using Common.Logging;
+
+// Keep the xml comment warning quit for this file.
+using Npgsql.Npgsql.L10N;
 
 #pragma warning disable 1591
 
@@ -49,7 +50,6 @@ namespace Npgsql
     /// </summary>
     internal static class PGUtil
     {
-        internal static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         //TODO: What should this value be?
         //There is an obvious balancing act in setting this value. The larger the value, the fewer times
         //we need to use it and the more efficient we are in that regard. The smaller the value, the
@@ -465,7 +465,7 @@ namespace Npgsql
             if (bytes.Length > n)
             {
                 throw new ArgumentOutOfRangeException("the_string", the_string,
-                                                      string.Format(resman.GetString("LimStringWriteTooLarge"), the_string, n));
+                                                      string.Format("LimString write too large {0} {1}", the_string, n));
             }
 
             network_stream.Write(bytes, 0, bytes.Length);
@@ -490,7 +490,7 @@ namespace Npgsql
             if (bytes.Length > n)
             {
                 throw new ArgumentOutOfRangeException("bytes", bytes,
-                                                      string.Format(resman.GetString("LimStringWriteTooLarge"), bytes, n));
+                                                      string.Format("LimString write too large {0} {1}", bytes, n));
             }
 
             network_stream.Write(bytes, 0, bytes.Length);
@@ -883,7 +883,7 @@ namespace Npgsql
 
         private static void StopWrite()
         {
-            throw new NotSupportedException(PGUtil.resman.GetString("Read_Only_Write_Error"));
+            throw new NotSupportedException(L10N.ReadOnlyWriteError);
         }
 
         public TValue this[TKey key]

@@ -37,6 +37,7 @@ using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
 using Common.Logging;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -62,7 +63,6 @@ namespace Npgsql
             Prepared
         }
 
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         private NpgsqlConnection connection;
@@ -234,7 +234,7 @@ namespace Npgsql
             set
             {
                 if (value < 0) {
-                    throw new ArgumentOutOfRangeException("value", resman.GetString("Exception_CommandTimeoutLessZero"));
+                    throw new ArgumentOutOfRangeException("value", L10N.CommandTimeoutLessZero);
                 }
 
                 timeout = value;
@@ -288,7 +288,7 @@ namespace Npgsql
                 // See bug 1000581 for more details.
                 if (this.transaction != null && this.connection != null && this.Connector != null && this.Connector.Transaction != null)
                 {
-                    throw new InvalidOperationException(resman.GetString("Exception_SetConnectionInTransaction"));
+                    throw new InvalidOperationException(L10N.SetConnectionInTransaction);
                 }
 
                 this.connection = value;
@@ -530,7 +530,7 @@ namespace Npgsql
         internal NpgsqlException ClearPoolAndCreateException(Exception e)
         {
             Connection.ClearPool();
-            return new NpgsqlException(resman.GetString("Exception_ConnectionBroken"), e);
+            return new NpgsqlException(L10N.ConnectionBroken, e);
         }
 
         /// <summary>

@@ -34,6 +34,7 @@ using System.Resources;
 using System.Text;
 using System.Threading;
 using Common.Logging;
+using Npgsql.Npgsql.L10N;
 
 namespace Npgsql
 {
@@ -42,8 +43,6 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlTransaction : DbTransaction
     {
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-
         private NpgsqlConnection _conn = null;
         private readonly IsolationLevel _isolation = IsolationLevel.ReadCommitted;
         private bool _disposed = false;
@@ -110,7 +109,7 @@ namespace Npgsql
             {
                 if (_conn == null)
                 {
-                    throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+                    throw new InvalidOperationException(L10N.NoTransaction);
                 }
 
                 return _isolation;
@@ -156,7 +155,7 @@ namespace Npgsql
             CheckDisposed();
 
             if (_conn == null) {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+                throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             NpgsqlCommand.ExecuteBlind(_conn.Connector, NpgsqlQuery.CommitTransaction);
@@ -174,7 +173,7 @@ namespace Npgsql
             CheckDisposed();
 
             if (_conn == null) {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+                throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, NpgsqlQuery.RollbackTransaction);
@@ -192,18 +191,17 @@ namespace Npgsql
 
             if (_conn == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+                throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             if (!_conn.Connector.SupportsSavepoint)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_SavePointNotSupported"));
+                throw new InvalidOperationException(L10N.SavePointNotSupported);
             }
 
             if (savePointName.Contains(";"))
             {
-                throw new InvalidOperationException(resman.GetString("Exception_SavePointWithSemicolon"));
-
+                throw new InvalidOperationException(L10N.SavePointWithSemicolon);
             }
 
             NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
@@ -219,17 +217,17 @@ namespace Npgsql
 
             if (_conn == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_NoTransaction"));
+                throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             if (!_conn.Connector.SupportsSavepoint)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_SavePointNotSupported"));
+                throw new InvalidOperationException(L10N.SavePointNotSupported);
             }
 
             if (savePointName.Contains(";"))
             {
-                throw new InvalidOperationException(resman.GetString("Exception_SavePointWithSemicolon"));
+                throw new InvalidOperationException(L10N.SavePointWithSemicolon);
 
             }
 

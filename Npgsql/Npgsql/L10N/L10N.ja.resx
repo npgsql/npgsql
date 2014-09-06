@@ -112,42 +112,120 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Exception_CommandTimeoutLessZero" xml:space="preserve">
+  <data name="CommandTimeoutLessZero" xml:space="preserve">
     <value>コマンドタイムアウトはゼロ以下に設定できません.</value>
   </data>
-  <data name="Exception_SetConnectionInTransaction" xml:space="preserve">
+  <data name="SetConnectionInTransaction" xml:space="preserve">
     <value>接続・プロパティは、トランザクションのコミット前に変更でききません.</value>
   </data>
-  <data name="Exception_SetTransactionInTransaction" xml:space="preserve">
+  <data name="SetTransactionInTransaction" xml:space="preserve">
     <value>トランザクション・プロパティは、トランザクションのコミット前に変更でききません.</value>
   </data>
-  <data name="Exception_CommandTypeTableDirect" xml:space="preserve">
+  <data name="CommandTypeTableDirect" xml:space="preserve">
     <value>テキストのみのストアドプロシジャ・タイプはサポートされます!</value>
   </data>
-  <data name="Exception_BackendErrors" xml:space="preserve">
+  <data name="BackendErrors" xml:space="preserve">
     <value>バックエンドによって報告されたエラーがあります.</value>
   </data>
-  <data name="Exception_MediatorErrors" xml:space="preserve">
+  <data name="MediatorErrors" xml:space="preserve">
     <value> {0}() に間違いがあります:</value>
   </data>
-  <data name="Exception_MediatorErrors_1P" xml:space="preserve">
+  <data name="MediatorErrors_1P" xml:space="preserve">
     <value> {0}({1}) に間違いがあります:</value>
   </data>
-  <data name="Exception_ConnectionNull" xml:space="preserve">
+  <data name="ConnectionNull" xml:space="preserve">
     <value>接続は設定されません.</value>
   </data>
-  <data name="Exception_ConnectionNotOpen" xml:space="preserve">
+  <data name="ConnectionNotOpen" xml:space="preserve">
     <value>接続は開いていません.</value>
   </data>
-  <data name="Exception_ParamNotInQuery" xml:space="preserve">
+  <data name="ParamNotInQuery" xml:space="preserve">
     <value>パラメーター {0} は、クエリで見つけられません.</value>
   </data>
-  <data name="Exception_ConnectionBroken" xml:space="preserve">
+  <data name="ConnectionBroken" xml:space="preserve">
     <value>接続は壊れます。</value>
+  </data>
+  <data name="ConnectionStringDescription" xml:space="preserve">
+    <value>PostgreSQLデータベースに接続するために使用される情報, 例 'Server=X;Port=X;Database=X;User Id=X;Password=X;'</value>
+  </data>
+  <data name="ConnectionTimeoutDescription" xml:space="preserve">
+    <value>接続タイムアウト値は, 'Connect Timeout=X'</value>
+  </data>
+  <data name="DatabaseDescription" xml:space="preserve">
+    <value>PostgreSQLデータベース接続文字列は, 'Database=X'</value>
+  </data>
+  <data name="NoNestedTransactions" xml:space="preserve">
+    <value>トランザクションのネスト/複合はサポートされていません.</value>
+  </data>
+  <data name="InvalidDbName" xml:space="preserve">
+    <value>データベース名: {0} は間違っています</value>
+  </data>
+  <data name="MissingConnStrArg" xml:space="preserve">
+    <value>接続文字列に誤りがあります!</value>
+  </data>
+  <data name="ConnOpen" xml:space="preserve">
+    <value>接続はすでにオープンされています</value>
+  </data>
+  <data name="ConnNotOpen" xml:space="preserve">
+    <value>接続のオープンができません</value>
+  </data>
+  <data name="ConnStrEmpty" xml:space="preserve">
+    <value>接続文字列の指定がありません.</value>
+  </data>
+  <data name="SocketEx" xml:space="preserve">
+    <value>SocketException が発生しました</value>
+  </data>
+  <data name="OpenError" xml:space="preserve">
+    <value>Open() の最中にエラーが発生しました</value>
+  </data>
+  <data name="CloseError" xml:space="preserve">
+    <value>Close() でエラーが発生しました</value>
+  </data>
+  <data name="WrongKeyVal" xml:space="preserve">
+    <value>ConnectionStringで不正確なキーワード=値です。</value>
+  </data>
+  <data name="InvalidBooleanKeyVal" xml:space="preserve">
+    <value>ConnectionStringで {0}=[True/False] 値の評価を期待します </value>
+  </data>
+  <data name="InvalidIntegerKeyVal" xml:space="preserve">
+    <value> ConnectionStringで {0}=[Numeric] 値の評価を期待します</value>
+  </data>
+  <data name="IntegerKeyValMax" xml:space="preserve">
+    <value>ConnectionStringの数値 {0} は、最大値 {1} を超えます</value>
+  </data>
+  <data name="IntegerKeyValMin" xml:space="preserve">
+    <value>ConnectionStringの数値 {0} は、最小値 {1} を下回ります</value>
+  </data>
+  <data name="InvalidProtocolVersionKeyVal" xml:space="preserve">
+    <value>ConnectionStringで {0}=[Protocol Version] 値の評価を期待します</value>
+  </data>
+  <data name="AuthenticationMethodNotSupported" xml:space="preserve">
+    <value>単に、AuthenticationClearTextPassword と AuthenticationMD5Password はサポートされます。 {0} を受け付けます。</value>
+  </data>
+  <data name="SslRequestError" xml:space="preserve">
+    <value>SSL接続を要求しました。対象のホストはSSL接続で構成されていません。</value>
+  </data>
+  <data name="ConnectionTimeout" xml:space="preserve">
+    <value>接続確立時にタイムアウトしました。ConnectionStringでタイムアウトの値を増やして下さい。</value>
+  </data>
+  <data name="FailedConnection" xml:space="preserve">
+    <value>'{0}' へ接続の確立に失敗しました。</value>
+  </data>
+  <data name="ImpossibleToCast" xml:space="preserve">
+    <value>{0}は、どのようなDbTypeにも割り当てることができません.</value>
+  </data>
+  <data name="WrongType" xml:space="preserve">
+    <value>NpgsqlParameterへ {0} を割り当てることができません</value>
+  </data>
+  <data name="InvalidParameterName" xml:space="preserve">
+    <value>無効なパラメーター名: {0}</value>
+  </data>
+  <data name="NoTransaction" xml:space="preserve">
+    <value>処理中のトランザクションはありません.</value>
   </data>
 </root>

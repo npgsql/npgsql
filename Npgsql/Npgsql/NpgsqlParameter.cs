@@ -32,6 +32,7 @@ using System.Data;
 using System.Data.Common;
 using System.Reflection;
 using System.Resources;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -68,7 +69,6 @@ namespace Npgsql
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Boolean useCast = false;
 
@@ -367,7 +367,7 @@ namespace Npgsql
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
             }
         }
@@ -392,11 +392,11 @@ namespace Npgsql
                 bound = false;
                 if (value == NpgsqlDbType.Array)
                 {
-                    throw new ArgumentOutOfRangeException("value", resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                    throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
                 }
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
             }
         }
@@ -562,12 +562,12 @@ namespace Npgsql
 
                 if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
                 }
 
                 if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
 
                 }
                 else

@@ -112,12 +112,81 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Row_Sequential_Field_Error" xml:space="preserve">
-    <value>Invalid attempt to read from column ordinal '{0}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{1}' or greater.</value>
+  <data name="CommandTimeoutLessZero" xml:space="preserve">
+    <value>CommandTimeout ei voi olla pienempi kuin nolla.</value>
+  </data>
+  <data name="SetConnectionInTransaction" xml:space="preserve">
+    <value>Connection-ominaisuutta ei voi muuttaa kesken transaktion.</value>
+  </data>
+  <data name="SetTransactionInTransaction" xml:space="preserve">
+    <value>Transaction-ominaisuutta ei voi muuttaa kesken transaktion.</value>
+  </data>
+  <data name="CommandTypeTableDirect" xml:space="preserve">
+    <value>Vain 'Text' ja 'StoredProcedure'-tyypit ovat tuettuja!</value>
+  </data>
+  <data name="MediatorErrors" xml:space="preserve">
+    <value>Virheitä kutsussa {0}():</value>
+  </data>
+  <data name="MediatorErrors_1P" xml:space="preserve">
+    <value>Virheitä kutsussa {0}({1}):</value>
+  </data>
+  <data name="ConnectionNull" xml:space="preserve">
+    <value>Connection-ominaisuutta ei ole asetettu.</value>
+  </data>
+  <data name="ConnectionNotOpen" xml:space="preserve">
+    <value>Connection ei ole auki.</value>
+  </data>
+  <data name="ParamNotInQuery" xml:space="preserve">
+    <value>Parametria {0} ei löytynyt kyselyssä.</value>
+  </data>
+  <data name="ConnectionStringDescription" xml:space="preserve">
+    <value>PostgreSQL-tietokantaan liittymiseen tarvittava tieto, esim. 'Server=X;Port=X;Database=X;User Id=X;Password=X;'</value>
+  </data>
+  <data name="ConnectionTimeoutDescription" xml:space="preserve">
+    <value>Tämänhetkinen yhteyden aikakatkaisu, 'Connect Timeout=X' liittymistiedoissa</value>
+  </data>
+  <data name="DatabaseDescription" xml:space="preserve">
+    <value>Tämänhetkinen PostgreSQL-tietokanta, 'Database=X' liittymistiedoissa</value>
+  </data>
+  <data name="NoNestedTransactions" xml:space="preserve">
+    <value>Sisäkkäisiä/yhtäaikaisia transaktioita ei tueta.</value>
+  </data>
+  <data name="InvalidDbName" xml:space="preserve">
+    <value>Kelpaamaton tietokantanimi: {0}</value>
+  </data>
+  <data name="MissingConnStrArg" xml:space="preserve">
+    <value>Liittymistiedoista puuttuu argumentti!</value>
+  </data>
+  <data name="ConnOpen" xml:space="preserve">
+    <value>Yhteys jo auki</value>
+  </data>
+  <data name="ConnStrEmpty" xml:space="preserve">
+    <value>Liittymistieto ei voi olla tyhjä.</value>
+  </data>
+  <data name="SocketEx" xml:space="preserve">
+    <value>SocketException ilmeni</value>
+  </data>
+  <data name="OpenError" xml:space="preserve">
+    <value>Virheitä Open()-kutsussa</value>
+  </data>
+  <data name="CloseError" xml:space="preserve">
+    <value>Virhe Close()-kutsussa</value>
+  </data>
+  <data name="ChangeDatabaseOnOpenConn" xml:space="preserve">
+    <value>Yhteys ei ole auki. Määrittele suljetun yhteyden tietokanta liittymistiedoissa: 'Database=X;'</value>
+  </data>
+  <data name="ImpossibleToCast" xml:space="preserve">
+    <value>Ei voi muuntaa arvoa {0} miksikään DbType:ksi.</value>
+  </data>
+  <data name="WrongType" xml:space="preserve">
+    <value>Ei voi muuttaa arvoa {0} NpgsqlParameter-tyypiksi</value>
+  </data>
+  <data name="UnsopportedIsolationLevel" xml:space="preserve">
+    <value>IsolationLevel pitää olla joko 'Read Committed' tai 'Serializable'.</value>
   </data>
 </root>

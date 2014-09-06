@@ -35,6 +35,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 using System.Text;
 using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
@@ -121,8 +122,6 @@ namespace Npgsql
         private readonly RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
         private string initQueries;
-
-        protected readonly static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
 #if WINDOWS && UNMANAGED
         internal SSPIHandler SSPI { get; set; }
@@ -347,7 +346,7 @@ namespace Npgsql
                 if (!result.AsyncWaitHandle.WaitOne(timeout, true))
                 {
                     // Timeout was used up attempting the Dns lookup
-                    throw new TimeoutException(resman.GetString("Exception_DnsLookupTimeout"));
+                    throw new TimeoutException(L10N.DnsLookupTimeout);
                 }
 
                 timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
@@ -372,7 +371,7 @@ namespace Npgsql
 
                         if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
                         {
-                            throw new TimeoutException(resman.GetString("Exception_ConnectionTimeout"));
+                            throw new TimeoutException(L10N.ConnectionTimeout);
                         }
 
                         socket.EndConnect(result);
@@ -449,7 +448,7 @@ namespace Npgsql
                     }
                     else if (SslMode == SslMode.Require)
                     {
-                        throw new InvalidOperationException(resman.GetString("Exception_Ssl_RequestError"));
+                        throw new InvalidOperationException(L10N.SslRequestError);
                     }
                 }
 
@@ -460,7 +459,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                throw new NpgsqlException(string.Format(resman.GetString("Exception_FailedConnection"), Host), e);
+                throw new NpgsqlException(string.Format(L10N.FailedConnection, Host), e);
             }
         }
 
@@ -586,7 +585,7 @@ namespace Npgsql
                         // as the establishment timeout only was confusing users when the timeout was a command timeout.
                     }
 
-                    throw new NpgsqlException(resman.GetString("Exception_ConnectionOrCommandTimeout"));
+                    throw new NpgsqlException(L10N.ConnectionOrCommandTimeout);
                 }
 
                 return ProcessBackendResponses();
@@ -747,10 +746,7 @@ namespace Npgsql
 
                                 default:
                                     // Only AuthenticationClearTextPassword and AuthenticationMD5Password supported for now.
-                                    errors.Add(
-                                        new NpgsqlError(
-                                            String.Format(
-                                                resman.GetString("Exception_AuthenticationMethodNotSupported"), authType)));
+                                    errors.Add(new NpgsqlError(String.Format(L10N.AuthenticationMethodNotSupported, authType)));
 
                                     throw new NpgsqlException(errors);
                             }

@@ -36,6 +36,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -55,7 +56,7 @@ namespace Npgsql
         {
             if (Connector == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
+                throw new InvalidOperationException(L10N.ConnectionNotOpen);
             }
 
             switch (Connector.State)
@@ -65,7 +66,7 @@ namespace Npgsql
                 case NpgsqlState.Closed:
                 case NpgsqlState.Broken:
                 case NpgsqlState.Connecting:
-                    throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
+                    throw new InvalidOperationException(L10N.ConnectionNotOpen);
                 case NpgsqlState.Executing:
                 case NpgsqlState.Fetching:
                     throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");

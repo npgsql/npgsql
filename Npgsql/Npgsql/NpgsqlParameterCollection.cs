@@ -37,6 +37,7 @@ using System.Data.Common;
 using System.Reflection;
 using System.Resources;
 using Common.Logging;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -63,9 +64,6 @@ namespace Npgsql
         // Dictionary lookups for GetValue to improve performance
         private Dictionary<string, int> lookup;
         private Dictionary<string, int> lookupIgnoreCase;
-
-        // Our resource manager
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
@@ -684,7 +682,7 @@ namespace Npgsql
             if (!(Object is NpgsqlParameter))
             {
                 throw new InvalidCastException(
-                    String.Format(resman.GetString("Exception_WrongType"), Object.GetType()));
+                    String.Format(L10N.WrongType, Object.GetType()));
             }
         }
 

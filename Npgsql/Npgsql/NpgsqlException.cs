@@ -45,8 +45,6 @@ namespace Npgsql
     {
         private readonly NpgsqlError[] errors;
 
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-
         // To allow deserialization.
         private NpgsqlException(SerializationInfo info, StreamingContext context)
             : base(info, context)

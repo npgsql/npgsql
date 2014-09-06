@@ -38,7 +38,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
-using Npgsql.Npgsql;
 using Npgsql.Npgsql.L10N;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -72,8 +71,6 @@ namespace Npgsql
 
     public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-
         // Parsed connection string cache
         private static readonly Cache<NpgsqlConnectionStringBuilder> cache = new Cache<NpgsqlConnectionStringBuilder>();
 
@@ -607,7 +604,7 @@ namespace Npgsql
 
             if (connector.Transaction != null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_NoNestedTransactions"));
+                throw new InvalidOperationException(L10N.NoNestedTransactions);
             }
 
             return new NpgsqlTransaction(this, level);
@@ -631,13 +628,11 @@ namespace Npgsql
             // Check if there is any missing argument.
             if (!settings.ContainsKey(Keywords.Host))
             {
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            Keywords.Host.ToString());
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.Host.ToString());
             }
             if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
             {
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            Keywords.UserName.ToString());
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.UserName.ToString());
             }
 
             // Get a Connector, either from the pool or creating one ourselves.
@@ -692,7 +687,7 @@ namespace Npgsql
 
             if (string.IsNullOrEmpty(dbName))
             {
-                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(resman.GetString("Exception_InvalidDbName")));
+                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(L10N.InvalidDbName));
             }
 
             String oldDatabaseName = Database;
@@ -1116,7 +1111,7 @@ namespace Npgsql
 
             if (_postponingClose || connector == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnNotOpen"));
+                throw new InvalidOperationException(L10N.ConnNotOpen);
             }
         }
 
@@ -1127,7 +1122,7 @@ namespace Npgsql
             }
 
             if (connector != null) {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnOpen"));
+                throw new InvalidOperationException(L10N.ConnNotOpen);
             }
         }
 
