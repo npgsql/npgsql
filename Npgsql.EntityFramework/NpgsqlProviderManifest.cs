@@ -127,7 +127,6 @@ namespace Npgsql
                         return TypeUsage.CreateDateTimeOffsetTypeUsage(primitiveType, null);
                     }
                 case "time":
-                case "timetz":
                 case "interval":
                     if (storeType.Facets.TryGetValue(PrecisionFacet, false, out facet) &&
                         !facet.IsUnbounded && facet.Value != null)

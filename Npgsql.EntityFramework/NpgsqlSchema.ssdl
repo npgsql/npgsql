@@ -33,7 +33,7 @@
           else null
         end as precision,
         case
-          when t.typname in ('time', 'timetz', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
+          when t.typname in ('time', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
           when t.typname = 'interval' and a.atttypmod &amp; 65535 != 65535 then a.atttypmod &amp; 65535
           else null
         end as datetime_precision,
@@ -154,7 +154,7 @@
           else null
         end as precision,
         case
-          when t.typname in ('time', 'timetz', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
+          when t.typname in ('time', 'timestamp', 'timestamptz') and a.atttypmod != -1 then a.atttypmod
           when t.typname = 'interval' and a.atttypmod &amp; 65535 != 65535 then a.atttypmod &amp; 65535
           else null
         end as datetime_precision,
