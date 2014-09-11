@@ -468,11 +468,13 @@ namespace NpgsqlTypes
             if (NativeData.Equals(float.NaN) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
-            if (NativeData.Equals(float.PositiveInfinity) && !arrayElement)
+            if (NativeData.Equals(float.PositiveInfinity) && !arrayElement) {
                 return ASCIIByteArrays.INFINITY_QUOTED;
+            }
 
-            if (NativeData.Equals(float.NegativeInfinity) && !arrayElement)
+            if (NativeData.Equals(float.NegativeInfinity) && !arrayElement) {
                 return ASCIIByteArrays.NEG_INFINITY_QUOTED;
+            }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
@@ -485,11 +487,13 @@ namespace NpgsqlTypes
             if (NativeData.Equals(double.NaN) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
-            if (NativeData.Equals(double.PositiveInfinity) && !arrayElement)
+            if (NativeData.Equals(double.PositiveInfinity) && !arrayElement) {            
                 return ASCIIByteArrays.INFINITY_QUOTED;
+            }
 
-            if (NativeData.Equals(double.NegativeInfinity) && !arrayElement)
+            if (NativeData.Equals(double.NegativeInfinity) && !arrayElement) {
                 return ASCIIByteArrays.NEG_INFINITY_QUOTED;
+            }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
