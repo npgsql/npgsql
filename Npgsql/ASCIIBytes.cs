@@ -110,6 +110,8 @@ namespace Npgsql
         internal static readonly byte[] FALSE           = BackendEncoding.UTF8Encoding.GetBytes("FALSE");
         internal static readonly byte[] INFINITY        = BackendEncoding.UTF8Encoding.GetBytes("INFINITY");
         internal static readonly byte[] NEG_INFINITY    = BackendEncoding.UTF8Encoding.GetBytes("-INFINITY");
+        internal static readonly byte[] INFINITY_QUOTED = BackendEncoding.UTF8Encoding.GetBytes("'INFINITY'");
+        internal static readonly byte[] NEG_INFINITY_QUOTED = BackendEncoding.UTF8Encoding.GetBytes("'-INFINITY'");
         internal static readonly byte[] LineTerminator  = BackendEncoding.UTF8Encoding.GetBytes("\r\n");
         internal static readonly byte[] NAN_QUOTED      = BackendEncoding.UTF8Encoding.GetBytes("'NaN'");
     }
