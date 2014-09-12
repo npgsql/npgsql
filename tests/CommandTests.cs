@@ -31,6 +31,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
+using Npgsql.Npgsql.L10N;
 using NUnit.Framework;
 using System.Data;
 using System.Globalization;
@@ -2072,8 +2073,7 @@ namespace NpgsqlTests
             }
             catch (InvalidOperationException e)
             {
-                var resman = new ResourceManager(typeof (NpgsqlCommandBuilder));
-                var expected = string.Format(resman.GetString("Exception_InvalidFunctionName"), "invalidfunctionname");
+                var expected = string.Format(L10N.InvalidFunctionName, "invalidfunctionname");
                 Assert.AreEqual(expected, e.Message);
             }
         }

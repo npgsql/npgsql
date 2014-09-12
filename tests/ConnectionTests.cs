@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using Npgsql;
 using System.Data;
 using System.Resources;
+using Npgsql.Npgsql.L10N;
 using NUnit.Framework;
 using System.Collections.Generic;
 using NpgsqlTypes;
@@ -166,18 +167,11 @@ namespace NpgsqlTests
         [Test]
         public void ConnectionRefused()
         {
-            try
-            {
-                var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j");
-                conn.Open();
-            }
-            catch (NpgsqlException e)
-            {
-                var type_NpgsqlConnector = typeof(NpgsqlConnection).Assembly.GetType("Npgsql.NpgsqlConnector");
-                var resman = new ResourceManager(type_NpgsqlConnector);
-                var expected = string.Format(resman.GetString("Exception_FailedConnection"), "127.0.0.1");
-                Assert.AreEqual(expected, e.Message);
-            }
+            Assert.That(() => {
+              var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j");
+              conn.Open();
+            }, Throws.Exception.TypeOf<NpgsqlException>()
+                               .With.Message.EqualTo(String.Format(L10N.FailedConnection, "127.0.0.1")));
         }
 
         [Test]
