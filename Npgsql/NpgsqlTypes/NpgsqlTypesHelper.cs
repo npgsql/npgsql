@@ -95,7 +95,7 @@ namespace NpgsqlTypes
         {
             Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
 
-            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false, new Version("1000.0.0.0")))
+            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList(false))
             {
                 NameIndex.Add(TypeInfo.Name, TypeInfo);
 
@@ -459,7 +459,7 @@ namespace NpgsqlTypes
             return nativeTypeMapping;
         }
 
-        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, Version compat)
+        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes)
         {
             yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
@@ -618,23 +618,12 @@ namespace NpgsqlTypes
             }
             else
             {
-                if (compat <= Npgsql207)
-                {
-                    // In 2.0.7 and earlier, intervals were returned as the native type.
-                    // later versions return a CLR type and rely on provider specific api for NpgsqlInterval
-                    yield return
-                        new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                                            ExtendedBackendToNativeTypeConverter.ToInterval);
-                }
-                else
-                {
-                    yield return
-                        new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
-                                            ExtendedBackendToNativeTypeConverter.ToInterval,
-                                            typeof(TimeSpan),
-                                            interval => (TimeSpan)(NpgsqlInterval)interval,
-                                            intervalNpgsql => (intervalNpgsql is TimeSpan ? (NpgsqlInterval)(TimeSpan) intervalNpgsql : intervalNpgsql));
-                }
+                yield return
+                    new NpgsqlBackendTypeInfo(0, "interval", NpgsqlDbType.Interval, DbType.Object, typeof(NpgsqlInterval),
+                                        ExtendedBackendToNativeTypeConverter.ToInterval,
+                                        typeof(TimeSpan),
+                                        interval => (TimeSpan)(NpgsqlInterval)interval,
+                                        intervalNpgsql => (intervalNpgsql is TimeSpan ? (NpgsqlInterval)(TimeSpan) intervalNpgsql : intervalNpgsql));
 
                 yield return
                     new NpgsqlBackendTypeInfo(0, "date", NpgsqlDbType.Date, DbType.Date, typeof (NpgsqlDate),
@@ -706,7 +695,7 @@ namespace NpgsqlTypes
 
             // Attempt to map each type info in the list to an OID on the backend and
             // add each mapped type to the new type mapping object.
-            LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes, conn.CompatVersion));
+            LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes));
 
             //We hold the lock for the least time possible on the least scope possible.
             //We must lock on BackendTypeMappingCache because it will be updated by this operation,

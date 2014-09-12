@@ -151,23 +151,12 @@ namespace Npgsql
         private readonly Dictionary<string, int> caseInsensitiveNameIndexTable;
         private readonly Version _compatVersion;
 
-        private readonly static Version KANA_FIX_VERSION = new Version(2, 0, 2, 1);
-        private readonly static Version GET_ORDINAL_THROW_EXCEPTION = KANA_FIX_VERSION;
-
-        public NpgsqlRowDescription(Stream stream, NpgsqlBackendTypeMapping type_mapping, Version compatVersion)
+        public NpgsqlRowDescription(Stream stream, NpgsqlBackendTypeMapping type_mapping)
         {
             int num = ReadNumFields(stream);
             fields_data = new FieldData[num];
-            if((_compatVersion = compatVersion) < KANA_FIX_VERSION)
-            {
-                field_name_index_table = new Dictionary<string, int>(num, StringComparer.InvariantCulture);
-                caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, StringComparer.InvariantCultureIgnoreCase);
-            }
-            else
-            {
-                field_name_index_table = new Dictionary<string, int>(num, KanaWidthInsensitiveComparer.INSTANCE);
-                caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, KanaWidthCaseInsensitiveComparator.INSTANCE);
-            }
+            field_name_index_table = new Dictionary<string, int>(num, KanaWidthInsensitiveComparer.INSTANCE);
+            caseInsensitiveNameIndexTable = new Dictionary<string, int>(num, KanaWidthCaseInsensitiveComparator.INSTANCE);
             for (int i = 0; i != num; ++i)
             {
                 FieldData fd = BuildFieldData(stream, type_mapping);
@@ -217,8 +206,6 @@ namespace Npgsql
             int ret = -1;
             if(field_name_index_table.TryGetValue(fieldName, out ret) || caseInsensitiveNameIndexTable.TryGetValue(fieldName, out ret))
                 return ret;
-            else if(_compatVersion < GET_ORDINAL_THROW_EXCEPTION)
-                return -1;
             else
                 throw new IndexOutOfRangeException("Field not found");
         }
