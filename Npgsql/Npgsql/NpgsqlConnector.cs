@@ -753,7 +753,7 @@ namespace Npgsql
                             break;
                         case BackEndMessageCode.RowDescription:
                             _log.Trace("Received RowDescription");
-                            yield return new NpgsqlRowDescription(Stream, OidToNameMapping, CompatVersion);
+                            yield return new NpgsqlRowDescription(Stream, OidToNameMapping);
                             break;
 
                         case BackEndMessageCode.ParameterDescription:

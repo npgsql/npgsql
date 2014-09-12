@@ -270,6 +270,8 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(
                     key, String.Format(L10N.IntegerKeyValMax, key, MaxPoolSize));
             }
+            if (Compatible != null)
+                throw new NotSupportedException("No compatibility modes supported in this Npgsql version");
         }
 
         #region Parsing Functions

@@ -800,18 +800,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void FieldNameDoesntExistBackwardsCompat()
-        {
-            using (var backCompatCon = new NpgsqlConnection(ConnectionString + ";Compatible=2.0.2"))
-                using (var command = new NpgsqlCommand("select field_serial from data", backCompatCon))
-                {
-                    backCompatCon.Open();
-                    using (var rdr = command.ExecuteReader())
-                        Assert.AreEqual(rdr.GetOrdinal("field_int"), -1);
-                }
-        }
-
-        [Test]
         [ExpectedException(typeof(IndexOutOfRangeException))]
         public void FieldNameDoesntExist()
         {
