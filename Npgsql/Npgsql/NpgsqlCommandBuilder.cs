@@ -30,6 +30,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Resources;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -39,9 +40,6 @@ namespace Npgsql
     ///</summary>
     public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-        private readonly  static ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
         // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
@@ -201,7 +199,7 @@ namespace Npgsql
                         }
                     }
                     else 
-                        throw new InvalidOperationException(String.Format(resman.GetString("Exception_InvalidFunctionName"), command.CommandText));
+                        throw new InvalidOperationException(String.Format(L10N.InvalidFunctionName, command.CommandText));
                 }
 
                 command.Parameters.Clear();

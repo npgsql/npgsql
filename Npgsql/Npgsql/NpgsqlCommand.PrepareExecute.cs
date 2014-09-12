@@ -142,9 +142,9 @@ namespace Npgsql
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
         public override Int32 ExecuteNonQuery()
         {
+            _log.Debug("ExecuteNonQuery");
             //We treat this as a simple wrapper for calling ExecuteReader() and then
             //update the records affected count at every call to NextResult();
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteNonQuery");
             int? ret = null;
             using (NpgsqlDataReader rdr = GetReader(CommandBehavior.SequentialAccess))
             {
@@ -183,8 +183,6 @@ namespace Npgsql
         /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         public new NpgsqlDataReader ExecuteReader()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader");
-
             return ExecuteReader(CommandBehavior.Default);
         }
 
@@ -199,10 +197,9 @@ namespace Npgsql
         /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ExecuteReader", cb);
+            _log.Debug("ExecuteReader with CommandBehavior=" + cb);
 
             // Close connection if requested even when there is an error.
-
             try
             {
                 return GetReader(cb);
@@ -423,13 +420,9 @@ namespace Npgsql
         /// </summary>
         public override void Prepare()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Prepare");
-
-            // Check the connection state.
+            _log.Debug("Prepare command");
             CheckConnectionState();
-
             UnPrepare();
-
             PrepareInternal();
         }
 

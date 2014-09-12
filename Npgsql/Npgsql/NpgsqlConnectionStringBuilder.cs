@@ -42,12 +42,15 @@ using System.Security.Principal;
 using System.Text;
 
 // Keep the xml comment warning quiet for this file.
+using Npgsql.Npgsql.L10N;
+
 #pragma warning disable 1591
 
 namespace Npgsql
 {
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
+        static readonly ResourceManager resman = new ResourceManager("Npgsql.Npgsql.L10N.L10N", typeof(L10N).Assembly);
 
         [AttributeUsage(AttributeTargets.Property)]
         private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute {
@@ -188,7 +191,6 @@ namespace Npgsql
             }
         }
 
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly Dictionary<Keywords, ValueDescription> valueDescriptions = new Dictionary<Keywords, ValueDescription>();
 
         private string originalConnectionString;
@@ -266,7 +268,7 @@ namespace Npgsql
             {
                 string key = GetKeyName(Keywords.MinPoolSize);
                 throw new ArgumentOutOfRangeException(
-                    key, String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, MaxPoolSize));
+                    key, String.Format(L10N.IntegerKeyValMax, key, MaxPoolSize));
             }
         }
 
@@ -293,14 +295,14 @@ namespace Npgsql
                 string key = GetKeyName(keyword);
 
                 throw new ArgumentOutOfRangeException(
-                    key, String.Format(resman.GetString("Exception_IntegerKeyValMin"), key, min));
+                    key, String.Format(L10N.IntegerKeyValMin, key, min));
             }
             else if (v > max)
             {
                 string key = GetKeyName(keyword);
 
                 throw new ArgumentOutOfRangeException(
-                    key, String.Format(resman.GetString("Exception_IntegerKeyValMax"), key, max));
+                    key, String.Format(L10N.IntegerKeyValMax, key, max));
             }
 
             return v;
@@ -907,7 +909,7 @@ namespace Npgsql
                 case "ALWAYSPREPARE":
                     return Keywords.AlwaysPrepare;
                 default:
-                    throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
+                    throw new ArgumentException(L10N.WrongKeyVal, key);
             }
         }
 
@@ -1139,12 +1141,12 @@ namespace Npgsql
                     case Keywords.MinPoolSize:
                     case Keywords.MaxPoolSize:
                     case Keywords.CommandTimeout:
-                        exception_template = resman.GetString("Exception_InvalidIntegerKeyVal");
+                        exception_template = L10N.InvalidIntegerKeyVal;
                         break;
                     case Keywords.SSL:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
-                        exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
+                        exception_template = L10N.InvalidBooleanKeyVal;
                         break;
                 }
 

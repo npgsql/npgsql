@@ -112,27 +112,99 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Exception_WrongKeyVal" xml:space="preserve">
+  <data name="CommandTimeoutLessZero" xml:space="preserve">
+    <value>CommandTimeout不能为负值。</value>
+  </data>
+  <data name="SetConnectionInTransaction" xml:space="preserve">
+    <value>事务提交前，无法改变连接属性。</value>
+  </data>
+  <data name="SetTransactionInTransaction" xml:space="preserve">
+    <value>事务提交前，无法改变事务属性。</value>
+  </data>
+  <data name="CommandTypeTableDirect" xml:space="preserve">
+    <value>只支持Text和StoredProcedure类型。</value>
+  </data>
+  <data name="BackendErrors" xml:space="preserve">
+    <value>服务端发来错误报告。</value>
+  </data>
+  <data name="MediatorErrors" xml:space="preserve">
+    <value> {0}() 处出错:</value>
+  </data>
+  <data name="MediatorErrors_1P" xml:space="preserve">
+    <value> {0}({1}) 处出错:</value>
+  </data>
+  <data name="ConnectionNull" xml:space="preserve">
+    <value>连接尚未设定。</value>
+  </data>
+  <data name="ConnectionNotOpen" xml:space="preserve">
+    <value>连接未打开。</value>
+  </data>
+  <data name="ParamNotInQuery" xml:space="preserve">
+    <value>参数 {0} 没有出现在查询中。</value>
+  </data>
+  <data name="ConnectionBroken" xml:space="preserve">
+    <value>连接已中断。</value>
+  </data>
+  <data name="InvalidFunctionName" xml:space="preserve">
+    <value>pg_proc 中不存在 {0}</value>
+  </data>
+  <data name="ConnectionStringDescription" xml:space="preserve">
+    <value>用于连接PostgreSQL数据库的信息，例: 'Server=X;Port=X;Database=X;User Id=X;Password=X;'</value>
+  </data>
+  <data name="ConnectionTimeoutDescription" xml:space="preserve">
+    <value>连接等待超时值，连接字符串中为'Connect Timeout=X'</value>
+  </data>
+  <data name="DatabaseDescription" xml:space="preserve">
+    <value>所连接的PostgreSQL数据库，连接字符串中为'Database=X'</value>
+  </data>
+  <data name="NoNestedTransactions" xml:space="preserve">
+    <value>不支持嵌套/并发事务。</value>
+  </data>
+  <data name="InvalidDbName" xml:space="preserve">
+    <value>错误的数据库名: {0}</value>
+  </data>
+  <data name="MissingConnStrArg" xml:space="preserve">
+    <value>连接字符串中有遗漏的参数!</value>
+  </data>
+  <data name="ConnOpen" xml:space="preserve">
+    <value>连接已经是打开状态了</value>
+  </data>
+  <data name="ConnNotOpen" xml:space="preserve">
+    <value>连接未打开</value>
+  </data>
+  <data name="ConnStrEmpty" xml:space="preserve">
+    <value>连接字符串不能为空。</value>
+  </data>
+  <data name="SocketEx" xml:space="preserve">
+    <value>有SocketException异常</value>
+  </data>
+  <data name="OpenError" xml:space="preserve">
+    <value>Open()时发生错误</value>
+  </data>
+  <data name="CloseError" xml:space="preserve">
+    <value>Close()时发生错误</value>
+  </data>
+  <data name="WrongKeyVal" xml:space="preserve">
     <value>ConnectionString中的 key=value 参数不正确</value>
   </data>
-  <data name="Exception_InvalidBooleanKeyVal" xml:space="preserve">
+  <data name="InvalidBooleanKeyVal" xml:space="preserve">
     <value>期望 ConnectionString 中的 {0}=[True/False]</value>
   </data>
-  <data name="Exception_InvalidIntegerKeyVal" xml:space="preserve">
+  <data name="InvalidIntegerKeyVal" xml:space="preserve">
     <value>期望 ConnectionString 中的 {0}=[Numeric]</value>
   </data>
-  <data name="Exception_IntegerKeyValMax" xml:space="preserve">
+  <data name="IntegerKeyValMax" xml:space="preserve">
     <value>ConnectionString 中的数值 {0} 超过了最大值 {1}</value>
   </data>
-  <data name="Exception_IntegerKeyValMin" xml:space="preserve">
+  <data name="IntegerKeyValMin" xml:space="preserve">
     <value>ConnectionString 中的数值 {0} 低于最大值 {1}</value>
   </data>
-  <data name="Exception_InvalidProtocolVersionKeyVal" xml:space="preserve">
+  <data name="InvalidProtocolVersionKeyVal" xml:space="preserve">
     <value>期望 ConnectionString 中的 {0}=[Protocol Version]</value>
   </data>
 </root>

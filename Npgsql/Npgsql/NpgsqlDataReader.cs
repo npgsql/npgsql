@@ -77,9 +77,6 @@ namespace Npgsql
         private NpgsqlRow _pendingRow = null;
         private readonly bool _preparedStatement;
 
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         internal NpgsqlDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
                                         NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
                                         bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
@@ -209,11 +206,7 @@ namespace Npgsql
         /// </summary>
         public override Int32 RecordsAffected
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "RecordsAffected");
-                return _recordsAffected ?? -1;
-            }
+            get { return _recordsAffected ?? -1; }
         }
 
         #region Result traversal
@@ -497,15 +490,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Releases the resources used by the <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
-        /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
-            base.Dispose(disposing);
-        }
-
-        /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
         public override Boolean IsClosed
@@ -535,8 +519,6 @@ namespace Npgsql
 
         public override object GetProviderSpecificValue(int ordinal)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetValue");
-
             if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
             {
                 throw new IndexOutOfRangeException("Column index out of range");

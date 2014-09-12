@@ -36,6 +36,8 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Reflection;
 using System.Resources;
+using Common.Logging;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -63,18 +65,12 @@ namespace Npgsql
         private Dictionary<string, int> lookup;
         private Dictionary<string, int> lookupIgnoreCase;
 
-        // Logging related value
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
-        // Our resource manager
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
         /// </summary>
         internal NpgsqlParameterCollection()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
+
             InvalidateHashLookups();
         }
 
@@ -104,7 +100,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogIndexerGet(LogLevel.Debug, CLASSNAME, parameterName);
                 int index = IndexOf(parameterName);
 
                 if (index == -1)
@@ -116,7 +111,6 @@ namespace Npgsql
             }
             set
             {
-                NpgsqlEventLog.LogIndexerSet(LogLevel.Debug, CLASSNAME, parameterName, value);
                 int index = IndexOf(parameterName);
 
                 if (index == -1)
@@ -147,14 +141,9 @@ namespace Npgsql
 
         public new NpgsqlParameter this[int index]
         {
-            get
-            {
-                NpgsqlEventLog.LogIndexerGet(LogLevel.Debug, CLASSNAME, index);
-                return this.InternalList[index];
-            }
+            get { return this.InternalList[index]; }
             set
             {
-                NpgsqlEventLog.LogIndexerSet(LogLevel.Debug, CLASSNAME, index, value);
                 NpgsqlParameter oldValue = this.InternalList[index];
 
                 if (oldValue == value)
@@ -186,10 +175,7 @@ namespace Npgsql
         /// <returns>The index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public NpgsqlParameter Add(NpgsqlParameter value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", value);
-
             // Do not allow parameters without name.
-
             if (value.Collection != null)
             {
                 throw new InvalidOperationException("The parameter already belongs to a collection");
@@ -224,7 +210,6 @@ namespace Npgsql
         [Obsolete("Do not call this method. Use AddWithValue instead.")]
         public NpgsqlParameter Add(string parameterName, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, value);
             return this.AddWithValue(parameterName, value);
         }
 
@@ -236,7 +221,6 @@ namespace Npgsql
         /// <returns>The paramater that was added.</returns>
         public NpgsqlParameter AddWithValue(string parameterName, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, value);
             return this.Add(new NpgsqlParameter(parameterName, value));
         }
 
@@ -249,12 +233,8 @@ namespace Npgsql
         /// <returns>The paramater that was added.</returns>
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, value);
-
             NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType);
-
             param.Value = value;
-
             return this.Add(param);
         }
 
@@ -268,12 +248,8 @@ namespace Npgsql
         /// <returns>The paramater that was added.</returns>
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, size, value);
-
             NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType, size);
-
             param.Value = value;
-
             return this.Add(param);
         }
 
@@ -288,12 +264,8 @@ namespace Npgsql
         /// <returns>The paramater that was added.</returns>
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddWithValue", parameterName, parameterType, size, sourceColumn, value);
-
             NpgsqlParameter param = new NpgsqlParameter(parameterName, parameterType, size, sourceColumn);
-
             param.Value = value;
-
             return this.Add(param);
         }
 
@@ -305,7 +277,6 @@ namespace Npgsql
         /// <returns>The index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, parameterType);
             return this.Add(new NpgsqlParameter(parameterName, parameterType));
         }
 
@@ -318,7 +289,6 @@ namespace Npgsql
         /// <returns>The index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, parameterType, size);
             return this.Add(new NpgsqlParameter(parameterName, parameterType, size));
         }
 
@@ -332,7 +302,6 @@ namespace Npgsql
         /// <returns>The index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", parameterName, parameterType, size, sourceColumn);
             return this.Add(new NpgsqlParameter(parameterName, parameterType, size, sourceColumn));
         }
 
@@ -346,7 +315,6 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object to retrieve.</param>
         public override void RemoveAt(string parameterName)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", parameterName);
             RemoveAt(this.IndexOf(parameterName));
         }
 
@@ -357,7 +325,6 @@ namespace Npgsql
         /// <returns><b>true</b> if the collection contains the parameter; otherwise, <b>false</b>.</returns>
         public override bool Contains(string parameterName)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Contains", parameterName);
             return (IndexOf(parameterName) != -1);
         }
 
@@ -368,8 +335,6 @@ namespace Npgsql
         /// <returns>The zero-based location of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> in the collection.</returns>
         public override int IndexOf(string parameterName)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", parameterName);
-
             int retIndex;
             int scanIndex;
 
@@ -466,14 +431,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is read only.  Always false.
         /// </summary>
-        public override bool IsReadOnly
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsReadOnly");
-                return false;
-            }
-        }
+        public override bool IsReadOnly { get { return false; } }
 
         /// <summary>
         /// Removes the specified <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> from the collection using a specific index.
@@ -481,7 +439,6 @@ namespace Npgsql
         /// <param name="index">The zero-based index of the parameter.</param>
         public override void RemoveAt(int index)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "RemoveAt", index);
             if(this.InternalList.Count - 1 < index)
             {
                 throw new IndexOutOfRangeException();
@@ -496,12 +453,8 @@ namespace Npgsql
         /// <param name="oValue">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         public override void Insert(int index, object oValue)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Insert", index, oValue);
-
             CheckType(oValue);
-
             NpgsqlParameter value = oValue as NpgsqlParameter;
-
             if (value.Collection != null)
             {
                 throw new InvalidOperationException("The parameter already belongs to a collection");
@@ -518,8 +471,6 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
         public void Remove(string parameterName)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", parameterName);
-
             int index = IndexOf(parameterName);
             if (index < 0)
             {
@@ -528,18 +479,15 @@ namespace Npgsql
             RemoveAt(index);
         }
 
-
         /// <summary>
         /// Removes the specified <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> from the collection.
         /// </summary>
         /// <param name="oValue">The <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
         public override void Remove(object oValue)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Remove", oValue);
             CheckType(oValue);
             Remove(oValue as NpgsqlParameter);
         }
-
 
         /// <summary>
         /// Gets a value indicating whether a <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> exists in the collection.
@@ -548,7 +496,6 @@ namespace Npgsql
         /// <returns>true if the collection contains the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object; otherwise, false.</returns>
         public override bool Contains(object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Contains", value);
             if (!(value is NpgsqlParameter))
             {
                 return false;
@@ -564,8 +511,6 @@ namespace Npgsql
         /// <returns><b>true</b> if the collection contains the parameter and param will contain the parameter; otherwise, <b>false</b>.</returns>
         public bool TryGetValue(string parameterName, out NpgsqlParameter parameter)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "TryGetValue", parameterName);
-
             int index = IndexOf(parameterName);
 
             if (index != -1)
@@ -587,7 +532,6 @@ namespace Npgsql
         /// </summary>
         public override void Clear()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Clear");
             foreach(NpgsqlParameter toRemove in this.InternalList)
             {
                 // clean up the parameter so it can be added to another command if required.
@@ -604,7 +548,6 @@ namespace Npgsql
         /// <returns>The zero-based index of the <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object in the collection.</returns>
         public override int IndexOf(object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "IndexOf", value);
             CheckType(value);
             return this.InternalList.IndexOf((NpgsqlParameter) value);
         }
@@ -616,7 +559,6 @@ namespace Npgsql
         /// <returns>The zero-based index of the new <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public override int Add(object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Add", value);
             CheckType(value);
             this.Add((NpgsqlParameter) value);
             return Count - 1;
@@ -625,14 +567,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is fixed size.  Always false.
         /// </summary>
-        public override bool IsFixedSize
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsFixedSize");
-                return false;
-            }
-        }
+        public override bool IsFixedSize { get { return false; } }
 
         #endregion
 
@@ -641,14 +576,7 @@ namespace Npgsql
         /// <summary>
         /// Report whether the collection is synchronized.
         /// </summary>
-        public override bool IsSynchronized
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsSynchronized");
-                return (InternalList as ICollection).IsSynchronized;
-            }
-        }
+        public override bool IsSynchronized { get { return (InternalList as ICollection).IsSynchronized; } }
 
         /// <summary>
         /// Gets the number of <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> objects in the collection.
@@ -659,14 +587,7 @@ namespace Npgsql
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 #endif
 
-        public override int Count
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Count");
-                return this.InternalList.Count;
-            }
-        }
+        public override int Count { get { return this.InternalList.Count; } }
 
         /// <summary>
         /// Copies <see cref="Npgsql.NpgsqlParameter">NpgsqlParameter</see> objects from the <see cref="Npgsql.NpgsqlParameterCollection">NpgsqlParameterCollection</see> to the specified array.
@@ -675,7 +596,6 @@ namespace Npgsql
         /// <param name="index">The starting index of the array.</param>
         public override void CopyTo(Array array, int index)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CopyTo", array, index);
             (InternalList as ICollection).CopyTo(array, index);
             IRaiseItemChangedEvents x = InternalList as IRaiseItemChangedEvents;
         }
@@ -683,14 +603,7 @@ namespace Npgsql
         /// <summary>
         /// Sync root.
         /// </summary>
-        public override object SyncRoot
-        {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "SyncRoot");
-                return (InternalList as ICollection).SyncRoot;
-            }
-        }
+        public override object SyncRoot { get { return (InternalList as ICollection).SyncRoot; } }
 
         #endregion
 
@@ -702,7 +615,6 @@ namespace Npgsql
         /// <returns>An <see cref="System.Collections.IEnumerator">IEnumerator</see> that can be used to iterate through the collection.</returns>
         public override IEnumerator GetEnumerator()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetEnumerator");
             return this.InternalList.GetEnumerator();
         }
 
@@ -714,7 +626,6 @@ namespace Npgsql
         /// <param name="values">Parameters to add.</param>
         public override void AddRange(Array values)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "AddRange", values);
             foreach (NpgsqlParameter parameter in values)
             {
                 Add(parameter);
@@ -768,11 +679,10 @@ namespace Npgsql
         /// <param name="Object">The object to verify</param>
         private void CheckType(object Object)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckType", Object);
             if (!(Object is NpgsqlParameter))
             {
                 throw new InvalidCastException(
-                    String.Format(resman.GetString("Exception_WrongType"), Object.GetType()));
+                    String.Format(L10N.WrongType, Object.GetType()));
             }
         }
 

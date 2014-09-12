@@ -41,17 +41,12 @@ namespace Npgsql
     ///
     internal sealed class NpgsqlStartupPacket : ClientMessage
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         // Private fields.
         private readonly List<byte[]> parameterNames = new List<byte[]>(10);
         private readonly List<byte[]> parameterValues = new List<byte[]>(10);
 
         public NpgsqlStartupPacket(String database_name, String user_name, NpgsqlConnectionStringBuilder  settings)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BuildStartupPacket");
-
             Dictionary<String, String> parameters = new Dictionary<String, String>();
 
             parameters.Add("DateStyle", "ISO");
@@ -87,8 +82,6 @@ namespace Npgsql
 
         public override void WriteToStream(Stream output_stream)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
-
             int packet_size = 4 + 4 + 1;
 
             for (int i = 0; i < parameterNames.Count; i++)

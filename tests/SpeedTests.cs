@@ -5,6 +5,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.IO;
+using Common.Logging;
+using Common.Logging.Configuration;
+using Common.Logging.Simple;
 using NUnit.Framework;
 
 using Npgsql;
@@ -740,8 +743,6 @@ namespace NpgsqlTests
         [SetUp]
         public void Setup()
         {
-            NpgsqlEventLog.Level = LogLevel.None;
-            NpgsqlEventLog.EchoMessages = false;
             _watch = new Stopwatch();
             _watch.Start();
         }
@@ -751,6 +752,12 @@ namespace NpgsqlTests
         {
             _watch.Stop();
             Console.WriteLine("Total test running time: {0}ms",  _watch.ElapsedMilliseconds);
+        }
+
+        protected override void SetupLogging()
+        {
+            // Disable logging because it impacts performance
+            LogManager.Adapter = new NoOpLoggerFactoryAdapter();
         }
 
         #endregion

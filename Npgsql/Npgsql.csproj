@@ -33,6 +33,8 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net45|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -79,6 +81,12 @@
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Common.Logging">
+      <HintPath>..\packages\Common.Logging.2.2.0\lib\net40\Common.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Common.Logging.Core">
+      <HintPath>..\packages\Common.Logging.Core.2.2.0\lib\net40\Common.Logging.Core.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -109,6 +117,11 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
+    <Compile Include="Npgsql\L10N\L10N.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>L10N.resx</DependentUpon>
+    </Compile>
     <Compile Include="Npgsql\NpgsqlQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Npgsql\Cache.cs" />
@@ -151,7 +164,6 @@
     <Compile Include="Npgsql\NpgsqlDataReader.cs" />
     <Compile Include="Npgsql\NpgsqlDescribe.cs" />
     <Compile Include="Npgsql\NpgsqlError.cs" />
-    <Compile Include="Npgsql\NpgsqlEventLog.cs" />
     <Compile Include="Npgsql\NpgsqlException.cs" />
     <Compile Include="Npgsql\NpgsqlExecute.cs" />
     <Compile Include="Npgsql\NpgsqlFactory.cs" />
@@ -181,289 +193,19 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnector.resx">
-      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <SubType>Designer</SubType>
+    <EmbeddedResource Include="Npgsql\L10N\L10N.de.resx" />
+    <EmbeddedResource Include="Npgsql\L10N\L10N.es.resx" />
+    <EmbeddedResource Include="Npgsql\L10N\L10N.fi.resx" />
+    <EmbeddedResource Include="Npgsql\L10N\L10N.fr.resx" />
+    <EmbeddedResource Include="Npgsql\L10N\L10N.ja.resx" />
+    <EmbeddedResource Include="Npgsql\L10N\L10N.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>L10N.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.de.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.fr.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.es.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.fi.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.ja.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommand.zh-CN.resx">
-      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.resx">
-      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.de.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.es.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.fi.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.fr.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.ja.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnection.zh-CN.resx">
-      <DependentUpon>NpgsqlConnection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.de.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.es.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.fi.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.fr.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.ja.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlEventLog.zh-CN.resx">
-      <DependentUpon>NpgsqlEventLog.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlException.resx">
-      <DependentUpon>NpgsqlException.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlException.de.resx">
-      <DependentUpon>NpgsqlException.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlException.fr.resx">
-      <DependentUpon>NpgsqlException.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.de.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.es.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.fi.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.fr.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.ja.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameter.zh-CN.resx">
-      <DependentUpon>NpgsqlParameter.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.de.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.es.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.fi.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.fr.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.ja.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlParameterCollection.zh-CN.resx">
-      <DependentUpon>NpgsqlParameterCollection.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlRow.resx">
-      <DependentUpon>NpgsqlRow.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlRow.de.resx">
-      <DependentUpon>NpgsqlRow.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlRow.fr.resx">
-      <DependentUpon>NpgsqlRow.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.de.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.es.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.fi.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.fr.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.ja.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlTransaction.zh-CN.resx">
-      <DependentUpon>NpgsqlTransaction.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\PGUtil.resx">
-      <DependentUpon>PGUtil.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\PGUtil.de.resx">
-      <DependentUpon>PGUtil.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\PGUtil.fr.resx">
-      <DependentUpon>PGUtil.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Npgsql\L10N\L10N.zh-CN.resx" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Npgsql\NpgsqlMetaData.xml" />
-    <EmbeddedResource Include="Npgsql\NpgsqlConnector.ja.resx">
-      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnector.de.resx">
-      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnector.fr.resx">
-      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnector.zh-CN.resx">
-      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.ja.resx">
-      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.fr.resx">
-      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.de.resx">
-      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlCommandBuilder.zh-CN.resx">
-      <DependentUpon>NpgsqlCommandBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.de.resx">
-      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.fr.resx">
-      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.ja.resx">
-      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.resx">
-      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlConnectionStringBuilder.zh-CN.resx">
-      <DependentUpon>NpgsqlConnectionStringBuilder.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlException.ja.resx">
-      <DependentUpon>NpgsqlException.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\NpgsqlException.zh-CN.resx">
-      <DependentUpon>NpgsqlException.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\PGUtil.ja.resx">
-      <DependentUpon>PGUtil.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\PGUtil.zh-CN.resx">
-      <DependentUpon>PGUtil.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -482,10 +224,20 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Target Name="PublisherPolicy">
     <AL LinkResources="PublisherPolicy.config" OutputAssembly="$(OutputPath)\policy.2.0.$(AssemblyName).dll" KeyFile="..\Npgsql.snk" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

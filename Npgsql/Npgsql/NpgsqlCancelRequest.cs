@@ -35,9 +35,6 @@ namespace Npgsql
     ///
     internal sealed class NpgsqlCancelRequest : ClientMessage
     {
-        // Logging related values
-        //private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         private static readonly Int32 CancelRequestMessageSize = 16;
         private static readonly Int32 CancelRequestCode = 1234 << 16 | 5678;
 

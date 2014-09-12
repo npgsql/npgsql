@@ -32,6 +32,7 @@ using System.Data;
 using System.Data.Common;
 using System.Reflection;
 using System.Resources;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -49,9 +50,6 @@ namespace Npgsql
 
     public sealed class NpgsqlParameter : DbParameter, ICloneable
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         // Fields to implement IDbDataParameter interface.
         private byte precision = 0;
         private byte scale = 0;
@@ -71,7 +69,6 @@ namespace Npgsql
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Boolean useCast = false;
 
@@ -84,7 +81,6 @@ namespace Npgsql
         /// </summary>
         public NpgsqlParameter()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
         }
 
@@ -104,8 +100,6 @@ namespace Npgsql
         /// </remarks>
         public NpgsqlParameter(String parameterName, object value)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, value);
-
             this.ParameterName = parameterName;
             this.Value = value;
 
@@ -190,8 +184,6 @@ namespace Npgsql
         /// <param m_Name="sourceColumn">The m_Name of the source column.</param>
         public NpgsqlParameter(String parameterName, NpgsqlDbType parameterType, Int32 size, String sourceColumn)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, parameterName, parameterType, size, source_column);
-
             this.ParameterName = parameterName;
 
             NpgsqlDbType = parameterType; //Allow the setter to catch any exceptions.
@@ -290,15 +282,9 @@ namespace Npgsql
         [Category("Data"), DefaultValue((Byte)0)]
         public Byte Precision
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Precision");
-                return precision;
-            }
-
+            get { return precision; }
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Precision", value);
                 precision = value;
                 bound = false;
             }
@@ -336,15 +322,9 @@ namespace Npgsql
         [Category("Data"), DefaultValue((Byte)0)]
         public Byte Scale
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Scale");
-                return scale;
-            }
-
+            get { return scale; }
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Scale", value);
                 scale = value;
                 bound = false;
             }
@@ -358,15 +338,9 @@ namespace Npgsql
         [Category("Data"), DefaultValue(0)]
         public override Int32 Size
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "Size");
-                return size;
-            }
-
+            get { return size; }
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Size", value);
                 size = value;
                 bound = false;
             }
@@ -381,8 +355,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "DbType");
-
                 if (type_info == null)
                     return defaultTypeInfo.DbType;
                 else
@@ -390,15 +362,12 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "DbType", value);
-
                 useCast = value != DbType.Object;
                 bound = false;
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
             }
         }
@@ -412,8 +381,6 @@ namespace Npgsql
         {
             get
             {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "NpgsqlDbType");
-
                 if (type_info == null)
                     return defaultTypeInfo.NpgsqlDbType;
                 else
@@ -421,16 +388,15 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlDbType", value);
                 useCast = true;
                 bound = false;
                 if (value == NpgsqlDbType.Array)
                 {
-                    throw new ArgumentOutOfRangeException("value", resman.GetString("Exception_ParameterTypeIsOnlyArray"));
+                    throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
                 }
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
             }
         }
@@ -457,17 +423,8 @@ namespace Npgsql
         [Category("Data"), DefaultValue(ParameterDirection.Input)]
         public override ParameterDirection Direction
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "Direction");
-                return direction;
-            }
-
-            set
-            {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Direction", value);
-                direction = value;
-            }
+            get { return direction; }
+            set { direction = value; }
         }
 
         /// <summary>
@@ -481,17 +438,8 @@ namespace Npgsql
 
         public override Boolean IsNullable
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Debug, CLASSNAME, "IsNullable");
-                return is_nullable;
-            }
-
-            set
-            {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "IsNullable", value);
-                is_nullable = value;
-            }
+            get { return is_nullable; }
+            set { is_nullable = value; }
         }
 
         /// <summary>
@@ -502,12 +450,7 @@ namespace Npgsql
         [DefaultValue("")]
         public override String ParameterName
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "ParameterName");
-                return m_Name;
-            }
-
+            get { return m_Name; }
             set
             {
                 m_Name = value;
@@ -524,8 +467,6 @@ namespace Npgsql
                     collection.InvalidateHashLookups();
                     bound = false;
                 }
-
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "ParameterName", m_Name);
             }
         }
 
@@ -556,17 +497,8 @@ namespace Npgsql
         [Category("Data"), DefaultValue("")]
         public override String SourceColumn
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "SourceColumn");
-                return source_column;
-            }
-
-            set
-            {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "SourceColumn", value);
-                source_column = value;
-            }
+            get { return source_column; }
+            set { source_column = value; }
         }
 
         /// <summary>
@@ -578,17 +510,8 @@ namespace Npgsql
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
         public override DataRowVersion SourceVersion
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "SourceVersion");
-                return source_version;
-            }
-
-            set
-            {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "SourceVersion", value);
-                source_version = value;
-            }
+            get { return source_version; }
+            set { source_version = value; }
         }
 
         /// <summary>
@@ -621,8 +544,6 @@ namespace Npgsql
             } // [TODO] Check and validate data type.
             set
             {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "Value", value);
-
                 if ((value == null) || (value == DBNull.Value))
                 {
                     // don't really know what to do - leave default and do further exploration
@@ -641,12 +562,12 @@ namespace Npgsql
 
                 if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
                 }
 
                 if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
                 {
-                    throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
+                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
 
                 }
                 else
@@ -668,18 +589,9 @@ namespace Npgsql
         [TypeConverter(typeof(StringConverter)), Category("Data")]
         public Object NpgsqlValue
         {
-            get
-            {
-                NpgsqlEventLog.LogPropertyGet(LogLevel.Normal, CLASSNAME, "NpgsqlValue");
-                return npgsqlValue;
-            }
-
-            set
-            {
-                NpgsqlEventLog.LogPropertySet(LogLevel.Normal, CLASSNAME, "NpgsqlValue", value);
-
+            get { return npgsqlValue; }
+            set {
                 Value = value;
-
                 bound = false;
             }
         }

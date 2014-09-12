@@ -39,22 +39,15 @@ namespace Npgsql
     /// </summary>
     internal sealed class NpgsqlPasswordPacket : ClientMessage
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-
         private readonly byte[] password;
 
         public NpgsqlPasswordPacket(byte[] password)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME);
-
             this.password = password;
         }
 
         public override void WriteToStream(Stream outputStream)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "WriteToStream");
-
             outputStream
                 .WriteBytes((Byte)ASCIIBytes.p)
                 .WriteInt32(4 + password.Length)

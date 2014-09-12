@@ -25,8 +25,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
+using Common.Logging;
 
 namespace Npgsql
 {
@@ -52,6 +54,8 @@ namespace Npgsql
         public static readonly NpgsqlQuery SetStmtTimeout60Sec = new NpgsqlQuery("SET statement_timeout = 60000");
         public static readonly NpgsqlQuery SetStmtTimeout90Sec = new NpgsqlQuery("SET statement_timeout = 90000");
         public static readonly NpgsqlQuery SetStmtTimeout120Sec = new NpgsqlQuery("SET statement_timeout = 120000");
+
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         public NpgsqlQuery(byte[] command)
         {
@@ -91,21 +95,16 @@ namespace Npgsql
 
         public override void WriteToStream(Stream outputStream)
         {
-            if (NpgsqlEventLog.Level >= LogLevel.Debug)
-            {
-                // Log the string being sent.
-                // If (this) was constructed with a byte[], then commandText has to be
-                // initialized before the first Log call.
-                if (commandText == null)
-                {
-                    commandText = BackendEncoding.UTF8Encoding.GetString(commandBytes);
-                    commandBytes = null;
-                }
-
-                PGUtil.LogStringWritten(commandText);
-            }
-
             outputStream.WriteBytes(pgCommandBytes);
+        }
+
+        public override string ToString()
+        {
+            if (commandText != null)
+                return commandText;
+            if (commandBytes != null)
+                return BackendEncoding.UTF8Encoding.GetString(commandBytes);
+            throw new Exception("Invalid NpgsqlQuery state");
         }
     }
 }

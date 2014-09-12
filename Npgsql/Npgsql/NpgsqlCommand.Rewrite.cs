@@ -36,6 +36,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
+using Npgsql.Npgsql.L10N;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -53,11 +54,9 @@ namespace Npgsql
         ///</summary>
         private void CheckConnectionState()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CheckConnectionState");
-
             if (Connector == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
+                throw new InvalidOperationException(L10N.ConnectionNotOpen);
             }
 
             switch (Connector.State)
@@ -67,7 +66,7 @@ namespace Npgsql
                 case NpgsqlState.Closed:
                 case NpgsqlState.Broken:
                 case NpgsqlState.Connecting:
-                    throw new InvalidOperationException(resman.GetString("Exception_ConnectionNotOpen"));
+                    throw new InvalidOperationException(L10N.ConnectionNotOpen);
                 case NpgsqlState.Executing:
                 case NpgsqlState.Fetching:
                     throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
@@ -87,11 +86,7 @@ namespace Npgsql
         /// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
         internal byte[] GetCommandText()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
-
-            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
-
-            return ret;
+            return string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
         }
 
         private Boolean CheckFunctionNeedsColumnDefinitionList()
@@ -236,8 +231,6 @@ namespace Npgsql
         /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
         private byte[] GetCommandText(bool prepare)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
-
             MemoryStream commandBuilder = new MemoryStream();
 
             if (commandType == CommandType.TableDirect)
@@ -839,8 +832,6 @@ namespace Npgsql
 
         private byte[] GetExecuteCommandText()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetPreparedCommandText");
-
             MemoryStream result = new MemoryStream();
 
             result.WriteString("EXECUTE {0}", planName);

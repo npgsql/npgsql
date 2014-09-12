@@ -36,7 +36,9 @@ using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
+using Common.Logging;
 using Mono.Security.Protocol.Tls;
+using Npgsql.Npgsql.L10N;
 using IsolationLevel = System.Data.IsolationLevel;
 
 #if WITHDESIGN
@@ -69,10 +71,6 @@ namespace Npgsql
 
     public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
-        // Logging related values
-        private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
-        private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
-
         // Parsed connection string cache
         private static readonly Cache<NpgsqlConnectionStringBuilder> cache = new Cache<NpgsqlConnectionStringBuilder>();
 
@@ -149,6 +147,8 @@ namespace Npgsql
         // A cached copy of the result of `settings.ConnectionString`
         private string _connectionString;
 
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+
         /// <summary>
         /// Initializes a new instance of the
         /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class.
@@ -184,10 +184,7 @@ namespace Npgsql
         /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(String ConnectionString)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
-
             LoadConnectionStringBuilder(ConnectionString);
-
             Init();
         }
 
@@ -199,10 +196,7 @@ namespace Npgsql
         /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(NpgsqlConnectionStringBuilder ConnectionString)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, CLASSNAME, "NpgsqlConnection()");
-
             LoadConnectionStringBuilder(ConnectionString);
-
             Init();
         }
 
@@ -284,7 +278,6 @@ namespace Npgsql
                 // Connection string is used as the key to the connector.  Because of this,
                 // we cannot change it while we own a connector.
                 CheckConnectionClosed();
-                NpgsqlEventLog.LogPropertySet(LogLevel.Debug, CLASSNAME, "ConnectionString", value);
                 NpgsqlConnectionStringBuilder builder = cache[value];
                 if (builder == null)
                 {
@@ -577,8 +570,6 @@ namespace Npgsql
         /// </remarks>
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginDbTransaction", isolationLevel);
-
             return BeginTransaction(isolationLevel);
         }
 
@@ -592,8 +583,7 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginTransaction");
-            return this.BeginTransaction(IsolationLevel.ReadCommitted);
+            return BeginTransaction(IsolationLevel.ReadCommitted);
         }
 
         /// <summary>
@@ -608,13 +598,13 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "BeginTransaction", level);
+            _log.Debug("Beginning transaction with isolation level " + level);
 
             CheckConnectionOpen();
 
             if (connector.Transaction != null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_NoNestedTransactions"));
+                throw new InvalidOperationException(L10N.NoNestedTransactions);
             }
 
             return new NpgsqlTransaction(this, level);
@@ -633,18 +623,16 @@ namespace Npgsql
 
             CheckConnectionClosed();
 
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Open");
+            _log.Debug("Opening connnection");
 
             // Check if there is any missing argument.
             if (!settings.ContainsKey(Keywords.Host))
             {
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            Keywords.Host.ToString());
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.Host.ToString());
             }
             if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
             {
-                throw new ArgumentException(resman.GetString("Exception_MissingConnStrArg"),
-                                            Keywords.UserName.ToString());
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.UserName.ToString());
             }
 
             // Get a Connector, either from the pool or creating one ourselves.
@@ -689,9 +677,8 @@ namespace Npgsql
         /// <param name="dbName">The name of the database to use in place of the current database.</param>
         public override void ChangeDatabase(String dbName)
         {
+            _log.Debug("Changing database to " + dbName);
             CheckNotDisposed();
-
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ChangeDatabase", dbName);
 
             if (dbName == null)
             {
@@ -700,7 +687,7 @@ namespace Npgsql
 
             if (string.IsNullOrEmpty(dbName))
             {
-                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(resman.GetString("Exception_InvalidDbName")));
+                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(L10N.InvalidDbName));
             }
 
             String oldDatabaseName = Database;
@@ -726,10 +713,10 @@ namespace Npgsql
         /// </summary>
         public override void Close()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Close");
-
             if (connector == null)
                 return;
+
+            _log.Debug("Closing connection");
 
             if (promotable != null && promotable.InLocalTransaction)
             {
@@ -742,7 +729,7 @@ namespace Npgsql
 
         private void ReallyClose()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "ReallyClose");
+            _log.Trace("Really closing connection");
             _postponingClose = false;
 
             // clear the way for another promotable transaction
@@ -787,7 +774,6 @@ namespace Npgsql
         /// </summary>
         internal void PromotableLocalTransactionEnded()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "PromotableLocalTransactionEnded");
             if (_postponingDispose)
                 Dispose(true);
             else if (_postponingClose)
@@ -801,7 +787,6 @@ namespace Npgsql
         /// <returns>A <see cref="System.Data.Common.DbCommand">DbCommand</see> object.</returns>
         protected override DbCommand CreateDbCommand()
         {
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateDbCommand");
             return CreateCommand();
         }
 
@@ -813,8 +798,6 @@ namespace Npgsql
         public new NpgsqlCommand CreateCommand()
         {
             CheckNotDisposed();
-
-            NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "CreateCommand");
             return new NpgsqlCommand("", this);
         }
 
@@ -832,7 +815,6 @@ namespace Npgsql
             _postponingDispose = false;
             if (disposing)
             {
-                NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "Dispose");
                 Close();
                 if (_postponingClose)
                 {
@@ -1060,20 +1042,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Write each key/value pair in the connection string to the log.
-        /// </summary>
-        private void LogConnectionString()
-        {
-            if (LogLevel.Debug >= NpgsqlEventLog.Level)
-                return;
-
-            foreach (string key in settings.Keys)
-            {
-                NpgsqlEventLog.LogMsg(resman, "Log_ConnectionStringValues", LogLevel.Debug, key, settings[key]);
-            }
-        }
-
-        /// <summary>
         /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
         /// </summary>
         /// <param name="connectionString">The connection string to load the builder from</param>
@@ -1103,7 +1071,12 @@ namespace Npgsql
                settings.UserName = settings.UserName;
 
             RefreshConnectionString();
-            LogConnectionString();
+
+            if (_log.IsTraceEnabled) {
+                foreach (string key in settings.Keys) {
+                    _log.TraceFormat("Connstring dump {0}={1}", key, settings[key]);
+                }
+            }
         }
 
         /// <summary>
@@ -1116,9 +1089,8 @@ namespace Npgsql
 
         private void CheckConnectionOpen()
         {
-            if (disposed)
-            {
-                throw new ObjectDisposedException(CLASSNAME);
+            if (disposed) {
+                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
 
             if (_fakingOpen)
@@ -1139,28 +1111,25 @@ namespace Npgsql
 
             if (_postponingClose || connector == null)
             {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnNotOpen"));
+                throw new InvalidOperationException(L10N.ConnNotOpen);
             }
         }
 
         private void CheckConnectionClosed()
         {
-            if (disposed)
-            {
-                throw new ObjectDisposedException(CLASSNAME);
+            if (disposed) {
+                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
 
-            if (connector != null)
-            {
-                throw new InvalidOperationException(resman.GetString("Exception_ConnOpen"));
+            if (connector != null) {
+                throw new InvalidOperationException(L10N.ConnNotOpen);
             }
         }
 
         private void CheckNotDisposed()
         {
-            if (disposed)
-            {
-                throw new ObjectDisposedException(CLASSNAME);
+            if (disposed) {
+                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
         }
 

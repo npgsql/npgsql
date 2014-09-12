@@ -27,6 +27,11 @@ using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
 using System.Reflection;
+using Common.Logging;
+using Common.Logging.Configuration;
+using Common.Logging.NLog;
+using NLog.Config;
+using NLog.Targets;
 using Npgsql;
 
 using NpgsqlTypes;
@@ -106,6 +111,8 @@ namespace NpgsqlTests
         [TestFixtureSetUp]
         public virtual void TestFixtureSetup()
         {
+            SetupLogging();
+
             var connStringEnvVar = "NPGSQL_TEST_DB_" + BackendVersion;
             _connectionString = Environment.GetEnvironmentVariable(connStringEnvVar);
             if (_connectionString == null)
@@ -263,10 +270,17 @@ namespace NpgsqlTests
             }
         }
 
-        static TestBase()
+        protected virtual void SetupLogging()
         {
-            //NpgsqlEventLog.Level = LogLevel.Debug;
-            //NpgsqlEventLog.EchoMessages = true;
+            var config = new LoggingConfiguration();
+            var consoleTarget = new ConsoleTarget();
+            consoleTarget.Layout = @"${message}";
+            config.AddTarget("console", consoleTarget);
+            var rule = new LoggingRule("*", NLog.LogLevel.Debug, consoleTarget);
+            config.LoggingRules.Add(rule);
+            NLog.LogManager.Configuration = config;
+
+            LogManager.Adapter = new NLogLoggerFactoryAdapter(new NameValueCollection());
         }
 
         #endregion
