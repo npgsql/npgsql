@@ -270,7 +270,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(
                     key, String.Format(L10N.IntegerKeyValMax, key, MaxPoolSize));
             }
-            if (Compatible != null)
+            if (Compatible != THIS_VERSION)
                 throw new NotSupportedException("No compatibility modes supported in this Npgsql version");
         }
 
