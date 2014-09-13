@@ -25,6 +25,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
@@ -82,12 +83,10 @@ namespace NpgsqlTypes
         /// A cache of basic datatype mappings keyed by server version.  This way we don't
         /// have to load the basic type mappings for every connection.
         /// </summary>
-        private static readonly Dictionary<MappingKey, NpgsqlBackendTypeMapping> BackendTypeMappingCache =
-            new Dictionary<MappingKey, NpgsqlBackendTypeMapping>();
+        private static readonly ConcurrentDictionary<MappingKey, NpgsqlBackendTypeMapping> BackendTypeMappingCache =
+            new ConcurrentDictionary<MappingKey, NpgsqlBackendTypeMapping>();
 
         private static readonly NpgsqlNativeTypeMapping NativeTypeMapping = PrepareDefaultTypesMap();
-
-        private static readonly Version Npgsql207 = new Version("2.0.7");
 
         private static readonly Dictionary<string, NpgsqlBackendTypeInfo> DefaultBackendInfoMapping = PrepareDefaultBackendInfoMapping();
 
@@ -681,47 +680,10 @@ namespace NpgsqlTypes
         /// </returns>
         public static NpgsqlBackendTypeMapping CreateAndLoadInitialTypesMapping(NpgsqlConnector conn)
         {
-            MappingKey key = new MappingKey(conn);
-            // Check the cache for an initial types map.
-            NpgsqlBackendTypeMapping oidToNameMapping = null;
-
-            if(BackendTypeMappingCache.TryGetValue(key, out oidToNameMapping))
-                return oidToNameMapping;
-
-            // Not in cache, create a new one.
-            oidToNameMapping = new NpgsqlBackendTypeMapping();
-
-            // Create a list of all natively supported postgresql data types.
-
-            // Attempt to map each type info in the list to an OID on the backend and
-            // add each mapped type to the new type mapping object.
-            LoadTypesMappings(conn, oidToNameMapping, TypeInfoList(conn.UseExtendedTypes));
-
-            //We hold the lock for the least time possible on the least scope possible.
-            //We must lock on BackendTypeMappingCache because it will be updated by this operation,
-            //and we must not just add to it, but also check that another thread hasn't updated it
-            //in the meantime. Strictly just doing :
-            //return BackendTypeMappingCache[key] = oidToNameMapping;
-            //as the only call within the locked section should be safe and correct, but we'll assume
-            //there's some subtle problem with temporarily having two copies of the same mapping and
-            //ensure only one is called.
-            //It is of course wasteful that multiple threads could be creating mappings when only one
-            //will be used, but we aim for better overall concurrency at the risk of causing some
-            //threads the extra work.
-            NpgsqlBackendTypeMapping mappingCheck = null;
-            //First check without acquiring the lock; don't lock if we don't have to.
-            if(BackendTypeMappingCache.TryGetValue(key, out mappingCheck))//Another thread built the mapping in the meantime.
-                return mappingCheck;
-            lock(BackendTypeMappingCache)
-            {
-                //Final check. We have the lock now so if this fails it'll continue to fail.
-                if(BackendTypeMappingCache.TryGetValue(key, out mappingCheck))//Another thread built the mapping in the meantime.
-                    return mappingCheck;
-                // Add this mapping to the per-server-version cache so we don't have to
-                // do these expensive queries on every connection startup.
-                BackendTypeMappingCache.Add(key, oidToNameMapping);
-            }
-            return oidToNameMapping;
+            return BackendTypeMappingCache.GetOrAdd(
+                new MappingKey(conn),
+                k => LoadTypesMappings(conn, TypeInfoList(conn.UseExtendedTypes))
+            );
         }
 
         //Take a NpgsqlBackendTypeInfo for a type and return the NpgsqlBackendTypeInfo for
@@ -754,50 +716,47 @@ namespace NpgsqlTypes
         /// updated (OID) and added to the provided NpgsqlTypeMapping object.
         /// </summary>
         /// <param name="conn">NpgsqlConnector to send query through.</param>
-        /// <param name="TypeMappings">Mapping object to add types too.</param>
-        /// <param name="TypeInfoList">List of types that need to have OID's mapped.</param>
-        public static void LoadTypesMappings(NpgsqlConnector conn, NpgsqlBackendTypeMapping TypeMappings,
-                                             IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList)
+        /// <param name="typeInfoList">List of types that need to have OID's mapped.</param>
+        public static NpgsqlBackendTypeMapping LoadTypesMappings(NpgsqlConnector conn, IEnumerable<NpgsqlBackendTypeInfo> typeInfoList)
         {
-            StringBuilder InList = new StringBuilder();
-            Dictionary<string, NpgsqlBackendTypeInfo> NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
+            var mapping = new NpgsqlBackendTypeMapping();
+            var inList = new StringBuilder();
+            var nameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
 
             // Build a clause for the SELECT statement.
             // Build a name->typeinfo mapping so we can match the results of the query
             // with the list of type objects efficiently.
-            foreach (NpgsqlBackendTypeInfo TypeInfo in TypeInfoList)
+            foreach (var typeInfo in typeInfoList)
             {
-                NameIndex.Add(TypeInfo.Name, TypeInfo);
-                InList.AppendFormat("{0}'{1}'", ((InList.Length > 0) ? ", " : ""), TypeInfo.Name);
+                nameIndex.Add(typeInfo.Name, typeInfo);
+                inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? ", " : ""), typeInfo.Name);
 
                 //do the same for the equivalent array type.
 
-                NameIndex.Add("_" + TypeInfo.Name, ArrayTypeInfo(TypeInfo));
+                nameIndex.Add("_" + typeInfo.Name, ArrayTypeInfo(typeInfo));
 
-                InList.Append(", '_").Append(TypeInfo.Name).Append('\'');
+                inList.Append(", '_").Append(typeInfo.Name).Append('\'');
             }
 
-            if (InList.Length == 0)
-            {
-                return;
+            if (inList.Length == 0) {
+                return mapping;
             }
 
             using (
                 NpgsqlCommand command =
-                    new NpgsqlCommand(string.Format("SELECT typname, oid FROM pg_type WHERE typname IN ({0})", InList), conn))
+                    new NpgsqlCommand(string.Format("SELECT typname, oid FROM pg_type WHERE typname IN ({0})", inList), conn))
             {
                 using (NpgsqlDataReader dr = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                 {
                     while (dr.Read())
                     {
-                        NpgsqlBackendTypeInfo TypeInfo = NameIndex[dr[0].ToString()];
-
-                        TypeInfo._OID = Convert.ToInt32(dr[1]);
-
-                        TypeMappings.AddType(TypeInfo);
+                        NpgsqlBackendTypeInfo typeInfo = nameIndex[dr[0].ToString()];
+                        typeInfo._OID = Convert.ToInt32(dr[1]);
+                        mapping.AddType(typeInfo);
                     }
                 }
             }
+            return mapping;
         }
     }
 }
