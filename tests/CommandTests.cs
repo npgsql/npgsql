@@ -3966,6 +3966,19 @@ namespace NpgsqlTests
         [MinPgVersion(9, 1, 0, "hstore data type not yet introduced")]
         public void InsertHstoreValueDataType()
         {
+            CreateSchema("hstore");
+            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
+            ExecuteNonQuery(@"ALTER TABLE data DROP COLUMN IF EXISTS field_hstore");
+            try
+            {
+                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "42704")
+                    Assert.Inconclusive("HSTORE does not seem to be installed at the backend");
+            }
+
             ExecuteNonQuery(@"SET search_path = public, hstore");
             using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
             {

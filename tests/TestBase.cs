@@ -220,13 +220,6 @@ namespace NpgsqlTests
                                 field_circle                  CIRCLE
                                 ) WITH OIDS");
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 1))
-            {
-                CreateSchema("hstore");
-                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
-            }
-
             if (Conn.PostgreSqlVersion >= new Version(9, 2))
             {
                 ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
@@ -240,7 +233,7 @@ namespace NpgsqlTests
             _schemaCreated = true;
         }
 
-        private void CreateSchema(string schemaName)
+        protected void CreateSchema(string schemaName)
         {
             if (Conn.PostgreSqlVersion >= new Version(9, 3))
                 ExecuteNonQuery(String.Format("CREATE SCHEMA IF NOT EXISTS {0}", schemaName));
