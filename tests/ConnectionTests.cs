@@ -469,18 +469,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void CheckExtraFloatingDigitsHigherThanTwo()
-        {
-
-            using (NpgsqlCommand c = new NpgsqlCommand("show extra_float_digits", Conn))
-            {
-                string extraDigits = (string)c.ExecuteScalar();
-                Assert.AreEqual(extraDigits, "3");
-            }
-        }
-
-
-        [Test]
         public void GetConnectionState()
         {
             // Test created to PR #164
