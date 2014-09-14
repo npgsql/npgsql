@@ -1455,32 +1455,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException(typeof (NpgsqlException))]
-        public void ConnectionStringWithInvalidParameterValue()
-        {
-            var conn = new NpgsqlConnection(ConnectionString + ";userid=npgsql_tes;pooling=false");
-            var command = new NpgsqlCommand("select * from data", conn);
-
-            try
-            {
-                command.Connection.Open();
-                command.ExecuteReader();
-            }
-            finally
-            {
-                command.Connection.Close();
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof (ArgumentException))]
-        public void InvalidConnectionString()
-        {
-            var conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
-            conn.Open();
-        }
-
-        [Test]
         public void AmbiguousFunctionParameterType()
         {
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ambiguousParameterType(int2, int4, int8, text, varchar(10), char(5)) returns int4 as '

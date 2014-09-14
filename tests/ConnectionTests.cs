@@ -183,6 +183,26 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void InvalidUserId()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";userid=npgsql_tes;pooling=false"))
+            {
+                Assert.That(conn.Open, Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.Property("Code").EqualTo("28P01")
+                );
+            }
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentException))]
+        public void InvalidConnectionString()
+        {
+            var conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
+            conn.Open();
+        }
+
+        [Test]
         [ExpectedException(typeof(NpgsqlException))]
         public void ConnectionStringWithSemicolonSignValue()
         {
