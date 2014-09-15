@@ -97,7 +97,7 @@ namespace NpgsqlTypes
             catch (IOException)
             {
                 conn.ClearPool();
-                throw new NpgsqlException("The Connection is broken.");
+                throw;
             }
         }
 
@@ -215,7 +215,7 @@ namespace NpgsqlTypes
                             //TODO: use size better
                             if (stream.ReadInt32() != 5)
                             {
-                                throw new NpgsqlException("Received Z");
+                                throw new Exception("Received Z");
                             }
                             //TODO: handle transaction status
                             Char l_tStatus = (Char) stream.ReadByte();
@@ -223,7 +223,7 @@ namespace NpgsqlTypes
                             break;
 
                         default:
-                            throw new NpgsqlException(string.Format("postgresql.fp.protocol received {0}", c));
+                            throw new Exception(string.Format("postgresql.fp.protocol received {0}", c));
                     }
                 }
 
@@ -327,8 +327,6 @@ namespace NpgsqlTypes
 
         /// <summary>
         /// This returns the function id associated by its name
-        /// If addFunction() or addFunctions() have not been called for this name,
-        /// then an NpgsqlException is thrown.
         /// </summary>
         /// <param name="name">Function name to lookup.</param>
         /// <returns>Function ID for fastpath call.</returns>

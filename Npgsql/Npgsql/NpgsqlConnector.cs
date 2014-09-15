@@ -275,7 +275,7 @@ namespace Npgsql
                 // Establish protocol communication and handle authentication...
                 Startup();
             }
-            catch (NpgsqlException)
+            catch
             {
                 if (Stream != null)
                 {
@@ -332,135 +332,128 @@ namespace Npgsql
 
         public void RawOpen(Int32 timeout)
         {
-            try
-            {
-                IAsyncResult result;
-                // Keep track of time remaining; Even though there may be multiple timeout-able calls,
-                // this allows us to still respect the caller's timeout expectation.
-                DateTime attemptStart;
+            IAsyncResult result;
+            // Keep track of time remaining; Even though there may be multiple timeout-able calls,
+            // this allows us to still respect the caller's timeout expectation.
+            DateTime attemptStart;
 
+            attemptStart = DateTime.Now;
+
+            result = Dns.BeginGetHostAddresses(Host, null, null);
+
+            if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+            {
+                // Timeout was used up attempting the Dns lookup
+                throw new TimeoutException(L10N.DnsLookupTimeout);
+            }
+
+            timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+
+            IPAddress[] ips = Dns.EndGetHostAddresses(result);
+            Socket socket = null;
+            Exception lastSocketException = null;
+
+            // try every ip address of the given hostname, use the first reachable one
+            // make sure not to exceed the caller's timeout expectation by splitting the
+            // time we have left between all the remaining ip's in the list.
+            for (int i = 0; i < ips.Length; i++)
+            {
+                _log.Trace("Attempting to connect to " + ips[i]);
+                IPEndPoint ep = new IPEndPoint(ips[i], Port);
+                socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 attemptStart = DateTime.Now;
 
-                result = Dns.BeginGetHostAddresses(Host, null, null);
-
-                if (!result.AsyncWaitHandle.WaitOne(timeout, true))
+                try
                 {
-                    // Timeout was used up attempting the Dns lookup
-                    throw new TimeoutException(L10N.DnsLookupTimeout);
+                    result = socket.BeginConnect(ep, null, null);
+
+                    if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
+                    {
+                        throw new TimeoutException(L10N.ConnectionTimeout);
+                    }
+
+                    socket.EndConnect(result);
+
+                    // connect was successful, leave the loop
+                    break;
                 }
-
-                timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-
-                IPAddress[] ips = Dns.EndGetHostAddresses(result);
-                Socket socket = null;
-                Exception lastSocketException = null;
-
-                // try every ip address of the given hostname, use the first reachable one
-                // make sure not to exceed the caller's timeout expectation by splitting the
-                // time we have left between all the remaining ip's in the list.
-                for (int i = 0; i < ips.Length; i++)
+                catch (Exception e)
                 {
-                    _log.Trace("Attempting to connect to " + ips[i]);
-                    IPEndPoint ep = new IPEndPoint(ips[i], Port);
-                    socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    attemptStart = DateTime.Now;
+                    _log.Warn("Failed to connect to " + ips[i]);
+                    timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
+                    lastSocketException = e;
 
-                    try
-                    {
-                        result = socket.BeginConnect(ep, null, null);
-
-                        if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
-                        {
-                            throw new TimeoutException(L10N.ConnectionTimeout);
-                        }
-
-                        socket.EndConnect(result);
-
-                        // connect was successful, leave the loop
-                        break;
-                    }
-                    catch (Exception e)
-                    {
-                        _log.Warn("Failed to connect to " + ips[i]);
-                        timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
-                        lastSocketException = e;
-
-                        socket.Close();
-                        socket = null;
-                    }
+                    socket.Close();
+                    socket = null;
                 }
-
-                if (socket == null)
-                {
-                    throw lastSocketException;
-                }
-
-                var baseStream = new NpgsqlNetworkStream(socket, true);
-                Stream sslStream = null;
-
-                // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
-                if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
-                {
-                    baseStream
-                        .WriteInt32(8)
-                        .WriteInt32(80877103);
-
-                    // Receive response
-                    Char response = (Char)baseStream.ReadByte();
-
-                    if (response == 'S')
-                    {
-                        //create empty collection
-                        X509CertificateCollection clientCertificates = new X509CertificateCollection();
-
-                        //trigger the callback to fetch some certificates
-                        DefaultProvideClientCertificatesCallback(clientCertificates);
-
-                        //if (context.UseMonoSsl)
-                        if (!NpgsqlConnector.UseSslStream)
-                        {
-                            SslClientStream sslStreamPriv;
-
-                            sslStreamPriv = new SslClientStream(
-                                    baseStream,
-                                    Host,
-                                    true,
-                                    SecurityProtocolType.Default,
-                                    clientCertificates);
-
-                            sslStreamPriv.ClientCertSelectionDelegate =
-                                    new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-                            sslStreamPriv.ServerCertValidationDelegate =
-                                    new CertificateValidationCallback(DefaultCertificateValidationCallback);
-                            sslStreamPriv.PrivateKeyCertSelectionDelegate =
-                                    new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
-                            sslStream = sslStreamPriv;
-                        }
-                        else
-                        {
-                            SslStream sslStreamPriv;
-
-                            sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
-
-                            sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
-                            sslStream = sslStreamPriv;
-                        }
-                    }
-                    else if (SslMode == SslMode.Require)
-                    {
-                        throw new InvalidOperationException(L10N.SslRequestError);
-                    }
-                }
-
-                Socket = socket;
-                BaseStream = baseStream;
-                Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
-                _log.DebugFormat("Connected to {0}:{1}", Host, Port);
             }
-            catch (Exception e)
+
+            if (socket == null)
             {
-                throw new NpgsqlException(string.Format(L10N.FailedConnection, Host), e);
+                throw lastSocketException;
             }
+
+            var baseStream = new NpgsqlNetworkStream(socket, true);
+            Stream sslStream = null;
+
+            // If the PostgreSQL server has SSL connectors enabled Open SslClientStream if (response == 'S') {
+            if (SSL || (SslMode == SslMode.Require) || (SslMode == SslMode.Prefer))
+            {
+                baseStream
+                    .WriteInt32(8)
+                    .WriteInt32(80877103);
+
+                // Receive response
+                Char response = (Char)baseStream.ReadByte();
+
+                if (response == 'S')
+                {
+                    //create empty collection
+                    X509CertificateCollection clientCertificates = new X509CertificateCollection();
+
+                    //trigger the callback to fetch some certificates
+                    DefaultProvideClientCertificatesCallback(clientCertificates);
+
+                    //if (context.UseMonoSsl)
+                    if (!NpgsqlConnector.UseSslStream)
+                    {
+                        SslClientStream sslStreamPriv;
+
+                        sslStreamPriv = new SslClientStream(
+                                baseStream,
+                                Host,
+                                true,
+                                SecurityProtocolType.Default,
+                                clientCertificates);
+
+                        sslStreamPriv.ClientCertSelectionDelegate =
+                                new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
+                        sslStreamPriv.ServerCertValidationDelegate =
+                                new CertificateValidationCallback(DefaultCertificateValidationCallback);
+                        sslStreamPriv.PrivateKeyCertSelectionDelegate =
+                                new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+                        sslStream = sslStreamPriv;
+                    }
+                    else
+                    {
+                        SslStream sslStreamPriv;
+
+                        sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
+
+                        sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
+                        sslStream = sslStreamPriv;
+                    }
+                }
+                else if (SslMode == SslMode.Require)
+                {
+                    throw new InvalidOperationException(L10N.SslRequestError);
+                }
+            }
+
+            Socket = socket;
+            BaseStream = baseStream;
+            Stream = new BufferedStream(sslStream == null ? baseStream : sslStream, 8192);
+            _log.DebugFormat("Connected to {0}:{1}", Host, Port);
         }
 
         public void Startup()
@@ -585,7 +578,7 @@ namespace Npgsql
                         // as the establishment timeout only was confusing users when the timeout was a command timeout.
                     }
 
-                    throw new NpgsqlException(L10N.ConnectionOrCommandTimeout);
+                    throw new TimeoutException(L10N.ConnectionOrCommandTimeout);
                 }
 
                 return ProcessBackendResponses();
@@ -745,10 +738,7 @@ namespace Npgsql
 #endif
 
                                 default:
-                                    // Only AuthenticationClearTextPassword and AuthenticationMD5Password supported for now.
-                                    errors.Add(new NpgsqlError(String.Format(L10N.AuthenticationMethodNotSupported, authType)));
-
-                                    throw new NpgsqlException(errors);
+                                throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
                             }
                             break;
                         case BackEndMessageCode.RowDescription:

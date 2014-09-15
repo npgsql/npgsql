@@ -108,11 +108,6 @@ namespace NpgsqlTypes
 
                     using (IDataReader res = cmd.ExecuteReader())
                     {
-                        if (res == null)
-                        {
-                            throw new NpgsqlException("postgresql.lo.init");
-                        }
-
                         fp.AddFunctions(res);
                     }
                 }
@@ -161,7 +156,6 @@ namespace NpgsqlTypes
          *
          * @param mode a bitmask describing different attributes of the new object
          * @return oid of new object
-         * @exception NpgsqlException on error
          */
         /// <summary>
         /// This creates a large object, returning its OID.

@@ -22,6 +22,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
@@ -165,21 +166,12 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [ExpectedException(typeof(SocketException))]
         public void ConnectionRefused()
         {
-            Assert.That(() => {
-              var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j");
-              conn.Open();
-            }, Throws.Exception.TypeOf<NpgsqlException>()
-                               .With.Message.EqualTo(String.Format(L10N.FailedConnection, "127.0.0.1")));
-        }
-
-        [Test]
-        [ExpectedException(typeof(NpgsqlException))]
-        public void ConnectionStringWithEqualSignValue()
-        {
-            var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j==");
-            conn.Open();
+            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j")) {
+                conn.Open();
+            }
         }
 
         [Test]
@@ -199,14 +191,6 @@ namespace NpgsqlTests
         public void InvalidConnectionString()
         {
             var conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
-            conn.Open();
-        }
-
-        [Test]
-        [ExpectedException(typeof(NpgsqlException))]
-        public void ConnectionStringWithSemicolonSignValue()
-        {
-            var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password='j;'");
             conn.Open();
         }
 

@@ -30,6 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Reflection;
@@ -222,9 +223,10 @@ namespace Npgsql
                 //CurrentRow = null;
                 return (CurrentRow = GetNextRow(true)) != null;
             }
-            catch (System.IO.IOException ex)
+            catch (IOException)
             {
-                throw _command.ClearPoolAndCreateException(ex);
+                _command.Connection.ClearPool();
+                throw;
             }
         }
 
@@ -326,9 +328,10 @@ namespace Npgsql
                 _hasRows = false; // set to false and let the reading code determine if the set has rows.
                 return (CurrentDescription = GetNextRowDescription()) != null;
             }
-            catch (System.IO.IOException ex)
+            catch (IOException)
             {
-                throw _command.ClearPoolAndCreateException(ex);
+                _command.Connection.ClearPool();
+                throw;
             }
         }
 
