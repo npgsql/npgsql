@@ -39,7 +39,7 @@ namespace Npgsql
     internal sealed class StringRowReader : RowReader
     {
         private readonly int _messageSize;
-        private int? _nextFieldSize = null;
+        private int? _nextFieldSize;
 
         public StringRowReader(Stream inputStream)
             : base(inputStream)
@@ -140,14 +140,18 @@ namespace Npgsql
             PGUtil.EatStreamBytes(Stream, fieldSize);
         }
 
-        public override bool IsNextDBNull
+        public override bool IsNull
         {
             get { return GetThisFieldCount() == -1; }
         }
 
         private int GetThisFieldCount()
         {
-            return (_nextFieldSize = _nextFieldSize ?? PGUtil.ReadInt32(Stream)).Value;
+            if (_nextFieldSize.HasValue)
+                return _nextFieldSize.Value;
+            int s;
+            _nextFieldSize = s = PGUtil.ReadInt32(Stream);
+            return s;
         }
 
         protected override int GetNextFieldCount()

@@ -598,26 +598,26 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void SingleRowForwardOnlyCommandBehaviorSupport()
+        public void SingleRowSequentialCommandBehaviorSupport()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
-            var command = new NpgsqlCommand("select * from data", Conn);
-            var i = 0;
+            ExecuteNonQuery(@"INSERT INTO data (field_text, field_bool) VALUES ('X', true)");
+            ExecuteNonQuery(@"INSERT INTO data (field_text, field_bool) VALUES ('Y', false)");
+            var command = new NpgsqlCommand("SELECT field_int4, field_text, field_char5, field_float4, field_date, field_bool FROM data ORDER BY field_text", Conn);
 
             using (var dr = command.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess))
             {
-                while (dr.Read())
-                {
-                    if (!dr.IsDBNull(0))
-                        dr.GetValue(0);
-                    if (!dr.IsDBNull(1))
-                        dr.GetValue(1);
-                    i++;
-                }
-            }
+                Assert.That(dr.Read(), Is.True);
+                Assert.IsTrue(dr.IsDBNull(0));  // field_int4
+                Assert.IsFalse(dr.IsDBNull(1)); // field_text
+                Assert.That(dr.GetString(1), Is.EqualTo("X"));
+                Assert.IsTrue(dr.IsDBNull(2));  // field_char5
+                // field_float4 - do not read this field to test skip
+                Assert.IsTrue(dr.IsDBNull(4));  // field_date
+                Assert.IsFalse(dr.IsDBNull(5)); // field_bool
+                Assert.That(dr.GetValue(5), Is.True);
 
-            Assert.AreEqual(1, i);
+                Assert.That(dr.Read(), Is.False);
+            }
         }
 
         [Test]
@@ -661,6 +661,18 @@ namespace NpgsqlTests
                 while (dr.Read())
                     i++;
                 Assert.AreEqual(1, i);
+            }
+        }
+
+        [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
+        public void SequentialNullCheckOnNonFirstField()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+            using (var cmd = new NpgsqlCommand("SELECT field_text, field_int4 FROM data", Conn))
+            using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                dr.Read();
+                Assert.That(dr.IsDBNull(1), Is.True);
             }
         }
 
