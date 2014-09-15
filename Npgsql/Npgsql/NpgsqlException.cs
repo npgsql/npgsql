@@ -39,6 +39,8 @@ namespace Npgsql
 {
     /// <summary>
     /// The exception that is thrown when the PostgreSQL backend reports errors.
+    /// Note that other errors (network issues, Npgsql client-side problems) are reported as regular
+    /// .NET exceptions.
     /// </summary>
     [Serializable]
     public sealed class NpgsqlException : DbException
