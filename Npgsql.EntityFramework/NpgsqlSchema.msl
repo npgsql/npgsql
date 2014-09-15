@@ -303,10 +303,10 @@
       </cs:EndProperty>
     </cs:AssociationSetMapping>
     <cs:AssociationSetMapping Name="ViewConstraintColumns" StoreEntitySet="PgViewConstraintColumns" TypeName="Store.TableOrViewConstraintColumn">
-      <cs:EndProperty Name="Column">
+      <cs:EndProperty Name="Constraint">
         <cs:ScalarProperty Name="Id" ColumnName="constraint_id"/>
       </cs:EndProperty>
-      <cs:EndProperty Name="Constraint">
+      <cs:EndProperty Name="Column">
         <cs:ScalarProperty Name="Id" ColumnName="column_id"/>
       </cs:EndProperty>
     </cs:AssociationSetMapping>

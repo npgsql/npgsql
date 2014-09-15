@@ -151,6 +151,7 @@
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="SchemaInformation.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />

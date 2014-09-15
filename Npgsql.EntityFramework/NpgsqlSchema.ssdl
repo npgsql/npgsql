@@ -388,14 +388,65 @@
       </DefiningQuery>
     </EntitySet>
     
-    <AssociationSet Association="NpgsqlSchema.TableTableColumn" Name="TableTableColumns" />
-    <AssociationSet Association="NpgsqlSchema.TableTableConstraint" Name="TableTableConstraints"/>
-    <AssociationSet Association="NpgsqlSchema.TableConstraintColumn" Name="TableConstraintColumns"/>
-    <AssociationSet Association="NpgsqlSchema.RelationshipRelationshipColumnMap" Name="RelationshipRelationshipColumnMaps" />
-    <AssociationSet Association="NpgsqlSchema.FromColumnRelationshipColumnMap" Name="FromColumnRelationshipColumnMaps" />
-    <AssociationSet Association="NpgsqlSchema.ToColumnRelationshipColumnMap" Name="ToColumnRelationshipColumnMaps" />
-    <AssociationSet Association="NpgsqlSchema.ViewViewColumn" Name="ViewViewColumns" />
-    <AssociationSet Association="NpgsqlSchema.FunctionFunctionParameter" Name="FunctionFunctionParameters" />
+    <AssociationSet Association="NpgsqlSchema.TableTableColumn" Name="TableTableColumns">
+        <End Role="Table" EntitySet="PgTables" />
+        <End Role="TableColumn" EntitySet="PgTableColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.TableTableConstraint" Name="TableTableConstraints">
+      <End Role="Table" EntitySet="PgTables" />
+      <End Role="Constraint" EntitySet="PgConstraints" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.TableConstraintColumn" Name="TableConstraintColumns">
+      <End Role="Constraint" EntitySet="PgConstraints" />
+      <End Role="ConstraintColumn" EntitySet="PgConstraintColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.RelationshipRelationshipColumnMap" Name="RelationshipRelationshipColumnMaps">
+      <End Role="ForeignKey" EntitySet="PgConstraints" />
+      <End Role="ForeignKeyColumn" EntitySet="PgForeignKeyColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.FromColumnRelationshipColumnMap" Name="FromColumnRelationshipColumnMaps">
+      <End Role="TableColumn" EntitySet="PgTableColumns" />
+      <End Role="ForeignKeyColumn" EntitySet="PgForeignKeyColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ToColumnRelationshipColumnMap" Name="ToColumnRelationshipColumnMaps">
+      <End Role="TableColumn" EntitySet="PgTableColumns" />
+      <End Role="ForeignKeyColumn" EntitySet="PgForeignKeyColumns" />
+    </AssociationSet>
+
+    <AssociationSet Association="NpgsqlSchema.ViewViewColumn" Name="ViewViewColumns">
+      <End Role="View" EntitySet="PgViews" />
+      <End Role="ViewColumn" EntitySet="PgViewColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ViewViewConstraint" Name="ViewViewConstraints">
+      <End Role="View" EntitySet="PgViews" />
+      <End Role="Constraint" EntitySet="PgViewConstraints" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ViewConstraintConstraintColumn" Name="ViewConstraintConstraintColumns">
+      <End Role="Constraint" EntitySet="PgViewConstraints" />
+      <End Role="ConstraintColumn" EntitySet="PgViewConstraintColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ViewConstraintForeignKey" Name="ViewConstraintForeignKeys">
+      <End Role="Constraint" EntitySet="PgViewConstraints" />
+      <End Role="ForeignKeyColumn" EntitySet="PgViewForeignKeyColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.FromForeignKeyViewColumn" Name="FromForeignKeyViewColumns">
+      <End Role="ViewColumn" EntitySet="PgViewColumns" />
+      <End Role="ForeignKeyColumn" EntitySet="PgViewForeignKeyColumns" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ToForeignKeyViewColumn" Name="ToForeignKeyViewColumns">
+      <End Role="ViewColumn" EntitySet="PgViewColumns" />
+      <End Role="ForeignKeyColumn" EntitySet="PgViewForeignKeyColumns" />
+    </AssociationSet>
+    
+    <AssociationSet Association="NpgsqlSchema.FunctionFunctionParameter" Name="FunctionFunctionParameters">
+      <End Role="Function" EntitySet="PgFunctions" />
+      <End Role="FunctionParameter" EntitySet="PgFunctionParameters" />
+    </AssociationSet>
+    <AssociationSet Association="NpgsqlSchema.ProcedureProcedureParameter" Name="ProcedureProcedureParameters">
+      <End Role="Procedure" EntitySet="PgProcedures" />
+      <End Role="ProcedureParameter" EntitySet="PgProcedureParameters" />
+    </AssociationSet>
+    
   </EntityContainer>
   <EntityType Name="Table">
     <Key>
@@ -625,6 +676,7 @@
     <Property Name="column_id" Type="varchar" Nullable="false"/>
     <Property Name="constraint_id" Type="varchar" Nullable="false"/>
   </EntityType>
+  
   <Association Name="TableTableColumn">
     <End Type="NpgsqlSchema.Table" Role="Table" Multiplicity="1"/>
     <End Type="NpgsqlSchema.TableColumn" Role="TableColumn" Multiplicity="*"/>
@@ -697,6 +749,7 @@
       </Dependent>
     </ReferentialConstraint>
   </Association>
+
   <Association Name="ViewViewColumn">
     <End Type="NpgsqlSchema.View" Role="View" Multiplicity="1"/>
     <End Type="NpgsqlSchema.ViewColumn" Role="ViewColumn" Multiplicity="*"/>
@@ -709,6 +762,67 @@
       </Dependent>
     </ReferentialConstraint>
   </Association>
+  <Association Name="ViewViewConstraint">
+    <End Type="NpgsqlSchema.View" Role="View" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ViewConstraint" Role="Constraint" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="View">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="Constraint">
+        <PropertyRef Name="view_id" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="ViewConstraintConstraintColumn">
+    <End Type="NpgsqlSchema.ViewConstraint" Role="Constraint" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ViewConstraintColumn" Role="ConstraintColumn" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Constraint">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="ConstraintColumn">
+        <PropertyRef Name="constraint_id" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="ViewConstraintForeignKey">
+    <End Type="NpgsqlSchema.ViewConstraint" Role="Constraint" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ViewForeignKeyColumn" Role="ForeignKeyColumn" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Constraint">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="ForeignKeyColumn">
+        <PropertyRef Name="constraint_id" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FromForeignKeyViewColumn">
+    <End Type="NpgsqlSchema.ViewColumn" Role="ViewColumn" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ViewForeignKeyColumn" Role="ForeignKeyColumn" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="ViewColumn">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="ForeignKeyColumn">
+        <PropertyRef Name="from_columnid" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="ToForeignKeyViewColumn">
+    <End Type="NpgsqlSchema.ViewColumn" Role="ViewColumn" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ViewForeignKeyColumn" Role="ForeignKeyColumn" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="ViewColumn">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="ForeignKeyColumn">
+        <PropertyRef Name="to_columnid" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+
   <Association Name="FunctionFunctionParameter">
     <End Type="NpgsqlSchema.Function" Role="Function" Multiplicity="1"/>
     <End Type="NpgsqlSchema.FunctionParameter" Role="FunctionParameter" Multiplicity="*"/>
@@ -721,4 +835,17 @@
       </Dependent>
     </ReferentialConstraint>
   </Association>
+  <Association Name="ProcedureProcedureParameter">
+    <End Type="NpgsqlSchema.Procedure" Role="Procedure" Multiplicity="1" />
+    <End Type="NpgsqlSchema.ProcedureParameter" Role="ProcedureParameter" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Procedure">
+        <PropertyRef Name="id" />
+      </Principal>
+      <Dependent Role="ProcedureParameter">
+        <PropertyRef Name="procedure_id" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+
 </Schema>

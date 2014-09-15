@@ -7,6 +7,11 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.Entity.Core.Objects;
+using System.Data.Entity.Core.EntityClient;
+using System.Data.Entity.Core.Common;
+using System.Xml;
+using System.IO;
 
 namespace NpgsqlTests
 {
@@ -451,6 +456,76 @@ namespace NpgsqlTests
                 Assert.AreEqual(dateDiffs.l, null);
             }
         }
+
+        [Test]
+        public void TestSchemaInformation()
+        {
+            // Obtain Npgsql.NpgsqlServices, Npgsql.EntityFramework via EntityFramework 6.0
+            DbProviderServices providerServices = DbProviderServices.GetProviderServices(Conn);
+            Assert.IsNotNull(providerServices);
+
+            // 9.3.1 or such
+            string providerManifestToken = providerServices.GetProviderManifestToken(Conn);
+            Assert.IsNotNullOrEmpty(providerManifestToken);
+
+            // Obtain NpgsqlProviderManifest
+            DbProviderManifest providerManifest = providerServices.GetProviderManifest(providerManifestToken) as DbProviderManifest;
+            Assert.IsNotNull(providerManifest);
+
+            // ssdl v1 from Npgsql.EntityFramework
+            XmlReader xmlSsdl = providerManifest.GetInformation("StoreSchemaDefinition") as XmlReader;
+            Assert.IsNotNull(xmlSsdl);
+
+            // msl v1 from Npgsql.EntityFramework
+            XmlReader xmlMsl = providerManifest.GetInformation("StoreSchemaMapping") as XmlReader;
+            Assert.IsNotNull(xmlMsl);
+
+            // csdl v1 from EntityFramework 6.0
+            XmlReader xmlCsdl = DbProviderServices.GetConceptualSchemaDefinition(DbProviderManifest.ConceptualSchemaDefinition);
+            Assert.IsNotNull(xmlCsdl);
+
+            // Create temp xml files. need cleaning!
+            string tmp = Guid.NewGuid().ToString("N");
+            string csdl = Path.Combine(Path.GetTempPath(), tmp + ".csdl");
+            string ssdl = Path.Combine(Path.GetTempPath(), tmp + ".ssdl");
+            string msl = Path.Combine(Path.GetTempPath(), tmp + ".msl");
+
+            XmlDocument xmldom = new XmlDocument();
+            xmldom.Load(xmlCsdl);
+            xmldom.Save(csdl);
+
+            xmldom.Load(xmlSsdl);
+            xmldom.Save(ssdl);
+
+            xmldom.Load(xmlMsl);
+            xmldom.Save(msl);
+
+            // http://msdn.microsoft.com/en-US/library/bb738533(v=vs.110).aspx
+
+            EntityConnectionStringBuilder entityBuilder = new EntityConnectionStringBuilder();
+
+            entityBuilder.Provider = "Npgsql";
+            entityBuilder.ProviderConnectionString = ConnectionStringEF;
+            entityBuilder.Metadata = csdl + "|" + ssdl + "|" + msl;
+
+            using (var context = new Store.SchemaInformation(new EntityConnection(entityBuilder.ToString())))
+            {
+                var tables = context.Tables;
+                Assert.Contains("Blogs", tables.Select(p => p.Name).ToArray());
+                Assert.Contains("Posts", tables.Select(p => p.Name).ToArray());
+
+                //var functions = context.Functions;
+                //Assert.Contains("pass_thru_int", functions.Select(p => p.Name).ToArray());
+                //Assert.Contains("pass_thru_str", functions.Select(p => p.Name).ToArray());
+
+                var tableConstraints = context.TableConstraints;
+                Assert.Contains("Blogs.BlogId", tableConstraints.OfType<Store.PrimaryKeyConstraint>().SelectMany(p => p.Columns).Select(p => p.Parent.Name + "." + p.Name).ToArray());
+                Assert.Contains("Posts.PostId", tableConstraints.OfType<Store.PrimaryKeyConstraint>().SelectMany(p => p.Columns).Select(p => p.Parent.Name + "." + p.Name).ToArray());
+
+                Assert.Contains("Posts.BlogId->Blogs.BlogId", tableConstraints.OfType<Store.ForeignKeyConstraint>().SelectMany(p => p.ForeignKeys).Select(p => p.FromColumn.Parent.Name + "." + p.FromColumn.Name + "->" + p.ToColumn.Parent.Name + "." + p.ToColumn.Name).ToArray());
+            }
+        }
+
 
         //Hunting season is open Happy hunting on OrderBy,GroupBy,Min,Max,Skip,Take,ThenBy... and all posible combinations
         
