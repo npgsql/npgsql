@@ -30,7 +30,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Resources;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NpgsqlTypes;
 
 namespace Npgsql

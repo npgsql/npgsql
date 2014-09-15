@@ -32,7 +32,7 @@ using System.IO;
 using System.Reflection;
 using System.Resources;
 using System.Text;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NpgsqlTypes;
 
 namespace Npgsql

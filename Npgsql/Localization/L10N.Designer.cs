@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Npgsql.Npgsql.L10N {
+namespace Npgsql.Localization {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace Npgsql.Npgsql.L10N {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Npgsql.Npgsql.L10N.L10N", typeof(L10N).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Npgsql.Localization.L10N", typeof(L10N).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

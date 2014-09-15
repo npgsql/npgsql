@@ -37,7 +37,7 @@ using System.Data.Common;
 using System.Reflection;
 using System.Resources;
 using Common.Logging;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NpgsqlTypes;
 
 #if WITHDESIGN

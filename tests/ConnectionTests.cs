@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 using Npgsql;
 using System.Data;
 using System.Resources;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NUnit.Framework;
 using System.Collections.Generic;
 using NpgsqlTypes;

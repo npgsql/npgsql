@@ -36,10 +36,9 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using Common.Logging;
+using Npgsql.Localization;
 
 // Keep the xml comment warning quit for this file.
-using Npgsql.Npgsql.L10N;
-
 #pragma warning disable 1591
 
 namespace Npgsql

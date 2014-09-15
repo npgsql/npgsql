@@ -35,7 +35,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NpgsqlTypes;
 using System.Text;
 using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;

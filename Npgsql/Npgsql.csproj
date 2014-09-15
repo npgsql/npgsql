@@ -117,95 +117,95 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
-    <Compile Include="Npgsql\L10N\L10N.Designer.cs">
+    <Compile Include="Localization\L10N.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>L10N.resx</DependentUpon>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlQuery.cs" />
+    <Compile Include="NpgsqlQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Npgsql\Cache.cs" />
-    <Compile Include="Npgsql\BackendEncoding.cs" />
-    <Compile Include="Npgsql\ASCIIBytes.cs" />
-    <Compile Include="Npgsql\HashAlgorithm.cs" />
-    <Compile Include="Npgsql\MD5.cs" />
-    <Compile Include="Npgsql\MD5CryptoServiceProvider.cs" />
-    <Compile Include="Npgsql\NpgsqlAsciiRow.cs" />
-    <Compile Include="Npgsql\NpgsqlBackEndKeyData.cs" />
-    <Compile Include="Npgsql\NpgsqlBind.cs" />
-    <Compile Include="Npgsql\NpgsqlCancelRequest.cs" />
-    <Compile Include="Npgsql\NpgsqlCommand.cs">
+    <Compile Include="Cache.cs" />
+    <Compile Include="BackendEncoding.cs" />
+    <Compile Include="ASCIIBytes.cs" />
+    <Compile Include="HashAlgorithm.cs" />
+    <Compile Include="MD5.cs" />
+    <Compile Include="MD5CryptoServiceProvider.cs" />
+    <Compile Include="NpgsqlAsciiRow.cs" />
+    <Compile Include="NpgsqlBackEndKeyData.cs" />
+    <Compile Include="NpgsqlBind.cs" />
+    <Compile Include="NpgsqlCancelRequest.cs" />
+    <Compile Include="NpgsqlCommand.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlCommand.PrepareExecute.cs">
+    <Compile Include="NpgsqlCommand.PrepareExecute.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlCommand.Rewrite.cs">
+    <Compile Include="NpgsqlCommand.Rewrite.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlCommandBuilder.cs">
+    <Compile Include="NpgsqlCommandBuilder.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlConnection.cs">
+    <Compile Include="NpgsqlConnection.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlConnectionStringBuilder.cs" />
-    <Compile Include="Npgsql\NpgsqlConnector.cs" />
-    <Compile Include="Npgsql\NpgsqlConnectorPool.cs" />
-    <Compile Include="Npgsql\NpgsqlCopyFormat.cs" />
-    <Compile Include="Npgsql\NpgsqlCopyIn.cs" />
-    <Compile Include="Npgsql\NpgsqlCopyInStream.cs" />
-    <Compile Include="Npgsql\NpgsqlCopyOut.cs" />
-    <Compile Include="Npgsql\NpgsqlCopyOutStream.cs" />
-    <Compile Include="Npgsql\NpgsqlCopySerializer.cs" />
-    <Compile Include="Npgsql\NpgsqlDataAdapter.cs">
+    <Compile Include="NpgsqlConnectionStringBuilder.cs" />
+    <Compile Include="NpgsqlConnector.cs" />
+    <Compile Include="NpgsqlConnectorPool.cs" />
+    <Compile Include="NpgsqlCopyFormat.cs" />
+    <Compile Include="NpgsqlCopyIn.cs" />
+    <Compile Include="NpgsqlCopyInStream.cs" />
+    <Compile Include="NpgsqlCopyOut.cs" />
+    <Compile Include="NpgsqlCopyOutStream.cs" />
+    <Compile Include="NpgsqlCopySerializer.cs" />
+    <Compile Include="NpgsqlDataAdapter.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Npgsql\NpgsqlDataReader.cs" />
-    <Compile Include="Npgsql\NpgsqlDescribe.cs" />
-    <Compile Include="Npgsql\NpgsqlError.cs" />
-    <Compile Include="Npgsql\NpgsqlException.cs" />
-    <Compile Include="Npgsql\NpgsqlExecute.cs" />
-    <Compile Include="Npgsql\NpgsqlFactory.cs" />
-    <Compile Include="Npgsql\NpgsqlFlush.cs" />
-    <Compile Include="Npgsql\NpgsqlMediator.cs" />
-    <Compile Include="Npgsql\NpgsqlMessages.cs" />
-    <Compile Include="Npgsql\NpgsqlNotificationEventArgs.cs" />
-    <Compile Include="Npgsql\NpgsqlParameter.cs" />
-    <Compile Include="Npgsql\NpgsqlParameterCollection.cs" />
-    <Compile Include="Npgsql\NpgsqlParameterStatus.cs" />
-    <Compile Include="Npgsql\NpgsqlParse.cs" />
-    <Compile Include="Npgsql\NpgsqlPasswordPacket.cs" />
-    <Compile Include="Npgsql\NpgsqlPromotableSinglePhaseNotification.cs" />
-    <Compile Include="Npgsql\NpgsqlResourceManager.cs" />
-    <Compile Include="Npgsql\NpgsqlRow.cs" />
-    <Compile Include="Npgsql\NpgsqlRowDescription.cs" />
-    <Compile Include="Npgsql\NpgsqlSchema.cs" />
-    <Compile Include="Npgsql\NpgsqlStartupPacket.cs" />
-    <Compile Include="Npgsql\NpgsqlSync.cs" />
-    <Compile Include="Npgsql\NpgsqlTransaction.cs" />
-    <Compile Include="Npgsql\NpgsqlTransactionCallbacks.cs" />
-    <Compile Include="Npgsql\PGUtil.cs" />
-    <Compile Include="Npgsql\SSPIHandler.cs" />
+    <Compile Include="NpgsqlDataReader.cs" />
+    <Compile Include="NpgsqlDescribe.cs" />
+    <Compile Include="NpgsqlError.cs" />
+    <Compile Include="NpgsqlException.cs" />
+    <Compile Include="NpgsqlExecute.cs" />
+    <Compile Include="NpgsqlFactory.cs" />
+    <Compile Include="NpgsqlFlush.cs" />
+    <Compile Include="NpgsqlMediator.cs" />
+    <Compile Include="NpgsqlMessages.cs" />
+    <Compile Include="NpgsqlNotificationEventArgs.cs" />
+    <Compile Include="NpgsqlParameter.cs" />
+    <Compile Include="NpgsqlParameterCollection.cs" />
+    <Compile Include="NpgsqlParameterStatus.cs" />
+    <Compile Include="NpgsqlParse.cs" />
+    <Compile Include="NpgsqlPasswordPacket.cs" />
+    <Compile Include="NpgsqlPromotableSinglePhaseNotification.cs" />
+    <Compile Include="NpgsqlResourceManager.cs" />
+    <Compile Include="NpgsqlRow.cs" />
+    <Compile Include="NpgsqlRowDescription.cs" />
+    <Compile Include="NpgsqlSchema.cs" />
+    <Compile Include="NpgsqlStartupPacket.cs" />
+    <Compile Include="NpgsqlSync.cs" />
+    <Compile Include="NpgsqlTransaction.cs" />
+    <Compile Include="NpgsqlTransactionCallbacks.cs" />
+    <Compile Include="PGUtil.cs" />
+    <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Npgsql\L10N\L10N.de.resx" />
-    <EmbeddedResource Include="Npgsql\L10N\L10N.es.resx" />
-    <EmbeddedResource Include="Npgsql\L10N\L10N.fi.resx" />
-    <EmbeddedResource Include="Npgsql\L10N\L10N.fr.resx" />
-    <EmbeddedResource Include="Npgsql\L10N\L10N.ja.resx" />
-    <EmbeddedResource Include="Npgsql\L10N\L10N.resx">
+    <EmbeddedResource Include="Localization\L10N.de.resx" />
+    <EmbeddedResource Include="Localization\L10N.es.resx" />
+    <EmbeddedResource Include="Localization\L10N.fi.resx" />
+    <EmbeddedResource Include="Localization\L10N.fr.resx" />
+    <EmbeddedResource Include="Localization\L10N.ja.resx" />
+    <EmbeddedResource Include="Localization\L10N.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>L10N.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Npgsql\L10N\L10N.zh-CN.resx" />
+    <EmbeddedResource Include="Localization\L10N.zh-CN.resx" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Npgsql\NpgsqlMetaData.xml" />
+    <EmbeddedResource Include="NpgsqlMetaData.xml" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

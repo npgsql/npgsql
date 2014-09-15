@@ -31,7 +31,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NUnit.Framework;
 using System.Data;
 using System.Globalization;

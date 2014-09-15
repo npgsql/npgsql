@@ -38,7 +38,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using IsolationLevel = System.Data.IsolationLevel;
 
 #if WITHDESIGN

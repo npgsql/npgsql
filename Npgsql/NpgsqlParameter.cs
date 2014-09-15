@@ -32,7 +32,7 @@ using System.Data;
 using System.Data.Common;
 using System.Reflection;
 using System.Resources;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 using NpgsqlTypes;
 
 #if WITHDESIGN

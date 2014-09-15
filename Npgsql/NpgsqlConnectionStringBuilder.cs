@@ -40,17 +40,16 @@ using System.Resources;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using System.Text;
+using Npgsql.Localization;
 
 // Keep the xml comment warning quiet for this file.
-using Npgsql.Npgsql.L10N;
-
 #pragma warning disable 1591
 
 namespace Npgsql
 {
     public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder
     {
-        static readonly ResourceManager resman = new ResourceManager("Npgsql.Npgsql.L10N.L10N", typeof(L10N).Assembly);
+        static readonly ResourceManager resman = new ResourceManager("Npgsql.Localization.L10N", typeof(L10N).Assembly);
 
         [AttributeUsage(AttributeTargets.Property)]
         private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute {

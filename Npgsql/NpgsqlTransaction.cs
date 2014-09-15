@@ -34,7 +34,7 @@ using System.Resources;
 using System.Text;
 using System.Threading;
 using Common.Logging;
-using Npgsql.Npgsql.L10N;
+using Npgsql.Localization;
 
 namespace Npgsql
 {
