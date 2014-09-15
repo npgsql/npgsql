@@ -465,14 +465,15 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (NativeData.Equals(float.NaN) && !arrayElement)
+            if (float.IsNaN((float)NativeData) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
-            if (NativeData.Equals(float.PositiveInfinity) && !arrayElement) {
+
+            if (float.IsPositiveInfinity((float)NativeData)  && !arrayElement) {
                 return ASCIIByteArrays.INFINITY_QUOTED;
             }
 
-            if (NativeData.Equals(float.NegativeInfinity) && !arrayElement) {
+            if (float.IsNegativeInfinity((float)NativeData) && !arrayElement) {
                 return ASCIIByteArrays.NEG_INFINITY_QUOTED;
             }
 
@@ -484,14 +485,15 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (NativeData.Equals(double.NaN) && !arrayElement)
+            if (double.IsNaN((double)NativeData) && !arrayElement)
                 return ASCIIByteArrays.NAN_QUOTED;
 
-            if (NativeData.Equals(double.PositiveInfinity) && !arrayElement) {            
+
+            if (double.IsPositiveInfinity((double)NativeData)  && !arrayElement) {
                 return ASCIIByteArrays.INFINITY_QUOTED;
             }
 
-            if (NativeData.Equals(double.NegativeInfinity) && !arrayElement) {
+            if (double.IsNegativeInfinity((double)NativeData) && !arrayElement) {
                 return ASCIIByteArrays.NEG_INFINITY_QUOTED;
             }
 
