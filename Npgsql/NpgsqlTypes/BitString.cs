@@ -101,7 +101,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Creats a bitstring from a <see cref="System.String">string</see>.
         /// <param name="str">The <see cref="System.String">string to copy from</see>.</param>
-        /// <seealso cref="NpgsqlTypes.BitString.Parse(System.String)"/>
+        /// <seealso cref="Parse(System.String)"/>
         /// </summary>
         public BitString(string str)
         {

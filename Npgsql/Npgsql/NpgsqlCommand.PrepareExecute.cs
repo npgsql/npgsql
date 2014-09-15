@@ -163,37 +163,37 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Sends the <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="Npgsql.NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>
+        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
+        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
+        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>
         /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
         /// </summary>
         /// <param name="behavior">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
-        /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
+        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
             return ExecuteReader(behavior);
         }
 
         /// <summary>
-        /// Sends the <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="Npgsql.NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>.
+        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
+        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
+        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
+        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         public new NpgsqlDataReader ExecuteReader()
         {
             return ExecuteReader(CommandBehavior.Default);
         }
 
         /// <summary>
-        /// Sends the <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="Npgsql.NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see>
+        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
+        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
+        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>
         /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
         /// </summary>
         /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
-        /// <returns>A <see cref="Npgsql.NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
+        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {

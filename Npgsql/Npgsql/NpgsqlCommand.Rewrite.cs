@@ -79,11 +79,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// This method substitutes the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see>, if exist, in the command
+        /// This method substitutes the <see cref="NpgsqlCommand.Parameters">Parameters</see>, if exist, in the command
         /// to their actual values.
         /// The parameter name format is <b>:ParameterName</b>.
         /// </summary>
-        /// <returns>A version of <see cref="Npgsql.NpgsqlCommand.CommandText">CommandText</see> with the <see cref="Npgsql.NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
+        /// <returns>A version of <see cref="NpgsqlCommand.CommandText">CommandText</see> with the <see cref="NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
         internal byte[] GetCommandText()
         {
             return string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();

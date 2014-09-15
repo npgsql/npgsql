@@ -48,17 +48,17 @@ using IsolationLevel = System.Data.IsolationLevel;
 namespace Npgsql
 {
     /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlConnection.Notification">Notice</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="Npgsql.NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
+    /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
     public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
 
     /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlConnection.Notification">Notification</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="Npgsql.NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
+    /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
     public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
 
     /// <summary>
@@ -151,7 +151,7 @@ namespace Npgsql
 
         /// <summary>
         /// Initializes a new instance of the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class.
+        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
         public NpgsqlConnection()
             : this(String.Empty)
@@ -178,8 +178,8 @@ namespace Npgsql
 
         /// <summary>
         /// Initializes a new instance of the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class
-        /// and sets the <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class
+        /// and sets the <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(String ConnectionString)
@@ -190,8 +190,8 @@ namespace Npgsql
 
         /// <summary>
         /// Initializes a new instance of the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see> class
-        /// and sets the <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class
+        /// and sets the <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         /// <param name="ConnectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(NpgsqlConnectionStringBuilder ConnectionString)
@@ -588,7 +588,7 @@ namespace Npgsql
         /// <summary>
         /// Begins a database transaction.
         /// </summary>
-        /// <returns>A <see cref="Npgsql.NpgsqlTransaction">NpgsqlTransaction</see>
+        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
         /// object representing the new transaction.</returns>
         /// <remarks>
         /// Currently there's no support for nested transactions.
@@ -602,7 +602,7 @@ namespace Npgsql
         /// Begins a database transaction with the specified isolation level.
         /// </summary>
         /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>A <see cref="Npgsql.NpgsqlTransaction">NpgsqlTransaction</see>
+        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
         /// object representing the new transaction.</returns>
         /// <remarks>
         /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
@@ -624,7 +624,7 @@ namespace Npgsql
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
-        /// <see cref="Npgsql.NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         public override void Open()
         {
@@ -803,10 +803,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Creates and returns a <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>
-        /// object associated with the <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>.
+        /// Creates and returns a <see cref="NpgsqlCommand">NpgsqlCommand</see>
+        /// object associated with the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
-        /// <returns>A <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see> object.</returns>
+        /// <returns>A <see cref="NpgsqlCommand">NpgsqlCommand</see> object.</returns>
         public new NpgsqlCommand CreateCommand()
         {
             CheckNotDisposed();
@@ -815,7 +815,7 @@ namespace Npgsql
 
         /// <summary>
         /// Releases all resources used by the
-        /// <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>.
+        /// <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
         /// <param name="disposing"><b>true</b> when called from Dispose();
         /// <b>false</b> when being called from the finalizer.</param>

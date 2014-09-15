@@ -56,7 +56,7 @@ namespace NpgsqlTypes
     /// with them a call to <see cref="System.Data.IDataRecord.GetValue(int)"/> on a field containing an
     /// <see cref="NpgsqlInterval"/> value will return a <see cref="TimeSpan"/> rather than an
     /// <see cref="NpgsqlInterval"/>. If you need the extra functionality of <see cref="NpgsqlInterval"/>
-    /// then use <see cref="Npgsql.NpgsqlDataReader.GetInterval(Int32)"/>.</para>
+    /// then use <see cref="NpgsqlDataReader.GetInterval(Int32)"/>.</para>
     /// </remarks>
     /// <seealso cref="Ticks"/>
     /// <seealso cref="JustifyDays"/>
@@ -648,7 +648,7 @@ namespace NpgsqlTypes
         /// canonicalised.</para>
         /// </remarks>
         /// </summary>
-        /// <returns>An <see cref="NpgsqlTypes.NpgsqlInterval"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
+        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
         /// converted into days.</returns>
         public NpgsqlInterval Canonicalize()
         {

@@ -79,11 +79,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
+        /// Gets the <see cref="NpgsqlConnection">NpgsqlConnection</see>
         /// object associated with the transaction, or a null reference if the
         /// transaction is no longer valid.
         /// </summary>
-        /// <value>The <see cref="Npgsql.NpgsqlConnection">NpgsqlConnection</see>
+        /// <value>The <see cref="NpgsqlConnection">NpgsqlConnection</see>
         /// object associated with the transaction.</value>
         public new NpgsqlConnection Connection
         {

@@ -36,14 +36,14 @@ using Common.Logging;
 namespace Npgsql
 {
     /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdated">RowUpdated</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdated">RowUpdated</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlRowUpdatedEventArgs">NpgsqlRowUpdatedEventArgs</see> that contains the event data.</param>
     public delegate void NpgsqlRowUpdatedEventHandler(Object sender, NpgsqlRowUpdatedEventArgs e);
 
     /// <summary>
-    /// Represents the method that handles the <see cref="Npgsql.NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs">NpgsqlRowUpdatingEventArgs</see> that contains the event data.</param>
