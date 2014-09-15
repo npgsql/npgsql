@@ -194,7 +194,7 @@ namespace NpgsqlTypes
                 case 2: return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
                 case 4: return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
                 case 8: return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
-                default: throw new NpgsqlException("Unexpected integer binary field length");
+                default: throw new Exception("Unexpected integer binary field length");
             }
         }
 
@@ -314,7 +314,7 @@ namespace NpgsqlTypes
             {
                 case 4: return BitConverter.ToSingle(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
                 case 8: return BitConverter.ToDouble(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
-                default: throw new NpgsqlException("Unexpected float binary field length");
+                default: throw new Exception("Unexpected float binary field length");
             }
         }
     }

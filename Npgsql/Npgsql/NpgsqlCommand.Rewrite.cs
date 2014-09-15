@@ -263,7 +263,7 @@ namespace Npgsql
                 {
                     if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, false))
                     {
-                        throw new NpgsqlException("Multiple queries not supported for stored procedures");
+                        throw new NotSupportedException("Multiple queries not supported for stored procedures");
                     }
                 }
                 else
@@ -293,7 +293,7 @@ namespace Npgsql
             {
                 if (!AppendCommandReplacingParameterValues(commandBuilder, commandText, prepare, !prepare))
                 {
-                    throw new NpgsqlException("Multiple queries not supported for prepared statements");
+                    throw new NotSupportedException("Multiple queries not supported for prepared statements");
                 }
             }
 

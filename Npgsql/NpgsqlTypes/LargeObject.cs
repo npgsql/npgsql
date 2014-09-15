@@ -62,7 +62,6 @@ namespace NpgsqlTypes
 
         /// <summary>
         /// This opens a large object.
-        /// If the object does not exist, then an NpgsqlException is thrown.
         /// </summary>
         /// <param name="fp">FastPath API for the connection to use.</param>
         /// <param name="oid">OID of the Large Object to open.</param>

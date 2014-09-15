@@ -432,8 +432,9 @@ namespace Npgsql
             {
                 Connection.ClearPool();
             }
-            catch (NpgsqlException)
+            catch (Exception e)
             {
+                _log.Warn("Exception caught while attempting to cancel command", e);
                 // Cancel documentation says the Cancel doesn't throw on failure
             }
         }
@@ -525,12 +526,6 @@ namespace Npgsql
             {
                 timeout = (int)NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout);
             }
-        }
-
-        internal NpgsqlException ClearPoolAndCreateException(Exception e)
-        {
-            Connection.ClearPool();
-            return new NpgsqlException(L10N.ConnectionBroken, e);
         }
 
         /// <summary>

@@ -117,7 +117,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    throw new NpgsqlException("Do not change stream of an active " + this);
+                    throw new InvalidOperationException("Do not change stream of an active " + this);
                 }
                 _toStream = value;
             }
@@ -133,7 +133,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    throw new NpgsqlException("Do not change delimiter of an active " + this);
+                    throw new InvalidOperationException("Do not change delimiter of an active " + this);
                 }
                 _delimiter = value ?? DEFAULT_DELIMITER;
                 _delimiterBytes = null;
@@ -164,7 +164,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    throw new NpgsqlException("Do not change separator of an active " + this);
+                    throw new InvalidOperationException("Do not change separator of an active " + this);
                 }
                 _separator = value ?? DEFAULT_SEPARATOR;
                 _separatorBytes = null;
@@ -195,7 +195,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    throw new NpgsqlException("Do not change escape symbol of an active " + this);
+                    throw new InvalidOperationException("Do not change escape symbol of an active " + this);
                 }
                 _escape = value ?? DEFAULT_ESCAPE;
                 _escapeBytes = null;
@@ -226,7 +226,7 @@ namespace Npgsql
             {
                 if (IsActive)
                 {
-                    throw new NpgsqlException("Do not change null symbol of an active " + this);
+                    throw new InvalidOperationException("Do not change null symbol of an active " + this);
                 }
                 _null = value ?? DEFAULT_NULL;
                 _nullBytes = null;
@@ -494,7 +494,7 @@ namespace Npgsql
             {
                 if (_atField >= _context.CopyFormat.FieldCount)
                 {
-                    throw new NpgsqlException("Tried to add too many fields to a copy record with " + _atField + " fields");
+                    throw new InvalidOperationException("Tried to add too many fields to a copy record with " + _atField + " fields");
                 }
                 AddBytes(DelimiterBytes);
             }

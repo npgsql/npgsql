@@ -147,13 +147,25 @@ namespace NpgsqlTests
                         if (Conn != null && Conn.State == ConnectionState.Open)
                             Conn.Close();
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                     if (e.Code == "3D000")
                         Assert.Inconclusive("Please create a database npgsql_tests, owned by user npgsql_tests");
                     else if (e.Code == "28P01")
-                        Assert.Inconclusive("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
+                        Assert.Inconclusive(
+                            "Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                     else
                         throw;
+                }
+                catch
+                {
+                    try {
+                        if (Conn != null && Conn.State == ConnectionState.Open)
+                            Conn.Close();
+                    }
+                    catch {}
+                    throw;
                 }
             }
 

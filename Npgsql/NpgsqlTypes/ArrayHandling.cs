@@ -611,7 +611,7 @@ namespace NpgsqlTypes
             // Sanity check.
             if (nDims < 0)
             {
-                throw new NpgsqlException("Invalid array dimension count encountered in binary array header");
+                throw new Exception("Invalid array dimension count encountered in binary array header");
             }
 
             // {PG handles 0-dimension arrays, but .net does not.  Return a 0-size 1-dimensional array.
@@ -627,7 +627,7 @@ namespace NpgsqlTypes
             // Sanity check.
             if (BackendData.Length < dataOffset + nDims * 8)
             {
-                throw new NpgsqlException("Insuffient backend data to describe all expected dimensions in binary array header");
+                throw new Exception("Insuffient backend data to describe all expected dimensions in binary array header");
             }
 
             int[] dimLengths;
@@ -687,7 +687,7 @@ namespace NpgsqlTypes
                     // Sanity check.
                     if (backendData.Length < dataOffset + 4)
                     {
-                        throw new NpgsqlException("Out of backend data while reading binary array");
+                        throw new Exception("Out of backend data while reading binary array");
                     }
 
                     int elementLength;
@@ -707,7 +707,7 @@ namespace NpgsqlTypes
                         // Sanity check.
                         if (backendData.Length < dataOffset + elementLength)
                         {
-                            throw new NpgsqlException("Out of backend data while reading binary array");
+                            throw new Exception("Out of backend data while reading binary array");
                         }
 
                         byte[] elementBinary;

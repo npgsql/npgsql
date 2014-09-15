@@ -24,6 +24,7 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+using System;
 using System.IO;
 
 namespace Npgsql
@@ -135,12 +136,12 @@ namespace Npgsql
                 _copyStream = _context.Mediator.CopyStream;
                 if (_copyStream == null && _context.State != NpgsqlState.Ready)
                 {
-                    throw new NpgsqlException("Not a COPY OUT query: " + _cmd.CommandText);
+                    throw new InvalidOperationException("Not a COPY OUT query: " + _cmd.CommandText);
                 }
             }
             else
             {
-                throw new NpgsqlException("Copy can only start in Ready state, not in " + _context.State);
+                throw new InvalidOperationException("Copy can only start in Ready state, not in " + _context.State);
             }
         }
 
