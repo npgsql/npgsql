@@ -151,9 +151,9 @@ namespace NpgsqlTests
                     {
                     }
                     if (e.Code == "3D000")
-                        Assert.Inconclusive("Please create a database npgsql_tests, owned by user npgsql_tests");
+                        TestUtil.Inconclusive("Please create a database npgsql_tests, owned by user npgsql_tests");
                     else if (e.Code == "28P01")
-                        Assert.Inconclusive(
+                        TestUtil.Inconclusive(
                             "Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                     else
                         throw;

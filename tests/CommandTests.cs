@@ -3950,7 +3950,7 @@ namespace NpgsqlTests
             catch (NpgsqlException e)
             {
                 if (e.Code == "42704")
-                    Assert.Inconclusive("HSTORE does not seem to be installed at the backend");
+                    TestUtil.Inconclusive("HSTORE does not seem to be installed at the backend");
             }
 
             ExecuteNonQuery(@"SET search_path = public, hstore");

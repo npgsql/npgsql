@@ -34,7 +34,7 @@ namespace NpgsqlTests
         {
             var sslSupport = (string) ExecuteScalar("SHOW ssl", Conn);
             if (sslSupport == "off")
-                Assert.Inconclusive("SSL support isn't enabled at the backend");
+                TestUtil.Inconclusive("SSL support isn't enabled at the backend");
         }
 
         #endregion

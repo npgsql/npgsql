@@ -6,6 +6,27 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    public static class TestUtil
+    {
+        /// <summary>
+        /// Calls Assert.Inconclusive() unless we're on the build server, in which case calls
+        /// Assert.Fail(). We don't to miss any regressions just because something was misconfigured
+        /// at the build server and caused a test to be inconclusive.
+        /// </summary>
+        public static void Inconclusive(string message)
+        {
+            if (Environment.GetEnvironmentVariable("TEAMCITY_VERSION") == null)
+                Assert.Inconclusive(message);
+            else
+                Assert.Fail(message);
+        }
+
+        public static void Inconclusive(string message, params object[] args)
+        {
+            Inconclusive(String.Format(message, args));
+        }
+    }
+
     /// <summary>
     /// Causes the test to be ignored on mono
     /// </summary>
