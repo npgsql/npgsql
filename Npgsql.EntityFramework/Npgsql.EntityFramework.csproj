@@ -41,7 +41,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug-net45\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET45;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET45;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net45\Npgsql.EntityFramework.xml</DocumentationFile>
@@ -51,7 +51,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release-net45\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET45;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;NET45;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release-net45\Npgsql.EntityFramework.xml</DocumentationFile>
@@ -62,7 +62,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net40\Npgsql.EntityFramework.xml</DocumentationFile>
@@ -72,7 +72,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release-net40\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;ENTITIES6</DefineConstants>
+    <DefineConstants>TRACE;ENTITIES6</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release-net40\Npgsql.EntityFramework.xml</DocumentationFile>

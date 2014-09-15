@@ -123,9 +123,7 @@ namespace Npgsql
 
         private string initQueries;
 
-#if WINDOWS && UNMANAGED
         internal SSPIHandler SSPI { get; set; }
-#endif
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
@@ -684,7 +682,6 @@ namespace Npgsql
                                         PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
 
                                     break;
-#if WINDOWS && UNMANAGED
 
                                 case AuthenticationRequestType.AuthenticationGSS:
                                 {
@@ -730,8 +727,6 @@ namespace Npgsql
                                     }
                                     break;
                                 }
-
-#endif
 
                                 default:
                                 throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));

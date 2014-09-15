@@ -48,7 +48,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU'">
     <OutputPath>bin\Release-net40\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;NET35;NET40;ENTITIES</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -60,7 +60,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug-net40|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET35;NET40;ENTITIES</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET35;NET40;ENTITIES</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>

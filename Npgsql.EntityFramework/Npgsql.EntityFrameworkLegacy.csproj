@@ -41,7 +41,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Legacy-Debug-net45\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED;NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Legacy-Debug-net45\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>
@@ -51,7 +51,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Legacy-Release-net45\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED;NET45</DefineConstants>
+    <DefineConstants>TRACE;NET45</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Legacy-Release-net45\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>
@@ -62,7 +62,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Legacy-Debug-net40\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;WINDOWS;UNMANAGED</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Legacy-Debug-net40\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>
@@ -72,7 +72,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Legacy-Release-net40\</OutputPath>
-    <DefineConstants>TRACE;WINDOWS;UNMANAGED</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.xml</DocumentationFile>

@@ -1,5 +1,3 @@
-#if WINDOWS && UNMANAGED
-
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -309,5 +307,3 @@ namespace Npgsql
         #endregion
     }
 }
-
-#endif

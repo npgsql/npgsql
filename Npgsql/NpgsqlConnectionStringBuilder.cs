@@ -271,6 +271,8 @@ namespace Npgsql
             }
             if (Compatible != THIS_VERSION)
                 throw new NotSupportedException("No compatibility modes supported in this Npgsql version");
+            if (IntegratedSecurity && Type.GetType("Mono.Runtime") != null)
+                throw new NotSupportedException("IntegratedSecurity isn't supported on mono");
         }
 
         #region Parsing Functions
