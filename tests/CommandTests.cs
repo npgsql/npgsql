@@ -3014,11 +3014,11 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void DoubleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        public void DoubleArrayHandlingValues([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] { double.NaN, 12345.12345d };
+                var inVal = new[] { double.NaN, 12345.12345d, double.PositiveInfinity, double.NegativeInfinity };
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -3033,11 +3033,11 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void SingleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        public void SingleArrayHandlingValues([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] { float.NaN, 12345.12345f };
+                var inVal = new[] { float.NaN, 12345.12345f, float.PositiveInfinity, float.NegativeInfinity };
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Real | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
