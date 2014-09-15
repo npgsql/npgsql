@@ -400,6 +400,18 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Returns whether SSL is being used for the connection.
+        /// </summary>
+        internal bool IsSecure
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return connector.IsSecure;
+            }
+        }
+
+        /// <summary>
         /// Gets the current state of the connection.
         /// </summary>
         /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>

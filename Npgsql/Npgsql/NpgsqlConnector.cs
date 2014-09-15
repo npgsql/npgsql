@@ -404,49 +404,45 @@ namespace Npgsql
                     .WriteInt32(80877103);
 
                 // Receive response
-                Char response = (Char)baseStream.ReadByte();
+                var response = (Char)baseStream.ReadByte();
 
-                if (response == 'S')
+                if (response != 'S')
+                {
+                    if (SslMode == SslMode.Require) {
+                        throw new InvalidOperationException(L10N.SslRequestError);
+                    }
+                }
+                else
                 {
                     //create empty collection
-                    X509CertificateCollection clientCertificates = new X509CertificateCollection();
+                    var clientCertificates = new X509CertificateCollection();
 
                     //trigger the callback to fetch some certificates
                     DefaultProvideClientCertificatesCallback(clientCertificates);
 
                     //if (context.UseMonoSsl)
-                    if (!NpgsqlConnector.UseSslStream)
+                    if (!UseSslStream)
                     {
-                        SslClientStream sslStreamPriv;
-
-                        sslStreamPriv = new SslClientStream(
+                        var sslStreamPriv = new SslClientStream(
                                 baseStream,
                                 Host,
                                 true,
                                 SecurityProtocolType.Default,
                                 clientCertificates);
 
-                        sslStreamPriv.ClientCertSelectionDelegate =
-                                new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-                        sslStreamPriv.ServerCertValidationDelegate =
-                                new CertificateValidationCallback(DefaultCertificateValidationCallback);
-                        sslStreamPriv.PrivateKeyCertSelectionDelegate =
-                                new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+                        sslStreamPriv.ClientCertSelectionDelegate = DefaultCertificateSelectionCallback;
+                        sslStreamPriv.ServerCertValidationDelegate = DefaultCertificateValidationCallback;
+                        sslStreamPriv.PrivateKeyCertSelectionDelegate = DefaultPrivateKeySelectionCallback;
                         sslStream = sslStreamPriv;
+                        IsSecure = true;
                     }
                     else
                     {
-                        SslStream sslStreamPriv;
-
-                        sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
-
+                        var sslStreamPriv = new SslStream(baseStream, true, DefaultValidateRemoteCertificateCallback);
                         sslStreamPriv.AuthenticateAsClient(Host, clientCertificates, System.Security.Authentication.SslProtocols.Default, false);
                         sslStream = sslStreamPriv;
+                        IsSecure = true;
                     }
-                }
-                else if (SslMode == SslMode.Require)
-                {
-                    throw new InvalidOperationException(L10N.SslRequestError);
                 }
             }
 
@@ -1198,6 +1194,11 @@ namespace Npgsql
                 return false;
             }
         }
+
+        /// <summary>
+        /// Returns whether SSL is being used for the connection
+        /// </summary>
+        internal bool IsSecure { get; private set; }
 
         /// <summary>
         /// Called to provide client certificates for SSL handshake.
