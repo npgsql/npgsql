@@ -1512,7 +1512,7 @@ namespace Npgsql
             using (BlockNotificationThread())
             {
                 // Set statement timeout as needed.
-                SetBackendCommandTimeout(20);
+                SetBackendCommandTimeout(DefaultCommandTimeout);
 
                 // Write the Query message to the wire.
                 Query(query);
@@ -1612,6 +1612,9 @@ namespace Npgsql
         /// <param name="timeout">New timeout</param>
         internal void SetBackendCommandTimeout(int timeout)
         {
+            // For FoundationDb compatibility, do not set statement_timeout unless timeout is valid
+            if (timeout == -1) return;
+
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
             {
                 ExecuteSetStatementTimeoutBlind(timeout);
