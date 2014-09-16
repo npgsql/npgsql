@@ -31,6 +31,8 @@ Developers who contributes to Npgsql currently or in past, in no particular orde
 +   Thilo Utke
 +   Hiroshi Saito
 +   Shay Rojansky
++   Kenji Uno
++   Emil Lenngren
 
 ###License
 
