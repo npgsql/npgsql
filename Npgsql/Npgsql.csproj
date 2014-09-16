@@ -135,7 +135,6 @@
     <Compile Include="NpgsqlBind.cs" />
     <Compile Include="NpgsqlCancelRequest.cs" />
     <Compile Include="NpgsqlCommand.cs" />
-    <Compile Include="NpgsqlCommand.PrepareExecute.cs" />
     <Compile Include="NpgsqlCommand.Rewrite.cs" />
     <Compile Include="NpgsqlCommandBuilder.cs" />
     <Compile Include="NpgsqlConnection.cs" />
