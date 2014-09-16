@@ -41,29 +41,10 @@ using Mono.Security.Protocol.Tls;
 using Npgsql.Localization;
 using IsolationLevel = System.Data.IsolationLevel;
 
-#if WITHDESIGN
-
-#endif
-
 namespace Npgsql
 {
     /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
-    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
-
-    /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
-    public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
-
-    /// <summary>
-    /// This class represents a connection to a
-    /// PostgreSQL server.
+    /// This class represents a connection to a PostgreSQL server.
     /// </summary>
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
@@ -73,58 +54,6 @@ namespace Npgsql
     {
         // Parsed connection string cache
         private static readonly Cache<NpgsqlConnectionStringBuilder> cache = new Cache<NpgsqlConnectionStringBuilder>();
-
-        /// <summary>
-        /// Occurs on NoticeResponses from the PostgreSQL backend.
-        /// </summary>
-        public event NoticeEventHandler Notice;
-
-        internal NoticeEventHandler NoticeDelegate;
-
-        /// <summary>
-        /// Occurs on NotificationResponses from the PostgreSQL backend.
-        /// </summary>
-        public event NotificationEventHandler Notification;
-
-        internal NotificationEventHandler NotificationDelegate;
-
-        /// <summary>
-        /// Called to provide client certificates for SSL handshake.
-        /// </summary>
-        public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-        /// </summary>
-        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
-        public event CertificateSelectionCallback CertificateSelectionCallback;
-
-        internal CertificateSelectionCallback CertificateSelectionCallbackDelegate;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-        /// </summary>
-        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
-        public event CertificateValidationCallback CertificateValidationCallback;
-
-        internal CertificateValidationCallback CertificateValidationCallbackDelegate;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-        /// </summary>
-        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
-        public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
-
-        internal PrivateKeySelectionCallback PrivateKeySelectionCallbackDelegate;
-
-        /// <summary>
-        /// Called to validate server's certificate during SSL handshake
-        /// </summary>
-        public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
-
-        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
 
         // Set this when disposed is called.
         private bool disposed = false;
@@ -139,8 +68,10 @@ namespace Npgsql
         // Strong-typed ConnectionString values
         private NpgsqlConnectionStringBuilder settings;
 
-        // Connector being used for the active connection.
-        private NpgsqlConnector connector = null;
+        /// <summary>
+        /// The connector object connected to the backend.
+        /// </summary>
+        internal NpgsqlConnector Connector { get; private set; }
 
         private NpgsqlPromotableSinglePhaseNotification promotable = null;
 
@@ -149,6 +80,8 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        #region Constructors / Init / Open
+
         /// <summary>
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
@@ -156,24 +89,6 @@ namespace Npgsql
         public NpgsqlConnection()
             : this(String.Empty)
         {
-        }
-
-        private void Init()
-        {
-            NoticeDelegate = new NoticeEventHandler(OnNotice);
-            NotificationDelegate = new NotificationEventHandler(OnNotification);
-
-            ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
-            CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
-            CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
-            PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
-            ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
-
-            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
-            // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
-            RSACryptoServiceProvider.UseMachineKeyStore = true;
-
-            promotable = new NpgsqlPromotableSinglePhaseNotification(this);
         }
 
         /// <summary>
@@ -199,6 +114,88 @@ namespace Npgsql
             LoadConnectionStringBuilder(ConnectionString);
             Init();
         }
+
+        private void Init()
+        {
+            NoticeDelegate = new NoticeEventHandler(OnNotice);
+            NotificationDelegate = new NotificationEventHandler(OnNotification);
+
+            ProvideClientCertificatesCallbackDelegate = new ProvideClientCertificatesCallback(DefaultProvideClientCertificatesCallback);
+            CertificateValidationCallbackDelegate = new CertificateValidationCallback(DefaultCertificateValidationCallback);
+            CertificateSelectionCallbackDelegate = new CertificateSelectionCallback(DefaultCertificateSelectionCallback);
+            PrivateKeySelectionCallbackDelegate = new PrivateKeySelectionCallback(DefaultPrivateKeySelectionCallback);
+            ValidateRemoteCertificateCallbackDelegate = new ValidateRemoteCertificateCallback(DefaultValidateRemoteCertificateCallback);
+
+            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
+            // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
+            RSACryptoServiceProvider.UseMachineKeyStore = true;
+
+            promotable = new NpgsqlPromotableSinglePhaseNotification(this);
+        }
+
+        /// <summary>
+        /// Opens a database connection with the property settings specified by the
+        /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
+        /// </summary>
+        public override void Open()
+        {
+            // If we're postponing a close (see doc on this variable), the connection is already
+            // open and can be silently reused
+            if (_postponingClose)
+                return;
+
+            CheckConnectionClosed();
+
+            _log.Debug("Opening connnection");
+
+            // Check if there is any missing argument.
+            if (!settings.ContainsKey(Keywords.Host))
+            {
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.Host.ToString());
+            }
+            if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
+            {
+                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.UserName.ToString());
+            }
+
+            // Get a Connector, either from the pool or creating one ourselves.
+            if (Pooling)
+            {
+                Connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
+            }
+            else
+            {
+                Connector = new NpgsqlConnector(this);
+
+                Connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
+                Connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
+                Connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
+                Connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
+                Connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
+
+                Connector.Open();
+            }
+
+            Connector.Notice += NoticeDelegate;
+            Connector.Notification += NotificationDelegate;
+
+            if (SyncNotification)
+            {
+                Connector.AddNotificationThread();
+            }
+
+            if (Enlist)
+            {
+                Promotable.Enlist(Transaction.Current);
+            }
+
+            this.OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+
+        }
+
+        #endregion Open / Init
+
+        #region Connection string management
 
         /// <summary>
         /// Gets or sets the string used to connect to a PostgreSQL database.
@@ -290,6 +287,75 @@ namespace Npgsql
                 LoadConnectionStringBuilder(value);
             }
         }
+
+        /// <summary>
+        /// Gets the NpgsqlConnectionStringBuilder containing the parsed connection string values.
+        /// </summary>
+        internal NpgsqlConnectionStringBuilder ConnectionStringValues
+        {
+            get { return settings; }
+        }
+
+        /// <summary>
+        /// Returns a copy of the NpgsqlConnectionStringBuilder that contains the parsed connection string values.
+        /// </summary>
+        internal NpgsqlConnectionStringBuilder CopyConnectionStringBuilder()
+        {
+            return settings.Clone();
+        }
+
+        /// <summary>
+        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
+        /// </summary>
+        /// <param name="connectionString">The connection string to load the builder from</param>
+        private void LoadConnectionStringBuilder(string connectionString)
+        {
+            NpgsqlConnectionStringBuilder newSettings = cache[connectionString];
+            if (newSettings == null)
+            {
+                newSettings = new NpgsqlConnectionStringBuilder(connectionString);
+                cache[connectionString] = newSettings;
+            }
+
+            LoadConnectionStringBuilder(newSettings);
+        }
+
+        /// <summary>
+        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
+        /// </summary>
+        /// <param name="connectionString">The connection string to load the builder from</param>
+        private void LoadConnectionStringBuilder(NpgsqlConnectionStringBuilder connectionString)
+        {
+            // Clone the settings, because if Integrated Security is enabled, user ID can be different
+            settings = connectionString.Clone();
+
+            // Set the UserName explicitly to freeze any Integrated Security-determined names
+            if (settings.IntegratedSecurity)
+                settings.UserName = settings.UserName;
+
+            RefreshConnectionString();
+
+            if (_log.IsTraceEnabled)
+            {
+                foreach (string key in settings.Keys)
+                {
+                    _log.TraceFormat("Connstring dump {0}={1}", key, settings[key]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Refresh the cached _connectionString whenever the builder settings change
+        /// </summary>
+        private void RefreshConnectionString()
+        {
+            _connectionString = settings.ConnectionString;
+        }
+
+
+        #endregion Connection string management
+
+        #region Configuration settings
 
         /// <summary>
         /// Backend server host name.
@@ -400,515 +466,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Returns whether SSL is being used for the connection.
-        /// </summary>
-        internal bool IsSecure
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.IsSecure;
-            }
-        }
-
-        /// <summary>
-        /// Gets the current state of the connection.
-        /// </summary>
-        /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
-        [Browsable(false)]
-        public ConnectionState FullState
-        {
-            get
-            {
-                if (connector == null || disposed) {
-                    return ConnectionState.Closed;
-                }
-
-                switch (connector.State)
-                {
-                    case NpgsqlState.Closed:
-                        return ConnectionState.Closed;
-                    case NpgsqlState.Connecting:
-                        return ConnectionState.Connecting;
-                    case NpgsqlState.Ready:
-                        return ConnectionState.Open;
-                    case NpgsqlState.Executing:
-                        return ConnectionState.Open | ConnectionState.Executing;
-                    case NpgsqlState.Fetching:
-                        return ConnectionState.Open | ConnectionState.Fetching;
-                    case NpgsqlState.Broken:
-                        return ConnectionState.Broken;
-                    case NpgsqlState.CopyIn:
-                        return ConnectionState.Open | ConnectionState.Fetching;
-                    case NpgsqlState.CopyOut:
-                        return ConnectionState.Closed | ConnectionState.Fetching;
-                    default:
-                        throw new ArgumentOutOfRangeException("Unknown connector state: " + connector.State);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets whether the current state of the connection is Open or Closed
-        /// </summary>
-        /// <value>ConnectionState.Open, ConnectionState.Closed or ConnectionState.Connecting</value>
-        [Browsable(false)]
-        public override ConnectionState State
-        {
-            get
-            {
-                var s = FullState;
-                if ((s & ConnectionState.Open) != 0)
-                    return ConnectionState.Open;
-                if ((s & ConnectionState.Connecting) != 0)
-                    return ConnectionState.Connecting;
-                return ConnectionState.Closed;
-            }
-        }
-
-        /// <summary>
         /// Compatibility version.
         /// </summary>
         public Version NpgsqlCompatibilityVersion
         {
-            get
-            {
-                return settings.Compatible;
-            }
-        }
-
-        /// <summary>
-        /// Version of the PostgreSQL backend.
-        /// This can only be called when there is an active connection.
-        /// </summary>
-        [Browsable(false)]
-        public Version PostgreSqlVersion
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.ServerVersion;
-            }
-        }
-
-        /// <summary>
-        /// PostgreSQL server version.
-        /// </summary>
-        public override string ServerVersion
-        {
-            get { return PostgreSqlVersion.ToString(); }
-        }
-
-        /// <summary>
-        /// Protocol version in use.
-        /// This can only be called when there is an active connection.
-        /// Always retuna Version3
-        /// </summary>
-        [Browsable(false)]
-        public ProtocolVersion BackendProtocolVersion
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return ProtocolVersion.Version3;
-            }
-        }
-
-        /// <summary>
-        /// Process id of backend server.
-        /// This can only be called when there is an active connection.
-        /// </summary>
-        [Browsable(false)]
-        public Int32 ProcessID
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.BackEndKeyData.ProcessID;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend is expecting standard conformant strings.
-        /// In version 8.1, Postgres began reporting this value (false), but did not actually support standard conformant strings.
-        /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
-        /// As of version 9.1, this flag defaults to true.
-        /// </summary>
-        [Browsable(false)]
-        public Boolean UseConformantStrings
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.NativeToBackendTypeConverterOptions.UseConformantStrings;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend understands the string literal E prefix (>= 8.1).
-        /// </summary>
-        [Browsable(false)]
-        public Boolean Supports_E_StringPrefix
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.NativeToBackendTypeConverterOptions.Supports_E_StringPrefix;
-            }
-        }
-
-        /// <summary>
-        /// Report whether the backend understands the hex byte format (>= 9.0).
-        /// </summary>
-        [Browsable(false)]
-        public Boolean SupportsHexByteFormat
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return connector.NativeToBackendTypeConverterOptions.SupportsHexByteFormat;
-            }
-        }
-
-        /// <summary>
-        /// Begins a database transaction with the specified isolation level.
-        /// </summary>
-        /// <param name="isolationLevel">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>An <see cref="System.Data.Common.DbTransaction">DbTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
-        /// There's no support for nested transactions.
-        /// </remarks>
-        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
-        {
-            return BeginTransaction(isolationLevel);
-        }
-
-        /// <summary>
-        /// Begins a database transaction.
-        /// </summary>
-        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently there's no support for nested transactions.
-        /// </remarks>
-        public new NpgsqlTransaction BeginTransaction()
-        {
-            return BeginTransaction(IsolationLevel.ReadCommitted);
-        }
-
-        /// <summary>
-        /// Begins a database transaction with the specified isolation level.
-        /// </summary>
-        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
-        /// There's no support for nested transactions.
-        /// </remarks>
-        public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
-        {
-            _log.Debug("Beginning transaction with isolation level " + level);
-
-            CheckConnectionOpen();
-
-            if (connector.Transaction != null)
-            {
-                throw new InvalidOperationException(L10N.NoNestedTransactions);
-            }
-
-            return new NpgsqlTransaction(this, level);
-        }
-
-        /// <summary>
-        /// Opens a database connection with the property settings specified by the
-        /// <see cref="NpgsqlConnection.ConnectionString">ConnectionString</see>.
-        /// </summary>
-        public override void Open()
-        {
-            // If we're postponing a close (see doc on this variable), the connection is already
-            // open and can be silently reused
-            if (_postponingClose)
-                return;
-
-            CheckConnectionClosed();
-
-            _log.Debug("Opening connnection");
-
-            // Check if there is any missing argument.
-            if (!settings.ContainsKey(Keywords.Host))
-            {
-                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.Host.ToString());
-            }
-            if (!settings.ContainsKey(Keywords.UserName) && !settings.ContainsKey(Keywords.IntegratedSecurity))
-            {
-                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.UserName.ToString());
-            }
-
-            // Get a Connector, either from the pool or creating one ourselves.
-            if (Pooling)
-            {
-                connector = NpgsqlConnectorPool.ConnectorPoolMgr.RequestConnector(this);
-            }
-            else
-            {
-                connector = new NpgsqlConnector(this);
-
-                connector.ProvideClientCertificatesCallback += ProvideClientCertificatesCallbackDelegate;
-                connector.CertificateSelectionCallback += CertificateSelectionCallbackDelegate;
-                connector.CertificateValidationCallback += CertificateValidationCallbackDelegate;
-                connector.PrivateKeySelectionCallback += PrivateKeySelectionCallbackDelegate;
-                connector.ValidateRemoteCertificateCallback += ValidateRemoteCertificateCallbackDelegate;
-
-                connector.Open();
-            }
-
-            connector.Notice += NoticeDelegate;
-            connector.Notification += NotificationDelegate;
-
-            if (SyncNotification)
-            {
-                connector.AddNotificationThread();
-            }
-
-            if (Enlist)
-            {
-                Promotable.Enlist(Transaction.Current);
-            }
-
-            this.OnStateChange (new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-
-        }
-
-        /// <summary>
-        /// This method changes the current database by disconnecting from the actual
-        /// database and connecting to the specified.
-        /// </summary>
-        /// <param name="dbName">The name of the database to use in place of the current database.</param>
-        public override void ChangeDatabase(String dbName)
-        {
-            _log.Debug("Changing database to " + dbName);
-            CheckNotDisposed();
-
-            if (dbName == null)
-            {
-                throw new ArgumentNullException("dbName");
-            }
-
-            if (string.IsNullOrEmpty(dbName))
-            {
-                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(L10N.InvalidDbName));
-            }
-
-            String oldDatabaseName = Database;
-
-            Close();
-
-            // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
-            settings = settings.Clone();
-            settings[Keywords.Database] = dbName;
-            _connectionString = null;
-
-            Open();
-        }
-
-        internal void EmergencyClose()
-        {
-            _fakingOpen = true;
-        }
-
-        /// <summary>
-        /// Releases the connection to the database.  If the connection is pooled, it will be
-        ///    made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
-        /// </summary>
-        public override void Close()
-        {
-            if (connector == null)
-                return;
-
-            _log.Debug("Closing connection");
-
-            if (promotable != null && promotable.InLocalTransaction)
-            {
-                _postponingClose = true;
-                return;
-            }
-
-            ReallyClose();
-        }
-
-        private void ReallyClose()
-        {
-            _log.Trace("Really closing connection");
-            _postponingClose = false;
-
-            // clear the way for another promotable transaction
-            promotable = null;
-
-            connector.Notification -= NotificationDelegate;
-            connector.Notice -= NoticeDelegate;
-
-            if (SyncNotification)
-            {
-                connector.RemoveNotificationThread();
-            }
-
-            if (Pooling)
-            {
-                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, connector);
-            }
-            else
-            {
-                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
-                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
-                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
-
-                if (Connector.Transaction != null)
-                {
-                    Connector.Transaction.Cancel();
-                }
-
-                Connector.Close();
-            }
-
-            connector = null;
-
-            this.OnStateChange (new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
-        }
-
-        /// <summary>
-        /// When a connection is closed within an enclosing TransactionScope and the transaction
-        /// hasn't been promoted, we defer the actual closing until the scope ends.
-        /// </summary>
-        internal void PromotableLocalTransactionEnded()
-        {
-            if (_postponingDispose)
-                Dispose(true);
-            else if (_postponingClose)
-                ReallyClose();
-        }
-
-        /// <summary>
-        /// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
-        /// object associated with the <see cref="System.Data.Common.DbConnection">IDbConnection</see>.
-        /// </summary>
-        /// <returns>A <see cref="System.Data.Common.DbCommand">DbCommand</see> object.</returns>
-        protected override DbCommand CreateDbCommand()
-        {
-            return CreateCommand();
-        }
-
-        /// <summary>
-        /// Creates and returns a <see cref="NpgsqlCommand">NpgsqlCommand</see>
-        /// object associated with the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
-        /// </summary>
-        /// <returns>A <see cref="NpgsqlCommand">NpgsqlCommand</see> object.</returns>
-        public new NpgsqlCommand CreateCommand()
-        {
-            CheckNotDisposed();
-            return new NpgsqlCommand("", this);
-        }
-
-        /// <summary>
-        /// Releases all resources used by the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see>.
-        /// </summary>
-        /// <param name="disposing"><b>true</b> when called from Dispose();
-        /// <b>false</b> when being called from the finalizer.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposed)
-                return;
-
-            _postponingDispose = false;
-            if (disposing)
-            {
-                Close();
-                if (_postponingClose)
-                {
-                    _postponingDispose = true;
-                    return;
-                }
-            }
-
-            base.Dispose(disposing);
-            disposed = true;
-        }
-
-        /// <summary>
-        /// Create a new connection based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlConnection object.</returns>
-        Object ICloneable.Clone()
-        {
-            return Clone();
-        }
-
-        /// <summary>
-        /// Create a new connection based on this one.
-        /// </summary>
-        /// <returns>A new NpgsqlConnection object.</returns>
-        public NpgsqlConnection Clone()
-        {
-            CheckNotDisposed();
-
-            NpgsqlConnection C = new NpgsqlConnection(ConnectionString);
-
-            C.Notice += this.Notice;
-
-            if (connector != null)
-            {
-                C.Open();
-            }
-
-            return C;
-        }
-
-        //
-        // Internal methods and properties
-        //
-        internal void OnNotice(object O, NpgsqlNoticeEventArgs E)
-        {
-            if (Notice != null)
-            {
-                Notice(this, E);
-            }
-        }
-
-        internal void OnNotification(object O, NpgsqlNotificationEventArgs E)
-        {
-            if (Notification != null)
-            {
-                Notification(this, E);
-            }
-        }
-
-        /// <summary>
-        /// Returns a copy of the NpgsqlConnectionStringBuilder that contains the parsed connection string values.
-        /// </summary>
-        internal NpgsqlConnectionStringBuilder CopyConnectionStringBuilder()
-        {
-            return settings.Clone();
-        }
-
-        /// <summary>
-        /// The connector object connected to the backend.
-        /// </summary>
-        internal NpgsqlConnector Connector
-        {
-            get { return connector; }
-        }
-
-        /// <summary>
-        /// Gets the NpgsqlConnectionStringBuilder containing the parsed connection string values.
-        /// </summary>
-        internal NpgsqlConnectionStringBuilder ConnectionStringValues
-        {
-            get { return settings; }
+            get { return settings.Compatible; }
         }
 
         /// <summary>
@@ -967,9 +529,354 @@ namespace Npgsql
             get { return settings.Enlist; }
         }
 
+        #endregion Configuration settings
+
+        #region State management
+
+        /// <summary>
+        /// Gets the current state of the connection.
+        /// </summary>
+        /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
+        [Browsable(false)]
+        public ConnectionState FullState
+        {
+            get
+            {
+                if (Connector == null || disposed)
+                {
+                    return ConnectionState.Closed;
+                }
+
+                switch (Connector.State)
+                {
+                    case NpgsqlState.Closed:
+                        return ConnectionState.Closed;
+                    case NpgsqlState.Connecting:
+                        return ConnectionState.Connecting;
+                    case NpgsqlState.Ready:
+                        return ConnectionState.Open;
+                    case NpgsqlState.Executing:
+                        return ConnectionState.Open | ConnectionState.Executing;
+                    case NpgsqlState.Fetching:
+                        return ConnectionState.Open | ConnectionState.Fetching;
+                    case NpgsqlState.Broken:
+                        return ConnectionState.Broken;
+                    case NpgsqlState.CopyIn:
+                        return ConnectionState.Open | ConnectionState.Fetching;
+                    case NpgsqlState.CopyOut:
+                        return ConnectionState.Closed | ConnectionState.Fetching;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unknown connector state: " + Connector.State);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the current state of the connection is Open or Closed
+        /// </summary>
+        /// <value>ConnectionState.Open, ConnectionState.Closed or ConnectionState.Connecting</value>
+        [Browsable(false)]
+        public override ConnectionState State
+        {
+            get
+            {
+                var s = FullState;
+                if ((s & ConnectionState.Open) != 0)
+                    return ConnectionState.Open;
+                if ((s & ConnectionState.Connecting) != 0)
+                    return ConnectionState.Connecting;
+                return ConnectionState.Closed;
+            }
+        }
+
+        #endregion State management
+
+        #region Commands
+
+        /// <summary>
+        /// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
+        /// object associated with the <see cref="System.Data.Common.DbConnection">IDbConnection</see>.
+        /// </summary>
+        /// <returns>A <see cref="System.Data.Common.DbCommand">DbCommand</see> object.</returns>
+        protected override DbCommand CreateDbCommand()
+        {
+            return CreateCommand();
+        }
+
+        /// <summary>
+        /// Creates and returns a <see cref="NpgsqlCommand">NpgsqlCommand</see>
+        /// object associated with the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// </summary>
+        /// <returns>A <see cref="NpgsqlCommand">NpgsqlCommand</see> object.</returns>
+        public new NpgsqlCommand CreateCommand()
+        {
+            CheckNotDisposed();
+            return new NpgsqlCommand("", this);
+        }
+
+        #endregion Commands
+
+        #region Transactions
+
+        /// <summary>
+        /// Begins a database transaction with the specified isolation level.
+        /// </summary>
+        /// <param name="isolationLevel">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
+        /// <returns>An <see cref="System.Data.Common.DbTransaction">DbTransaction</see>
+        /// object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
+        /// There's no support for nested transactions.
+        /// </remarks>
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
+        {
+            return BeginTransaction(isolationLevel);
+        }
+
+        /// <summary>
+        /// Begins a database transaction.
+        /// </summary>
+        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
+        /// object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently there's no support for nested transactions.
+        /// </remarks>
+        public new NpgsqlTransaction BeginTransaction()
+        {
+            return BeginTransaction(IsolationLevel.ReadCommitted);
+        }
+
+        /// <summary>
+        /// Begins a database transaction with the specified isolation level.
+        /// </summary>
+        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
+        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
+        /// object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
+        /// There's no support for nested transactions.
+        /// </remarks>
+        public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
+        {
+            _log.Debug("Beginning transaction with isolation level " + level);
+
+            CheckConnectionOpen();
+
+            if (Connector.Transaction != null)
+            {
+                throw new InvalidOperationException(L10N.NoNestedTransactions);
+            }
+
+            return new NpgsqlTransaction(this, level);
+        }
+
+        /// <summary>
+        /// When a connection is closed within an enclosing TransactionScope and the transaction
+        /// hasn't been promoted, we defer the actual closing until the scope ends.
+        /// </summary>
+        internal void PromotableLocalTransactionEnded()
+        {
+            if (_postponingDispose)
+                Dispose(true);
+            else if (_postponingClose)
+                ReallyClose();
+        }
+
+        /// <summary>
+        /// Enlist transation.
+        /// </summary>
+        /// <param name="transaction"></param>
+        public override void EnlistTransaction(Transaction transaction)
+        {
+            Promotable.Enlist(transaction);
+        }
+
+        #endregion
+
+        #region Close
+
+        internal void EmergencyClose()
+        {
+            _fakingOpen = true;
+        }
+
+        /// <summary>
+        /// Releases the connection to the database.  If the connection is pooled, it will be
+        ///    made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
+        /// </summary>
+        public override void Close()
+        {
+            if (Connector == null)
+                return;
+
+            _log.Debug("Closing connection");
+
+            if (promotable != null && promotable.InLocalTransaction)
+            {
+                _postponingClose = true;
+                return;
+            }
+
+            ReallyClose();
+        }
+
+        private void ReallyClose()
+        {
+            _log.Trace("Really closing connection");
+            _postponingClose = false;
+
+            // clear the way for another promotable transaction
+            promotable = null;
+
+            Connector.Notification -= NotificationDelegate;
+            Connector.Notice -= NoticeDelegate;
+
+            if (SyncNotification)
+            {
+                Connector.RemoveNotificationThread();
+            }
+
+            if (Pooling)
+            {
+                NpgsqlConnectorPool.ConnectorPoolMgr.ReleaseConnector(this, Connector);
+            }
+            else
+            {
+                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
+                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
+                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
+                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
+
+                if (Connector.Transaction != null)
+                {
+                    Connector.Transaction.Cancel();
+                }
+
+                Connector.Close();
+            }
+
+            Connector = null;
+
+            this.OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
+        }
+
+        /// <summary>
+        /// Releases all resources used by the
+        /// <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// </summary>
+        /// <param name="disposing"><b>true</b> when called from Dispose();
+        /// <b>false</b> when being called from the finalizer.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+
+            _postponingDispose = false;
+            if (disposing)
+            {
+                Close();
+                if (_postponingClose)
+                {
+                    _postponingDispose = true;
+                    return;
+                }
+            }
+
+            base.Dispose(disposing);
+            disposed = true;
+        }
+
+        #endregion
+
+        #region Notifications
+
+        /// <summary>
+        /// Occurs on NoticeResponses from the PostgreSQL backend.
+        /// </summary>
+        public event NoticeEventHandler Notice;
+
+        internal NoticeEventHandler NoticeDelegate;
+
+        /// <summary>
+        /// Occurs on NotificationResponses from the PostgreSQL backend.
+        /// </summary>
+        public event NotificationEventHandler Notification;
+
+        internal NotificationEventHandler NotificationDelegate;
+
         //
-        // Event handlers
+        // Internal methods and properties
         //
+        internal void OnNotice(object O, NpgsqlNoticeEventArgs E)
+        {
+            if (Notice != null)
+            {
+                Notice(this, E);
+            }
+        }
+
+        internal void OnNotification(object O, NpgsqlNotificationEventArgs E)
+        {
+            if (Notification != null)
+            {
+                Notification(this, E);
+            }
+        }
+
+        #endregion Notifications
+
+        #region SSL
+
+        /// <summary>
+        /// Returns whether SSL is being used for the connection.
+        /// </summary>
+        internal bool IsSecure
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.IsSecure;
+            }
+        }
+
+        /// <summary>
+        /// Called to provide client certificates for SSL handshake.
+        /// </summary>
+        public event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
+
+        internal ProvideClientCertificatesCallback ProvideClientCertificatesCallbackDelegate;
+
+        /// <summary>
+        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
+        /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
+        public event CertificateSelectionCallback CertificateSelectionCallback;
+
+        internal CertificateSelectionCallback CertificateSelectionCallbackDelegate;
+
+        /// <summary>
+        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
+        /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
+        public event CertificateValidationCallback CertificateValidationCallback;
+
+        internal CertificateValidationCallback CertificateValidationCallbackDelegate;
+
+        /// <summary>
+        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
+        /// </summary>
+        [Obsolete("CertificateSelectionCallback, CertificateValidationCallback and PrivateKeySelectionCallback have been replaced with ValidateRemoteCertificateCallback.")]
+        public event PrivateKeySelectionCallback PrivateKeySelectionCallback;
+
+        internal PrivateKeySelectionCallback PrivateKeySelectionCallbackDelegate;
+
+        /// <summary>
+        /// Called to validate server's certificate during SSL handshake
+        /// </summary>
+        public event ValidateRemoteCertificateCallback ValidateRemoteCertificateCallback;
+
+        internal ValidateRemoteCertificateCallback ValidateRemoteCertificateCallbackDelegate;
 
         /// <summary>
         /// Default SSL CertificateSelectionCallback implementation.
@@ -1044,59 +951,110 @@ namespace Npgsql
             }
         }
 
-        //
-        // Private methods and properties
-        //
+        #endregion SSL
+
+        #region Backend version and capabilities
+
+        /// <summary>
+        /// Version of the PostgreSQL backend.
+        /// This can only be called when there is an active connection.
+        /// </summary>
+        [Browsable(false)]
+        public Version PostgreSqlVersion
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.ServerVersion;
+            }
+        }
+
+        /// <summary>
+        /// PostgreSQL server version.
+        /// </summary>
+        public override string ServerVersion
+        {
+            get { return PostgreSqlVersion.ToString(); }
+        }
+
+        /// <summary>
+        /// Protocol version in use.
+        /// This can only be called when there is an active connection.
+        /// Always retuna Version3
+        /// </summary>
+        [Browsable(false)]
+        public ProtocolVersion BackendProtocolVersion
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return ProtocolVersion.Version3;
+            }
+        }
+
+        /// <summary>
+        /// Process id of backend server.
+        /// This can only be called when there is an active connection.
+        /// </summary>
+        [Browsable(false)]
+        public Int32 ProcessID
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.BackEndKeyData.ProcessID;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend is expecting standard conformant strings.
+        /// In version 8.1, Postgres began reporting this value (false), but did not actually support standard conformant strings.
+        /// In version 8.2, Postgres began supporting standard conformant strings, but defaulted this flag to false.
+        /// As of version 9.1, this flag defaults to true.
+        /// </summary>
+        [Browsable(false)]
+        public Boolean UseConformantStrings
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.NativeToBackendTypeConverterOptions.UseConformantStrings;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the string literal E prefix (>= 8.1).
+        /// </summary>
+        [Browsable(false)]
+        public Boolean Supports_E_StringPrefix
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.NativeToBackendTypeConverterOptions.Supports_E_StringPrefix;
+            }
+        }
+
+        /// <summary>
+        /// Report whether the backend understands the hex byte format (>= 9.0).
+        /// </summary>
+        [Browsable(false)]
+        public Boolean SupportsHexByteFormat
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.NativeToBackendTypeConverterOptions.SupportsHexByteFormat;
+            }
+        }
+
+        #endregion Backend version and capabilities
+
+        #region State checks
 
         private NpgsqlPromotableSinglePhaseNotification Promotable
         {
             get { return promotable ?? (promotable = new NpgsqlPromotableSinglePhaseNotification(this)); }
-        }
-
-        /// <summary>
-        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
-        /// </summary>
-        /// <param name="connectionString">The connection string to load the builder from</param>
-        private void LoadConnectionStringBuilder(string connectionString)
-        {
-            NpgsqlConnectionStringBuilder newSettings = cache[connectionString];
-            if (newSettings == null)
-            {
-                newSettings = new NpgsqlConnectionStringBuilder(connectionString);
-                cache[connectionString] = newSettings;
-            }
-
-            LoadConnectionStringBuilder(newSettings);
-        }
-
-        /// <summary>
-        /// Sets the `settings` ConnectionStringBuilder based on the given `connectionString`
-        /// </summary>
-        /// <param name="connectionString">The connection string to load the builder from</param>
-        private void LoadConnectionStringBuilder(NpgsqlConnectionStringBuilder connectionString)
-        {
-            // Clone the settings, because if Integrated Security is enabled, user ID can be different
-            settings = connectionString.Clone();
-
-            // Set the UserName explicitly to freeze any Integrated Security-determined names
-            if (settings.IntegratedSecurity)
-               settings.UserName = settings.UserName;
-
-            RefreshConnectionString();
-
-            if (_log.IsTraceEnabled) {
-                foreach (string key in settings.Keys) {
-                    _log.TraceFormat("Connstring dump {0}={1}", key, settings[key]);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Refresh the cached _connectionString whenever the builder settings change
-        /// </summary>
-        private void RefreshConnectionString()
-        {
-            _connectionString = settings.ConnectionString;
         }
 
         private void CheckConnectionOpen()
@@ -1107,7 +1065,7 @@ namespace Npgsql
 
             if (_fakingOpen)
             {
-                if (connector != null)
+                if (Connector != null)
                 {
                     try
                     {
@@ -1121,7 +1079,7 @@ namespace Npgsql
                 _fakingOpen = false;
             }
 
-            if (_postponingClose || connector == null)
+            if (_postponingClose || Connector == null)
             {
                 throw new InvalidOperationException(L10N.ConnNotOpen);
             }
@@ -1133,7 +1091,7 @@ namespace Npgsql
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
 
-            if (connector != null) {
+            if (Connector != null) {
                 throw new InvalidOperationException(L10N.ConnNotOpen);
             }
         }
@@ -1144,6 +1102,10 @@ namespace Npgsql
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
         }
+
+        #endregion State checks
+
+        #region Schema operations
 
         /// <summary>
         /// Returns the supported collections
@@ -1218,6 +1180,79 @@ namespace Npgsql
             }
         }
 
+        #endregion Schema operations
+
+        #region Misc
+
+        /// <summary>
+        /// This method changes the current database by disconnecting from the actual
+        /// database and connecting to the specified.
+        /// </summary>
+        /// <param name="dbName">The name of the database to use in place of the current database.</param>
+        public override void ChangeDatabase(String dbName)
+        {
+            _log.Debug("Changing database to " + dbName);
+            CheckNotDisposed();
+
+            if (dbName == null)
+            {
+                throw new ArgumentNullException("dbName");
+            }
+
+            if (string.IsNullOrEmpty(dbName))
+            {
+                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(L10N.InvalidDbName));
+            }
+
+            String oldDatabaseName = Database;
+
+            Close();
+
+            // Mutating the current `settings` object would invalidate the cached instance, so work on a copy instead.
+            settings = settings.Clone();
+            settings[Keywords.Database] = dbName;
+            _connectionString = null;
+
+            Open();
+        }
+
+        /// <summary>
+        /// Create a new connection based on this one.
+        /// </summary>
+        /// <returns>A new NpgsqlConnection object.</returns>
+        Object ICloneable.Clone()
+        {
+            return Clone();
+        }
+
+        /// <summary>
+        /// Create a new connection based on this one.
+        /// </summary>
+        /// <returns>A new NpgsqlConnection object.</returns>
+        public NpgsqlConnection Clone()
+        {
+            CheckNotDisposed();
+
+            NpgsqlConnection C = new NpgsqlConnection(ConnectionString);
+
+            C.Notice += this.Notice;
+
+            if (Connector != null)
+            {
+                C.Open();
+            }
+
+            return C;
+        }
+
+        /// <summary>
+        /// DB provider factory.
+        /// </summary>
+        protected override DbProviderFactory DbProviderFactory
+        {
+            get { return NpgsqlFactory.Instance; }
+        }
+
         /// <summary>
         /// Clear connection pool.
         /// </summary>
@@ -1234,24 +1269,20 @@ namespace Npgsql
             NpgsqlConnectorPool.ConnectorPoolMgr.ClearAllPools();
         }
 
-        /// <summary>
-        /// Enlist transation.
-        /// </summary>
-        /// <param name="transaction"></param>
-        public override void EnlistTransaction(Transaction transaction)
-        {
-            Promotable.Enlist(transaction);
-        }
-
-        /// <summary>
-        /// DB provider factory.
-        /// </summary>
-        protected override DbProviderFactory DbProviderFactory
-        {
-            get
-            {
-                return NpgsqlFactory.Instance;
-            }
-        }
+        #endregion Misc    
     }
+
+    /// <summary>
+    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
+    /// </summary>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
+    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
+
+    /// <summary>
+    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.
+    /// </summary>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
+    public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
 }
