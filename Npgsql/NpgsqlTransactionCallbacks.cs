@@ -90,11 +90,11 @@ namespace Npgsql
 
             if (_prepared)
             {
-                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("COMMIT PREPARED '{0}'", _txName));
+                connection.Connector.ExecuteBlind(string.Format("COMMIT PREPARED '{0}'", _txName));
             }
             else
             {
-                NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.CommitTransaction);
+                connection.Connector.ExecuteBlind(NpgsqlQuery.CommitTransaction);
             }
         }
 
@@ -104,7 +104,7 @@ namespace Npgsql
             {
                 _log.Debug("Prepare transaction");
                 NpgsqlConnection connection = GetConnection();
-                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("PREPARE TRANSACTION '{0}'", _txName));
+                connection.Connector.ExecuteBlind(string.Format("PREPARE TRANSACTION '{0}'", _txName));
                 _prepared = true;
             }
         }
@@ -116,11 +116,11 @@ namespace Npgsql
 
             if (_prepared)
             {
-                NpgsqlCommand.ExecuteBlind(connection.Connector, string.Format("ROLLBACK PREPARED '{0}'", _txName));
+                connection.Connector.ExecuteBlind(string.Format("ROLLBACK PREPARED '{0}'", _txName));
             }
             else
             {
-                NpgsqlCommand.ExecuteBlind(connection.Connector, NpgsqlQuery.RollbackTransaction);
+                connection.Connector.ExecuteBlind(NpgsqlQuery.RollbackTransaction);
             }
         }
 

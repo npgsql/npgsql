@@ -472,7 +472,7 @@ namespace Npgsql
         {
             if (_prepared == PrepareStatus.Prepared)
             {
-                ExecuteBlind(_connector, "DEALLOCATE " + _planName);
+                _connector.ExecuteBlind("DEALLOCATE " + _planName);
                 _bind = null;
                 _execute = null;
                 _currentRowDescription = null;
@@ -1610,100 +1610,6 @@ namespace Npgsql
 
         #endregion Cancel
 
-        #region Execute blind
-
-        /// <summary>
-        /// Internal query shortcut for use in cases where the number
-        /// of affected rows is of no interest.
-        /// </summary>
-        internal static void ExecuteBlind(NpgsqlConnector connector, string command)
-        {
-            // Bypass cpmmand parsing overhead and send command verbatim.
-            ExecuteBlind(connector, new NpgsqlQuery(command));
-        }
-
-        internal static void ExecuteBlind(NpgsqlConnector connector, NpgsqlQuery query)
-        {
-            // Block the notification thread before writing anything to the wire.
-            using (connector.BlockNotificationThread())
-            {
-                // Set statement timeout as needed.
-                connector.SetBackendCommandTimeout(20);
-
-                // Write the Query message to the wire.
-                connector.Query(query);
-
-                // Flush, and wait for and discard all responses.
-                connector.ProcessAndDiscardBackendResponses();
-            }
-        }
-
-        internal static void ExecuteBlindSuppressTimeout(NpgsqlConnector connector, NpgsqlQuery query)
-        {
-            // Block the notification thread before writing anything to the wire.
-            using (connector.BlockNotificationThread())
-            {
-                // Write the Query message to the wire.
-                connector.Query(query);
-
-                // Flush, and wait for and discard all responses.
-                connector.ProcessAndDiscardBackendResponses();
-            }
-        }
-
-        /// <summary>
-        /// Special adaptation of ExecuteBlind() that sets statement_timeout.
-        /// This exists to prevent Connector.SetBackendCommandTimeout() from calling Command.ExecuteBlind(),
-        /// which will cause an endless recursive loop.
-        /// </summary>
-        /// <param name="connector"></param>
-        /// <param name="timeout">Timeout in seconds.</param>
-        internal static void ExecuteSetStatementTimeoutBlind(NpgsqlConnector connector, int timeout)
-        {
-            NpgsqlQuery query;
-
-            // Optimize for a few common timeout values.
-            switch (timeout)
-            {
-                case 10:
-                    query = NpgsqlQuery.SetStmtTimeout10Sec;
-                    break;
-
-                case 20:
-                    query = NpgsqlQuery.SetStmtTimeout20Sec;
-                    break;
-
-                case 30:
-                    query = NpgsqlQuery.SetStmtTimeout30Sec;
-                    break;
-
-                case 60:
-                    query = NpgsqlQuery.SetStmtTimeout60Sec;
-                    break;
-
-                case 90:
-                    query = NpgsqlQuery.SetStmtTimeout90Sec;
-                    break;
-
-                case 120:
-                    query = NpgsqlQuery.SetStmtTimeout120Sec;
-                    break;
-
-                default:
-                    query = new NpgsqlQuery(string.Format("SET statement_timeout = {0}", timeout * 1000));
-                    break;
-
-            }
-
-            // Write the Query message to the wire.
-            connector.Query(query);
-
-            // Flush, and wait for and discard all responses.
-            connector.ProcessAndDiscardBackendResponses();
-        }
-
-        #endregion Execute blind
-
         #region Dispose
 
         /// <summary>
@@ -1723,7 +1629,7 @@ namespace Npgsql
                 // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
                 // etc.).
                 if (_prepared == PrepareStatus.Prepared)
-                    ExecuteBlind(_connector, "DEALLOCATE " + _planName);
+                    _connector.ExecuteBlind("DEALLOCATE " + _planName);
             }
 
             _disposed = true;

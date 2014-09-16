@@ -61,18 +61,18 @@ namespace Npgsql
 
             if (isolation == IsolationLevel.RepeatableRead)
             {
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransRepeatableRead);
+                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransRepeatableRead);
             }
             else if ((isolation == IsolationLevel.Serializable) ||
                 (isolation == IsolationLevel.Snapshot))
             {
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransSerializable);
+                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransSerializable);
             }
             else
             {
                 // Set isolation level default to read committed.
                 _isolation = IsolationLevel.ReadCommitted;
-                NpgsqlCommand.ExecuteBlind(conn.Connector, NpgsqlQuery.BeginTransReadCommitted);
+                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransReadCommitted);
             }
 
             _conn.Connector.Transaction = this;
@@ -158,7 +158,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, NpgsqlQuery.CommitTransaction);
+            _conn.Connector.ExecuteBlind(NpgsqlQuery.CommitTransaction);
 
             _conn.Connector.Transaction = null;
             _conn = null;
@@ -176,7 +176,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, NpgsqlQuery.RollbackTransaction);
+            _conn.Connector.ExecuteBlindSuppressTimeout(NpgsqlQuery.RollbackTransaction);
             _conn.Connector.Transaction = null;
             _conn = null;
         }
@@ -204,7 +204,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.SavePointWithSemicolon);
             }
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            _conn.Connector.ExecuteBlind(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>
@@ -231,7 +231,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("SAVEPOINT {0}", savePointName));
+            _conn.Connector.ExecuteBlind(string.Format("SAVEPOINT {0}", savePointName));
 
         }
 

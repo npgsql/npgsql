@@ -314,7 +314,7 @@ namespace Npgsql
 
             _initQueries = sbInitQueries.ToString();
 
-            NpgsqlCommand.ExecuteBlind(this, _initQueries);
+            ExecuteBlind(_initQueries);
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
@@ -1278,14 +1278,14 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.DiscardAll);
+            ExecuteBlind(NpgsqlQuery.DiscardAll);
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
         {
-            NpgsqlCommand.ExecuteBlind(this, NpgsqlQuery.UnlistenAll);
+            ExecuteBlind(NpgsqlQuery.UnlistenAll);
         }
 
         /// <summary>
@@ -1299,7 +1299,7 @@ namespace Npgsql
                 {
                     try
                     {
-                        NpgsqlCommand.ExecuteBlind(this, String.Format("DEALLOCATE \"{0}{1}\";", PlanNamePrefix, i));
+                        ExecuteBlind(String.Format("DEALLOCATE \"{0}{1}\";", PlanNamePrefix, i));
                     }
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch { }
@@ -1494,6 +1494,99 @@ namespace Npgsql
 
         #endregion Supported features
 
+        #region Execute blind
+
+        /// <summary>
+        /// Internal query shortcut for use in cases where the number
+        /// of affected rows is of no interest.
+        /// </summary>
+        internal void ExecuteBlind(string command)
+        {
+            // Bypass cpmmand parsing overhead and send command verbatim.
+            ExecuteBlind(new NpgsqlQuery(command));
+        }
+
+        internal void ExecuteBlind(NpgsqlQuery query)
+        {
+            // Block the notification thread before writing anything to the wire.
+            using (BlockNotificationThread())
+            {
+                // Set statement timeout as needed.
+                SetBackendCommandTimeout(20);
+
+                // Write the Query message to the wire.
+                Query(query);
+
+                // Flush, and wait for and discard all responses.
+                ProcessAndDiscardBackendResponses();
+            }
+        }
+
+        internal void ExecuteBlindSuppressTimeout(NpgsqlQuery query)
+        {
+            // Block the notification thread before writing anything to the wire.
+            using (BlockNotificationThread())
+            {
+                // Write the Query message to the wire.
+                Query(query);
+
+                // Flush, and wait for and discard all responses.
+                ProcessAndDiscardBackendResponses();
+            }
+        }
+
+        /// <summary>
+        /// Special adaptation of ExecuteBlind() that sets statement_timeout.
+        /// This exists to prevent Connector.SetBackendCommandTimeout() from calling Command.ExecuteBlind(),
+        /// which will cause an endless recursive loop.
+        /// </summary>
+        /// <param name="timeout">Timeout in seconds.</param>
+        internal void ExecuteSetStatementTimeoutBlind(int timeout)
+        {
+            NpgsqlQuery query;
+
+            // Optimize for a few common timeout values.
+            switch (timeout)
+            {
+                case 10:
+                    query = NpgsqlQuery.SetStmtTimeout10Sec;
+                    break;
+
+                case 20:
+                    query = NpgsqlQuery.SetStmtTimeout20Sec;
+                    break;
+
+                case 30:
+                    query = NpgsqlQuery.SetStmtTimeout30Sec;
+                    break;
+
+                case 60:
+                    query = NpgsqlQuery.SetStmtTimeout60Sec;
+                    break;
+
+                case 90:
+                    query = NpgsqlQuery.SetStmtTimeout90Sec;
+                    break;
+
+                case 120:
+                    query = NpgsqlQuery.SetStmtTimeout120Sec;
+                    break;
+
+                default:
+                    query = new NpgsqlQuery(string.Format("SET statement_timeout = {0}", timeout * 1000));
+                    break;
+
+            }
+
+            // Write the Query message to the wire.
+            Query(query);
+
+            // Flush, and wait for and discard all responses.
+            ProcessAndDiscardBackendResponses();
+        }
+
+        #endregion Execute blind
+
         #region Misc
 
         public void AddParameterStatus(NpgsqlParameterStatus ps)
@@ -1521,7 +1614,7 @@ namespace Npgsql
         {
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
             {
-                NpgsqlCommand.ExecuteSetStatementTimeoutBlind(this, timeout);
+                ExecuteSetStatementTimeoutBlind(timeout);
                 Mediator.BackendCommandTimeout = timeout;
             }
         }
