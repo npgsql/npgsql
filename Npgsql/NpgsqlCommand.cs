@@ -150,7 +150,14 @@ namespace Npgsql
         /// <summary>
         /// Used to execute internal commands.
         /// </summary>
-        internal NpgsqlCommand(String cmdText, NpgsqlConnector connector, int commandTimeout = 20)
+        internal NpgsqlCommand(String cmdText, NpgsqlConnector connector) 
+            : this(cmdText, connector, connector.Mediator.BackendCommandTimeout)
+        {}
+
+        /// <summary>
+        /// Used to execute internal commands.
+        /// </summary>
+        internal NpgsqlCommand(String cmdText, NpgsqlConnector connector, int commandTimeout)
         {
             _planName = String.Empty;
             _commandText = cmdText;
@@ -197,10 +204,6 @@ namespace Npgsql
             get { return _timeout; }
             set
             {
-                if (value < 0) {
-                    throw new ArgumentOutOfRangeException("value", L10N.CommandTimeoutLessZero);
-                }
-
                 _timeout = value;
                 _commandTimeoutSet = true;
             }
