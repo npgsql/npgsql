@@ -53,7 +53,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
-
+    [System.ComponentModel.DesignerCategory("")]    
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
     {
         private enum PrepareStatus

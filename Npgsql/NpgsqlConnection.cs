@@ -49,7 +49,7 @@ namespace Npgsql
 #if WITHDESIGN
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlConnection))]
 #endif
-
+    [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
         // Parsed connection string cache

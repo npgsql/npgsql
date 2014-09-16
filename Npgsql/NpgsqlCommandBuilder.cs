@@ -38,6 +38,7 @@ namespace Npgsql
     ///<summary>
     /// This class is responsible to create database commands for automatic insert, update and delete operations.
     ///</summary>
+    [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     {
         // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning

@@ -52,6 +52,7 @@ namespace Npgsql
     /// <summary>
     /// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
     /// </summary>
+    [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlDataAdapter : DbDataAdapter
     {
         /// <summary>

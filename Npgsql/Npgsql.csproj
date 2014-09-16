@@ -134,21 +134,11 @@
     <Compile Include="NpgsqlBackEndKeyData.cs" />
     <Compile Include="NpgsqlBind.cs" />
     <Compile Include="NpgsqlCancelRequest.cs" />
-    <Compile Include="NpgsqlCommand.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="NpgsqlCommand.PrepareExecute.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="NpgsqlCommand.Rewrite.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="NpgsqlCommandBuilder.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="NpgsqlConnection.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="NpgsqlCommand.cs" />
+    <Compile Include="NpgsqlCommand.PrepareExecute.cs" />
+    <Compile Include="NpgsqlCommand.Rewrite.cs" />
+    <Compile Include="NpgsqlCommandBuilder.cs" />
+    <Compile Include="NpgsqlConnection.cs" />
     <Compile Include="NpgsqlConnectionStringBuilder.cs" />
     <Compile Include="NpgsqlConnector.cs" />
     <Compile Include="NpgsqlConnectorPool.cs" />
@@ -158,9 +148,7 @@
     <Compile Include="NpgsqlCopyOut.cs" />
     <Compile Include="NpgsqlCopyOutStream.cs" />
     <Compile Include="NpgsqlCopySerializer.cs" />
-    <Compile Include="NpgsqlDataAdapter.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
     <Compile Include="NpgsqlDescribe.cs" />
     <Compile Include="NpgsqlError.cs" />
