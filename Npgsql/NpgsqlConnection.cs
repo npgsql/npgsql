@@ -191,7 +191,6 @@ namespace Npgsql
             }
 
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-
         }
 
         #endregion Open / Init
