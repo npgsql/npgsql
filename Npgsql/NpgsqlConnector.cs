@@ -271,7 +271,7 @@ namespace Npgsql
                 // Establish protocol communication and handle authentication...
                 var startupPacket = new NpgsqlStartupPacket(Database, UserName, _settings);
                 startupPacket.WriteToStream(Stream);
-                ProcessAndDiscardBackendResponses();
+                ConsumeAll();
             }
             catch
             {
@@ -454,6 +454,7 @@ namespace Npgsql
             if (_log.IsDebugEnabled)
                 _log.Debug("Sending query: " + query);
             query.WriteToStream(Stream);
+            Stream.Flush();
             State = NpgsqlState.Executing;
         }
 
@@ -461,18 +462,21 @@ namespace Npgsql
         {
             _log.Debug("Authenticating");
             var pwpck = new NpgsqlPasswordPacket(password);
+            Stream.Flush();
             pwpck.WriteToStream(Stream);
         }
 
         internal void Parse(NpgsqlParse parse)
         {
             _log.Debug("Sending parse message");
+            Stream.Flush();
             parse.WriteToStream(Stream);
         }
 
         internal void Sync()
         {
             _log.Debug("Sending sync message");
+            Stream.Flush();
             NpgsqlSync.Default.WriteToStream(Stream);
         }
 
@@ -485,6 +489,7 @@ namespace Npgsql
         internal void Describe(NpgsqlDescribe describe)
         {
             _log.Debug("Sending describe message");
+            Stream.Flush();
             describe.WriteToStream(Stream);
         }
 
@@ -497,24 +502,6 @@ namespace Npgsql
         #endregion Outgoing messages
 
         #region Backend message processing
-
-        /// <summary>
-        /// Call ProcessBackendResponsesEnum(), and scan and discard all results.
-        /// </summary>
-        internal void ProcessAndDiscardBackendResponses()
-        {
-            // Flush and wait for responses.
-            var responseEnum = ProcessBackendResponsesEnum();
-
-            // Discard each response.
-            foreach (var response in responseEnum)
-            {
-                if (response is IDisposable)
-                {
-                    (response as IDisposable).Dispose();
-                }
-            }
-        }
 
         ///<summary>
         /// This method is responsible to handle all protocol messages sent from the backend.
@@ -543,7 +530,7 @@ namespace Npgsql
                         try
                         {
                             CancelRequest();
-                            ProcessAndDiscardBackendResponses();
+                            ConsumeAll();
                         }
                         catch (Exception)
                         {
@@ -949,6 +936,24 @@ namespace Npgsql
             return socketPoolResponse || Socket.Poll(1000000 * secondsToWait, selectMode);
         }
 
+        /// <summary>
+        /// Consumes and disposes all backend messages until the next ReadyForQuery
+        /// </summary>
+        internal void ConsumeAll()
+        {
+            while (true)
+            {
+                var msg = ReadMessage();
+                if (msg is ReadyForQueryMsg)
+                    return;
+                var asDisposable = msg as IDisposable;
+                if (asDisposable != null)
+                {
+                    asDisposable.Dispose();
+                }
+            }
+        }
+
         #endregion Backend message processing
 
         #region Copy In / Out
@@ -1012,7 +1017,7 @@ namespace Npgsql
         {
             Stream.WriteByte((byte)FrontEndMessageCode.CopyDone);
             Stream.WriteInt32(4); // message without data
-            ProcessAndDiscardBackendResponses();
+            ConsumeAll();
         }
 
         /// <summary>
@@ -1027,7 +1032,7 @@ namespace Npgsql
             var buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
             Stream.WriteInt32(4 + buf.Length);
             Stream.Write(buf, 0, buf.Length);
-            ProcessAndDiscardBackendResponses();
+            ConsumeAll();
         }
 
         /// <summary>
@@ -1448,7 +1453,7 @@ namespace Npgsql
                             // 20 millisecond timeout
                             if (_connector.Socket.Poll(20000, SelectMode.SelectRead))
                             {
-                                _connector.ProcessAndDiscardBackendResponses();
+                                _connector.ConsumeAll();
                             }
                         }
                     }
@@ -1519,14 +1524,9 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                // Set statement timeout as needed.
                 SetBackendCommandTimeout(20);
-
-                // Write the Query message to the wire.
                 Query(query);
-
-                // Flush, and wait for and discard all responses.
-                ProcessAndDiscardBackendResponses();
+                ConsumeAll();
             }
         }
 
@@ -1541,11 +1541,8 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                // Write the Query message to the wire.
                 Query(query);
-
-                // Flush, and wait for and discard all responses.
-                ProcessAndDiscardBackendResponses();
+                ConsumeAll();
             }
         }
 
@@ -1592,11 +1589,8 @@ namespace Npgsql
 
             }
 
-            // Write the Query message to the wire.
             Query(query);
-
-            // Flush, and wait for and discard all responses.
-            ProcessAndDiscardBackendResponses();
+            ConsumeAll();
         }
 
         #endregion Execute blind
