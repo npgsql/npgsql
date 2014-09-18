@@ -1375,7 +1375,7 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (_connector.BlockNotificationThread())
             {
-                IEnumerable<IServerResponseObject> responseEnum;
+                IEnumerable<IServerMessage> responseEnum;
                 NpgsqlDataReader reader;
 
                 _connector.SetBackendCommandTimeout(CommandTimeout);

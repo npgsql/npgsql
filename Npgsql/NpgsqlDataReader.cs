@@ -59,7 +59,7 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        private readonly IEnumerator<IServerResponseObject> _dataEnumerator;
+        private readonly IEnumerator<IServerMessage> _dataEnumerator;
         internal NpgsqlRowDescription CurrentDescription { get; private set; }
         private NpgsqlRow _currentRow = null;
         private int? _recordsAffected = null;
@@ -78,7 +78,7 @@ namespace Npgsql
         private NpgsqlRow _pendingRow = null;
         private readonly bool _preparedStatement;
 
-        internal NpgsqlDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
+        internal NpgsqlDataReader(IEnumerable<IServerMessage> dataEnumeration, CommandBehavior behavior,
                                         NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
                                         bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
         {
@@ -342,7 +342,7 @@ namespace Npgsql
         /// rows if appropriate).
         /// </summary>
         /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
-        private IServerResponseObject GetNextResponseObject(bool cleanup = false)
+        private IServerMessage GetNextResponseObject(bool cleanup = false)
         {
             try
             {
@@ -354,7 +354,7 @@ namespace Npgsql
                 _pendingRow = null;
                 while (_dataEnumerator.MoveNext())
                 {
-                    IServerResponseObject respNext = _dataEnumerator.Current;
+                    IServerMessage respNext = _dataEnumerator.Current;
 
                     if (respNext is RowReader)
                     {

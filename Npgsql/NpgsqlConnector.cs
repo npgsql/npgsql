@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -119,6 +120,8 @@ namespace Npgsql
         string _initQueries;
 
         internal SSPIHandler SSPI { get; set; }
+
+        List<NpgsqlError> _pendingErrors = new List<NpgsqlError>();
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
@@ -520,7 +523,7 @@ namespace Npgsql
         /// to handle backend requests.
         /// </summary>
         ///
-        internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum()
+        internal IEnumerable<IServerMessage> ProcessBackendResponsesEnum()
         {
             try
             {
@@ -570,10 +573,30 @@ namespace Npgsql
             }
         }
 
-        internal IEnumerable<IServerResponseObject> ProcessBackendResponses()
+        internal IEnumerable<IServerMessage> ProcessBackendResponses()
         {
-            var errors = new List<NpgsqlError>();
+            for (;;)
+            {
+                var msg = ReadMessage();
 
+                if (msg is NpgsqlRowDescription || msg is StringRowReader || msg is CompletedResponse)
+                {
+                    yield return msg;
+                    continue;
+                }
+
+                if (msg is ReadyForQueryMsg)
+                {
+                    yield break;
+                }
+
+                throw new NotImplementedException("Unknown message: " + msg);
+            }
+        }
+
+
+        internal IServerMessage ReadMessage()
+        {
             for (;;)
             {
                 // Check the first Byte of response.
@@ -584,7 +607,6 @@ namespace Npgsql
                         var error = new NpgsqlError(Stream);
                         _log.Trace("Received backend error: " + error.Message);
                         error.ErrorSql = Mediator.GetSqlSent();
-                        errors.Add(error);
 
                         // We normally accumulate errors until the query ends (ReadyForQuery). But
                         // during the connection phase errors need to be thrown immediately
@@ -594,24 +616,26 @@ namespace Npgsql
                         //        No pg_hba.conf configured.
 
                         if (State == NpgsqlState.Connecting) {
-                            throw new NpgsqlException(errors);
+                            throw new NpgsqlException(error);
                         }
 
-                        break;
+                        _pendingErrors.Add(error);
+                        continue;
+
                     case BackEndMessageCode.AuthenticationRequest:
                         // Get the length in case we're getting AuthenticationGSSContinue
                         var authDataLength = Stream.ReadInt32() - 8;
 
-                        var authType = (AuthenticationRequestType) Stream.ReadInt32();
+                        var authType = (AuthenticationRequestType)Stream.ReadInt32();
                         _log.Trace("Received AuthenticationRequest of type " + authType);
                         switch (authType)
                         {
                             case AuthenticationRequestType.AuthenticationOk:
-                                break;
+                                continue;
                             case AuthenticationRequestType.AuthenticationClearTextPassword:
                                 // Send the PasswordPacket.
                                 Authenticate(PGUtil.NullTerminateArray(Password));
-                                break;
+                                continue;
                             case AuthenticationRequestType.AuthenticationMD5Password:
                                 // Now do the "MD5-Thing"
                                 // for this the Password has to be:
@@ -656,8 +680,7 @@ namespace Npgsql
                                 }
 
                                 Authenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
-
-                                break;
+                                continue;
 
                             case AuthenticationRequestType.AuthenticationGSS:
                             {
@@ -666,7 +689,7 @@ namespace Npgsql
                                     // For GSSAPI we have to use the supplied hostname
                                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
                                     Authenticate(SSPI.Continue(null));
-                                    break;
+                                    continue;
                                 }
                                 else
                                 {
@@ -680,10 +703,10 @@ namespace Npgsql
                                 if (IntegratedSecurity)
                                 {
                                     // For SSPI we have to get the IP-Address (hostname doesn't work)
-                                    var ipAddressString = ((IPEndPoint) Socket.RemoteEndPoint).Address.ToString();
+                                    var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
                                     Authenticate(SSPI.Continue(null));
-                                    break;
+                                    continue;
                                 }
                                 else
                                 {
@@ -701,17 +724,16 @@ namespace Npgsql
                                 {
                                     Authenticate(passwdRead);
                                 }
-                                break;
+                                continue;
                             }
 
                             default:
-                            throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
+                                throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
                         }
-                        break;
+
                     case BackEndMessageCode.RowDescription:
                         _log.Trace("Received RowDescription");
-                        yield return new NpgsqlRowDescription(Stream, OidToNameMapping);
-                        break;
+                        return new NpgsqlRowDescription(Stream, OidToNameMapping);
 
                     case BackEndMessageCode.ParameterDescription:
                         _log.Trace("Received ParameterDescription");
@@ -722,14 +744,12 @@ namespace Npgsql
                         {
                             Stream.ReadInt32();  // typeoids
                         }
-
-                        break;
+                        continue;
 
                     case BackEndMessageCode.DataRow:
                         _log.Trace("Received DataRow");
                         State = NpgsqlState.Fetching;
-                        yield return new StringRowReader(Stream);
-                        break;
+                        return new StringRowReader(Stream);
 
                     case BackEndMessageCode.ReadyForQuery:
                         _log.Trace("Received ReadyForQuery");
@@ -744,59 +764,57 @@ namespace Npgsql
 
                         State = NpgsqlState.Ready;
 
-                        if (errors.Count != 0)
-                        {
-                            throw new NpgsqlException(errors);
+                        if (_pendingErrors.Any()) {
+                            var e = new NpgsqlException(_pendingErrors);
+                            _pendingErrors.Clear();
+                            throw e;
                         }
-
-                        yield break;
+                        return ReadyForQueryMsg.Instance;
 
                     case BackEndMessageCode.BackendKeyData:
                         _log.Trace("Received BackendKeyData");
                         BackEndKeyData = new NpgsqlBackEndKeyData(Stream);
                         // Wait for ReadForQuery message
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NoticeResponse:
                         _log.Trace("Received NoticeResponse");
                         // Notices and errors are identical except that we
                         // just throw notices away completely ignored.
                         FireNotice(new NpgsqlError(Stream));
-                        break;
+                        continue;
 
                     case BackEndMessageCode.CompletedResponse:
                         _log.Trace("Received CompletedResponse");
                         Stream.ReadInt32();
-                        yield return new CompletedResponse(Stream);
-                        break;
+                        return new CompletedResponse(Stream);
 
                     case BackEndMessageCode.ParseComplete:
                         _log.Trace("Received ParseComplete");
                         // Just read up the message length.
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.BindComplete:
                         _log.Trace("Received BindComplete");
                         // Just read up the message length.
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.EmptyQueryResponse:
                         _log.Trace("Received EmptyQueryResponse");
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NotificationResponse:
                         _log.Trace("Received NotificationResponse");
                         // Eat the length
                         Stream.ReadInt32();
                         FireNotification(new NpgsqlNotificationEventArgs(Stream, true));
-                        if (IsNotificationThreadRunning)
-                        {
-                            yield break;
+                        if (IsNotificationThreadRunning) {
+                            throw new Exception("Internal state error, notification thread is running");
                         }
-                        break;
+                        continue;
 
                     case BackEndMessageCode.ParameterStatus:
                         var paramStatus = new NpgsqlParameterStatus(Stream);
@@ -820,7 +838,7 @@ namespace Npgsql
                             }
                             ServerVersion = new Version(versionString);
                         }
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NoData:
                         // This nodata message may be generated by prepare commands issued with queries which doesn't return rows
@@ -828,40 +846,52 @@ namespace Npgsql
                         // Just eat the message.
                         _log.Trace("Received NoData");
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.CopyInResponse:
                         _log.Trace("Received CopyInResponse");
+                        throw new NotImplementedException("Copy temporarily out of order");
+                        /*
                         // Enter COPY sub protocol and start pushing data to server
                         State = NpgsqlState.CopyIn;
                         Stream.ReadInt32(); // length redundant
                         StartCopyIn(ReadCopyHeader());
                         yield break;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
+                         */
 
                     case BackEndMessageCode.CopyOutResponse:
                         _log.Trace("Received CopyOutResponse");
+                        throw new NotImplementedException("Copy temporarily out of order");
+                        /*
                         // Enter COPY sub protocol and start pulling data from server
                         State = NpgsqlState.CopyOut;
                         Stream.ReadInt32(); // length redundant
                         StartCopyOut(ReadCopyHeader());
                         yield break;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
+                         */
 
                     case BackEndMessageCode.CopyData:
                         _log.Trace("Received CopyData");
+                        throw new NotImplementedException("Copy temporarily out of order");
+                        /*
                         var len = Stream.ReadInt32() - 4;
                         var buf = new byte[len];
                         Stream.ReadBytes(buf, 0, len);
                         Mediator.ReceivedCopyData = buf;
                         yield break;
                         // read data from server one chunk at a time while staying in copy operation mode
+                         */
 
                     case BackEndMessageCode.CopyDone:
                         _log.Trace("Received CopyDone");
+                        throw new NotImplementedException("Copy temporarily out of order");
+                        /*
                         Stream.ReadInt32(); // CopyDone can not have content so this is always 4
                         // This will be followed by normal CommandComplete + ReadyForQuery so no op needed
                         break;
+                         */
 
                     case BackEndMessageCode.IO_ERROR:
                         // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
@@ -874,8 +904,7 @@ namespace Npgsql
                         //   Backend has gone insane?
                         // FIXME
                         // what exception should we really throw here?
-                        throw new NotSupportedException(String.Format(
-                            "Backend sent unrecognized response type: {0}", (Char) message));
+                        throw new NotSupportedException(String.Format("Backend sent unrecognized response type: {0}", (Char) message));
                 }
             }
         }

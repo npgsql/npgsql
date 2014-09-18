@@ -33,9 +33,20 @@ using System.IO;
 namespace Npgsql
 {
     /// <summary>
+    /// Marker interface which identifies a class which represents part of
+    /// a response from the server.
+    /// </summary>
+    internal interface IServerMessage {}
+
+    internal class ReadyForQueryMsg : IServerMessage
+    {
+        internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
+    }
+
+    /// <summary>
     /// Represents a completed response message.
     /// </summary>
-    internal class CompletedResponse : IServerResponseObject
+    internal class CompletedResponse : IServerMessage
     {
         private readonly int? _rowsAffected;
         private readonly long? _lastInsertedOID;
@@ -101,15 +112,6 @@ namespace Npgsql
         }
     }
 
-
-    /// <summary>
-    /// Marker interface which identifies a class which represents part of
-    /// a response from the server.
-    /// </summary>
-    internal interface IServerResponseObject
-    {
-    }
-
     /// <summary>
     /// Marker interface which identifies a class which may take possession of a stream for the duration of
     /// it's lifetime (possibly temporarily giving that possession to another class for part of that time.
@@ -119,7 +121,7 @@ namespace Npgsql
     /// The most important such class is that compiler-generated from ProcessBackendResponsesEnum. Of course
     /// we can't make that inherit from this interface, alas.
     /// </summary>
-    internal interface IStreamOwner : IServerResponseObject, IDisposable
+    internal interface IStreamOwner : IServerMessage, IDisposable
     {
     }
 
