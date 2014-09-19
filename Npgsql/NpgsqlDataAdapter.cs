@@ -215,28 +215,26 @@ namespace Npgsql
             set { base.InsertCommand = value; }
         }
     }
-}
 
 #pragma warning disable 1591
 
-public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
-{
-    public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
-                                      DataTableMapping tableMapping)
-        : base(dataRow, command, statementType, tableMapping)
-
+    public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
     {
+        public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
+                                          DataTableMapping tableMapping)
+            : base(dataRow, command, statementType, tableMapping)
+        {
+        }
     }
-}
 
-public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
-{
-    public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
-                                     DataTableMapping tableMapping)
-        : base(dataRow, command, statementType, tableMapping)
-
+    public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
     {
+        public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand command, StatementType statementType,
+                                         DataTableMapping tableMapping)
+            : base(dataRow, command, statementType, tableMapping)
+        {
+        }
     }
-}
 
 #pragma warning restore 1591
+}
