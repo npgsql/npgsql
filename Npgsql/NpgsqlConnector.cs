@@ -503,49 +503,18 @@ namespace Npgsql
 
         #region Backend message processing
 
-        ///<summary>
-        /// This method is responsible to handle all protocol messages sent from the backend.
-        /// It holds all the logic to do it.
-        /// To exchange data, it uses a Mediator object from which it reads/writes information
-        /// to handle backend requests.
-        /// </summary>
-        ///
-        internal IEnumerable<IServerMessage> ProcessBackendResponsesEnum()
+        internal IServerMessage ReadMessage()
         {
             try
             {
-                // Flush buffers to the wire.
-                Stream.Flush();
-
-                // Process commandTimeout behavior.
-
-                if ((Mediator.BackendCommandTimeout > 0) &&
-                        (!CheckForContextSocketAvailability(SelectMode.SelectRead)))
-                {
-                    // If timeout occurs when establishing the session with server then
-                    // throw an exception instead of trying to cancel query. This helps to prevent loop as
-                    // CancelRequest will also try to stablish a connection and sends commands.
-                    if (State != NpgsqlState.Connecting)
-                    {
-                        try
-                        {
-                            CancelRequest();
-                            ConsumeAll();
-                        }
-                        catch (Exception)
-                        {
-                        }
-                        // We should have gotten an error from CancelRequest(). Whether we did or not, what we
-                        // really have is a timeout exception, and that will be less confusing to the user than
-                        // "operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
-                        // Changed message again to report about the two possible timeouts: connection or command
-                        // as the establishment timeout only was confusing users when the timeout was a command timeout.
-                    }
-
-                    throw new TimeoutException(L10N.ConnectionOrCommandTimeout);
-                }
-
-                return ProcessBackendResponses();
+                return ReadMessageInternal();
+            }
+            catch (IOException e)
+            {
+                // TODO: Identify socket timeout? But what to do at this point? Seems
+                // impossible to actually recover the connection (sync the protocol), best just
+                // transition to Broken like any other IOException...
+                throw;
             }
             catch (ThreadAbortException)
             {
@@ -555,34 +524,11 @@ namespace Npgsql
                     Close();
                 }
                 catch { }
-
                 throw;
             }
         }
 
-        internal IEnumerable<IServerMessage> ProcessBackendResponses()
-        {
-            for (;;)
-            {
-                var msg = ReadMessage();
-
-                if (msg is NpgsqlRowDescription || msg is StringRowReader || msg is CompletedResponse)
-                {
-                    yield return msg;
-                    continue;
-                }
-
-                if (msg is ReadyForQueryMsg)
-                {
-                    yield break;
-                }
-
-                throw new NotImplementedException("Unknown message: " + msg);
-            }
-        }
-
-
-        internal IServerMessage ReadMessage()
+        IServerMessage ReadMessageInternal()
         {
             for (;;)
             {
@@ -897,46 +843,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Checks for context socket availability.
-        /// Socket.Poll supports integer as microseconds parameter.
-        /// This limits the usable command timeout value
-        /// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
-        /// In order to bypass this limit, the availability of
-        /// the socket is checked in 2,147 seconds cycles
-        /// </summary>
-        /// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
-        /// <param name="selectMode">Select mode.</param>
-        internal bool CheckForContextSocketAvailability(SelectMode selectMode)
-        {
-            /* Socket.Poll supports integer as microseconds parameter.
-             * This limits the usable command timeout value
-             * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
-             */
-            const int limitOfSeconds = 2147;
-
-            var socketPoolResponse = false;
-
-            // Because the backend's statement_timeout parameter has been set to context.Mediator.BackendCommandTimeout,
-            // we will give an extra 5 seconds because we'd prefer to receive a timeout error from PG
-            // than to be forced to start a new connection and send a cancel request.
-            // The result is that a timeout could take 5 seconds too long to occur, but if everything
-            // is healthy, that shouldn't happen. Not to mention, if the backend is unhealthy enough
-            // to fail to send a timeout error, then a cancel request may malfunction anyway.
-            var secondsToWait = Mediator.BackendCommandTimeout + 5;
-
-            /* In order to bypass this limit, the availability of
-             * the socket is checked in 2,147 seconds cycles
-             */
-            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse))
-            {
-                socketPoolResponse = Socket.Poll(1000000 * limitOfSeconds, selectMode);
-                secondsToWait -= limitOfSeconds;
-            }
-
-            return socketPoolResponse || Socket.Poll(1000000 * secondsToWait, selectMode);
-        }
-
-        /// <summary>
         /// Consumes and disposes all backend messages until the next ReadyForQuery
         /// </summary>
         internal void ConsumeAll()
@@ -1065,13 +971,7 @@ namespace Npgsql
         internal byte[] GetCopyOutData()
         {
             // polling in COPY would take seconds on Windows
-            foreach (var obj in ProcessBackendResponses())
-            {
-                if (obj is IDisposable)
-                {
-                    (obj as IDisposable).Dispose();
-                }
-            }
+            ConsumeAll();
             return Mediator.ReceivedCopyData;
         }
 

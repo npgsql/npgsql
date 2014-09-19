@@ -59,7 +59,6 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        private readonly IEnumerator<IServerMessage> _dataEnumerator;
         internal NpgsqlRowDescription CurrentDescription { get; private set; }
         private NpgsqlRow _currentRow = null;
         private int? _recordsAffected = null;
@@ -78,14 +77,13 @@ namespace Npgsql
         private NpgsqlRow _pendingRow = null;
         private readonly bool _preparedStatement;
 
-        internal NpgsqlDataReader(IEnumerable<IServerMessage> dataEnumeration, CommandBehavior behavior,
-                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-                                        bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior,
+                                  NpgsqlConnector.NotificationThreadBlock threadBlock,
+                                  bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
         {
             _behavior = behavior;
             _connection = (_command = command).Connection;
             _connector = command.Connector;
-            _dataEnumerator = dataEnumeration.GetEnumerator();
             _connector.CurrentReader = this;
             _threadBlock = threadBlock;
             _preparedStatement = preparedStatement;
@@ -259,9 +257,9 @@ namespace Npgsql
                 //We should only have one row, and we've already had it. Move to end
                 //of recordset.
                 CurrentRow = null;
-                for (object skip = GetNextResponseObject();
+                for (object skip = GetNextServerMessage();
                      skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
-                     skip = GetNextResponseObject())
+                     skip = GetNextServerMessage())
                 {
                     if (skip is NpgsqlRow)
                     {
@@ -286,7 +284,7 @@ namespace Npgsql
                 return ret;
             }
             CurrentRow = null;
-            object objNext = GetNextResponseObject();
+            object objNext = GetNextServerMessage();
             if (clearPending)
             {
                 _pendingRow = null;
@@ -341,9 +339,11 @@ namespace Npgsql
         /// and we iterate again, otherwise we return it (perhaps updating our cache of pending
         /// rows if appropriate).
         /// </summary>
-        /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
-        private IServerMessage GetNextResponseObject(bool cleanup = false)
+        /// <returns>The next <see cref="IServerMessage"/> we will deal with.</returns>
+        private IServerMessage GetNextServerMessage(bool cleanup = false)
         {
+            if (_cleanedUp)
+                return null;
             try
             {
                 CurrentRow = null;
@@ -352,13 +352,13 @@ namespace Npgsql
                     _pendingRow.Dispose();
                 }
                 _pendingRow = null;
-                while (_dataEnumerator.MoveNext())
+                while (true)
                 {
-                    IServerMessage respNext = _dataEnumerator.Current;
+                    var msg = _connector.ReadMessage();
 
-                    if (respNext is RowReader)
+                    if (msg is RowReader)
                     {
-                        RowReader reader = respNext as RowReader;
+                        RowReader reader = msg as RowReader;
 
                         if (cleanup)
                         {
@@ -372,22 +372,25 @@ namespace Npgsql
                             return _pendingRow = BuildRow(new ForwardsOnlyRow(reader));
                         }
                     }
-                    else if (respNext is CompletedResponse)
+                    else if (msg is CompletedResponse)
                     {
-                        CompletedResponse cr = respNext as CompletedResponse;
+                        CompletedResponse cr = msg as CompletedResponse;
                         if (cr.RowsAffected.HasValue)
                         {
                             _nextRecordsAffected = (_nextRecordsAffected ?? 0) + cr.RowsAffected.Value;
                         }
                         _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
                     }
+                    else if (msg is ReadyForQueryMsg)
+                    {
+                        CleanUp(true);
+                        return null;                        
+                    }
                     else
                     {
-                        return respNext;
+                        return msg;
                     }
                 }
-                CleanUp(true);
-                return null;
             }
             catch
             {
@@ -410,7 +413,7 @@ namespace Npgsql
             NpgsqlRowDescription rd = _pendingDescription;
             while (rd == null)
             {
-                object objNext = GetNextResponseObject();
+                object objNext = GetNextServerMessage();
                 if (objNext == null)
                 {
                     break;
@@ -454,23 +457,22 @@ namespace Npgsql
         {
             lock (this)
             {
-                if (_cleanedUp)
-                {
+                if (_cleanedUp) {
                     return;
                 }
-                _cleanedUp = true;
-            }
-            if (!finishedMessages)
-            {
-                do
+                if (!finishedMessages)
                 {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                    do
                     {
-                        _connection.EmergencyClose();
-                        return;
+                        if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                        {
+                            _connection.EmergencyClose();
+                            return;
+                        }
                     }
+                    while (GetNextServerMessage(true) != null);
                 }
-                while (GetNextResponseObject(true) != null);
+                _cleanedUp = true;
             }
             _connector.CurrentReader = null;
             _threadBlock.Dispose();

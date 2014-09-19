@@ -409,20 +409,21 @@ namespace Npgsql
 
             // Tell to mediator what command is being sent.
             _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Parse);
-
-            // Flush and wait for response.
-            var responseEnum = _connector.ProcessBackendResponsesEnum();
-
-            // Look for a NpgsqlRowDescription in the responses, discarding everything else.
-            foreach (var response in responseEnum)
+  
+            while (true)
             {
-                if (response is NpgsqlRowDescription)
-                {
-                    returnRowDesc = (NpgsqlRowDescription)response;
+                var msg = _connector.ReadMessage();
+                if (msg is ReadyForQueryMsg) {
+                    break;
                 }
-                else if (response is IDisposable)
-                {
-                    (response as IDisposable).Dispose();
+                var asRowDesc = msg as NpgsqlRowDescription;
+                if (asRowDesc != null) {
+                    returnRowDesc = asRowDesc;
+                    continue;
+                }
+                var asDisposable = msg as IDisposable;
+                if (asDisposable != null) {
+                    asDisposable.Dispose();
                 }
             }
 
@@ -1375,7 +1376,6 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (_connector.BlockNotificationThread())
             {
-                IEnumerable<IServerMessage> responseEnum;
                 NpgsqlDataReader reader;
 
                 _connector.SetBackendCommandTimeout(CommandTimeout);
@@ -1404,16 +1404,7 @@ namespace Npgsql
                         _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
                     }
 
-                    // Flush and wait for responses.
-                    responseEnum = _connector.ProcessBackendResponsesEnum();
-
-                    // Construct the return reader.
-                    reader = new NpgsqlDataReader(
-                        responseEnum,
-                        cb,
-                        this,
-                        _connector.BlockNotificationThread()
-                    );
+                    reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
 
                     if (
                         CommandType == CommandType.StoredProcedure
@@ -1443,20 +1434,8 @@ namespace Npgsql
                         // TODO: Check if there is a better way to handle that.
 
                         query = new NpgsqlQuery(queryText);
-
-                        // Write the Query message to the wire.
                         _connector.Query(query);
-
-                        // Flush and wait for responses.
-                        responseEnum = _connector.ProcessBackendResponsesEnum();
-
-                        // Construct the return reader.
-                        reader = new NpgsqlDataReader(
-                            responseEnum,
-                            cb,
-                            this,
-                            _connector.BlockNotificationThread()
-                        );
+                        reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
                     }
                 }
                 else
@@ -1472,18 +1451,8 @@ namespace Npgsql
                     // Tell to mediator what command is being sent.
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
-                    // Flush and wait for responses.
-                    responseEnum = _connector.ProcessBackendResponsesEnum();
-
                     // Construct the return reader, possibly with a saved row description from Prepare().
-                    reader = new NpgsqlDataReader(
-                        responseEnum,
-                        cb,
-                        this,
-                        _connector.BlockNotificationThread(),
-                        true,
-                        _currentRowDescription
-                    );
+                    reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread(), true, _currentRowDescription);
                 }
 
                 return reader;

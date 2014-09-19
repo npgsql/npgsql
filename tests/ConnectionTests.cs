@@ -41,7 +41,7 @@ namespace NpgsqlTests
         public ConnectionTests(string backendVersion) : base(backendVersion) { }
 
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-        [Timeout(5000)]
+        //[Timeout(5000)]
         public void BasicLifecycle()
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
