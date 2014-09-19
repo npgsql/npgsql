@@ -49,7 +49,7 @@ namespace Npgsql
     /// access the physical connection to the database, and isolate
     /// the application developer from connection pooling internals.
     /// </summary>
-    internal class NpgsqlConnector
+    internal partial class NpgsqlConnector
     {
         readonly NpgsqlConnectionStringBuilder _settings;
 

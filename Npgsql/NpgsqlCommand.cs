@@ -47,7 +47,7 @@ namespace Npgsql
     [System.Drawing.ToolboxBitmapAttribute(typeof(NpgsqlCommand)), ToolboxItem(true)]
 #endif
     [System.ComponentModel.DesignerCategory("")]    
-    public sealed class NpgsqlCommand : DbCommand, ICloneable
+    public sealed partial class NpgsqlCommand : DbCommand, ICloneable
     {
         #region Fields
 
