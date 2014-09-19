@@ -70,6 +70,12 @@ namespace Npgsql
         internal BufferedStream Stream { get; set; }
 
         /// <summary>
+        /// Buffer used for reading data.
+        /// </summary>
+        // TODO: Work out the strategy for the size!
+        internal byte[] _buffer = new byte[1024 * 16];
+
+        /// <summary>
         /// The connection mediator.
         /// </summary>
         internal NpgsqlMediator Mediator { get; private set; }
@@ -535,7 +541,8 @@ namespace Npgsql
             for (;;)
             {
                 // Check the first Byte of response.
-                var message = (BackEndMessageCode) Stream.ReadByte();
+                Stream.Read(_buffer, 0, 1);
+                var message = (BackEndMessageCode) _buffer[0];
                 switch (message)
                 {
                     case BackEndMessageCode.ErrorResponse:
