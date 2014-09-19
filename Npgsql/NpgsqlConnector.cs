@@ -503,11 +503,12 @@ namespace Npgsql
 
         #region Backend message processing
 
+        [GenerateAsync]
         internal IServerMessage ReadMessage()
         {
             try
             {
-                return ReadMessageInternal();
+                return this.ReadMessageInternal();
             }
             catch (IOException e)
             {
@@ -528,6 +529,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         IServerMessage ReadMessageInternal()
         {
             for (;;)

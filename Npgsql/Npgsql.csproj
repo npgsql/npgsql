@@ -99,8 +99,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="NpgsqlCommand.Async.cs" />
-    <Compile Include="NpgsqlConnector.Async.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
@@ -218,6 +216,12 @@
   <Target Name="PublisherPolicy">
     <AL LinkResources="PublisherPolicy.config" OutputAssembly="$(OutputPath)\policy.2.0.$(AssemblyName).dll" KeyFile="..\Npgsql.snk" />
   </Target>
+  <UsingTask TaskName="AsyncGenerator.GenerateAsync" AssemblyFile="..\AsyncGenerator\bin\Release\AsyncGenerator.dll" />
+  <Target Name="GenerateAsync">
+    <GenerateAsync InputFiles="NpgsqlConnector.cs;NpgsqlCommand.cs;NpgsqlDataReader.cs;PGUtil.cs">
+      <Output TaskParameter="OutputFiles" ItemName="Compile" />
+    </GenerateAsync>
+  </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -226,6 +230,9 @@
     </PropertyGroup>
     <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
   </Target>
+  <PropertyGroup>
+    <CompileDependsOn>GenerateAsync;$(CompileDependsOn)</CompileDependsOn>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

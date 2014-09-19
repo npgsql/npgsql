@@ -33,6 +33,8 @@ using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
 using NpgsqlTypes;
@@ -1280,6 +1282,7 @@ namespace Npgsql
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
+        [GenerateAsync("ExecuteNonQueryAsyncImpl")]
         public override int ExecuteNonQuery()
         {
             _log.Debug("ExecuteNonQuery");
@@ -1303,17 +1306,39 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Asynchronous version of <see cref="ExecuteNonQuery"/>
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+        {
+            return await ExecuteNonQueryAsyncImpl();
+        }
+
+        /// <summary>
         /// Executes the query, and returns the first column of the first row
         /// in the result set returned by the query. Extra columns or rows are ignored.
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
+        [GenerateAsync("ExecuteScalarAsyncImpl")]
         public override Object ExecuteScalar()
         {
             using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult | CommandBehavior.SingleRow))
             {
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
+        }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="ExecuteScalar"/>
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with the first column of the
+        /// first row in the result set, or a null reference if the result set is empty.</returns>
+        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
+        {
+            return await ExecuteScalarAsyncImpl();
         }
 
         /// <summary>
@@ -1327,6 +1352,18 @@ namespace Npgsql
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
             return ExecuteReader(behavior);
+        }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="ExecuteScalar"/>
+        /// </summary>
+        /// <param name="behavior">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with A <see cref="NpgsqlDataReader">NpgsqlDataReader</see>
+        /// object.</returns>
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        {
+            return await ExecuteReaderAsyncImpl(behavior);
         }
 
         /// <summary>
@@ -1349,6 +1386,7 @@ namespace Npgsql
         /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
         /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
         /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
+        [GenerateAsync("ExecuteReaderAsyncImpl")]
         public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
         {
             _log.Debug("ExecuteReader with CommandBehavior=" + cb);
@@ -1406,6 +1444,11 @@ namespace Npgsql
 
                     reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
 
+                    // For un-prepared statements, the first response is always a row description.
+                    // For prepared statements, we may be recycling a row description from a previous Execute.
+                    // TODO: This is the source of the inconsistency described in #357
+                    reader.NextResultInternal();
+
                     if (
                         CommandType == CommandType.StoredProcedure
                         && reader.FieldCount == 1
@@ -1436,6 +1479,10 @@ namespace Npgsql
                         query = new NpgsqlQuery(queryText);
                         _connector.Query(query);
                         reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
+                        // For un-prepared statements, the first response is always a row description.
+                        // For prepared statements, we may be recycling a row description from a previous Execute.
+                        // TODO: This is the source of the inconsistency described in #357
+                        reader.NextResultInternal();
                     }
                 }
                 else

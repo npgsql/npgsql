@@ -35,6 +35,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -42,7 +43,7 @@ namespace Npgsql
     /// <summary>
     /// Provides a means of reading a forward-only stream of rows from a PostgreSQL backend.
     /// </summary>
-    public class NpgsqlDataReader : DbDataReader, IStreamOwner
+    public partial class NpgsqlDataReader : DbDataReader, IStreamOwner
     {
         internal NpgsqlConnector _connector;
         internal NpgsqlConnection _connection;
@@ -88,13 +89,6 @@ namespace Npgsql
             _threadBlock = threadBlock;
             _preparedStatement = preparedStatement;
             CurrentDescription = rowDescription;
-
-            // For un-prepared statements, the first response is always a row description.
-            // For prepared statements, we may be recycling a row description from a previous Execute.
-            if (CurrentDescription == null)
-            {
-                NextResultInternal();
-            }
 
             UpdateOutputParameters();
         }
@@ -214,6 +208,7 @@ namespace Npgsql
         /// Advances the data reader to the next row.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
+        [GenerateAsync("ReadAsyncImpl")]
         public override Boolean Read()
         {
             try
@@ -229,6 +224,17 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Asynchronous version of <see cref="Read"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with true if the reader
+        /// was advanced, otherwise false.</returns>
+        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            return await ReadAsyncImpl();
+        }
+
+        /// <summary>
         /// Indicates if NpgsqlDatareader has rows to be read.
         /// </summary>
         public override Boolean HasRows
@@ -241,6 +247,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         private NpgsqlRow GetNextRow(bool clearPending)
         {
             if (_pendingDescription != null)
@@ -306,6 +313,7 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
+        [GenerateAsync("NextResultAsyncImpl")]
         public override Boolean NextResult()
         {
             if (_preparedStatement)
@@ -317,7 +325,19 @@ namespace Npgsql
             return NextResultInternal();
         }
 
-        private Boolean NextResultInternal()
+        /// <summary>
+        /// Asynchronous version of <see cref="NextResult"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with true if the reader
+        /// was advanced, otherwise false.</returns>
+        public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        {
+            return await NextResultAsyncImpl();
+        }
+
+        [GenerateAsync]
+        internal Boolean NextResultInternal()
         {
             try
             {
@@ -340,6 +360,7 @@ namespace Npgsql
         /// rows if appropriate).
         /// </summary>
         /// <returns>The next <see cref="IServerMessage"/> we will deal with.</returns>
+        [GenerateAsync]
         private IServerMessage GetNextServerMessage(bool cleanup = false)
         {
             if (_cleanedUp)
@@ -403,6 +424,7 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
+        [GenerateAsync]
         private NpgsqlRowDescription GetNextRowDescription()
         {
             if ((_behavior & CommandBehavior.SingleResult) != 0 && CurrentDescription != null)
