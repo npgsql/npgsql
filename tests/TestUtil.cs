@@ -100,4 +100,10 @@ namespace NpgsqlTests
         public void AfterTest(TestDetails testDetails) { }
         public ActionTargets Targets { get { return ActionTargets.Test; } }
     }
+
+    public enum PrepareOrNot
+    {
+        Prepared,
+        NotPrepared
+    }
 }
