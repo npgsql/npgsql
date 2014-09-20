@@ -29,6 +29,19 @@ namespace AsyncGenerator
         [Output]
         public ITaskItem[] OutputFiles { get; set; }
 
+        /// <summary>
+        /// Invocations of methods on these types never get rewritten to async
+        /// </summary>
+        HashSet<ITypeSymbol> _excludedTypes;
+
+        /// <summary>
+        /// Using directives required for async, not expected to be in the source (sync) files
+        /// </summary>
+        static readonly UsingDirectiveSyntax[] ExtraUsingDirectives = {
+            SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading")),
+            SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading.Tasks")),
+        };
+
         public override bool Execute()
         {
             var files = InputFiles.Select(f => new SourceFile {
@@ -36,14 +49,21 @@ namespace AsyncGenerator
                 SyntaxTree = SyntaxFactory.ParseSyntaxTree(File.ReadAllText(f.ItemSpec))
             }).ToList();
 
+            var mscorlib = new MetadataFileReference(typeof(object).Assembly.Location);
             var compilation = CSharpCompilation.Create(
                 "Temp",
                 files.Select(f => f.SyntaxTree),
-                new[] { new MetadataFileReference(typeof(object).Assembly.Location) }
+                new[] { mscorlib }
             );
             foreach (var file in files) {
                 file.SemanticModel = compilation.GetSemanticModel(file.SyntaxTree);
             }
+
+            var corlibSymbol = (IAssemblySymbol)compilation.GetAssemblyOrModuleSymbol(mscorlib);
+            _excludedTypes = new HashSet<ITypeSymbol> {
+                corlibSymbol.GetTypeByMetadataName("System.IO.TextWriter"),
+                corlibSymbol.GetTypeByMetadataName("System.IO.MemoryStream") 
+            };
 
             // First pass: find methods with the [GenerateAsync] attribute
             foreach (var file in files)
@@ -96,14 +116,6 @@ namespace AsyncGenerator
             return true;
         }
 
-        /// <summary>
-        /// Using directives required for async, not expected to be in the source (sync) files
-        /// </summary>
-        static readonly UsingDirectiveSyntax[] ExtraUsingDirectives = {
-            SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading")),
-            SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Threading.Tasks")),
-        };
-
         CompilationUnitSyntax RewriteFile(SourceFile file)
         {
             return SyntaxFactory.CompilationUnit()
@@ -127,7 +139,7 @@ namespace AsyncGenerator
             var inMethod = inMethodInfo.Method;
 
             Log.LogMessage(MessageImportance.Low, "Rewriting invocations inside method " + inMethod.Identifier.Text);
-            var rewriter = new MethodInvocationRewriter(Log, file.SemanticModel);
+            var rewriter = new MethodInvocationRewriter(Log, file.SemanticModel, _excludedTypes);
             var outMethod = (MethodDeclarationSyntax)rewriter.Visit(inMethod);
 
             // Method signature
@@ -163,13 +175,14 @@ namespace AsyncGenerator
     internal class MethodInvocationRewriter : CSharpSyntaxRewriter
     {
         readonly SemanticModel _model;
-        readonly HashSet<IMethodSymbol> _methodsToRewrite;
+        readonly HashSet<ITypeSymbol> _excludeTypes;
         readonly TaskLoggingHelper Log;
 
-        public MethodInvocationRewriter(TaskLoggingHelper log, SemanticModel model)
+        public MethodInvocationRewriter(TaskLoggingHelper log, SemanticModel model, HashSet<ITypeSymbol> excludeTypes)
         {
             Log = log;
             _model = model;
+            _excludeTypes = excludeTypes;
         }
 
         public override SyntaxNode VisitInvocationExpression(InvocationExpressionSyntax node)
@@ -178,11 +191,15 @@ namespace AsyncGenerator
             if (symbol == null)
                 return node;
 
-            if (!symbol.GetAttributes().Any(a => a.AttributeClass.Name == "GenerateAsync") &&
-                !symbol.ContainingType.GetMembers(symbol.Name + "Async").Any())
+            if (!symbol.GetAttributes().Any(a => a.AttributeClass.Name == "GenerateAsync") && (
+                  _excludeTypes.Contains(symbol.ContainingType) ||
+                  !symbol.ContainingType.GetMembers(symbol.Name + "Async").Any()
+               ))
+            {
                 return node;
+            }
 
-            Log.LogMessage(MessageImportance.Low, "Found rewritable invocation: " + symbol.Name);
+            Log.LogMessage(MessageImportance.Low, "Found rewritable invocation: " + symbol);
 
             var asIdentifierName = node.Expression as IdentifierNameSyntax;
             if (asIdentifierName != null)
