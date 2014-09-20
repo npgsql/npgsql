@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -50,10 +51,11 @@ namespace AsyncGenerator
             }).ToList();
 
             var mscorlib = new MetadataFileReference(typeof(object).Assembly.Location);
+
             var compilation = CSharpCompilation.Create(
                 "Temp",
                 files.Select(f => f.SyntaxTree),
-                new[] { mscorlib }
+                new[] { mscorlib, new MetadataFileReference(typeof(CommandBehavior).Assembly.Location) }
             );
             foreach (var file in files) {
                 file.SemanticModel = compilation.GetSemanticModel(file.SyntaxTree);
@@ -138,7 +140,7 @@ namespace AsyncGenerator
         {
             var inMethod = inMethodInfo.Method;
 
-            Log.LogMessage(MessageImportance.Low, "Rewriting invocations inside method " + inMethod.Identifier.Text);
+            Log.LogMessage(MessageImportance.Low, "  Rewriting method {0} to {1}", inMethod.Identifier.Text, inMethodInfo.Transformed);
             var rewriter = new MethodInvocationRewriter(Log, file.SemanticModel, _excludedTypes);
             var outMethod = (MethodDeclarationSyntax)rewriter.Visit(inMethod);
 
@@ -199,7 +201,7 @@ namespace AsyncGenerator
                 return node;
             }
 
-            Log.LogMessage(MessageImportance.Low, "Found rewritable invocation: " + symbol);
+            Log.LogMessage(MessageImportance.Low, "    Found rewritable invocation: " + symbol);
 
             var asIdentifierName = node.Expression as IdentifierNameSyntax;
             if (asIdentifierName != null)
