@@ -27,6 +27,7 @@ using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using Common.Logging;
 using Common.Logging.Configuration;
 using Common.Logging.NLog;
@@ -306,6 +307,22 @@ namespace NpgsqlTests
                 conn = Conn;
             using (var cmd = new NpgsqlCommand(sql, conn))
                 return cmd.ExecuteScalar();
+        }
+
+        protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null)
+        {
+            if (conn == null)
+                conn = Conn;
+            using (var cmd = new NpgsqlCommand(sql, conn))
+                return await cmd.ExecuteNonQueryAsync();
+        }
+
+        protected async Task<object> ExecuteScalarAsync(string sql, NpgsqlConnection conn = null)
+        {
+            if (conn == null)
+                conn = Conn;
+            using (var cmd = new NpgsqlCommand(sql, conn))
+                return await cmd.ExecuteScalarAsync();
         }
 
         #endregion
