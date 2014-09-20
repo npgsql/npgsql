@@ -1407,6 +1407,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         internal NpgsqlDataReader GetReader(CommandBehavior cb)
         {
             CheckConnectionState();
@@ -1461,7 +1462,7 @@ namespace Npgsql
 
                         while (reader.Read())
                         {
-                            sw.WriteLine("FETCH ALL FROM \"{0}\";", reader.GetString(0));
+                            sw.WriteLine(String.Format("FETCH ALL FROM \"{0}\";", reader.GetString(0)));
                         }
 
                         reader.Dispose();
