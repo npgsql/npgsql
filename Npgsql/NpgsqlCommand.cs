@@ -1482,6 +1482,7 @@ namespace Npgsql
                     // For prepared statements, we may be recycling a row description from a previous Execute.
                     // TODO: This is the source of the inconsistency described in #357
                     reader.NextResultInternal();
+                    reader.UpdateOutputParameters();
 
                     if (
                         CommandType == CommandType.StoredProcedure
@@ -1517,6 +1518,7 @@ namespace Npgsql
                         // For prepared statements, we may be recycling a row description from a previous Execute.
                         // TODO: This is the source of the inconsistency described in #357
                         reader.NextResultInternal();
+                        reader.UpdateOutputParameters();
                     }
                 }
                 else
@@ -1534,6 +1536,10 @@ namespace Npgsql
 
                     // Construct the return reader, possibly with a saved row description from Prepare().
                     reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread(), true, _currentRowDescription);
+                    if (_currentRowDescription == null) {
+                        reader.NextResultInternal();
+                    }
+                    reader.UpdateOutputParameters();
                 }
 
                 return reader;

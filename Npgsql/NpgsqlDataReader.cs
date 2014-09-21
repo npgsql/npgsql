@@ -89,11 +89,9 @@ namespace Npgsql
             _threadBlock = threadBlock;
             _preparedStatement = preparedStatement;
             CurrentDescription = rowDescription;
-
-            UpdateOutputParameters();
         }
 
-        private void UpdateOutputParameters()
+        internal void UpdateOutputParameters()
         {
             if (CurrentDescription != null)
             {
