@@ -309,6 +309,7 @@ namespace NpgsqlTests
                 return cmd.ExecuteScalar();
         }
 
+#if NET45
         protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null)
         {
             if (conn == null)
@@ -324,6 +325,7 @@ namespace NpgsqlTests
             using (var cmd = new NpgsqlCommand(sql, conn))
                 return await cmd.ExecuteScalarAsync();
         }
+#endif
 
         #endregion
 

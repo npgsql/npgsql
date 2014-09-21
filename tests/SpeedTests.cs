@@ -35,6 +35,7 @@ namespace NpgsqlTests
             }
         }
 
+#if NET45
         [Test, Description("A minimal, simple, non-query scenario in async")]
         public async void ExecuteUpdateNonQueryAsync()
         {
@@ -47,6 +48,7 @@ namespace NpgsqlTests
                 }
             }
         }
+#endif
 
         [Test, Description("A minimal, simple, scalar scenario")]
         public void ExecuteScalar()
@@ -61,6 +63,7 @@ namespace NpgsqlTests
             }
         }
 
+#if NET45
         [Test, Description("A minimal, simple, scalar scenario in async")]
         public async void ExecuteScalarAsync()
         {
@@ -73,6 +76,7 @@ namespace NpgsqlTests
                 }
             }
         }
+#endif
 
         [Test, Description("A minimal, simple reader scenario")]
         [TestCase(100)]
@@ -93,6 +97,7 @@ namespace NpgsqlTests
             }
         }
 
+#if NET45
         [Test, Description("A minimal, simple reader scenario in async")]
         [TestCase(100)]
         public async void ExecuteReaderAsync(int rows)
@@ -112,6 +117,7 @@ namespace NpgsqlTests
                 }
             }
         }
+#endif
 
         [Test, Description("A normal insert command with one parameter")]
         public void ParameterizedInsert()

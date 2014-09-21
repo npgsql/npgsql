@@ -1305,6 +1305,7 @@ namespace Npgsql
             return ret ?? -1;
         }
 
+#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteNonQuery"/>
         /// </summary>
@@ -1325,6 +1326,7 @@ namespace Npgsql
                 throw;
             }
         }
+#endif
 
         /// <summary>
         /// Executes the query, and returns the first column of the first row
@@ -1341,6 +1343,7 @@ namespace Npgsql
             }
         }
 
+#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar"/>
         /// </summary>
@@ -1362,6 +1365,7 @@ namespace Npgsql
                 throw;
             }
         }
+#endif
 
         /// <summary>
         /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
@@ -1376,6 +1380,7 @@ namespace Npgsql
             return ExecuteReader(behavior);
         }
 
+#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar"/>
         /// </summary>
@@ -1398,6 +1403,7 @@ namespace Npgsql
                 throw;
             }
         }
+#endif
 
         /// <summary>
         /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to

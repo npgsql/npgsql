@@ -221,6 +221,7 @@ namespace Npgsql
             }
         }
 
+#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="Read"/>.
         /// </summary>
@@ -243,6 +244,7 @@ namespace Npgsql
                 throw;
             }
         }
+#endif
 
         /// <summary>
         /// Indicates if NpgsqlDatareader has rows to be read.
@@ -335,6 +337,7 @@ namespace Npgsql
             return NextResultInternal();
         }
 
+#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="NextResult"/>.
         /// </summary>
@@ -357,6 +360,7 @@ namespace Npgsql
                 throw;
             }
         }
+#endif
 
         [GenerateAsync]
         internal Boolean NextResultInternal()

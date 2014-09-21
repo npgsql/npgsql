@@ -230,7 +230,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
   </Target>
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release-net45' Or '$(Configuration)' == 'Debug-net45'">
     <CompileDependsOn>GenerateAsync;$(CompileDependsOn)</CompileDependsOn>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
