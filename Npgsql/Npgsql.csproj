@@ -218,6 +218,7 @@
   </Target>
   <UsingTask TaskName="AsyncGenerator.GenerateAsync" AssemblyFile="..\AsyncGenerator\bin\Release\AsyncGenerator.dll" />
   <Target Name="GenerateAsync">
+    <MSBuild Condition="!Exists('..\AsyncGenerator\bin\Release\AsyncGenerator.dll')" Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release" />
     <GenerateAsync InputFiles="NpgsqlConnector.cs;NpgsqlCommand.cs;NpgsqlDataReader.cs;PGUtil.cs">
       <Output TaskParameter="OutputFiles" ItemName="Compile" />
     </GenerateAsync>
