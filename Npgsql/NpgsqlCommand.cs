@@ -1312,7 +1312,18 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
-            return await ExecuteNonQueryAsyncImpl();
+            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.Register(Cancel);
+            try
+            {
+                return await ExecuteNonQueryAsyncImpl();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
         }
 
         /// <summary>
@@ -1338,7 +1349,18 @@ namespace Npgsql
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
-            return await ExecuteScalarAsyncImpl();
+            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.Register(Cancel);
+            try
+            {
+                return await ExecuteScalarAsyncImpl();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
         }
 
         /// <summary>
@@ -1363,7 +1385,18 @@ namespace Npgsql
         /// object.</returns>
         protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
-            return await ExecuteReaderAsyncImpl(behavior);
+            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.Register(Cancel);
+            try
+            {
+                return await ExecuteReaderAsyncImpl(behavior);
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
         }
 
         /// <summary>

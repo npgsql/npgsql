@@ -153,7 +153,8 @@ namespace AsyncGenerator
                   .Remove(SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
                   .Remove(SyntaxFactory.Token(SyntaxKind.NewKeyword))
                 );
-                //.WithReturnType(SyntaxFactory.ParseTypeName("Task<" + inMethod.ReturnType + ">"));  // TODO: Structure
+
+            // Transform return type adding Task<>
             var returnType = inMethod.ReturnType.ToString();
             outMethod = outMethod.WithReturnType(SyntaxFactory.ParseTypeName(
                 returnType == "void" ? "Task" : String.Format("Task<{0}>", returnType))
@@ -189,10 +190,12 @@ namespace AsyncGenerator
 
         public override SyntaxNode VisitInvocationExpression(InvocationExpressionSyntax node)
         {
-            var symbol = _model.GetSymbolInfo(node).Symbol;
+            var symbol = (IMethodSymbol)_model.GetSymbolInfo(node).Symbol;
             if (symbol == null)
                 return node;
 
+            // Skip invocations of methods that don't have [GenerateAsync], or an Async
+            // counterpart to them
             if (!symbol.GetAttributes().Any(a => a.AttributeClass.Name == "GenerateAsync") && (
                   _excludeTypes.Contains(symbol.ContainingType) ||
                   !symbol.ContainingType.GetMembers(symbol.Name + "Async").Any()
@@ -203,6 +206,7 @@ namespace AsyncGenerator
 
             Log.LogMessage(MessageImportance.Low, "    Found rewritable invocation: " + symbol);
 
+            // Rewrite the method name and prefix the invocation with await
             var asIdentifierName = node.Expression as IdentifierNameSyntax;
             if (asIdentifierName != null)
             {

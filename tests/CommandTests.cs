@@ -3998,7 +3998,7 @@ namespace NpgsqlTests
         {
             using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn))
             {
-                var cancelTask = Task.Factory.StartNew(() =>
+                Task.Factory.StartNew(() =>
                 {
                     Thread.Sleep(300);
                     cmd.Cancel();
@@ -4007,7 +4007,6 @@ namespace NpgsqlTests
                     Throws.TypeOf<NpgsqlException>()
                     .With.Property("Code").EqualTo("57014")
                 );
-                cancelTask.Wait();
             }
         }
     }

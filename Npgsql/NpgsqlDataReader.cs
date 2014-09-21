@@ -231,7 +231,19 @@ namespace Npgsql
         /// was advanced, otherwise false.</returns>
         public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
-            return await ReadAsyncImpl();
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: What is the desired behavior when cancelling here?
+            // cancellationToken.Register(...)
+            try
+            {
+                return await ReadAsyncImpl();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
         }
 
         /// <summary>
@@ -333,7 +345,19 @@ namespace Npgsql
         /// was advanced, otherwise false.</returns>
         public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
-            return await NextResultAsyncImpl();
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: What is the desired behavior when cancelling here?
+            // cancellationToken.Register(...)
+            try
+            {
+                return await NextResultAsyncImpl();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
         }
 
         [GenerateAsync]
