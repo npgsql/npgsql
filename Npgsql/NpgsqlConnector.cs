@@ -468,22 +468,22 @@ namespace Npgsql
         {
             _log.Debug("Authenticating");
             var pwpck = new NpgsqlPasswordPacket(password);
-            Stream.Flush();
             pwpck.WriteToStream(Stream);
+            Stream.Flush();
         }
 
         internal void Parse(NpgsqlParse parse)
         {
             _log.Debug("Sending parse message");
-            Stream.Flush();
             parse.WriteToStream(Stream);
+            Stream.Flush();
         }
 
         internal void Sync()
         {
             _log.Debug("Sending sync message");
-            Stream.Flush();
             NpgsqlSync.Default.WriteToStream(Stream);
+            Stream.Flush();
         }
 
         internal void Bind(NpgsqlBind bind)
@@ -495,8 +495,8 @@ namespace Npgsql
         internal void Describe(NpgsqlDescribe describe)
         {
             _log.Debug("Sending describe message");
-            Stream.Flush();
             describe.WriteToStream(Stream);
+            Stream.Flush();
         }
 
         internal void Execute(NpgsqlExecute execute)
