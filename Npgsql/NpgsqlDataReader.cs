@@ -870,13 +870,26 @@ namespace Npgsql
             return TryGetTypeInfo(Index, out TI) ? TI.Name : GetDataTypeOID(Index);
         }
 
+        private Type GetFieldType(Int32 Index, Boolean getProviderSpecific)
+        {
+            if (CurrentDescription == null)
+            {
+                throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
+            }
+            NpgsqlRowDescription.FieldData FD = CurrentDescription[Index];
+            NpgsqlBackendTypeInfo TI = CurrentDescription[Index].TypeInfo;
+            if (TI == null) {
+                return typeof(string); //Default type is string.
+            }
+            return getProviderSpecific ? TI.GetType(FD.TypeModifier) : TI.GetFrameworkType(FD.TypeModifier);
+        }
+
         /// <summary>
         /// Return the data type of the column at index <param name="Index"></param>.
         /// </summary>
         public override Type GetFieldType(Int32 Index)
         {
-            NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof(string); //Default type is string.
+            return GetFieldType(Index, false);
         }
 
         /// <summary>
@@ -886,8 +899,7 @@ namespace Npgsql
         /// <returns>Appropriate Npgsql type for column.</returns>
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
-            NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(ordinal, out TI) ? TI.Type : typeof(string); //Default type is string.
+            return GetFieldType(ordinal, true);
         }
 
         /// <summary>

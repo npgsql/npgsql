@@ -161,12 +161,50 @@ namespace NpgsqlTypes
             get { return _Type; }
         }
 
+        public Type GetType(int typeModifier, bool omitArray = false)
+        {
+            if (typeModifier == 1 && NpgsqlDbType == NpgsqlDbType.Bit)
+            {
+                return typeof(bool);
+            }
+            else if (typeModifier == 1 && NpgsqlDbType == (NpgsqlDbType.Array | NpgsqlDbType.Bit))
+            {
+                if (omitArray)
+                    return typeof(bool);
+                else
+                    return typeof(bool[]);
+            }
+            else
+            {
+                return _Type;
+            }
+        }
+
         /// <summary>
         /// System type to convert fields of this type to.
         /// </summary>
         public Type FrameworkType
         {
             get { return _frameworkType; }
+        }
+
+        public Type GetFrameworkType(int typeModifier, bool omitArray = false)
+        {
+            if (typeModifier == 1 && NpgsqlDbType == NpgsqlDbType.Bit)
+            {
+                return typeof(bool);
+            }
+            else if (typeModifier == 1 && NpgsqlDbType == (NpgsqlDbType.Array | NpgsqlDbType.Bit))
+            {
+                if (omitArray)
+                    return typeof(bool);
+                else
+                    return typeof(bool[]);
+            }
+            else
+            {
+                return _frameworkType;
+            }
         }
 
         /// <summary>

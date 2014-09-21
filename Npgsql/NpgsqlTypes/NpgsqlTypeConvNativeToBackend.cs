@@ -369,7 +369,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
-        internal static byte[] ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        internal static byte[] ToBitText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             if (NativeData is bool)
                 return ((bool)NativeData) ? ASCIIByteArrays.AsciiDigit_1 : ASCIIByteArrays.AsciiDigit_0;
@@ -388,8 +388,33 @@ namespace NpgsqlTypes
             // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
             else if (NativeData is int)
                 return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
-            else
-                return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
+            
+            if (forExtendedQuery || arrayElement)
+            {
+                var bitString = (BitString)NativeData;
+                var str = bitString.Length % 4 == 0 ? "X" + bitString.ToString("X") : bitString.BFormatString().ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(str);
+            }
+            return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
+        }
+
+        /// <summary>
+        /// Convert to a postgresql bit.
+        /// </summary>
+        internal static byte[] ToBitBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            if (NativeData is int)
+            {
+                if (((int)NativeData == 1 || (int)NativeData == 0))
+                    NativeData = (int)NativeData == 1 ? true : false;
+                else
+                    throw new InvalidCastException("Cannot cast integers other than 0, 1 to bit for prepared statements");
+            }
+
+            if (NativeData is bool)
+                return (bool)NativeData ? new byte[5] { 0, 0, 0, 1, 128 } : new byte[5] { 0, 0, 0, 1, 0 };
+            
+            return ((BitString)NativeData).ToPostgreSQLBinary();
         }
 
         /// <summary>

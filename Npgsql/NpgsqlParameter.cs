@@ -69,10 +69,9 @@ namespace Npgsql
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
+        private bool explicitUnknown = false;
 
-        private Boolean useCast = false;
-
-        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(DbType.Object);
 
         private bool bound = false;
 
@@ -102,19 +101,6 @@ namespace Npgsql
         {
             this.ParameterName = parameterName;
             this.Value = value;
-
-            /*if ((this.value == null) || (this.value == DBNull.Value))
-            {
-                // don't really know what to do - leave default and do further exploration
-                // Default type for null values is String.
-                this.value = DBNull.Value;
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-            }
-            else if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
-            {
-                throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-            }*/
-
         }
 
         /// <summary>
@@ -234,15 +220,7 @@ namespace Npgsql
             this.SourceVersion = sourceVersion;
             this.Value = value;
 
-            if (this.value == null)
-            {
-                this.value = DBNull.Value;
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-            }
-            else
-            {
-                NpgsqlDbType = parameterType; //allow the setter to catch exceptions if necessary.
-            }
+            NpgsqlDbType = parameterType; //allow the setter to catch exceptions if necessary.
         }
 
         /// <summary>
@@ -297,10 +275,10 @@ namespace Npgsql
         {
             get
             {
-
+                return NpgsqlDbType != NpgsqlDbType.Unknown;
                 // Prevents casts to be added for null values when they aren't needed.
-                if (!useCast && (value == DBNull.Value || value == null))
-                    return false;
+                /*if (!useCast && (value == DBNull.Value || value == null))
+                    return false;*/
                 //return useCast; //&& (value != DBNull.Value);
                 // This check for Datetime.minvalue and maxvalue is needed in order to
                 // workaround a problem when comparing date values with infinity.
@@ -309,7 +287,7 @@ namespace Npgsql
                 // Josh's solution to add cast is documented here:
                 // http://pgfoundry.org/forum/message.php?msg_id=1004118
 
-                return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
+                //return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
             }
         }
 
@@ -362,13 +340,15 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-                useCast = value != DbType.Object;
                 bound = false;
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
                     throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
+                backendTypeInfo = null;
+
+                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
             }
         }
 
@@ -388,8 +368,8 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-                useCast = true;
                 bound = false;
+
                 if (value == NpgsqlDbType.Array)
                 {
                     throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
@@ -398,6 +378,9 @@ namespace Npgsql
                 {
                     throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
+                backendTypeInfo = null;
+
+                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
             }
         }
 
@@ -544,10 +527,8 @@ namespace Npgsql
             } // [TODO] Check and validate data type.
             set
             {
-                if ((value == null) || (value == DBNull.Value))
+                if ((value == null) || (value == DBNull.Value) || explicitUnknown)
                 {
-                    // don't really know what to do - leave default and do further exploration
-                    // Default type for null values is String.
                     this.value = value;
                     this.npgsqlValue = value;
 
@@ -568,15 +549,12 @@ namespace Npgsql
                 if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
                 {
                     throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
-
                 }
-                else
-                {
-                    this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
-                    this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
 
-                    bound = false;
-                }
+                this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
+                this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
+
+                bound = false;
 
             }
         }
@@ -603,6 +581,8 @@ namespace Npgsql
         {
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             type_info = null;
+            backendTypeInfo = null;
+            explicitUnknown = false;
             this.Value = Value;
             bound = false;
         }
@@ -637,6 +617,7 @@ namespace Npgsql
             clone.source_version = source_version;
             clone.value = value;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
+            clone.explicitUnknown = explicitUnknown;
 
             return clone;
         }

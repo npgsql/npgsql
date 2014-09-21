@@ -401,6 +401,7 @@ namespace Npgsql
             var parse = new NpgsqlParse(_planName, _preparedCommandText, new int[] { });
             var statementDescribe = new NpgsqlDescribeStatement(_planName);
             NpgsqlRowDescription returnRowDesc = null;
+            ParameterDescriptionResponse parameterDescription = null;
 
             // Write Parse, Describe, and Sync messages to the wire.
             _connector.Parse(parse);
@@ -413,10 +414,14 @@ namespace Npgsql
             // Flush and wait for response.
             var responseEnum = _connector.ProcessBackendResponsesEnum();
 
-            // Look for a NpgsqlRowDescription in the responses, discarding everything else.
+            // Look for ParameterDescriptionResponse, NpgsqlRowDescription in the responses, discarding everything else.
             foreach (var response in responseEnum)
             {
-                if (response is NpgsqlRowDescription)
+                if (response is ParameterDescriptionResponse)
+                {
+                    parameterDescription = (ParameterDescriptionResponse)response;
+                }
+                else if (response is NpgsqlRowDescription)
                 {
                     returnRowDesc = (NpgsqlRowDescription)response;
                 }
@@ -462,7 +467,7 @@ namespace Npgsql
 
             // The Bind and Execute message objects live through multiple Executes.
             // Only Bind changes at all between Executes, which is done in BindParameters().
-            _bind = new NpgsqlBind(portalName, _planName, new Int16[Parameters.Count], null, resultFormatCodes);
+            _bind = new NpgsqlBind(portalName, _planName, parameterDescription.TypeOIDs, new Int16[parameterDescription.TypeOIDs.Length], null, resultFormatCodes);
             _execute = new NpgsqlExecute(portalName, 0);
 
             _prepared = PrepareStatus.Prepared;
@@ -725,22 +730,15 @@ namespace Npgsql
 
         void AppendParameterPlaceHolder(Stream dest, NpgsqlParameter parameter, int paramNumber)
         {
-            var parameterSize = "";
-
             dest.WriteBytes((byte)ASCIIBytes.ParenLeft);
-
-            if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
-            {
-                parameterSize = string.Format("({0})", parameter.Size);
-            }
 
             if (parameter.UseCast)
             {
-                dest.WriteString("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
+                dest.WriteString("${0}::{1}", paramNumber, parameter.TypeInfo.GetCastName(parameter.Size));
             }
             else
             {
-                dest.WriteString("${0}{1}", paramNumber, parameterSize);
+                dest.WriteString("$" + paramNumber);
             }
 
             dest.WriteBytes((byte)ASCIIBytes.ParenRight);
@@ -789,12 +787,7 @@ namespace Npgsql
 
             if (parameter.UseCast)
             {
-                dest.WriteString("::{0}", parameter.TypeInfo.CastName);
-
-                if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
-                {
-                    dest.WriteString("({0})", parameter.Size);
-                }
+                dest.WriteString("::{0}", parameter.TypeInfo.GetCastName(parameter.Size));
             }
 
             dest.WriteBytes((byte)ASCIIBytes.ParenRight);
@@ -857,9 +850,12 @@ namespace Npgsql
             {
                 paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
 
-                for (int i = 0; i < _parameters.Count; i++)
+                for (int i = 0, cnt = 0; i < _parameters.Count; i++)
                 {
-                    paramOrdinalMap[_parameters[i]] = i + 1;
+                    if (_parameters[i].Direction == ParameterDirection.Input || _parameters[i].Direction == ParameterDirection.InputOutput)
+                    {
+                        paramOrdinalMap[_parameters[i]] = ++cnt;
+                    }
                 }
             }
 
@@ -1248,7 +1244,7 @@ namespace Npgsql
 
                     byte[] serialization;
 
-                    serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
+                    serialization = p.TypeInfo.ConvertToBackend(p.NpgsqlValue, false, Connector.NativeToBackendTypeConverterOptions);
 
                     result
                         .WriteBytes(serialization)
@@ -1256,12 +1252,7 @@ namespace Npgsql
 
                     if (p.UseCast)
                     {
-                        result.WriteString(string.Format("::{0}", p.TypeInfo.CastName));
-
-                        if (p.TypeInfo.UseSize && (p.Size > 0))
-                        {
-                            result.WriteString("({0})", p.Size);
-                        }
+                        result.WriteString(string.Format("::{0}", p.TypeInfo.GetCastName(p.Size)));
                     }
                 }
 
@@ -1502,33 +1493,63 @@ namespace Npgsql
                 var parameterFormatCodes = _bind.ParameterFormatCodes;
                 var bindAll = false;
                 var bound = false;
-
-                if (parameterValues == null || parameterValues.Length != _parameters.Count)
-                {
-                    parameterValues = new byte[_parameters.Count][];
-                    bindAll = true;
-                }
+                var numInputParameters = 0;
 
                 for (var i = 0; i < _parameters.Count; i++)
                 {
-                    if (!bindAll && _parameters[i].Bound)
+                    if (_parameters[i].Direction == ParameterDirection.Input || _parameters[i].Direction == ParameterDirection.InputOutput)
+                    {
+                        numInputParameters++;
+                    }
+                }
+
+                if (_bind.ParameterDescription.Length != numInputParameters)
+                {
+                    throw new InvalidOperationException("Wrong number of parameters. Got " + numInputParameters + " but expected " + _bind.ParameterDescription.Length + ".");
+                }
+
+                if (parameterValues == null)
+                {
+                    parameterValues = new byte[numInputParameters][];
+                    bindAll = true;
+                }
+
+                for (int i = 0, j = 0; j < numInputParameters; i++)
+                {
+                    if (!(_parameters[i].Direction == ParameterDirection.Input || _parameters[i].Direction == ParameterDirection.InputOutput))
                     {
                         continue;
                     }
+                    if (!bindAll && _parameters[i].Bound)
+                    {
+                        j++;
+                        continue;
+                    }
 
-                    parameterValues[i] = _parameters[i].TypeInfo.ConvertToBackend(_parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
+                    // If the db backend specified another type, we have to use that one.
+                    NpgsqlBackendTypeInfo backendTypeInfo;
+                    Connector.OidToNameMapping.TryGetValue(_bind.ParameterDescription[j], out backendTypeInfo);
+                    if (backendTypeInfo != null && backendTypeInfo.Name != _parameters[i].TypeInfo.Name && _parameters[i].TypeInfo.Name != "unknown")
+                    {
+                        _parameters[i].NpgsqlDbType = backendTypeInfo.NpgsqlDbType;
+                        _parameters[i].Value = _parameters[i].NpgsqlValue;
+                    }
+
+                    parameterValues[j] = _parameters[i].TypeInfo.ConvertToBackend(_parameters[i].NpgsqlValue, true, Connector.NativeToBackendTypeConverterOptions);
 
                     bound = true;
                     _parameters[i].Bound = true;
 
-                    if (parameterValues[i] == null)
+                    if (parameterValues[j] == null)
                     {
-                        parameterFormatCodes[i] = (short)FormatCode.Binary;
+                        parameterFormatCodes[j] = (short)FormatCode.Binary;
                     }
                     else
                     {
-                        parameterFormatCodes[i] = _parameters[i].TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
+                        parameterFormatCodes[j] = _parameters[i].TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
                     }
+
+                    j++;
                 }
 
                 if (bound)
