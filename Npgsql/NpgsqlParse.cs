@@ -36,7 +36,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlParse : ClientMessage
+    internal sealed class NpgsqlParse : IClientMessage
     {
         private readonly byte[] _bPrepareName;
         private readonly byte[] _bQueryString;
@@ -50,7 +50,7 @@ namespace Npgsql
             _parameterIDs = parameterIDs;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteByte((byte)FrontEndMessageCode.Parse);
 

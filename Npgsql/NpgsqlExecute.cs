@@ -35,7 +35,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlExecute : ClientMessage
+    internal sealed class NpgsqlExecute : IClientMessage
     {
         private readonly String _portalName;
         private readonly byte[] _messageData;
@@ -60,7 +60,7 @@ namespace Npgsql
             get { return _portalName; }
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteBytes(_messageData);
         }

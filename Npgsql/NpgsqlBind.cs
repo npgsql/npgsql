@@ -36,7 +36,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlBind : ClientMessage
+    internal sealed class NpgsqlBind : IClientMessage
     {
         private readonly String _portalName;
         private readonly byte[] _bPortalName;
@@ -104,7 +104,7 @@ namespace Npgsql
             }
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             if (_messageLength == 0)
             {

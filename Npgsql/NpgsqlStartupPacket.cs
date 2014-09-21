@@ -39,7 +39,7 @@ namespace Npgsql
     /// protocol.
     /// </summary>
     ///
-    internal sealed class NpgsqlStartupPacket : ClientMessage
+    internal sealed class NpgsqlStartupPacket : IClientMessage
     {
         // Private fields.
         private readonly List<byte[]> parameterNames = new List<byte[]>(10);
@@ -79,7 +79,7 @@ namespace Npgsql
             }
         }
 
-        public override void WriteToStream(Stream output_stream)
+        public void WriteToStream(Stream output_stream)
         {
             int packet_size = 4 + 4 + 1;
 

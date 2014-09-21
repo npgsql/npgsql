@@ -455,7 +455,8 @@ namespace Npgsql
 
         #region Outgoing messages
 
-        internal void Query(NpgsqlQuery query)
+        [GenerateAsync]
+        internal void SendQuery(NpgsqlQuery query)
         {
             if (_log.IsDebugEnabled)
                 _log.Debug("Sending query: " + query);
@@ -464,42 +465,48 @@ namespace Npgsql
             State = NpgsqlState.Executing;
         }
 
-        internal void Authenticate(byte[] password)
+        [GenerateAsync]
+        internal void SendAuthenticate(byte[] password)
         {
-            _log.Debug("Authenticating");
+            _log.Debug("Sending authenticate message");
             var pwpck = new NpgsqlPasswordPacket(password);
             pwpck.WriteToStream(Stream);
             Stream.Flush();
         }
 
-        internal void Parse(NpgsqlParse parse)
+        [GenerateAsync]
+        internal void SendParse(NpgsqlParse parse)
         {
             _log.Debug("Sending parse message");
             parse.WriteToStream(Stream);
             Stream.Flush();
         }
 
-        internal void Sync()
+        [GenerateAsync]
+        internal void SendSync()
         {
             _log.Debug("Sending sync message");
             NpgsqlSync.Default.WriteToStream(Stream);
             Stream.Flush();
         }
 
-        internal void Bind(NpgsqlBind bind)
+        [GenerateAsync]
+        internal void SendBind(NpgsqlBind bind)
         {
             _log.Debug("Sending bind message");
             bind.WriteToStream(Stream);
         }
 
-        internal void Describe(NpgsqlDescribe describe)
+        [GenerateAsync]
+        internal void SendDescribe(NpgsqlDescribe describe)
         {
             _log.Debug("Sending describe message");
             describe.WriteToStream(Stream);
             Stream.Flush();
         }
 
-        internal void Execute(NpgsqlExecute execute)
+        [GenerateAsync]
+        internal void SendExecute(NpgsqlExecute execute)
         {
             _log.Debug("Sending execute message");
             execute.WriteToStream(Stream);
@@ -576,7 +583,7 @@ namespace Npgsql
                                 continue;
                             case AuthenticationRequestType.AuthenticationClearTextPassword:
                                 // Send the PasswordPacket.
-                                Authenticate(PGUtil.NullTerminateArray(Password));
+                                SendAuthenticate(PGUtil.NullTerminateArray(Password));
                                 continue;
                             case AuthenticationRequestType.AuthenticationMD5Password:
                                 // Now do the "MD5-Thing"
@@ -621,7 +628,7 @@ namespace Npgsql
                                     sb.Append(b.ToString("x2"));
                                 }
 
-                                Authenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
+                                SendAuthenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
                                 continue;
 
                             case AuthenticationRequestType.AuthenticationGSS:
@@ -630,7 +637,7 @@ namespace Npgsql
                                 {
                                     // For GSSAPI we have to use the supplied hostname
                                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                                    Authenticate(SSPI.Continue(null));
+                                    SendAuthenticate(SSPI.Continue(null));
                                     continue;
                                 }
                                 else
@@ -647,7 +654,7 @@ namespace Npgsql
                                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                                    Authenticate(SSPI.Continue(null));
+                                    SendAuthenticate(SSPI.Continue(null));
                                     continue;
                                 }
                                 else
@@ -664,7 +671,7 @@ namespace Npgsql
                                 var passwdRead = SSPI.Continue(authData);
                                 if (passwdRead.Length != 0)
                                 {
-                                    Authenticate(passwdRead);
+                                    SendAuthenticate(passwdRead);
                                 }
                                 continue;
                             }
@@ -1434,7 +1441,7 @@ namespace Npgsql
             using (BlockNotificationThread())
             {
                 SetBackendCommandTimeout(20);
-                Query(query);
+                SendQuery(query);
                 ConsumeAll();
             }
         }
@@ -1450,7 +1457,7 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                Query(query);
+                SendQuery(query);
                 ConsumeAll();
             }
         }
@@ -1498,7 +1505,7 @@ namespace Npgsql
 
             }
 
-            Query(query);
+            SendQuery(query);
             ConsumeAll();
         }
 

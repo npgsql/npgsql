@@ -405,9 +405,9 @@ namespace Npgsql
             NpgsqlRowDescription returnRowDesc = null;
 
             // Write Parse, Describe, and Sync messages to the wire.
-            _connector.Parse(parse);
-            _connector.Describe(statementDescribe);
-            _connector.Sync();
+            _connector.SendParse(parse);
+            _connector.SendDescribe(statementDescribe);
+            _connector.SendSync();
 
             // Tell to mediator what command is being sent.
             _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Parse);
@@ -1470,7 +1470,7 @@ namespace Npgsql
                     var query = new NpgsqlQuery(commandText);
 
                     // Write the Query message to the wire.
-                    _connector.Query(query);
+                    _connector.SendQuery(query);
 
                     // Tell to mediator what command is being sent.
                     if (_prepared == PrepareStatus.NotPrepared)
@@ -1518,7 +1518,7 @@ namespace Npgsql
                         // TODO: Check if there is a better way to handle that.
 
                         query = new NpgsqlQuery(queryText);
-                        _connector.Query(query);
+                        _connector.SendQuery(query);
                         reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
                         // For un-prepared statements, the first response is always a row description.
                         // For prepared statements, we may be recycling a row description from a previous Execute.
@@ -1533,9 +1533,9 @@ namespace Npgsql
                     BindParameters();
 
                     // Write the Bind, Execute, and Sync message to the wire.
-                    _connector.Bind(_bind);
-                    _connector.Execute(_execute);
-                    _connector.Sync();
+                    _connector.SendBind(_bind);
+                    _connector.SendExecute(_execute);
+                    _connector.SendSync();
 
                     // Tell to mediator what command is being sent.
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);

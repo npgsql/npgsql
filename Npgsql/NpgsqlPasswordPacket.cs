@@ -37,7 +37,7 @@ namespace Npgsql
     /// This class represents a PasswordPacket message sent to backend
     /// PostgreSQL.
     /// </summary>
-    internal sealed class NpgsqlPasswordPacket : ClientMessage
+    internal sealed class NpgsqlPasswordPacket : IClientMessage
     {
         private readonly byte[] password;
 
@@ -46,7 +46,7 @@ namespace Npgsql
             this.password = password;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream
                 .WriteBytes((Byte)ASCIIBytes.p)

@@ -36,7 +36,7 @@ namespace Npgsql
     /// This is the base class for NpgsqlDescribeStatement and NpgsqlDescribePortal.
     /// </summary>
     ///
-    internal abstract class NpgsqlDescribe : ClientMessage
+    internal abstract class NpgsqlDescribe : IClientMessage
     {
         protected enum DescribeTypeCode : byte
         {
@@ -57,7 +57,7 @@ namespace Npgsql
             _messageLength = 4 + 1 + _bPortalName.Length + 1;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream
                 .WriteBytes((byte)FrontEndMessageCode.Describe)

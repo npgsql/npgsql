@@ -82,9 +82,9 @@ namespace Npgsql
     /// <summary>
     /// For classes representing messages sent from the client to the server.
     /// </summary>
-    internal abstract class ClientMessage
+    internal interface IClientMessage
     {
-        public abstract void WriteToStream(Stream outputStream);
+        void WriteToStream(Stream outputStream);
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ namespace Npgsql
     /// consisting only of a message code and length identifier,
     /// sent from the client to the server.
     /// </summary>
-    internal abstract class SimpleClientMessage : ClientMessage
+    internal abstract class SimpleClientMessage : IClientMessage
     {
         private readonly byte[] _messageData;
 
@@ -106,7 +106,7 @@ namespace Npgsql
                 .WriteInt32(4);
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteBytes(_messageData);
         }

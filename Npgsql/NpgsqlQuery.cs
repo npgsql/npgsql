@@ -35,7 +35,7 @@ namespace Npgsql
     /// <summary>
     /// Summary description for NpgsqlQuery
     /// </summary>
-    internal sealed class NpgsqlQuery : ClientMessage
+    internal sealed class NpgsqlQuery : IClientMessage
     {
         private byte[] commandBytes = null;
         private string commandText = null;
@@ -93,7 +93,7 @@ namespace Npgsql
             commandText = command;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteBytes(pgCommandBytes);
         }
