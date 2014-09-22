@@ -3707,7 +3707,28 @@ namespace NpgsqlTests
                     }
 
                 }
+            }
+        }
 
+        [Test, Description("If a custom command timeout is set, a failed transaction could not be rollbacked to a previous savepoint")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/363")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/184")]
+        public void FailedTransactionCantRollbackToSavepointWithCustomTimeout()
+        {
+            var transaction = Conn.BeginTransaction();
+            transaction.Save("TestSavePoint");
+
+            using (var command = new NpgsqlCommand("SELECT unknown_thing", Conn))
+            {
+                command.CommandTimeout = 1;
+                try
+                {
+                    command.ExecuteScalar();
+                }
+                catch (NpgsqlException)
+                {
+                    transaction.Rollback("TestSavePoint");
+                }
             }
         }
 

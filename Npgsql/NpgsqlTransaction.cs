@@ -204,7 +204,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.SavePointWithSemicolon);
             }
 
-            _conn.Connector.ExecuteBlind(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            _conn.Connector.ExecuteBlindSuppressTimeout(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>

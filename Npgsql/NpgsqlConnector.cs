@@ -1502,6 +1502,12 @@ namespace Npgsql
             }
         }
 
+        internal void ExecuteBlindSuppressTimeout(string command)
+        {
+            // Bypass cpmmand parsing overhead and send command verbatim.
+            ExecuteBlindSuppressTimeout(new NpgsqlQuery(command));
+        }
+
         internal void ExecuteBlindSuppressTimeout(NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
