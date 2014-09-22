@@ -27,7 +27,7 @@
 
 // $Id: Enumerable.cs c08984d432b1 2012/04/17 16:05:19 azizatif $
 
-#if !NET35
+#if !NET35 && !NET40 && !NET45
 namespace System.Linq
 {
     #region Imports
