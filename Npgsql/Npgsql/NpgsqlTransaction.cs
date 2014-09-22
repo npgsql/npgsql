@@ -210,7 +210,7 @@ namespace Npgsql
 
             }
 
-            NpgsqlCommand.ExecuteBlind(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            NpgsqlCommand.ExecuteBlindSuppressTimeout(_conn.Connector, string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>
