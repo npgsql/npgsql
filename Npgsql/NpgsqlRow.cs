@@ -118,7 +118,11 @@ namespace Npgsql
 
     internal sealed class ForwardsOnlyRow : NpgsqlRow
     {
-        private int _lastIndex = -1;
+        /// <summary>
+        /// The index of the current field in the stream, i.e. the one that hasn't
+        /// been read yet
+        /// </summary>
+        private int _i;
         private readonly RowReader _reader;
 
         public ForwardsOnlyRow(RowReader reader)
@@ -126,18 +130,23 @@ namespace Npgsql
             _reader = reader;
         }
 
-        private void SetIndex(int index, bool allowCurrent)
+        private void Seek(int index, bool consume)
         {
-            if (index < 0 || index >= NumFields)
-            {
+            if (index < 0 || index >= NumFields) {
                 throw new IndexOutOfRangeException();
             }
-            if ((!allowCurrent || _reader.CurrentlyStreaming) ? index <= _lastIndex : index < _lastIndex)
+
+            var d = index - _i;
+
+            if (d < 0)
+                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, index, _i));
+            if (d > 0)
             {
-                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, index, _lastIndex + 1));
+                _reader.Skip(d);
+                _i += d;                
             }
-            _reader.Skip(index - _lastIndex - 1);
-            _lastIndex = index;
+            if (consume)
+                _i++;
         }
 
         public void SetRowDescription(NpgsqlRowDescription rowDescr)
@@ -149,7 +158,7 @@ namespace Npgsql
         {
             get
             {
-                SetIndex(index, false);
+                Seek(index, true);
                 return _reader.GetNext();
             }
         }
@@ -164,7 +173,7 @@ namespace Npgsql
             {
                 throw new InvalidCastException();
             }
-            SetIndex(i, true);
+            Seek(i, true);
             _reader.SkipBytesTo(fieldOffset);
             return _reader.Read(buffer, bufferoffset, length);
         }
@@ -179,7 +188,7 @@ namespace Npgsql
             {
                 throw new InvalidCastException();
             }
-            SetIndex(i, true);
+            Seek(i, true);
             _reader.SkipCharsTo(fieldoffset);
             return _reader.Read(buffer, bufferoffset, length);
         }
@@ -191,11 +200,8 @@ namespace Npgsql
 
         public override bool IsDBNull(int index)
         {
-            if (_lastIndex > -1)
-            {
-                SetIndex(index - 1, true);
-            }
-            return _reader.IsNextDBNull;
+            Seek(index, false);
+            return _reader.IsNull;
         }
 
         public override void Dispose()
@@ -439,7 +445,7 @@ namespace Npgsql
             return ReadNext();
         }
 
-        public abstract bool IsNextDBNull { get; }
+        public abstract bool IsNull { get; }
         protected abstract void SkipOne();
 
         public void Skip(int count)
