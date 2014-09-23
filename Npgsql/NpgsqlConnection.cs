@@ -285,7 +285,7 @@ namespace Npgsql
             get 
             {
                 CheckConnectionOpen();
-                return connector.PostGisVersion;
+                return Connector.PostGisVersion;
             }
         }
 
