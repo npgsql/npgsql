@@ -51,6 +51,7 @@ namespace Npgsql
     internal class NpgsqlConnector
     {
         readonly NpgsqlConnectionStringBuilder _settings;
+        private Version _postgisVersion;
 
         /// <summary>
         /// The physical connection socket to the backend.
@@ -77,6 +78,26 @@ namespace Npgsql
         /// Version of backend server this connector is connected to.
         /// </summary>
         internal Version ServerVersion { get; set; }
+
+        
+        /// <summary>
+        /// PostGis extension version. Returns 0.0.0.0 if not installed.
+        /// </summary>
+        internal Version PostGisVersion 
+        { 
+            get
+            {
+                if (_postgisVersion == null) {
+                    using (NpgsqlCommand command = new NpgsqlCommand("Select postgis_version();", this))
+                    {
+                        String obj = (String)command.ExecuteScalar();
+                        System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(obj, "^[0-9]+(.[0-9]+){1,3}");
+                        _postgisVersion  =  new Version(m.Captures[0].Value);                                                                                                            
+                    }  
+                }
+                return _postgisVersion;
+            }   
+        }
 
         internal NpgsqlBackEndKeyData BackEndKeyData { get; set; }
 
@@ -166,6 +187,7 @@ namespace Npgsql
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal bool AlwaysPrepare { get { return _settings.AlwaysPrepare; } }
         internal Version CompatVersion { get { return _settings.Compatible; } }
+        internal bool UsePostgisTypes { get; set; }
 
         #endregion Configuration settings
 
