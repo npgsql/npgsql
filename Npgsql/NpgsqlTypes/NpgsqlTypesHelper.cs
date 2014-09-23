@@ -491,7 +491,7 @@ namespace NpgsqlTypes
             return nativeTypeMapping;
         }
 
-        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, bool usePostgisTypes)
+        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, bool usePostgisTypes = false)
         {
             yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
