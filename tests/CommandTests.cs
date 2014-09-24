@@ -1376,6 +1376,8 @@ namespace NpgsqlTests
         [TestCase(null, NpgsqlDbType.Text,    "field_text",    @"\test", TestName = "StringWithBackslashes")]
         [TestCase(null, NpgsqlDbType.Double,  "field_float8",  Double.NaN, TestName = "DoubleNaN")]
         [TestCase(null, NpgsqlDbType.Real,    "field_float4",  Single.NaN, TestName = "SingleNaN")]
+        [TestCase(null, NpgsqlDbType.Double,  "field_float8", Double.PositiveInfinity, TestName = "DoubleInfinity")]
+        [TestCase(null, NpgsqlDbType.Real,    "field_float4", Single.PositiveInfinity, TestName = "SingleInfinity")]
         public void InsertValue(DbType? dbType, NpgsqlDbType? npgsqlDbType, string fieldName, object value)
         {
             if (dbType.HasValue && npgsqlDbType.HasValue || (!dbType.HasValue && !npgsqlDbType.HasValue))
@@ -2973,11 +2975,11 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void DoubleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        public void DoubleArrayHandlingValues([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] { double.NaN, 12345.12345d };
+                var inVal = new[] { double.NaN, 12345.12345d, double.PositiveInfinity, double.NegativeInfinity };
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
@@ -2992,11 +2994,11 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void SingleArrayHandlingNaNValue([Values(true, false)] bool prepareCommand)
+        public void SingleArrayHandlingValues([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
-                var inVal = new[] { float.NaN, 12345.12345f };
+                var inVal = new[] { float.NaN, 12345.12345f, float.PositiveInfinity, float.NegativeInfinity };
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Real | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
