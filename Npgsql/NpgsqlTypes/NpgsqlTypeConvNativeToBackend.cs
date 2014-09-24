@@ -465,16 +465,20 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (float.IsNaN((float)NativeData) && !arrayElement)
-                return ASCIIByteArrays.NAN_QUOTED;
-
-
-            if (float.IsPositiveInfinity((float)NativeData)  && !arrayElement) {
-                return ASCIIByteArrays.INFINITY_QUOTED;
-            }
-
-            if (float.IsNegativeInfinity((float)NativeData) && !arrayElement) {
-                return ASCIIByteArrays.NEG_INFINITY_QUOTED;
+            if (!arrayElement)
+            {
+                var asFloat = (float) NativeData;
+                if (float.IsNaN(asFloat)) {
+                    return ASCIIByteArrays.NAN_QUOTED;
+                }
+                if (float.IsPositiveInfinity(asFloat))
+                {
+                    return ASCIIByteArrays.INFINITY_QUOTED;
+                }
+                if (float.IsNegativeInfinity(asFloat))
+                {
+                    return ASCIIByteArrays.NEG_INFINITY_QUOTED;
+                }
             }
 
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
@@ -485,18 +489,19 @@ namespace NpgsqlTypes
             //Formats accepted vary according to locale, but it always accepts a plain number (no currency or
             //grouping symbols) passed as a string (with the appropriate cast appended, as UseCast will cause
             //to happen.
-            if (double.IsNaN((double)NativeData) && !arrayElement)
-                return ASCIIByteArrays.NAN_QUOTED;
-
-
-            if (double.IsPositiveInfinity((double)NativeData)  && !arrayElement) {
-                return ASCIIByteArrays.INFINITY_QUOTED;
+            if (!arrayElement)
+            {
+                var asDouble = (double)NativeData;
+                if (double.IsNaN(asDouble)) {
+                    return ASCIIByteArrays.NAN_QUOTED;
+                }
+                if (double.IsPositiveInfinity(asDouble)) {
+                    return ASCIIByteArrays.INFINITY_QUOTED;
+                }
+                if (double.IsNegativeInfinity(asDouble)) {
+                    return ASCIIByteArrays.NEG_INFINITY_QUOTED;
+                }
             }
-
-            if (double.IsNegativeInfinity((double)NativeData) && !arrayElement) {
-                return ASCIIByteArrays.NEG_INFINITY_QUOTED;
-            }
-
             return BackendEncoding.UTF8Encoding.GetBytes(((IFormattable)NativeData).ToString("R", CultureInfo.InvariantCulture.NumberFormat));
         }
 
