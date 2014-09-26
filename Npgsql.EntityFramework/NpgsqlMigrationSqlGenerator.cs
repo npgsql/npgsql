@@ -629,7 +629,20 @@ namespace Npgsql
                         sql.Append("int8");
                     break;
                 case PrimitiveTypeKind.String:
-                    sql.Append("text");
+                    if (column.IsFixedLength.HasValue &&
+                        column.IsFixedLength.Value &&
+                        column.MaxLength.HasValue)
+                    {
+                        sql.AppendFormat("char({0})",column.MaxLength.Value);
+                    }
+                    else if (column.MaxLength.HasValue)
+                    {
+                        sql.AppendFormat("varchar({0})", column.MaxLength);
+                    }
+                    else
+                    {
+                        sql.Append("text");
+                    }
                     break;
                 case PrimitiveTypeKind.Time:
                     if (column.Precision != null)
