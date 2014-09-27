@@ -902,7 +902,7 @@ namespace Npgsql
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     internal class GenerateAsync : Attribute
     {
-        public GenerateAsync(string transformedName=null) {}
+        public GenerateAsync(string transformedName=null, bool withOverride=false) {}
     }
 }
 

@@ -75,10 +75,12 @@ namespace AsyncGenerator
                     .OfType<MethodDeclarationSyntax>()
                 )
                 {
-                    var attr = m.AttributeLists.SelectMany(al => al.Attributes).FirstOrDefault(a => a.Name.ToString() == "GenerateAsync");
-                    if (attr == null) {
+                    // Syntactically filter out any method without [GenerateAsync] (for performance)
+                    if (m.AttributeLists.SelectMany(al => al.Attributes).All(a => a.Name.ToString() != "GenerateAsync")) {
                         continue;
                     }
+
+                    var methodSymbol = file.SemanticModel.GetDeclaredSymbol(m);
 
                     var cls = m.FirstAncestorOrSelf<ClassDeclarationSyntax>();
                     var ns = cls.FirstAncestorOrSelf<NamespaceDeclarationSyntax>();
@@ -91,15 +93,20 @@ namespace AsyncGenerator
                     if (!classes.TryGetValue(cls, out methods))
                         methods = classes[cls] = new HashSet<MethodInfo>();
 
-                    var transformedName = attr.ArgumentList == null
-                        ? m.Identifier.Text + "Async"
-                        : attr.ArgumentList.Arguments[0].ToString().Trim(new[] { '"' });
-
-                    methods.Add(new MethodInfo
+                    var methodInfo = new MethodInfo
                     {
-                        Method = m,
-                        Transformed = transformedName
-                    });
+                        DeclarationSyntax = m,
+                        Symbol = methodSymbol,
+                        Transformed = m.Identifier.Text + "Async",
+                        WithOverride = false
+                    };
+
+                    var attr = methodSymbol.GetAttributes().Single(a => a.AttributeClass.Name == "GenerateAsync");
+                    if (attr.ConstructorArguments[0].Value != null)
+                        methodInfo.Transformed = (string)attr.ConstructorArguments[0].Value;
+                    if (((bool) attr.ConstructorArguments[1].Value))
+                        methodInfo.WithOverride = true;
+                    methods.Add(methodInfo);
                 }
             }
 
@@ -138,24 +145,25 @@ namespace AsyncGenerator
 
         MethodDeclarationSyntax RewriteMethod(SourceFile file, MethodInfo inMethodInfo)
         {
-            var inMethod = inMethodInfo.Method;
+            var inMethodSyntax = inMethodInfo.DeclarationSyntax;
+            //Log.LogMessage("Method {0}: {1}", inMethodInfo.Symbol.Name, inMethodInfo.Symbol.);
 
-            Log.LogMessage(MessageImportance.Low, "  Rewriting method {0} to {1}", inMethod.Identifier.Text, inMethodInfo.Transformed);
+            Log.LogMessage(MessageImportance.Low, "  Rewriting method {0} to {1}", inMethodInfo.Symbol.Name, inMethodInfo.Transformed);
             var rewriter = new MethodInvocationRewriter(Log, file.SemanticModel, _excludedTypes);
-            var outMethod = (MethodDeclarationSyntax)rewriter.Visit(inMethod);
+            var outMethod = (MethodDeclarationSyntax)rewriter.Visit(inMethodSyntax);
 
             // Method signature
             outMethod = outMethod
                 .WithIdentifier(SyntaxFactory.Identifier(inMethodInfo.Transformed))
                 .WithAttributeLists(new SyntaxList<AttributeListSyntax>())
-                .WithModifiers(inMethod.Modifiers
+                .WithModifiers(inMethodSyntax.Modifiers
                   .Add(SyntaxFactory.Token(SyntaxKind.AsyncKeyword))
-                  .Remove(SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
-                  .Remove(SyntaxFactory.Token(SyntaxKind.NewKeyword))
+                  //.Remove(SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
+                  //.Remove(SyntaxFactory.Token(SyntaxKind.NewKeyword))
                 );
 
             // Transform return type adding Task<>
-            var returnType = inMethod.ReturnType.ToString();
+            var returnType = inMethodSyntax.ReturnType.ToString();
             outMethod = outMethod.WithReturnType(SyntaxFactory.ParseTypeName(
                 returnType == "void" ? "Task" : String.Format("Task<{0}>", returnType))
             );
@@ -169,6 +177,10 @@ namespace AsyncGenerator
                     continue;
                 }
                 i++;
+            }
+
+            if (inMethodInfo.WithOverride) {
+                outMethod = outMethod.AddModifiers(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
             }
 
             return outMethod;
@@ -245,7 +257,9 @@ namespace AsyncGenerator
 
     class MethodInfo
     {
-        public MethodDeclarationSyntax Method;
+        public MethodDeclarationSyntax DeclarationSyntax;
+        public IMethodSymbol Symbol;
         public string Transformed;
+        public bool WithOverride;
     }
 }
