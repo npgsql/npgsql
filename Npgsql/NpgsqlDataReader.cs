@@ -32,6 +32,7 @@ using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Reflection;
 using System.Threading;
@@ -206,19 +207,9 @@ namespace Npgsql
         /// Advances the data reader to the next row.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        [GenerateAsync("ReadAsyncImpl")]
-        public override Boolean Read()
+        public override bool Read()
         {
-            try
-            {
-                //CurrentRow = null;
-                return (CurrentRow = GetNextRow(true)) != null;
-            }
-            catch (IOException)
-            {
-                _command.Connection.ClearPool();
-                throw;
-            }
+            return ReadInternal();
         }
 
 #if NET45
@@ -233,18 +224,27 @@ namespace Npgsql
             cancellationToken.ThrowIfCancellationRequested();
             // TODO: What is the desired behavior when cancelling here?
             // cancellationToken.Register(...)
+            return await ReadInternalAsync();
+        }
+#endif
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        bool ReadInternal()
+        {
             try
             {
-                return await ReadAsyncImpl();
+                //CurrentRow = null;
+                return (CurrentRow = GetNextRow(true)) != null;
             }
-            catch (NpgsqlException e)
+            catch (IOException)
             {
-                if (e.Code == "57014")
-                    throw new OperationCanceledException(e.Message, cancellationToken);
+                _command.Connection.ClearPool();
                 throw;
             }
         }
-#endif
 
         /// <summary>
         /// Indicates if NpgsqlDatareader has rows to be read.
@@ -325,15 +325,12 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        [GenerateAsync("NextResultAsyncImpl")]
-        public override Boolean NextResult()
+        public override bool NextResult()
         {
-            if (_preparedStatement)
-            {
+            if (_preparedStatement) {
                 // Prepared statements can never have multiple results.
                 return false;
             }
-
             return NextResultInternal();
         }
 
@@ -349,21 +346,19 @@ namespace Npgsql
             cancellationToken.ThrowIfCancellationRequested();
             // TODO: What is the desired behavior when cancelling here?
             // cancellationToken.Register(...)
-            try
-            {
-                return await NextResultAsyncImpl();
+            if (_preparedStatement) {
+                // Prepared statements can never have multiple results.
+                return false;
             }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new OperationCanceledException(e.Message, cancellationToken);
-                throw;
-            }
+            return await NextResultInternalAsync();
         }
 #endif
 
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
         [GenerateAsync]
-        internal Boolean NextResultInternal()
+        internal bool NextResultInternal()
         {
             try
             {
@@ -1220,7 +1215,7 @@ namespace Npgsql
                     // add any column that is the only column for that key to the unique list
                     // unique here doesn't mean general unique constraint (with possibly multiple columns)
                     // it means all values in this single column must be unique
-                    while (dr.Read())
+                    while (dr.ReadInternal())
                     {
                         columnName = dr.GetString(0);
                         currentKeyName = dr.GetString(1);
@@ -1317,7 +1312,7 @@ namespace Npgsql
                     {
                         Dictionary<long, Table> oidLookup = new Dictionary<long, Table>(oids.Count);
                         int columnCount = reader.FieldCount;
-                        while (reader.Read())
+                        while (reader.ReadInternal())
                         {
                             Table t = new Table(reader);
                             oidLookup.Add(t.Id, t);
@@ -1391,7 +1386,7 @@ namespace Npgsql
                         )
                     {
                         Dictionary<string, Column> columnLookup = new Dictionary<string, Column>();
-                        while (reader.Read())
+                        while (reader.ReadInternal())
                         {
                             Column column = new Column(reader);
                             columnLookup.Add(column.Key, column);
@@ -1438,7 +1433,7 @@ namespace Npgsql
 
                     using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SingleResult | CommandBehavior.SequentialAccess))
                     {
-                        while (dr.Read())
+                        while (dr.ReadInternal())
                         {
                             yield return dr.GetString(0);
                         }

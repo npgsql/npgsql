@@ -32,6 +32,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1276,14 +1277,45 @@ namespace Npgsql
 
         #endregion Query preparation
 
-        #region Execute
+        #region Execute Non Query
 
         /// <summary>
         /// Executes a SQL statement against the connection and returns the number of rows affected.
         /// </summary>
         /// <returns>The number of rows affected if known; -1 otherwise.</returns>
-        [GenerateAsync("ExecuteNonQueryAsyncImpl")]
         public override int ExecuteNonQuery()
+        {
+            return ExecuteNonQueryInternal();
+        }
+
+#if NET45
+        /// <summary>
+        /// Asynchronous version of <see cref="ExecuteNonQuery"/>
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.Register(Cancel);
+            try
+            {
+                return await ExecuteNonQueryInternalAsync();
+            }
+            catch (NpgsqlException e)
+            {
+                if (e.Code == "57014")
+                    throw new OperationCanceledException(e.Message, cancellationToken);
+                throw;
+            }
+        }
+#endif
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        int ExecuteNonQueryInternal()
         {
             _log.Debug("ExecuteNonQuery");
             //We treat this as a simple wrapper for calling ExecuteReader() and then
@@ -1305,28 +1337,9 @@ namespace Npgsql
             return ret ?? -1;
         }
 
-#if NET45
-        /// <summary>
-        /// Asynchronous version of <see cref="ExecuteNonQuery"/>
-        /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
-        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            cancellationToken.Register(Cancel);
-            try
-            {
-                return await ExecuteNonQueryAsyncImpl();
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "57014")
-                    throw new OperationCanceledException(e.Message, cancellationToken);
-                throw;
-            }
-        }
-#endif
+        #endregion Execute Non Query
+
+        #region Execute Scalar
 
         /// <summary>
         /// Executes the query, and returns the first column of the first row
@@ -1334,13 +1347,9 @@ namespace Npgsql
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
-        [GenerateAsync("ExecuteScalarAsyncImpl")]
         public override Object ExecuteScalar()
         {
-            using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult | CommandBehavior.SingleRow))
-            {
-                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-            }
+            return ExecuteScalarInternal();
         }
 
 #if NET45
@@ -1356,7 +1365,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteScalarAsyncImpl();
+                return await ExecuteScalarInternalAsync();
             }
             catch (NpgsqlException e)
             {
@@ -1367,17 +1376,47 @@ namespace Npgsql
         }
 #endif
 
-        /// <summary>
-        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>
-        /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
-        /// </summary>
-        /// <param name="behavior">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
-        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        object ExecuteScalarInternal()
         {
-            return ExecuteReader(behavior);
+            using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+            {
+                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            }
+        }
+
+        #endregion Execute Scalar
+
+        #region Execute Reader
+
+        /// <summary>
+        /// Executes the CommandText against the Connection, and returns an DbDataReader.
+        /// </summary>
+        /// <remarks>
+        /// Unlike the ADO.NET method which it replaces, this method returns a Npgsql-specific
+        /// DataReader.
+        /// </remarks>
+        /// <returns>A DbDataReader object.</returns>
+        public new NpgsqlDataReader ExecuteReader()
+        {
+            return (NpgsqlDataReader)base.ExecuteReader();
+        }
+
+        /// <summary>
+        /// Executes the CommandText against the Connection, and returns an DbDataReader using one
+        /// of the CommandBehavior values.
+        /// </summary>
+        /// <remarks>
+        /// Unlike the ADO.NET method which it replaces, this method returns a Npgsql-specific
+        /// DataReader.
+        /// </remarks>
+        /// <returns>A DbDataReader object.</returns>
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
+        {
+            return (NpgsqlDataReader)base.ExecuteReader(behavior);
         }
 
 #if NET45
@@ -1394,7 +1433,7 @@ namespace Npgsql
             cancellationToken.Register(Cancel);
             try
             {
-                return await ExecuteReaderAsyncImpl(behavior);
+                return await ExecuteDbDataReaderInternalAsync(behavior);
             }
             catch (NpgsqlException e)
             {
@@ -1406,38 +1445,28 @@ namespace Npgsql
 #endif
 
         /// <summary>
-        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
+        /// Executes the command text against the connection.
         /// </summary>
-        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        public new NpgsqlDataReader ExecuteReader()
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
-            return ExecuteReader(CommandBehavior.Default);
+            _log.Debug("ExecuteReader with CommandBehavior=" + behavior);
+            return ExecuteDbDataReaderInternal(behavior);
         }
 
-        /// <summary>
-        /// Sends the <see cref="NpgsqlCommand.CommandText">CommandText</see> to
-        /// the <see cref="NpgsqlConnection">Connection</see> and builds a
-        /// <see cref="NpgsqlDataReader">NpgsqlDataReader</see>
-        /// using one of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.
-        /// </summary>
-        /// <param name="cb">One of the <see cref="System.Data.CommandBehavior">CommandBehavior</see> values.</param>
-        /// <returns>A <see cref="NpgsqlDataReader">NpgsqlDataReader</see> object.</returns>
-        /// <remarks>Currently the CommandBehavior parameter is ignored.</remarks>
-        [GenerateAsync("ExecuteReaderAsyncImpl")]
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior cb)
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        DbDataReader ExecuteDbDataReaderInternal(CommandBehavior behavior)
         {
-            _log.Debug("ExecuteReader with CommandBehavior=" + cb);
-
             // Close connection if requested even when there is an error.
             try
             {
-                return GetReader(cb);
+                return GetReader(behavior);
             }
             catch (Exception)
             {
-                if ((cb & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+                if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
                 {
                     _connection.Close();
                 }
@@ -1487,7 +1516,7 @@ namespace Npgsql
                     // For un-prepared statements, the first response is always a row description.
                     // For prepared statements, we may be recycling a row description from a previous Execute.
                     // TODO: This is the source of the inconsistency described in #357
-                    reader.NextResultInternal();
+                    reader.NextResult();
                     reader.UpdateOutputParameters();
 
                     if (
