@@ -428,7 +428,10 @@ namespace Npgsql
                         }
                         _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
                     }
-                    else if (msg is ReadyForQueryMsg)
+                    // TODO: The check for the three COPY protocol messages slow down our normal
+                    // processing. Simply separate the flow (don't use ExecuteNonQuery)
+                    else if (msg is ReadyForQueryMsg ||
+                             msg is CopyInResponseMsg || msg is CopyOutResponseMsg || msg is CopyDataMsg)
                     {
                         CleanUp(true);
                         return null;                        

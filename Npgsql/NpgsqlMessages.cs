@@ -43,6 +43,20 @@ namespace Npgsql
         internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
     }
 
+    internal class CopyInResponseMsg : IServerMessage
+    {
+        internal static readonly CopyInResponseMsg Instance = new CopyInResponseMsg();
+    }
+
+    internal class CopyOutResponseMsg : IServerMessage
+    {
+        internal static readonly CopyOutResponseMsg Instance = new CopyOutResponseMsg();
+    }
+    internal class CopyDataMsg : IServerMessage
+    {
+        internal static readonly CopyDataMsg Instance = new CopyDataMsg();
+    }
+
     /// <summary>
     /// Represents a completed response message.
     /// </summary>

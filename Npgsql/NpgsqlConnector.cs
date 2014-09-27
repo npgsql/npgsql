@@ -799,48 +799,36 @@ namespace Npgsql
 
                     case BackEndMessageCode.CopyInResponse:
                         _log.Trace("Received CopyInResponse");
-                        throw new NotImplementedException("Copy temporarily out of order");
-                        /*
                         // Enter COPY sub protocol and start pushing data to server
                         State = NpgsqlState.CopyIn;
                         Stream.ReadInt32(); // length redundant
                         StartCopyIn(ReadCopyHeader());
-                        yield break;
+                        return CopyInResponseMsg.Instance;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
-                         */
 
                     case BackEndMessageCode.CopyOutResponse:
                         _log.Trace("Received CopyOutResponse");
-                        throw new NotImplementedException("Copy temporarily out of order");
-                        /*
                         // Enter COPY sub protocol and start pulling data from server
                         State = NpgsqlState.CopyOut;
                         Stream.ReadInt32(); // length redundant
                         StartCopyOut(ReadCopyHeader());
-                        yield break;
+                        return CopyOutResponseMsg.Instance;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
-                         */
 
                     case BackEndMessageCode.CopyData:
                         _log.Trace("Received CopyData");
-                        throw new NotImplementedException("Copy temporarily out of order");
-                        /*
                         var len = Stream.ReadInt32() - 4;
                         var buf = new byte[len];
                         Stream.ReadBytes(buf, 0, len);
                         Mediator.ReceivedCopyData = buf;
-                        yield break;
+                        return CopyDataMsg.Instance;
                         // read data from server one chunk at a time while staying in copy operation mode
-                         */
 
                     case BackEndMessageCode.CopyDone:
                         _log.Trace("Received CopyDone");
-                        throw new NotImplementedException("Copy temporarily out of order");
-                        /*
                         Stream.ReadInt32(); // CopyDone can not have content so this is always 4
                         // This will be followed by normal CommandComplete + ReadyForQuery so no op needed
-                        break;
-                         */
+                        continue;
 
                     case BackEndMessageCode.IO_ERROR:
                         // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
