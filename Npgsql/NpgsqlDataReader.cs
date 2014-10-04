@@ -120,7 +120,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        p.Value = row[idx];
+                        p.Value = row.Get(idx);
                         taken.Add(idx);
                     }
                 }
@@ -128,7 +128,7 @@ namespace Npgsql
                 {
                     if (!taken.Contains(i))
                     {
-                        pending.Dequeue().Value = row[i];
+                        pending.Dequeue().Value = row.Get(i);
                     }
                 }
             }
@@ -553,21 +553,51 @@ namespace Npgsql
         #region Get column data
 
         /// <summary>
-        /// Return the value of the column at index <param name="Index"></param>.
+        /// Gets the value of the specified column as an instance of <see cref="T:System.Object"/>.
         /// </summary>
-        public override Object GetValue(Int32 Index)
+        /// <returns>
+        /// The value of the specified column.
+        /// </returns>
+        /// <param name="ordinal">The zero-based column ordinal.</param><filterpriority>1</filterpriority>
+        public override object GetValue(int ordinal)
         {
-            object providerValue = GetProviderSpecificValue(Index);
+            return GetValueInternal(ordinal);
+        }
+
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The type of the value to be returned.</param>
+        /// <param name="cancellationToken">Currently not implemented.</param>
+        /// <returns></returns>
+#if NET45
+        public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+#else
+        public async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+#endif
+        {
+            return (T)await GetValueInternalAsync(ordinal);
+        }
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        object GetValueInternal(int ordinal)
+        {
+            object providerValue = GetProviderSpecificValue(ordinal);
             NpgsqlBackendTypeInfo backendTypeInfo;
-            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
+            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > ordinal && _command.ExpectedTypes[ordinal] != null)
             {
-                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
+                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[ordinal]);
             }
-            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(ordinal, out backendTypeInfo))
                 return backendTypeInfo.ConvertToFrameworkType(providerValue);
             return providerValue;
         }
 
+        [GenerateAsync]
         public override object GetProviderSpecificValue(int ordinal)
         {
             if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
@@ -577,7 +607,7 @@ namespace Npgsql
 
             CheckHaveRow();
 
-            object ret = CurrentRow[ordinal];
+            object ret = CurrentRow.Get(ordinal);
             if (ret is Exception)
             {
                 throw (Exception)ret;
@@ -592,7 +622,7 @@ namespace Npgsql
         {
             get
             {
-                return GetValue(GetOrdinal(name));
+                return GetValueInternal(GetOrdinal(name));
             }
         }
 
@@ -603,7 +633,7 @@ namespace Npgsql
         {
             // Should this be done using the GetValue directly and not by converting to String
             // and parsing from there?
-            return (Boolean)GetValue(i);
+            return (Boolean)GetValueInternal(i);
         }
 
         /// <summary>
@@ -611,7 +641,7 @@ namespace Npgsql
         /// </summary>
         public override Byte GetByte(Int32 i)
         {
-            return (Byte)GetValue(i);
+            return (Byte)GetValueInternal(i);
         }
 
         /// <summary>
@@ -647,7 +677,7 @@ namespace Npgsql
         /// </summary>
         public override DateTime GetDateTime(Int32 i)
         {
-            return (DateTime)GetValue(i);
+            return (DateTime)GetValueInternal(i);
         }
 
         /// <summary>
@@ -655,7 +685,7 @@ namespace Npgsql
         /// </summary>
         public override Guid GetGuid(Int32 i)
         {
-            return (Guid)GetValue(i);
+            return (Guid)GetValueInternal(i);
         }
 
         /// <summary>
@@ -663,7 +693,7 @@ namespace Npgsql
         /// </summary>
         public override Int16 GetInt16(Int32 i)
         {
-            return (Int16)GetValue(i);
+            return (Int16)GetValueInternal(i);
         }
 
         /// <summary>
@@ -671,7 +701,7 @@ namespace Npgsql
         /// </summary>
         public override Int32 GetInt32(Int32 i)
         {
-            return (Int32)GetValue(i);
+            return (Int32)GetValueInternal(i);
         }
 
         /// <summary>
@@ -679,7 +709,7 @@ namespace Npgsql
         /// </summary>
         public override Int64 GetInt64(Int32 i)
         {
-            return (Int64)GetValue(i);
+            return (Int64)GetValueInternal(i);
         }
 
         /// <summary>
@@ -687,7 +717,7 @@ namespace Npgsql
         /// </summary>
         public override Single GetFloat(Int32 i)
         {
-            return (Single)GetValue(i);
+            return (Single)GetValueInternal(i);
         }
 
         /// <summary>
@@ -695,7 +725,7 @@ namespace Npgsql
         /// </summary>
         public override Double GetDouble(Int32 i)
         {
-            return (Double)GetValue(i);
+            return (Double)GetValueInternal(i);
         }
 
         /// <summary>
@@ -703,7 +733,7 @@ namespace Npgsql
         /// </summary>
         public override String GetString(Int32 i)
         {
-            return (String)GetValue(i);
+            return (String)GetValueInternal(i);
         }
 
         /// <summary>
@@ -711,7 +741,7 @@ namespace Npgsql
         /// </summary>
         public override Decimal GetDecimal(Int32 i)
         {
-            return (Decimal)GetValue(i);
+            return (Decimal)GetValueInternal(i);
         }
 
         /// <summary>
@@ -719,7 +749,7 @@ namespace Npgsql
         /// </summary>
         public TimeSpan GetTimeSpan(Int32 i)
         {
-            return (TimeSpan)GetValue(i);
+            return (TimeSpan)GetValueInternal(i);
         }
 
         /// <summary>
@@ -729,7 +759,7 @@ namespace Npgsql
         /// <returns></returns>
         public BitString GetBitString(int i)
         {
-            object ret = GetValue(i);
+            object ret = GetValueInternal(i);
             if (ret is bool)
                 return new BitString((bool)ret);
             else
@@ -820,16 +850,35 @@ namespace Npgsql
         /// </summary>
         public override Object this[Int32 i]
         {
-            get { return GetValue(i); }
+            get { return GetValueInternal(i); }
         }
 
         /// <summary>
-        /// Report whether the value in a column is DBNull.
+        /// Gets a value that indicates whether the column contains nonexistent or missing values.
         /// </summary>
-        public override Boolean IsDBNull(Int32 i)
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+        public override bool IsDBNull(int ordinal)
         {
             CheckHaveRow();
-            return CurrentRow.IsDBNull(i);
+            return CurrentRow.IsDBNull(ordinal);
+        }
+
+        /// <summary>
+        /// An asynchronous version of IsDBNull, which gets a value that indicates whether the
+        /// column contains non-existent or missing values.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently not implemented.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+#if NET45
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+#else
+        public Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+#endif
+        {
+            CheckHaveRow();
+            return CurrentRow.IsDBNullAsync(ordinal);
         }
 
         /// <summary>

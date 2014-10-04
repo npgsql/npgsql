@@ -131,6 +131,10 @@
     <Compile Include="MD5.cs" />
     <Compile Include="MD5CryptoServiceProvider.cs" />
     <Compile Include="NpgsqlAsciiRow.cs" />
+    <Compile Include="NpgsqlAsciiRow.Async.cs">
+      <DependentUpon>NpgsqlAsciiRow.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlBackEndKeyData.cs" />
     <Compile Include="NpgsqlBind.cs" />
     <Compile Include="NpgsqlCancelRequest.cs" />
@@ -177,6 +181,10 @@
     <Compile Include="NpgsqlPromotableSinglePhaseNotification.cs" />
     <Compile Include="NpgsqlResourceManager.cs" />
     <Compile Include="NpgsqlRow.cs" />
+    <Compile Include="NpgsqlRow.Async.cs">
+      <DependentUpon>NpgsqlRow.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlRowDescription.cs" />
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlStartupPacket.cs" />

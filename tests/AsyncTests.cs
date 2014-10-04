@@ -1,4 +1,5 @@
-﻿#if NET45
+﻿using System.Data;
+#if NET45
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,6 +41,19 @@ namespace NpgsqlTests
             {
                 await reader.ReadAsync();
                 Assert.That(reader[0], Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public async void Columnar()
+        {
+            ExecuteNonQuery("INSERT INTO DATA (field_int4, field_text) VALUES (2, 'Some Text')");
+            using (var cmd = new NpgsqlCommand("SELECT field_int2, field_int4, field_text FROM data", Conn))
+            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
+            {
+                await reader.ReadAsync();
+                Assert.That(await reader.IsDBNullAsync(0), Is.True);
+                Assert.That(await reader.GetFieldValueAsync<string>(2), Is.EqualTo("Some Text"));
             }
         }
 
