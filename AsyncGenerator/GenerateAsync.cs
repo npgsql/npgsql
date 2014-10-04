@@ -110,13 +110,13 @@ namespace AsyncGenerator
                 }
             }
 
-            Log.LogMessage(MessageImportance.Normal, "Found {0} methods marked for async rewriting",
+            Log.LogMessage("Found {0} methods marked for async rewriting",
                            files.SelectMany(f => f.NamespaceToClasses.Values).SelectMany(ctm => ctm.Values).SelectMany(m => m).Count());
 
             // Second pass: transform
             foreach (var f in files)
             {
-                Log.LogMessage(MessageImportance.Normal, "Writing out {0}", f.TransformedName);
+                Log.LogMessage("Writing out {0}", f.TransformedName);
                 File.WriteAllText(f.TransformedName, RewriteFile(f).ToString());
             }
 
@@ -149,6 +149,8 @@ namespace AsyncGenerator
             //Log.LogMessage("Method {0}: {1}", inMethodInfo.Symbol.Name, inMethodInfo.Symbol.);
 
             Log.LogMessage(MessageImportance.Low, "  Rewriting method {0} to {1}", inMethodInfo.Symbol.Name, inMethodInfo.Transformed);
+
+            // Visit all method invocations inside the method, rewrite them to async if needed
             var rewriter = new MethodInvocationRewriter(Log, file.SemanticModel, _excludedTypes);
             var outMethod = (MethodDeclarationSyntax)rewriter.Visit(inMethodSyntax);
 
@@ -222,21 +224,35 @@ namespace AsyncGenerator
             var asIdentifierName = node.Expression as IdentifierNameSyntax;
             if (asIdentifierName != null)
             {
-                return SyntaxFactory.PrefixUnaryExpression(SyntaxKind.AwaitExpression,
+                ExpressionSyntax rewritten = SyntaxFactory.PrefixUnaryExpression(SyntaxKind.AwaitExpression,
                     node.WithExpression(asIdentifierName.WithIdentifier(
                         SyntaxFactory.Identifier(asIdentifierName.Identifier.Text + "Async")
                     ))
                 );
+                if (!(node.Parent is StatementSyntax))
+                    rewritten = SyntaxFactory.ParenthesizedExpression(rewritten);
+                return rewritten;
             }
 
             var memberAccessExp = node.Expression as MemberAccessExpressionSyntax;
             if (memberAccessExp != null)
             {
-                return SyntaxFactory.PrefixUnaryExpression(SyntaxKind.AwaitExpression,
+                // Roslyn apparently doesn't visit MethodInvocationSyntax recursively, so:
+                // Stream.Read().Flush() gets rewritten to await Stream.Read().FlushAsync()
+                // and Read() is still sync. Opened question in the MSDN forum, for now
+                // manually recurse here.
+                var nestedInvocation = memberAccessExp.Expression as InvocationExpressionSyntax;
+                if (nestedInvocation != null)
+                    memberAccessExp = memberAccessExp.WithExpression((ExpressionSyntax)VisitInvocationExpression(nestedInvocation));
+
+                ExpressionSyntax rewritten = SyntaxFactory.PrefixUnaryExpression(SyntaxKind.AwaitExpression,
                     node.WithExpression(memberAccessExp.WithName(
                         memberAccessExp.Name.WithIdentifier(SyntaxFactory.Identifier(memberAccessExp.Name.Identifier.Text + "Async"))
                     ))
                 );
+                if (!(node.Parent is StatementSyntax))
+                    rewritten = SyntaxFactory.ParenthesizedExpression(rewritten);
+                return rewritten;
             }
 
             throw new NotSupportedException(String.Format("It seems there's an expression type ({0}) not yet supported by the AsyncGenerator", node.Expression.GetType()));
