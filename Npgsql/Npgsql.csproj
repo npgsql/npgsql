@@ -217,8 +217,10 @@
     <AL LinkResources="PublisherPolicy.config" OutputAssembly="$(OutputPath)\policy.2.0.$(AssemblyName).dll" KeyFile="..\Npgsql.snk" />
   </Target>
   <UsingTask TaskName="AsyncGenerator.GenerateAsync" AssemblyFile="..\AsyncGenerator\bin\Release\AsyncGenerator.dll" />
-  <Target Name="GenerateAsync">
-    <MSBuild Condition="!Exists('..\AsyncGenerator\bin\Release\AsyncGenerator.dll')" Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release" />
+  <Target Name="BuildAsyncGenerator" Condition="!Exists('..\AsyncGenerator\bin\Release\AsyncGenerator.dll')">
+    <MSBuild Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release;SolutionDir=..\AsyncGenerator" />
+  </Target>
+  <Target Name="GenerateAsync" DependsOnTargets="BuildAsyncGenerator">
     <GenerateAsync InputFiles="NpgsqlConnector.cs;NpgsqlCommand.cs;NpgsqlDataReader.cs;PGUtil.cs">
       <Output TaskParameter="OutputFiles" ItemName="Compile" />
     </GenerateAsync>
