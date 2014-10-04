@@ -135,10 +135,18 @@
     <Compile Include="NpgsqlBind.cs" />
     <Compile Include="NpgsqlCancelRequest.cs" />
     <Compile Include="NpgsqlCommand.cs" />
+    <Compile Include="NpgsqlCommand.Async.cs">
+      <DependentUpon>NpgsqlCommand.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlCommandBuilder.cs" />
     <Compile Include="NpgsqlConnection.cs" />
     <Compile Include="NpgsqlConnectionStringBuilder.cs" />
     <Compile Include="NpgsqlConnector.cs" />
+    <Compile Include="NpgsqlConnector.Async.cs">
+      <DependentUpon>NpgsqlConnector.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlCopyFormat.cs" />
     <Compile Include="NpgsqlCopyIn.cs" />
@@ -148,6 +156,10 @@
     <Compile Include="NpgsqlCopySerializer.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
+    <Compile Include="NpgsqlDataReader.Async.cs">
+      <DependentUpon>NpgsqlDataReader.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="NpgsqlDescribe.cs" />
     <Compile Include="NpgsqlError.cs" />
     <Compile Include="NpgsqlException.cs" />
@@ -172,6 +184,10 @@
     <Compile Include="NpgsqlTransaction.cs" />
     <Compile Include="NpgsqlTransactionCallbacks.cs" />
     <Compile Include="PGUtil.cs" />
+    <Compile Include="PGUtil.Async.cs">
+      <DependentUpon>PGUtil.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
     <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
@@ -221,9 +237,10 @@
     <MSBuild Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release;SolutionDir=..\AsyncGenerator" />
   </Target>
   <Target Name="GenerateAsync" DependsOnTargets="BuildAsyncGenerator">
-    <GenerateAsync InputFiles="NpgsqlConnector.cs;NpgsqlCommand.cs;NpgsqlDataReader.cs;PGUtil.cs">
-      <Output TaskParameter="OutputFiles" ItemName="Compile" />
-    </GenerateAsync>
+    <ItemGroup>
+      <AsyncList Include="%(Compile.DependentUpon)" Condition="'%(Compile.Generator)' == 'AsyncGenerator'" />
+    </ItemGroup>
+    <GenerateAsync InputFiles="@(AsyncList)" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
