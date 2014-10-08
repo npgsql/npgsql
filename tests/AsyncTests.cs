@@ -1,5 +1,6 @@
-﻿using System.Data;
-#if NET45
+﻿#if NET45
+// Unsurprisingly, NUnit doesn't properly run async tests under .NET 4.0
+using System.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,19 +59,20 @@ namespace NpgsqlTests
         }
 
         [Test, Description("Cancels an async query with the cancellation token")]
-        [ExpectedException(typeof(OperationCanceledException))]
         [Timeout(5000)]
-        public async void Cancel()
+        public void Cancel()
         {
             var cancellationSource = new CancellationTokenSource();
             using (var cmd = new NpgsqlCommand("SELECT pg_sleep(5)", Conn))
             {
                 Task.Factory.StartNew(() =>
-                {
-                    Thread.Sleep(300);
-                    cancellationSource.Cancel();
-                });
-                await cmd.ExecuteNonQueryAsync(cancellationSource.Token);
+                                        {
+                                            Thread.Sleep(300);
+                                            cancellationSource.Cancel();
+                                        });
+                var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
+                Task.WaitAny(t);
+                Assert.That(t.IsCanceled);
             }
         }
     }

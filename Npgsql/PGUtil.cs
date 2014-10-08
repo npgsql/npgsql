@@ -34,7 +34,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
 
@@ -744,6 +746,28 @@ namespace Npgsql
             input.CopyTo(output, 0);
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a Task&lt;TResult&gt; that's completed successfully with the specified result.
+        /// </summary>
+        /// <remarks>
+        /// In .NET 4.5 Task provides this. In .NET 4.0 with BCL.Async, TaskEx provides this. This
+        /// method wraps the two.
+        /// </remarks>
+        /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
+        /// <param name="result">The result to store into the completed task.</param>
+        /// <returns>The successfully completed task.</returns>
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        internal static Task<TResult> TaskFromResult<TResult>(TResult result)
+        {
+#if NET45
+            return Task.FromResult(result);
+#else
+            return TaskEx.FromResult(result);
+#endif
         }
     }
 

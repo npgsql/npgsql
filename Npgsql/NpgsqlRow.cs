@@ -85,7 +85,7 @@ namespace Npgsql
         /// </summary>
         public override Task<object> GetAsync(int index)
         {
-            return Task.FromResult(Get(index));
+            return PGUtil.TaskFromResult(Get(index));
         }
 
         public override int NumFields
@@ -106,7 +106,7 @@ namespace Npgsql
         /// </summary>
         public override Task<bool> IsDBNullAsync(int index)
         {
-            return Task.FromResult(IsDBNull(index));
+            return PGUtil.TaskFromResult(IsDBNull(index));
         }
 
         public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)

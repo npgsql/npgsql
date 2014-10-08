@@ -212,19 +212,28 @@ namespace Npgsql
             return ReadInternal();
         }
 
-#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="Read"/>.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with true if the reader
         /// was advanced, otherwise false.</returns>
-        public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
+#if NET45
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+#else
+        public Task<bool> ReadAsync(CancellationToken cancellationToken)
+#endif
         {
             cancellationToken.ThrowIfCancellationRequested();
             // TODO: What is the desired behavior when cancelling here?
             // cancellationToken.Register(...)
-            return await ReadInternalAsync();
+            return ReadInternalAsync();
+        }
+
+#if !NET45
+        public Task<bool> ReadAsync()
+        {
+            return ReadAsync(CancellationToken.None);
         }
 #endif
 
@@ -334,23 +343,32 @@ namespace Npgsql
             return NextResultInternal();
         }
 
-#if NET45
         /// <summary>
         /// Asynchronous version of <see cref="NextResult"/>.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with true if the reader
         /// was advanced, otherwise false.</returns>
-        public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
+#if NET45
+        public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
+#else
+        public Task<bool> NextResultAsync(CancellationToken cancellationToken)
+#endif
         {
             cancellationToken.ThrowIfCancellationRequested();
             // TODO: What is the desired behavior when cancelling here?
             // cancellationToken.Register(...)
             if (_preparedStatement) {
                 // Prepared statements can never have multiple results.
-                return false;
+                return PGUtil.TaskFromResult(false);
             }
-            return await NextResultInternalAsync();
+            return NextResultInternalAsync();
+        }
+
+#if !NET45
+        public Task<bool> NextResultAsync()
+        {
+            return NextResultAsync(CancellationToken.None);
         }
 #endif
 
@@ -579,6 +597,19 @@ namespace Npgsql
         {
             return (T)await GetValueInternalAsync(ordinal);
         }
+
+#if !NET45
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The type of the value to be returned.</param>
+        /// <returns></returns>
+        public Task<T> GetFieldValueAsync<T>(int ordinal)
+        {
+            return GetFieldValueAsync<T>(ordinal, CancellationToken.None);
+        }
+#endif
 
 #if NET45
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -880,6 +911,19 @@ namespace Npgsql
             CheckHaveRow();
             return CurrentRow.IsDBNullAsync(ordinal);
         }
+
+#if !NET45
+        /// <summary>
+        /// An asynchronous version of IsDBNull, which gets a value that indicates whether the
+        /// column contains non-existent or missing values.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+        public Task<bool> IsDBNullAsync(int ordinal)
+        {
+            return IsDBNullAsync(ordinal, CancellationToken.None);
+        }
+#endif
 
         /// <summary>
         /// Copy values from each column in the current row into <paramref name="values"/>.
