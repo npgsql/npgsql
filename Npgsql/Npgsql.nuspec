@@ -3,7 +3,7 @@
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>Npgsql</id>
     <title>Npgsql</title>
-    <version>2.2.0</version>
+    <version>3.0.0-beta1</version>
     <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
@@ -19,12 +19,6 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release-net20\**\*.dll" target="lib\net20" exclude="**\policy.*" />
-    <file src="bin\Release-net20\*.pdb" target="lib\net20"/>
-    <file src="bin\Release-net20\*.xml" target="lib\net20"/>
-    <file src="bin\Release-net35\**\*.dll" target="lib\net35" exclude="**\policy.*" />
-    <file src="bin\Release-net35\*.pdb" target="lib\net35"/>
-    <file src="bin\Release-net35\*.xml" target="lib\net35"/>
     <file src="bin\Release-net40\**\*.dll" target="lib\net40" exclude="**\policy.*" />
     <file src="bin\Release-net40\*.pdb" target="lib\net40"/>
     <file src="bin\Release-net40\*.xml" target="lib\net40"/>

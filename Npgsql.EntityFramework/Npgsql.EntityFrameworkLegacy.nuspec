@@ -3,7 +3,7 @@
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>Npgsql.EntityFrameworkLegacy</id>
     <title>Npgsql for Entity Framework Legacy</title>
-    <version>2.2.0</version>
+    <version>3.0.0-beta1</version>
     <authors>Francisco Figueiredo Jr., Josh Cooley, Dave Page, Jon Asher, Brar Piening, Chris Morgan, Hiroshi Saito, Jon Hanna, Federico Di Gregorio, Glen Parker, Shay Rojansky</authors>
     <owners>Francisco Figueiredo Jr., Josh Cooley, Shay Rojansky</owners>
     <licenseUrl>https://github.com/npgsql/Npgsql/wiki/License</licenseUrl>
@@ -15,15 +15,12 @@
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql entity framework ef</tags>
     <dependencies>
-      <dependency id="Npgsql" version="[2.2.0]" />
+      <dependency id="Npgsql" version="[3.0.0-beta1]" />
       <dependency id="EntityFramework" version="(,6.0.0)" />
       <dependency id="Common.Logging" version="2.2.0" />
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.dll" target="lib\net35"/>
-    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net35"/>
-    <file src="bin\Legacy-Release-net35\Npgsql.EntityFrameworkLegacy.xml" target="lib\net35"/>
     <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.dll" target="lib\net40"/>
     <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.pdb" target="lib\net40"/>
     <file src="bin\Legacy-Release-net40\Npgsql.EntityFrameworkLegacy.xml" target="lib\net40"/>
