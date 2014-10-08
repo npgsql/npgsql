@@ -849,6 +849,7 @@ namespace Npgsql
         /// <summary>
         /// Consumes and disposes all backend messages until the next ReadyForQuery
         /// </summary>
+        [GenerateAsync]
         internal void ConsumeAll()
         {
             while (true)
@@ -1417,12 +1418,14 @@ namespace Npgsql
         /// Internal query shortcut for use in cases where the number
         /// of affected rows is of no interest.
         /// </summary>
+        [GenerateAsync]
         internal void ExecuteBlind(string command)
         {
             // Bypass cpmmand parsing overhead and send command verbatim.
             ExecuteBlind(new NpgsqlQuery(command));
         }
 
+        [GenerateAsync]
         internal void ExecuteBlind(NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
@@ -1434,12 +1437,14 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(string command)
         {
             // Bypass cpmmand parsing overhead and send command verbatim.
             ExecuteBlindSuppressTimeout(new NpgsqlQuery(command));
         }
 
+        [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
@@ -1456,6 +1461,7 @@ namespace Npgsql
         /// which will cause an endless recursive loop.
         /// </summary>
         /// <param name="timeout">Timeout in seconds.</param>
+        [GenerateAsync]
         internal void ExecuteSetStatementTimeoutBlind(int timeout)
         {
             NpgsqlQuery query;
@@ -1522,6 +1528,7 @@ namespace Npgsql
         /// Modify the backend statement_timeout value if needed.
         /// </summary>
         /// <param name="timeout">New timeout</param>
+        [GenerateAsync]
         internal void SetBackendCommandTimeout(int timeout)
         {
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
