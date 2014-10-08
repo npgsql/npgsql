@@ -88,7 +88,7 @@ namespace Npgsql
         /// version number that the Postgres backend will recognize in a
         /// startup packet.
         /// </summary>
-        public static Int32 ConvertProtocolVersion(ProtocolVersion Ver)
+        internal static Int32 ConvertProtocolVersion(ProtocolVersion Ver)
         {
             switch (Ver)
             {
@@ -735,133 +735,6 @@ namespace Npgsql
     {
         ProtocolVersion2 = 2 << 16, // 131072
         ProtocolVersion3 = 3 << 16 // 196608
-    }
-
-    /// <summary>
-    /// Represent the backend server version.
-    /// As this class offers no functionality beyond that offered by <see cref="System.Version"/> it has been
-    /// deprecated in favour of that class.
-    /// </summary>
-    ///
-    [Obsolete("Use System.Version")]
-    public sealed class ServerVersion : IEquatable<ServerVersion>, IComparable<ServerVersion>, IComparable, ICloneable
-    {
-        [Obsolete("Use ServerVersionCode.ProtocolVersion2")] public static readonly Int32 ProtocolVersion2 = 2 << 16;
-                                                                                          // 131072
-
-        [Obsolete("Use ServerVersionCode.ProtocolVersion3")] public static readonly Int32 ProtocolVersion3 = 3 << 16;
-                                                                                          // 196608
-
-        private readonly Version _version;
-
-        private ServerVersion(Version ver)
-        {
-            _version = ver;
-        }
-
-        /// <summary>
-        /// Server version major number.
-        /// </summary>
-        public Int32 Major
-        {
-            get { return _version.Major; }
-        }
-
-        /// <summary>
-        /// Server version minor number.
-        /// </summary>
-        public Int32 Minor
-        {
-            get { return _version.Minor; }
-        }
-
-        /// <summary>
-        /// Server version patch level number.
-        /// </summary>
-        public Int32 Patch
-        {
-            get { return _version.Build; }
-        }
-
-        public static implicit operator Version(ServerVersion sv)
-        {
-            return (object) sv == null ? null : sv._version;
-        }
-
-        public static implicit operator ServerVersion(Version ver)
-        {
-            return (object) ver == null ? null : new ServerVersion(ver.Clone() as Version);
-        }
-
-        public static bool operator ==(ServerVersion One, ServerVersion TheOther)
-        {
-            return ((Version) One) == ((Version) TheOther);
-        }
-
-        public static bool operator !=(ServerVersion One, ServerVersion TheOther)
-        {
-            return (Version) One != (Version) TheOther;
-        }
-
-        public static bool operator >(ServerVersion One, ServerVersion TheOther)
-        {
-            return (Version) One > (Version) TheOther;
-        }
-
-        public static bool operator >=(ServerVersion One, ServerVersion TheOther)
-        {
-            return (Version) One >= (Version) TheOther;
-        }
-
-        public static bool operator <(ServerVersion One, ServerVersion TheOther)
-        {
-            return (Version) One < (Version) TheOther;
-        }
-
-        public static bool operator <=(ServerVersion One, ServerVersion TheOther)
-        {
-            return (Version) One <= (Version) TheOther;
-        }
-
-        public bool Equals(ServerVersion other)
-        {
-            return other != null && this == other;
-        }
-
-        public int CompareTo(ServerVersion other)
-        {
-            return _version.CompareTo(other);
-        }
-
-        public int CompareTo(object obj)
-        {
-            return CompareTo(obj as ServerVersion);
-        }
-
-        public object Clone()
-        {
-            return new ServerVersion(_version.Clone() as Version);
-        }
-
-        public override bool Equals(object O)
-        {
-            return Equals(O as ServerVersion);
-        }
-
-        public override int GetHashCode()
-        {
-            //Assume Version has a decent hash code function.
-            //If this turns out not to be true do not use _Major ^ _Minor ^ _Patch, but make sure the values are spread throughout the 32bit range more to avoid false clashes.
-            return _version.GetHashCode();
-        }
-
-        /// <summary>
-        /// Returns the string representation of this version in three place dot notation (Major.Minor.Patch).
-        /// </summary>
-        public override String ToString()
-        {
-            return _version.ToString();
-        }
     }
 
     internal enum FormatCode :
