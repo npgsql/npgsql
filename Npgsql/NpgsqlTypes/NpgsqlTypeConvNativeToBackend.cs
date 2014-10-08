@@ -257,11 +257,10 @@ namespace NpgsqlTypes
                 }
                 else
                 {
-                    ret
-                        .WriteBytes(encodingInfo.ByteaEscape)
-                        .WriteBytes(escapeEncodingByteMap[7 & (b >> 6)])
-                        .WriteBytes(escapeEncodingByteMap[7 & (b >> 3)])
-                        .WriteBytes(escapeEncodingByteMap[7 & b]);
+                    ret.WriteBytes(encodingInfo.ByteaEscape);
+                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 6)]);
+                    ret.WriteByte(escapeEncodingByteMap[7 & (b >> 3)]);
+                    ret.WriteByte(escapeEncodingByteMap[7 & b]);
                 }
             }
 

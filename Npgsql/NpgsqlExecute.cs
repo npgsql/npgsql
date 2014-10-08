@@ -35,7 +35,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlExecute : IClientMessage
+    internal sealed partial class NpgsqlExecute : IClientMessage
     {
         private readonly String _portalName;
         private readonly byte[] _messageData;
@@ -49,7 +49,7 @@ namespace Npgsql
             _portalName = portalName;
 
             messageBuilder
-                .WriteBytes((byte)FrontEndMessageCode.Execute)
+                .WriteByte(ASCIIByteArrays.ExecuteMessageCode)
                 .WriteInt32(messageLength)
                 .WriteStringNullTerminated(_portalName)
                 .WriteInt32(maxRows);
@@ -60,6 +60,7 @@ namespace Npgsql
             get { return _portalName; }
         }
 
+        [GenerateAsync]
         public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteBytes(_messageData);

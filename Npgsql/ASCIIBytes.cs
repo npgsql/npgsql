@@ -101,8 +101,8 @@ namespace Npgsql
     internal class ASCIIByteArrays
     {
         internal static readonly byte[] Empty           = new byte[0];
-        internal static readonly byte[] Byte_0          = new byte[] { 0 };
-        internal static readonly byte[] Byte_1          = new byte[] { 1 };
+        internal static readonly byte[] Byte_0          = { 0 };
+        internal static readonly byte[] Byte_1          = { 1 };
         internal static readonly byte[] NULL            = BackendEncoding.UTF8Encoding.GetBytes("NULL");
         internal static readonly byte[] AsciiDigit_0    = BackendEncoding.UTF8Encoding.GetBytes("0");
         internal static readonly byte[] AsciiDigit_1    = BackendEncoding.UTF8Encoding.GetBytes("1");
@@ -114,5 +114,12 @@ namespace Npgsql
         internal static readonly byte[] NEG_INFINITY_QUOTED = BackendEncoding.UTF8Encoding.GetBytes("'-INFINITY'");
         internal static readonly byte[] LineTerminator  = BackendEncoding.UTF8Encoding.GetBytes("\r\n");
         internal static readonly byte[] NAN_QUOTED      = BackendEncoding.UTF8Encoding.GetBytes("'NaN'");
+
+        internal static readonly byte[] BindMessageCode =         { (byte)FrontEndMessageCode.Bind         };
+        internal static readonly byte[] DescribeMessageCode =     { (byte)FrontEndMessageCode.Describe     };
+        internal static readonly byte[] ExecuteMessageCode =      { (byte)FrontEndMessageCode.Execute      };
+        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontEndMessageCode.FunctionCall };
+        internal static readonly byte[] ParseMessageCode =        { (byte)FrontEndMessageCode.Parse        };
+        internal static readonly byte[] TerminationMessageCode =  { (byte)FrontEndMessageCode.Termination  };
     }
 }

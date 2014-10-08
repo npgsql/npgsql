@@ -404,7 +404,7 @@ namespace Npgsql
             _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
             stream.Write(bytes, 0, bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
@@ -419,7 +419,7 @@ namespace Npgsql
             _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
             stream.Write(bytes, 0, bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
@@ -427,10 +427,10 @@ namespace Npgsql
         /// This method writes a byte to the stream. It also enables logging of them.
         /// </summary>
         [GenerateAsync]
-        public static Stream WriteBytes(this Stream stream, byte the_byte)
+        public static Stream WriteByte(this Stream stream, byte[] b)
         {
-            _log.Trace("Sending byte: " + the_byte);
-            stream.WriteByte(the_byte);
+            _log.Trace("Sending byte: {0}" + b[0]);
+            stream.Write(b, 0, 1);
             return stream;
         }
 
@@ -438,11 +438,11 @@ namespace Npgsql
         /// This method writes a byte to the stream. It also enables logging of them.
         /// </summary>
         [GenerateAsync]
-        public static Stream WriteBytesNullTerminated(this Stream stream, byte the_byte)
+        public static Stream WriteByteNullTerminated(this Stream stream, byte[] b)
         {
-            _log.Trace("Sending byte: " + the_byte);
-            stream.WriteByte(the_byte);
-            stream.WriteByte(0);
+            _log.Trace("Sending byte: " + b[0]);
+            stream.Write(b, 0, 1);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
@@ -465,7 +465,7 @@ namespace Npgsql
         {
             _log.Trace("Sending bytes: " + String.Join(", ", the_bytes));
             stream.Write(the_bytes, 0, the_bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 

@@ -36,7 +36,7 @@ namespace Npgsql
     /// This is the base class for NpgsqlDescribeStatement and NpgsqlDescribePortal.
     /// </summary>
     ///
-    internal abstract class NpgsqlDescribe : IClientMessage
+    internal abstract partial class NpgsqlDescribe : IClientMessage
     {
         protected enum DescribeTypeCode : byte
         {
@@ -57,12 +57,14 @@ namespace Npgsql
             _messageLength = 4 + 1 + _bPortalName.Length + 1;
         }
 
+        [GenerateAsync]
         public void WriteToStream(Stream outputStream)
         {
+            var whatToDescribeBuf = new[] { (byte) _whatToDescribe};
             outputStream
-                .WriteBytes((byte)FrontEndMessageCode.Describe)
+                .WriteByte(ASCIIByteArrays.DescribeMessageCode)
                 .WriteInt32(_messageLength)
-                .WriteBytes((byte)_whatToDescribe)
+                .WriteByte(whatToDescribeBuf)
                 .WriteBytesNullTerminated(_bPortalName);
         }
     }

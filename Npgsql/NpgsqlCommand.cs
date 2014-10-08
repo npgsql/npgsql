@@ -611,10 +611,9 @@ namespace Npgsql
                             st.WriteString(", ");
                         }
 
-                        st
-                            .WriteString(p.CleanName)
-                            .WriteBytes((byte)ASCIIBytes.Space)
-                            .WriteString(p.TypeInfo.Name);
+                        st.WriteString(p.CleanName);
+                        st.WriteByte((byte) ASCIIBytes.Space);
+                        st.WriteString(p.TypeInfo.Name);
 
                         break;
                 }
@@ -670,7 +669,7 @@ namespace Npgsql
                 {
                     commandBuilder
                         .WriteString(_commandText)
-                        .WriteBytes((byte)ASCIIBytes.ParenLeft);
+                        .WriteByte((byte)ASCIIBytes.ParenLeft);
 
                     if (prepare)
                     {
@@ -681,7 +680,7 @@ namespace Npgsql
                         AppendParameterValues(commandBuilder);
                     }
 
-                    commandBuilder.WriteBytes((byte)ASCIIBytes.ParenRight);
+                    commandBuilder.WriteByte((byte)ASCIIBytes.ParenRight);
                 }
 
                 if (!prepare && _functionNeedsColumnListDefinition)
@@ -731,7 +730,7 @@ namespace Npgsql
         {
             var parameterSize = "";
 
-            dest.WriteBytes((byte)ASCIIBytes.ParenLeft);
+            dest.WriteByte((byte)ASCIIBytes.ParenLeft);
 
             if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
             {
@@ -747,7 +746,7 @@ namespace Npgsql
                 dest.WriteString("${0}{1}", paramNumber, parameterSize);
             }
 
-            dest.WriteBytes((byte)ASCIIBytes.ParenRight);
+            dest.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
         void AppendParameterValues(Stream dest)
@@ -785,11 +784,10 @@ namespace Npgsql
             // See bug #1010543
             // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
             // only one pair of parentheses for the two purposes instead of two pairs.
-            dest
-                .WriteBytes((byte)ASCIIBytes.ParenLeft)
-                .WriteBytes((byte)ASCIIBytes.ParenLeft)
-                .WriteBytes(serialised)
-                .WriteBytes((byte)ASCIIBytes.ParenRight);
+            dest.WriteByte((byte)ASCIIBytes.ParenLeft);
+            dest.WriteByte((byte) ASCIIBytes.ParenLeft);
+            dest.WriteBytes(serialised);
+            dest.WriteByte((byte)ASCIIBytes.ParenRight);
 
             if (parameter.UseCast)
             {
@@ -801,7 +799,7 @@ namespace Npgsql
                 }
             }
 
-            dest.WriteBytes((byte)ASCIIBytes.ParenRight);
+            dest.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
         static bool IsParamNameChar(char ch)
@@ -1254,9 +1252,8 @@ namespace Npgsql
 
                     serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
-                    result
-                        .WriteBytes(serialization)
-                        .WriteBytes((byte)ASCIIBytes.ParenRight);
+                    result.WriteBytes(serialization);
+                    result.WriteByte((byte)ASCIIBytes.ParenRight);
 
                     if (p.UseCast)
                     {

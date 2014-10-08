@@ -117,7 +117,7 @@ namespace NpgsqlTypes
                     }
 
                     stream
-                        .WriteBytes((Byte)ASCIIBytes.F)
+                        .WriteByte(ASCIIByteArrays.FunctionCallMessageCode)
                         .WriteInt32(l_msgLen)
                         .WriteInt32(fnid)
                         .WriteInt16(1)

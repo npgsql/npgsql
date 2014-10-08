@@ -114,9 +114,10 @@ namespace Npgsql
             try
             {
                 Stream
-                    .WriteBytes((byte)FrontEndMessageCode.Termination)
+                    .WriteByte(ASCIIByteArrays.TerminationMessageCode)
                     .WriteInt32(4)
-                    .Flush();            }
+                    .Flush();
+            }
             catch
             {
             }

@@ -29,6 +29,7 @@
 
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
@@ -99,31 +100,7 @@ namespace Npgsql
     internal interface IClientMessage
     {
         void WriteToStream(Stream outputStream);
-    }
-
-    /// <summary>
-    /// For classes representing simple messages,
-    /// consisting only of a message code and length identifier,
-    /// sent from the client to the server.
-    /// </summary>
-    internal abstract class SimpleClientMessage : IClientMessage
-    {
-        private readonly byte[] _messageData;
-
-        protected SimpleClientMessage(FrontEndMessageCode MessageCode)
-        {
-            _messageData = new byte[5];
-            MemoryStream messageBuilder = new MemoryStream(_messageData);
-
-            messageBuilder
-                .WriteBytes((byte)MessageCode)
-                .WriteInt32(4);
-        }
-
-        public void WriteToStream(Stream outputStream)
-        {
-            outputStream.WriteBytes(_messageData);
-        }
+        Task WriteToStreamAsync(Stream outputStream);
     }
 
     /// <summary>
@@ -155,7 +132,9 @@ namespace Npgsql
         Execute = (byte) 'E',
         Describe = (byte) 'D',
         Close = (byte) 'C',
-        Sync = (byte) 'S'
+        Sync = (byte) 'S',
+        PasswordMessage = (byte) 'p',
+        FunctionCall = (byte)'F',
     }
 
     internal enum BackEndMessageCode

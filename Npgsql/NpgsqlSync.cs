@@ -26,6 +26,8 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+using System.IO;
+
 namespace Npgsql
 {
     /// <summary>
@@ -33,12 +35,23 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlSync : SimpleClientMessage
+    internal sealed partial class NpgsqlSync : IClientMessage
     {
         internal static readonly NpgsqlSync Default = new NpgsqlSync();
 
-        private NpgsqlSync()
-        : base(FrontEndMessageCode.Sync)
-        {}
+        static readonly byte[] MessageBytes = new byte[5];
+
+        static NpgsqlSync()
+        {
+            var s = new MemoryStream(MessageBytes);
+            s.WriteByte((byte)FrontEndMessageCode.Sync);
+            s.WriteInt32(4);
+        }
+
+        [GenerateAsync]
+        public void WriteToStream(Stream outputStream)
+        {
+            outputStream.Write(MessageBytes, 0, 5);
+        }
     }
 }
