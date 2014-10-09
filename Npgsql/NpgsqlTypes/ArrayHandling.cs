@@ -509,8 +509,11 @@ namespace NpgsqlTypes
         public object ArrayTextToArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-//first create an arraylist, then convert it to an array.
-            return ToArray(ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier), _elementConverter.Type);
+            
+            //first create an arraylist, then convert it to an array.
+            ArrayList arrayList = ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier);
+
+            return ToArray(arrayList, _elementConverter.GetType(TypeModifier));
         }
 
         /// <summary>
@@ -617,7 +620,7 @@ namespace NpgsqlTypes
             // {PG handles 0-dimension arrays, but .net does not.  Return a 0-size 1-dimensional array.
             if (nDims == 0)
             {
-                return Array.CreateInstance(_elementConverter.FrameworkType, 0);
+                return Array.CreateInstance(_elementConverter.GetFrameworkType(TypeModifier), 0);
             }
 
             int dimOffset;
@@ -650,7 +653,7 @@ namespace NpgsqlTypes
             Array dst;
             int[] dstOffsets;
 
-            dst = Array.CreateInstance(_elementConverter.FrameworkType, dimLengths, dimLBounds);
+            dst = Array.CreateInstance(_elementConverter.GetFrameworkType(TypeModifier), dimLengths, dimLBounds);
 
             dstOffsets = new int[nDims];
 

@@ -68,6 +68,21 @@ namespace Npgsql
         }
     }
 
+    internal class ParameterDescriptionResponse : IServerResponseObject
+    {
+        private readonly int[] _typeoids;
+
+        public ParameterDescriptionResponse(int[] typeoids)
+        {
+            _typeoids = typeoids;
+        }
+
+        public int[] TypeOIDs
+        {
+            get { return _typeoids; }
+        }
+    }
+
     /// <summary>
     /// For classes representing messages sent from the client to the server.
     /// </summary>

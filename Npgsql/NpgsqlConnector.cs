@@ -716,14 +716,15 @@ namespace Npgsql
 
                     case BackEndMessageCode.ParameterDescription:
                         _log.Trace("Received ParameterDescription");
-                        // Do nothing,for instance,  just read...
+                        // PostgreSQL has found out what parameter types we must use
                         Stream.ReadInt32();
                         var nbParam = Stream.ReadInt16();
+                        var typeoids = new int[nbParam];
                         for (var i = 0; i < nbParam; i++)
                         {
-                            Stream.ReadInt32();  // typeoids
+                            typeoids[i] = Stream.ReadInt32();  // typeoid
                         }
-
+                        yield return new ParameterDescriptionResponse(typeoids);
                         break;
 
                     case BackEndMessageCode.DataRow:

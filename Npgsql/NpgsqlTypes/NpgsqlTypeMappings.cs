@@ -188,7 +188,7 @@ namespace NpgsqlTypes
                 NpgsqlNativeTypeInfo arrayType = NpgsqlNativeTypeInfo.ArrayOf(T);
                 NameIndex[arrayType.Name] = arrayType;
 
-                NameIndex[arrayType.CastName] = arrayType;
+                NameIndex[arrayType.GetCastName(0)] = arrayType;
                 NpgsqlDbTypeIndex[arrayType.NpgsqlDbType] = arrayType;
             }
         }

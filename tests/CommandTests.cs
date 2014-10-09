@@ -2410,6 +2410,7 @@ namespace NpgsqlTests
         }
 
         [Test]
+        [Ignore]
         public void ParameterExplicitType2()
         {
             using (var command = new NpgsqlCommand(@"SELECT * FROM data WHERE field_date=:param", Conn))
@@ -3413,7 +3414,8 @@ namespace NpgsqlTests
                 paramBLOB.ParameterName = "BLOB";
                 cmd.Parameters.Add(paramBLOB);
                 cmd.Parameters[0].Value = DBNull.Value;
-                Assert.AreEqual(DbType.String, cmd.Parameters[0].DbType);
+                Assert.AreEqual(DbType.Object, cmd.Parameters[0].DbType);
+                Assert.AreEqual(NpgsqlDbType.Unknown, cmd.Parameters[0].NpgsqlDbType);
 
                 cmd.Parameters[0].Value = new byte[] {1, 2, 3};
                 Assert.AreEqual(DbType.Binary, cmd.Parameters[0].DbType);
@@ -3975,6 +3977,77 @@ namespace NpgsqlTests
                         rdr.Read();
                         Assert.AreEqual(rdr.GetInt32(0), 1);
                     } while (rdr.NextResult());
+                }
+            }
+        }
+
+        [Test]
+        public void InputAndOutputParameters()
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                using (var cmd = Conn.CreateCommand())
+                {
+                    cmd.CommandText = "Select :a + 2 as b, :c - 1 as c";
+                    var b = new NpgsqlParameter() { ParameterName = "b", Direction = ParameterDirection.Output };
+                    cmd.Parameters.Add(b);
+                    cmd.Parameters.Add(new NpgsqlParameter("a", 3));
+                    var c = new NpgsqlParameter() { ParameterName = "c", Direction = ParameterDirection.InputOutput, Value = 4 };
+                    cmd.Parameters.Add(c);
+                    if (i == 1)
+                        cmd.Prepare();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.AreEqual(5, b.Value);
+                        Assert.AreEqual(3, c.Value);
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void BitString()
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                using (var cmd = Conn.CreateCommand())
+                {
+                    cmd.CommandText = "Select :bs1 as output, :bs2, :bs3, :bs4, :bs5, array [1::bit, 0::bit], array [bit '10', bit '01'], :ba1, :ba2, :ba3";
+                    var output = new NpgsqlParameter() { ParameterName = "output", Direction = ParameterDirection.Output };
+                    cmd.Parameters.Add(output);
+                    cmd.Parameters.Add(new NpgsqlParameter("bs1", NpgsqlDbType.Bit) { Value = new BitString("1011") });
+                    cmd.Parameters.Add(new NpgsqlParameter("bs2", NpgsqlDbType.Bit, 1) { Value = true });
+                    cmd.Parameters.Add(new NpgsqlParameter("bs3", NpgsqlDbType.Bit, 1) { Value = false });
+                    cmd.Parameters.Add(new NpgsqlParameter("bs4", NpgsqlDbType.Bit, 2) { Value = new BitString("01") });
+                    cmd.Parameters.Add(new NpgsqlParameter("bs5", NpgsqlDbType.Varbit) { Value = new BitString("01") });
+                    cmd.Parameters.Add(new NpgsqlParameter("ba1", NpgsqlDbType.Varbit | NpgsqlDbType.Array) { Value = new BitString[] { new BitString("10"), new BitString("01") } });
+                    cmd.Parameters.Add(new NpgsqlParameter("ba2", NpgsqlDbType.Bit | NpgsqlDbType.Array, 1) { Value = new bool[] { true, false } });
+                    cmd.Parameters.Add(new NpgsqlParameter("ba3", NpgsqlDbType.Bit | NpgsqlDbType.Array, 1) { Value = new BitString[] { new BitString("1"), new BitString("0") } });
+                    if (i == 1)
+                        cmd.Prepare();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.IsTrue(new BitString("1011") == (BitString)output.Value);
+                        Assert.IsTrue(new BitString("1011") == (BitString)reader.GetValue(0));
+                        Assert.AreEqual(true, reader.GetValue(1));
+                        Assert.AreEqual(false, reader.GetValue(2));
+                        Assert.IsTrue(new BitString("01") == (BitString)reader.GetValue(3));
+                        Assert.IsTrue(new BitString("01") == (BitString)reader.GetValue(4));
+                        Assert.AreEqual(true, ((bool[])reader.GetValue(5))[0]);
+                        Assert.AreEqual(false, ((bool[])reader.GetValue(5))[1]);
+                        for (int j = 6; j <= 7; j++)
+                        {
+                            Assert.AreEqual(new BitString("10"), ((BitString[])reader.GetValue(j))[0]);
+                            Assert.AreEqual(new BitString("01"), ((BitString[])reader.GetValue(j))[1]);
+                        }
+                        for (int j = 8; j <= 9; j++)
+                        {
+                            Assert.AreEqual(true, ((bool[])reader.GetValue(j))[0]);
+                            Assert.AreEqual(false, ((bool[])reader.GetValue(j))[1]);
+                        }
+                    }
                 }
             }
         }

@@ -42,13 +42,14 @@ namespace Npgsql
         private readonly byte[] _bPortalName;
         private readonly String _preparedStatementName;
         private readonly byte[] _bPreparedStatementName;
+        private readonly int[] _parameterDescription;
         private Int16[] _parameterFormatCodes;
         private byte[][] _parameterValues;
         private Int16[] _resultFormatCodes;
         private int _messageLength = 0;
 
-        public NpgsqlBind(String portalName, String preparedStatementName, Int16[] parameterFormatCodes,
-                          byte[][] parameterValues, Int16[] resultFormatCodes)
+        public NpgsqlBind(String portalName, String preparedStatementName, int[] parameterDescription,
+            Int16[] parameterFormatCodes, byte[][] parameterValues, Int16[] resultFormatCodes)
         {
             _portalName = portalName;
             _bPortalName = BackendEncoding.UTF8Encoding.GetBytes(_portalName);
@@ -56,6 +57,7 @@ namespace Npgsql
             _preparedStatementName = preparedStatementName;
             _bPreparedStatementName = BackendEncoding.UTF8Encoding.GetBytes(_preparedStatementName);
 
+            _parameterDescription = parameterDescription;
             _parameterFormatCodes = parameterFormatCodes;
             _parameterValues = parameterValues;
             _resultFormatCodes = resultFormatCodes;
@@ -80,6 +82,11 @@ namespace Npgsql
                 _resultFormatCodes = value;
                 _messageLength = 0;
             }
+        }
+
+        public int[] ParameterDescription
+        {
+            get { return _parameterDescription; }
         }
 
         public Int16[] ParameterFormatCodes
