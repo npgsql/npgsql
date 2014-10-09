@@ -161,11 +161,6 @@
       <Generator>AsyncGenerator</Generator>
     </Compile>
     <Compile Include="NpgsqlBackEndKeyData.cs" />
-    <Compile Include="NpgsqlBind.cs" />
-    <Compile Include="NpgsqlBind.Async.cs">
-      <DependentUpon>NpgsqlBind.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommand.Async.cs">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>

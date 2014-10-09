@@ -64,7 +64,6 @@ namespace Npgsql
 
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
-        NpgsqlBind _bind;
         NpgsqlRowDescription _currentRowDescription;
 
         long _lastInsertedOid;
@@ -80,6 +79,9 @@ namespace Npgsql
         static readonly Array ParamNameCharTable;
         internal Type[] ExpectedTypes { get; set; }
 
+        short[] _resultFormatCodes;
+
+        const string AnonymousPortal = "";
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         #endregion Fields
@@ -447,11 +449,9 @@ namespace Npgsql
                 }
             }
 
-            short[] resultFormatCodes;
-
             if (returnRowDesc != null)
             {
-                resultFormatCodes = new short[returnRowDesc.NumFields];
+                _resultFormatCodes = new short[returnRowDesc.NumFields];
 
                 for (var i = 0; i < returnRowDesc.NumFields; i++)
                 {
@@ -464,26 +464,22 @@ namespace Npgsql
                         // here based on support for binary encoding.  Once this is done,
                         // there is no need to request another row description after Bind.
                         returnRowDescData.FormatCode = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? FormatCode.Binary : FormatCode.Text;
-                        resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
+                        _resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
                     }
                     else
                     {
                         // Text format (default).
-                        resultFormatCodes[i] = (short)FormatCode.Text;
+                        _resultFormatCodes[i] = (short)FormatCode.Text;
                     }
                 }
             }
             else
             {
-                resultFormatCodes = new short[] { 0 };
+                _resultFormatCodes = new short[] { 0 };
             }
 
             // Save the row description for use with all future Executes.
             _currentRowDescription = returnRowDesc;
-
-            // The Bind and Execute message objects live through multiple Executes.
-            // Only Bind changes at all between Executes, which is done in BindParameters().
-            _bind = new NpgsqlBind(portalName, _planName, new Int16[Parameters.Count], null, resultFormatCodes);
 
             _prepared = PrepareStatus.Prepared;
         }
@@ -493,7 +489,6 @@ namespace Npgsql
             if (_prepared == PrepareStatus.Prepared)
             {
                 _connector.ExecuteBlind("DEALLOCATE " + _planName);
-                _bind = null;
                 _currentRowDescription = null;
                 _prepared = PrepareStatus.NeedsPrepare;
             }
@@ -1633,11 +1628,11 @@ namespace Npgsql
                 }
                 else
                 {
-                    // Update the Bind object with current parameter data as needed.
-                    BindParameters();
+                    // Bind the parameters, execute and sync
+                    for (var i = 0; i < _parameters.Count; i++)
+                        _parameters[i].Bind(_connector.NativeToBackendTypeConverterOptions);
+                    _connector.SendBind(AnonymousPortal, _planName, _parameters, _resultFormatCodes);
 
-                    // Write the Bind, Execute, and Sync message to the wire.
-                    _connector.SendBind(_bind);
                     _connector.SendExecute();
                     _connector.SendSync();
 
@@ -1653,55 +1648,6 @@ namespace Npgsql
                 }
 
                 return reader;
-            }
-        }
-
-        ///<summary>
-        /// This method binds the parameters from parameters collection to the bind
-        /// message.
-        /// </summary>
-        void BindParameters()
-        {
-            if (_parameters.Count != 0)
-            {
-                var parameterValues = _bind.ParameterValues;
-                var parameterFormatCodes = _bind.ParameterFormatCodes;
-                var bindAll = false;
-                var bound = false;
-
-                if (parameterValues == null || parameterValues.Length != _parameters.Count)
-                {
-                    parameterValues = new byte[_parameters.Count][];
-                    bindAll = true;
-                }
-
-                for (var i = 0; i < _parameters.Count; i++)
-                {
-                    if (!bindAll && _parameters[i].Bound)
-                    {
-                        continue;
-                    }
-
-                    parameterValues[i] = _parameters[i].TypeInfo.ConvertToBackend(_parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
-
-                    bound = true;
-                    _parameters[i].Bound = true;
-
-                    if (parameterValues[i] == null)
-                    {
-                        parameterFormatCodes[i] = (short)FormatCode.Binary;
-                    }
-                    else
-                    {
-                        parameterFormatCodes[i] = _parameters[i].TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
-                    }
-                }
-
-                if (bound)
-                {
-                    _bind.ParameterValues = parameterValues;
-                    _bind.ParameterFormatCodes = parameterFormatCodes;
-                }
             }
         }
 

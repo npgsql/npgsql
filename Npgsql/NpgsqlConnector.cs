@@ -506,7 +506,84 @@ namespace Npgsql
 
         #endregion Startup
 
-        #region Outgoing messages
+        #region Bind
+
+        [GenerateAsync]
+        internal void SendBind(string portalName, string statementName, NpgsqlParameterCollection parameters, short[] resultFormatCodes)
+        {
+            _log.Debug("Sending bind message");
+
+            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
+            var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
+
+            var len =
+                    4 + // Message length (32 bits)
+                    portalNameBytes.Length + 1 + // Portal name + null terminator
+                    statementNameBytes.Length + 1 + // Statement name + null terminator
+                    2 + // Parameter format code array length (16 bits)
+                    parameters.Count * 2 + // Parameter format code array (16 bits per code)
+                    2; // Parameter va;ue array length (16 bits)
+
+            for (var i = 0; i < parameters.Count; i++)
+            {
+                len += 4;
+                if (parameters[i].BoundValue != null)
+                {
+                    len += parameters[i].BoundValue.Length;
+                }
+            }
+
+            len +=
+                2 + // Result format code array length (16 bits)
+                resultFormatCodes.Length * 2; // Result format code array (16 bits per code)
+
+            Stream
+                .WriteByte(ASCIIByteArrays.BindMessageCode)
+                .WriteInt32(len)
+                .WriteBytesNullTerminated(portalNameBytes)
+                .WriteBytesNullTerminated(statementNameBytes)
+                .WriteInt16((short)parameters.Count);
+
+            if (parameters.Count > 0)
+            {
+                for (var i = 0; i < parameters.Count; i++)
+                {
+                    Stream.WriteInt16(parameters[i].BoundFormatCode);
+                }
+
+                Stream.WriteInt16((short)parameters.Count);
+
+                for (var i = 0; i < parameters.Count; i++)
+                {
+                    var value = parameters[i].BoundValue;
+                    if (value == null)
+                    {
+                        Stream.WriteInt32(-1);
+                    }
+                    else
+                    {
+                        Stream
+                            .WriteInt32(value.Length)
+                            .WriteBytes(value);
+                    }
+                }
+            }
+            else
+            {
+                Stream.WriteInt16(0);
+            }
+
+            Stream.WriteInt16((short)resultFormatCodes.Length);
+
+            foreach (var code in resultFormatCodes)
+            {
+                Stream.WriteInt16(code);
+            }
+        }
+
+        #endregion
+
+        #region Simple outgoing messages
 
         [GenerateAsync]
         internal void SendQuery(NpgsqlQuery query)
@@ -573,13 +650,6 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void SendBind(NpgsqlBind bind)
-        {
-            _log.Debug("Sending bind message");
-            bind.WriteToStream(Stream);
-        }
-
-        [GenerateAsync]
         internal void SendDescribePortal(string portalName)
         {
             _log.Debug("Sending describe portal message");
@@ -631,7 +701,7 @@ namespace Npgsql
                 .WriteInt32(4);
         }
 
-        #endregion Outgoing messages
+        #endregion Simple outgoing messages
 
         #region Backend message processing
 
