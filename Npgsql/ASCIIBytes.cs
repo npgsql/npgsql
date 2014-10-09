@@ -115,11 +115,17 @@ namespace Npgsql
         internal static readonly byte[] LineTerminator  = BackendEncoding.UTF8Encoding.GetBytes("\r\n");
         internal static readonly byte[] NAN_QUOTED      = BackendEncoding.UTF8Encoding.GetBytes("'NaN'");
 
-        internal static readonly byte[] BindMessageCode =         { (byte)FrontEndMessageCode.Bind         };
-        internal static readonly byte[] DescribeMessageCode =     { (byte)FrontEndMessageCode.Describe     };
-        internal static readonly byte[] ExecuteMessageCode =      { (byte)FrontEndMessageCode.Execute      };
-        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontEndMessageCode.FunctionCall };
-        internal static readonly byte[] ParseMessageCode =        { (byte)FrontEndMessageCode.Parse        };
-        internal static readonly byte[] TerminationMessageCode =  { (byte)FrontEndMessageCode.Termination  };
-    }
+        internal static readonly byte[] BindMessageCode         = { (byte)FrontEndMessageCode.Bind            };
+        internal static readonly byte[] DescribeMessageCode     = { (byte)FrontEndMessageCode.Describe        };
+        internal static readonly byte[] ExecuteMessageCode      = { (byte)FrontEndMessageCode.Execute         };
+        internal static readonly byte[] FlushMessageCode        = { (byte)FrontEndMessageCode.Flush           };
+        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontEndMessageCode.FunctionCall    };
+        internal static readonly byte[] ParseMessageCode        = { (byte)FrontEndMessageCode.Parse           };
+        internal static readonly byte[] PasswordMessageCode     = { (byte)FrontEndMessageCode.PasswordMessage };
+        internal static readonly byte[] QueryMessageCode        = { (byte)FrontEndMessageCode.Query           };
+        internal static readonly byte[] SyncMessageCode         = { (byte)FrontEndMessageCode.Sync            };
+        internal static readonly byte[] TerminationMessageCode  = { (byte)FrontEndMessageCode.Termination     };
+
+        internal static readonly byte[] DescribePortalCode      = { (byte)'P' };
+        internal static readonly byte[] DescribeStatementCode   = { (byte)'S' };    }
 }

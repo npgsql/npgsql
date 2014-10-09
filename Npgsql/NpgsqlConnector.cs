@@ -289,8 +289,9 @@ namespace Npgsql
             try
             {
                 // Establish protocol communication and handle authentication...
-                var startupPacket = new NpgsqlStartupPacket(Database, UserName, _settings);
-                startupPacket.WriteToStream(Stream);
+                //var startupPacket = new NpgsqlStartupPacket(Database, UserName, _settings);
+                //startupPacket.WriteToStream(Stream);
+                SendStartup(Database, UserName, _settings);
                 ConsumeAll();
             }
             catch
@@ -462,6 +463,49 @@ namespace Npgsql
 
         #endregion
 
+        #region Startup
+
+        internal void SendStartup(string databaseName, String username, NpgsqlConnectionStringBuilder settings)
+        {
+            var parameters = new Dictionary<String, String> {
+                { "database",           databaseName },
+                { "user",               username     },
+                { "DateStyle",          "ISO"        },
+                { "client_encoding",    "UTF8"       },
+                { "lc_monetary",        "C"          },
+            };
+
+            if (!string.IsNullOrEmpty(settings.ApplicationName)) {
+                parameters.Add("application_name", settings.ApplicationName);
+            }
+
+            if (!string.IsNullOrEmpty(settings.SearchPath)) {
+                parameters.Add("search_path", settings.SearchPath);
+            }
+
+            var encodedParams = parameters.ToDictionary(kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Key),
+                                                        kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Value));
+
+            var packetSize = 4 + 4 + 1 + encodedParams
+                .Select(kv => kv.Key.Length + kv.Value.Length + 2)
+                .Sum();
+
+            Stream
+                .WriteInt32(packetSize)
+                .WriteInt32(PGUtil.ConvertProtocolVersion(ProtocolVersion.Version3));
+
+            foreach (var kv in encodedParams)
+            {
+                Stream
+                    .WriteBytesNullTerminated(kv.Key)
+                    .WriteBytesNullTerminated(kv.Value);
+            }
+
+            Stream.WriteByte(ASCIIByteArrays.Byte_0).Flush();
+        }
+
+        #endregion Startup
+
         #region Outgoing messages
 
         [GenerateAsync]
@@ -475,19 +519,45 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void SendAuthenticate(byte[] password)
+        internal void SendPasswordMessage(byte[] password)
         {
             _log.Debug("Sending authenticate message");
-            var pwpck = new NpgsqlPasswordPacket(password);
-            pwpck.WriteToStream(Stream);
-            Stream.Flush();
+
+            Stream
+                .WriteByte(ASCIIByteArrays.PasswordMessageCode)
+                .WriteInt32(4 + password.Length)
+                .WriteBytes(password)
+                .Flush();
         }
 
         [GenerateAsync]
-        internal void SendParse(NpgsqlParse parse)
+        internal void SendParse(string prepareName, byte[] queryString, int[] parameterIDs)
         {
             _log.Debug("Sending parse message");
-            parse.WriteToStream(Stream);
+
+            var prepareNameBytes = BackendEncoding.UTF8Encoding.GetBytes(prepareName);
+            //Stream.Write(ASCIIByteArrays.ParseMessageCode, 0, 1);
+
+            // message length =
+            // Int32 self
+            // name of prepared statement + 1 null string terminator +
+            // query string + 1 null string terminator
+            // + Int16
+            // + Int32 * number of parameters.
+            var messageLength = 4 + prepareNameBytes.Length + 1 + queryString.Length + 1 +
+                                  2 + (parameterIDs.Length * 4);
+
+            Stream
+                .WriteByte(ASCIIByteArrays.ParseMessageCode)
+                .WriteInt32(messageLength)
+                .WriteBytesNullTerminated(prepareNameBytes)
+                .WriteBytesNullTerminated(queryString)
+                .WriteInt16((short)parameterIDs.Length);
+
+            for (var i = 0; i < parameterIDs.Length; i++) {
+                Stream.WriteInt32(parameterIDs[i]);
+            }
+
             Stream.Flush();
         }
 
@@ -495,8 +565,11 @@ namespace Npgsql
         internal void SendSync()
         {
             _log.Debug("Sending sync message");
-            NpgsqlSync.Default.WriteToStream(Stream);
-            Stream.Flush();
+
+            Stream
+                .WriteByte(ASCIIByteArrays.SyncMessageCode)
+                .WriteInt32(4)
+                .Flush();
         }
 
         [GenerateAsync]
@@ -507,18 +580,55 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void SendDescribe(NpgsqlDescribe describe)
+        internal void SendDescribePortal(string portalName)
         {
-            _log.Debug("Sending describe message");
-            describe.WriteToStream(Stream);
-            Stream.Flush();
+            _log.Debug("Sending describe portal message");
+            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
+            var len = 4 + 1 + portalNameBytes.Length + 1;
+            Stream
+                .WriteByte(ASCIIByteArrays.DescribeMessageCode)
+                .WriteInt32(len)
+                .WriteByte(ASCIIByteArrays.DescribePortalCode)
+                .WriteBytesNullTerminated(portalNameBytes)
+                .Flush();
         }
 
         [GenerateAsync]
-        internal void SendExecute(NpgsqlExecute execute)
+        internal void SendDescribeStatement(string statementName)
+        {
+            _log.Debug("Sending describe statement message");
+            var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
+            var len = 4 + 1 + statementNameBytes.Length + 1;
+            Stream
+                .WriteByte(ASCIIByteArrays.DescribeMessageCode)
+                .WriteInt32(len)
+                .WriteByte(ASCIIByteArrays.DescribeStatementCode)
+                .WriteBytesNullTerminated(statementNameBytes)
+                .Flush();
+        }
+
+        [GenerateAsync]
+        internal void SendExecute(string portalName="", int maxRows=0)
         {
             _log.Debug("Sending execute message");
-            execute.WriteToStream(Stream);
+
+            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
+            var len = 4 + portalNameBytes.Length + 1 + 4;
+            Stream
+                .WriteByte(ASCIIByteArrays.ExecuteMessageCode)
+                .WriteInt32(len)
+                .WriteBytesNullTerminated(portalNameBytes)
+                .WriteInt32(maxRows);
+        }
+
+        [GenerateAsync]
+        internal void SendFlush()
+        {
+            _log.Debug("Sending flush message");
+
+            Stream
+                .WriteByte(ASCIIByteArrays.FlushMessageCode)
+                .WriteInt32(4);
         }
 
         #endregion Outgoing messages
@@ -592,7 +702,7 @@ namespace Npgsql
                                 continue;
                             case AuthenticationRequestType.AuthenticationClearTextPassword:
                                 // Send the PasswordPacket.
-                                SendAuthenticate(PGUtil.NullTerminateArray(Password));
+                                SendPasswordMessage(PGUtil.NullTerminateArray(Password));
                                 continue;
                             case AuthenticationRequestType.AuthenticationMD5Password:
                                 // Now do the "MD5-Thing"
@@ -637,7 +747,7 @@ namespace Npgsql
                                     sb.Append(b.ToString("x2"));
                                 }
 
-                                SendAuthenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
+                                SendPasswordMessage(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
                                 continue;
 
                             case AuthenticationRequestType.AuthenticationGSS:
@@ -646,7 +756,7 @@ namespace Npgsql
                                 {
                                     // For GSSAPI we have to use the supplied hostname
                                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                                    SendAuthenticate(SSPI.Continue(null));
+                                    SendPasswordMessage(SSPI.Continue(null));
                                     continue;
                                 }
                                 else
@@ -663,7 +773,7 @@ namespace Npgsql
                                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                                    SendAuthenticate(SSPI.Continue(null));
+                                    SendPasswordMessage(SSPI.Continue(null));
                                     continue;
                                 }
                                 else
@@ -680,7 +790,7 @@ namespace Npgsql
                                 var passwdRead = SSPI.Continue(authData);
                                 if (passwdRead.Length != 0)
                                 {
-                                    SendAuthenticate(passwdRead);
+                                    SendPasswordMessage(passwdRead);
                                 }
                                 continue;
                             }
@@ -1122,7 +1232,7 @@ namespace Npgsql
         /// </summary>
         internal void CancelRequest()
         {
-            var cancelConnector = new NpgsqlConnector(_settings, false) { BackEndKeyData = BackEndKeyData };
+            var cancelConnector = new NpgsqlConnector(_settings, false);
 
             try
             {
@@ -1130,7 +1240,7 @@ namespace Npgsql
                 cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
 
                 // Cancel current request.
-                cancelConnector.SendCancelRequest();
+                cancelConnector.SendCancelRequest(BackEndKeyData);
             }
             finally
             {
@@ -1138,11 +1248,17 @@ namespace Npgsql
             }
         }
 
-        void SendCancelRequest()
+        void SendCancelRequest(NpgsqlBackEndKeyData backEndKeyData)
         {
-            var cancelRequestMessage = new NpgsqlCancelRequest(BackEndKeyData);
-            cancelRequestMessage.WriteToStream(Stream);
-            Stream.Flush();
+            const int len = 16;
+            const int cancelRequestCode = 1234 << 16 | 5678;
+
+            Stream
+                .WriteInt32(len)
+                .WriteInt32(cancelRequestCode)
+                .WriteInt32(backEndKeyData.ProcessID)
+                .WriteInt32(backEndKeyData.SecretKey)
+                .Flush();
         }
 
         #endregion Cancel
@@ -1610,7 +1726,7 @@ namespace Npgsql
         // Unused, can be deleted?
         internal void TestConnector()
         {
-            NpgsqlSync.Default.WriteToStream(Stream);
+            SendSync();
             Stream.Flush();
             var buffer = new Queue<int>();
             //byte[] compareBuffer = new byte[6];

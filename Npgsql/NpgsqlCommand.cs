@@ -65,7 +65,6 @@ namespace Npgsql
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
         NpgsqlBind _bind;
-        NpgsqlExecute _execute;
         NpgsqlRowDescription _currentRowDescription;
 
         long _lastInsertedOid;
@@ -421,13 +420,11 @@ namespace Npgsql
             const string portalName = "";
 
             _preparedCommandText = GetCommandText(true);
-            var parse = new NpgsqlParse(_planName, _preparedCommandText, new int[] { });
-            var statementDescribe = new NpgsqlDescribeStatement(_planName);
             NpgsqlRowDescription returnRowDesc = null;
 
             // Write Parse, Describe, and Sync messages to the wire.
-            _connector.SendParse(parse);
-            _connector.SendDescribe(statementDescribe);
+            _connector.SendParse(_planName, _preparedCommandText, new int[] { });
+            _connector.SendDescribeStatement(_planName);
             _connector.SendSync();
 
             // Tell to mediator what command is being sent.
@@ -487,7 +484,6 @@ namespace Npgsql
             // The Bind and Execute message objects live through multiple Executes.
             // Only Bind changes at all between Executes, which is done in BindParameters().
             _bind = new NpgsqlBind(portalName, _planName, new Int16[Parameters.Count], null, resultFormatCodes);
-            _execute = new NpgsqlExecute(portalName, 0);
 
             _prepared = PrepareStatus.Prepared;
         }
@@ -498,7 +494,6 @@ namespace Npgsql
             {
                 _connector.ExecuteBlind("DEALLOCATE " + _planName);
                 _bind = null;
-                _execute = null;
                 _currentRowDescription = null;
                 _prepared = PrepareStatus.NeedsPrepare;
             }
@@ -1643,7 +1638,7 @@ namespace Npgsql
 
                     // Write the Bind, Execute, and Sync message to the wire.
                     _connector.SendBind(_bind);
-                    _connector.SendExecute(_execute);
+                    _connector.SendExecute();
                     _connector.SendSync();
 
                     // Tell to mediator what command is being sent.
