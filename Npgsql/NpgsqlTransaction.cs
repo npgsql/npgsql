@@ -61,18 +61,18 @@ namespace Npgsql
 
             if (isolation == IsolationLevel.RepeatableRead)
             {
-                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransRepeatableRead);
+                conn.Connector.ExecuteBlind(QueryManager.BeginTransRepeatableRead);
             }
             else if ((isolation == IsolationLevel.Serializable) ||
                 (isolation == IsolationLevel.Snapshot))
             {
-                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransSerializable);
+                conn.Connector.ExecuteBlind(QueryManager.BeginTransSerializable);
             }
             else
             {
                 // Set isolation level default to read committed.
                 _isolation = IsolationLevel.ReadCommitted;
-                conn.Connector.ExecuteBlind(NpgsqlQuery.BeginTransReadCommitted);
+                conn.Connector.ExecuteBlind(QueryManager.BeginTransReadCommitted);
             }
 
             _conn.Connector.Transaction = this;
@@ -158,7 +158,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            _conn.Connector.ExecuteBlind(NpgsqlQuery.CommitTransaction);
+            _conn.Connector.ExecuteBlind(QueryManager.CommitTransaction);
 
             _conn.Connector.Transaction = null;
             _conn = null;
@@ -176,7 +176,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            _conn.Connector.ExecuteBlindSuppressTimeout(NpgsqlQuery.RollbackTransaction);
+            _conn.Connector.ExecuteBlindSuppressTimeout(QueryManager.RollbackTransaction);
             _conn.Connector.Transaction = null;
             _conn = null;
         }

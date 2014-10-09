@@ -583,17 +583,43 @@ namespace Npgsql
 
         #endregion
 
-        #region Simple outgoing messages
+        #region Query
 
         [GenerateAsync]
-        internal void SendQuery(NpgsqlQuery query)
+        internal void SendQuery(string query)
         {
-            if (_log.IsDebugEnabled)
-                _log.Debug("Sending query: " + query);
-            query.WriteToStream(Stream);
+            _log.Debug("Sending query");
+            QueryManager.WriteQuery(Stream, query);
             Stream.Flush();
             State = ConnectorState.Executing;
         }
+
+        [GenerateAsync]
+        internal void SendQuery(byte[] query)
+        {
+            _log.Debug("Sending query");
+            QueryManager.WriteQuery(Stream, query);
+            Stream.Flush();
+            State = ConnectorState.Executing;
+        }
+
+        /// <summary>
+        /// Sends a raw query message to the backend. The message must already contain the message code,
+        /// length etc. - this methods simply writes it to the wire.
+        /// </summary>
+        /// <param name="rawQuery">a fully-built query message, ready to be sent</param>
+        [GenerateAsync]
+        internal void SendQueryRaw(byte[] rawQuery)
+        {
+            _log.Debug("Sending query");
+            Stream.Write(rawQuery, 0, rawQuery.Length);
+            Stream.Flush();
+            State = ConnectorState.Executing;
+        }
+
+        #endregion
+
+        #region Simple outgoing messages
 
         [GenerateAsync]
         internal void SendPasswordMessage(byte[] password)
@@ -1391,14 +1417,14 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            ExecuteBlind(NpgsqlQuery.DiscardAll);
+            ExecuteBlind(QueryManager.DiscardAll);
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
         {
-            ExecuteBlind(NpgsqlQuery.UnlistenAll);
+            ExecuteBlind(QueryManager.UnlistenAll);
         }
 
         /// <summary>
@@ -1614,16 +1640,8 @@ namespace Npgsql
         /// of affected rows is of no interest.
         /// </summary>
         [GenerateAsync]
-        internal void ExecuteBlind(string command)
+        internal void ExecuteBlind(string query)
         {
-            // Bypass cpmmand parsing overhead and send command verbatim.
-            ExecuteBlind(new NpgsqlQuery(command));
-        }
-
-        [GenerateAsync]
-        internal void ExecuteBlind(NpgsqlQuery query)
-        {
-            // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
                 SetBackendCommandTimeout(20);
@@ -1633,19 +1651,33 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void ExecuteBlindSuppressTimeout(string command)
+        internal void ExecuteBlind(byte[] query)
         {
-            // Bypass cpmmand parsing overhead and send command verbatim.
-            ExecuteBlindSuppressTimeout(new NpgsqlQuery(command));
+            using (BlockNotificationThread())
+            {
+                SetBackendCommandTimeout(20);
+                SendQueryRaw(query);
+                ConsumeAll();
+            }
         }
 
         [GenerateAsync]
-        internal void ExecuteBlindSuppressTimeout(NpgsqlQuery query)
+        internal void ExecuteBlindSuppressTimeout(string query)
+        {
+            using (BlockNotificationThread())
+            {
+                SendQuery(query);
+                ConsumeAll();
+            }
+        }
+
+        [GenerateAsync]
+        internal void ExecuteBlindSuppressTimeout(byte[] query)
         {
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                SendQuery(query);
+                SendQueryRaw(query);
                 ConsumeAll();
             }
         }
@@ -1659,42 +1691,38 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteSetStatementTimeoutBlind(int timeout)
         {
-            NpgsqlQuery query;
-
             // Optimize for a few common timeout values.
             switch (timeout)
             {
                 case 10:
-                    query = NpgsqlQuery.SetStmtTimeout10Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout10Sec);
                     break;
 
                 case 20:
-                    query = NpgsqlQuery.SetStmtTimeout20Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout20Sec);
                     break;
 
                 case 30:
-                    query = NpgsqlQuery.SetStmtTimeout30Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout30Sec);
                     break;
 
                 case 60:
-                    query = NpgsqlQuery.SetStmtTimeout60Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout60Sec);
                     break;
 
                 case 90:
-                    query = NpgsqlQuery.SetStmtTimeout90Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout90Sec);
                     break;
 
                 case 120:
-                    query = NpgsqlQuery.SetStmtTimeout120Sec;
+                    SendQueryRaw(QueryManager.SetStmtTimeout120Sec);
                     break;
 
                 default:
-                    query = new NpgsqlQuery(string.Format("SET statement_timeout = {0}", timeout * 1000));
+                    SendQuery(string.Format("SET statement_timeout = {0}", timeout * 1000));
                     break;
 
             }
-
-            SendQuery(query);
             ConsumeAll();
         }
 

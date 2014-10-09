@@ -1564,12 +1564,10 @@ namespace Npgsql
 
                 if (_prepared == PrepareStatus.NotPrepared)
                 {
-                    byte[] commandText = GetCommandText();
-
-                    var query = new NpgsqlQuery(commandText);
+                    var commandText = GetCommandText();
 
                     // Write the Query message to the wire.
-                    _connector.SendQuery(query);
+                    _connector.SendQuery(commandText);
 
                     // Tell to mediator what command is being sent.
                     if (_prepared == PrepareStatus.NotPrepared)
@@ -1616,8 +1614,7 @@ namespace Npgsql
                         // Passthrough the commandtimeout to the inner command, so user can also control its timeout.
                         // TODO: Check if there is a better way to handle that.
 
-                        query = new NpgsqlQuery(queryText);
-                        _connector.SendQuery(query);
+                        _connector.SendQuery(queryText);
                         reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
                         // For un-prepared statements, the first response is always a row description.
                         // For prepared statements, we may be recycling a row description from a previous Execute.

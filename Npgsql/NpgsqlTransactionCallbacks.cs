@@ -94,7 +94,7 @@ namespace Npgsql
             }
             else
             {
-                connection.Connector.ExecuteBlind(NpgsqlQuery.CommitTransaction);
+                connection.Connector.ExecuteBlind(QueryManager.CommitTransaction);
             }
         }
 
@@ -120,7 +120,7 @@ namespace Npgsql
             }
             else
             {
-                connection.Connector.ExecuteBlind(NpgsqlQuery.RollbackTransaction);
+                connection.Connector.ExecuteBlind(QueryManager.RollbackTransaction);
             }
         }
 

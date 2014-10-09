@@ -143,11 +143,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>L10N.resx</DependentUpon>
     </Compile>
-    <Compile Include="NpgsqlQuery.cs" />
-    <Compile Include="NpgsqlQuery.Async.cs">
-      <DependentUpon>NpgsqlQuery.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
     <Compile Include="BackendEncoding.cs" />
@@ -212,6 +207,7 @@
       <DependentUpon>PGUtil.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
+    <Compile Include="QueryManager.cs" />
     <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
