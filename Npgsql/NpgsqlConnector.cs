@@ -307,7 +307,6 @@ namespace Npgsql
 
             // Some connection parameters for protocol 3 had been sent in the startup packet.
             // The rest will be setted here.
-            sbInitQueries.WriteLine("SET extra_float_digits=3;");
             sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
 
             _initQueries = sbInitQueries.ToString();

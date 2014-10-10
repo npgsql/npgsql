@@ -1319,15 +1319,16 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void Bug1010992DoubleValueSupport()
+        public void DoubleWithoutPrepared()
         {
             var command = new NpgsqlCommand("select :field_float8", Conn);
             command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
-            double x = 1d/7d;
-            //double value = 0.12345678901234561D;
+            double x = 1d/7d;;
             command.Parameters[0].Value = x;
             var valueReturned = command.ExecuteScalar();
-            Assert.AreEqual(x, valueReturned);
+            Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);
+            Console.WriteLine("Actual=  {0}", valueReturned);
+            Console.WriteLine("Expected={0}", x);
         }
 
         [Test]
@@ -3006,9 +3007,7 @@ namespace NpgsqlTests
                     cmd.Prepare();
 
                 var retVal = (float[])cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
+                Assert.That(retVal, Is.EqualTo(inVal).Within(100).Ulps);
             }
         }
 
