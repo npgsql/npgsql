@@ -1847,5 +1847,18 @@ namespace NpgsqlTests
                 }
             }
         }
+
+        [Test]
+        public void NpgsqlParameterCloneTest()
+        {
+            Double value;
+            NpgsqlParameter param;
+            value = Double.MaxValue;
+            param = new NpgsqlParameter();
+            param.Value = value;
+
+            var newParam = param.Clone();
+            Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+        }
     }
 }
