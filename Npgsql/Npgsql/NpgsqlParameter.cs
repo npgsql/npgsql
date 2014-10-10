@@ -724,6 +724,7 @@ namespace Npgsql
             clone.source_column = source_column;
             clone.source_version = source_version;
             clone.value = value;
+            clone.npgsqlValue = npgsqlValue;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
 
             return clone;
