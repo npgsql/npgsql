@@ -34,7 +34,9 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Resources;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
 
@@ -47,7 +49,7 @@ namespace Npgsql
     /// This class provides many util methods to handle
     /// reading and writing of PostgreSQL protocol messages.
     /// </summary>
-    internal static class PGUtil
+    internal static partial class PGUtil
     {
         //TODO: What should this value be?
         //There is an obvious balancing act in setting this value. The larger the value, the fewer times
@@ -165,6 +167,9 @@ namespace Npgsql
         /// It returns the resultant string of bytes read.
         /// This string is sent from backend.
         /// </summary>
+        // Since this method reads byte by byte AND we have a BufferedReader, it seems really inefficient
+        // to do async here?
+        // [GenerateAsync]
         public static String ReadString(this Stream network_stream)
         {
             List<byte> buffer = new List<byte>();
@@ -186,6 +191,9 @@ namespace Npgsql
             return BackendEncoding.UTF8Encoding.GetString(buffer.ToArray());
         }
 
+        // Since this method reads byte by byte AND we have a BufferedReader, it seems really inefficient
+        // to do async here?
+        // [GenerateAsync]
         public static char ReadChar(this Stream stream)
         {
             byte[] buffer = new byte[4]; //No character is more than 4 bytes long.
@@ -309,6 +317,7 @@ namespace Npgsql
         /// <param name="offset">starting position to fill the buffer</param>
         /// <param name="count">number of bytes to read</param>
         /// <returns>The number of bytes read.  May be less than count if no more bytes are available.</returns>
+        [GenerateAsync]
         public static int ReadBytes(this Stream stream, byte[] buffer, int offset, int count)
         {
             int end = offset + count;
@@ -363,6 +372,7 @@ namespace Npgsql
         ///<summary>
         /// This method writes a string to the network stream.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteString(this Stream stream, String theString)
         {
             _log.Trace("Sending: " + theString);
@@ -374,6 +384,7 @@ namespace Npgsql
         ///<summary>
         /// This method writes a string to the network stream.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteString(this Stream stream, String format, params object[] parameters)
         {
             string theString = string.Format(format, parameters);
@@ -387,12 +398,13 @@ namespace Npgsql
         /// This method writes a C NULL terminated string to the network stream.
         /// It appends a NULL terminator to the end of the String.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteStringNullTerminated(this Stream stream, String theString)
         {
             _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
             stream.Write(bytes, 0, bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
@@ -400,40 +412,44 @@ namespace Npgsql
         /// This method writes a C NULL terminated string to the network stream.
         /// It appends a NULL terminator to the end of the String.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteStringNullTerminated(this Stream stream, String format, params object[] parameters)
         {
             string theString = string.Format(format, parameters);
             _log.Trace("Sending: " + theString);
             byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
             stream.Write(bytes, 0, bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
         /// <summary>
         /// This method writes a byte to the stream. It also enables logging of them.
         /// </summary>
-        public static Stream WriteBytes(this Stream stream, byte the_byte)
+        [GenerateAsync]
+        public static Stream WriteByte(this Stream stream, byte[] b)
         {
-            _log.Trace("Sending byte: " + the_byte);
-            stream.WriteByte(the_byte);
+            _log.Trace("Sending byte: {0}" + b[0]);
+            stream.Write(b, 0, 1);
             return stream;
         }
 
         /// <summary>
         /// This method writes a byte to the stream. It also enables logging of them.
         /// </summary>
-        public static Stream WriteBytesNullTerminated(this Stream stream, byte the_byte)
+        [GenerateAsync]
+        public static Stream WriteByteNullTerminated(this Stream stream, byte[] b)
         {
-            _log.Trace("Sending byte: " + the_byte);
-            stream.WriteByte(the_byte);
-            stream.WriteByte(0);
+            _log.Trace("Sending byte: " + b[0]);
+            stream.Write(b, 0, 1);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
         /// <summary>
         /// This method writes a set of bytes to the stream. It also enables logging of them.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteBytes(this Stream stream, byte[] the_bytes)
         {
             _log.Trace("Sending bytes: " + String.Join(", ", the_bytes));
@@ -444,11 +460,12 @@ namespace Npgsql
         /// <summary>
         /// This method writes a set of bytes to the stream. It also enables logging of them.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteBytesNullTerminated(this Stream stream, byte[] the_bytes)
         {
             _log.Trace("Sending bytes: " + String.Join(", ", the_bytes));
             stream.Write(the_bytes, 0, the_bytes.Length);
-            stream.WriteByte(0);
+            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 
@@ -457,6 +474,7 @@ namespace Npgsql
         /// backend server.
         /// It pads the string with null bytes to the size specified.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteLimString(this Stream network_stream, String the_string, Int32 n)
         {
             //Note: We do not know the size in bytes until after we have converted the string.
@@ -484,6 +502,7 @@ namespace Npgsql
         /// backend server.
         /// It pads the string with null bytes to the size specified.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteLimBytes(this Stream network_stream, byte[] bytes, Int32 n)
         {
             if (bytes.Length > n)
@@ -504,6 +523,7 @@ namespace Npgsql
             return network_stream;
         }
 
+        [GenerateAsync]
         public static void CheckedStreamRead(this Stream stream, Byte[] buffer, Int32 offset, Int32 size)
         {
             Int32 bytes_from_stream = 0;
@@ -523,6 +543,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         public static void EatStreamBytes(this Stream stream, int size)
         {
 //See comment on THRASH_CAN and THRASH_CAN_SIZE.
@@ -607,6 +628,7 @@ namespace Npgsql
         /// <summary>
         /// Write a 32-bit integer to the given stream in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteInt32(this Stream stream, Int32 value)
         {
             stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 4);
@@ -617,6 +639,7 @@ namespace Npgsql
         /// <summary>
         /// Read a 32-bit integer from the given stream in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Int32 ReadInt32(this Stream stream)
         {
             byte[] buffer = new byte[4];
@@ -627,6 +650,7 @@ namespace Npgsql
         /// <summary>
         /// Read a 32-bit integer from the given array in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Int32 ReadInt32(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(src, offset));
@@ -635,6 +659,7 @@ namespace Npgsql
         /// <summary>
         /// Write a 16-bit integer to the given stream in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Stream WriteInt16(this Stream stream, Int16 value)
         {
             stream.Write(BitConverter.GetBytes(IPAddress.HostToNetworkOrder(value)), 0, 2);
@@ -645,6 +670,7 @@ namespace Npgsql
         /// <summary>
         /// Read a 16-bit integer from the given stream in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Int16 ReadInt16(this Stream stream)
         {
             byte[] buffer = new byte[2];
@@ -655,6 +681,7 @@ namespace Npgsql
         /// <summary>
         /// Read a 16-bit integer from the given array in the correct byte order.
         /// </summary>
+        [GenerateAsync]
         public static Int16 ReadInt16(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(src, offset));
@@ -719,6 +746,28 @@ namespace Npgsql
             input.CopyTo(output, 0);
 
             return output;
+        }
+
+        /// <summary>
+        /// Creates a Task&lt;TResult&gt; that's completed successfully with the specified result.
+        /// </summary>
+        /// <remarks>
+        /// In .NET 4.5 Task provides this. In .NET 4.0 with BCL.Async, TaskEx provides this. This
+        /// method wraps the two.
+        /// </remarks>
+        /// <typeparam name="TResult">The type of the result returned by the task.</typeparam>
+        /// <param name="result">The result to store into the completed task.</param>
+        /// <returns>The successfully completed task.</returns>
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        internal static Task<TResult> TaskFromResult<TResult>(TResult result)
+        {
+#if NET45
+            return Task.FromResult(result);
+#else
+            return TaskEx.FromResult(result);
+#endif
         }
     }
 
@@ -872,6 +921,12 @@ namespace Npgsql
 
             base.Dispose(disposing);
         }
+    }
+
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    internal class GenerateAsync : Attribute
+    {
+        public GenerateAsync(string transformedName=null, bool withOverride=false) {}
     }
 }
 

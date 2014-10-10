@@ -35,6 +35,21 @@ namespace NpgsqlTests
             }
         }
 
+#if NET45
+        [Test, Description("A minimal, simple, non-query scenario in async")]
+        public async void ExecuteUpdateNonQueryAsync()
+        {
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    await ExecuteNonQueryAsync("set lock_timeout = 1000");
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+#endif
+
         [Test, Description("A minimal, simple, scalar scenario")]
         public void ExecuteScalar()
         {
@@ -47,6 +62,62 @@ namespace NpgsqlTests
                 }
             }
         }
+
+#if NET45
+        [Test, Description("A minimal, simple, scalar scenario in async")]
+        public async void ExecuteScalarAsync()
+        {
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    await ExecuteScalarAsync("SELECT 1 + 1");
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+#endif
+
+        [Test, Description("A minimal, simple reader scenario")]
+        [TestCase(100)]
+        public void ExecuteReader(int rows)
+        {
+            for (var i = 0; i < rows; i++)
+                ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", Conn))
+                    using (var reader = cmd.ExecuteReader()) {
+                        while (reader.Read()) {}
+                    }
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+
+#if NET45
+        [Test, Description("A minimal, simple reader scenario in async")]
+        [TestCase(100)]
+        public async void ExecuteReaderAsync(int rows)
+        {
+            for (var i = 0; i < rows; i++)
+                ExecuteNonQuery("INSERT INTO DATA (field_int4) VALUES (10)");
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                while (!metrics.TimesUp)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", Conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync()) { }
+                    }
+                    metrics.IncrementIterations();
+                }
+            }
+        }
+#endif
 
         [Test, Description("A normal insert command with one parameter")]
         public void ParameterizedInsert()
@@ -737,22 +808,6 @@ namespace NpgsqlTests
         }
 
         #region Setup / Teardown / Utils
-
-        private Stopwatch _watch;
-
-        [SetUp]
-        public void Setup()
-        {
-            _watch = new Stopwatch();
-            _watch.Start();
-        }
-
-        [TearDown]
-        public void Teardown()
-        {
-            _watch.Stop();
-            Console.WriteLine("Total test running time: {0}ms",  _watch.ElapsedMilliseconds);
-        }
 
         protected override void SetupLogging()
         {

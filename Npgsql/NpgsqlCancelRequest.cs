@@ -33,7 +33,7 @@ namespace Npgsql
     /// server.
     /// </summary>
     ///
-    internal sealed class NpgsqlCancelRequest : ClientMessage
+    internal sealed partial class NpgsqlCancelRequest : IClientMessage
     {
         private static readonly Int32 CancelRequestMessageSize = 16;
         private static readonly Int32 CancelRequestCode = 1234 << 16 | 5678;
@@ -45,7 +45,8 @@ namespace Npgsql
             this.BackendKeydata = BackendKeydata;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        [GenerateAsync]
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteInt32(CancelRequestMessageSize);
             outputStream.WriteInt32(CancelRequestCode);

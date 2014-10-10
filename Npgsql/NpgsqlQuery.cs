@@ -35,11 +35,13 @@ namespace Npgsql
     /// <summary>
     /// Summary description for NpgsqlQuery
     /// </summary>
-    internal sealed class NpgsqlQuery : ClientMessage
+    internal sealed partial class NpgsqlQuery : IClientMessage
     {
         private byte[] commandBytes = null;
         private string commandText = null;
         private readonly byte[] pgCommandBytes;
+
+        static readonly byte[] MessageCode = { (byte)FrontEndMessageCode.Query };
 
         public static readonly NpgsqlQuery BeginTransRepeatableRead = new NpgsqlQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
         public static readonly NpgsqlQuery BeginTransSerializable = new NpgsqlQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
@@ -68,7 +70,7 @@ namespace Npgsql
             MemoryStream commandWriter = new MemoryStream(pgCommandBytes);
 
             commandWriter
-                .WriteBytes((byte)FrontEndMessageCode.Query)
+                .WriteByte(MessageCode)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(command);
 
@@ -86,14 +88,15 @@ namespace Npgsql
             MemoryStream commandWriter = new MemoryStream(pgCommandBytes);
 
             commandWriter
-                .WriteBytes((byte)FrontEndMessageCode.Query)
+                .WriteByte(MessageCode)
                 .WriteInt32(len)
                 .WriteStringNullTerminated(command);
 
             commandText = command;
         }
 
-        public override void WriteToStream(Stream outputStream)
+        [GenerateAsync]
+        public void WriteToStream(Stream outputStream)
         {
             outputStream.WriteBytes(pgCommandBytes);
         }

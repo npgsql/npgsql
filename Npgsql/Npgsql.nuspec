@@ -15,7 +15,13 @@
     <language>en-US</language>
     <tags>Npgsql postgres data database Postgresql</tags>
     <dependencies>
-      <dependency id="Common.Logging" version="2.2.0" />
+     <group targetFramework="net40">
+       <dependency id="Microsoft.Bcl.Async" />
+       <dependency id="Common.Logging" version="2.2.0" />
+     </group>
+     <group targetFramework="net45">
+       <dependency id="Common.Logging" version="2.2.0" />
+     </group>
     </dependencies>
   </metadata>
   <files>

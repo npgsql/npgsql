@@ -40,7 +40,7 @@ namespace Npgsql
     /// the PostgreSQL.
     /// </summary>
     ///
-    internal sealed class NpgsqlRowDescription : IServerResponseObject
+    internal sealed class NpgsqlRowDescription : IServerMessage
     {
         private abstract class KanaWidthConverter
         {

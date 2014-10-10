@@ -36,7 +36,7 @@ namespace Npgsql
     /// <summary>
     /// Implements <see cref="RowReader"/> for version 3 of the protocol.
     /// </summary>
-    internal sealed class StringRowReader : RowReader
+    internal sealed partial class StringRowReader : RowReader
     {
         private readonly int _messageSize;
         private int? _nextFieldSize;
@@ -57,6 +57,7 @@ namespace Npgsql
             _rowDesc = rowDesc;
         }
 
+        [GenerateAsync(withOverride: true)]
         protected override object ReadNext()
         {
             int fieldSize = GetThisFieldCount();
@@ -102,6 +103,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         private void AbandonShip()
         {
             //field size will always be smaller than message size
@@ -112,7 +114,7 @@ namespace Npgsql
             try
             {
                 Stream
-                    .WriteBytes((byte)FrontEndMessageCode.Termination)
+                    .WriteByte(ASCIIByteArrays.TerminationMessageCode)
                     .WriteInt32(4)
                     .Flush();
             }
@@ -129,6 +131,7 @@ namespace Npgsql
             throw new DataException();
         }
 
+        [GenerateAsync(withOverride: true)]
         protected override void SkipOne()
         {
             int fieldSize = GetThisFieldCount();
@@ -145,6 +148,7 @@ namespace Npgsql
             get { return GetThisFieldCount() == -1; }
         }
 
+        [GenerateAsync]
         private int GetThisFieldCount()
         {
             if (_nextFieldSize.HasValue)

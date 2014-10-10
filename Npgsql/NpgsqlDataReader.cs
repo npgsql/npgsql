@@ -32,9 +32,11 @@ using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -42,7 +44,7 @@ namespace Npgsql
     /// <summary>
     /// Provides a means of reading a forward-only stream of rows from a PostgreSQL backend.
     /// </summary>
-    public class NpgsqlDataReader : DbDataReader, IStreamOwner
+    public partial class NpgsqlDataReader : DbDataReader, IStreamOwner
     {
         internal NpgsqlConnector _connector;
         internal NpgsqlConnection _connection;
@@ -59,7 +61,6 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        private readonly IEnumerator<IServerResponseObject> _dataEnumerator;
         internal NpgsqlRowDescription CurrentDescription { get; private set; }
         private NpgsqlRow _currentRow = null;
         private int? _recordsAffected = null;
@@ -78,30 +79,20 @@ namespace Npgsql
         private NpgsqlRow _pendingRow = null;
         private readonly bool _preparedStatement;
 
-        internal NpgsqlDataReader(IEnumerable<IServerResponseObject> dataEnumeration, CommandBehavior behavior,
-                                        NpgsqlCommand command, NpgsqlConnector.NotificationThreadBlock threadBlock,
-                                        bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior,
+                                  NpgsqlConnector.NotificationThreadBlock threadBlock,
+                                  bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
         {
             _behavior = behavior;
             _connection = (_command = command).Connection;
             _connector = command.Connector;
-            _dataEnumerator = dataEnumeration.GetEnumerator();
             _connector.CurrentReader = this;
             _threadBlock = threadBlock;
             _preparedStatement = preparedStatement;
             CurrentDescription = rowDescription;
-
-            // For un-prepared statements, the first response is always a row description.
-            // For prepared statements, we may be recycling a row description from a previous Execute.
-            if (CurrentDescription == null)
-            {
-                NextResultInternal();
-            }
-
-            UpdateOutputParameters();
         }
 
-        private void UpdateOutputParameters()
+        internal void UpdateOutputParameters()
         {
             if (CurrentDescription != null)
             {
@@ -129,7 +120,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        p.Value = row[idx];
+                        p.Value = row.Get(idx);
                         taken.Add(idx);
                     }
                 }
@@ -137,7 +128,7 @@ namespace Npgsql
                 {
                     if (!taken.Contains(i))
                     {
-                        pending.Dequeue().Value = row[i];
+                        pending.Dequeue().Value = row.Get(i);
                     }
                 }
             }
@@ -216,7 +207,41 @@ namespace Npgsql
         /// Advances the data reader to the next row.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public override Boolean Read()
+        public override bool Read()
+        {
+            return ReadInternal();
+        }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="Read"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with true if the reader
+        /// was advanced, otherwise false.</returns>
+#if NET45
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+#else
+        public Task<bool> ReadAsync(CancellationToken cancellationToken)
+#endif
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: What is the desired behavior when cancelling here?
+            // cancellationToken.Register(...)
+            return ReadInternalAsync();
+        }
+
+#if !NET45
+        public Task<bool> ReadAsync()
+        {
+            return ReadAsync(CancellationToken.None);
+        }
+#endif
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        bool ReadInternal()
         {
             try
             {
@@ -243,6 +268,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         private NpgsqlRow GetNextRow(bool clearPending)
         {
             if (_pendingDescription != null)
@@ -259,9 +285,9 @@ namespace Npgsql
                 //We should only have one row, and we've already had it. Move to end
                 //of recordset.
                 CurrentRow = null;
-                for (object skip = GetNextResponseObject();
+                for (object skip = GetNextServerMessage();
                      skip != null && (_pendingDescription = skip as NpgsqlRowDescription) == null;
-                     skip = GetNextResponseObject())
+                     skip = GetNextServerMessage())
                 {
                     if (skip is NpgsqlRow)
                     {
@@ -286,7 +312,7 @@ namespace Npgsql
                 return ret;
             }
             CurrentRow = null;
-            object objNext = GetNextResponseObject();
+            object objNext = GetNextServerMessage();
             if (clearPending)
             {
                 _pendingRow = null;
@@ -308,18 +334,49 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
-        public override Boolean NextResult()
+        public override bool NextResult()
         {
-            if (_preparedStatement)
-            {
+            if (_preparedStatement) {
                 // Prepared statements can never have multiple results.
                 return false;
             }
-
             return NextResultInternal();
         }
 
-        private Boolean NextResultInternal()
+        /// <summary>
+        /// Asynchronous version of <see cref="NextResult"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation, with true if the reader
+        /// was advanced, otherwise false.</returns>
+#if NET45
+        public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
+#else
+        public Task<bool> NextResultAsync(CancellationToken cancellationToken)
+#endif
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // TODO: What is the desired behavior when cancelling here?
+            // cancellationToken.Register(...)
+            if (_preparedStatement) {
+                // Prepared statements can never have multiple results.
+                return PGUtil.TaskFromResult(false);
+            }
+            return NextResultInternalAsync();
+        }
+
+#if !NET45
+        public Task<bool> NextResultAsync()
+        {
+            return NextResultAsync(CancellationToken.None);
+        }
+#endif
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        internal bool NextResultInternal()
         {
             try
             {
@@ -341,9 +398,12 @@ namespace Npgsql
         /// and we iterate again, otherwise we return it (perhaps updating our cache of pending
         /// rows if appropriate).
         /// </summary>
-        /// <returns>The next <see cref="IServerResponseObject"/> we will deal with.</returns>
-        private IServerResponseObject GetNextResponseObject(bool cleanup = false)
+        /// <returns>The next <see cref="IServerMessage"/> we will deal with.</returns>
+        [GenerateAsync]
+        private IServerMessage GetNextServerMessage(bool cleanup = false)
         {
+            if (_cleanedUp)
+                return null;
             try
             {
                 CurrentRow = null;
@@ -352,13 +412,13 @@ namespace Npgsql
                     _pendingRow.Dispose();
                 }
                 _pendingRow = null;
-                while (_dataEnumerator.MoveNext())
+                while (true)
                 {
-                    IServerResponseObject respNext = _dataEnumerator.Current;
+                    var msg = _connector.ReadMessage();
 
-                    if (respNext is RowReader)
+                    if (msg is RowReader)
                     {
-                        RowReader reader = respNext as RowReader;
+                        RowReader reader = msg as RowReader;
 
                         if (cleanup)
                         {
@@ -372,22 +432,28 @@ namespace Npgsql
                             return _pendingRow = BuildRow(new ForwardsOnlyRow(reader));
                         }
                     }
-                    else if (respNext is CompletedResponse)
+                    else if (msg is CompletedResponse)
                     {
-                        CompletedResponse cr = respNext as CompletedResponse;
+                        CompletedResponse cr = msg as CompletedResponse;
                         if (cr.RowsAffected.HasValue)
                         {
                             _nextRecordsAffected = (_nextRecordsAffected ?? 0) + cr.RowsAffected.Value;
                         }
                         _nextInsertOID = cr.LastInsertedOID ?? _nextInsertOID;
                     }
+                    // TODO: The check for the three COPY protocol messages slow down our normal
+                    // processing. Simply separate the flow (don't use ExecuteNonQuery)
+                    else if (msg is ReadyForQueryMsg ||
+                             msg is CopyInResponseMsg || msg is CopyOutResponseMsg || msg is CopyDataMsg)
+                    {
+                        CleanUp(true);
+                        return null;                        
+                    }
                     else
                     {
-                        return respNext;
+                        return msg;
                     }
                 }
-                CleanUp(true);
-                return null;
             }
             catch
             {
@@ -400,6 +466,7 @@ namespace Npgsql
         /// Advances the data reader to the next result, when multiple result sets were returned by the PostgreSQL backend.
         /// </summary>
         /// <returns>True if the reader was advanced, otherwise false.</returns>
+        [GenerateAsync]
         private NpgsqlRowDescription GetNextRowDescription()
         {
             if ((_behavior & CommandBehavior.SingleResult) != 0 && CurrentDescription != null)
@@ -410,7 +477,7 @@ namespace Npgsql
             NpgsqlRowDescription rd = _pendingDescription;
             while (rd == null)
             {
-                object objNext = GetNextResponseObject();
+                object objNext = GetNextServerMessage();
                 if (objNext == null)
                 {
                     break;
@@ -454,23 +521,22 @@ namespace Npgsql
         {
             lock (this)
             {
-                if (_cleanedUp)
-                {
+                if (_cleanedUp) {
                     return;
                 }
-                _cleanedUp = true;
-            }
-            if (!finishedMessages)
-            {
-                do
+                if (!finishedMessages)
                 {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                    do
                     {
-                        _connection.EmergencyClose();
-                        return;
+                        if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
+                        {
+                            _connection.EmergencyClose();
+                            return;
+                        }
                     }
+                    while (GetNextServerMessage(true) != null);
                 }
-                while (GetNextResponseObject(true) != null);
+                _cleanedUp = true;
             }
             _connector.CurrentReader = null;
             _threadBlock.Dispose();
@@ -505,21 +571,64 @@ namespace Npgsql
         #region Get column data
 
         /// <summary>
-        /// Return the value of the column at index <param name="Index"></param>.
+        /// Gets the value of the specified column as an instance of <see cref="T:System.Object"/>.
         /// </summary>
-        public override Object GetValue(Int32 Index)
+        /// <returns>
+        /// The value of the specified column.
+        /// </returns>
+        /// <param name="ordinal">The zero-based column ordinal.</param><filterpriority>1</filterpriority>
+        public override object GetValue(int ordinal)
         {
-            object providerValue = GetProviderSpecificValue(Index);
+            return GetValueInternal(ordinal);
+        }
+
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The type of the value to be returned.</param>
+        /// <param name="cancellationToken">Currently not implemented.</param>
+        /// <returns></returns>
+#if NET45
+        public override async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+#else
+        public async Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
+#endif
+        {
+            return (T)await GetValueInternalAsync(ordinal);
+        }
+
+#if !NET45
+        /// <summary>
+        /// Asynchronously gets the value of the specified column as a type.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to be returned.</typeparam>
+        /// <param name="ordinal">The type of the value to be returned.</param>
+        /// <returns></returns>
+        public Task<T> GetFieldValueAsync<T>(int ordinal)
+        {
+            return GetFieldValueAsync<T>(ordinal, CancellationToken.None);
+        }
+#endif
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        [GenerateAsync]
+        object GetValueInternal(int ordinal)
+        {
+            object providerValue = GetProviderSpecificValue(ordinal);
             NpgsqlBackendTypeInfo backendTypeInfo;
-            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > Index && _command.ExpectedTypes[Index] != null)
+            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > ordinal && _command.ExpectedTypes[ordinal] != null)
             {
-                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[Index]);
+                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[ordinal]);
             }
-            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(Index, out backendTypeInfo))
+            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(ordinal, out backendTypeInfo))
                 return backendTypeInfo.ConvertToFrameworkType(providerValue);
             return providerValue;
         }
 
+        [GenerateAsync]
         public override object GetProviderSpecificValue(int ordinal)
         {
             if (ordinal < 0 || ordinal >= CurrentDescription.NumFields)
@@ -529,7 +638,7 @@ namespace Npgsql
 
             CheckHaveRow();
 
-            object ret = CurrentRow[ordinal];
+            object ret = CurrentRow.Get(ordinal);
             if (ret is Exception)
             {
                 throw (Exception)ret;
@@ -544,7 +653,7 @@ namespace Npgsql
         {
             get
             {
-                return GetValue(GetOrdinal(name));
+                return GetValueInternal(GetOrdinal(name));
             }
         }
 
@@ -555,7 +664,7 @@ namespace Npgsql
         {
             // Should this be done using the GetValue directly and not by converting to String
             // and parsing from there?
-            return (Boolean)GetValue(i);
+            return (Boolean)GetValueInternal(i);
         }
 
         /// <summary>
@@ -563,7 +672,7 @@ namespace Npgsql
         /// </summary>
         public override Byte GetByte(Int32 i)
         {
-            return (Byte)GetValue(i);
+            return (Byte)GetValueInternal(i);
         }
 
         /// <summary>
@@ -599,7 +708,7 @@ namespace Npgsql
         /// </summary>
         public override DateTime GetDateTime(Int32 i)
         {
-            return (DateTime)GetValue(i);
+            return (DateTime)GetValueInternal(i);
         }
 
         /// <summary>
@@ -607,7 +716,7 @@ namespace Npgsql
         /// </summary>
         public override Guid GetGuid(Int32 i)
         {
-            return (Guid)GetValue(i);
+            return (Guid)GetValueInternal(i);
         }
 
         /// <summary>
@@ -615,7 +724,7 @@ namespace Npgsql
         /// </summary>
         public override Int16 GetInt16(Int32 i)
         {
-            return (Int16)GetValue(i);
+            return (Int16)GetValueInternal(i);
         }
 
         /// <summary>
@@ -623,7 +732,7 @@ namespace Npgsql
         /// </summary>
         public override Int32 GetInt32(Int32 i)
         {
-            return (Int32)GetValue(i);
+            return (Int32)GetValueInternal(i);
         }
 
         /// <summary>
@@ -631,7 +740,7 @@ namespace Npgsql
         /// </summary>
         public override Int64 GetInt64(Int32 i)
         {
-            return (Int64)GetValue(i);
+            return (Int64)GetValueInternal(i);
         }
 
         /// <summary>
@@ -639,7 +748,7 @@ namespace Npgsql
         /// </summary>
         public override Single GetFloat(Int32 i)
         {
-            return (Single)GetValue(i);
+            return (Single)GetValueInternal(i);
         }
 
         /// <summary>
@@ -647,7 +756,7 @@ namespace Npgsql
         /// </summary>
         public override Double GetDouble(Int32 i)
         {
-            return (Double)GetValue(i);
+            return (Double)GetValueInternal(i);
         }
 
         /// <summary>
@@ -655,7 +764,7 @@ namespace Npgsql
         /// </summary>
         public override String GetString(Int32 i)
         {
-            return (String)GetValue(i);
+            return (String)GetValueInternal(i);
         }
 
         /// <summary>
@@ -663,7 +772,7 @@ namespace Npgsql
         /// </summary>
         public override Decimal GetDecimal(Int32 i)
         {
-            return (Decimal)GetValue(i);
+            return (Decimal)GetValueInternal(i);
         }
 
         /// <summary>
@@ -671,7 +780,7 @@ namespace Npgsql
         /// </summary>
         public TimeSpan GetTimeSpan(Int32 i)
         {
-            return (TimeSpan)GetValue(i);
+            return (TimeSpan)GetValueInternal(i);
         }
 
         /// <summary>
@@ -681,7 +790,7 @@ namespace Npgsql
         /// <returns></returns>
         public BitString GetBitString(int i)
         {
-            object ret = GetValue(i);
+            object ret = GetValueInternal(i);
             if (ret is bool)
                 return new BitString((bool)ret);
             else
@@ -772,17 +881,49 @@ namespace Npgsql
         /// </summary>
         public override Object this[Int32 i]
         {
-            get { return GetValue(i); }
+            get { return GetValueInternal(i); }
         }
 
         /// <summary>
-        /// Report whether the value in a column is DBNull.
+        /// Gets a value that indicates whether the column contains nonexistent or missing values.
         /// </summary>
-        public override Boolean IsDBNull(Int32 i)
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+        public override bool IsDBNull(int ordinal)
         {
             CheckHaveRow();
-            return CurrentRow.IsDBNull(i);
+            return CurrentRow.IsDBNull(ordinal);
         }
+
+        /// <summary>
+        /// An asynchronous version of IsDBNull, which gets a value that indicates whether the
+        /// column contains non-existent or missing values.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <param name="cancellationToken">Currently not implemented.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+#if NET45
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+#else
+        public Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+#endif
+        {
+            CheckHaveRow();
+            return CurrentRow.IsDBNullAsync(ordinal);
+        }
+
+#if !NET45
+        /// <summary>
+        /// An asynchronous version of IsDBNull, which gets a value that indicates whether the
+        /// column contains non-existent or missing values.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column to be retrieved.</param>
+        /// <returns>true if the specified column value is equivalent to DBNull otherwise false.</returns>
+        public Task<bool> IsDBNullAsync(int ordinal)
+        {
+            return IsDBNullAsync(ordinal, CancellationToken.None);
+        }
+#endif
 
         /// <summary>
         /// Copy values from each column in the current row into <paramref name="values"/>.
@@ -1167,7 +1308,7 @@ namespace Npgsql
                     // add any column that is the only column for that key to the unique list
                     // unique here doesn't mean general unique constraint (with possibly multiple columns)
                     // it means all values in this single column must be unique
-                    while (dr.Read())
+                    while (dr.ReadInternal())
                     {
                         columnName = dr.GetString(0);
                         currentKeyName = dr.GetString(1);
@@ -1264,7 +1405,7 @@ namespace Npgsql
                     {
                         Dictionary<long, Table> oidLookup = new Dictionary<long, Table>(oids.Count);
                         int columnCount = reader.FieldCount;
-                        while (reader.Read())
+                        while (reader.ReadInternal())
                         {
                             Table t = new Table(reader);
                             oidLookup.Add(t.Id, t);
@@ -1338,7 +1479,7 @@ namespace Npgsql
                         )
                     {
                         Dictionary<string, Column> columnLookup = new Dictionary<string, Column>();
-                        while (reader.Read())
+                        while (reader.ReadInternal())
                         {
                             Column column = new Column(reader);
                             columnLookup.Add(column.Key, column);
@@ -1385,7 +1526,7 @@ namespace Npgsql
 
                     using (NpgsqlDataReader dr = c.GetReader(CommandBehavior.SingleResult | CommandBehavior.SequentialAccess))
                     {
-                        while (dr.Read())
+                        while (dr.ReadInternal())
                         {
                             yield return dr.GetString(0);
                         }

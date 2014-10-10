@@ -13,7 +13,10 @@ namespace NpgsqlTests
         private static Process process = Process.GetCurrentProcess();
 
         private bool running;
-        private int iterations;
+        /// <summary>
+        /// The number of iterations accumulated.
+        /// </summary>
+        public int Iterations { get; private set; }
         private TimeSpan systemCPUTime;
         private TimeSpan userCPUTime;
         private Stopwatch stopwatch;
@@ -23,7 +26,7 @@ namespace NpgsqlTests
 
         private TestMetrics(TimeSpan allowedTime, bool reportOnStop)
         {
-            iterations = 0;
+            Iterations = 0;
             systemCPUTime = process.PrivilegedProcessorTime;
             userCPUTime = process.UserProcessorTime;
             stopwatch = Stopwatch.StartNew();
@@ -49,7 +52,7 @@ namespace NpgsqlTests
         /// </summary>
         public void IncrementIterations()
         {
-            iterations++;
+            Iterations++;
         }
 
         /// <summary>
@@ -70,14 +73,9 @@ namespace NpgsqlTests
 
             if (reportOnStop)
             {
-                Console.WriteLine(
-                    "Elapsed: {0:mm\\:ss\\.ff}, CPU: {1:mm\\:ss\\.ffffff}, Queries: {2}; {3:0.00}/second, {4:0.00}/CPU second",
-                    ElapsedClockTime,
-                    ElapsedTotalCPUTime,
-                    Iterations,
-                    IterationsPerSecond(),
-                    IterationsPerCPUSecond()
-                );
+                Console.WriteLine("Elapsed: {0:mm\\:ss\\.ff}", ElapsedClockTime);
+                Console.WriteLine("CPU: {0:mm\\:ss\\.ffffff} (User: {1:mm\\:ss\\.ffffff}, System: {2:mm\\:ss\\.ffffff})", ElapsedTotalCPUTime, ElapsedUserCPUTime, ElapsedSystemCPUTime);
+                Console.WriteLine("Iterations: {0}; {1:0.00}/second, {2:0.00}/CPU second", Iterations, IterationsPerSecond(), IterationsPerCPUSecond());
             }
         }
 
@@ -98,21 +96,13 @@ namespace NpgsqlTests
         }
 
         /// <summary>
-        /// The number of iterations accumulated.
-        /// </summary>
-        public int Iterations
-        {
-            get { return iterations; }
-        }
-
-        /// <summary>
         /// Calculate the number of iterations accumulated per the time span provided.
         /// </summary>
         /// <param name="timeSpan"></param>
         /// <returns>The number of iterations accumulated per the time span provided.</returns>
         public double IterationsPer(TimeSpan timeSpan)
         {
-            return (double)iterations / ((double)stopwatch.Elapsed.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
+            return (double)Iterations / ((double)stopwatch.Elapsed.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
         }
 
         /// <summary>
@@ -132,7 +122,7 @@ namespace NpgsqlTests
         /// <returns>The number of iterations accumulated per the CPU time span provided.</returns>
         public double IterationsPerCPU(TimeSpan timeSpan)
         {
-            return (double)iterations / ((double)ElapsedTotalCPUTime.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
+            return (double)Iterations / ((double)ElapsedTotalCPUTime.TotalMilliseconds / (double)timeSpan.TotalMilliseconds);
         }
 
         /// <summary>

@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -48,7 +49,7 @@ namespace Npgsql
     /// access the physical connection to the database, and isolate
     /// the application developer from connection pooling internals.
     /// </summary>
-    internal class NpgsqlConnector
+    internal partial class NpgsqlConnector
     {
         readonly NpgsqlConnectionStringBuilder _settings;
 
@@ -67,6 +68,12 @@ namespace Npgsql
         // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
         // Otherwise, this stream sits directly on top of _baseStream.
         internal BufferedStream Stream { get; set; }
+
+        /// <summary>
+        /// Buffer used for reading data.
+        /// </summary>
+        // TODO: Work out the strategy for the size!
+        internal byte[] _buffer = new byte[1024 * 16];
 
         /// <summary>
         /// The connection mediator.
@@ -119,6 +126,8 @@ namespace Npgsql
         string _initQueries;
 
         internal SSPIHandler SSPI { get; set; }
+
+        List<NpgsqlError> _pendingErrors = new List<NpgsqlError>();
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
@@ -268,7 +277,7 @@ namespace Npgsql
                 // Establish protocol communication and handle authentication...
                 var startupPacket = new NpgsqlStartupPacket(Database, UserName, _settings);
                 startupPacket.WriteToStream(Stream);
-                ProcessAndDiscardBackendResponses();
+                ConsumeAll();
             }
             catch
             {
@@ -446,46 +455,58 @@ namespace Npgsql
 
         #region Outgoing messages
 
-        internal void Query(NpgsqlQuery query)
+        [GenerateAsync]
+        internal void SendQuery(NpgsqlQuery query)
         {
             if (_log.IsDebugEnabled)
                 _log.Debug("Sending query: " + query);
             query.WriteToStream(Stream);
+            Stream.Flush();
             State = NpgsqlState.Executing;
         }
 
-        internal void Authenticate(byte[] password)
+        [GenerateAsync]
+        internal void SendAuthenticate(byte[] password)
         {
-            _log.Debug("Authenticating");
+            _log.Debug("Sending authenticate message");
             var pwpck = new NpgsqlPasswordPacket(password);
             pwpck.WriteToStream(Stream);
+            Stream.Flush();
         }
 
-        internal void Parse(NpgsqlParse parse)
+        [GenerateAsync]
+        internal void SendParse(NpgsqlParse parse)
         {
             _log.Debug("Sending parse message");
             parse.WriteToStream(Stream);
+            Stream.Flush();
         }
 
-        internal void Sync()
+        [GenerateAsync]
+        internal void SendSync()
         {
             _log.Debug("Sending sync message");
             NpgsqlSync.Default.WriteToStream(Stream);
+            Stream.Flush();
         }
 
-        internal void Bind(NpgsqlBind bind)
+        [GenerateAsync]
+        internal void SendBind(NpgsqlBind bind)
         {
             _log.Debug("Sending bind message");
             bind.WriteToStream(Stream);
         }
 
-        internal void Describe(NpgsqlDescribe describe)
+        [GenerateAsync]
+        internal void SendDescribe(NpgsqlDescribe describe)
         {
             _log.Debug("Sending describe message");
             describe.WriteToStream(Stream);
+            Stream.Flush();
         }
 
-        internal void Execute(NpgsqlExecute execute)
+        [GenerateAsync]
+        internal void SendExecute(NpgsqlExecute execute)
         {
             _log.Debug("Sending execute message");
             execute.WriteToStream(Stream);
@@ -495,67 +516,19 @@ namespace Npgsql
 
         #region Backend message processing
 
-        /// <summary>
-        /// Call ProcessBackendResponsesEnum(), and scan and discard all results.
-        /// </summary>
-        internal void ProcessAndDiscardBackendResponses()
-        {
-            // Flush and wait for responses.
-            var responseEnum = ProcessBackendResponsesEnum();
-
-            // Discard each response.
-            foreach (var response in responseEnum)
-            {
-                if (response is IDisposable)
-                {
-                    (response as IDisposable).Dispose();
-                }
-            }
-        }
-
-        ///<summary>
-        /// This method is responsible to handle all protocol messages sent from the backend.
-        /// It holds all the logic to do it.
-        /// To exchange data, it uses a Mediator object from which it reads/writes information
-        /// to handle backend requests.
-        /// </summary>
-        ///
-        internal IEnumerable<IServerResponseObject> ProcessBackendResponsesEnum()
+        [GenerateAsync]
+        internal IServerMessage ReadMessage()
         {
             try
             {
-                // Flush buffers to the wire.
-                Stream.Flush();
-
-                // Process commandTimeout behavior.
-
-                if ((Mediator.BackendCommandTimeout > 0) &&
-                        (!CheckForContextSocketAvailability(SelectMode.SelectRead)))
-                {
-                    // If timeout occurs when establishing the session with server then
-                    // throw an exception instead of trying to cancel query. This helps to prevent loop as
-                    // CancelRequest will also try to stablish a connection and sends commands.
-                    if (State != NpgsqlState.Connecting)
-                    {
-                        try
-                        {
-                            CancelRequest();
-                            ProcessAndDiscardBackendResponses();
-                        }
-                        catch (Exception)
-                        {
-                        }
-                        // We should have gotten an error from CancelRequest(). Whether we did or not, what we
-                        // really have is a timeout exception, and that will be less confusing to the user than
-                        // "operation cancelled by user" or similar, so whatever the case, that is what we'll throw.
-                        // Changed message again to report about the two possible timeouts: connection or command
-                        // as the establishment timeout only was confusing users when the timeout was a command timeout.
-                    }
-
-                    throw new TimeoutException(L10N.ConnectionOrCommandTimeout);
-                }
-
-                return ProcessBackendResponses();
+                return this.ReadMessageInternal();
+            }
+            catch (IOException e)
+            {
+                // TODO: Identify socket timeout? But what to do at this point? Seems
+                // impossible to actually recover the connection (sync the protocol), best just
+                // transition to Broken like any other IOException...
+                throw;
             }
             catch (ThreadAbortException)
             {
@@ -565,26 +538,24 @@ namespace Npgsql
                     Close();
                 }
                 catch { }
-
                 throw;
             }
         }
 
-        internal IEnumerable<IServerResponseObject> ProcessBackendResponses()
+        [GenerateAsync]
+        IServerMessage ReadMessageInternal()
         {
-            var errors = new List<NpgsqlError>();
-
             for (;;)
             {
                 // Check the first Byte of response.
-                var message = (BackEndMessageCode) Stream.ReadByte();
+                Stream.Read(_buffer, 0, 1);
+                var message = (BackEndMessageCode) _buffer[0];
                 switch (message)
                 {
                     case BackEndMessageCode.ErrorResponse:
                         var error = new NpgsqlError(Stream);
                         _log.Trace("Received backend error: " + error.Message);
                         error.ErrorSql = Mediator.GetSqlSent();
-                        errors.Add(error);
 
                         // We normally accumulate errors until the query ends (ReadyForQuery). But
                         // during the connection phase errors need to be thrown immediately
@@ -594,24 +565,26 @@ namespace Npgsql
                         //        No pg_hba.conf configured.
 
                         if (State == NpgsqlState.Connecting) {
-                            throw new NpgsqlException(errors);
+                            throw new NpgsqlException(error);
                         }
 
-                        break;
+                        _pendingErrors.Add(error);
+                        continue;
+
                     case BackEndMessageCode.AuthenticationRequest:
                         // Get the length in case we're getting AuthenticationGSSContinue
                         var authDataLength = Stream.ReadInt32() - 8;
 
-                        var authType = (AuthenticationRequestType) Stream.ReadInt32();
+                        var authType = (AuthenticationRequestType)Stream.ReadInt32();
                         _log.Trace("Received AuthenticationRequest of type " + authType);
                         switch (authType)
                         {
                             case AuthenticationRequestType.AuthenticationOk:
-                                break;
+                                continue;
                             case AuthenticationRequestType.AuthenticationClearTextPassword:
                                 // Send the PasswordPacket.
-                                Authenticate(PGUtil.NullTerminateArray(Password));
-                                break;
+                                SendAuthenticate(PGUtil.NullTerminateArray(Password));
+                                continue;
                             case AuthenticationRequestType.AuthenticationMD5Password:
                                 // Now do the "MD5-Thing"
                                 // for this the Password has to be:
@@ -655,9 +628,8 @@ namespace Npgsql
                                     sb.Append(b.ToString("x2"));
                                 }
 
-                                Authenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
-
-                                break;
+                                SendAuthenticate(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
+                                continue;
 
                             case AuthenticationRequestType.AuthenticationGSS:
                             {
@@ -665,8 +637,8 @@ namespace Npgsql
                                 {
                                     // For GSSAPI we have to use the supplied hostname
                                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                                    Authenticate(SSPI.Continue(null));
-                                    break;
+                                    SendAuthenticate(SSPI.Continue(null));
+                                    continue;
                                 }
                                 else
                                 {
@@ -680,10 +652,10 @@ namespace Npgsql
                                 if (IntegratedSecurity)
                                 {
                                     // For SSPI we have to get the IP-Address (hostname doesn't work)
-                                    var ipAddressString = ((IPEndPoint) Socket.RemoteEndPoint).Address.ToString();
+                                    var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                                    Authenticate(SSPI.Continue(null));
-                                    break;
+                                    SendAuthenticate(SSPI.Continue(null));
+                                    continue;
                                 }
                                 else
                                 {
@@ -699,19 +671,18 @@ namespace Npgsql
                                 var passwdRead = SSPI.Continue(authData);
                                 if (passwdRead.Length != 0)
                                 {
-                                    Authenticate(passwdRead);
+                                    SendAuthenticate(passwdRead);
                                 }
-                                break;
+                                continue;
                             }
 
                             default:
-                            throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
+                                throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
                         }
-                        break;
+
                     case BackEndMessageCode.RowDescription:
                         _log.Trace("Received RowDescription");
-                        yield return new NpgsqlRowDescription(Stream, OidToNameMapping);
-                        break;
+                        return new NpgsqlRowDescription(Stream, OidToNameMapping);
 
                     case BackEndMessageCode.ParameterDescription:
                         _log.Trace("Received ParameterDescription");
@@ -722,14 +693,12 @@ namespace Npgsql
                         {
                             Stream.ReadInt32();  // typeoids
                         }
-
-                        break;
+                        continue;
 
                     case BackEndMessageCode.DataRow:
                         _log.Trace("Received DataRow");
                         State = NpgsqlState.Fetching;
-                        yield return new StringRowReader(Stream);
-                        break;
+                        return new StringRowReader(Stream);
 
                     case BackEndMessageCode.ReadyForQuery:
                         _log.Trace("Received ReadyForQuery");
@@ -744,59 +713,57 @@ namespace Npgsql
 
                         State = NpgsqlState.Ready;
 
-                        if (errors.Count != 0)
-                        {
-                            throw new NpgsqlException(errors);
+                        if (_pendingErrors.Any()) {
+                            var e = new NpgsqlException(_pendingErrors);
+                            _pendingErrors.Clear();
+                            throw e;
                         }
-
-                        yield break;
+                        return ReadyForQueryMsg.Instance;
 
                     case BackEndMessageCode.BackendKeyData:
                         _log.Trace("Received BackendKeyData");
                         BackEndKeyData = new NpgsqlBackEndKeyData(Stream);
                         // Wait for ReadForQuery message
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NoticeResponse:
                         _log.Trace("Received NoticeResponse");
                         // Notices and errors are identical except that we
                         // just throw notices away completely ignored.
                         FireNotice(new NpgsqlError(Stream));
-                        break;
+                        continue;
 
                     case BackEndMessageCode.CompletedResponse:
                         _log.Trace("Received CompletedResponse");
                         Stream.ReadInt32();
-                        yield return new CompletedResponse(Stream);
-                        break;
+                        return new CompletedResponse(Stream);
 
                     case BackEndMessageCode.ParseComplete:
                         _log.Trace("Received ParseComplete");
                         // Just read up the message length.
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.BindComplete:
                         _log.Trace("Received BindComplete");
                         // Just read up the message length.
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.EmptyQueryResponse:
                         _log.Trace("Received EmptyQueryResponse");
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NotificationResponse:
                         _log.Trace("Received NotificationResponse");
                         // Eat the length
                         Stream.ReadInt32();
                         FireNotification(new NpgsqlNotificationEventArgs(Stream, true));
-                        if (IsNotificationThreadRunning)
-                        {
-                            yield break;
+                        if (IsNotificationThreadRunning) {
+                            throw new Exception("Internal state error, notification thread is running");
                         }
-                        break;
+                        continue;
 
                     case BackEndMessageCode.ParameterStatus:
                         var paramStatus = new NpgsqlParameterStatus(Stream);
@@ -820,7 +787,7 @@ namespace Npgsql
                             }
                             ServerVersion = new Version(versionString);
                         }
-                        break;
+                        continue;
 
                     case BackEndMessageCode.NoData:
                         // This nodata message may be generated by prepare commands issued with queries which doesn't return rows
@@ -828,7 +795,7 @@ namespace Npgsql
                         // Just eat the message.
                         _log.Trace("Received NoData");
                         Stream.ReadInt32();
-                        break;
+                        continue;
 
                     case BackEndMessageCode.CopyInResponse:
                         _log.Trace("Received CopyInResponse");
@@ -836,7 +803,7 @@ namespace Npgsql
                         State = NpgsqlState.CopyIn;
                         Stream.ReadInt32(); // length redundant
                         StartCopyIn(ReadCopyHeader());
-                        yield break;
+                        return CopyInResponseMsg.Instance;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
                     case BackEndMessageCode.CopyOutResponse:
@@ -845,7 +812,7 @@ namespace Npgsql
                         State = NpgsqlState.CopyOut;
                         Stream.ReadInt32(); // length redundant
                         StartCopyOut(ReadCopyHeader());
-                        yield break;
+                        return CopyOutResponseMsg.Instance;
                         // Either StartCopy called us again to finish the operation or control should be passed for user to feed copy data
 
                     case BackEndMessageCode.CopyData:
@@ -854,14 +821,14 @@ namespace Npgsql
                         var buf = new byte[len];
                         Stream.ReadBytes(buf, 0, len);
                         Mediator.ReceivedCopyData = buf;
-                        yield break;
+                        return CopyDataMsg.Instance;
                         // read data from server one chunk at a time while staying in copy operation mode
 
                     case BackEndMessageCode.CopyDone:
                         _log.Trace("Received CopyDone");
                         Stream.ReadInt32(); // CopyDone can not have content so this is always 4
                         // This will be followed by normal CommandComplete + ReadyForQuery so no op needed
-                        break;
+                        continue;
 
                     case BackEndMessageCode.IO_ERROR:
                         // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
@@ -874,50 +841,28 @@ namespace Npgsql
                         //   Backend has gone insane?
                         // FIXME
                         // what exception should we really throw here?
-                        throw new NotSupportedException(String.Format(
-                            "Backend sent unrecognized response type: {0}", (Char) message));
+                        throw new NotSupportedException(String.Format("Backend sent unrecognized response type: {0}", (Char) message));
                 }
             }
         }
 
         /// <summary>
-        /// Checks for context socket availability.
-        /// Socket.Poll supports integer as microseconds parameter.
-        /// This limits the usable command timeout value
-        /// to 2,147 seconds: (2,147 x 1,000,000 less than  max_int).
-        /// In order to bypass this limit, the availability of
-        /// the socket is checked in 2,147 seconds cycles
+        /// Consumes and disposes all backend messages until the next ReadyForQuery
         /// </summary>
-        /// <returns><c>true</c>, if for context socket availability was checked, <c>false</c> otherwise.</returns>
-        /// <param name="selectMode">Select mode.</param>
-        internal bool CheckForContextSocketAvailability(SelectMode selectMode)
+        [GenerateAsync]
+        internal void ConsumeAll()
         {
-            /* Socket.Poll supports integer as microseconds parameter.
-             * This limits the usable command timeout value
-             * to 2,147 seconds: (2,147 x 1,000,000 < max_int).
-             */
-            const int limitOfSeconds = 2147;
-
-            var socketPoolResponse = false;
-
-            // Because the backend's statement_timeout parameter has been set to context.Mediator.BackendCommandTimeout,
-            // we will give an extra 5 seconds because we'd prefer to receive a timeout error from PG
-            // than to be forced to start a new connection and send a cancel request.
-            // The result is that a timeout could take 5 seconds too long to occur, but if everything
-            // is healthy, that shouldn't happen. Not to mention, if the backend is unhealthy enough
-            // to fail to send a timeout error, then a cancel request may malfunction anyway.
-            var secondsToWait = Mediator.BackendCommandTimeout + 5;
-
-            /* In order to bypass this limit, the availability of
-             * the socket is checked in 2,147 seconds cycles
-             */
-            while ((secondsToWait > limitOfSeconds) && (!socketPoolResponse))
+            while (true)
             {
-                socketPoolResponse = Socket.Poll(1000000 * limitOfSeconds, selectMode);
-                secondsToWait -= limitOfSeconds;
+                var msg = ReadMessage();
+                if (msg is ReadyForQueryMsg)
+                    return;
+                var asDisposable = msg as IDisposable;
+                if (asDisposable != null)
+                {
+                    asDisposable.Dispose();
+                }
             }
-
-            return socketPoolResponse || Socket.Poll(1000000 * secondsToWait, selectMode);
         }
 
         #endregion Backend message processing
@@ -983,7 +928,7 @@ namespace Npgsql
         {
             Stream.WriteByte((byte)FrontEndMessageCode.CopyDone);
             Stream.WriteInt32(4); // message without data
-            ProcessAndDiscardBackendResponses();
+            ConsumeAll();
         }
 
         /// <summary>
@@ -998,7 +943,7 @@ namespace Npgsql
             var buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
             Stream.WriteInt32(4 + buf.Length);
             Stream.Write(buf, 0, buf.Length);
-            ProcessAndDiscardBackendResponses();
+            ConsumeAll();
         }
 
         /// <summary>
@@ -1031,13 +976,7 @@ namespace Npgsql
         internal byte[] GetCopyOutData()
         {
             // polling in COPY would take seconds on Windows
-            foreach (var obj in ProcessBackendResponses())
-            {
-                if (obj is IDisposable)
-                {
-                    (obj as IDisposable).Dispose();
-                }
-            }
+            ConsumeAll();
             return Mediator.ReceivedCopyData;
         }
 
@@ -1216,7 +1155,7 @@ namespace Npgsql
                     try
                     {
                         Stream
-                            .WriteBytes((byte)FrontEndMessageCode.Termination)
+                            .WriteByte(ASCIIByteArrays.TerminationMessageCode)
                             .WriteInt32(4)
                             .Flush();
                     }
@@ -1419,7 +1358,7 @@ namespace Npgsql
                             // 20 millisecond timeout
                             if (_connector.Socket.Poll(20000, SelectMode.SelectRead))
                             {
-                                _connector.ProcessAndDiscardBackendResponses();
+                                _connector.ConsumeAll();
                             }
                         }
                     }
@@ -1479,44 +1418,40 @@ namespace Npgsql
         /// Internal query shortcut for use in cases where the number
         /// of affected rows is of no interest.
         /// </summary>
+        [GenerateAsync]
         internal void ExecuteBlind(string command)
         {
             // Bypass cpmmand parsing overhead and send command verbatim.
             ExecuteBlind(new NpgsqlQuery(command));
         }
 
+        [GenerateAsync]
         internal void ExecuteBlind(NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                // Set statement timeout as needed.
                 SetBackendCommandTimeout(20);
-
-                // Write the Query message to the wire.
-                Query(query);
-
-                // Flush, and wait for and discard all responses.
-                ProcessAndDiscardBackendResponses();
+                SendQuery(query);
+                ConsumeAll();
             }
         }
 
+        [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(string command)
         {
             // Bypass cpmmand parsing overhead and send command verbatim.
             ExecuteBlindSuppressTimeout(new NpgsqlQuery(command));
         }
 
+        [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(NpgsqlQuery query)
         {
             // Block the notification thread before writing anything to the wire.
             using (BlockNotificationThread())
             {
-                // Write the Query message to the wire.
-                Query(query);
-
-                // Flush, and wait for and discard all responses.
-                ProcessAndDiscardBackendResponses();
+                SendQuery(query);
+                ConsumeAll();
             }
         }
 
@@ -1526,6 +1461,7 @@ namespace Npgsql
         /// which will cause an endless recursive loop.
         /// </summary>
         /// <param name="timeout">Timeout in seconds.</param>
+        [GenerateAsync]
         internal void ExecuteSetStatementTimeoutBlind(int timeout)
         {
             NpgsqlQuery query;
@@ -1563,11 +1499,8 @@ namespace Npgsql
 
             }
 
-            // Write the Query message to the wire.
-            Query(query);
-
-            // Flush, and wait for and discard all responses.
-            ProcessAndDiscardBackendResponses();
+            SendQuery(query);
+            ConsumeAll();
         }
 
         #endregion Execute blind
@@ -1595,6 +1528,7 @@ namespace Npgsql
         /// Modify the backend statement_timeout value if needed.
         /// </summary>
         /// <param name="timeout">New timeout</param>
+        [GenerateAsync]
         internal void SetBackendCommandTimeout(int timeout)
         {
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)

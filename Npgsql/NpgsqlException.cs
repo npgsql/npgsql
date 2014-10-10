@@ -69,6 +69,13 @@ namespace Npgsql
             errors.CopyTo(this.errors, 0);
         }
 
+        internal NpgsqlException(NpgsqlError error)
+            : base(error.ToString())
+        {
+            this.errors = new NpgsqlError[1];
+            errors[0] = error;
+        }
+
         internal NpgsqlException(String message)
             : this(message, null)
         {

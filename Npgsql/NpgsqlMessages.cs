@@ -29,13 +29,39 @@
 
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
     /// <summary>
+    /// Marker interface which identifies a class which represents part of
+    /// a response from the server.
+    /// </summary>
+    internal interface IServerMessage {}
+
+    internal class ReadyForQueryMsg : IServerMessage
+    {
+        internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
+    }
+
+    internal class CopyInResponseMsg : IServerMessage
+    {
+        internal static readonly CopyInResponseMsg Instance = new CopyInResponseMsg();
+    }
+
+    internal class CopyOutResponseMsg : IServerMessage
+    {
+        internal static readonly CopyOutResponseMsg Instance = new CopyOutResponseMsg();
+    }
+    internal class CopyDataMsg : IServerMessage
+    {
+        internal static readonly CopyDataMsg Instance = new CopyDataMsg();
+    }
+
+    /// <summary>
     /// Represents a completed response message.
     /// </summary>
-    internal class CompletedResponse : IServerResponseObject
+    internal class CompletedResponse : IServerMessage
     {
         private readonly int? _rowsAffected;
         private readonly long? _lastInsertedOID;
@@ -71,43 +97,10 @@ namespace Npgsql
     /// <summary>
     /// For classes representing messages sent from the client to the server.
     /// </summary>
-    internal abstract class ClientMessage
+    internal interface IClientMessage
     {
-        public abstract void WriteToStream(Stream outputStream);
-    }
-
-    /// <summary>
-    /// For classes representing simple messages,
-    /// consisting only of a message code and length identifier,
-    /// sent from the client to the server.
-    /// </summary>
-    internal abstract class SimpleClientMessage : ClientMessage
-    {
-        private readonly byte[] _messageData;
-
-        protected SimpleClientMessage(FrontEndMessageCode MessageCode)
-        {
-            _messageData = new byte[5];
-            MemoryStream messageBuilder = new MemoryStream(_messageData);
-
-            messageBuilder
-                .WriteBytes((byte)MessageCode)
-                .WriteInt32(4);
-        }
-
-        public override void WriteToStream(Stream outputStream)
-        {
-            outputStream.WriteBytes(_messageData);
-        }
-    }
-
-
-    /// <summary>
-    /// Marker interface which identifies a class which represents part of
-    /// a response from the server.
-    /// </summary>
-    internal interface IServerResponseObject
-    {
+        void WriteToStream(Stream outputStream);
+        Task WriteToStreamAsync(Stream outputStream);
     }
 
     /// <summary>
@@ -119,7 +112,7 @@ namespace Npgsql
     /// The most important such class is that compiler-generated from ProcessBackendResponsesEnum. Of course
     /// we can't make that inherit from this interface, alas.
     /// </summary>
-    internal interface IStreamOwner : IServerResponseObject, IDisposable
+    internal interface IStreamOwner : IServerMessage, IDisposable
     {
     }
 
@@ -139,7 +132,9 @@ namespace Npgsql
         Execute = (byte) 'E',
         Describe = (byte) 'D',
         Close = (byte) 'C',
-        Sync = (byte) 'S'
+        Sync = (byte) 'S',
+        PasswordMessage = (byte) 'p',
+        FunctionCall = (byte)'F',
     }
 
     internal enum BackEndMessageCode

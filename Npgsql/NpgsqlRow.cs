@@ -32,6 +32,8 @@ using System.IO;
 using System.Reflection;
 using System.Resources;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.Localization;
 using NpgsqlTypes;
 
@@ -42,9 +44,11 @@ namespace Npgsql
     /// </summary>
     internal abstract class NpgsqlRow : IStreamOwner
     {
-        public abstract object this[int index] { get; }
+        public abstract object Get(int index);
+        public abstract Task<object> GetAsync(int index);
         public abstract int NumFields { get; }
         public abstract bool IsDBNull(int index);
+        public abstract Task<bool> IsDBNullAsync(int index);
         public abstract void Dispose();
         public abstract long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length);
         public abstract long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length);
@@ -60,20 +64,28 @@ namespace Npgsql
             _inner = fo;
         }
 
-        public override object this[Int32 index]
+        public override object Get(int index)
         {
-            get
+            if ((index < 0) || (index >= NumFields))
             {
-                if ((index < 0) || (index >= NumFields))
-                {
-                    throw new IndexOutOfRangeException("this[] index value");
-                }
-                while (_data.Count <= index)
-                {
-                    _data.Add(_inner[_data.Count]);
-                }
-                return _data[index];
+                throw new IndexOutOfRangeException("this[] index value");
             }
+            while (_data.Count <= index)
+            {
+                _data.Add(_inner.Get(_data.Count));
+            }
+            return _data[index];
+        }
+
+        /// <summary>
+        /// Async implementation of <see cref="Get"/>.
+        ///
+        /// Note that since the CachingRow has already read all the columns into memory, no I/O
+        /// operation is needed and therefore this method simply calls <see cref="Get"/>
+        /// </summary>
+        public override Task<object> GetAsync(int index)
+        {
+            return PGUtil.TaskFromResult(Get(index));
         }
 
         public override int NumFields
@@ -83,12 +95,23 @@ namespace Npgsql
 
         public override bool IsDBNull(int index)
         {
-            return this[index] == DBNull.Value;
+            return Get(index) == DBNull.Value;
+        }
+
+        /// <summary>
+        /// Async implementation of <see cref="IsDBNull"/>.
+        ///
+        /// Note that since the CachingRow has already read all the columns into memory, no I/O
+        /// operation is needed and therefore this method simply calls <see cref="IsDBNull"/>
+        /// </summary>
+        public override Task<bool> IsDBNullAsync(int index)
+        {
+            return PGUtil.TaskFromResult(IsDBNull(index));
         }
 
         public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
         {
-            byte[] source = (byte[]) this[i];
+            byte[] source = (byte[]) Get(i);
             if (buffer == null)
             {
                 return source.Length - fieldOffset;
@@ -100,7 +123,7 @@ namespace Npgsql
 
         public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
-            string source = (string) this[i];
+            string source = (string) Get(i);
             if (buffer == null)
             {
                 return source.Length - fieldoffset;
@@ -116,7 +139,7 @@ namespace Npgsql
         }
     }
 
-    internal sealed class ForwardsOnlyRow : NpgsqlRow
+    internal sealed partial class ForwardsOnlyRow : NpgsqlRow
     {
         /// <summary>
         /// The index of the current field in the stream, i.e. the one that hasn't
@@ -130,6 +153,7 @@ namespace Npgsql
             _reader = reader;
         }
 
+        [GenerateAsync]
         private void Seek(int index, bool consume)
         {
             if (index < 0 || index >= NumFields) {
@@ -154,13 +178,11 @@ namespace Npgsql
             _reader.SetRowDescription(rowDescr);
         }
 
-        public override object this[int index]
+        [GenerateAsync(withOverride: true)]
+        public override object Get(int index)
         {
-            get
-            {
-                Seek(index, true);
-                return _reader.GetNext();
-            }
+            Seek(index, true);
+            return _reader.GetNext();
         }
 
         public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
@@ -198,6 +220,7 @@ namespace Npgsql
             get { return _reader.NumFields; }
         }
 
+        [GenerateAsync(withOverride: true)]
         public override bool IsDBNull(int index)
         {
             Seek(index, false);
@@ -213,7 +236,7 @@ namespace Npgsql
     /// <summary>
     /// Reads a row, field by field, allowing a DataRow to be built appropriately.
     /// </summary>
-    internal abstract class RowReader : IStreamOwner
+    internal abstract partial class RowReader : IStreamOwner
     {
         /// <summary>
         /// Reads part of a field, as needed (for <see cref="System.Data.IDataRecord.GetChars(int, long, char[], int, int)"/>
@@ -435,7 +458,9 @@ namespace Npgsql
         }
 
         protected abstract object ReadNext();
+        protected abstract Task<object> ReadNextAsync();
 
+        [GenerateAsync]
         public object GetNext()
         {
             if (++_currentField == _rowDesc.NumFields)
@@ -447,7 +472,9 @@ namespace Npgsql
 
         public abstract bool IsNull { get; }
         protected abstract void SkipOne();
+        protected abstract Task SkipOneAsync();
 
+        [GenerateAsync]
         public void Skip(int count)
         {
             if (count > 0)
