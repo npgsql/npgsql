@@ -63,7 +63,7 @@ namespace NpgsqlTests
                 conn.Open();
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.Connector.State, Is.EqualTo(NpgsqlState.Ready));
+                Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
                 Assert.That(eventOpen, Is.True);
 
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -72,12 +72,12 @@ namespace NpgsqlTests
                     reader.Read();
                     Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
                     Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
-                    Assert.That(conn.Connector.State, Is.EqualTo(NpgsqlState.Fetching));
+                    Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Fetching));
                 }
 
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.Connector.State, Is.EqualTo(NpgsqlState.Ready));
+                Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
 
                 using (var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn))
                 {
@@ -89,7 +89,7 @@ namespace NpgsqlTests
                             if (exitFlag) {
                                 Assert.Fail("Connection did not reach the Executing state");
                             }
-                            if (conn.Connector.State == NpgsqlState.Executing)
+                            if (conn.Connector.State == ConnectorState.Executing)
                             {
                                 Assert.That(conn.FullState & ConnectionState.Executing, Is.Not.EqualTo(0));
                                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
@@ -110,7 +110,7 @@ namespace NpgsqlTests
                 conn.Open();
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.Connector.State, Is.EqualTo(NpgsqlState.Ready));
+                Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
 
                 // TODO: Broken, when implemented
             }

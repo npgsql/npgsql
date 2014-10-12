@@ -78,7 +78,6 @@ namespace Npgsql
 
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
-        bool _disposed;
         static readonly Array ParamNameCharTable;
         internal Type[] ExpectedTypes { get; set; }
 
@@ -313,6 +312,27 @@ namespace Npgsql
         }
 
         #endregion Public properties
+
+        #region State management
+
+        volatile int _state;
+
+        /// <summary>
+        /// Gets the current state of the connector
+        /// </summary>
+        internal CommandState State
+        {
+            get { return (CommandState)_state; }
+            set
+            {
+                var newState = (int)value;
+                if (newState == _state)
+                    return;
+                Interlocked.Exchange(ref _state, newState);
+            }
+        }
+
+        #endregion State management
 
         #region Parameters
 
@@ -1541,6 +1561,8 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (_connector.BlockNotificationThread())
             {
+                State = CommandState.InProgress;
+
                 NpgsqlDataReader reader;
 
                 _connector.SetBackendCommandTimeout(CommandTimeout);
@@ -1737,6 +1759,11 @@ namespace Npgsql
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
         public override void Cancel()
         {
+            if (State != CommandState.InProgress) {
+                _log.DebugFormat("Skipping cancel because command is in state {0}", State);
+                return;
+            }
+
             _log.Debug("Cancelling command");
             try
             {
@@ -1766,7 +1793,7 @@ namespace Npgsql
         /// </summary>
         protected override void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (State == CommandState.Disposed)
                 return;
 
             if (disposing)
@@ -1781,7 +1808,7 @@ namespace Npgsql
                     _connector.ExecuteBlind("DEALLOCATE " + _planName);
             }
 
-            _disposed = true;
+            State = CommandState.Disposed;
             base.Dispose(disposing);
         }
 
@@ -1803,17 +1830,17 @@ namespace Npgsql
 
             switch (Connector.State)
             {
-                case NpgsqlState.Ready:
+                case ConnectorState.Ready:
                     return;
-                case NpgsqlState.Closed:
-                case NpgsqlState.Broken:
-                case NpgsqlState.Connecting:
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                case ConnectorState.Connecting:
                     throw new InvalidOperationException(L10N.ConnectionNotOpen);
-                case NpgsqlState.Executing:
-                case NpgsqlState.Fetching:
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
                     throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
-                case NpgsqlState.CopyIn:
-                case NpgsqlState.CopyOut:
+                case ConnectorState.CopyIn:
+                case ConnectorState.CopyOut:
                     throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
                 default:
                     throw new ArgumentOutOfRangeException("Unknown state: " + Connector.State);
@@ -1891,4 +1918,12 @@ namespace Npgsql
 
         #endregion Misc
     }
+
+    enum CommandState
+    {
+        Idle,
+        InProgress,
+        Disposed
+    }
+
 }

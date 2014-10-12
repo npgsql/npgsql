@@ -77,7 +77,7 @@ namespace Npgsql
             get
             {
                 return
-                    _context != null && _context.State == NpgsqlState.CopyOut && _context.Mediator.CopyStream == _copyStream;
+                    _context != null && _context.State == ConnectorState.CopyOut && _context.Mediator.CopyStream == _copyStream;
             }
         }
 
@@ -128,13 +128,13 @@ namespace Npgsql
         /// </summary>
         public void Start()
         {
-            if (_context.State == NpgsqlState.Ready)
+            if (_context.State == ConnectorState.Ready)
             {
                 _context.Mediator.CopyStream = _copyStream;
                 _cmd.ExecuteNonQuery();
                 _disposeCopyStream = _copyStream == null;
                 _copyStream = _context.Mediator.CopyStream;
-                if (_copyStream == null && _context.State != NpgsqlState.Ready)
+                if (_copyStream == null && _context.State != ConnectorState.Ready)
                 {
                     throw new InvalidOperationException("Not a COPY OUT query: " + _cmd.CommandText);
                 }

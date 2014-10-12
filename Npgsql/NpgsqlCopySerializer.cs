@@ -97,7 +97,7 @@ namespace Npgsql
         /// </summary>
         public bool IsActive
         {
-            get { return _toStream != null && _context.Mediator.CopyStream == _toStream && _context.State == NpgsqlState.CopyIn; }
+            get { return _toStream != null && _context.Mediator.CopyStream == _toStream && _context.State == ConnectorState.CopyIn; }
         }
 
         /// <summary>
