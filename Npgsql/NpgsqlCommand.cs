@@ -862,7 +862,7 @@ namespace Npgsql
         /// <returns>false if the query has multiple statements which are not allowed</returns>
         bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool allowMultipleStatements)
         {
-            var standardConformantStrings = _connection != null && _connection.Connector != null && _connection.Connector.IsInitialized ? _connection.UseConformantStrings : true;
+            var standardConformantStrings = _connection != null && _connection.Connector != null && _connection.Connector.IsConnected ? _connection.UseConformantStrings : true;
 
             var currCharOfs = 0;
             var end = src.Length;
@@ -1925,5 +1925,4 @@ namespace Npgsql
         InProgress,
         Disposed
     }
-
 }

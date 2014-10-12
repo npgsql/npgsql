@@ -415,7 +415,7 @@ namespace Npgsql
             }
             */
 
-            if (!Connector.IsInitialized)
+            if (!Connector.IsConnected)
             {
                 if (Connector.Transaction != null)
                 {

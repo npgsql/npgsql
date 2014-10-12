@@ -92,11 +92,6 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlTransaction Transaction { get; set; }
 
-        /// <summary>
-        /// Reports if this connector is fully connected.
-        /// </summary>
-        internal bool IsInitialized { get; set; }
-
         internal bool Pooled { get; private set; }
 
         /// <summary>
@@ -145,7 +140,6 @@ namespace Npgsql
             State = ConnectorState.Closed;
             _settings = connectionString;
             Pooled = pooled;
-            IsInitialized = false;
             Mediator = new NpgsqlMediator();
             NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _planIndex = 0;
@@ -312,9 +306,6 @@ namespace Npgsql
                 throw;
             }
 
-            // Change the state of connection to open and ready.
-            State = ConnectorState.Ready;
-
             // After attachment, the stream will close the connector (this) when the stream gets disposed.
             BaseStream.AttachConnector(this);
 
@@ -348,9 +339,7 @@ namespace Npgsql
             // if connected to the same backend version.
             NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
 
-            // The connector is now fully initialized. Beyond this point, it is
-            // safe to release it back to the pool rather than closing it.
-            IsInitialized = true;
+            State = ConnectorState.Ready;
         }
 
         public void RawOpen(int timeout)
