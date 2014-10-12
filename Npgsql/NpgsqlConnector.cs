@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -34,6 +35,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
+using System.Threading.Tasks;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
 using Npgsql.Localization;
@@ -117,8 +119,6 @@ namespace Npgsql
 
         // For IsValid test
         readonly RNGCryptoServiceProvider _rng = new RNGCryptoServiceProvider();
-
-        string _initQueries;
 
         internal SSPIHandler SSPI { get; set; }
 
@@ -289,8 +289,6 @@ namespace Npgsql
             try
             {
                 // Establish protocol communication and handle authentication...
-                //var startupPacket = new NpgsqlStartupPacket(Database, UserName, _settings);
-                //startupPacket.WriteToStream(Stream);
                 SendStartup(Database, UserName, _settings);
                 ConsumeAll();
             }
@@ -310,29 +308,8 @@ namespace Npgsql
             // After attachment, the stream will close the connector (this) when the stream gets disposed.
             BaseStream.AttachConnector(this);
 
-            // Fall back to the old way, SELECT VERSION().
-            // This should not happen for protocol version 3+.
-            if (ServerVersion == null)
-            {
-                //NpgsqlCommand command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this);
-                //ServerVersion = new Version(PGUtil.ExtractServerVersion((string) command.ExecuteScalar()));
-                using (var command = new NpgsqlCommand("set DATESTYLE TO ISO;select version();", this))
-                {
-                    ServerVersion = new Version(PGUtil.ExtractServerVersion((string)command.ExecuteScalar()));
-                }
-            }
-
+            Debug.Assert(ServerVersion != null, "Did not receive server_version from backend as per docs");
             ProcessServerVersion();
-
-            var sbInitQueries = new StringWriter();
-
-            // Some connection parameters for protocol 3 had been sent in the startup packet.
-            // The rest will be setted here.
-            sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
-
-            _initQueries = sbInitQueries.ToString();
-
-            ExecuteBlind(_initQueries);
 
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
@@ -468,11 +445,12 @@ namespace Npgsql
         internal void SendStartup(string databaseName, String username, NpgsqlConnectionStringBuilder settings)
         {
             var parameters = new Dictionary<String, String> {
-                { "database",           databaseName },
-                { "user",               username     },
-                { "DateStyle",          "ISO"        },
-                { "client_encoding",    "UTF8"       },
-                { "lc_monetary",        "C"          },
+                { "database",                databaseName },
+                { "user",                    username     },
+                { "ssl_renegotiation_limit", "0"          },
+                { "DateStyle",               "ISO"        },
+                { "client_encoding",         "UTF8"       },
+                { "lc_monetary",             "C"          },
             };
 
             if (!string.IsNullOrEmpty(settings.ApplicationName)) {
@@ -1396,49 +1374,32 @@ namespace Npgsql
             State = ConnectorState.Closed;
         }
 
+        #endregion Close
+
+        #region Reset
+
         /// <summary>
         /// This method is responsible for releasing all resources associated with this Connector.
         /// </summary>
-        internal void ReleaseResources()
+        internal async Task ReleaseResources()
         {
-            if (State != ConnectorState.Closed)
-            {
-                if (SupportsDiscard)
-                {
-                    ReleaseWithDiscard();
-                }
-                else
-                {
-                    ReleasePlansPortals();
-                    ReleaseRegisteredListen();
-                }
+            if (!IsConnected) {
+                return;
             }
-        }
 
-        internal void ReleaseWithDiscard()
-        {
-            ExecuteBlind(QueryManager.DiscardAll);
+            if (SupportsDiscard) {
+                await ExecuteBlindAsync(QueryManager.DiscardAll);
+                return;
+            }
 
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
-        }
-
-        internal void ReleaseRegisteredListen()
-        {
-            ExecuteBlind(QueryManager.UnlistenAll);
-        }
-
-        /// <summary>
-        /// This method is responsible to release all portals used by this Connector.
-        /// </summary>
-        internal void ReleasePlansPortals()
-        {
+            // Old Postgresql support from here
             if (_planIndex > 0)
             {
                 for (var i = 1; i <= _planIndex; i++)
                 {
                     try
                     {
-                        ExecuteBlind(String.Format("DEALLOCATE \"{0}{1}\";", PlanNamePrefix, i));
+                        await ExecuteBlindAsync(String.Format("DEALLOCATE \"{0}{1}\";", PlanNamePrefix, i));
                     }
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch { }
@@ -1447,9 +1408,11 @@ namespace Npgsql
 
             _portalIndex = 0;
             _planIndex = 0;
+
+            await ExecuteBlindAsync(QueryManager.UnlistenAll);
         }
 
-        #endregion Close
+        #endregion Reset
 
         #region Notification thread
 
@@ -1801,8 +1764,6 @@ namespace Npgsql
                 //Query(new NpgsqlCommand("select 1 as ConnectionTest", this));
                 var compareValue = string.Empty;
                 var sql = "select '" + testValue + "'";
-                // restore initial connection parameters resetted by "Discard ALL"
-                sql = _initQueries + sql;
                 using (var cmd = new NpgsqlCommand(sql, this))
                 {
                     compareValue = (string)cmd.ExecuteScalar();

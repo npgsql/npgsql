@@ -30,6 +30,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using Timer = System.Timers.Timer;
 
@@ -381,9 +382,9 @@ namespace Npgsql
         /// <summary>
         /// Put a pooled connector into the pool queue.
         /// </summary>
-        /// <param name="Connection">Connection <paramref name="Connector"/> is leased to.</param>
-        /// <param name="Connector">Connector to pool</param>
-        private void UngetConnector(NpgsqlConnection Connection, NpgsqlConnector Connector)
+        /// <param name="connection">Connection <paramref name="connector"/> is leased to.</param>
+        /// <param name="connector">Connector to pool</param>
+        private void UngetConnector(NpgsqlConnection connection, NpgsqlConnector connector)
         {
             ConnectorQueue queue;
 
@@ -391,20 +392,20 @@ namespace Npgsql
             // As we are handling all possible queues, we have to lock everything...
             lock (locker)
             {
-                PooledConnectors.TryGetValue(Connection.ConnectionString, out queue);
+                PooledConnectors.TryGetValue(connection.ConnectionString, out queue);
             }
 
             if (queue == null)
             {
-                Connector.Close(); // Release connection to postgres
+                connector.Close(); // Release connection to postgres
                 return; // Queue may be emptied by connection problems. See ClearPool below.
             }
 
-            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-            Connector.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-            Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-            Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
-            Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
+            connector.ProvideClientCertificatesCallback -= connection.ProvideClientCertificatesCallbackDelegate;
+            connector.CertificateSelectionCallback -= connection.CertificateSelectionCallbackDelegate;
+            connector.CertificateValidationCallback -= connection.CertificateValidationCallbackDelegate;
+            connector.PrivateKeySelectionCallback -= connection.PrivateKeySelectionCallbackDelegate;
+            connector.ValidateRemoteCertificateCallback -= connection.ValidateRemoteCertificateCallbackDelegate;
 
             /*bool inQueue = false;
 
@@ -415,48 +416,59 @@ namespace Npgsql
             }
             */
 
-            if (!Connector.IsConnected)
+            if (!connector.IsConnected)
             {
-                if (Connector.Transaction != null)
+                if (connector.Transaction != null)
                 {
-                    Connector.Transaction.Cancel();
+                    connector.Transaction.Cancel();
                 }
 
-                Connector.Close();
+                connector.Close();
             }
             else
             {
-                if (Connector.Transaction != null)
+                if (connector.Transaction != null)
                 {
                     try
                     {
-                        Connector.Transaction.Rollback();
+                        connector.Transaction.Rollback();
                     }
                     catch
                     {
-                        Connector.Close();
+                        connector.Close();
                     }
                 }
             }
 
-            bool inQueue = queue.Busy.ContainsKey(Connector);
+            // The following async method is intentionally not waited/awaited; the resetting of the
+            // connector and its return to the queue is of no concern to the closing thread.
+            ResetConnector(connector, queue);
+        }
 
-            if (Connector.State == ConnectorState.Ready)
+        /// <summary>
+        /// Resets the connector back to its initial post-connect state, and returns it to its queue.
+        /// This involves releasing resources and resetting paramters (DISCARD ALL) and resetting
+        /// the default Npgsql default parameters.
+        /// </summary>
+        async Task ResetConnector(NpgsqlConnector connector, ConnectorQueue queue)
+        {
+            bool inQueue = queue.Busy.ContainsKey(connector);
+
+            if (connector.State == ConnectorState.Ready)
             {
                 //If thread is good
                 if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) == 0)
                 {
-                    // Release all resources associated with this connector.
                     try
                     {
-                        Connector.ReleaseResources();
+                        await connector.ReleaseResources();
                     }
                     catch (Exception)
                     {
                         //If the connector fails to release its resources then it is probably broken, so make sure we don't add it to the queue.
                         // Usually it already won't be in the queue as it would of broken earlier
                         inQueue = false;
-                        Connector.Close();
+                        connector.Close();
                     }
 
                 }
@@ -464,7 +476,7 @@ namespace Npgsql
                 {
                     //Thread is being aborted, this connection is possibly broken. So kill it rather than returning it to the pool
                     inQueue = false;
-                    Connector.Close();
+                    connector.Close();
                 }
             }
 
@@ -473,15 +485,14 @@ namespace Npgsql
             if (inQueue)
                 lock (queue)
                 {
-                    queue.Busy.Remove(Connector);
-                    queue.Available.Enqueue(Connector);
+                    queue.Busy.Remove(connector);
+                    queue.Available.Enqueue(connector);
                 }
             else
                 lock (queue)
                 {
-                    queue.Busy.Remove(Connector);
+                    queue.Busy.Remove(connector);
                 }
-
         }
 
         private static void ClearQueue(ConnectorQueue Queue)

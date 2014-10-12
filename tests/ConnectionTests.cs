@@ -540,5 +540,35 @@ namespace NpgsqlTests
                 conn.Open();
             }
         }
+
+        [Test, Description("Makes sure that runtime parameters are reset when connector is returned to the pool")]
+        public void ParamsResetOnClose()
+        {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=1"))
+            {
+                conn.Open();
+                var origConnector = conn.Connector;
+
+                // Parameter managed in the startup packet
+                var orig1 = (string)ExecuteScalar("SHOW ssl_renegotiation_limit", conn);
+                if (orig1 == "128")
+                    Assert.Fail("Bad default param, cannot test");
+                ExecuteNonQuery("SET ssl_renegotiation_limit=128", conn);
+
+                // Parameter not managed in the startup packet
+                var orig2 = (string)ExecuteScalar("SHOW extra_float_digits", conn);
+                if (orig2 == "1")
+                    Assert.Fail("Bad default param, cannot test");
+                ExecuteNonQuery("SET extra_float_digits=1", conn);
+
+                conn.Close();
+                conn.Open();
+                if (conn.Connector != origConnector)
+                    Assert.Fail("Got a different connector, shouldn't happen");
+
+                Assert.That(ExecuteScalar("SHOW ssl_renegotiation_limit", conn), Is.EqualTo(orig1));
+                Assert.That(ExecuteScalar("SHOW extra_float_digits", conn), Is.EqualTo(orig2));
+            }
+        }
     }
 }
