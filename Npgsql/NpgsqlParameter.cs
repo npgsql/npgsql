@@ -74,8 +74,6 @@ namespace Npgsql
 
         private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
 
-        private bool bound = false;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
@@ -127,7 +125,7 @@ namespace Npgsql
             internal set
             {
                 collection = value;
-                bound = false;
+                ClearBind();
             }
         }
 
@@ -286,7 +284,7 @@ namespace Npgsql
             set
             {
                 precision = value;
-                bound = false;
+                ClearBind();
             }
         }
 
@@ -326,7 +324,7 @@ namespace Npgsql
             set
             {
                 scale = value;
-                bound = false;
+                ClearBind();
             }
         }
 
@@ -342,7 +340,7 @@ namespace Npgsql
             set
             {
                 size = value;
-                bound = false;
+                ClearBind();
             }
         }
 
@@ -363,7 +361,7 @@ namespace Npgsql
             set
             {
                 useCast = value != DbType.Object;
-                bound = false;
+                ClearBind();
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
@@ -389,7 +387,7 @@ namespace Npgsql
             set
             {
                 useCast = true;
-                bound = false;
+                ClearBind(); 
                 if (value == NpgsqlDbType.Array)
                 {
                     throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
@@ -465,7 +463,7 @@ namespace Npgsql
                 if (collection != null)
                 {
                     collection.InvalidateHashLookups();
-                    bound = false;
+                    ClearBind();
                 }
             }
         }
@@ -551,7 +549,7 @@ namespace Npgsql
                     this.value = value;
                     this.npgsqlValue = value;
 
-                    bound = false;
+                    ClearBind();
 
                     //if (type_info == null)
                     //{
@@ -575,7 +573,7 @@ namespace Npgsql
                     this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
                     this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
 
-                    bound = false;
+                    ClearBind();
                 }
 
             }
@@ -592,7 +590,7 @@ namespace Npgsql
             get { return npgsqlValue; }
             set {
                 Value = value;
-                bound = false;
+                ClearBind();
             }
         }
 
@@ -604,7 +602,29 @@ namespace Npgsql
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             type_info = null;
             this.Value = Value;
-            bound = false;
+            ClearBind();
+        }
+
+        internal bool IsBound { get; private set; }
+        internal byte[] BoundValue { get; private set; }
+        internal short BoundFormatCode { get; private set; }
+
+        internal void Bind(NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
+        {
+            IsBound = true;
+            BoundValue = TypeInfo.ConvertToBackend(Value, true, nativeToBackendTypeConverterOptions);
+            if (BoundValue == null) {
+                BoundFormatCode = (short)FormatCode.Binary;
+            }
+            else {
+                BoundFormatCode = TypeInfo.SupportsBinaryBackendData ? (short)FormatCode.Binary : (short)FormatCode.Text;
+            }
+        }
+
+        void ClearBind()
+        {
+            IsBound = false;
+            BoundValue = null;
         }
 
         /// <summary>
@@ -644,12 +664,6 @@ namespace Npgsql
         object ICloneable.Clone()
         {
             return Clone();
-        }
-
-        internal bool Bound
-        {
-            get { return bound; }
-            set { bound = value; }
         }
     }
 }

@@ -64,8 +64,6 @@ namespace Npgsql
 
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
-        NpgsqlBind _bind;
-        NpgsqlExecute _execute;
         NpgsqlRowDescription _currentRowDescription;
 
         long _lastInsertedOid;
@@ -81,6 +79,9 @@ namespace Npgsql
         static readonly Array ParamNameCharTable;
         internal Type[] ExpectedTypes { get; set; }
 
+        short[] _resultFormatCodes;
+
+        const string AnonymousPortal = "";
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         #endregion Fields
@@ -421,13 +422,11 @@ namespace Npgsql
             const string portalName = "";
 
             _preparedCommandText = GetCommandText(true);
-            var parse = new NpgsqlParse(_planName, _preparedCommandText, new int[] { });
-            var statementDescribe = new NpgsqlDescribeStatement(_planName);
             NpgsqlRowDescription returnRowDesc = null;
 
             // Write Parse, Describe, and Sync messages to the wire.
-            _connector.SendParse(parse);
-            _connector.SendDescribe(statementDescribe);
+            _connector.SendParse(_planName, _preparedCommandText, new int[] { });
+            _connector.SendDescribeStatement(_planName);
             _connector.SendSync();
 
             // Tell to mediator what command is being sent.
@@ -450,11 +449,9 @@ namespace Npgsql
                 }
             }
 
-            short[] resultFormatCodes;
-
             if (returnRowDesc != null)
             {
-                resultFormatCodes = new short[returnRowDesc.NumFields];
+                _resultFormatCodes = new short[returnRowDesc.NumFields];
 
                 for (var i = 0; i < returnRowDesc.NumFields; i++)
                 {
@@ -467,27 +464,22 @@ namespace Npgsql
                         // here based on support for binary encoding.  Once this is done,
                         // there is no need to request another row description after Bind.
                         returnRowDescData.FormatCode = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? FormatCode.Binary : FormatCode.Text;
-                        resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
+                        _resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
                     }
                     else
                     {
                         // Text format (default).
-                        resultFormatCodes[i] = (short)FormatCode.Text;
+                        _resultFormatCodes[i] = (short)FormatCode.Text;
                     }
                 }
             }
             else
             {
-                resultFormatCodes = new short[] { 0 };
+                _resultFormatCodes = new short[] { 0 };
             }
 
             // Save the row description for use with all future Executes.
             _currentRowDescription = returnRowDesc;
-
-            // The Bind and Execute message objects live through multiple Executes.
-            // Only Bind changes at all between Executes, which is done in BindParameters().
-            _bind = new NpgsqlBind(portalName, _planName, new Int16[Parameters.Count], null, resultFormatCodes);
-            _execute = new NpgsqlExecute(portalName, 0);
 
             _prepared = PrepareStatus.Prepared;
         }
@@ -497,8 +489,6 @@ namespace Npgsql
             if (_prepared == PrepareStatus.Prepared)
             {
                 _connector.ExecuteBlind("DEALLOCATE " + _planName);
-                _bind = null;
-                _execute = null;
                 _currentRowDescription = null;
                 _prepared = PrepareStatus.NeedsPrepare;
             }
@@ -1574,12 +1564,10 @@ namespace Npgsql
 
                 if (_prepared == PrepareStatus.NotPrepared)
                 {
-                    byte[] commandText = GetCommandText();
-
-                    var query = new NpgsqlQuery(commandText);
+                    var commandText = GetCommandText();
 
                     // Write the Query message to the wire.
-                    _connector.SendQuery(query);
+                    _connector.SendQuery(commandText);
 
                     // Tell to mediator what command is being sent.
                     if (_prepared == PrepareStatus.NotPrepared)
@@ -1626,8 +1614,7 @@ namespace Npgsql
                         // Passthrough the commandtimeout to the inner command, so user can also control its timeout.
                         // TODO: Check if there is a better way to handle that.
 
-                        query = new NpgsqlQuery(queryText);
-                        _connector.SendQuery(query);
+                        _connector.SendQuery(queryText);
                         reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
                         // For un-prepared statements, the first response is always a row description.
                         // For prepared statements, we may be recycling a row description from a previous Execute.
@@ -1638,12 +1625,12 @@ namespace Npgsql
                 }
                 else
                 {
-                    // Update the Bind object with current parameter data as needed.
-                    BindParameters();
+                    // Bind the parameters, execute and sync
+                    for (var i = 0; i < _parameters.Count; i++)
+                        _parameters[i].Bind(_connector.NativeToBackendTypeConverterOptions);
+                    _connector.SendBind(AnonymousPortal, _planName, _parameters, _resultFormatCodes);
 
-                    // Write the Bind, Execute, and Sync message to the wire.
-                    _connector.SendBind(_bind);
-                    _connector.SendExecute(_execute);
+                    _connector.SendExecute();
                     _connector.SendSync();
 
                     // Tell to mediator what command is being sent.
@@ -1658,55 +1645,6 @@ namespace Npgsql
                 }
 
                 return reader;
-            }
-        }
-
-        ///<summary>
-        /// This method binds the parameters from parameters collection to the bind
-        /// message.
-        /// </summary>
-        void BindParameters()
-        {
-            if (_parameters.Count != 0)
-            {
-                var parameterValues = _bind.ParameterValues;
-                var parameterFormatCodes = _bind.ParameterFormatCodes;
-                var bindAll = false;
-                var bound = false;
-
-                if (parameterValues == null || parameterValues.Length != _parameters.Count)
-                {
-                    parameterValues = new byte[_parameters.Count][];
-                    bindAll = true;
-                }
-
-                for (var i = 0; i < _parameters.Count; i++)
-                {
-                    if (!bindAll && _parameters[i].Bound)
-                    {
-                        continue;
-                    }
-
-                    parameterValues[i] = _parameters[i].TypeInfo.ConvertToBackend(_parameters[i].Value, true, Connector.NativeToBackendTypeConverterOptions);
-
-                    bound = true;
-                    _parameters[i].Bound = true;
-
-                    if (parameterValues[i] == null)
-                    {
-                        parameterFormatCodes[i] = (short)FormatCode.Binary;
-                    }
-                    else
-                    {
-                        parameterFormatCodes[i] = _parameters[i].TypeInfo.SupportsBinaryBackendData ? (Int16)FormatCode.Binary : (Int16)FormatCode.Text;
-                    }
-                }
-
-                if (bound)
-                {
-                    _bind.ParameterValues = parameterValues;
-                    _bind.ParameterFormatCodes = parameterFormatCodes;
-                }
             }
         }
 

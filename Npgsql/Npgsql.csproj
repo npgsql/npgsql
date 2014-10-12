@@ -143,11 +143,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>L10N.resx</DependentUpon>
     </Compile>
-    <Compile Include="NpgsqlQuery.cs" />
-    <Compile Include="NpgsqlQuery.Async.cs">
-      <DependentUpon>NpgsqlQuery.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
     <Compile Include="BackendEncoding.cs" />
@@ -161,16 +156,6 @@
       <Generator>AsyncGenerator</Generator>
     </Compile>
     <Compile Include="NpgsqlBackEndKeyData.cs" />
-    <Compile Include="NpgsqlBind.cs" />
-    <Compile Include="NpgsqlBind.Async.cs">
-      <DependentUpon>NpgsqlBind.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
-    <Compile Include="NpgsqlCancelRequest.cs" />
-    <Compile Include="NpgsqlCancelRequest.Async.cs">
-      <DependentUpon>NpgsqlCancelRequest.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommand.Async.cs">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>
@@ -197,40 +182,15 @@
       <DependentUpon>NpgsqlDataReader.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
-    <Compile Include="NpgsqlDescribe.cs" />
-    <Compile Include="NpgsqlDescribe.Async.cs">
-      <DependentUpon>NpgsqlDescribe.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlError.cs" />
     <Compile Include="NpgsqlException.cs" />
-    <Compile Include="NpgsqlExecute.cs" />
-    <Compile Include="NpgsqlExecute.Async.cs">
-      <DependentUpon>NpgsqlExecute.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlFactory.cs" />
-    <Compile Include="NpgsqlFlush.cs" />
-    <Compile Include="NpgsqlFlush.Async.cs">
-      <DependentUpon>NpgsqlFlush.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlMediator.cs" />
     <Compile Include="NpgsqlMessages.cs" />
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />
     <Compile Include="NpgsqlParameterCollection.cs" />
     <Compile Include="NpgsqlParameterStatus.cs" />
-    <Compile Include="NpgsqlParse.cs" />
-    <Compile Include="NpgsqlParse.Async.cs">
-      <DependentUpon>NpgsqlParse.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
-    <Compile Include="NpgsqlPasswordPacket.cs" />
-    <Compile Include="NpgsqlPasswordPacket.Async.cs">
-      <DependentUpon>NpgsqlPasswordPacket.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlPromotableSinglePhaseNotification.cs" />
     <Compile Include="NpgsqlResourceManager.cs" />
     <Compile Include="NpgsqlRow.cs" />
@@ -240,16 +200,6 @@
     </Compile>
     <Compile Include="NpgsqlRowDescription.cs" />
     <Compile Include="NpgsqlSchema.cs" />
-    <Compile Include="NpgsqlStartupPacket.cs" />
-    <Compile Include="NpgsqlStartupPacket.Async.cs">
-      <DependentUpon>NpgsqlStartupPacket.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
-    <Compile Include="NpgsqlSync.cs" />
-    <Compile Include="NpgsqlSync.Async.cs">
-      <DependentUpon>NpgsqlSync.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlTransaction.cs" />
     <Compile Include="NpgsqlTransactionCallbacks.cs" />
     <Compile Include="PGUtil.cs" />
@@ -257,6 +207,7 @@
       <DependentUpon>PGUtil.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
+    <Compile Include="QueryManager.cs" />
     <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
@@ -328,7 +279,6 @@
   <PropertyGroup>
     <CompileDependsOn>GenerateAsync;$(CompileDependsOn)</CompileDependsOn>
   </PropertyGroup>
-
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
