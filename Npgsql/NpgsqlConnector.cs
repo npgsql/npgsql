@@ -142,7 +142,7 @@ namespace Npgsql
         /// <param name="pooled">Pooled</param>
         public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled)
         {
-            State = NpgsqlState.Closed;
+            State = ConnectorState.Closed;
             _settings = connectionString;
             Pooled = pooled;
             IsInitialized = false;
@@ -185,15 +185,35 @@ namespace Npgsql
         /// <summary>
         /// Gets the current state of the connector
         /// </summary>
-        internal NpgsqlState State
+        internal ConnectorState State
         {
-            get { return (NpgsqlState)_state; }
+            get { return (ConnectorState)_state; }
             set
             {
                 var newState = (int) value;
                 if (newState == _state)
                     return;
                 Interlocked.Exchange(ref _state, newState);
+
+                switch (value)
+                {
+                    case ConnectorState.Closed:
+                    case ConnectorState.Ready:
+                    case ConnectorState.Broken:
+                        if (CurrentReader != null) {
+                            CurrentReader.Command.State = CommandState.Idle;
+                            CurrentReader = null;
+                        }
+                        break;
+                    case ConnectorState.Connecting:
+                    case ConnectorState.Executing:
+                    case ConnectorState.Fetching:
+                    case ConnectorState.CopyIn:
+                    case ConnectorState.CopyOut:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("value");
+                }
             }
         }
 
@@ -206,15 +226,15 @@ namespace Npgsql
             {
                 switch (State)
                 {
-                    case NpgsqlState.Ready:
-                    case NpgsqlState.Executing:
-                    case NpgsqlState.Fetching:
-                    case NpgsqlState.CopyIn:
-                    case NpgsqlState.CopyOut:
+                    case ConnectorState.Ready:
+                    case ConnectorState.Executing:
+                    case ConnectorState.Fetching:
+                    case ConnectorState.CopyIn:
+                    case ConnectorState.CopyOut:
                         return true;
-                    case NpgsqlState.Closed:
-                    case NpgsqlState.Connecting:
-                    case NpgsqlState.Broken:
+                    case ConnectorState.Closed:
+                    case ConnectorState.Connecting:
+                    case ConnectorState.Broken:
                         return false;
                     default:
                         throw new ArgumentOutOfRangeException("Unknown state: " + State);
@@ -231,15 +251,15 @@ namespace Npgsql
             {
                 switch (State)
                 {
-                    case NpgsqlState.Executing:
-                    case NpgsqlState.Fetching:
-                    case NpgsqlState.CopyIn:
-                    case NpgsqlState.CopyOut:
+                    case ConnectorState.Executing:
+                    case ConnectorState.Fetching:
+                    case ConnectorState.CopyIn:
+                    case ConnectorState.CopyOut:
                         return true;
-                    case NpgsqlState.Ready:
-                    case NpgsqlState.Closed:
-                    case NpgsqlState.Connecting:
-                    case NpgsqlState.Broken:
+                    case ConnectorState.Ready:
+                    case ConnectorState.Closed:
+                    case ConnectorState.Connecting:
+                    case ConnectorState.Broken:
                         return false;
                     default:
                         throw new ArgumentOutOfRangeException("Unknown state: " + State);
@@ -258,11 +278,11 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal void Open()
         {
-            if (State != NpgsqlState.Closed) {
+            if (State != ConnectorState.Closed) {
                 throw new InvalidOperationException("Can't open, state is " + State);
             }
 
-            State = NpgsqlState.Connecting;
+            State = ConnectorState.Connecting;
 
             ServerVersion = null;
 
@@ -293,7 +313,7 @@ namespace Npgsql
             }
 
             // Change the state of connection to open and ready.
-            State = NpgsqlState.Ready;
+            State = ConnectorState.Ready;
 
             // After attachment, the stream will close the connector (this) when the stream gets disposed.
             BaseStream.AttachConnector(this);
@@ -462,7 +482,7 @@ namespace Npgsql
                 _log.Debug("Sending query: " + query);
             query.WriteToStream(Stream);
             Stream.Flush();
-            State = NpgsqlState.Executing;
+            State = ConnectorState.Executing;
         }
 
         [GenerateAsync]
@@ -564,7 +584,7 @@ namespace Npgsql
                         // Possible error in the NpgsqlConnectedState:
                         //        No pg_hba.conf configured.
 
-                        if (State == NpgsqlState.Connecting) {
+                        if (State == ConnectorState.Connecting) {
                             throw new NpgsqlException(error);
                         }
 
@@ -697,7 +717,7 @@ namespace Npgsql
 
                     case BackEndMessageCode.DataRow:
                         _log.Trace("Received DataRow");
-                        State = NpgsqlState.Fetching;
+                        State = ConnectorState.Fetching;
                         return new StringRowReader(Stream);
 
                     case BackEndMessageCode.ReadyForQuery:
@@ -711,7 +731,7 @@ namespace Npgsql
                         Stream.ReadInt32();
                         Stream.ReadByte();
 
-                        State = NpgsqlState.Ready;
+                        State = ConnectorState.Ready;
 
                         if (_pendingErrors.Any()) {
                             var e = new NpgsqlException(_pendingErrors);
@@ -800,7 +820,7 @@ namespace Npgsql
                     case BackEndMessageCode.CopyInResponse:
                         _log.Trace("Received CopyInResponse");
                         // Enter COPY sub protocol and start pushing data to server
-                        State = NpgsqlState.CopyIn;
+                        State = ConnectorState.CopyIn;
                         Stream.ReadInt32(); // length redundant
                         StartCopyIn(ReadCopyHeader());
                         return CopyInResponseMsg.Instance;
@@ -809,7 +829,7 @@ namespace Npgsql
                     case BackEndMessageCode.CopyOutResponse:
                         _log.Trace("Received CopyOutResponse");
                         // Enter COPY sub protocol and start pulling data from server
-                        State = NpgsqlState.CopyOut;
+                        State = ConnectorState.CopyOut;
                         Stream.ReadInt32(); // length redundant
                         StartCopyOut(ReadCopyHeader());
                         return CopyOutResponseMsg.Instance;
@@ -1149,9 +1169,9 @@ namespace Npgsql
 
             switch (State)
             {
-                case NpgsqlState.Closed:
+                case ConnectorState.Closed:
                     return;
-                case NpgsqlState.Ready:
+                case ConnectorState.Ready:
                     try
                     {
                         Stream
@@ -1172,7 +1192,7 @@ namespace Npgsql
             Stream = null;
             _serverParameters.Clear();
             ServerVersion = null;
-            State = NpgsqlState.Closed;
+            State = ConnectorState.Closed;
         }
 
         /// <summary>
@@ -1180,7 +1200,7 @@ namespace Npgsql
         /// </summary>
         internal void ReleaseResources()
         {
-            if (State != NpgsqlState.Closed)
+            if (State != ConnectorState.Closed)
             {
                 if (SupportsDiscard)
                 {
@@ -1651,7 +1671,7 @@ namespace Npgsql
     /// <summary>
     /// Expresses the exact state of a connector.
     /// </summary>
-    internal enum NpgsqlState
+    internal enum ConnectorState
     {
         /// <summary>
         /// The connector has either not yet been opened or has been closed.

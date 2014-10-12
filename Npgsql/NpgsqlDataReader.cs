@@ -50,7 +50,7 @@ namespace Npgsql
         internal NpgsqlConnection _connection;
         internal DataTable _currentResultsetSchema;
         internal CommandBehavior _behavior;
-        internal NpgsqlCommand _command;
+        internal NpgsqlCommand Command { get; private set; }
 
         internal Version Npgsql205 = new Version("2.0.5");
 
@@ -84,9 +84,10 @@ namespace Npgsql
                                   bool preparedStatement = false, NpgsqlRowDescription rowDescription = null)
         {
             _behavior = behavior;
-            _connection = (_command = command).Connection;
             _connector = command.Connector;
-            _connector.CurrentReader = this;
+            Command = command;
+            _connection = command.Connection;
+            command.Connector.CurrentReader = this;
             _threadBlock = threadBlock;
             _preparedStatement = preparedStatement;
             CurrentDescription = rowDescription;
@@ -96,7 +97,7 @@ namespace Npgsql
         {
             if (CurrentDescription != null)
             {
-                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = _command.Parameters.Cast<NpgsqlParameter>()
+                IEnumerable<NpgsqlParameter> inputOutputAndOutputParams = Command.Parameters.Cast<NpgsqlParameter>()
                     .Where(p => p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output);
                 if (!inputOutputAndOutputParams.Any())
                 {
@@ -250,7 +251,7 @@ namespace Npgsql
             }
             catch (IOException)
             {
-                _command.Connection.ClearPool();
+                Command.Connection.ClearPool();
                 throw;
             }
         }
@@ -387,7 +388,7 @@ namespace Npgsql
             }
             catch (IOException)
             {
-                _command.Connection.ClearPool();
+                Command.Connection.ClearPool();
                 throw;
             }
         }
@@ -538,7 +539,6 @@ namespace Npgsql
                 }
                 _cleanedUp = true;
             }
-            _connector.CurrentReader = null;
             _threadBlock.Dispose();
         }
 
@@ -619,9 +619,9 @@ namespace Npgsql
         {
             object providerValue = GetProviderSpecificValue(ordinal);
             NpgsqlBackendTypeInfo backendTypeInfo;
-            if (_command.ExpectedTypes != null && _command.ExpectedTypes.Length > ordinal && _command.ExpectedTypes[ordinal] != null)
+            if (Command.ExpectedTypes != null && Command.ExpectedTypes.Length > ordinal && Command.ExpectedTypes[ordinal] != null)
             {
-                return ExpectedTypeConverter.ChangeType(providerValue, _command.ExpectedTypes[ordinal]);
+                return ExpectedTypeConverter.ChangeType(providerValue, Command.ExpectedTypes[ordinal]);
             }
             else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(ordinal, out backendTypeInfo))
                 return backendTypeInfo.ConvertToFrameworkType(providerValue);
@@ -1541,9 +1541,9 @@ namespace Npgsql
         ///</summary>
         private String GetTableNameFromQuery()
         {
-            Int32 fromClauseIndex = _command.CommandText.ToLowerInvariant().IndexOf("from");
+            Int32 fromClauseIndex = Command.CommandText.ToLowerInvariant().IndexOf("from");
 
-            String tableName = _command.CommandText.Substring(fromClauseIndex + 4).Trim();
+            String tableName = Command.CommandText.Substring(fromClauseIndex + 4).Trim();
 
             if (string.IsNullOrEmpty(tableName))// == String.Empty)
             {

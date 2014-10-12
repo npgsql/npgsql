@@ -4009,5 +4009,22 @@ namespace NpgsqlTests
                 );
             }
         }
+
+        [Test, Description("Check that cancel only affects the command on which its was invoked")]
+        [Timeout(3000)]
+        public void CancelCrossCommand()
+        {
+            using (var cmd1 = new NpgsqlCommand("SELECT pg_sleep(2)", Conn))
+            using (var cmd2 = new NpgsqlCommand("SELECT 1", Conn))
+            {
+                var cancelTask = Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(300);
+                    cmd2.Cancel();
+                });
+                Assert.That(() => cmd1.ExecuteNonQuery(), Throws.Nothing);
+                cancelTask.Wait();
+            }
+        }
     }
 }
