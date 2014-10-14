@@ -50,12 +50,21 @@ namespace AsyncGenerator
                 SyntaxTree = SyntaxFactory.ParseSyntaxTree(File.ReadAllText(f.ItemSpec))
             }).ToList();
 
-            var mscorlib = new MetadataFileReference(typeof(object).Assembly.Location);
+            // Creation of the assembly reference should be done this way:
+            // var mscorlib = new MetadataFileReference(typeof(object).Assembly.Location);
+            // But this creates a "path not absolute" exception on mono in GetAssemblyOrModuleSymbol() below.
+            // See http://stackoverflow.com/questions/26355922/creating-roslyn-metadatafilereference-bombs-on-mono-linux
+
+            var mscorlibMetadata = AssemblyMetadata.CreateFromImageStream(new FileStream(typeof(object).Assembly.Location, FileMode.Open, FileAccess.Read));
+            var mscorlib = new MetadataImageReference (mscorlibMetadata);
+
+            var datalibMetadata = AssemblyMetadata.CreateFromImageStream(new FileStream(typeof(CommandBehavior).Assembly.Location, FileMode.Open, FileAccess.Read));
+            var datalib = new MetadataImageReference (datalibMetadata);
 
             var compilation = CSharpCompilation.Create(
                 "Temp",
                 files.Select(f => f.SyntaxTree),
-                new[] { mscorlib, new MetadataFileReference(typeof(CommandBehavior).Assembly.Location) }
+                new[] { mscorlib, datalib }
             );
             foreach (var file in files) {
                 file.SemanticModel = compilation.GetSemanticModel(file.SyntaxTree);
