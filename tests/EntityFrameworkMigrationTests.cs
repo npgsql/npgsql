@@ -473,6 +473,16 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TestRenameIndexOperation()
+        {
+            var operations = new List<MigrationOperation>();
+            operations.Add(new RenameIndexOperation("someTable", "someOldIndexName", "someNewIndexName"));
+            var statements = new NpgsqlMigrationSqlGenerator().Generate(operations, BackendVersion.ToString());
+            Assert.AreEqual(1, statements.Count());
+            Assert.AreEqual("ALTER INDEX \"someOldIndexName\" RENAME TO \"someNewIndexName\"", statements.ElementAt(0).Sql);
+        }
+
+        [Test]
         public void TestMoveTableOperation()
         {
             var operations = new List<MigrationOperation>();
