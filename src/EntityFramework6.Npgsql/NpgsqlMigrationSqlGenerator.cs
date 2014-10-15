@@ -461,6 +461,7 @@ namespace Npgsql
         private void Convert(RenameIndexOperation renameIndexOperation)
         {
             StringBuilder sql = new StringBuilder();
+
             if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 2))
             {
                 sql.Append("ALTER INDEX IF EXISTS ");
