@@ -1847,5 +1847,41 @@ namespace NpgsqlTests
                 }
             }
         }
+
+        [Test]
+        public void NpgsqlParameterCloneTest()
+        {
+
+            var param = new NpgsqlParameter();
+
+            param.Value = 5;
+            param.Precision = 1;
+            param.Scale = 1;
+            param.Size = 1;
+            param.Direction = ParameterDirection.Input;
+            param.IsNullable = true;
+            param.ParameterName = "parameterName";
+            param.SourceColumn = "source_column";
+            param.SourceVersion = DataRowVersion.Current;
+            param.NpgsqlValue = 5;
+            param.SourceColumnNullMapping = false;
+
+            var newParam = param.Clone();
+
+            Assert.AreEqual(param.Value, newParam.Value);
+            Assert.AreEqual(param.Precision, newParam.Precision);
+            Assert.AreEqual(param.Scale, newParam.Scale);
+            Assert.AreEqual(param.Size, newParam.Size);
+            Assert.AreEqual(param.TypeInfo, newParam.TypeInfo);
+            Assert.AreEqual(param.Direction, newParam.Direction);
+            Assert.AreEqual(param.IsNullable, newParam.IsNullable);
+            Assert.AreEqual(param.ParameterName, newParam.ParameterName);
+            Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
+            Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
+            Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+            Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
+            Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+
+        }
     }
 }
