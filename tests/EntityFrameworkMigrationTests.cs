@@ -487,7 +487,6 @@ namespace NpgsqlTests
             {
                 Assert.AreEqual("ALTER INDEX someSchema.\"someOldIndexName\" RENAME TO \"someNewIndexName\"", statements.ElementAt(0).Sql);    
             }
-            
         }
 
         [Test]
