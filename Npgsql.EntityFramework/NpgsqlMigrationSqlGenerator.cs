@@ -462,7 +462,17 @@ namespace Npgsql
         private void Convert(RenameIndexOperation renameIndexOperation)
         {
             StringBuilder sql = new StringBuilder();
-            sql.Append("ALTER INDEX \"");
+            if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 2))
+            {
+                sql.Append("ALTER INDEX IF EXISTS ");
+            }
+            else
+            {
+                sql.Append("ALTER INDEX ");
+            }
+
+            sql.Append(GetSchemaNameFromFullTableName(renameIndexOperation.Table));
+            sql.Append(".\"");
             sql.Append(renameIndexOperation.Name);
             sql.Append("\" RENAME TO \"");
             sql.Append(renameIndexOperation.NewName);
