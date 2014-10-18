@@ -95,11 +95,11 @@ namespace Npgsql
             }
             catch (InvalidCastException ice)
             {
-                return ice;
+                throw;
             }
             catch (Exception ex)
             {
-                return new InvalidCastException(ex.Message, ex);
+                throw new InvalidCastException(ex.Message, ex);
             }
         }
 

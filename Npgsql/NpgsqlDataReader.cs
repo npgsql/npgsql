@@ -638,12 +638,7 @@ namespace Npgsql
 
             CheckHaveRow();
 
-            object ret = CurrentRow.Get(ordinal);
-            if (ret is Exception)
-            {
-                throw (Exception)ret;
-            }
-            return ret;
+            return CurrentRow.Get(ordinal);
         }
 
         /// <summary>
