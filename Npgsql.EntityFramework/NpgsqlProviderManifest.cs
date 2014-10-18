@@ -206,7 +206,7 @@ namespace Npgsql
                     {
                         // TODO: could get character, character varying, text
                         if (edmType.Facets.TryGetValue(FixedLengthFacet, false, out facet) &&
-                            !facet.IsUnbounded && facet.Value != null)
+                            !facet.IsUnbounded && facet.Value != null && (bool)facet.Value)
                         {
                             PrimitiveType characterPrimitive = StoreTypeNameToStorePrimitiveType["bpchar"];
                             if (edmType.Facets.TryGetValue(MaxLengthFacet, false, out facet) &&
