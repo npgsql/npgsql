@@ -423,29 +423,75 @@ namespace Npgsql
 
             _preparedCommandText = GetCommandText(true);
             NpgsqlRowDescription returnRowDesc = null;
+            ParameterDescriptionResponse parameterDescription = null;
+
+
+            var numInputParameters = 0;
+            for (var i = 0; i < _parameters.Count; i++)
+            {
+                if (_parameters[i].IsInputDirection)
+                {
+                    numInputParameters++;
+                }
+            }
+
+            var parameterTypeOIDs = new int[numInputParameters];
+
+            for (int i = 0, j = 0; i < _parameters.Count; i++)
+            {
+                if (_parameters[i].IsInputDirection)
+                {
+                    parameterTypeOIDs[j++] = _parameters[i].TypeInfo.NpgsqlDbType == NpgsqlDbType.Unknown ? 0 : _connector.OidToNameMapping[_parameters[i].TypeInfo.Name].OID;
+                }
+            }
 
             // Write Parse, Describe, and Sync messages to the wire.
-            _connector.SendParse(_planName, _preparedCommandText, new int[] { });
+            _connector.SendParse(_planName, _preparedCommandText, parameterTypeOIDs);
             _connector.SendDescribeStatement(_planName);
             _connector.SendSync();
 
             // Tell to mediator what command is being sent.
             _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Parse);
-  
+
+            // Look for ParameterDescriptionResponse, NpgsqlRowDescription in the responses, discarding everything else.
             while (true)
             {
                 var msg = _connector.ReadMessage();
                 if (msg is ReadyForQueryMsg) {
                     break;
                 }
+                var asParameterDescription = msg as ParameterDescriptionResponse;
+                if (asParameterDescription != null)
+                {
+                    parameterDescription = asParameterDescription;
+                    continue;
+                }
                 var asRowDesc = msg as NpgsqlRowDescription;
-                if (asRowDesc != null) {
+                if (asRowDesc != null)
+                {
                     returnRowDesc = asRowDesc;
                     continue;
                 }
                 var asDisposable = msg as IDisposable;
-                if (asDisposable != null) {
+                if (asDisposable != null)
+                {
                     asDisposable.Dispose();
+                }
+            }
+
+            if (parameterDescription != null)
+            {
+                if (parameterDescription.TypeOIDs.Length != numInputParameters)
+                {
+                    throw new InvalidOperationException("Wrong number of parameters. Got " + numInputParameters + " but expected " + parameterDescription.TypeOIDs.Length + ".");
+                }
+
+                for (int i = 0, j = 0; j < numInputParameters; i++)
+                {
+                    if (_parameters[i].IsInputDirection)
+                    {
+                        _parameters[i].SetTypeOID(parameterDescription.TypeOIDs[j++], _connector.NativeToBackendTypeConverterOptions);
+                    }
                 }
             }
 
@@ -532,7 +578,7 @@ namespace Npgsql
             var seenDef = false;
             foreach (NpgsqlParameter p in Parameters)
             {
-                if ((p.Direction == ParameterDirection.Input) || (p.Direction == ParameterDirection.InputOutput))
+                if (p.IsInputDirection)
                 {
                     parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID.ToString() + " ");
                 }
@@ -717,10 +763,7 @@ namespace Npgsql
             {
                 var parameter = _parameters[i];
 
-                if (
-                    (parameter.Direction == ParameterDirection.Input) ||
-                    (parameter.Direction == ParameterDirection.InputOutput)
-                )
+                if (parameter.IsInputDirection)
                 {
                     if (first)
                     {
@@ -738,22 +781,15 @@ namespace Npgsql
 
         void AppendParameterPlaceHolder(Stream dest, NpgsqlParameter parameter, int paramNumber)
         {
-            var parameterSize = "";
-
             dest.WriteByte((byte)ASCIIBytes.ParenLeft);
 
-            if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
+            if (parameter.UseCast && parameter.Size > 0)
             {
-                parameterSize = string.Format("({0})", parameter.Size);
-            }
-
-            if (parameter.UseCast)
-            {
-                dest.WriteString("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
+                dest.WriteString("${0}::{1}", paramNumber, parameter.TypeInfo.GetCastName(parameter.Size));
             }
             else
             {
-                dest.WriteString("${0}{1}", paramNumber, parameterSize);
+                dest.WriteString("$" + paramNumber);
             }
 
             dest.WriteByte((byte)ASCIIBytes.ParenRight);
@@ -767,10 +803,7 @@ namespace Npgsql
             {
                 var parameter = _parameters[i];
 
-                if (
-                    (parameter.Direction == ParameterDirection.Input) ||
-                    (parameter.Direction == ParameterDirection.InputOutput)
-                )
+                if (parameter.IsInputDirection)
                 {
                     if (first)
                     {
@@ -801,12 +834,7 @@ namespace Npgsql
 
             if (parameter.UseCast)
             {
-                dest.WriteString("::{0}", parameter.TypeInfo.CastName);
-
-                if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
-                {
-                    dest.WriteString("({0})", parameter.Size);
-                }
+                dest.WriteString("::{0}", parameter.TypeInfo.GetCastName(parameter.Size));
             }
 
             dest.WriteByte((byte)ASCIIBytes.ParenRight);
@@ -869,9 +897,12 @@ namespace Npgsql
             {
                 paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
 
-                for (int i = 0; i < _parameters.Count; i++)
+                for (int i = 0, cnt = 0; i < _parameters.Count; i++)
                 {
-                    paramOrdinalMap[_parameters[i]] = i + 1;
+                    if (_parameters[i].IsInputDirection)
+                    {
+                        paramOrdinalMap[_parameters[i]] = ++cnt;
+                    }
                 }
             }
 
@@ -946,7 +977,7 @@ namespace Npgsql
 
                     if (_parameters.TryGetValue(paramName, out parameter))
                     {
-                        if (parameter.Direction == ParameterDirection.Input || parameter.Direction == ParameterDirection.InputOutput)
+                        if (parameter.IsInputDirection)
                         {
                             if (prepare)
                             {
@@ -1260,19 +1291,14 @@ namespace Npgsql
 
                     byte[] serialization;
 
-                    serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
+                    serialization = p.TypeInfo.ConvertToBackend(p.NpgsqlValue, false, Connector.NativeToBackendTypeConverterOptions);
 
                     result.WriteBytes(serialization);
                     result.WriteByte((byte)ASCIIBytes.ParenRight);
 
                     if (p.UseCast)
                     {
-                        result.WriteString(string.Format("::{0}", p.TypeInfo.CastName));
-
-                        if (p.TypeInfo.UseSize && (p.Size > 0))
-                        {
-                            result.WriteString("({0})", p.Size);
-                        }
+                        result.WriteString(string.Format("::{0}", p.TypeInfo.GetCastName(p.Size)));
                     }
                 }
 

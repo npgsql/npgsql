@@ -69,6 +69,22 @@ namespace NpgsqlTypes
                 };
 
         /// <summary>
+        /// Convert a "char" to .NET char.
+        /// </summary>
+        internal static Object SingleCharTextToChar(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
+        {
+            return BackendData.Length > 0 ? (char)BackendData[0] : (char)0;
+        }
+
+        /// <summary>
+        /// Convert a "char" to .NET char.
+        /// </summary>
+        internal static Object SingleCharBinaryToChar(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        {
+            return (char)BackendData[0];
+        }
+        
+        /// <summary>
         /// Convert UTF8 encoded text a string.
         /// </summary>
         internal static Object TextBinaryToString(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
@@ -199,9 +215,9 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Convert a postgresql bit to a System.Boolean.
+        /// Convert a postgresql bit to a System.Boolean if length is 1, else a BitString.
         /// </summary>
-        internal static Object ToBit(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
+        internal static Object ToBitText(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             // Current tests seem to expect single-bit bitstrings to behave as boolean (why?)
             //
@@ -212,9 +228,22 @@ namespace NpgsqlTypes
             // It means that IDataReader.GetValue() can't be used safely for bitstrings that
             // may be single-bit, but NpgsqlDataReader.GetBitString() can deal with the conversion
             // below by reversing it, so if GetBitString() is used, no harm is done.
+
+            // New solution: Use bool only when the type is BIT(1)
+
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
             BitString bs = BitString.Parse(BackendData);
-            return bs.Length == 1 ? (object)bs[0] : bs;
+            return TypeInfo.NpgsqlDbType == NpgsqlDbType.Bit && TypeModifier == 1 ? (object)bs[0] : bs;
+        }
+
+        /// <summary>
+        /// Convert a postgresql bit to a System.Boolean if length is 1, else a BitString.
+        /// </summary>
+        internal static Object ToBitBinary(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+                                           Int32 TypeModifier)
+        {
+            BitString bs = new BitString(BackendData);
+            return TypeInfo.NpgsqlDbType == NpgsqlDbType.Bit && TypeModifier == 1 ? (object)bs[0] : bs;
         }
 
         private static bool ByteArrayEqual(byte[] l, byte[] r)
