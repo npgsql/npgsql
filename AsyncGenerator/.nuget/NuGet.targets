@@ -25,15 +25,10 @@
         -->
     </ItemGroup>
 
-    <PropertyGroup Condition=" '$(OS)' == 'Windows_NT'">
-        <!-- Windows specific commands -->
+    <PropertyGroup>
         <NuGetToolsPath>$([System.IO.Path]::Combine($(SolutionDir), ".nuget"))</NuGetToolsPath>
     </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(OS)' != 'Windows_NT'">
-        <!-- We need to launch nuget.exe with the mono command if we're not on windows -->
-        <NuGetToolsPath>$(SolutionDir).nuget</NuGetToolsPath>
-    </PropertyGroup>
 
     <PropertyGroup>
         <PackagesProjectConfig Condition=" '$(OS)' == 'Windows_NT'">$(MSBuildProjectDirectory)\packages.$(MSBuildProjectName.Replace(' ', '_')).config</PackagesProjectConfig>
