@@ -268,7 +268,7 @@
   </Target>
   <UsingTask TaskName="AsyncGenerator.GenerateAsync" AssemblyFile="..\AsyncGenerator\bin\Release\AsyncGenerator.dll" />
   <Target Name="BuildAsyncGenerator" Condition="!Exists('..\AsyncGenerator\bin\Release\AsyncGenerator.dll')">
-    <MSBuild Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release;SolutionDir=..\AsyncGenerator" />
+    <MSBuild Projects="..\AsyncGenerator\AsyncGenerator.csproj" Properties="Configuration=Release;SolutionDir=..\AsyncGenerator\" />
   </Target>
   <Target Name="GenerateAsync" DependsOnTargets="BuildAsyncGenerator">
     <ItemGroup>
