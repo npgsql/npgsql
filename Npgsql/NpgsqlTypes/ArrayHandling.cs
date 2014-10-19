@@ -206,22 +206,22 @@ namespace NpgsqlTypes
         public byte[] ArrayToArrayBinary(NpgsqlNativeTypeInfo TypeInfo, object oNativeData, NativeToBackendTypeConverterOptions options)
         {
             Array NativeData = (Array)oNativeData;
-            MemoryStream dst = new MemoryStream();
+            NpgsqlMemoryStream dst = new NpgsqlMemoryStream(true);
 
             // Write the number of dimensions in the array.
-            dst.WriteInt32(NativeData.Rank);
+            dst.Write(NativeData.Rank);
             // Placeholder for null bitmap flag, which isn't used?
-            dst.WriteInt32(0);
+            dst.Write(0);
             // Write the OID of the elements of the array.
-            dst.WriteInt32(options.OidToNameMapping[_elementConverter.Name].OID);
+            dst.Write(options.OidToNameMapping[_elementConverter.Name].OID);
 
             // White dimension descriptors.
             for (int i = 0 ; i < NativeData.Rank ; i++)
             {
                 // Number of elements in the dimension.
-                dst.WriteInt32(NativeData.GetLength(i));
+                dst.Write(NativeData.GetLength(i));
                 // Lower bounds of the dimension, 1-based for SQL.
-                dst.WriteInt32(NativeData.GetLowerBound(i) + 1);
+                dst.Write(NativeData.GetLowerBound(i) + 1);
             }
 
             int[] dimensionOffsets = new int[NativeData.Rank];
@@ -235,7 +235,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Append all array data to the binary stream.
         /// </summary>
-        private void WriteBinaryArrayData(NpgsqlNativeTypeInfo TypeInfo, Array nativeData, NativeToBackendTypeConverterOptions options, MemoryStream dst, int dimensionOffset, int[] dimensionOffsets)
+        private void WriteBinaryArrayData(NpgsqlNativeTypeInfo TypeInfo, Array nativeData, NativeToBackendTypeConverterOptions options, NpgsqlMemoryStream dst, int dimensionOffset, int[] dimensionOffsets)
         {
             int dimensionLength = nativeData.GetLength(dimensionOffset);
             int dimensionLBound = nativeData.GetLowerBound(dimensionOffset);
@@ -263,7 +263,7 @@ namespace NpgsqlTypes
                     if (elementNative == null || elementNative == DBNull.Value)
                     {
                         // Write length identifier -1 indicating NULL value.
-                        dst.WriteInt32(-1);
+                        dst.Write(-1);
                     }
                     else
                     {
@@ -272,7 +272,7 @@ namespace NpgsqlTypes
                         elementBinary = (byte[])_elementConverter.ConvertToBackend(elementNative, true, options);
 
                         // Write lenght identifier.
-                        dst.WriteInt32(elementBinary.Length);
+                        dst.Write(elementBinary.Length);
                         // Write element data.
                         dst.Write(elementBinary, 0, elementBinary.Length);
                     }
