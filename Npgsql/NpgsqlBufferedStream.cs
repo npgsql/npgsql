@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 
 namespace Npgsql
 {
@@ -7,11 +8,16 @@ namespace Npgsql
     {
         public bool ownStream;
 
-        public NpgsqlBufferedStream(Stream stream, int bufferSize, bool performNetworkByteOrderSwap, bool ownStream)
+        public NpgsqlBufferedStream(Stream stream, int bufferSize, bool performNetworkByteOrderSwap, Encoding textEncoding, bool ownStream)
+        : base(performNetworkByteOrderSwap, textEncoding)
         {
+            if (bufferSize < 8)
+            {
+                throw new ArgumentOutOfRangeException("bufferSize");
+            }
+
             this.Stream = stream;
             this.BufferSize = bufferSize;
-            this.performNetworkByteOrderSwap = performNetworkByteOrderSwap;
             this.ownStream = ownStream;
         }
 
@@ -30,6 +36,11 @@ namespace Npgsql
         public int BufferedBytes
         {
             get { return readBufferCapacity - readBufferPosition; }
+        }
+
+        public override long Length
+        {
+            get { throw new InvalidOperationException(); }
         }
 
         protected override bool PopulateReadBuffer(int count)
@@ -77,49 +88,14 @@ namespace Npgsql
 
         protected override void EnsureWriteBufferSpace(int count)
         {
+            if (count > BufferSize)
+            {
+                throw new ArgumentOutOfRangeException("count");
+            }
+
             EnsureWriteBuffer();
 
             if (writeBufferPosition + count > BufferSize)
-            {
-                FlushWriteBuffer();
-            }
-        }
-
-        protected override void EnsureWriteBufferSpace01()
-        {
-            EnsureWriteBuffer();
-
-            if (writeBufferPosition == BufferSize)
-            {
-                FlushWriteBuffer();
-            }
-        }
-
-        protected override void EnsureWriteBufferSpace02()
-        {
-            EnsureWriteBuffer();
-
-            if (writeBufferPosition + 2 > BufferSize)
-            {
-                FlushWriteBuffer();
-            }
-        }
-
-        protected override void EnsureWriteBufferSpace04()
-        {
-            EnsureWriteBuffer();
-
-            if (writeBufferPosition + 4 > BufferSize)
-            {
-                FlushWriteBuffer();
-            }
-        }
-
-        protected override void EnsureWriteBufferSpace08()
-        {
-            EnsureWriteBuffer();
-
-            if (writeBufferPosition + 8 > BufferSize)
             {
                 FlushWriteBuffer();
             }
@@ -162,6 +138,98 @@ namespace Npgsql
             }
         }
 
+        public override string ReadString(int byteCount)
+        {
+            string result;
+
+            if (byteCount <= readBufferCapacity - readBufferPosition)
+            {
+                result = textEncoding.GetString(readBuffer, readBufferPosition, byteCount);
+                readBufferPosition += byteCount;
+
+                return result;
+            }
+            using (NpgsqlMemoryStream stream = new NpgsqlMemoryStream(false, textEncoding, byteCount))
+            {
+                while (stream.Length < byteCount)
+                {
+                    PopulateReadBuffer(1);
+
+                    int count = Math.Min(byteCount - (int)stream.Length, readBufferCapacity - readBufferPosition);
+
+                    stream.Write(readBuffer, readBufferPosition, count);
+                    readBufferPosition += count;
+                }
+
+                return stream.ReadString(byteCount);
+            }
+        }
+
+        public override string ReadString()
+        {
+            NpgsqlMemoryStream stream = null;
+            int byteCount = 0;
+            string result = null;
+
+            try
+            {
+                do
+                {
+                    PopulateReadBuffer(1);
+
+                    int i = readBufferPosition;
+
+                    for ( ; i < readBufferCapacity ; i++)
+                    {
+                        if (readBuffer[i] != 0)
+                        {
+                            byteCount++;
+                        }
+                        else
+                        {
+                            int count = i - readBufferPosition;
+
+                            if (stream != null)
+                            {
+                                stream.Write(readBuffer, readBufferPosition, count);
+                                result = stream.ReadString(byteCount);
+                            }
+                            else
+                            {
+                                 result = textEncoding.GetString(readBuffer, readBufferPosition, count);
+                            }
+
+                            readBufferPosition += (count + 1);
+
+                            break;
+                        }
+                    }
+
+                    if (result == null)
+                    {
+                        if (stream == null)
+                        {
+                            stream = new NpgsqlMemoryStream(false, textEncoding);
+                        }
+
+                        int count = i - readBufferPosition;
+
+                        stream.Write(readBuffer, readBufferPosition, count);
+                        readBufferPosition += count;
+                    }
+                } while (result == null);
+
+                return result;
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+            }
+        }
+
         public override void Write(byte[] callersBuffer, int offset, int count)
         {
             if (offset < 0)
@@ -181,20 +249,77 @@ namespace Npgsql
 
             if (count > BufferSize)
             {
-                if (writeBufferPosition > 0)
-                {
-                    FlushWriteBuffer();
-                }
+                EnsureWriteBufferSpace(BufferSize);
 
                 Stream.Write(callersBuffer, offset, count);
+            }
+            else
+            {
+                EnsureWriteBufferSpace(count);
 
-                return;
+                Array.Copy(callersBuffer, offset, writeBuffer, writeBufferPosition, count);
+                writeBufferPosition += count;
+            }
+        }
+
+        public override NpgsqlStream WriteString(string text, int byteCount = -1, bool nullTerminate = false)
+        {
+            int count = 0;
+
+            if (byteCount < 0)
+            {
+                byteCount = textEncoding.GetMaxByteCount(text.Length);
+
+                if (byteCount > BufferSize)
+                {
+                    byteCount = textEncoding.GetByteCount(text);
+                }
             }
 
-            EnsureWriteBufferSpace(count);
+            if (byteCount == 0 && ! nullTerminate)
+            {
+                return this;
+            }
 
-            Array.Copy(callersBuffer, offset, writeBuffer, writeBufferPosition, count);
-            writeBufferPosition += count;
+            if (byteCount > 0)
+            {
+                if (byteCount <= BufferSize)
+                {
+                    EnsureWriteBufferSpace(byteCount);
+
+                    try
+                    {
+                        count = Encoding.UTF8.GetBytes(text, 0, text.Length, writeBuffer, writeBufferPosition);
+
+                        if (count > byteCount)
+                        {
+                            throw new ArgumentOutOfRangeException("byteCount");
+                        }
+
+                        writeBufferPosition += count;
+                    }
+                    catch (Exception e)
+                    {
+                        throw new ArgumentException("text", e);
+                    }
+                }
+                else
+                {
+                    using (NpgsqlMemoryStream stream = new NpgsqlMemoryStream(false, textEncoding))
+                    {
+                        stream.WriteString(text, byteCount, false);
+                        stream.CopyTo(this, BufferSize);
+                    }
+                }
+            }
+
+            if (nullTerminate)
+            {
+                EnsureWriteBufferSpace(1);
+                writeBuffer[writeBufferPosition++] = 0;
+            }
+
+            return this;
         }
 
         public override void Flush()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 
 namespace Npgsql
 {
@@ -11,16 +12,24 @@ namespace Npgsql
         protected byte[] writeBuffer;
         protected int writeBufferPosition;
         protected bool performNetworkByteOrderSwap;
+        protected Encoding textEncoding;
+
+        public NpgsqlStream(bool performNetworkByteOrderSwap, Encoding textEncoding)
+        {
+            this.performNetworkByteOrderSwap = performNetworkByteOrderSwap;
+            this.textEncoding = textEncoding;
+        }
 
         protected abstract bool PopulateReadBuffer(int count);
 
         protected abstract void EnsureWriteBufferSpace(int count);
-        protected abstract void EnsureWriteBufferSpace01();
-        protected abstract void EnsureWriteBufferSpace02();
-        protected abstract void EnsureWriteBufferSpace04();
-        protected abstract void EnsureWriteBufferSpace08();
 
         protected virtual void FinalizeWrite() {}
+
+        public abstract string ReadString(int byteCount);
+        public abstract string ReadString();
+
+        public abstract NpgsqlStream WriteString(string text, int byteCount = -1, bool nullTerminate = false);
 
         public override bool CanRead
         {
@@ -40,11 +49,6 @@ namespace Npgsql
         public override bool CanSeek
         {
             get { return false; }
-        }
-
-        public override long Length
-        {
-            get { throw new InvalidOperationException(); }
         }
 
         public override long Position
@@ -240,23 +244,25 @@ namespace Npgsql
             }
         }
 
-        public virtual void Write(byte[] buffer)
+        public virtual NpgsqlStream Write(byte[] buffer)
         {
             Write(buffer, 0, buffer.Length);
+
+            return this;
         }
 
-        public virtual void Write(byte b)
+        public override void WriteByte(byte b)
         {
-            EnsureWriteBufferSpace01();
+            EnsureWriteBufferSpace(sizeof(byte));
 
             writeBuffer[writeBufferPosition++] = b;
 
             FinalizeWrite();
         }
 
-        public virtual void Write(Int16 i)
+        public virtual NpgsqlStream WriteInt16(Int16 i)
         {
-            EnsureWriteBufferSpace02();
+            EnsureWriteBufferSpace(sizeof(Int16));
 
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
@@ -270,11 +276,13 @@ namespace Npgsql
             }
 
             FinalizeWrite();
+
+            return this;
         }
 
-        public virtual void Write(UInt16 i)
+        public virtual NpgsqlStream WriteUInt16(UInt16 i)
         {
-            EnsureWriteBufferSpace02();
+            EnsureWriteBufferSpace(sizeof(UInt16));
 
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
@@ -288,33 +296,13 @@ namespace Npgsql
             }
 
             FinalizeWrite();
+
+            return this;
         }
 
-        public virtual void Write(Int32 i)
+        public virtual NpgsqlStream WriteInt32(Int32 i)
         {
-            EnsureWriteBufferSpace04();
-
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
-            {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-            }
-            else
-            {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-            }
-
-            FinalizeWrite();
-        }
-
-        public virtual void Write(UInt32 i)
-        {
-            EnsureWriteBufferSpace04();
+            EnsureWriteBufferSpace(sizeof(Int32));
 
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
@@ -332,11 +320,37 @@ namespace Npgsql
             }
 
             FinalizeWrite();
+
+            return this;
         }
 
-        public virtual void Write(Int64 i)
+        public virtual NpgsqlStream WriteUInt32(UInt32 i)
         {
-            EnsureWriteBufferSpace08();
+            EnsureWriteBufferSpace(sizeof(UInt32));
+
+            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            {
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+            }
+            else
+            {
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+            }
+
+            FinalizeWrite();
+
+            return this;
+        }
+
+        public virtual NpgsqlStream WriteInt64(Int64 i)
+        {
+            EnsureWriteBufferSpace(sizeof(Int64));
 
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
@@ -362,11 +376,13 @@ namespace Npgsql
             }
 
             FinalizeWrite();
+
+            return this;
         }
 
-        public virtual void Write(UInt64 i)
+        public virtual NpgsqlStream WriteUInt64(UInt64 i)
         {
-            EnsureWriteBufferSpace08();
+            EnsureWriteBufferSpace(sizeof(UInt64));
 
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
@@ -392,6 +408,8 @@ namespace Npgsql
             }
 
             FinalizeWrite();
+
+            return this;
         }
 
         public override long Seek(long offset, SeekOrigin origin)

@@ -206,22 +206,22 @@ namespace NpgsqlTypes
         public byte[] ArrayToArrayBinary(NpgsqlNativeTypeInfo TypeInfo, object oNativeData, NativeToBackendTypeConverterOptions options)
         {
             Array NativeData = (Array)oNativeData;
-            NpgsqlMemoryStream dst = new NpgsqlMemoryStream(true);
+            NpgsqlMemoryStream dst = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
 
             // Write the number of dimensions in the array.
-            dst.Write(NativeData.Rank);
+            dst.WriteInt32(NativeData.Rank);
             // Placeholder for null bitmap flag, which isn't used?
-            dst.Write(0);
+            dst.WriteInt32(0);
             // Write the OID of the elements of the array.
-            dst.Write(options.OidToNameMapping[_elementConverter.Name].OID);
+            dst.WriteInt32(options.OidToNameMapping[_elementConverter.Name].OID);
 
             // White dimension descriptors.
             for (int i = 0 ; i < NativeData.Rank ; i++)
             {
                 // Number of elements in the dimension.
-                dst.Write(NativeData.GetLength(i));
+                dst.WriteInt32(NativeData.GetLength(i));
                 // Lower bounds of the dimension, 1-based for SQL.
-                dst.Write(NativeData.GetLowerBound(i) + 1);
+                dst.WriteInt32(NativeData.GetLowerBound(i) + 1);
             }
 
             int[] dimensionOffsets = new int[NativeData.Rank];
@@ -263,7 +263,7 @@ namespace NpgsqlTypes
                     if (elementNative == null || elementNative == DBNull.Value)
                     {
                         // Write length identifier -1 indicating NULL value.
-                        dst.Write(-1);
+                        dst.WriteInt32(-1);
                     }
                     else
                     {
@@ -272,7 +272,7 @@ namespace NpgsqlTypes
                         elementBinary = (byte[])_elementConverter.ConvertToBackend(elementNative, true, options);
 
                         // Write lenght identifier.
-                        dst.Write(elementBinary.Length);
+                        dst.WriteInt32(elementBinary.Length);
                         // Write element data.
                         dst.Write(elementBinary, 0, elementBinary.Length);
                     }

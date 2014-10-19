@@ -598,11 +598,11 @@ namespace Npgsql
             return ret;
         }
 
-        void AddFunctionColumnListSupport(Stream st)
+        void AddFunctionColumnListSupport(NpgsqlStream st)
         {
             var isFirstOutputOrInputOutput = true;
 
-            st.WriteString(" AS (");
+            st.WriteString(" AS (", 5);
 
             for (var i = 0; i < Parameters.Count; i++)
             {
@@ -618,7 +618,7 @@ namespace Npgsql
                         }
                         else
                         {
-                            st.WriteString(", ");
+                            st.WriteString(", ", 2);
                         }
 
                         st.WriteString(p.CleanName);
@@ -640,7 +640,7 @@ namespace Npgsql
         /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
         byte[] GetCommandText(bool prepare)
         {
-            var commandBuilder = new MemoryStream();
+            NpgsqlMemoryStream commandBuilder = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
 
             if (CommandType == CommandType.TableDirect)
             {
@@ -653,8 +653,8 @@ namespace Npgsql
 
                     commandBuilder
                         .WriteString("SELECT * FROM ")
-                        .WriteString(table)
-                        .WriteString(";");
+                        .WriteString(table, table.Length)
+                        .WriteString(";", 1);
                 }
             }
             else if (CommandType == CommandType.StoredProcedure)
@@ -709,7 +709,7 @@ namespace Npgsql
             return commandBuilder.ToArray();
         }
 
-        void AppendParameterPlaceHolders(Stream dest)
+        void AppendParameterPlaceHolders(NpgsqlStream dest)
         {
             var first = true;
 
@@ -728,7 +728,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        dest.WriteString(", ");
+                        dest.WriteString(", ", 2);
                     }
 
                     AppendParameterPlaceHolder(dest, parameter, i + 1);
@@ -736,7 +736,7 @@ namespace Npgsql
             }
         }
 
-        void AppendParameterPlaceHolder(Stream dest, NpgsqlParameter parameter, int paramNumber)
+        void AppendParameterPlaceHolder(NpgsqlStream dest, NpgsqlParameter parameter, int paramNumber)
         {
             var parameterSize = "";
 
@@ -749,17 +749,17 @@ namespace Npgsql
 
             if (parameter.UseCast)
             {
-                dest.WriteString("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
+                dest.WriteStringFormat("${0}::{1}{2}", paramNumber, parameter.TypeInfo.CastName, parameterSize);
             }
             else
             {
-                dest.WriteString("${0}{1}", paramNumber, parameterSize);
+                dest.WriteStringFormat("${0}{1}", paramNumber, parameterSize);
             }
 
             dest.WriteByte((byte)ASCIIBytes.ParenRight);
         }
 
-        void AppendParameterValues(Stream dest)
+        void AppendParameterValues(NpgsqlStream dest)
         {
             var first = true;
 
@@ -778,7 +778,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        dest.WriteString(", ");
+                        dest.WriteString(", ", 2);
                     }
 
                     AppendParameterValue(dest, parameter);
@@ -786,7 +786,7 @@ namespace Npgsql
             }
         }
 
-        void AppendParameterValue(Stream dest, NpgsqlParameter parameter)
+        void AppendParameterValue(NpgsqlStream dest, NpgsqlParameter parameter)
         {
             var serialised = parameter.TypeInfo.ConvertToBackend(parameter.NpgsqlValue, false, Connector.NativeToBackendTypeConverterOptions);
 
@@ -796,16 +796,16 @@ namespace Npgsql
             // only one pair of parentheses for the two purposes instead of two pairs.
             dest.WriteByte((byte)ASCIIBytes.ParenLeft);
             dest.WriteByte((byte) ASCIIBytes.ParenLeft);
-            dest.WriteBytes(serialised);
+            dest.Write(serialised);
             dest.WriteByte((byte)ASCIIBytes.ParenRight);
 
             if (parameter.UseCast)
             {
-                dest.WriteString("::{0}", parameter.TypeInfo.CastName);
+                dest.WriteStringFormat("::{0}", parameter.TypeInfo.CastName);
 
                 if (parameter.TypeInfo.UseSize && (parameter.Size > 0))
                 {
-                    dest.WriteString("({0})", parameter.Size);
+                    dest.WriteStringFormat("({0})", parameter.Size);
                 }
             }
 
@@ -850,7 +850,7 @@ namespace Npgsql
         /// <param name="prepare"></param>
         /// <param name="allowMultipleStatements"></param>
         /// <returns>false if the query has multiple statements which are not allowed</returns>
-        bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool allowMultipleStatements)
+        bool AppendCommandReplacingParameterValues(NpgsqlStream dest, string src, bool prepare, bool allowMultipleStatements)
         {
             var standardConformantStrings = _connection != null && _connection.Connector != null && _connection.Connector.IsConnected ? _connection.UseConformantStrings : true;
 
@@ -1237,9 +1237,9 @@ namespace Npgsql
 
         byte[] GetExecuteCommandText()
         {
-            var result = new MemoryStream();
+            NpgsqlMemoryStream result = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
 
-            result.WriteString("EXECUTE {0}", _planName);
+            result.WriteStringFormat("EXECUTE {0}", _planName);
 
             if (_parameters.Count != 0)
             {
@@ -1262,16 +1262,16 @@ namespace Npgsql
 
                     serialization = p.TypeInfo.ConvertToBackend(p.Value, false, Connector.NativeToBackendTypeConverterOptions);
 
-                    result.WriteBytes(serialization);
+                    result.Write(serialization);
                     result.WriteByte((byte)ASCIIBytes.ParenRight);
 
                     if (p.UseCast)
                     {
-                        result.WriteString(string.Format("::{0}", p.TypeInfo.CastName));
+                        result.WriteStringFormat("::{0}", p.TypeInfo.CastName);
 
                         if (p.TypeInfo.UseSize && (p.Size > 0))
                         {
-                            result.WriteString("({0})", p.Size);
+                            result.WriteStringFormat("({0})", p.Size);
                         }
                     }
                 }

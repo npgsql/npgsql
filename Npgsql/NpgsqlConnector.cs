@@ -457,7 +457,7 @@ namespace Npgsql
 
             Socket = socket;
             BaseStream = baseStream;
-            Stream = new NpgsqlBufferedStream(sslStream ?? baseStream, 8192, true, true);
+            Stream = new NpgsqlBufferedStream(sslStream ?? baseStream, 8192, true, BackendEncoding.UTF8Encoding, true);
             _log.DebugFormat("Connected to {0}:{1}", Host, Port);
         }
 
@@ -562,9 +562,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        Stream
-                            .WriteInt32(value.Length)
-                            .WriteBytes(value);
+                        Stream.WriteInt32(value.Length);
+                        Stream.Write(value);
                     }
                 }
             }
