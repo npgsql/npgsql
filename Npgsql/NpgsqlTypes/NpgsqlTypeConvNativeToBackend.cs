@@ -132,6 +132,80 @@ namespace NpgsqlTypes
             return hashValue;
         }
 
+        private static char GetSingleChar(object oNativeData)
+        {
+            char c;
+            if (oNativeData is char)
+            {
+                c = (char)oNativeData;
+            }
+            else
+            {
+                string strNativeData = oNativeData as string;
+                if (strNativeData != null)
+                {
+                    if (strNativeData.Length == 0)
+                    {
+                        return '\0';
+                    }
+                    else
+                    {
+                        c = strNativeData[0];
+                    }
+                }
+                else
+                {
+                    int i = Convert.ToInt32(oNativeData);
+                    if (i < -128 || i > 255)
+                    {
+                        throw new OverflowException("Not in range for a byte/\"char\": " + i);
+                    }
+                    return i < 0 ? (char)(i + 256) : (char)i;
+                }
+            }
+            if (c > 255)
+            {
+                throw new OverflowException("Not in range for a byte/\"char\": " + (int)c);
+            }
+            return c;
+        }
+
+        /// <summary>
+        /// Convert a Char to something that can be interpreted as a single-byte "char".
+        /// </summary>
+        internal static byte[] ToSingleCharText(NpgsqlNativeTypeInfo TypeInfo, Object oNativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        {
+            char c = GetSingleChar(oNativeData);
+            if (arrayElement && (c >= 128 || c == 0))
+            {
+                throw new OverflowException("\"char\" type can only have values between 1 and 127 in array string literal. Got " + (int)c);
+            }
+
+            if (arrayElement)
+            {
+                return StringToTextText(TypeInfo, c.ToString(), forExtendedQuery, options, arrayElement);
+            }
+
+            if (forExtendedQuery)
+            {
+                return new byte[] { (byte)c };
+            }
+            else
+            {
+                int i = c >= 128 ? c - 256 : c;
+                return BackendEncoding.UTF8Encoding.GetBytes(i.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Convert a Char to a single-byte "char".
+        /// </summary>
+        internal static byte[] ToSingleCharBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            char c = GetSingleChar(NativeData);
+            return new byte[] { (byte)c };
+        }
+
         /// <summary>
         /// Convert a string to UTF8 encoded text, escaped and quoted as required.
         /// </summary>
@@ -368,7 +442,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
-        internal static byte[] ToBit(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
+        internal static byte[] ToBitText(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, Boolean forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             if (NativeData is bool)
                 return ((bool)NativeData) ? ASCIIByteArrays.AsciiDigit_1 : ASCIIByteArrays.AsciiDigit_0;
@@ -387,9 +461,34 @@ namespace NpgsqlTypes
             // literal would work as expected with Postgres before 8.0, it can fail with 8.0 and later.
             else if (NativeData is int)
                 return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
-            else
-                return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
+
+            if (forExtendedQuery || arrayElement)
+            {
+                var bitString = (BitString)NativeData;
+                var str = bitString.Length % 4 == 0 ? "X" + bitString.ToString("X") : bitString.BFormatString().ToString();
+                return BackendEncoding.UTF8Encoding.GetBytes(str);
+            }
+            return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
         }
+
+        /// <summary>
+        /// Convert to a postgresql bit.
+        /// </summary>
+        internal static byte[] ToBitBinary(NpgsqlNativeTypeInfo TypeInfo, Object NativeData, NativeToBackendTypeConverterOptions options)
+        {
+            if (NativeData is int)
+            {
+                if (((int)NativeData == 1 || (int)NativeData == 0))
+                    NativeData = (int)NativeData == 1 ? true : false;
+                else
+                    throw new InvalidCastException("Cannot cast integers other than 0, 1 to bit for extended queries");
+            }
+
+            if (NativeData is bool)
+                return (bool)NativeData ? new byte[5] { 0, 0, 0, 1, 128 } : new byte[5] { 0, 0, 0, 1, 0 };
+            
+            return ((BitString)NativeData).ToPostgreSQLBinary();
+         }
 
         /// <summary>
         /// Convert to a postgresql timestamp.
