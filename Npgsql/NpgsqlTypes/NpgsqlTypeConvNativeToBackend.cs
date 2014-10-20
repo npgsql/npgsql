@@ -176,9 +176,9 @@ namespace NpgsqlTypes
         internal static byte[] ToSingleCharText(NpgsqlNativeTypeInfo TypeInfo, Object oNativeData, bool forExtendedQuery, NativeToBackendTypeConverterOptions options, bool arrayElement)
         {
             char c = GetSingleChar(oNativeData);
-            if (arrayElement && (c >= 128 || c == 0))
+            if ((arrayElement || forExtendedQuery) && (c >= 128 || c == 0))
             {
-                throw new OverflowException("\"char\" type can only have values between 1 and 127 in array string literal. Got " + (int)c);
+                throw new OverflowException("\"char\" type can only have values between 1 and 127 in array string literals or in extended queries with text encoding. Got " + (int)c);
             }
 
             if (arrayElement)
