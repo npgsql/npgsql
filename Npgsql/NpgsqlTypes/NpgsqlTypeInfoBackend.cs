@@ -47,7 +47,7 @@ namespace NpgsqlTypes
     /// Delegate called to convert the given backend binary data to its native representation.
     /// </summary>
     internal delegate Object ConvertBackendBinaryToNativeHandler(
-        NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier);
+        NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier);
 
     /// <summary>
     /// Represents a backend data type.
@@ -184,14 +184,18 @@ namespace NpgsqlTypes
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="fieldValueSize">fieldValueSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertBackendBinaryToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        public Object ConvertBackendBinaryToNative(NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier)
         {
             if (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertBackendBinaryToNative != null)
             {
-                return _ConvertBackendBinaryToNative(this, BackendData, fieldValueSize, TypeModifier);
+                return _ConvertBackendBinaryToNative(this, BackendDataStream, fieldValueSize, TypeModifier);
             }
             else
             {
+                byte[] BackendData = new byte[fieldValueSize];
+
+                BackendDataStream.ReadExact(BackendData, 0, fieldValueSize);
+
                 return BackendData;
             }
         }

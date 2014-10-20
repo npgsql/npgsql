@@ -113,7 +113,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("count");
             }
 
-            if (count <= 0)
+            if (count == 0)
             {
                 return 0;
             }
@@ -227,6 +227,21 @@ namespace Npgsql
                 {
                     stream.Dispose();
                 }
+            }
+        }
+
+        public override void Skip(int byteCount)
+        {
+            int skipped = 0;
+
+            while (skipped < byteCount)
+            {
+                PopulateReadBuffer(1);
+
+                int count = Math.Min(byteCount - skipped, readBufferCapacity - readBufferPosition);
+
+                readBufferPosition += count;
+                skipped += count;
             }
         }
 

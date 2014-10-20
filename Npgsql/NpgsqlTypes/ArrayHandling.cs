@@ -509,7 +509,7 @@ namespace NpgsqlTypes
         public object ArrayTextToArray(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             string BackendData = BackendEncoding.UTF8Encoding.GetString(bBackendData);
-//first create an arraylist, then convert it to an array.
+            //first create an arraylist, then convert it to an array.
             return ToArray(ToArrayList(TypeInfo, BackendData, TypeSize, TypeModifier), _elementConverter.Type);
         }
 
@@ -597,16 +597,20 @@ namespace NpgsqlTypes
         /// This function reads the array header and sets up an n-dimensional System.Array object to hold its data.
         /// PopulateArrayFromBinaryArray() is then called to carry out array population.
         /// </summary>
-        public object ArrayBinaryToArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        public object ArrayBinaryToArray(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier)
         {
             // Sanity check.
-            if (BackendData.Length < 4)
+            if (fieldValueSize < 4)
             {
                 throw new Exception("Insuffient backend data to describe dimension count in binary array header");
             }
 
+            int nDims;
+            int dataOffset = 0;
+
             // Offset 0 holds an integer dscribing the number of dimensions in the array.
-            int nDims = PGUtil.ReadInt32(BackendData, 0);
+            nDims = BackendDataStream.ReadInt32();
+            dataOffset += sizeof(Int32);
 
             // Sanity check.
             if (nDims < 0)
@@ -614,18 +618,20 @@ namespace NpgsqlTypes
                 throw new Exception("Invalid array dimension count encountered in binary array header");
             }
 
-            // {PG handles 0-dimension arrays, but .net does not.  Return a 0-size 1-dimensional array.
+            // Currently at offset 4.
+            // Offset 12 begins an array of {int,int} objects, of length nDims.
+            // The next 8 bytes are uninteresting and must be read and discarded.
+            BackendDataStream.Skip(8);
+            dataOffset += 8;
+
+            // PG handles 0-dimension arrays, but .net does not.  Return a 0-size 1-dimensional array.
             if (nDims == 0)
             {
                 return Array.CreateInstance(_elementConverter.FrameworkType, 0);
             }
 
-            int dimOffset;
-            // Offset 12 begins an array of {int,int} objects, of length nDims.
-            int dataOffset = 12;
-
             // Sanity check.
-            if (BackendData.Length < dataOffset + nDims * 8)
+            if (fieldValueSize < dataOffset + nDims * 8)
             {
                 throw new Exception("Insuffient backend data to describe all expected dimensions in binary array header");
             }
@@ -637,14 +643,14 @@ namespace NpgsqlTypes
             dimLBounds = new int[nDims];
 
             // Populate array dimension lengths and lower bounds.
-            for (dimOffset = 0 ; dimOffset < nDims ; dimOffset++)
+            for (int dimOffset = 0 ; dimOffset < nDims ; dimOffset++)
             {
-                dimLengths[dimOffset] = PGUtil.ReadInt32(BackendData, dataOffset);
-                dataOffset += 4;
+                dimLengths[dimOffset] = BackendDataStream.ReadInt32();
+                dataOffset += sizeof(Int32);
 
                 // Lower bounds is 1-based in SQL, 0-based in .NET.
-                dimLBounds[dimOffset] = PGUtil.ReadInt32(BackendData, dataOffset) - 1;
-                dataOffset += 4;
+                dimLBounds[dimOffset] = BackendDataStream.ReadInt32() - 1;
+                dataOffset += sizeof(Int32);
             }
 
             Array dst;
@@ -656,7 +662,7 @@ namespace NpgsqlTypes
 
             // Right after the dimension descriptors begins array data.
             // Populate the new array.
-            PopulateArrayFromBinaryArray(TypeInfo, BackendData, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, 0, dst, dstOffsets);
+            PopulateArrayFromBinaryArray(TypeInfo, BackendDataStream, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, 0, dst, dstOffsets);
 
             return dst;
         }
@@ -664,7 +670,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        private void PopulateArrayFromBinaryArray(NpgsqlBackendTypeInfo TypeInfo, byte[] backendData, Int32 fieldValueSize, Int32 TypeModifier, ref int dataOffset, int[] dimLengths, int[] dimLBounds, int dimOffset, Array dst, int[] dstOffsets)
+        private void PopulateArrayFromBinaryArray(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier, ref int dataOffset, int[] dimLengths, int[] dimLBounds, int dimOffset, Array dst, int[] dstOffsets)
         {
             int dimensionLBound = dimLBounds[dimOffset];
             int end = dimensionLBound + dimLengths[dimOffset];
@@ -676,7 +682,7 @@ namespace NpgsqlTypes
                 {
                     dstOffsets[dimOffset] = i;
 
-                    PopulateArrayFromBinaryArray(TypeInfo, backendData, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, dimOffset + 1, dst, dstOffsets);
+                    PopulateArrayFromBinaryArray(TypeInfo, BackendDataStream, fieldValueSize, TypeModifier, ref dataOffset, dimLengths, dimLBounds, dimOffset + 1, dst, dstOffsets);
                 }
             }
             else
@@ -685,7 +691,7 @@ namespace NpgsqlTypes
                 for (int i = dimensionLBound ; i < end ; i++)
                 {
                     // Sanity check.
-                    if (backendData.Length < dataOffset + 4)
+                    if (fieldValueSize < dataOffset + sizeof(Int32))
                     {
                         throw new Exception("Out of backend data while reading binary array");
                     }
@@ -694,8 +700,8 @@ namespace NpgsqlTypes
 
                     // Each element consists of an int length identifier, followed by that many bytes of raw data.
                     // Length -1 indicates a NULL value, and is naturally followed by no data.
-                    elementLength = PGUtil.ReadInt32(backendData, dataOffset);
-                    dataOffset += 4;
+                    elementLength = BackendDataStream.ReadInt32();
+                    dataOffset += sizeof(Int32);
 
                     if (elementLength == -1)
                     {
@@ -705,19 +711,14 @@ namespace NpgsqlTypes
                     else
                     {
                         // Sanity check.
-                        if (backendData.Length < dataOffset + elementLength)
+                        if (fieldValueSize < dataOffset + elementLength)
                         {
                             throw new Exception("Out of backend data while reading binary array");
                         }
 
-                        byte[] elementBinary;
-
-                        // Get element data from backend data.
-                        elementBinary = PGUtil.ReadBytes(backendData, dataOffset, elementLength);
-
                         object elementNative;
 
-                        elementNative = _elementConverter.ConvertBackendBinaryToNative(elementBinary, fieldValueSize, TypeModifier);
+                        elementNative = _elementConverter.ConvertBackendBinaryToNative(BackendDataStream, elementLength, TypeModifier);
 
                         dstOffsets[dimOffset] = i;
                         dst.SetValue(elementNative, dstOffsets);

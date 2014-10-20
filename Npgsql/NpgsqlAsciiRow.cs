@@ -41,7 +41,7 @@ namespace Npgsql
         private readonly int _messageSize;
         private int? _nextFieldSize;
 
-        public StringRowReader(Stream inputStream)
+        public StringRowReader(NpgsqlStream inputStream)
             : base(inputStream)
         {
             _messageSize = inputStream.ReadInt32();
@@ -75,21 +75,18 @@ namespace Npgsql
 
             NpgsqlRowDescription.FieldData field_descr = FieldData;
 
-            byte[] buffer = new byte[fieldSize];
-            Stream.CheckedStreamRead(buffer, 0, fieldSize);
-
             try
             {
                 if (field_descr.FormatCode == FormatCode.Text)
                 {
                     return
-                        NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, buffer,
+                        NpgsqlTypesHelper.ConvertBackendStringToSystemType(field_descr.TypeInfo, Stream, fieldSize,
                                                                            field_descr.TypeSize, field_descr.TypeModifier);
                 }
                 else
                 {
                     return
-                        NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, buffer, fieldSize,
+                        NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field_descr.TypeInfo, Stream, fieldSize,
                                                                           field_descr.TypeModifier);
                 }
             }

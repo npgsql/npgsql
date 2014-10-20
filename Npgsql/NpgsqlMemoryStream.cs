@@ -28,6 +28,40 @@ namespace Npgsql
             writeBuffer = readBuffer;
         }
 
+        public NpgsqlMemoryStream(bool performNetworkByteOrderSwap, Encoding textEncoding, byte[] buffer, int fixedOffset, int fixedLength, int writeOffset)
+        : base(performNetworkByteOrderSwap, textEncoding)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException("buffer");
+            }
+
+            if (fixedOffset < 0 || fixedOffset >= buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException("fixedOffset");
+            }
+
+            if (fixedLength > buffer.Length - fixedOffset)
+            {
+                throw new ArgumentOutOfRangeException("fixedLength");
+            }
+
+            if (writeOffset < fixedOffset || writeOffset >= buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException("writeOffset");
+            }
+
+            fixedCapacity = true;
+            readBuffer = buffer;
+
+            writeBuffer = readBuffer;
+
+            readBufferCapacity = writeOffset;
+            readBufferPosition = fixedOffset;
+
+            writeBufferPosition = writeOffset;
+        }
+
         public override long Length
         {
             get { return readBufferCapacity; }
@@ -139,6 +173,14 @@ namespace Npgsql
             }
 
             throw new EndOfStreamException();
+        }
+
+        public override void Skip(int byteCount)
+        {
+            if (! PopulateReadBuffer(byteCount))
+           {
+                throw new EndOfStreamException();
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)

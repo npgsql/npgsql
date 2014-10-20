@@ -29,6 +29,8 @@ namespace Npgsql
         public abstract string ReadString(int byteCount);
         public abstract string ReadString();
 
+        public abstract void Skip(int byteCount);
+
         public abstract NpgsqlStream WriteString(string text, int byteCount = -1, bool nullTerminate = false);
 
         public override bool CanRead
@@ -62,6 +64,34 @@ namespace Npgsql
         public virtual int Read(byte[] buffer)
         {
             return Read(buffer, 0, buffer.Length);
+        }
+
+        public virtual void ReadExact(byte[] buffer, int offset, int count)
+        {
+            if (offset < 0)
+            {
+                throw new ArgumentOutOfRangeException("offset");
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException("count");
+            }
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            int totalBytesRead = 0;
+
+            while (totalBytesRead < count)
+            {
+                int bytesRead;
+
+                bytesRead = Read(buffer, totalBytesRead, count - totalBytesRead);
+                totalBytesRead += bytesRead;
+            }
         }
 
         public override int ReadByte()
@@ -184,27 +214,27 @@ namespace Npgsql
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (Int64)(
-                    (readBuffer[readBufferPosition++] << 56) |
-                    (readBuffer[readBufferPosition++] << 48) |
-                    (readBuffer[readBufferPosition++] << 40) |
-                    (readBuffer[readBufferPosition++] << 32) |
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
+                    ((Int64)readBuffer[readBufferPosition++] << 56) |
+                    ((Int64)readBuffer[readBufferPosition++] << 48) |
+                    ((Int64)readBuffer[readBufferPosition++] << 40) |
+                    ((Int64)readBuffer[readBufferPosition++] << 32) |
+                    ((Int64)readBuffer[readBufferPosition++] << 24) |
+                    ((Int64)readBuffer[readBufferPosition++] << 16) |
+                    ((Int64)readBuffer[readBufferPosition++] << 08) |
+                    ((Int64)readBuffer[readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (Int64)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 32) |
-                    (readBuffer[readBufferPosition++] << 40) |
-                    (readBuffer[readBufferPosition++] << 48) |
-                    (readBuffer[readBufferPosition++] << 56)
+                    ((Int64)readBuffer[readBufferPosition++] << 00) |
+                    ((Int64)readBuffer[readBufferPosition++] << 08) |
+                    ((Int64)readBuffer[readBufferPosition++] << 16) |
+                    ((Int64)readBuffer[readBufferPosition++] << 24) |
+                    ((Int64)readBuffer[readBufferPosition++] << 32) |
+                    ((Int64)readBuffer[readBufferPosition++] << 40) |
+                    ((Int64)readBuffer[readBufferPosition++] << 48) |
+                    ((Int64)readBuffer[readBufferPosition++] << 56)
                 );
             }
         }
@@ -219,27 +249,27 @@ namespace Npgsql
             if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (UInt64)(
-                    (readBuffer[readBufferPosition++] << 56) |
-                    (readBuffer[readBufferPosition++] << 48) |
-                    (readBuffer[readBufferPosition++] << 40) |
-                    (readBuffer[readBufferPosition++] << 32) |
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
+                    ((UInt64)readBuffer[readBufferPosition++] << 56) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 48) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 40) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 32) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 24) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 16) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 08) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (UInt64)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 32) |
-                    (readBuffer[readBufferPosition++] << 40) |
-                    (readBuffer[readBufferPosition++] << 48) |
-                    (readBuffer[readBufferPosition++] << 56)
+                    ((UInt64)readBuffer[readBufferPosition++] << 00) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 08) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 16) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 24) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 32) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 40) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 48) |
+                    ((UInt64)readBuffer[readBufferPosition++] << 56)
                 );
             }
         }

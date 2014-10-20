@@ -244,11 +244,11 @@ namespace Npgsql
         /// </summary>
         protected abstract class Streamer : IStreamOwner
         {
-            protected readonly Stream _stream;
+            protected readonly NpgsqlStream _stream;
             protected int _remainingBytes;
             private int _alreadyRead = 0;
 
-            protected Streamer(Stream stream, int remainingBytes)
+            protected Streamer(NpgsqlStream stream, int remainingBytes)
             {
                 _stream = stream;
                 _remainingBytes = remainingBytes;
@@ -271,7 +271,7 @@ namespace Npgsql
         /// </summary>
         protected abstract class Streamer<T> : Streamer
         {
-            protected Streamer(Stream stream, int remainingBytes)
+            protected Streamer(NpgsqlStream stream, int remainingBytes)
                 : base(stream, remainingBytes)
             {
             }
@@ -306,7 +306,7 @@ namespace Npgsql
         /// </summary>
         protected sealed class CharStreamer : Streamer<char>
         {
-            public CharStreamer(Stream stream, int remainingBytes)
+            public CharStreamer(NpgsqlStream stream, int remainingBytes)
                 : base(stream, remainingBytes)
             {
             }
@@ -327,7 +327,7 @@ namespace Npgsql
         /// </summary>
         protected sealed class ByteStreamer : Streamer<byte>
         {
-            public ByteStreamer(Stream stream, int remainingBytes)
+            public ByteStreamer(NpgsqlStream stream, int remainingBytes)
                 : base(stream, remainingBytes)
             {
             }
@@ -345,11 +345,11 @@ namespace Npgsql
 
         protected static readonly Encoding UTF8Encoding = Encoding.UTF8;
         protected NpgsqlRowDescription _rowDesc;
-        private readonly Stream _stream;
+        private readonly NpgsqlStream _stream;
         private Streamer _streamer;
         protected int _currentField = -1;
 
-        public RowReader(Stream stream)
+        public RowReader(NpgsqlStream stream)
         {
             _stream = stream;
         }
@@ -437,7 +437,7 @@ namespace Npgsql
             }
         }
 
-        protected Stream Stream
+        protected NpgsqlStream Stream
         {
             get { return _stream; }
         }

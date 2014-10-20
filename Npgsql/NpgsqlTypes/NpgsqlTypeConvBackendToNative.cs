@@ -71,9 +71,9 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert UTF8 encoded text a string.
         /// </summary>
-        internal static Object TextBinaryToString(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        internal static Object TextBinaryToString(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier)
         {
-            return BackendEncoding.UTF8Encoding.GetString(BackendData);
+            return BackendDataStream.ReadString(fieldValueSize);
         }
 
         /// <summary>
@@ -163,8 +163,13 @@ namespace NpgsqlTypes
         /// <summary>
         /// Byte array from bytea encoded as binary.
         /// </summary>
-        internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        /// </summary>
+        internal static Object ByteaBinaryToByteArray(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier)
         {
+            byte[] BackendData = new byte[fieldValueSize];
+
+            BackendDataStream.ReadExact(BackendData, 0, fieldValueSize);
+
             return BackendData;
         }
 
@@ -180,20 +185,20 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert a postgresql boolean to a System.Boolean.
         /// </summary>
-        internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+        internal static Object BooleanBinaryToBoolean(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize,
                                          Int32 TypeModifier)
         {
-            return (BackendData[0] != 0);
+            return ((byte)BackendDataStream.ReadByte() > 0);
         }
 
-        internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize,
+        internal static Object IntBinaryToInt(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize,
                                          Int32 TypeModifier)
         {
-            switch (BackendData.Length)
+            switch (fieldValueSize)
             {
-                case 2: return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(BackendData, 0));
-                case 4: return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(BackendData, 0));
-                case 8: return IPAddress.NetworkToHostOrder(BitConverter.ToInt64(BackendData, 0));
+                case 2: return BackendDataStream.ReadInt16();
+                case 4: return BackendDataStream.ReadInt32();
+                case 8: return BackendDataStream.ReadInt64();
                 default: throw new Exception("Unexpected integer binary field length");
             }
         }
@@ -308,12 +313,16 @@ namespace NpgsqlTypes
         /// <summary>
         /// Convert a postgresql float4 or float8 to a System.Float or System.Double respectively.
         /// </summary>
-        internal static Object Float4Float8BinaryToFloatDouble(NpgsqlBackendTypeInfo TypeInfo, byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        internal static Object Float4Float8BinaryToFloatDouble(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize, Int32 TypeModifier)
         {
-            switch (BackendData.Length)
+            byte[] BackendData = new byte[fieldValueSize];
+
+            BackendDataStream.ReadExact(BackendData, 0, fieldValueSize);
+
+            switch (fieldValueSize)
             {
-                case 4: return BitConverter.ToSingle(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
-                case 8: return BitConverter.ToDouble(PGUtil.HostNetworkByteOrderSwap(BackendData), 0);
+                case 4: return BitConverter.ToSingle(PGUtil.HostNetworkByteOrderSwap(BackendData, 0, fieldValueSize), 0);
+                case 8: return BitConverter.ToDouble(PGUtil.HostNetworkByteOrderSwap(BackendData, 0, fieldValueSize), 0);
                 default: throw new Exception("Unexpected float binary field length");
             }
         }

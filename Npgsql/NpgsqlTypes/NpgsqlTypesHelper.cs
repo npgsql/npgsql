@@ -213,15 +213,19 @@ namespace NpgsqlTypes
         /// The given TypeInfo is called upon to do the conversion.
         /// If no TypeInfo object is provided, no conversion is performed.
         /// </summary>
-        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
+        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 fieldValueSize,
                                                              Int32 typeModifier)
         {
             if (TypeInfo != null)
             {
-                return TypeInfo.ConvertBackendBinaryToNative(data, fieldValueSize, typeModifier);
+                return TypeInfo.ConvertBackendBinaryToNative(BackendDataStream, fieldValueSize, typeModifier);
             }
             else
             {
+                byte[] data = new byte[fieldValueSize];
+
+                BackendDataStream.ReadExact(data, 0, fieldValueSize);
+
                 return data;
             }
         }
@@ -232,16 +236,20 @@ namespace NpgsqlTypes
         /// The given TypeInfo is called upon to do the conversion.
         /// If no TypeInfo object is provided, no conversion is performed.
         /// </summary>
-        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int16 typeSize,
+        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, NpgsqlStream BackendDataStream, Int32 Length, Int16 typeSize,
                                                               Int32 typeModifier)
         {
             if (TypeInfo != null)
             {
-                return TypeInfo.ConvertBackendTextToNative(data, typeSize, typeModifier);
+                byte[] BackendData = new byte[Length];
+
+                BackendDataStream.ReadExact(BackendData, 0, Length);
+
+                return TypeInfo.ConvertBackendTextToNative(BackendData, typeSize, typeModifier);
             }
             else
             {
-                return BackendEncoding.UTF8Encoding.GetString(data);
+                return BackendDataStream.ReadString(Length);
             }
         }
 
