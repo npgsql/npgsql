@@ -491,7 +491,7 @@ namespace NpgsqlTypes
             return nativeTypeMapping;
         }
 
-        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, bool usePostgisTypes = false)
+        private static IEnumerable<NpgsqlBackendTypeInfo> TypeInfoList(bool useExtendedTypes, bool usePostgisTypes)
         {
             yield return new NpgsqlBackendTypeInfo(0, "oidvector", NpgsqlDbType.Text, DbType.String, typeof (String), null);
 
@@ -722,7 +722,7 @@ namespace NpgsqlTypes
         {
             return BackendTypeMappingCache.GetOrAdd(
                 new MappingKey(conn),
-                k => LoadTypesMappings(conn, TypeInfoList(conn.UseExtendedTypes))
+                k => LoadTypesMappings(conn, TypeInfoList(conn.UseExtendedTypes,conn.PostGisVersion != null))
             );
         }
 
