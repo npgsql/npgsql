@@ -61,7 +61,7 @@ namespace NpgsqlTypes
             {
                 Version = conn.ServerVersion;
                 UseExtendedTypes = conn.UseExtendedTypes;
-                UsePostgisTypes = conn.UsePostgisTypes ;
+                UsePostgisTypes = conn.PostGisVersion != null;
                 hash = 0 ;
             }
 
