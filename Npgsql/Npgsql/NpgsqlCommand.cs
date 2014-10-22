@@ -488,6 +488,26 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Returns whether this query will execute as a prepared (compiled) query.
+        /// </summary>
+        public bool IsPrepared
+        {
+            get
+            {
+                switch (prepared)
+                {
+                    case PrepareStatus.NotPrepared:
+                        return false;
+                    case PrepareStatus.NeedsPrepare:
+                    case PrepareStatus.Prepared:
+                        return true;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        /// <summary>
         /// Attempts to cancel the execution of a <see cref="Npgsql.NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <remarks>This Method isn't implemented yet.</remarks>
