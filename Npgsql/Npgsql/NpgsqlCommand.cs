@@ -169,19 +169,14 @@ namespace Npgsql
 
             planName = String.Empty;
             commandText = cmdText;
-            this.connection = connection;
-
-            if (this.connection != null)
+            Connection = connection;
+            if (connection != null && m_Connector != null)
             {
-                this.m_Connector = connection.Connector;
-
-                if (m_Connector != null && m_Connector.AlwaysPrepare)
-                {
-                    CommandTimeout = m_Connector.DefaultCommandTimeout;
-                    prepared = PrepareStatus.NeedsPrepare;
-                }
+                // Note: DefaultCommandTimeout currently only gets read from the very first connection's connector.
+                // If we later change the command's connection with the Connection property, we don't read it again.
+                // Need a better mechanism.
+                CommandTimeout = m_Connector.DefaultCommandTimeout;
             }
-
             commandType = CommandType.Text;
             this.Transaction = transaction;
 
@@ -319,16 +314,18 @@ namespace Npgsql
                     throw new InvalidOperationException(resman.GetString("Exception_SetConnectionInTransaction"));
                 }
 
+                if (connection != null) {
+                    connection.StateChange -= OnConnectionStateChange;
+                }
                 this.connection = value;
+                if (connection != null) {
+                    connection.StateChange += OnConnectionStateChange;
+                }
                 Transaction = null;
                 if (this.connection != null)
                 {
                     m_Connector = this.connection.Connector;
-
-                    if (m_Connector != null && m_Connector.AlwaysPrepare)
-                    {
-                        prepared = PrepareStatus.NeedsPrepare;
-                    }
+                    prepared = m_Connector != null && m_Connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
                 }
 
                 SetCommandTimeout();
@@ -347,6 +344,32 @@ namespace Npgsql
                 }
 
                 return m_Connector;
+            }
+        }
+
+        void OnConnectionStateChange(object sender, StateChangeEventArgs stateChangeEventArgs)
+        {
+            switch (stateChangeEventArgs.CurrentState)
+            {
+                case ConnectionState.Broken:
+                case ConnectionState.Closed:
+                    prepared = PrepareStatus.NotPrepared;
+                    break;
+                case ConnectionState.Open:
+                    switch (stateChangeEventArgs.OriginalState)
+                    {
+                        case ConnectionState.Closed:
+                        case ConnectionState.Broken:
+                            prepared = m_Connector != null && m_Connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
+                            break;
+                    }
+                    break;
+                case ConnectionState.Connecting:
+                case ConnectionState.Executing:
+                case ConnectionState.Fetching:
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
