@@ -4026,5 +4026,22 @@ namespace NpgsqlTests
                 cancelTask.Wait();
             }
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/393")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/299")]
+        public void DisposePreparedAfterCommandClose()
+        {
+            using (var c = new NpgsqlConnection(ConnectionString))
+            {
+                using (var cmd = c.CreateCommand())
+                {
+                    c.Open();
+                    cmd.CommandText = "select 1";
+                    cmd.Prepare();
+                    c.Close();
+                }
+            }
+        }
     }
 }
