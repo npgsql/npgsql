@@ -309,6 +309,26 @@ namespace Npgsql
             get { return _lastInsertedOid; }
         }
 
+        /// <summary>
+        /// Returns whether this query will execute as a prepared (compiled) query.
+        /// </summary>
+        public bool IsPrepared
+        {
+            get
+            {
+                switch (_prepared)
+                {
+                    case PrepareStatus.NotPrepared:
+                        return false;
+                    case PrepareStatus.NeedsPrepare:
+                    case PrepareStatus.Prepared:
+                        return true;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
         #endregion Public properties
 
         #region State management
