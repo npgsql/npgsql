@@ -498,7 +498,7 @@ namespace Npgsql
                     case ConnectorState.CopyOut:
                         return ConnectionState.Closed | ConnectionState.Fetching;
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown connector state: " + Connector.State);
+                        throw new ArgumentOutOfRangeException("Connector.State", "Unknown connector state: " + Connector.State);
                 }
             }
         }

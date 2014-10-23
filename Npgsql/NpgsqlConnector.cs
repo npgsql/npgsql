@@ -231,7 +231,7 @@ namespace Npgsql
                     case ConnectorState.Broken:
                         return false;
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                        throw new ArgumentOutOfRangeException("State", "Unknown state: " + State);
                 }
             }
         }
@@ -256,7 +256,7 @@ namespace Npgsql
                     case ConnectorState.Broken:
                         return false;
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                        throw new ArgumentOutOfRangeException("State", "Unknown state: " + State);
                 }
             }
         }

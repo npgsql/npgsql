@@ -1781,7 +1781,7 @@ namespace Npgsql
                 case ConnectorState.CopyOut:
                     throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
                 default:
-                    throw new ArgumentOutOfRangeException("Unknown state: " + Connector.State);
+                    throw new ArgumentOutOfRangeException("Connector.State", "Unknown state: " + Connector.State);
             }
         }
 
