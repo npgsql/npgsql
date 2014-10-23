@@ -182,7 +182,8 @@ namespace Npgsql
 
             if (SyncNotification)
             {
-                Connector.AddNotificationThread();
+                // Disable async notifications for now
+                //Connector.AddNotificationThread();
             }
 
             if (Enlist)
@@ -663,7 +664,8 @@ namespace Npgsql
 
             if (SyncNotification)
             {
-                Connector.RemoveNotificationThread();
+                // Disable async notifications for now
+                //Connector.RemoveNotificationThread();
             }
 
             if (Pooling)

@@ -1521,6 +1521,7 @@ namespace Npgsql
 
         void StopNotificationThread()
         {
+            return;  // Disable async notifications for now
             // first check to see if an exception has
             // been thrown by the notification thread.
             if (_notificationException != null)
@@ -1538,6 +1539,7 @@ namespace Npgsql
 
         void ResumeNotificationThread()
         {
+            return;  // Disable async notifications for now
             _notificationThreadStopCount--;
 
             if (_notificationThreadStopCount == 0)
