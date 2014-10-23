@@ -76,6 +76,14 @@ namespace NpgsqlTypes
         Json,
         Jsonb,
         Hstore,
+        Geometry,
+        OgrPoint,
+        OgrLineString,
+        OgrPolygon,
+        OgrMultiPoint,
+        OgrMultiLineString,
+        OgrMultiPolygon,
+        OgrGeometryCollection        
     }
 }
 

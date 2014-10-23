@@ -209,6 +209,21 @@ namespace NpgsqlTypes
             AddType(new NpgsqlNativeTypeInfo(Name, NpgsqlDbType, DbType, Quote, NativeTextConvert, NativeBinaryConvert));
         }
 
+        /// <summary>
+        /// Add a new PostgisNativeTypeInfo with the given attributes and conversion handlers to this mapping.
+        /// </summary>
+        /// <param name="Name">Type name provided by the backend server.</param>
+        /// <param name="NpgsqlDbType">NpgsqlDbType</param>
+        /// <param name="DbType">DbType</param>
+        /// <param name="Quote">Quote</param>
+        /// <param name="NativeTextConvert">Data conversion handler for text backend encoding.</param>
+        /// <param name="NativeBinaryConvert">Data conversion handler for binary backend encoding (for extended query).</param>
+        public void AddPostgisType(ConvertNativeToBackendTextHandler NativeTextConvert = null,
+                                   ConvertNativeToBackendBinaryHandler NativeBinaryConvert = null)
+        {
+            AddType(new PostgisNativeTypeInfo(NativeTextConvert, NativeBinaryConvert));
+        }
+
         public void AddNpgsqlDbTypeAlias(String Name, NpgsqlDbType NpgsqlDbType)
         {
             if (NpgsqlDbTypeIndex.ContainsKey(NpgsqlDbType))

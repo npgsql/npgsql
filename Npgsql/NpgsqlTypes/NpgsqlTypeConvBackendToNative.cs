@@ -545,4 +545,160 @@ namespace NpgsqlTypes
             return NpgsqlTimeStampTZ.Parse(backendData);
         }
     }
+
+    internal abstract class PostgisBackendToNativeTypeConverter
+    {
+        internal static Object ToGeometry(NpgsqlBackendTypeInfo typeInfo, Byte[] bBackendData, Int32 typeSize, Int32 typeModifier)
+        {
+            IGeometry geom;
+            GetGeom(bBackendData,0,out geom );           
+            return geom;
+        }
+
+        internal static Object FromByteTextToGeometry(NpgsqlBackendTypeInfo typeInfo, Byte[] bBackendData, Int16 typeSize, Int32 typeModifier)
+        {            
+            Int32 byteALength = bBackendData.Length;
+            Int32 byteAPosition = 0;
+            Byte[] myBytes;       
+            // Geometry type seems to output hexbytea. Depends of version
+            myBytes = new byte[(byteALength) / 2];
+            Int32 k = 0;
+
+            for (byteAPosition = 0; byteAPosition < byteALength; byteAPosition += 2)
+            {
+                myBytes[k] = FastConverter.ToByteHexFormat(bBackendData, byteAPosition);
+                k++;
+            }
+
+            IGeometry geom;            
+            GetGeom(myBytes, 0, out geom);
+            return geom;
+        }
+
+        /// <summary>
+        /// Returns a native type according to Ogr Specification
+        /// </summary>
+        /// <param name="wkb">Data to compute</param>
+        /// <param name="byteOffset">Wkb offset</param>
+        /// <param name="geom">A reference to the native geom object to return</param>
+        /// <returns>Wkb offset after reading.</returns>
+        private static Int32 GetGeom(Byte[] wkb, Int32 byteOffset, out IGeometry geom)
+        {
+            Int32 offset = byteOffset;
+            Int32 ogrType = BitConverter.ToInt32(wkb, offset + 1);
+            switch ((OgrIdentifier)ogrType) // we can safely cast to then enum because the basic underlying type of an enum is int.
+            {
+                case OgrIdentifier.Point:
+                    geom = new OgrPoint(BitConverter.ToDouble(wkb, offset + 5), BitConverter.ToDouble(wkb,  offset + 13));
+                    offset += 21;
+                    break;
+
+                case OgrIdentifier.LineString:
+                    OgrPoint[] points = new OgrPoint[BitConverter.ToInt32(wkb, offset + 5)];
+                    offset += 9;
+                    for (int i = 0; i < points.Length; i++)
+                    {
+                        points[i] = new OgrPoint(BitConverter.ToDouble(wkb, offset), BitConverter.ToDouble(wkb, offset + 8));
+                        offset += 16;
+                    }
+                    geom = new OgrLineString(points);
+                    break;
+
+                case OgrIdentifier.Polygon:
+                    Int32 numRings = BitConverter.ToInt32(wkb, offset + 5);
+                    offset += 9;
+                    OgrPoint[][] rings = new OgrPoint[numRings][];
+                    for (int i = 0; i < numRings; i++)
+                    {
+                        Int32 numPoint = BitConverter.ToInt32(wkb, offset);
+                        offset += 4;
+                        rings[i] = new OgrPoint[numPoint];
+                        for (int j = 0; j < numPoint; j++)
+                        {
+                            rings[i][j] = new OgrPoint(BitConverter.ToDouble(wkb, offset), BitConverter.ToDouble(wkb, offset + 8));
+                            offset += 16;
+                        }
+                    }
+                    geom = new OgrPolygon(rings);
+                    break;
+
+                case OgrIdentifier.MultiPoint:
+                    points = new OgrPoint[BitConverter.ToInt32(wkb, offset + 5)];
+                    offset += 9;
+                    for (int i = 0; i < points.Length; i++)
+                    {
+                        offset += 5;
+                        points[i] = new OgrPoint(BitConverter.ToDouble(wkb, offset), BitConverter.ToDouble(wkb, offset + 8));
+                        offset += 16;
+                    }
+                    geom = new OgrMultiPoint(points);
+                    break;
+
+                case OgrIdentifier.MultiLineString:                 
+                    Int32 numLines = BitConverter.ToInt32(wkb, offset + 5);
+                    List<OgrPoint[]> l = new List<OgrPoint[]>(numLines);
+                    offset += 9;
+                    for (int i = 0; i < numLines; i++)
+                    {
+                        offset += 5;
+                        Int32 numPoints = BitConverter.ToInt32(wkb, offset);
+                        OgrPoint[] line = new OgrPoint[numPoints];
+                        offset += 4;
+                        for (int j = 0; j < numPoints; j++)
+                        {
+                            line[j] = new OgrPoint(BitConverter.ToDouble(wkb, offset), BitConverter.ToDouble(wkb, offset + 8));
+                            offset += 16;
+                        }
+                        l.Add(line);
+                    }
+                    geom = new OgrMultiLineString(l.ToArray());
+                    break;
+
+                case OgrIdentifier.MultiPolygon:
+                    Int32 numPol = BitConverter.ToInt32(wkb, offset + 5);
+                    List<List<OgrPoint[]>> l2 = new List<List<OgrPoint[]>>(numPol);
+                    offset += 9;
+                    for (int i = 0; i < numPol; i++)
+                    {
+                        offset += 5;
+                        numRings = BitConverter.ToInt32(wkb, offset);
+                        offset += 4;
+                        List<OgrPoint[]> l3 = new List<OgrPoint[]>(numRings);
+                        for (int j = 0; j < numRings; j++)
+                        {
+                            Int32 numPoints = BitConverter.ToInt32(wkb, offset);
+                            offset += 4;
+                            points = new OgrPoint[numPoints];
+                            for (int k = 0; k < numPoints; k++)
+                            {
+                                points[k] = new OgrPoint(BitConverter.ToDouble(wkb, offset), BitConverter.ToDouble(wkb, offset + 8));
+                                offset += 16;
+                            }
+                            l3.Add(points);                            
+                        }
+                        l2.Add(l3);
+                    }
+                    geom = new OgrMultiPolygon((IEnumerable<IEnumerable<IEnumerable<OgrPoint>>>) l2);
+                    break;
+
+                case OgrIdentifier.GeometryCollection:
+                    Int32 numGeom = BitConverter.ToInt32(wkb, offset + 5);
+                    List<IGeometry> geomLst = new List<IGeometry>(numGeom);
+                    offset += 9;
+                    for (int i = 0; i < numGeom; i++)
+                    {
+                        IGeometry g;
+                        offset = GetGeom(wkb, offset, out g);
+                        geomLst.Add(g);                        
+                    }
+                    geom = new OgrGeometryCollection(geomLst);
+                    break;
+
+                default:
+                    throw new NotImplementedException("OGR feature transtyping not implemented");
+            }
+
+            return offset;
+        }        
+    }
 }

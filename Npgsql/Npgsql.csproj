@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug-net45</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
@@ -67,8 +67,6 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Debug-net40\Npgsql.xml</DocumentationFile>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <NoWarn>
-    </NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -122,6 +120,7 @@
   <ItemGroup>
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
+    <Compile Include="NpgsqlTypes\OgrIdentifier.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
     <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
     <Compile Include="NpgsqlTypes\FastConverter.cs" />
@@ -137,6 +136,7 @@
     <Compile Include="NpgsqlTypes\NpgsqlTypeInfoNative.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
+    <Compile Include="NpgsqlTypes\OgrTypes.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Localization\L10N.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -213,6 +213,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="NpgsqlTypes\PostgisNativeTypeInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Localization\L10N.de.resx" />

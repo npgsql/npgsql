@@ -175,6 +175,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SecurityTests.cs" />
+    <Compile Include="PostGisTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />
