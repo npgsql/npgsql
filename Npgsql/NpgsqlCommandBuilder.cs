@@ -470,7 +470,7 @@ namespace Npgsql
             if (unquotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
+                throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier parameter cannot be null");
             }
 
             return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
@@ -493,7 +493,7 @@ namespace Npgsql
             if (quotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("Quoted identifier parameter cannot be null");
+                throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
             }
 
             string unquotedIdentifier = quotedIdentifier.Trim();
