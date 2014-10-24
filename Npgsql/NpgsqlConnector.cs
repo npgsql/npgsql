@@ -67,7 +67,7 @@ namespace Npgsql
         // This is a BufferedStream.
         // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
         // Otherwise, this stream sits directly on top of _baseStream.
-        internal BufferedStream Stream { get; set; }
+        internal NpgsqlBufferedStream Stream { get; set; }
 
         /// <summary>
         /// Buffer used for reading data.
@@ -457,7 +457,7 @@ namespace Npgsql
 
             Socket = socket;
             BaseStream = baseStream;
-            Stream = new BufferedStream(sslStream ?? baseStream, 8192);
+            Stream = new NpgsqlBufferedStream(sslStream ?? baseStream, 8192, true, BackendEncoding.UTF8Encoding, true);
             _log.DebugFormat("Connected to {0}:{1}", Host, Port);
         }
 
@@ -562,9 +562,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        Stream
-                            .WriteInt32(value.Length)
-                            .WriteBytes(value);
+                        Stream.WriteInt32(value.Length);
+                        Stream.Write(value);
                     }
                 }
             }
@@ -1143,6 +1142,7 @@ namespace Npgsql
         {
             Stream.WriteByte((byte)FrontEndMessageCode.CopyDone);
             Stream.WriteInt32(4); // message without data
+            Stream.Flush();
             ConsumeAll();
         }
 

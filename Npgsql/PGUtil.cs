@@ -395,6 +395,17 @@ namespace Npgsql
         }
 
         ///<summary>
+        /// This method writes a string to the network stream.
+        /// </summary>
+        [GenerateAsync]
+        public static NpgsqlStream WriteStringFormat(this NpgsqlStream stream, String format, params object[] parameters)
+        {
+            string theString = string.Format(format, parameters);
+            _log.Trace("Sending: " + theString);
+            return stream.WriteString(theString);
+        }
+
+        ///<summary>
         /// This method writes a C NULL terminated string to the network stream.
         /// It appends a NULL terminator to the end of the String.
         /// </summary>
@@ -413,6 +424,17 @@ namespace Npgsql
         /// It appends a NULL terminator to the end of the String.
         /// </summary>
         [GenerateAsync]
+        public static NpgsqlStream WriteStringNullTerminated(this NpgsqlStream stream, String theString)
+        {
+            _log.Trace("Sending: " + theString);
+            return stream.WriteString(theString, -1, true);
+        }
+
+        ///<summary>
+        /// This method writes a C NULL terminated string to the network stream.
+        /// It appends a NULL terminator to the end of the String.
+        /// </summary>
+        [GenerateAsync]
         public static Stream WriteStringNullTerminated(this Stream stream, String format, params object[] parameters)
         {
             string theString = string.Format(format, parameters);
@@ -421,6 +443,18 @@ namespace Npgsql
             stream.Write(bytes, 0, bytes.Length);
             stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
+        }
+
+        ///<summary>
+        /// This method writes a C NULL terminated string to the network stream.
+        /// It appends a NULL terminator to the end of the String.
+        /// </summary>
+        [GenerateAsync]
+        public static NpgsqlStream WriteStringFormatNullTerminated(this NpgsqlStream stream, String format, params object[] parameters)
+        {
+            string theString = string.Format(format, parameters);
+            _log.Trace("Sending: " + theString);
+            return stream.WriteString(theString, -1, true);
         }
 
         /// <summary>

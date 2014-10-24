@@ -120,6 +120,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="NpgsqlBufferedStream.cs" />
+    <Compile Include="NpgsqlMemoryStream.cs" />
+    <Compile Include="NpgsqlStream.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
