@@ -151,8 +151,12 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
+                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
+                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append("::uuid");
+                    break;
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
+                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
                     // Escape syntax is needed for strings with escape values.
                     // We don't check if there are escaped strings for performance reasons.
                     // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
@@ -168,21 +172,6 @@ namespace Npgsql.SqlGenerators
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
             base.WriteSql(sqlText);
-        }
-
-        private DbType GetDbType(PrimitiveTypeKind _primitiveType)
-        {
-            switch (_primitiveType)
-            {
-                case PrimitiveTypeKind.Boolean:
-                    return DbType.Boolean;
-                case PrimitiveTypeKind.Guid:
-                    return DbType.Guid;
-                case PrimitiveTypeKind.String:
-                    return DbType.String;
-                default:
-                    return DbType.Object;
-            }
         }
     }
 

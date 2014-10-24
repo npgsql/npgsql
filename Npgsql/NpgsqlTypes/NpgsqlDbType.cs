@@ -76,6 +76,9 @@ namespace NpgsqlTypes
         Json,
         Jsonb,
         Hstore,
+        SingleChar,
+        Varbit,
+        Unknown
     }
 }
 
