@@ -70,7 +70,7 @@ namespace NpgsqlTests
         public void Constructor1()
         {
             var p = new NpgsqlParameter();
-            Assert.AreEqual(DbType.String, p.DbType, "DbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "Direction");
             Assert.IsFalse(p.IsNullable, "IsNullable");
 #if NET_2_0
@@ -85,7 +85,7 @@ namespace NpgsqlTests
             Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
 #endif
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "NpgsqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
 #if NET_2_0
             Assert.IsNull(p.NpgsqlValue, "NpgsqlValue");
 #endif
@@ -135,7 +135,7 @@ namespace NpgsqlTests
         public void Constructor2_Value_DBNull()
         {
             var p = new NpgsqlParameter("address", DBNull.Value);
-            Assert.AreEqual(DbType.String, p.DbType, "B:DbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
 #if NET_2_0
@@ -150,7 +150,7 @@ namespace NpgsqlTests
             Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
 #endif
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "B:NpgsqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
 #if NET_2_0
             // FIXME
             //Assert.AreEqual (SqlString.Null, p.NpgsqlValue, "B:NpgsqlValue");
@@ -167,7 +167,7 @@ namespace NpgsqlTests
         public void Constructor2_Value_Null()
         {
             var p = new NpgsqlParameter("address", (Object) null);
-            Assert.AreEqual(DbType.String, p.DbType, "A:DbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
 #if NET_2_0
@@ -182,7 +182,7 @@ namespace NpgsqlTests
             Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
 #endif
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "A:NpgsqlDbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
 #if NET_2_0
             Assert.IsNull(p.NpgsqlValue, "A:NpgsqlValue");
 #endif
@@ -879,15 +879,15 @@ namespace NpgsqlTests
             //Parameter with an assigned NpgsqlDbType but no specified value
             p = new NpgsqlParameter("foo", NpgsqlDbType.Integer);
             p.ResetDbType();
-            Assert.AreEqual(DbType.String, p.DbType, "#C:DbType");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#C:NpgsqlDbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "#C:DbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#C:NpgsqlDbType");
 
             p.DbType = DbType.DateTime; //assigning a NpgsqlDbType
             Assert.AreEqual(DbType.DateTime, p.DbType, "#D:DbType1");
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#D:SqlDbType1");
             p.ResetDbType();
-            Assert.AreEqual(DbType.String, p.DbType, "#D:DbType2");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#D:SqlDbType2");
+            Assert.AreEqual(DbType.Object, p.DbType, "#D:DbType2");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#D:SqlDbType2");
 
             p = new NpgsqlParameter();
             p.Value = DateTime.MaxValue;
@@ -895,8 +895,8 @@ namespace NpgsqlTests
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#E:SqlDbType1");
             p.Value = null;
             p.ResetDbType();
-            Assert.AreEqual(DbType.String, p.DbType, "#E:DbType2");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#E:SqlDbType2");
+            Assert.AreEqual(DbType.Object, p.DbType, "#E:DbType2");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#E:SqlDbType2");
 
             p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
             p.Value = DateTime.MaxValue;
@@ -908,15 +908,15 @@ namespace NpgsqlTests
             p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
             p.Value = DBNull.Value;
             p.ResetDbType();
-            Assert.AreEqual(DbType.String, p.DbType, "#G:DbType");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#G:NpgsqlDbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "#G:DbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#G:NpgsqlDbType");
             Assert.AreEqual(DBNull.Value, p.Value, "#G:Value");
 
             p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
             p.Value = null;
             p.ResetDbType();
-            Assert.AreEqual(DbType.String, p.DbType, "#G:DbType");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#G:NpgsqlDbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "#G:DbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#G:NpgsqlDbType");
             Assert.IsNull(p.Value, "#G:Value");
         }
 
@@ -1021,8 +1021,8 @@ namespace NpgsqlTests
         {
             var p = new NpgsqlParameter();
             p.Value = DBNull.Value;
-            Assert.AreEqual(DbType.String, p.DbType, "#A:DbType");
-            Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+            Assert.AreEqual(DbType.Object, p.DbType, "#A:DbType");
+            Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#A:NpgsqlDbType");
 
             // Now change parameter value.
             // Note that as we didn't explicitly specified a dbtype, the dbtype property should change when
@@ -1846,6 +1846,42 @@ namespace NpgsqlTests
                     throw new Exception("NpgsqlParameterCollection hash lookup/parameter rename bug detected", e);
                 }
             }
+        }
+
+        [Test]
+        public void NpgsqlParameterCloneTest()
+        {
+
+            var param = new NpgsqlParameter();
+
+            param.Value = 5;
+            param.Precision = 1;
+            param.Scale = 1;
+            param.Size = 1;
+            param.Direction = ParameterDirection.Input;
+            param.IsNullable = true;
+            param.ParameterName = "parameterName";
+            param.SourceColumn = "source_column";
+            param.SourceVersion = DataRowVersion.Current;
+            param.NpgsqlValue = 5;
+            param.SourceColumnNullMapping = false;
+
+            var newParam = param.Clone();
+
+            Assert.AreEqual(param.Value, newParam.Value);
+            Assert.AreEqual(param.Precision, newParam.Precision);
+            Assert.AreEqual(param.Scale, newParam.Scale);
+            Assert.AreEqual(param.Size, newParam.Size);
+            Assert.AreEqual(param.TypeInfo, newParam.TypeInfo);
+            Assert.AreEqual(param.Direction, newParam.Direction);
+            Assert.AreEqual(param.IsNullable, newParam.IsNullable);
+            Assert.AreEqual(param.ParameterName, newParam.ParameterName);
+            Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
+            Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
+            Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+            Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
+            Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
+
         }
     }
 }

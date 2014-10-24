@@ -177,7 +177,7 @@ namespace Npgsql
 
                 string[] names = null;
                 int[] types = null;
-                string[] modes = null;
+                char[] modes = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
@@ -190,7 +190,7 @@ namespace Npgsql
                             if (!rdr.IsDBNull(2))
                                 types = rdr.GetValue(2) as int[];
                             if (!rdr.IsDBNull(3))
-                                modes = rdr.GetValue(3) as String[];
+                                modes = rdr.GetValue(3) as char[];
                         }
                         if (types == null)
                         {
@@ -223,18 +223,18 @@ namespace Npgsql
                     {
                         switch (modes[i])
                         {
-                            case "i":
+                            case 'i':
                                 param.Direction = ParameterDirection.Input;
                                 break;
-                            case "o":
+                            case 'o':
                                 param.Direction = ParameterDirection.Output;
                                 break;
-                            case "b":
+                            case 'b':
                                 param.Direction = ParameterDirection.InputOutput;
                                 break;
-                            case "v":
+                            case 'v':
                                 throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
-                            case "t":
+                            case 't':
                                 throw new NotImplementedException("Cannot derive function parameter of type TABLE");
                             default:
                                 throw new ArgumentOutOfRangeException("proargmode", modes[i],
@@ -470,7 +470,7 @@ namespace Npgsql
             if (unquotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
+                throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier parameter cannot be null");
             }
 
             return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
@@ -493,7 +493,7 @@ namespace Npgsql
             if (quotedIdentifier == null)
 
             {
-                throw new ArgumentNullException("Quoted identifier parameter cannot be null");
+                throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
             }
 
             string unquotedIdentifier = quotedIdentifier.Trim();

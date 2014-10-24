@@ -92,7 +92,7 @@ namespace NpgsqlTypes
                             ConvertBackendTextToNativeHandler BackendTextConvert = null,
                             ConvertBackendBinaryToNativeHandler BackendBinaryConvert = null)
         {
-            AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendTextConvert = null, BackendBinaryConvert = null));
+            AddType(new NpgsqlBackendTypeInfo(OID, Name, NpgsqlDbType, DbType, Type, BackendTextConvert, BackendBinaryConvert));
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace NpgsqlTypes
                 NpgsqlNativeTypeInfo arrayType = NpgsqlNativeTypeInfo.ArrayOf(T);
                 NameIndex[arrayType.Name] = arrayType;
 
-                NameIndex[arrayType.CastName] = arrayType;
+                NameIndex[arrayType.GetCastName(0)] = arrayType;
                 NpgsqlDbTypeIndex[arrayType.NpgsqlDbType] = arrayType;
             }
         }

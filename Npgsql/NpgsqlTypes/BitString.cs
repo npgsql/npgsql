@@ -142,6 +142,38 @@ namespace NpgsqlTypes
         /// <param name="integer">The <see cref="System.Int32">integer</see>.</param>
         public BitString(int integer)
             :this((uint)integer){}
+        /// <summary>
+        /// Creates a bitstring from a binary PostgreSQL value. First 32-bit big endian length,
+        /// then the data in big-endian. Zero-padded low bits in the end if length is not multiple of 8.
+        /// </summary>
+        /// <param name="data"></param>
+        internal BitString(byte[] data)
+        {
+            var length = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+            int numChunks = (length + 31) / 32;
+            _chunks = new List<uint>(numChunks);
+            int pos = 4;
+            for (int i = 0; i < length / 32; i++)
+            {
+                _chunks.Add((uint)((data[pos] << 24) | (data[pos + 1] << 16) | (data[pos + 2] << 8) | data[pos + 3]));
+                pos += 4;
+            }
+            _lastChunkLen = length % 32;
+            if (_lastChunkLen != 0)
+            {
+                uint chunk = 0;
+                for (int i = 0; i < (_lastChunkLen + 7) / 8; i += 8)
+                {
+                    chunk |= (uint)data[pos++] << 24 - i;
+                }
+                _chunks.Add(chunk);
+            }
+        }
+        public static implicit operator BitString(bool value)
+        {
+            return new BitString(value);
+        }
+
         private IEnumerable<uint> AllChunksButLast
         {
             get
@@ -592,7 +624,7 @@ namespace NpgsqlTypes
                 ret ^= Npgsql.PGUtil.RotateShift((int)chunk, ret % 32);
             return ret;
         }
-        private StringBuilder BFormatString()
+        internal StringBuilder BFormatString()
         {
             StringBuilder sb = new StringBuilder();
             foreach(bool bit in this)
@@ -1196,7 +1228,42 @@ namespace NpgsqlTypes
                     throw new InvalidCastException();
             }
         }
-     }
+
+        /// <summary>
+        /// Creates a byte array in PostgreSQL's binary format of the bit/varbit data type.
+        /// </summary>
+        /// <returns>A byte array</returns>
+        internal byte[] ToPostgreSQLBinary()
+        {
+            int length = Length;
+            byte[] result = new byte[4 + (length + 7) / 8];
+            result[0] = (byte)(length >> 24);
+            result[1] = (byte)(length >> 16);
+            result[2] = (byte)(length >> 8);
+            result[3] = (byte)length;
+            int pos = 4;
+            int end = length / 32;
+            for (int i = 0; i < end; i++)
+            {
+                uint chunk = _chunks[i];
+                result[pos] = (byte)(chunk >> 24);
+                result[pos + 1] = (byte)(chunk >> 16);
+                result[pos + 2] = (byte)(chunk >> 8);
+                result[pos + 3] = (byte)chunk;
+                pos += 4;
+            }
+            if (_lastChunkLen != 0)
+            {
+                uint chunk = _chunks[_chunks.Count - 1];
+                for (int i = 24; i > 24 - _lastChunkLen; i -= 8)
+                {
+                    result[pos++] = (byte)(chunk >> i);
+                }
+            }
+            //System.Diagnostics.Debug.Assert(pos == result.Length, "Wrong length");
+            return result;
+        }
+    }
 }
 
 #pragma warning restore 1591

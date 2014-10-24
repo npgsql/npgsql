@@ -69,10 +69,9 @@ namespace Npgsql
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
+        private bool explicitUnknown = false;
 
-        private Boolean useCast = false;
-
-        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(DbType.Object);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
@@ -231,16 +230,8 @@ namespace Npgsql
             this.Scale = scale;
             this.SourceVersion = sourceVersion;
             this.Value = value;
-
-            if (this.value == null)
-            {
-                this.value = DBNull.Value;
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-            }
-            else
-            {
-                NpgsqlDbType = parameterType; //allow the setter to catch exceptions if necessary.
-            }
+            
+            NpgsqlDbType = parameterType; //allow the setter to catch exceptions if necessary.
         }
 
         /// <summary>
@@ -295,7 +286,9 @@ namespace Npgsql
         {
             get
             {
+                return NpgsqlDbType != NpgsqlDbType.Unknown;
 
+                /*
                 // Prevents casts to be added for null values when they aren't needed.
                 if (!useCast && (value == DBNull.Value || value == null))
                     return false;
@@ -308,6 +301,7 @@ namespace Npgsql
                 // http://pgfoundry.org/forum/message.php?msg_id=1004118
 
                 return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
+                */
             }
         }
 
@@ -360,13 +354,14 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-                useCast = value != DbType.Object;
                 ClearBind();
 
                 if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
                 {
                     throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
+                backendTypeInfo = null;
+                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
             }
         }
 
@@ -386,7 +381,6 @@ namespace Npgsql
             } // [TODO] Validate data type.
             set
             {
-                useCast = true;
                 ClearBind(); 
                 if (value == NpgsqlDbType.Array)
                 {
@@ -396,6 +390,9 @@ namespace Npgsql
                 {
                     throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
                 }
+                backendTypeInfo = null;
+
+                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
             }
         }
 
@@ -542,10 +539,8 @@ namespace Npgsql
             } // [TODO] Check and validate data type.
             set
             {
-                if ((value == null) || (value == DBNull.Value))
+                if ((value == null) || (value == DBNull.Value) || explicitUnknown)
                 {
-                    // don't really know what to do - leave default and do further exploration
-                    // Default type for null values is String.
                     this.value = value;
                     this.npgsqlValue = value;
 
@@ -601,6 +596,8 @@ namespace Npgsql
         {
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             type_info = null;
+            backendTypeInfo = null;
+            explicitUnknown = false;
             this.Value = Value;
             ClearBind();
         }
@@ -608,17 +605,34 @@ namespace Npgsql
         internal bool IsBound { get; private set; }
         internal byte[] BoundValue { get; private set; }
         internal short BoundFormatCode { get; private set; }
+        internal int TypeOID { get; private set; }
+
+        internal void SetTypeOID(int oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
+        {
+            TypeOID = oid;
+
+            // If the db backend specified another type, we have to use that one.
+            NpgsqlBackendTypeInfo backendTypeInfo;
+            nativeToBackendTypeConverterOptions.OidToNameMapping.TryGetValue(TypeOID, out backendTypeInfo);
+            if (backendTypeInfo != null && backendTypeInfo.Name != TypeInfo.Name && !explicitUnknown)
+            {
+                NpgsqlDbType = backendTypeInfo.NpgsqlDbType;
+                Value = NpgsqlValue;
+            }
+        }
 
         internal void Bind(NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
         {
-            IsBound = true;
-            BoundValue = TypeInfo.ConvertToBackend(Value, true, nativeToBackendTypeConverterOptions);
-            if (BoundValue == null) {
+            BoundValue = TypeInfo.ConvertToBackend(NpgsqlValue, true, nativeToBackendTypeConverterOptions);
+            if (BoundValue == null)
+            {
                 BoundFormatCode = (short)FormatCode.Binary;
             }
-            else {
+            else
+            {
                 BoundFormatCode = TypeInfo.SupportsBinaryBackendData ? (short)FormatCode.Binary : (short)FormatCode.Text;
             }
+            IsBound = true;
         }
 
         void ClearBind()
@@ -634,6 +648,11 @@ namespace Npgsql
         {
             get { return sourceColumnNullMapping; }
             set { sourceColumnNullMapping = value; }
+        }
+
+        internal bool IsInputDirection
+        {
+            get { return direction == ParameterDirection.InputOutput || direction == ParameterDirection.Input; }
         }
 
         /// <summary>
@@ -656,7 +675,9 @@ namespace Npgsql
             clone.source_column = source_column;
             clone.source_version = source_version;
             clone.value = value;
+            clone.npgsqlValue = npgsqlValue;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
+            clone.explicitUnknown = explicitUnknown;
 
             return clone;
         }

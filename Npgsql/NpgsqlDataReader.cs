@@ -638,12 +638,7 @@ namespace Npgsql
 
             CheckHaveRow();
 
-            object ret = CurrentRow.Get(ordinal);
-            if (ret is Exception)
-            {
-                throw (Exception)ret;
-            }
-            return ret;
+            return CurrentRow.Get(ordinal);
         }
 
         /// <summary>
@@ -693,9 +688,16 @@ namespace Npgsql
             //Database char, varchar, text, etc. are all generally mapped to strings. There's a bit of a question as to
             //what maps to a .NET char. Interestingly enough, SQLDataReader doesn't support GetChar() and neither do
             //a few other providers (Oracle for example). It would seem that IDataReader.GetChar() was defined largely
-            //to have a complete set of .NET base types. Still, the closets thing in the database world to a char value
+            //to have a complete set of .NET base types. Still, the closest thing in the database world to a char value
             //is a char(1) or varchar(1) - that is to say the value of a string of length one, so that's what is used here.
-            string s = GetString(i);
+            //
+            //In case of the type is "char", we can return the .NET Char directly.
+            Object value = GetValueInternal(i);
+            if (value is Char)
+            {
+                return (Char)value;
+            }
+            String s = (String)value;
             if (s.Length != 1)
             {
                 throw new InvalidCastException();
@@ -1011,13 +1013,27 @@ namespace Npgsql
             return TryGetTypeInfo(Index, out TI) ? TI.Name : GetDataTypeOID(Index);
         }
 
+        private Type GetFieldType(Int32 Index, Boolean getProviderSpecific)
+        {
+            if (CurrentDescription == null)
+            {
+                throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
+            }
+            NpgsqlRowDescription.FieldData FD = CurrentDescription[Index];
+            NpgsqlBackendTypeInfo TI = CurrentDescription[Index].TypeInfo;
+            if (TI == null)
+            {
+                return typeof(string); //Default type is string.
+            }
+            return getProviderSpecific ? TI.GetType(FD.TypeModifier) : TI.GetFrameworkType(FD.TypeModifier);
+        }
+
         /// <summary>
         /// Return the data type of the column at index <param name="Index"></param>.
         /// </summary>
         public override Type GetFieldType(Int32 Index)
         {
-            NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(Index, out TI) ? TI.FrameworkType : typeof(string); //Default type is string.
+            return GetFieldType(Index, false);
         }
 
         /// <summary>
@@ -1027,8 +1043,7 @@ namespace Npgsql
         /// <returns>Appropriate Npgsql type for column.</returns>
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
-            NpgsqlBackendTypeInfo TI;
-            return TryGetTypeInfo(ordinal, out TI) ? TI.Type : typeof(string); //Default type is string.
+            return GetFieldType(ordinal, true);
         }
 
         /// <summary>

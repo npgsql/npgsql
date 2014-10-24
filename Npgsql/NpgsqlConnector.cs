@@ -231,7 +231,7 @@ namespace Npgsql
                     case ConnectorState.Broken:
                         return false;
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                        throw new ArgumentOutOfRangeException("State", "Unknown state: " + State);
                 }
             }
         }
@@ -256,7 +256,7 @@ namespace Npgsql
                     case ConnectorState.Broken:
                         return false;
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
+                        throw new ArgumentOutOfRangeException("State", "Unknown state: " + State);
                 }
             }
         }
@@ -516,68 +516,121 @@ namespace Npgsql
             var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
             var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
 
-            var len =
-                    4 + // Message length (32 bits)
-                    portalNameBytes.Length + 1 + // Portal name + null terminator
-                    statementNameBytes.Length + 1 + // Statement name + null terminator
-                    2 + // Parameter format code array length (16 bits)
-                    parameters.Count * 2 + // Parameter format code array (16 bits per code)
-                    2; // Parameter va;ue array length (16 bits)
+            // When sending format codes, the list can be optimized if all format codes are the same.
+            // If all are text, we send an empty list.
+            // If all are binary, we send a list with length one, containing a 1 (indicates binary).
+            // Otherwise, we send the whole list.
 
+            var len = 0;
+            var numInputParameters = 0;
+            var allSameFormatCode = -1;
             for (var i = 0; i < parameters.Count; i++)
             {
-                len += 4;
-                if (parameters[i].BoundValue != null)
+                if (parameters[i].IsInputDirection)
                 {
-                    len += parameters[i].BoundValue.Length;
+                    numInputParameters++;
+                    len += 4;
+                    if (parameters[i].BoundValue != null)
+                    {
+                        len += parameters[i].BoundValue.Length;
+                    }
+                    if (allSameFormatCode == -1)
+                    {
+                        allSameFormatCode = parameters[i].BoundFormatCode;
+                    }
+                    else if (allSameFormatCode != parameters[i].BoundFormatCode)
+                    {
+                        allSameFormatCode = -2;
+                    }
                 }
             }
 
             len +=
-                2 + // Result format code array length (16 bits)
-                resultFormatCodes.Length * 2; // Result format code array (16 bits per code)
+                    4 + // Message length (32 bits)
+                    portalNameBytes.Length + 1 + // Portal name + null terminator
+                    statementNameBytes.Length + 1 + // Statement name + null terminator
+                    2 + // Parameter format code array length (16 bits)
+                    (allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters) * 2 + // Parameter format code array (16 bits per code)
+                    2; // Parameter value array length (16 bits)
+
+            var allSameResultFormatCode = -1;
+            for (var i = 0; i < resultFormatCodes.Length; i++)
+            {
+                if (allSameResultFormatCode == -1)
+                {
+                    allSameResultFormatCode = resultFormatCodes[i];
+                }
+                else if (allSameResultFormatCode != resultFormatCodes[i])
+                {
+                    allSameResultFormatCode = -2;
+                }
+            }
+
+            len +=
+                    2 + // Result format code array length (16 bits)
+                    (allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length) * 2; // Result format code array (16 bits per code)
 
             Stream
                 .WriteByte(ASCIIByteArrays.BindMessageCode)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .WriteBytesNullTerminated(statementNameBytes)
-                .WriteInt16((short)parameters.Count);
+                .WriteInt16((short)(allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters));
 
             if (parameters.Count > 0)
             {
-                for (var i = 0; i < parameters.Count; i++)
+                if (allSameFormatCode == 1)
                 {
-                    Stream.WriteInt16(parameters[i].BoundFormatCode);
+                    Stream.WriteInt16((short)FormatCode.Binary);
+                }
+                else if (allSameFormatCode == -2)
+                {
+                    for (var i = 0; i < parameters.Count; i++)
+                    {
+                        if (parameters[i].IsInputDirection)
+                        {
+                            Stream.WriteInt16(parameters[i].BoundFormatCode);
+                        }
+                    }
                 }
 
-                Stream.WriteInt16((short)parameters.Count);
+                Stream.WriteInt16((short)numInputParameters);
 
                 for (var i = 0; i < parameters.Count; i++)
                 {
-                    var value = parameters[i].BoundValue;
-                    if (value == null)
+                    if (parameters[i].IsInputDirection)
                     {
-                        Stream.WriteInt32(-1);
-                    }
-                    else
-                    {
-                        Stream
-                            .WriteInt32(value.Length)
-                            .WriteBytes(value);
+                        var value = parameters[i].BoundValue;
+                        if (value == null)
+                        {
+                            Stream.WriteInt32(-1);
+                        }
+                        else
+                        {
+                            Stream
+                                .WriteInt32(value.Length)
+                                .WriteBytes(value);
+                        }
                     }
                 }
             }
             else
             {
-                Stream.WriteInt16(0);
+                Stream.WriteInt16(0); // Number of parameter values sent
             }
 
-            Stream.WriteInt16((short)resultFormatCodes.Length);
+            Stream.WriteInt16((short)(allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length));
 
-            foreach (var code in resultFormatCodes)
+            if (allSameResultFormatCode == 1)
             {
-                Stream.WriteInt16(code);
+                Stream.WriteInt16((short)FormatCode.Binary);
+            }
+            else if (allSameResultFormatCode == -2)
+            {
+                foreach (var code in resultFormatCodes)
+                {
+                    Stream.WriteInt16(code);
+                }
             }
         }
 
@@ -901,14 +954,16 @@ namespace Npgsql
 
                     case BackEndMessageCode.ParameterDescription:
                         _log.Trace("Received ParameterDescription");
-                        // Do nothing,for instance,  just read...
+                        // PostgreSQL has found out what parameter types we must use
+
                         Stream.ReadInt32();
                         var nbParam = Stream.ReadInt16();
+                        var typeoids = new int[nbParam];
                         for (var i = 0; i < nbParam; i++)
                         {
-                            Stream.ReadInt32();  // typeoids
+                            typeoids[i] = Stream.ReadInt32();  // typeoid
                         }
-                        continue;
+                        return new ParameterDescriptionResponse(typeoids);
 
                     case BackEndMessageCode.DataRow:
                         _log.Trace("Received DataRow");
@@ -1521,6 +1576,7 @@ namespace Npgsql
 
         void StopNotificationThread()
         {
+            return;  // Disable async notifications for now
             // first check to see if an exception has
             // been thrown by the notification thread.
             if (_notificationException != null)
@@ -1538,6 +1594,7 @@ namespace Npgsql
 
         void ResumeNotificationThread()
         {
+            return;  // Disable async notifications for now
             _notificationThreadStopCount--;
 
             if (_notificationThreadStopCount == 0)

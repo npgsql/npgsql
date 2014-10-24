@@ -50,6 +50,45 @@ namespace Npgsql
         private const string PrecisionFacet = "Precision";
         private const string FixedLengthFacet = "FixedLength";
 
+        internal static DbType GetDbType(PrimitiveTypeKind _primitiveType)
+        {
+            switch (_primitiveType)
+            {
+                case PrimitiveTypeKind.Binary:
+                    return DbType.Binary;
+                case PrimitiveTypeKind.Boolean:
+                    return DbType.Boolean;
+                case PrimitiveTypeKind.Byte:
+                    return DbType.Byte;
+                case PrimitiveTypeKind.SByte:
+                    return DbType.SByte;
+                case PrimitiveTypeKind.DateTime:
+                    return DbType.DateTime;
+                case PrimitiveTypeKind.DateTimeOffset:
+                    return DbType.DateTimeOffset;
+                case PrimitiveTypeKind.Decimal:
+                    return DbType.Decimal;
+                case PrimitiveTypeKind.Double:
+                    return DbType.Double;
+                case PrimitiveTypeKind.Int16:
+                    return DbType.Int16;
+                case PrimitiveTypeKind.Int32:
+                    return DbType.Int32;
+                case PrimitiveTypeKind.Int64:
+                    return DbType.Int64;
+                case PrimitiveTypeKind.Single:
+                    return DbType.Single;
+                case PrimitiveTypeKind.Time:
+                    return DbType.Time;
+                case PrimitiveTypeKind.Guid:
+                    return DbType.Guid;
+                case PrimitiveTypeKind.String:
+                    return DbType.String;
+                default:
+                    return DbType.Object;
+            }
+        }
+
         public override TypeUsage GetEdmType(TypeUsage storeType)
         {
             if (storeType == null)
@@ -206,7 +245,7 @@ namespace Npgsql
                     {
                         // TODO: could get character, character varying, text
                         if (edmType.Facets.TryGetValue(FixedLengthFacet, false, out facet) &&
-                            !facet.IsUnbounded && facet.Value != null)
+                            !facet.IsUnbounded && facet.Value != null && (bool)facet.Value)
                         {
                             PrimitiveType characterPrimitive = StoreTypeNameToStorePrimitiveType["bpchar"];
                             if (edmType.Facets.TryGetValue(MaxLengthFacet, false, out facet) &&

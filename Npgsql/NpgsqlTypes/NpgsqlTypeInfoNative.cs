@@ -60,11 +60,9 @@ namespace NpgsqlTypes
         private readonly ConvertNativeToBackendBinaryHandler _ConvertNativeToBackendBinary;
 
         private readonly String _Name;
-        private readonly string _CastName;
         private readonly NpgsqlDbType _NpgsqlDbType;
         private readonly DbType _DbType;
         private readonly Boolean _Quote;
-        private readonly Boolean _UseSize;
         private Boolean _IsArray = false;
 
         /// <summary>
@@ -126,23 +124,11 @@ namespace NpgsqlTypes
                                     ConvertNativeToBackendBinaryHandler ConvertNativeToBackendBinary = null)
         {
             _Name = Name;
-            _CastName = Name.StartsWith("_") ? Name.Substring(1) + "[]" : Name;
             _NpgsqlDbType = NpgsqlDbType;
             _DbType = DbType;
             _Quote = Quote;
             _ConvertNativeToBackendText = ConvertNativeToBackendText;
             _ConvertNativeToBackendBinary = ConvertNativeToBackendBinary;
-
-            // The only parameters types which use length currently supported are char and varchar. Check for them.
-
-            if ((NpgsqlDbType == NpgsqlDbType.Char) || (NpgsqlDbType == NpgsqlDbType.Varchar))
-            {
-                _UseSize = true;
-            }
-            else
-            {
-                _UseSize = false;
-            }
         }
 
         /// <summary>
@@ -153,10 +139,35 @@ namespace NpgsqlTypes
             get { return _Name; }
         }
 
-        public string CastName
-
+        public string GetCastName(int size)
         {
-            get { return _CastName; }
+            string sizeStr = GetSizeString(size);
+
+            string castName;
+            if (Name == "char")
+                castName = "\"char\"";
+            else if (Name == "_char")
+                castName = "\"char\"[]";
+            else if (Name == "bit")
+                castName = "\"bit\"" + sizeStr;
+            else if (Name == "_bit")
+                castName = "\"bit\"" + sizeStr + "[]";
+            else
+                castName = Name.StartsWith("_") ? Name.Substring(1) + sizeStr + "[]" : Name + sizeStr;
+            
+            return castName;
+        }
+
+        public string GetSizeString(int size)
+        {
+            // The only parameters types which use length currently supported are char, varchar, bit and varbit. Check for them.
+
+            var t = NpgsqlDbType & ~NpgsqlDbType.Array;
+            if (size > 0 && ((t == NpgsqlDbType.Char) || (t == NpgsqlDbType.Varchar) || (t == NpgsqlDbType.Bit) || (t == NpgsqlDbType.Varbit)))
+            {
+                return "(" + size + ")";
+            }
+            return "";
         }
 
         public bool IsArray
@@ -187,14 +198,6 @@ namespace NpgsqlTypes
         public Boolean Quote
         {
             get { return _Quote; }
-        }
-
-        /// <summary>
-        /// Use parameter size information.
-        /// </summary>
-        public Boolean UseSize
-        {
-            get { return _UseSize; }
         }
 
         /// <summary>
