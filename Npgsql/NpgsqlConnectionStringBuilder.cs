@@ -219,7 +219,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.MinPoolSize, new ValueDescription((Int32)1));
             valueDescriptions.Add(Keywords.MaxPoolSize, new ValueDescription((Int32)20));
             valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription((Int32)20));
+            valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));

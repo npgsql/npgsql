@@ -58,7 +58,7 @@ namespace Npgsql
         NpgsqlConnector _connector;
         NpgsqlTransaction _transaction;
         String _commandText;
-        int _timeout;
+        int? _timeout;
         readonly NpgsqlParameterCollection _parameters = new NpgsqlParameterCollection();
         String _planName;
 
@@ -72,8 +72,6 @@ namespace Npgsql
         bool _functionChecksDone;
         bool _functionNeedsColumnListDefinition; // Functions don't return record by default.
 
-        bool _commandTimeoutSet;
-
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
         static readonly Array ParamNameCharTable;
@@ -81,6 +79,7 @@ namespace Npgsql
 
         short[] _resultFormatCodes;
 
+        internal const int DefaultTimeout = 20;
         const string AnonymousPortal = "";
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
@@ -132,17 +131,8 @@ namespace Npgsql
             _planName = String.Empty;
             _commandText = cmdText;
             Connection = connection;
-            if (_connection != null && _connector != null)
-            {
-                // Note: DefaultCommandTimeout currently only gets read from the very first connection's connector.
-                // If we later change the command's connection with the Connection property, we don't read it again.
-                // Need a better mechanism.
-                CommandTimeout = _connector.DefaultCommandTimeout;
-            }
             CommandType = CommandType.Text;
             Transaction = transaction;
-
-            SetCommandTimeout();
         }
 
         /// <summary>
@@ -189,10 +179,17 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait for the command to execute.
         /// The default is 20 seconds.</value>
-        [DefaultValue(20)]
+        [DefaultValue(DefaultTimeout)]
         public override int CommandTimeout
         {
-            get { return _timeout; }
+            get
+            {
+                return _timeout ?? (
+                    _connection != null
+                      ? _connection.CommandTimeout
+                      : (int)NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout)
+                );
+            }
             set
             {
                 if (value < 0) {
@@ -200,7 +197,6 @@ namespace Npgsql
                 }
 
                 _timeout = value;
-                _commandTimeoutSet = true;
             }
         }
 
@@ -262,8 +258,6 @@ namespace Npgsql
                     _connector = _connection.Connector;
                     _prepared = _connector != null && _connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
                 }
-
-                SetCommandTimeout();
             }
         }
 
@@ -1900,21 +1894,6 @@ namespace Npgsql
                 clone.Parameters.Add(parameter.Clone());
             }
             return clone;
-        }
-
-        void SetCommandTimeout()
-        {
-            if (_commandTimeoutSet)
-                return;
-
-            if (Connection != null)
-            {
-                _timeout = Connection.CommandTimeout;
-            }
-            else
-            {
-                _timeout = (int)NpgsqlConnectionStringBuilder.GetDefaultValue(Keywords.CommandTimeout);
-            }
         }
 
         enum PrepareStatus
