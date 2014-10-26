@@ -14,23 +14,44 @@ namespace Npgsql
     /// </summary>
     internal static class QueryManager
     {
-        internal static void WriteQuery(Stream stream, string query)
+        internal static void WriteQuery(NpgsqlStream stream, string query)
         {
-            WriteQuery(stream, BackendEncoding.UTF8Encoding.GetBytes(query));
+            stream.WriteByte((byte)FrontEndMessageCode.Query);
+
+            stream
+                .WriteString(query, WriteStringoptions.PrependLength | WriteStringoptions.NullTerminate)
+                .Flush();
         }
 
 #if NET45
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        internal static void WriteQuery(Stream stream, byte[] query)
+        internal static void WriteQuery(NpgsqlStream stream, byte[] query)
         {
             var len = 4 + query.Length + 1;
 
+            stream.WriteByte((byte)FrontEndMessageCode.Query);
+
             stream
-                .WriteByte(ASCIIByteArrays.QueryMessageCode)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(query)
                 .Flush();
+        }
+
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
+        internal static void WriteQuery(NpgsqlStream stream, NpgsqlStream query)
+        {
+            var len = 4 + (int)query.Length + 1;
+
+            stream.WriteByte((byte)FrontEndMessageCode.Query);
+            stream.WriteInt32(len);
+
+            query.CopyTo(stream);
+
+            stream.WriteByte(0);
+            stream.Flush();
         }
 
         static QueryManager()
@@ -52,7 +73,7 @@ namespace Npgsql
 
         static byte[] BuildQuery(string query)
         {
-            var ms = new MemoryStream();
+            var ms = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
             WriteQuery(ms, query);
             return ms.ToArray();
         }

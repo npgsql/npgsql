@@ -405,58 +405,6 @@ namespace Npgsql
             return stream.WriteString(theString);
         }
 
-        ///<summary>
-        /// This method writes a C NULL terminated string to the network stream.
-        /// It appends a NULL terminator to the end of the String.
-        /// </summary>
-        [GenerateAsync]
-        public static Stream WriteStringNullTerminated(this Stream stream, String theString)
-        {
-            _log.Trace("Sending: " + theString);
-            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-            stream.Write(bytes, 0, bytes.Length);
-            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
-            return stream;
-        }
-
-        ///<summary>
-        /// This method writes a C NULL terminated string to the network stream.
-        /// It appends a NULL terminator to the end of the String.
-        /// </summary>
-        [GenerateAsync]
-        public static NpgsqlStream WriteStringNullTerminated(this NpgsqlStream stream, String theString)
-        {
-            _log.Trace("Sending: " + theString);
-            return stream.WriteString(theString, -1, true);
-        }
-
-        ///<summary>
-        /// This method writes a C NULL terminated string to the network stream.
-        /// It appends a NULL terminator to the end of the String.
-        /// </summary>
-        [GenerateAsync]
-        public static Stream WriteStringNullTerminated(this Stream stream, String format, params object[] parameters)
-        {
-            string theString = string.Format(format, parameters);
-            _log.Trace("Sending: " + theString);
-            byte[] bytes = BackendEncoding.UTF8Encoding.GetBytes(theString);
-            stream.Write(bytes, 0, bytes.Length);
-            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
-            return stream;
-        }
-
-        ///<summary>
-        /// This method writes a C NULL terminated string to the network stream.
-        /// It appends a NULL terminator to the end of the String.
-        /// </summary>
-        [GenerateAsync]
-        public static NpgsqlStream WriteStringFormatNullTerminated(this NpgsqlStream stream, String format, params object[] parameters)
-        {
-            string theString = string.Format(format, parameters);
-            _log.Trace("Sending: " + theString);
-            return stream.WriteString(theString, -1, true);
-        }
-
         /// <summary>
         /// This method writes a byte to the stream. It also enables logging of them.
         /// </summary>
@@ -465,18 +413,6 @@ namespace Npgsql
         {
             _log.Trace("Sending byte: {0}" + b[0]);
             stream.Write(b, 0, 1);
-            return stream;
-        }
-
-        /// <summary>
-        /// This method writes a byte to the stream. It also enables logging of them.
-        /// </summary>
-        [GenerateAsync]
-        public static Stream WriteByteNullTerminated(this Stream stream, byte[] b)
-        {
-            _log.Trace("Sending byte: " + b[0]);
-            stream.Write(b, 0, 1);
-            stream.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return stream;
         }
 

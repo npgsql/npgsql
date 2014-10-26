@@ -602,6 +602,15 @@ namespace Npgsql
             State = ConnectorState.Executing;
         }
 
+        [GenerateAsync]
+        internal void SendQuery(NpgsqlStream query)
+        {
+            _log.Debug("Sending query");
+            QueryManager.WriteQuery(Stream, query);
+            Stream.Flush();
+            State = ConnectorState.Executing;
+        }
+
         /// <summary>
         /// Sends a raw query message to the backend. The message must already contain the message code,
         /// length etc. - this methods simply writes it to the wire.

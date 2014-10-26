@@ -4,6 +4,21 @@ using System.Text;
 
 namespace Npgsql
 {
+    internal enum ReadStringoptions
+    {
+        None = 0,
+        ReadLength = 1,
+        NullTerminated = 2,
+    }
+
+    internal enum WriteStringoptions
+    {
+        None = 0,
+        PrependLength = 1,
+        NullTerminate = 2,
+        ASCII = 4
+    }
+
     internal abstract class NpgsqlStream : Stream
     {
         protected byte[] readBuffer;
@@ -26,12 +41,30 @@ namespace Npgsql
 
         protected virtual void FinalizeWrite() {}
 
-        public abstract string ReadString(int byteCount);
-        public abstract string ReadString();
+        public virtual string ReadString(int byteCount)
+        {
+            return ReadString(ReadStringoptions.None, byteCount);
+        }
+
+        public abstract string ReadString(ReadStringoptions options, int byteCount = -1);
 
         public abstract void Skip(int byteCount);
 
-        public abstract NpgsqlStream WriteString(string text, int byteCount = -1, bool nullTerminate = false);
+        public virtual NpgsqlStream WriteString(string text, WriteStringoptions options = WriteStringoptions.None)
+        {
+            return WriteString(text, 0, text.Length, options);
+        }
+
+        public virtual NpgsqlStream WriteASCIIString(string text)
+        {
+            return WriteString(text, 0, text.Length, WriteStringoptions.ASCII);
+        }
+
+        public abstract NpgsqlStream WriteString(string text, int charOffset, int charCount, WriteStringoptions options = WriteStringoptions.None);
+
+        public new abstract void CopyTo(Stream destination);
+        public new abstract void CopyTo(Stream destination, int bufferSize);
+        public abstract void CopyTo(Stream destination, int bufferSize, int count);
 
         public override bool CanRead
         {
@@ -150,6 +183,28 @@ namespace Npgsql
             }
         }
 
+        protected virtual Int32 ReadInt32NoAdvance()
+        {
+            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            {
+                return (Int32)(
+                    (readBuffer[readBufferPosition + 0] << 24) |
+                    (readBuffer[readBufferPosition + 1] << 16) |
+                    (readBuffer[readBufferPosition + 2] << 08) |
+                    (readBuffer[readBufferPosition + 3] << 00)
+                );
+            }
+            else
+            {
+                return (Int32)(
+                    (readBuffer[readBufferPosition + 0] << 00) |
+                    (readBuffer[readBufferPosition + 1] << 08) |
+                    (readBuffer[readBufferPosition + 2] << 16) |
+                    (readBuffer[readBufferPosition + 3] << 24)
+                );
+            }
+        }
+
         public virtual Int32 ReadInt32()
         {
             if (! PopulateReadBuffer(sizeof(Int32)))
@@ -157,24 +212,13 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
-            {
-                return (Int32)(
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
-                );
-            }
-            else
-            {
-                return (Int32)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 24)
-                );
-            }
+            Int32 result;
+
+            result = ReadInt32NoAdvance();
+
+            readBufferPosition += sizeof(Int32);
+
+            return result;
         }
 
         public virtual UInt32 ReadUInt32()

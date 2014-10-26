@@ -421,7 +421,7 @@ namespace Npgsql
             _planName = _connector.NextPlanName();
             const string portalName = "";
 
-            _preparedCommandText = GetCommandText(true);
+            _preparedCommandText = GetCommandText(true).ToArray();
             NpgsqlRowDescription returnRowDesc = null;
 
             // Write Parse, Describe, and Sync messages to the wire.
@@ -506,7 +506,7 @@ namespace Npgsql
         /// The parameter name format is <b>:ParameterName</b>.
         /// </summary>
         /// <returns>A version of <see cref="NpgsqlCommand.CommandText">CommandText</see> with the <see cref="NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
-        internal byte[] GetCommandText()
+        internal NpgsqlMemoryStream GetCommandText()
         {
             return string.IsNullOrEmpty(_planName) ? GetCommandText(false) : GetExecuteCommandText();
         }
@@ -602,7 +602,7 @@ namespace Npgsql
         {
             var isFirstOutputOrInputOutput = true;
 
-            st.WriteString(" AS (", 5);
+            st.WriteASCIIString(" AS (");
 
             for (var i = 0; i < Parameters.Count; i++)
             {
@@ -618,7 +618,7 @@ namespace Npgsql
                         }
                         else
                         {
-                            st.WriteString(", ", 2);
+                            st.WriteASCIIString(", ");
                         }
 
                         st.WriteString(p.CleanName);
@@ -638,7 +638,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="prepare"></param>
         /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
-        byte[] GetCommandText(bool prepare)
+        NpgsqlMemoryStream GetCommandText(bool prepare)
         {
             NpgsqlMemoryStream commandBuilder = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
 
@@ -652,9 +652,9 @@ namespace Npgsql
                     }
 
                     commandBuilder
-                        .WriteString("SELECT * FROM ")
-                        .WriteString(table, table.Length)
-                        .WriteString(";", 1);
+                        .WriteASCIIString("SELECT * FROM ")
+                        .WriteASCIIString(table)
+                        .WriteASCIIString(";");
                 }
             }
             else if (CommandType == CommandType.StoredProcedure)
@@ -666,7 +666,7 @@ namespace Npgsql
                     _functionChecksDone = true;
                 }
 
-                commandBuilder.WriteString("SELECT * FROM ");
+                commandBuilder.WriteASCIIString("SELECT * FROM ");
 
                 if (_commandText.TrimEnd().EndsWith(")"))
                 {
@@ -706,7 +706,7 @@ namespace Npgsql
                 }
             }
 
-            return commandBuilder.ToArray();
+            return commandBuilder;
         }
 
         void AppendParameterPlaceHolders(NpgsqlStream dest)
@@ -728,7 +728,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        dest.WriteString(", ", 2);
+                        dest.WriteASCIIString(", ");
                     }
 
                     AppendParameterPlaceHolder(dest, parameter, i + 1);
@@ -778,7 +778,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        dest.WriteString(", ", 2);
+                        dest.WriteASCIIString(", ");
                     }
 
                     AppendParameterValue(dest, parameter);
@@ -921,7 +921,7 @@ namespace Npgsql
                 {
                     if (currCharOfs - 1 > currTokenBeg)
                     {
-                        dest.WriteString(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        dest.WriteString(src, currTokenBeg, currCharOfs - 1 - currTokenBeg);
                     }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
@@ -1231,11 +1231,11 @@ namespace Npgsql
         // implicit goto Finish
 
         Finish:
-            dest.WriteString(src.Substring(currTokenBeg, end - currTokenBeg));
+            dest.WriteString(src, currTokenBeg, end - currTokenBeg);
             return true;
         }
 
-        byte[] GetExecuteCommandText()
+        NpgsqlMemoryStream GetExecuteCommandText()
         {
             NpgsqlMemoryStream result = new NpgsqlMemoryStream(true, BackendEncoding.UTF8Encoding);
 
@@ -1279,7 +1279,7 @@ namespace Npgsql
                 result.WriteByte((byte)ASCIIBytes.ParenRight);
             }
 
-            return result.ToArray();
+            return result;
         }
 
         #endregion Query preparation
@@ -1572,7 +1572,7 @@ namespace Npgsql
                     // Tell to mediator what command is being sent.
                     if (_prepared == PrepareStatus.NotPrepared)
                     {
-                        _connector.Mediator.SetSqlSent(commandText, NpgsqlMediator.SQLSentType.Simple);
+                        _connector.Mediator.SetSqlSent(commandText.ToArray(), NpgsqlMediator.SQLSentType.Simple);
                     }
                     else
                     {
