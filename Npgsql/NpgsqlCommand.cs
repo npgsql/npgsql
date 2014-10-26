@@ -1814,7 +1814,8 @@ namespace Npgsql
                 if (_prepared == PrepareStatus.Prepared)
                     _connector.ExecuteBlind("DEALLOCATE " + _planName);
             }
-
+            Transaction = null;
+            Connection = null;
             State = CommandState.Disposed;
             base.Dispose(disposing);
         }
