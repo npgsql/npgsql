@@ -607,7 +607,8 @@ namespace Npgsql
                 if (prepared == PrepareStatus.Prepared)
                     ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
             }
-
+            Transaction = null;
+            Connection = null;
             disposed = true;
             base.Dispose(disposing);
         }
