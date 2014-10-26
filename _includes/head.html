@@ -1,0 +1,21 @@
+<head>
+    <meta charset="utf-8">
+<!--
+    <meta name="viewport" content="width=device-width initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+-->
+
+    <title>{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}</title>
+    <meta name="description" content="{{ site.description }}">
+    <meta name="author" content="" />
+    <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
+    <link rel="stylesheet" href="{{ "css/default.css" | prepend: site.baseurl }}" />
+    <link rel="stylesheet" href="{{ "css/layout.css" | prepend: site.baseurl }}" />
+    <link rel="stylesheet" href="{{ "css/media-queries.css" | prepend: site.baseurl }}" />
+    <link rel="stylesheet" href="http://build.npgsql.org//css/status/externalStatus.css" />
+    <link rel="stylesheet" href="{{ "css/custom.css" | prepend: site.baseurl }}" />
+    <script src="{{ "js/modernizr.js" | prepend: site.baseurl }}"></script>
+{% comment %}
+    <link rel="shortcut icon" href="favicon.png" />
+{% endcomment %}
+</head>

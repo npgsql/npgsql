@@ -1,0 +1,38 @@
+   <header id="top">
+
+     <div class="row">
+       <div class="header-content twelve columns">
+         <h1 id="logo-text"><a href="{{ site.baseurl }}" title="">{{ site.title }}</a></h1>
+         <p id="intro">{{ site.subtitle }}</p>
+       </div>                  
+     </div>
+
+     <nav id="nav-wrap"> 
+       <a class="mobile-btn" href="#nav-wrap" title="Show navigation">Show Menu</a>
+       <a class="mobile-btn" href="#" title="Hide navigation">Hide Menu</a>
+
+       <div class="row">                           
+         <ul id="nav" class="nav">
+           <li><a href="{{ "about" | prepend: site.baseurl }}">About</a></li>
+           <li><a href="{{ "install" | prepend: site.baseurl }}">Install</a></li>
+           <li><a href="{{ "news" | prepend: site.baseurl }}">News</a></li>
+           <li><a href="{{ "doc" | prepend: site.baseurl }}">Documentation</a></li>
+           <li><a href="{{ "community" | prepend: site.baseurl }}">Community</a></li>
+
+{% comment %}
+Example of nav with children:
+           <li class="has-children"><a href="#">Dropdown</a>
+             <ul>
+               <li><a href="#">Submenu 01</a></li>
+               <li><a href="#">Submenu 02</a></li>
+               <li><a href="#">Submenu 03</a></li>
+             </ul>
+           </li>
+{% endcomment %}
+         </ul> <!-- end #nav -->                          
+       </div> 
+
+     </nav>
+
+   </header>
+

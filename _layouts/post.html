@@ -1,0 +1,29 @@
+---
+layout: default
+---
+<div class="post">
+
+  <article class="entry">
+    <h2 class="entry-title">
+      <a href="{{ page.url }}" title="{{ page.title }}">{{ page.title }}</a>
+    </h2>
+
+    <div class="entry-meta">
+      <ul>
+        <li><time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%B %d, %Y" }}</time></li>
+{% comment %}
+        <span class="meta-sep">&bull;</span>                                                            
+        <li><a href="#" title="" rel="category tag">Ghost</a></li>
+{% endcomment %}
+        <span class="meta-sep">&bull;</span>
+        <li>{{ page.author }}</li>
+      </ul>
+    </div> 
+
+    <div class="entry-content">
+      {{ content }}
+    </div>  <!-- .entry-content -->
+
+  </article>
+
+</div>
