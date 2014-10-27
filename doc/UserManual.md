@@ -1,5 +1,5 @@
 ---
-template: page
+layout: page
 title: User Manual
 ---
 
