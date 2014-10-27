@@ -24,23 +24,23 @@ Note: Npgsql is still under development. Only features currently supported will 
 
 First, in order to access Npgsql objects more easily (i.e. Intellisense in Visual Studio .Net), you need to instruct the compiler to use the Npgsql namespace. As you manipulate data retrieved by Npgsql, classes in System.Data will also be required. In C#, add this directive to the appropriate page or class:
 
-``` csharp
+{% highlight c# %}
 using System.Data;
 using Npgsql;
-```
+{% endhighlight %}
 
 If you are using ASP.NET without code-behind files, you may need to add the following lines in top of your ASPX pages:
 
-``` csharp
+{% highlight c# %}
 <%@ Assembly name="System.Data" %>
 <%@ Assembly name="Npgsql" %>
-```
+{% endhighlight %}
 
 ### Establishing a connection
 
 To establish a connection to a server located at IP 127.0.0.1, port 5432, as user "joe", with password "secret", on database "joedata", open NpgsqlConnection with the following connection string:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -54,7 +54,7 @@ public class NpgsqlUserManual
     conn.Close();
   }
 }
-```
+{% endhighlight %}
 
 ### Connection String parameters
 When establishing a connection, NpgsqlConnection accepts many parameters which modify its behavior. Here is the list of current parameters you can tweak: 
@@ -140,7 +140,7 @@ GetOrdinal is kana-width insensitive.
 
 The previous example doesn't do anything useful. It merely connects to the database and disconnects. If there is an error, a NpgsqlException is thrown. Now, suppose you have a table called "table1" with two fields, "fielda" and "fieldb", both of type int. If you want to insert tuple (1, 1) in this table you can send the insert statement:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -168,7 +168,7 @@ public static class NpgsqlUserManual
     }
   }
 }
-```
+{% endhighlight %}
 
 ExecuteNonQuery() is ideally suited for insert and update queries because it returns an integer indicating the number of rows affected by the last operation.
 
@@ -176,7 +176,7 @@ ExecuteNonQuery() is ideally suited for insert and update queries because it ret
 
 In some scenarios, you only need to retrieve a single value (scalar) from a function. Use the ExecuteScalar() method on a Command object :
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -204,7 +204,7 @@ public static class NpgsqlUserManual
     }
   }
 }
-```
+{% endhighlight %}
 
 You may also use ExecuteScalar against queries that return a recordset, such as "select count(*) from table1". However, when calling a function that returns a set of one or more records, only the first column of the first row is returned (DataSet.Tables[0].Rows[0][0]). In general, any query that returns a single value should be called with Command.ExecuteScalar.
 
@@ -212,7 +212,7 @@ You may also use ExecuteScalar against queries that return a recordset, such as 
 
 There are several ways to return recordsets with Npgsql. When you'd like to pass a SQL statement as command text and access the results with a memory-efficent DataReader, use the ExecuteReader() method of the NpgsqlCommand object:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -247,7 +247,7 @@ public static class NpgsqlUserManual
     }
   }
 }
-```
+{% endhighlight %}
 
 Note that you can 'daisy chain' select statements in a command object's commandtext to retrieve more than one record set: "select * from tablea; select * from tableb"
 
@@ -255,7 +255,7 @@ Note that you can 'daisy chain' select statements in a command object's commandt
 
 Parameters let you dynamcially insert values into SQL queries at run-time. Generally speaking, parameter binding is the best way to build dynamic SQL statements in your client code. Other approaches, such as basic string concatenation, are less robust and can be vulerable to SQL injection attacks. To add parameters to your SQL query string, prefix the paramter name with ":". The example below uses a parameter named value1 (see ":value1").
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -293,7 +293,7 @@ public static class NpgsqlUserManual
         }
     }
 }
-```
+{% endhighlight %}
 
 You can also send a parameterized query to the server using NpgsqlParamenter and NpgsqlParamenterCollection objects.) This code assumes a table called "tablea" with at least one column named "column1" of type int4.
 
@@ -301,7 +301,7 @@ You can also send a parameterized query to the server using NpgsqlParamenter and
 
 The Prepare method lets you optimize the performance of frequently used queries. Prepare() basically "caches" the query plan so that it's used in subsequent calls. (Note that this feature is only available in server 7.3+ versions. If you call it in a server which doesn't support it, Npgsql will silently ignore it.) Simply call the Prepare() method of the NpgsqlCommand before query execution:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -341,7 +341,7 @@ public static class NpgsqlUserManual
         }
     }
 }
-```
+{% endhighlight %}
 
 This code assumes a table called "tablea" with at least one column named "column1" of type int4.
 
@@ -349,7 +349,7 @@ This code assumes a table called "tablea" with at least one column named "column
 
 To call a function, set the CommandType property of the NpgsqlCommand object to CommandType.StoredProcedure and pass the name of the function you want to call as the query string (CommandText property).
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -387,11 +387,11 @@ public static class NpgsqlUserManual
     }
   }
 }
-```
+{% endhighlight %}
 
 Adding parameters to a PostgreSQL function is similar to our previous examples. However, when specifying the CommandText string, you can exclude parameter names. Use only the function name:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -433,7 +433,7 @@ public static class NpgsqlUserManual
     }
   }
 }
-```
+{% endhighlight %}
 
 This code assumes a table called "tablea" with at least one field called "field_int4" of type int4.
 
@@ -445,7 +445,7 @@ This sample returns two result sets from a function using refcursors. With Npgsq
 
 Consider the following refcursor-based function:
 
-```sql
+{% highlight sql %}
 CREATE OR REPLACE FUNCTION testrefcursor(int4) RETURNS SETOF refcursor AS
 
 'DECLARE 
@@ -469,13 +469,13 @@ RETURN next ref3;
 RETURN;
 END;'
 LANGUAGE plpgsql;
-```
+{% endhighlight %}
 
 This function returns the full results of three select statements. Notice that the last select statement is dynamically created on the server.
 
 Now, to call these function and retrieve the data using a DataReader, you should use the following code:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -504,11 +504,11 @@ public class c
         conn.Close();
     }
 }
-```
+{% endhighlight %}
 
 Alternatively, you can retrieve the results into a DataSet object:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -534,7 +534,7 @@ public class c
         conn.Close();
     }
 }
-```
+{% endhighlight %}
 
 That's it!. One last thing worth noting is that *you have to use a transaction* in order for this to work. This is necessary to prevent cursors returned by refcursor function from closing after the implicity transaction is finished (just after you do the function call).
 
@@ -544,7 +544,7 @@ If you have parameters in your function, *assign only the function name* to the 
 
 Output parameters can be used with Npgsql. Note that Npgsql "simulates" output parameter by parsing the first result set from the execution of a query and translating it to output parameters value. This can be done in two ways: mapped or not. A mapped parsing tries to match the column name returned by resultset into a parameter with the same name. If a match is found, only the output parameters which has a match will be updated. If a map is not found, the output parameters are updated based on the order they were added to command parameters collection. This mapping is automatic. When parsing resultset, Npgsql tries to find a match. *Both Output and InputOutput parameter directions are supported*.
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -576,14 +576,14 @@ public static class NpgsqlUserManual
         }
     }
 }
-```
+{% endhighlight %}
 
 ### Working with .NET Datasets
 
 Npgsql lets you propogate changes to a .NET DataSet object back to the database. The example below demonstrates the insertion of a record into a DataSet, followed by a call to update the associated database:
 
 This method expects the following table in the backend: create table tableb(field_int2 int2, field_timestamp timestamp, field_numeric numeric);
-```c#
+{% highlight c# %}
 void AddWithDataSet(NpgsqlConnection conn)
 {	
 	conn.Open();			
@@ -616,13 +616,13 @@ void AddWithDataSet(NpgsqlConnection conn)
 	ds.Merge(ds2);
 	ds.AcceptChanges();
 }
-```
+{% endhighlight %}
 
 ### Working with strongly typed datasets
 
 This example demonstrates the use of a strongly typed dataset generated by XSD. To start, we need an XSD file specifing the appropiate schema. You can generate this file by hand, or you can use an XSD tool to generate it for you. In order to let NpgsqlDataAdapter generate XSD, you need to suppy it with an XML file; the XML file allows the inference of an XML schema.
 
-```c#
+{% highlight c# %}
 public void GenerateXmlFromDataSet(NpgsqlConnection conn)
 {
 	conn.Open();
@@ -631,11 +631,11 @@ public void GenerateXmlFromDataSet(NpgsqlConnection conn)
 	da.Fill(ds);
 	ds.WriteXml("StrongDataSetFeed.xml");
 }
-```
+{% endhighlight %}
 
 The example code results in a file which looks similar to:
 
-```xml
+{% highlight xml %}
 <?xml version="1.0" standalone="yes"?>
 <NewDataSet>
   <Table>
@@ -659,17 +659,15 @@ The example code results in a file which looks similar to:
     <field_text>Text with ' single quote</field_text>
   </Table>
 </NewDataSet>
-```
+{% endhighlight %}
 
 The following command uses the file to generate XSD:
 
-```
 xsd StrongDataSetFeed.xml
-```
 
 XSD will produce an XML schema in which all types are specified as string. As a consequence, we need to change the XSD to specify the correct types, resulting in an XSD file similar to:
 
-```xml
+{% highlight xml %}
 <?xml version="1.0" encoding="utf-8"?>
 <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
   <xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:Locale="pt-BR">
@@ -690,17 +688,15 @@ XSD will produce an XML schema in which all types are specified as string. As a 
     </xs:complexType>
   </xs:element>
 </xs:schema>
-```
+{% endhighlight %}
 
 Given the above file, the following command generates a strongly typed dataset:
 
-```
 xsd StrongDataSetFeed.xsd /dataset
-```
 
 This command generates a file that compiles into an assembly for the strongly typed dataset. It's used in the example below:
 
-```c#
+{% highlight c# %}
 using System;
 using Npgsql;
 
@@ -720,7 +716,7 @@ public class t
 		}
 	}
 }
-```
+{% endhighlight %}
 
 ### Working with binary data and bytea datatype
 
@@ -728,7 +724,7 @@ This sample takes a filename as an argument, inserts its contents into a table c
 
 table schema: create table tableBytea (field_serial serial, field_bytea bytea)
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -767,12 +763,13 @@ public class t
 		conn.Close();
 	}
 }
-```
+{% endhighlight %}
+
 ### Working with large object support
 
 This sample is nearly identical to the bytea code above. It stores the retrieved file in Postgresql, and then later removes it. As with the bytea sample, it writes a file with a "database" suffix.
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -838,11 +835,11 @@ public class c
 
     }
 }
-```
+{% endhighlight %}
 
 Another example, contributed by Mirek (mirek at mascort dot com dot pl), uses large object support to get an image from the database and display it in a form on the client.
 
-```c#
+{% highlight c# %}
 using System;
 using Npgsql;
 using NpgsqlTypes;
@@ -884,13 +881,13 @@ public Image pobierzRysunek(int idtowaru)
 
 //next I just use this metod
 pictureBox1.Image = Image pobierzRysunek(1);
-```
+{% endhighlight %}
 
 ### Retrieving last inserted id on a table with serial values
 
 This example was contributed by Josh Cooley when answering a [user question](http://pgfoundry.org/forum/forum.php?thread_id=943&forum_id=519) on Npgsql Forums. This code assumes you have the following table and function in your database:
 
-```sql
+{% highlight sql %}
 create table test_seq (field_serial serial, test_text text);
 
 CREATE OR REPLACE FUNCTION ins_seq("varchar")
@@ -898,11 +895,11 @@ CREATE OR REPLACE FUNCTION ins_seq("varchar")
         'insert into test_seq (test_text) values ($1);
         select * from test_seq where test_text = $1'
         LANGUAGE 'sql' VOLATILE;
-```
+{% endhighlight %}
 
 And this is the code:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -934,13 +931,13 @@ public class c
         }
     }
 }
-```
+{% endhighlight %}
 
 ### Cancelling a command in progress
 
 Npgsql is able to ask the server to cancel commands in progress. To do this, call the NpgsqlCommand's Cancel method. Note that another thread must handle the request as the main thread will be blocked waiting for command to finish. Also, the main thread will raise an exception as a result of user cancellation. (The error code is 57014.) See the following code which demonstrates the technique:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1005,7 +1002,7 @@ public class c
         Console.WriteLine("command cancelled");
     }
 }
-```
+{% endhighlight %}
 
 ### Working with Notifications
 
@@ -1023,7 +1020,7 @@ Starting with Npgsql 1.0, there is support for synchronous notifications. When w
 
 The code to receive the notification is the same for both modes:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1053,7 +1050,7 @@ public class c
         // process notification here. 
     }
 }
-```
+{% endhighlight %}
 
 This code registers to listen for a notification and raises the notification. It will be delivered to the NotificationSupportHelper method.
 
@@ -1070,7 +1067,7 @@ The simplest method is to provide a readable file handle to the CopyIn operation
 3. Call Start() to initiate copy operation. The operation is completed immediately.
 4. If Start() throws an exception, call NpgsqlCopyIn.Cancel() to cancel an ongoing operation and clear connection back to Ready For Query state. *Otherwise your connection may stay in copy mode, unusable for anything else*.
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1108,7 +1105,7 @@ public class CopyInExample
         }
     }
 }
-```
+{% endhighlight %}
 
 If you wish to provide the data from inside your application, you can use a normal writable stream:
 
@@ -1121,7 +1118,7 @@ If you wish to provide the data from inside your application, you can use a norm
 7. To cancel an ongoing operation and clear connection back to Ready For Query state call NpgsqlCopyIn.Cancel().
 8. Upon failure call NpgsqlCopyIn.Cancel() to cancel an ongoing operation and clear connection back to Ready For Query state. *Otherwise your connection may stay in copy mode, unusable for anything else.*
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1173,7 +1170,7 @@ public class CopyInExample
         }
     }
 }
-```
+{% endhighlight %}
 
 ### Fast bulk data copy from a table or select
 
@@ -1189,7 +1186,7 @@ The simplest method is to provide a writable stream to the CopyOut operation con
 4. Upon failure your connection becomes *unusable unless you cancel the copy operation*.
 5. If Start() throws an exception, cancel the ongoing operation. *Otherwise your connection may stay in copy mode, unusable for anything else.*
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1223,7 +1220,7 @@ public class CopyOutExample
         }
     }
 }
-```
+{% endhighlight %}
 
 You can read COPY OUT data normally from a stream:
 
@@ -1236,7 +1233,7 @@ You can read COPY OUT data normally from a stream:
 7. An ongoing operation may be cancelled by calling CopyStream.Close() or NpgsqlCopyIn.End()
 8. Upon failure cancel the ongoing operation. *Otherwise your connection may stay in copy mode, unusable for anything else.*
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1284,7 +1281,7 @@ public class CopyOutExample
         }
     }
 }
-```
+{% endhighlight %}
 
 ### System.Transactions Support
 
@@ -1292,15 +1289,13 @@ Thanks Josh Cooley, Npgsql has added initial support for System.Transactions. Th
 
 In order to use it, you have to put the following in your connection string:
 
-```
 Enlist=true
-```
 
 False is currently the default, but we will likely make enlist=true the default once System.Transactions support stabilizes.
 
 Here is a sample code which uses System.Transactions support:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1339,7 +1334,7 @@ NpgsqlCommand("insert into tablea (colb) values ('c')", connection2))
             }
     }
 }
-```
+{% endhighlight %}
 
 ### Working with search paths
 
@@ -1349,22 +1344,22 @@ Npgsql allows you to modify the search path when connecting to a database. In or
 
 In order to use Npgsql array support, you may specify your parameter dbtype as an OR'ed operation. Anything that implements IEnumerable<T> where T is a type already supported by npgsql will be treated the same as T[], anything that implements IEnumerable<U>  where U implements IEnumerable<T> will be treated the same as T[,] (but cause an error if it's a "jagged" array, as postgres doesn't support them) and so on. For example, List<ICollection<short>> will be treated as a 2-dimensional array of 16bit-integers. For example, to use an array of Int32 you will use something like that:
 
-```c#
+{% highlight c# %}
 command.Parameters.Add(new NpgsqlParameter("arrayParam", NpgsqlDbType.Array | NpgsqlDbType.Int32));
-```
+{% endhighlight %}
 
 Or you can specify directly the value of parameter to be an array:
 
-```c#
+{% highlight c# %}
 Int32 a = new Int32[2];
 a[0] = 4;
 a[1] = 2;
 command.Parameters.Add(new NpgsqlParameter("@parameter")).Value = a;
-```
+{% endhighlight %}
 
 Here is a complete example:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using Npgsql;
@@ -1401,11 +1396,11 @@ public class c
                 conn.Close();
         }
 }
-```
+{% endhighlight %}
 
 This is what postgresql logs:
 
-```
+{% highlight text %}
 LOG:  connection received: host=127.0.0.1 port=37356
 DEBUG:  forked new backend, pid=10616 socket=6
 LOG:  connection authorized: user=npgsql_tests database=npgsql_tests
@@ -1415,13 +1410,11 @@ LOG:  statement: select array['4','2']::int4[]
 
 LOG:  disconnection: session time: 0:00:00.342 user=npgsql_tests database=npgsql_tests host=127.0.0.1 port=37356
 DEBUG:  server process (PID 10616) exited with exit code 0
-```
+{% endhighlight %}
 
 And this is what Npgsql shows in console:
 
-```
 System.Int32[]
-```
 
 ### Using Npgsql Logging support
 
@@ -1440,7 +1433,7 @@ The following NpgsqlEventLog static properties may also be specified:
 
 The example below shows you how to log data to the console and to a file using level "Debug":
 
-```c#
+{% highlight c# %}
 using System.Data;
 using Npgsql;
 
@@ -1458,11 +1451,11 @@ public static class NpgsqlUserManual
     conn.Close();
   }
 }
-```
+{% endhighlight %}
 
 Running this code gives the following output:
 
-```
+{% highlight text %}
 Set NpgsqlEventLog.EchoMessages = True
 Entering NpgsqlConnection.NpgsqlConnection()
 Entering NpgsqlConnection.ParseConnectionString()
@@ -1498,7 +1491,7 @@ ReadyForQuery message from Server
 Listening for next message
 Connection completed
 Entering NpgsqlConnection.Close()
-```
+{% endhighlight %}
 
 I used the "Debug" level to show that a lot of information can be obtained. Of course, the "Normal" level is less verbose. (This data was written to file NpgsqlTests.LogFile.)
 
@@ -1530,7 +1523,7 @@ Npgsql can be used with Provider Factory pattern which allows you to write code 
 
 In order to do that, you have to use the following configuration:
 
-```xml
+{% highlight xml %}
 <?xml version="1.0" encoding="iso-8859-1" ?>
 
 <configuration>
@@ -1540,13 +1533,13 @@ In order to do that, you have to use the following configuration:
     </DbProviderFactories>
   </system.data>
 </configuration>
-```
+{% endhighlight %}
 
 This configuration can be put inside the global machine.config file or in the application specific .config file.
 
 After that, you can write code like the following:
 
-```c#
+{% highlight c# %}
 using System;
 using System.Data;
 using System.Data.Common;
@@ -1562,7 +1555,7 @@ public class c
        conn.Close();
     }
 }
-```
+{% endhighlight %}
 
 ### Supported data types
 
