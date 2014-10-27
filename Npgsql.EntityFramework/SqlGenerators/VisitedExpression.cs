@@ -272,6 +272,19 @@ namespace Npgsql.SqlGenerators
             sqlText.Append("UPDATE ");
             base.WriteSql(sqlText);
         }
+
+        internal void AppendReturning(DbNewInstanceExpression expression)
+        {
+            Append(" RETURNING ");//Don't put () around columns it will probably have unwanted effect
+            bool first = true;
+            foreach (var returingProperty in expression.Arguments)
+            {
+                if (!first)
+                    Append(",");
+                Append(SqlBaseGenerator.QuoteIdentifier((returingProperty as DbPropertyExpression).Property.Name));
+                first = false;
+            }
+        }
     }
 
     internal class DeleteExpression : VisitedExpression

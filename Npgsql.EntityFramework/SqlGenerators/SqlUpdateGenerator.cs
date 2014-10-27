@@ -29,7 +29,7 @@ namespace Npgsql.SqlGenerators
 
         public override void BuildCommand(DbCommand command)
         {
-            // TODO: handle _commandTree.Returning and _commandTree.Parameters
+            // TODO: handle _commandTree.Parameters
             UpdateExpression update = new UpdateExpression();
             _tableName = _commandTree.Target.VariableName;
             update.AppendTarget(_commandTree.Target.Expression.Accept(this));
@@ -40,6 +40,10 @@ namespace Npgsql.SqlGenerators
             if (_commandTree.Predicate != null)
             {
                 update.AppendWhere(_commandTree.Predicate.Accept(this));
+            }
+            if (_commandTree.Returning != null)
+            {
+                update.AppendReturning((DbNewInstanceExpression)_commandTree.Returning);
             }
             _tableName = null;
             command.CommandText = update.ToString();
