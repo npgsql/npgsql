@@ -16,5 +16,8 @@ permalink:   /:categories/:title/
 twitter_username: jekyllrb
 github_username:  jekyll
 
+# Enter your Google Analytics web tracking code (e.g. UA-2110908-2) to activate tracking
+google_analytics: UA-56130753-1
+
 # Build settings
 markdown: kramdown
