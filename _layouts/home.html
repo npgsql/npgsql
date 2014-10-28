@@ -1,77 +1,57 @@
-<!DOCTYPE html>
-<!--[if lt IE 8 ]><html class="no-js ie ie7" lang="en"> <![endif]-->
-<!--[if IE 8 ]><html class="no-js ie ie8" lang="en"> <![endif]-->
-<!--[if IE 9 ]><html class="no-js ie ie9" lang="en"> <![endif]-->
-<!--[if (gte IE 8)|!(IE)]><!--><html class="no-js" lang="en"> <!--<![endif]-->
-{% include head.html %}
+---
+layout: default
+---
+<div id="main" class="eight columns">
 
-<body>
+  <div id="npgsql-about">
+    <h2>About Npgsql</h2>
+    Npgsql is a .NET Data Provider for Postgresql. It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Works with Postgresql 9.x and above. <a href="{{ "about" | prepend: site.baseurl }}">Read more...</a>
+  </div>
 
-{% include header.html %}
+  <h2>Latest News</h2>
+  <ul class="entry-list">
+    {% for post in site.posts limit:5 %}  
+    <li>
+      <article class="entry">
 
-<div id="content-wrap">
-  <div class="row">
-
-    <div id="main" class="eight columns">
-
-      <div id="npgsql-about">
-        <h2>About Npgsql</h2>
-        Npgsql is a .NET Data Provider for Postgresql. It allows any program developed for .Net framework to access database server. It is implemented in 100% C# code. Works with Postgresql 9.x and above. <a href="{{ "about" | prepend: site.baseurl }}">Read more...</a>
-      </div>
-
-      <h2>Latest News</h2>
-      <ul class="entry-list">
-        {% for post in site.posts limit:5 %}  
-        <li>
-          <article class="entry">
-
-            <header class="entry-header">
-              <h3 class="entry-title">{{ post.title }}</h3>
-              <div class="entry-meta">
-	        <ul>
-                  <li><time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%B %d, %Y" }}</time></li>
+        <header class="entry-header">
+          <h3 class="entry-title">{{ post.title }}</h3>
+          <div class="entry-meta">
+     <ul>
+              <li><time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%B %d, %Y" }}</time></li>
 {% comment %}
-                  <span class="meta-sep">&bull;</span>								
-                  <li><a href="#" title="" rel="category tag">Ghost</a></li>
+              <span class="meta-sep">&bull;</span>								
+              <li><a href="#" title="" rel="category tag">Ghost</a></li>
 {% endcomment %}
-                  <span class="meta-sep">&bull;</span>
-                  <li>
-                    {% if site.data.members contains post.author %}
-                      {{ site.data.members[post.author] }}
-                    {% else %}
-                      {{ post.author }}
-                    {% endif %}
-                  </li>
-                </ul>
-              </div> 
-            </header> 
+              <span class="meta-sep">&bull;</span>
+              <li>
+                {% if site.data.members contains post.author %}
+                  {{ site.data.members[post.author] }}
+                {% else %}
+                  {{ post.author }}
+                {% endif %}
+              </li>
+            </ul>
+          </div> 
+        </header> 
 					
-            <div class="entry-content">
-              {{ post.content }}
-            </div> 
+        <div class="entry-content">
+          {{ post.content }}
+        </div> 
 
-          </article>
-        </li>
-        {% endfor %}
+      </article>
+    </li>
+    {% endfor %}
 
-      </ul>
+  </ul>
 
-      <a href="{{ "news" | prepend: site.baseurl }}">Click here for older announcements</a>
-    </div> <!-- end main -->
+  <a href="{{ "news" | prepend: site.baseurl }}">Click here for older announcements</a>
 
-    <div id="sidebar" class="four columns">
+</div> <!-- #main -->
 
-      <h3>Build Status:</h3>
-      <script type="text/javascript" src="http://build.npgsql.org/externalStatus.html?js=1"></script>
+<div id="sidebar" class="four columns">
 
-    </div> <!-- end sidebar -->
+  <h3>Build Status:</h3>
+  <script type="text/javascript" src="http://build.npgsql.org/externalStatus.html?js=1"></script>
 
-   	</div> <!-- end row -->
-
-   </div> <!-- end content-wrap -->
-   
-{% include footer.html %}
-
-</body>
-
-</html>
+</div> <!-- #sidebar -->
