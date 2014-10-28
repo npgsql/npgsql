@@ -7,6 +7,7 @@ namespace Npgsql
     internal class NpgsqlBufferedStream : NpgsqlStream
     {
         private bool ownStream;
+        private int minMultiByteStringChunkedEncode;
 
         public NpgsqlBufferedStream(Stream stream, int bufferSize, bool performNetworkByteOrderSwap, Encoding textEncoding, bool ownStream)
         : base(performNetworkByteOrderSwap, textEncoding)
@@ -19,6 +20,8 @@ namespace Npgsql
             this.Stream = stream;
             this.BufferSize = bufferSize;
             this.ownStream = ownStream;
+
+            minMultiByteStringChunkedEncode = maxBytesPerChar == 1 ? 1 : 24;
         }
 
         public Stream Stream
@@ -326,11 +329,12 @@ namespace Npgsql
         {
             bool prependLength = ((options & WriteStringoptions.PrependLength) == WriteStringoptions.PrependLength);
             bool nullTerminate = ((options & WriteStringoptions.NullTerminate) == WriteStringoptions.NullTerminate);
+            int bytesPerChar = ((options & WriteStringoptions.ASCII) == WriteStringoptions.ASCII) ? 1 : maxBytesPerChar;
             int textByteCount;
             int totalByteCount;
             bool byteCountExact = false;
 
-            if ((options & WriteStringoptions.ASCII) == WriteStringoptions.ASCII)
+            if (bytesPerChar == 1)
             {
                 textByteCount = charCount;
                 totalByteCount = textByteCount + (prependLength ? sizeof(Int32) : 0);
@@ -338,7 +342,7 @@ namespace Npgsql
             }
             else
             {
-                textByteCount = textEncoding.GetMaxByteCount(charCount);
+                textByteCount = bytesPerChar * charCount;
                 totalByteCount = textByteCount + (prependLength ? sizeof(Int32) : 0);
 
                 if (textByteCount > BufferSize)
@@ -360,20 +364,54 @@ namespace Npgsql
             {
                 int count = 0;
 
-                if (byteCountExact && textByteCount <= BufferSize)
+                if (byteCountExact)
                 {
                     if (prependLength)
                     {
-                        WriteInt32(textByteCount + sizeof(Int32) + (nullTerminate ? 1 : 0));
+                        WriteInt32(sizeof(Int32) + textByteCount + (nullTerminate ? 1 : 0));
                     }
 
-                    EnsureWriteBufferSpace(totalByteCount);
+                    if (textByteCount <= BufferSize)
+                    {
+                        EnsureWriteBufferSpace(textByteCount);
 
-                    count = Encoding.UTF8.GetBytes(text, charOffset, charCount, writeBuffer, writeBufferPosition);
+                        textEncoding.GetBytes(text, charOffset, charCount, writeBuffer, writeBufferPosition);
 
-                    writeBufferPosition += count;
+                        writeBufferPosition += textByteCount;
+                    }
+                    else
+                    {
+                        for (int totalCharsWritten = 0 ; totalCharsWritten < charCount ; )
+                        {
+                            int charWriteCount;
+
+                            if (BufferSize - writeBufferPosition >= minMultiByteStringChunkedEncode)
+                            {
+                                charWriteCount = Math.Min(charCount - totalCharsWritten, (BufferSize - writeBufferPosition) / bytesPerChar);
+                            }
+                            else
+                            {
+                                charWriteCount = Math.Min(charCount - totalCharsWritten, BufferSize / bytesPerChar);
+                            }
+
+                            EnsureWriteBufferSpace(charWriteCount);
+
+                            count = textEncoding.GetBytes(text, charOffset + totalCharsWritten, charWriteCount, writeBuffer, writeBufferPosition);
+
+                            writeBufferPosition += count;
+                            totalCharsWritten += charWriteCount;
+
+                            if (totalCharsWritten < charCount && bytesPerChar > 1)
+                            {
+                                while (char.IsHighSurrogate(text[charOffset + totalCharsWritten - 1]))
+                                {
+                                    totalCharsWritten -= 1;
+                                }
+                            }
+                        }
+                    }
                 }
-                else if (totalByteCount <= BufferSize)
+                else
                 {
                     int writePosition;
 
@@ -388,7 +426,7 @@ namespace Npgsql
 
                     try
                     {
-                        count = Encoding.UTF8.GetBytes(text, charOffset, charCount, writeBuffer, writePosition);
+                        count = textEncoding.GetBytes(text, charOffset, charCount, writeBuffer, writePosition);
 
                         if (count > textByteCount)
                         {
@@ -402,32 +440,10 @@ namespace Npgsql
 
                     if (prependLength)
                     {
-                        WriteInt32(count + sizeof(Int32) + (nullTerminate ? 1 : 0));
+                        WriteInt32(sizeof(Int32) + count + (nullTerminate ? 1 : 0));
                     }
 
                     writeBufferPosition += count;
-                }
-                else
-                {
-                    byte[] stringBuffer;
-
-                    stringBuffer = new byte[textByteCount];
-
-                    try
-                    {
-                        count = Encoding.UTF8.GetBytes(text, charOffset, charCount, stringBuffer, 0);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new ArgumentException("text", e);
-                    }
-
-                    if (prependLength)
-                    {
-                        WriteInt32(count + sizeof(Int32) + (nullTerminate ? 1 : 0));
-                    }
-
-                    Write(stringBuffer);
                 }
             }
 

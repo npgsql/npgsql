@@ -28,11 +28,14 @@ namespace Npgsql
         protected int writeBufferPosition;
         protected bool performNetworkByteOrderSwap;
         protected Encoding textEncoding;
+        protected int maxBytesPerChar;
 
         public NpgsqlStream(bool performNetworkByteOrderSwap, Encoding textEncoding)
         {
             this.performNetworkByteOrderSwap = performNetworkByteOrderSwap;
             this.textEncoding = textEncoding;
+
+            this.maxBytesPerChar = this.textEncoding.GetMaxByteCount(1);
         }
 
         protected abstract bool PopulateReadBuffer(int count);

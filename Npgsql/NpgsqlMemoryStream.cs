@@ -306,7 +306,7 @@ namespace Npgsql
 
             try
             {
-                count = Encoding.UTF8.GetBytes(text, charOffset, charCount, writeBuffer, writePosition);
+                count = textEncoding.GetBytes(text, charOffset, charCount, writeBuffer, writePosition);
 
                 if (count > textByteCount)
                 {
