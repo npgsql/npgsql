@@ -21,21 +21,21 @@ namespace Npgsql
 
     internal abstract class NpgsqlStream : Stream
     {
-        protected byte[] readBuffer;
-        protected int readBufferCapacity;
-        protected int readBufferPosition;
-        protected byte[] writeBuffer;
-        protected int writeBufferPosition;
-        protected bool performNetworkByteOrderSwap;
-        protected Encoding textEncoding;
-        protected int maxBytesPerChar;
+        protected byte[] _readBuffer;
+        protected int _readBufferCapacity;
+        protected int _readBufferPosition;
+        protected byte[] _writeBuffer;
+        protected int _writeBufferPosition;
+        protected bool _performNetworkByteOrderSwap;
+        protected Encoding _textEncoding;
+        protected int _maxBytesPerChar;
 
-        public NpgsqlStream(bool performNetworkByteOrderSwap, Encoding textEncoding)
+        public NpgsqlStream(bool _performNetworkByteOrderSwap, Encoding textEncoding)
         {
-            this.performNetworkByteOrderSwap = performNetworkByteOrderSwap;
-            this.textEncoding = textEncoding;
+            this._performNetworkByteOrderSwap = _performNetworkByteOrderSwap;
+            this._textEncoding = textEncoding;
 
-            this.maxBytesPerChar = this.textEncoding.GetMaxByteCount(1);
+            this._maxBytesPerChar = this._textEncoding.GetMaxByteCount(1);
         }
 
         protected abstract bool PopulateReadBuffer(int count);
@@ -126,6 +126,12 @@ namespace Npgsql
                 int bytesRead;
 
                 bytesRead = Read(buffer, totalBytesRead, count - totalBytesRead);
+
+                if (bytesRead == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+
                 totalBytesRead += bytesRead;
             }
         }
@@ -137,7 +143,7 @@ namespace Npgsql
                 return -1;
             }
 
-            return readBuffer[readBufferPosition++];
+            return _readBuffer[_readBufferPosition++];
         }
 
         public virtual Int16 ReadInt16()
@@ -147,18 +153,18 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (Int16)(
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
+                    (_readBuffer[_readBufferPosition++] << 08) |
+                    (_readBuffer[_readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (Int16)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08)
+                    (_readBuffer[_readBufferPosition++] << 00) |
+                    (_readBuffer[_readBufferPosition++] << 08)
                 );
             }
         }
@@ -170,40 +176,40 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (UInt16)(
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
+                    (_readBuffer[_readBufferPosition++] << 08) |
+                    (_readBuffer[_readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (UInt16)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08)
+                    (_readBuffer[_readBufferPosition++] << 00) |
+                    (_readBuffer[_readBufferPosition++] << 08)
                 );
             }
         }
 
         protected virtual Int32 ReadInt32NoAdvance()
         {
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (Int32)(
-                    (readBuffer[readBufferPosition + 0] << 24) |
-                    (readBuffer[readBufferPosition + 1] << 16) |
-                    (readBuffer[readBufferPosition + 2] << 08) |
-                    (readBuffer[readBufferPosition + 3] << 00)
+                    (_readBuffer[_readBufferPosition + 0] << 24) |
+                    (_readBuffer[_readBufferPosition + 1] << 16) |
+                    (_readBuffer[_readBufferPosition + 2] << 08) |
+                    (_readBuffer[_readBufferPosition + 3] << 00)
                 );
             }
             else
             {
                 return (Int32)(
-                    (readBuffer[readBufferPosition + 0] << 00) |
-                    (readBuffer[readBufferPosition + 1] << 08) |
-                    (readBuffer[readBufferPosition + 2] << 16) |
-                    (readBuffer[readBufferPosition + 3] << 24)
+                    (_readBuffer[_readBufferPosition + 0] << 00) |
+                    (_readBuffer[_readBufferPosition + 1] << 08) |
+                    (_readBuffer[_readBufferPosition + 2] << 16) |
+                    (_readBuffer[_readBufferPosition + 3] << 24)
                 );
             }
         }
@@ -219,7 +225,7 @@ namespace Npgsql
 
             result = ReadInt32NoAdvance();
 
-            readBufferPosition += sizeof(Int32);
+            _readBufferPosition += sizeof(Int32);
 
             return result;
         }
@@ -231,22 +237,22 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (UInt32)(
-                    (readBuffer[readBufferPosition++] << 24) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 00)
+                    (_readBuffer[_readBufferPosition++] << 24) |
+                    (_readBuffer[_readBufferPosition++] << 16) |
+                    (_readBuffer[_readBufferPosition++] << 08) |
+                    (_readBuffer[_readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (UInt32)(
-                    (readBuffer[readBufferPosition++] << 00) |
-                    (readBuffer[readBufferPosition++] << 08) |
-                    (readBuffer[readBufferPosition++] << 16) |
-                    (readBuffer[readBufferPosition++] << 24)
+                    (_readBuffer[_readBufferPosition++] << 00) |
+                    (_readBuffer[_readBufferPosition++] << 08) |
+                    (_readBuffer[_readBufferPosition++] << 16) |
+                    (_readBuffer[_readBufferPosition++] << 24)
                 );
             }
         }
@@ -258,30 +264,30 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (Int64)(
-                    ((Int64)readBuffer[readBufferPosition++] << 56) |
-                    ((Int64)readBuffer[readBufferPosition++] << 48) |
-                    ((Int64)readBuffer[readBufferPosition++] << 40) |
-                    ((Int64)readBuffer[readBufferPosition++] << 32) |
-                    ((Int64)readBuffer[readBufferPosition++] << 24) |
-                    ((Int64)readBuffer[readBufferPosition++] << 16) |
-                    ((Int64)readBuffer[readBufferPosition++] << 08) |
-                    ((Int64)readBuffer[readBufferPosition++] << 00)
+                    ((Int64)_readBuffer[_readBufferPosition++] << 56) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 48) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 40) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 32) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 24) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 16) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 08) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (Int64)(
-                    ((Int64)readBuffer[readBufferPosition++] << 00) |
-                    ((Int64)readBuffer[readBufferPosition++] << 08) |
-                    ((Int64)readBuffer[readBufferPosition++] << 16) |
-                    ((Int64)readBuffer[readBufferPosition++] << 24) |
-                    ((Int64)readBuffer[readBufferPosition++] << 32) |
-                    ((Int64)readBuffer[readBufferPosition++] << 40) |
-                    ((Int64)readBuffer[readBufferPosition++] << 48) |
-                    ((Int64)readBuffer[readBufferPosition++] << 56)
+                    ((Int64)_readBuffer[_readBufferPosition++] << 00) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 08) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 16) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 24) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 32) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 40) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 48) |
+                    ((Int64)_readBuffer[_readBufferPosition++] << 56)
                 );
             }
         }
@@ -293,30 +299,30 @@ namespace Npgsql
                 throw new EndOfStreamException();
             }
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
                 return (UInt64)(
-                    ((UInt64)readBuffer[readBufferPosition++] << 56) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 48) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 40) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 32) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 24) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 16) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 08) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 00)
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 56) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 48) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 40) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 32) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 24) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 16) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 08) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 00)
                 );
             }
             else
             {
                 return (UInt64)(
-                    ((UInt64)readBuffer[readBufferPosition++] << 00) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 08) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 16) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 24) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 32) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 40) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 48) |
-                    ((UInt64)readBuffer[readBufferPosition++] << 56)
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 00) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 08) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 16) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 24) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 32) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 40) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 48) |
+                    ((UInt64)_readBuffer[_readBufferPosition++] << 56)
                 );
             }
         }
@@ -332,7 +338,7 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(byte));
 
-            writeBuffer[writeBufferPosition++] = b;
+            _writeBuffer[_writeBufferPosition++] = b;
 
             FinalizeWrite();
         }
@@ -341,15 +347,15 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(Int16));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
             }
 
             FinalizeWrite();
@@ -361,15 +367,15 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(UInt16));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
             }
 
             FinalizeWrite();
@@ -381,19 +387,19 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(Int32));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
             }
 
             FinalizeWrite();
@@ -405,19 +411,19 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(UInt32));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
             }
 
             FinalizeWrite();
@@ -429,27 +435,27 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(Int64));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
             }
 
             FinalizeWrite();
@@ -461,27 +467,27 @@ namespace Npgsql
         {
             EnsureWriteBufferSpace(sizeof(UInt64));
 
-            if (performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
+            if (_performNetworkByteOrderSwap && BitConverter.IsLittleEndian)
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
             }
             else
             {
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
-                writeBuffer[writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 00) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 08) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 16) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 24) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 32) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 40) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 48) & 0xFF);
+                _writeBuffer[_writeBufferPosition++] = (byte)((i >> 56) & 0xFF);
             }
 
             FinalizeWrite();

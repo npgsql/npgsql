@@ -6,8 +6,8 @@ namespace Npgsql
 {
     internal class NpgsqlBufferedStream : NpgsqlStream
     {
-        private bool ownStream;
-        private int minMultiByteStringChunkedEncode;
+        private bool _ownStream;
+        private int _minMultiByteStringChunkedEncode;
 
         public NpgsqlBufferedStream(Stream stream, int bufferSize, bool performNetworkByteOrderSwap, Encoding textEncoding, bool ownStream)
         : base(performNetworkByteOrderSwap, textEncoding)
@@ -19,9 +19,9 @@ namespace Npgsql
 
             this.Stream = stream;
             this.BufferSize = bufferSize;
-            this.ownStream = ownStream;
+            this._ownStream = ownStream;
 
-            minMultiByteStringChunkedEncode = maxBytesPerChar == 1 ? 1 : 24;
+            _minMultiByteStringChunkedEncode = _maxBytesPerChar == 1 ? 1 : 24;
         }
 
         public Stream Stream
@@ -38,7 +38,7 @@ namespace Npgsql
 
         public int BufferedBytes
         {
-            get { return readBufferCapacity - readBufferPosition; }
+            get { return _readBufferCapacity - _readBufferPosition; }
         }
 
         public override long Length
@@ -46,47 +46,50 @@ namespace Npgsql
             get { throw new InvalidOperationException(); }
         }
 
-        protected override bool PopulateReadBuffer(int count)
+        protected override bool PopulateReadBuffer(int minimumByteCount)
         {
-            if (readBufferPosition + count <= readBufferCapacity)
+            if (_readBufferCapacity - _readBufferPosition >= minimumByteCount)
             {
                 return true;
             }
 
-            if (readBuffer == null)
+            if (_readBuffer == null)
             {
-                readBuffer = new byte[BufferSize];
+                _readBuffer = new byte[BufferSize];
             }
 
-            if (readBufferPosition < readBufferCapacity)
+            if (_readBufferPosition > 0)
             {
-                Array.Copy(readBuffer, readBufferPosition, readBuffer, 0, readBufferCapacity - readBufferPosition);
-                readBufferCapacity = readBufferCapacity - readBufferPosition;
+                if (_readBufferPosition == _readBufferCapacity)
+                {
+                    _readBufferCapacity = 0;
+                    _readBufferPosition = 0;
+                }
+                else if (BufferSize - _readBufferPosition < minimumByteCount)
+                {
+                    Array.Copy(_readBuffer, _readBufferPosition, _readBuffer, 0, _readBufferCapacity - _readBufferPosition);
+                    _readBufferCapacity = _readBufferCapacity - _readBufferPosition;
+                    _readBufferPosition = 0;
+                }
             }
-            else
+
+            int bytesRead;
+
+            while (
+                _readBufferCapacity - _readBufferPosition < minimumByteCount &&
+                (bytesRead = Stream.Read(_readBuffer, _readBufferCapacity, BufferSize - _readBufferCapacity)) > 0
+            )
             {
-                readBufferCapacity = 0;
+                _readBufferCapacity += bytesRead;
             }
 
-            readBufferPosition = 0;
-
-            readBufferCapacity += Stream.Read(readBuffer, readBufferCapacity, BufferSize - readBufferCapacity);
-
-            return (readBufferPosition + count <= readBufferCapacity);
-        }
-
-        private void EnsureWriteBuffer()
-        {
-            if (writeBuffer == null)
-            {
-                writeBuffer = new byte[BufferSize];
-            }
+            return true;
         }
 
         private void FlushWriteBuffer()
         {
-            Stream.Write(writeBuffer, 0, writeBufferPosition);
-            writeBufferPosition = 0;
+            Stream.Write(_writeBuffer, 0, _writeBufferPosition);
+            _writeBufferPosition = 0;
         }
 
         protected override void EnsureWriteBufferSpace(int count)
@@ -96,9 +99,11 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("count");
             }
 
-            EnsureWriteBuffer();
-
-            if (writeBufferPosition + count > BufferSize)
+            if (_writeBuffer == null)
+            {
+                _writeBuffer = new byte[BufferSize];
+            }
+            else if (_writeBufferPosition + count > BufferSize)
             {
                 FlushWriteBuffer();
             }
@@ -121,23 +126,25 @@ namespace Npgsql
                 return 0;
             }
 
-            if (count < BufferSize || readBufferPosition > 0)
+            if (count < BufferSize || _readBufferCapacity - _readBufferPosition > 0)
             {
-                if (! PopulateReadBuffer(1))
+                int bytesRead;
+
+                PopulateReadBuffer(1);
+
+                bytesRead = Math.Min(_readBufferCapacity - _readBufferPosition, count);
+
+                if (bytesRead > 0)
                 {
-                    return 0;
+                    Array.Copy(_readBuffer, _readBufferPosition, buffer, offset, bytesRead);
+                    _readBufferPosition += bytesRead;
                 }
-
-                int bytesRead = Math.Min(readBufferCapacity - readBufferPosition, count);
-
-                Array.Copy(readBuffer, readBufferPosition, buffer, offset, bytesRead);
-                readBufferPosition += bytesRead;
 
                 return bytesRead;
             }
             else
             {
-                return Stream.Read(buffer, offset, count);
+                return Stream.Read(buffer, offset, Math.Min(count, BufferSize));
             }
         }
 
@@ -162,7 +169,7 @@ namespace Npgsql
             {
                 byteCount = ReadInt32();
 
-                if (byteCount < sizeof(Int32) - (nullTerminated ? 1 : 0))
+                if (byteCount < sizeof(Int32) + (nullTerminated ? 1 : 0))
                 {
                     throw new IOException("Embedded length identifier out of range");
                 }
@@ -184,14 +191,17 @@ namespace Npgsql
                 {
                     if (byteCount <= BufferSize)
                     {
-                        PopulateReadBuffer(byteCount);
+                        if (!PopulateReadBuffer(byteCount))
+                        {
+                            throw new EndOfStreamException();
+                        }
 
-                        result = textEncoding.GetString(readBuffer, readBufferPosition, byteCount);
-                        readBufferPosition += byteCount;
+                        result = _textEncoding.GetString(_readBuffer, _readBufferPosition, byteCount);
+                        _readBufferPosition += byteCount;
                     }
                     else
                     {
-                        using (NpgsqlMemoryStream stream = new NpgsqlMemoryStream(false, textEncoding))
+                        using (NpgsqlMemoryStream stream = new NpgsqlMemoryStream(false, _textEncoding))
                         {
                             CopyTo(stream, 0, byteCount);
 
@@ -225,29 +235,29 @@ namespace Npgsql
                 {
                     PopulateReadBuffer(1);
 
-                    int i = readBufferPosition;
+                    int i = _readBufferPosition;
 
-                    for ( ; i < readBufferCapacity ; i++)
+                    for ( ; i < _readBufferCapacity ; i++)
                     {
-                        if (readBuffer[i] != 0)
+                        if (_readBuffer[i] != 0)
                         {
                             byteCount++;
                         }
                         else
                         {
-                            int count = i - readBufferPosition;
+                            int count = i - _readBufferPosition;
 
                             if (stream != null)
                             {
-                                stream.Write(readBuffer, readBufferPosition, count);
+                                stream.Write(_readBuffer, _readBufferPosition, count);
                                 result = stream.ReadString(ReadStringoptions.None, byteCount);
                             }
                             else
                             {
-                                 result = textEncoding.GetString(readBuffer, readBufferPosition, count);
+                                 result = _textEncoding.GetString(_readBuffer, _readBufferPosition, count);
                             }
 
-                            readBufferPosition += (count + 1);
+                            _readBufferPosition += (count + 1);
 
                             break;
                         }
@@ -257,13 +267,13 @@ namespace Npgsql
                     {
                         if (stream == null)
                         {
-                            stream = new NpgsqlMemoryStream(false, textEncoding);
+                            stream = new NpgsqlMemoryStream(false, _textEncoding);
                         }
 
-                        int count = i - readBufferPosition;
+                        int count = i - _readBufferPosition;
 
-                        stream.Write(readBuffer, readBufferPosition, count);
-                        readBufferPosition += count;
+                        stream.Write(_readBuffer, _readBufferPosition, count);
+                        _readBufferPosition += count;
                     }
                 } while (result == null);
 
@@ -284,11 +294,13 @@ namespace Npgsql
 
             while (skipped < byteCount)
             {
+                int count;
+
                 PopulateReadBuffer(1);
 
-                int count = Math.Min(byteCount - skipped, readBufferCapacity - readBufferPosition);
+                count = Math.Min(byteCount - skipped, _readBufferCapacity - _readBufferPosition);
 
-                readBufferPosition += count;
+                _readBufferPosition += count;
                 skipped += count;
             }
         }
@@ -310,18 +322,41 @@ namespace Npgsql
                 return;
             }
 
-            if (count > BufferSize)
-            {
-                EnsureWriteBufferSpace(BufferSize);
+            int bytesWritten = 0;
 
-                Stream.Write(callersBuffer, offset, count);
+            if (count >= BufferSize)
+            {
+                if (_writeBufferPosition > 0)
+                {
+                    FlushWriteBuffer();
+                }
+
+                while (count >= BufferSize)
+                {
+                    Stream.Write(callersBuffer, offset + bytesWritten, BufferSize);
+                    bytesWritten += BufferSize;
+                    count -= BufferSize;
+                }
             }
-            else
-            {
-                EnsureWriteBufferSpace(count);
 
-                Array.Copy(callersBuffer, offset, writeBuffer, writeBufferPosition, count);
-                writeBufferPosition += count;
+            while (count > 0)
+            {
+                int bytesWrite;
+
+                if (_writeBufferPosition == BufferSize)
+                {
+                    bytesWrite = count;
+                }
+                else
+                {
+                    bytesWrite = Math.Min(count, BufferSize - _writeBufferPosition);
+                }
+
+                EnsureWriteBufferSpace(bytesWrite);
+
+                Array.Copy(callersBuffer, offset + bytesWritten, _writeBuffer, _writeBufferPosition, bytesWrite);
+                _writeBufferPosition += bytesWrite;
+                count -= bytesWrite;
             }
         }
 
@@ -329,7 +364,7 @@ namespace Npgsql
         {
             bool prependLength = ((options & WriteStringoptions.PrependLength) == WriteStringoptions.PrependLength);
             bool nullTerminate = ((options & WriteStringoptions.NullTerminate) == WriteStringoptions.NullTerminate);
-            int bytesPerChar = ((options & WriteStringoptions.ASCII) == WriteStringoptions.ASCII) ? 1 : maxBytesPerChar;
+            int bytesPerChar = ((options & WriteStringoptions.ASCII) == WriteStringoptions.ASCII) ? 1 : _maxBytesPerChar;
             int textByteCount;
             int totalByteCount;
             bool byteCountExact = false;
@@ -354,7 +389,7 @@ namespace Npgsql
                         charCount = text.Length;
                     }
 
-                    textByteCount = textEncoding.GetByteCount(text);
+                    textByteCount = _textEncoding.GetByteCount(text);
                     totalByteCount = textByteCount + (prependLength ? sizeof(Int32) : 0);
                     byteCountExact = true;
                 }
@@ -375,9 +410,9 @@ namespace Npgsql
                     {
                         EnsureWriteBufferSpace(textByteCount);
 
-                        textEncoding.GetBytes(text, charOffset, charCount, writeBuffer, writeBufferPosition);
+                        _textEncoding.GetBytes(text, charOffset, charCount, _writeBuffer, _writeBufferPosition);
 
-                        writeBufferPosition += textByteCount;
+                        _writeBufferPosition += textByteCount;
                     }
                     else
                     {
@@ -385,9 +420,9 @@ namespace Npgsql
                         {
                             int charWriteCount;
 
-                            if (BufferSize - writeBufferPosition >= minMultiByteStringChunkedEncode)
+                            if (BufferSize - _writeBufferPosition >= _minMultiByteStringChunkedEncode)
                             {
-                                charWriteCount = Math.Min(charCount - totalCharsWritten, (BufferSize - writeBufferPosition) / bytesPerChar);
+                                charWriteCount = Math.Min(charCount - totalCharsWritten, (BufferSize - _writeBufferPosition) / bytesPerChar);
                             }
                             else
                             {
@@ -396,14 +431,14 @@ namespace Npgsql
 
                             EnsureWriteBufferSpace(charWriteCount);
 
-                            count = textEncoding.GetBytes(text, charOffset + totalCharsWritten, charWriteCount, writeBuffer, writeBufferPosition);
+                            count = _textEncoding.GetBytes(text, charOffset + totalCharsWritten, charWriteCount, _writeBuffer, _writeBufferPosition);
 
-                            writeBufferPosition += count;
+                            _writeBufferPosition += count;
                             totalCharsWritten += charWriteCount;
 
                             if (totalCharsWritten < charCount && bytesPerChar > 1)
                             {
-                                while (char.IsHighSurrogate(text[charOffset + totalCharsWritten - 1]))
+                                if (char.IsHighSurrogate(text[charOffset + totalCharsWritten - 1]))
                                 {
                                     totalCharsWritten -= 1;
                                 }
@@ -417,25 +452,18 @@ namespace Npgsql
 
                     EnsureWriteBufferSpace(totalByteCount);
 
-                    writePosition = writeBufferPosition;
+                    writePosition = _writeBufferPosition;
 
                     if (prependLength)
                     {
                         writePosition += sizeof(Int32);
                     }
 
-                    try
-                    {
-                        count = textEncoding.GetBytes(text, charOffset, charCount, writeBuffer, writePosition);
+                    count = _textEncoding.GetBytes(text, charOffset, charCount, _writeBuffer, writePosition);
 
-                        if (count > textByteCount)
-                        {
-                            throw new ArgumentException("options");
-                        }
-                    }
-                    catch (Exception e)
+                    if (count > textByteCount)
                     {
-                        throw new ArgumentException("text", e);
+                        throw new ArgumentException("text");
                     }
 
                     if (prependLength)
@@ -443,7 +471,7 @@ namespace Npgsql
                         WriteInt32(sizeof(Int32) + count + (nullTerminate ? 1 : 0));
                     }
 
-                    writeBufferPosition += count;
+                    _writeBufferPosition += count;
                 }
             }
 
@@ -457,7 +485,7 @@ namespace Npgsql
 
         public override void Flush()
         {
-            if (writeBufferPosition > 0)
+            if (_writeBufferPosition > 0)
             {
                 FlushWriteBuffer();
                 Stream.Flush();
@@ -497,12 +525,14 @@ namespace Npgsql
 
             while (totalBytesRead < count)
             {
+                int readCount;
+
                 PopulateReadBuffer(1);
 
-                int readCount = Math.Min(count - totalBytesRead, readBufferCapacity - readBufferPosition);
+                readCount = Math.Min(count - totalBytesRead, _readBufferCapacity - _readBufferPosition);
 
-                destination.Write(readBuffer, readBufferPosition, readCount);
-                readBufferPosition += readCount;
+                destination.Write(_readBuffer, _readBufferPosition, readCount);
+                _readBufferPosition += readCount;
                 totalBytesRead += readCount;
             }
         }
