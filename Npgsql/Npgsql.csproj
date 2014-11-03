@@ -120,6 +120,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\CommandCompleteMessage.cs" />
+    <Compile Include="Messages\DataRowMessageBase.cs" />
+    <Compile Include="Messages\DataRowSequentialMessage.cs" />
+    <Compile Include="Messages\DataRowMessage.cs" />
+    <Compile Include="Messages\EmptyQueryMessage.cs" />
+    <Compile Include="Messages\ReadyForQueryMessage.cs" />
+    <Compile Include="Messages\RowDescriptionMessage.cs" />
+    <Compile Include="NpgsqlBufferedStream.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
@@ -143,6 +151,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>L10N.resx</DependentUpon>
     </Compile>
+    <Compile Include="NpgsqlValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
     <Compile Include="BackendEncoding.cs" />
@@ -178,10 +187,6 @@
     <Compile Include="NpgsqlCopySerializer.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
-    <Compile Include="NpgsqlDataReader.Async.cs">
-      <DependentUpon>NpgsqlDataReader.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
     <Compile Include="NpgsqlError.cs" />
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
@@ -213,6 +218,12 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="TypeHandlers\BoolHandler.cs" />
+    <Compile Include="TypeHandlers\StringHandler.cs" />
+    <Compile Include="TypeHandlers\TypeHandler.cs" />
+    <Compile Include="TypeHandlers\Int32Handler.cs" />
+    <Compile Include="TypeHandlers\TypeHandlerRegistry.cs" />
+    <Compile Include="TypeHandlers\UnknownTypeHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Localization\L10N.de.resx" />
@@ -250,6 +261,7 @@
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Target Name="PublisherPolicy">
     <AL LinkResources="PublisherPolicy.config" OutputAssembly="$(OutputPath)\policy.2.0.$(AssemblyName).dll" KeyFile="..\Npgsql.snk" />
   </Target>

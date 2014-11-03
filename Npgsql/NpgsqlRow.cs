@@ -42,8 +42,10 @@ namespace Npgsql
     /// <summary>
     /// This is the abstract base class for NpgsqlAsciiRow and NpgsqlBinaryRow.
     /// </summary>
-    internal abstract class NpgsqlRow : IStreamOwner
+    internal abstract class NpgsqlRow : IServerMessage, IDisposable
     {
+        public BackEndMessageCode Code { get { return BackEndMessageCode.DataRow; } }
+
         public abstract object Get(int index);
         public abstract Task<object> GetAsync(int index);
         public abstract int NumFields { get; }
@@ -236,13 +238,13 @@ namespace Npgsql
     /// <summary>
     /// Reads a row, field by field, allowing a DataRow to be built appropriately.
     /// </summary>
-    internal abstract partial class RowReader : IStreamOwner
+    internal abstract partial class RowReader : IServerMessage
     {
         /// <summary>
         /// Reads part of a field, as needed (for <see cref="System.Data.IDataRecord.GetChars(int, long, char[], int, int)"/>
         /// and <see cref="System.Data.IDataRecord.GetBytes(int, long, byte[], int, int)"/>
         /// </summary>
-        protected abstract class Streamer : IStreamOwner
+        protected abstract class Streamer
         {
             protected readonly Stream _stream;
             protected int _remainingBytes;
@@ -515,5 +517,7 @@ namespace Npgsql
 
         public virtual void Dispose()
         {}
+
+        public BackEndMessageCode Code { get { return BackEndMessageCode.DataRow; } }
     }
 }

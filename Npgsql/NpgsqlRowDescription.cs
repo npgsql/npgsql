@@ -28,8 +28,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Text;
 using NpgsqlTypes;
 
@@ -209,5 +211,7 @@ namespace Npgsql
             else
                 throw new IndexOutOfRangeException("Field not found");
         }
+
+        public BackEndMessageCode Code { get { return BackEndMessageCode.RowDescription; } }
     }
 }

@@ -1397,23 +1397,11 @@ namespace Npgsql
         int ExecuteNonQueryInternal()
         {
             _log.Debug("ExecuteNonQuery");
-            //We treat this as a simple wrapper for calling ExecuteReader() and then
-            //update the records affected count at every call to NextResult();
-            int? ret = null;
-            using (var rdr = GetReader(CommandBehavior.SequentialAccess))
-            {
-                do
-                {
-                    var thisRecord = rdr.RecordsAffected;
-                    if (thisRecord != -1)
-                    {
-                        ret = (ret ?? 0) + thisRecord;
-                    }
-                    _lastInsertedOid = rdr.LastInsertedOID ?? _lastInsertedOid;
-                }
-                while (rdr.NextResult());
+            NpgsqlDataReader reader;
+            using (reader = GetReader()) {
+                while (reader.NextResult()) ;
             }
-            return ret ?? -1;
+            return reader.RecordsAffected;
         }
 
         #endregion Execute Non Query
@@ -1607,7 +1595,7 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal NpgsqlDataReader GetReader(CommandBehavior cb)
+        internal NpgsqlDataReader GetReader(CommandBehavior cb = CommandBehavior.Default)
         {
             CheckConnectionState();
 
@@ -1642,49 +1630,9 @@ namespace Npgsql
                         _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
                     }
 
-                    reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
-
-                    // For un-prepared statements, the first response is always a row description.
-                    // For prepared statements, we may be recycling a row description from a previous Execute.
-                    // TODO: This is the source of the inconsistency described in #357
-                    reader.NextResult();
-                    reader.UpdateOutputParameters();
-
-                    if (
-                        CommandType == CommandType.StoredProcedure
-                        && reader.FieldCount == 1
-                        && reader.GetDataTypeName(0) == "refcursor"
-                    )
-                    {
-                        // When a function returns a sole column of refcursor, transparently
-                        // FETCH ALL from every such cursor and return those results.
-                        var sw = new StringWriter();
-
-                        while (reader.Read())
-                        {
-                            sw.WriteLine(String.Format("FETCH ALL FROM \"{0}\";", reader.GetString(0)));
-                        }
-
-                        reader.Dispose();
-
-                        var queryText = sw.ToString();
-
-                        if (queryText == "")
-                        {
-                            queryText = ";";
-                        }
-
-                        // Passthrough the commandtimeout to the inner command, so user can also control its timeout.
-                        // TODO: Check if there is a better way to handle that.
-
-                        _connector.SendQuery(queryText);
-                        reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
-                        // For un-prepared statements, the first response is always a row description.
-                        // For prepared statements, we may be recycling a row description from a previous Execute.
-                        // TODO: This is the source of the inconsistency described in #357
-                        reader.NextResultInternal();
-                        reader.UpdateOutputParameters();
-                    }
+                    //reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
+                    // TODO: Don't allocate
+                    return new NpgsqlDataReader(this, cb);
                 }
                 else
                 {
@@ -1699,12 +1647,15 @@ namespace Npgsql
                     // Tell to mediator what command is being sent.
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
+                    throw new NotImplementedException();
                     // Construct the return reader, possibly with a saved row description from Prepare().
+                    /*
                     reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread(), true, _currentRowDescription);
                     if (_currentRowDescription == null) {
                         reader.NextResultInternal();
                     }
                     reader.UpdateOutputParameters();
+                     */
                 }
 
                 return reader;

@@ -37,24 +37,32 @@ namespace Npgsql
     /// Marker interface which identifies a class which represents part of
     /// a response from the server.
     /// </summary>
-    internal interface IServerMessage {}
+    internal interface IServerMessage
+    {
+        BackEndMessageCode Code { get; }
+    }
 
     internal class ReadyForQueryMsg : IServerMessage
     {
+        public BackEndMessageCode Code { get { return BackEndMessageCode.ReadyForQuery; } }
         internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
     }
 
     internal class CopyInResponseMsg : IServerMessage
     {
+        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyInResponse; } }
         internal static readonly CopyInResponseMsg Instance = new CopyInResponseMsg();
     }
 
     internal class CopyOutResponseMsg : IServerMessage
     {
+        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyOutResponse; } }
         internal static readonly CopyOutResponseMsg Instance = new CopyOutResponseMsg();
     }
+
     internal class CopyDataMsg : IServerMessage
     {
+        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyData; } }
         internal static readonly CopyDataMsg Instance = new CopyDataMsg();
     }
 
@@ -92,6 +100,8 @@ namespace Npgsql
         {
             get { return _rowsAffected; }
         }
+
+        public BackEndMessageCode Code { get { return BackEndMessageCode.CompletedResponse; } }
     }
 
     internal class ParameterDescriptionResponse : IServerMessage
@@ -107,6 +117,8 @@ namespace Npgsql
         {
             get { return _typeoids; }
         }
+
+        public BackEndMessageCode Code { get { return BackEndMessageCode.ParameterDescription; } }
     }
 
     /// <summary>
@@ -116,19 +128,6 @@ namespace Npgsql
     {
         void WriteToStream(Stream outputStream);
         Task WriteToStreamAsync(Stream outputStream);
-    }
-
-    /// <summary>
-    /// Marker interface which identifies a class which may take possession of a stream for the duration of
-    /// it's lifetime (possibly temporarily giving that possession to another class for part of that time.
-    ///
-    /// It inherits from IDisposable, since any such class must make sure it leaves the stream in a valid state.
-    ///
-    /// The most important such class is that compiler-generated from ProcessBackendResponsesEnum. Of course
-    /// we can't make that inherit from this interface, alas.
-    /// </summary>
-    internal interface IStreamOwner : IServerMessage, IDisposable
-    {
     }
 
     #pragma warning disable 1591
