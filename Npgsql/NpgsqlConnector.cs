@@ -37,6 +37,8 @@ using System.Threading;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
 using Npgsql.Localization;
+using Npgsql.Messages;
+using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Text;
 using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
@@ -67,13 +69,14 @@ namespace Npgsql
         // This is a BufferedStream.
         // With SSL, this stream sits on top of the SSL stream, which sits on top of _baseStream.
         // Otherwise, this stream sits directly on top of _baseStream.
-        internal BufferedStream Stream { get; set; }
+        internal Stream Stream { get; set; }
 
         /// <summary>
         /// Buffer used for reading data.
         /// </summary>
-        // TODO: Work out the strategy for the size!
-        internal byte[] _buffer = new byte[1024 * 16];
+        internal NpgsqlBufferedStream Buffer { get; private set; }
+
+        byte[] _crappyBuf = new byte[8192];
 
         /// <summary>
         /// The connection mediator.
@@ -93,6 +96,8 @@ namespace Npgsql
         internal NpgsqlTransaction Transaction { get; set; }
 
         internal bool Pooled { get; private set; }
+
+        internal TypeHandlerRegistry TypeHandlerRegistry { get; set; }
 
         /// <summary>
         /// Options that control certain aspects of native to backend conversions that depend
@@ -344,6 +349,8 @@ namespace Npgsql
 
             ExecuteBlind(_initQueries);
 
+            TypeHandlerRegistry.Load(this);
+
             // Make a shallow copy of the type mapping that the connector will own.
             // It is possible that the connector may add types to its private
             // mapping that will not be valid to another connector, even
@@ -467,8 +474,10 @@ namespace Npgsql
 
             Socket = socket;
             BaseStream = baseStream;
-            Stream = new BufferedStream(sslStream ?? baseStream, 8192);
-            _log.DebugFormat("Connected to {0}:{1}", Host, Port);
+            //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
+            Stream = BaseStream;
+            Buffer = new NpgsqlBufferedStream(Stream);
+            _log.DebugFormat("Connected to {0}:{1 }", Host, Port);
         }
 
         #endregion
@@ -651,7 +660,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void SendQuery(string query)
         {
-            _log.Debug("Sending query");
+            _log.DebugFormat("Sending query: {0}", query);
             QueryManager.WriteQuery(Stream, query);
             Stream.Flush();
             State = ConnectorState.Executing;
@@ -660,7 +669,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void SendQuery(byte[] query)
         {
-            _log.Debug("Sending query");
+            _log.Debug(m => m("Sending query: {0}", Encoding.UTF8.GetString(query)));
             QueryManager.WriteQuery(Stream, query);
             Stream.Flush();
             State = ConnectorState.Executing;
@@ -674,7 +683,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void SendQueryRaw(byte[] rawQuery)
         {
-            _log.Debug("Sending query");
+            _log.Debug("Sending raw query");
             Stream.Write(rawQuery, 0, rawQuery.Length);
             Stream.Flush();
             State = ConnectorState.Executing;
@@ -794,6 +803,92 @@ namespace Npgsql
 
         #region Backend message processing
 
+        internal IServerMessage ReadSingleMessage(bool sequentialRows=false)
+        {
+            var buf = Buffer;
+
+            Buffer.Ensure(5);
+            var messageCode = (BackEndMessageCode) Buffer.ReadByte();
+            var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
+
+            if (len > Buffer.BytesLeft)
+            {
+                // We didn't read the entire message
+                if (len > Buffer.Size)
+                {
+                    // Worst case: our buffer isn't big enough. For now, allocate a new buffer
+                    // and copy into it (optimize with a pool later)
+                    buf = new NpgsqlBufferedStream(Stream, len, Buffer.TextEncoding);
+                    Buffer.CopyTo(buf);
+                    Buffer.Clear();
+                    buf.Ensure(len);
+                }
+                buf.Ensure(len);
+            }
+            return ParseServerMessage(buf, messageCode, len, sequentialRows);
+        }
+
+        IServerMessage ParseServerMessage(NpgsqlBufferedStream buf, BackEndMessageCode code, int len, bool sequentialRows = false)
+        {
+            switch (code)
+            {
+                case BackEndMessageCode.RowDescription:
+                    return new RowDescriptionMessage(buf, TypeHandlerRegistry);
+                case BackEndMessageCode.DataRow:
+                    return sequentialRows ? (DataRowMessageBase)new DataRowSequentialMessage(buf) : new DataRowMessage(buf);
+                case BackEndMessageCode.CompletedResponse:
+                    return new CommandCompleteMessage(buf, len);
+                case BackEndMessageCode.ReadyForQuery:
+                    return new ReadyForQueryMessage(buf);
+                case BackEndMessageCode.EmptyQueryResponse:
+                    return EmptyQueryMessage.Instance;
+                case BackEndMessageCode.CopyData:
+                case BackEndMessageCode.CopyDone:
+                case BackEndMessageCode.BackendKeyData:
+                case BackEndMessageCode.CancelRequest:
+                case BackEndMessageCode.CopyDataRows:
+                case BackEndMessageCode.CopyInResponse:
+                case BackEndMessageCode.CopyOutResponse:
+                case BackEndMessageCode.ErrorResponse:
+                case BackEndMessageCode.FunctionCallResponse:
+                case BackEndMessageCode.AuthenticationRequest:
+                case BackEndMessageCode.NoticeResponse:
+                case BackEndMessageCode.NotificationResponse:
+                case BackEndMessageCode.ParameterStatus:
+                case BackEndMessageCode.ParseComplete:
+                case BackEndMessageCode.BindComplete:
+                case BackEndMessageCode.PortalSuspended:
+                case BackEndMessageCode.ParameterDescription:
+                case BackEndMessageCode.NoData:
+                case BackEndMessageCode.CloseComplete:
+                case BackEndMessageCode.IO_ERROR:
+                    throw new NotImplementedException("Unimplemented message: " + code);
+                default:
+                    throw new ArgumentOutOfRangeException("code", code, "Got an unknown message code: " + code);
+            }
+        }
+
+        /// <summary>
+        /// Reads backend messages and discards them, stopping only after a message of the given type has
+        /// been seen. Note that when this method is called, the buffer position must be properly set at
+        /// the start of the next message.
+        /// </summary>
+        internal T SkipUntil<T>(BackEndMessageCode stopAfter) where T : IServerMessage
+        {
+            while (true)
+            {
+                Buffer.Ensure(5);
+                var messageCode = (BackEndMessageCode)Buffer.ReadByte();
+                if (messageCode == stopAfter)
+                {
+                    Buffer.Seek(-1, SeekOrigin.Current);
+                    return (T)ReadSingleMessage();
+                }
+                var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
+                Buffer.Skip(len);
+            }
+        }
+
         [GenerateAsync]
         internal IServerMessage ReadMessage()
         {
@@ -826,8 +921,8 @@ namespace Npgsql
             for (;;)
             {
                 // Check the first Byte of response.
-                Stream.Read(_buffer, 0, 1);
-                var message = (BackEndMessageCode) _buffer[0];
+                Stream.Read(_crappyBuf, 0, 1);
+                var message = (BackEndMessageCode) _crappyBuf[0];
                 switch (message)
                 {
                     case BackEndMessageCode.ErrorResponse:

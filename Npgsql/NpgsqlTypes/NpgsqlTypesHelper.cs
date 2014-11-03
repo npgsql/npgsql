@@ -213,7 +213,7 @@ namespace NpgsqlTypes
         /// The given TypeInfo is called upon to do the conversion.
         /// If no TypeInfo object is provided, no conversion is performed.
         /// </summary>
-        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int32 fieldValueSize,
+        public static Object ConvertBackendBytesToSystemType(NpgsqlBackendTypeInfo TypeInfo, byte[] data, Int32 fieldValueSize,
                                                              Int32 typeModifier)
         {
             if (TypeInfo != null)
@@ -232,7 +232,7 @@ namespace NpgsqlTypes
         /// The given TypeInfo is called upon to do the conversion.
         /// If no TypeInfo object is provided, no conversion is performed.
         /// </summary>
-        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, Byte[] data, Int16 typeSize,
+        public static Object ConvertBackendStringToSystemType(NpgsqlBackendTypeInfo TypeInfo, byte[] data, Int16 typeSize,
                                                               Int32 typeModifier)
         {
             if (TypeInfo != null)
@@ -762,7 +762,8 @@ namespace NpgsqlTypes
                 NpgsqlCommand command =
                     new NpgsqlCommand(string.Format("SELECT typname, oid FROM pg_type WHERE typname IN ({0})", inList), conn))
             {
-                using (NpgsqlDataReader dr = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                //using (NpgsqlDataReader dr = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                using (NpgsqlDataReader dr = command.GetReader(CommandBehavior.Default))
                 {
                     while (dr.Read())
                     {

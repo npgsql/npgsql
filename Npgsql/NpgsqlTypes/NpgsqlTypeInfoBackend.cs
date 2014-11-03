@@ -222,7 +222,7 @@ namespace NpgsqlTypes
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="fieldValueSize">fieldValueSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertBackendBinaryToNative(Byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
+        public Object ConvertBackendBinaryToNative(byte[] BackendData, Int32 fieldValueSize, Int32 TypeModifier)
         {
             if (! NpgsqlTypesHelper.SuppressBinaryBackendEncoding && _ConvertBackendBinaryToNative != null)
             {
@@ -241,7 +241,7 @@ namespace NpgsqlTypes
         /// <param name="BackendData">Data sent from the backend.</param>
         /// <param name="TypeSize">TypeSize</param>
         /// <param name="TypeModifier">Type modifier field sent from the backend.</param>
-        public Object ConvertBackendTextToNative(Byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
+        public Object ConvertBackendTextToNative(byte[] BackendData, Int16 TypeSize, Int32 TypeModifier)
         {
             if (_ConvertBackendTextToNative != null)
             {
