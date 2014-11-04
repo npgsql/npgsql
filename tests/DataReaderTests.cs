@@ -585,6 +585,17 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void SingleResult()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+            using (var cmd = new NpgsqlCommand(@"SELECT * FROM data; SELECT * FROM data", Conn))
+            using (var rdr = cmd.ExecuteReader(CommandBehavior.SingleResult))
+            {
+                Assert.That(rdr.NextResult(), Is.False);
+            }
+        }
+
+        [Test]
         public void SingleRowCommandBehaviorSupport()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");

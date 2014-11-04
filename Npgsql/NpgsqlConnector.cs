@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -859,20 +860,21 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Reads backend messages and discards them, stopping only after a message of the given type has
+        /// Reads backend messages and discards them, stopping only after a message of the given types has
         /// been seen. Note that when this method is called, the buffer position must be properly set at
         /// the start of the next message.
         /// </summary>
-        internal T SkipUntil<T>(BackEndMessageCode stopAfter) where T : IServerMessage
+        internal IServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
         {
+            Debug.Assert(!stopAt.Any(c => c == BackEndMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
+
             while (true)
             {
                 Buffer.Ensure(5);
                 var messageCode = (BackEndMessageCode)Buffer.ReadByte();
-                if (messageCode == stopAfter)
-                {
+                if (stopAt.Contains(messageCode)) {
                     Buffer.Seek(-1, SeekOrigin.Current);
-                    return (T)ReadSingleMessage();
+                    return ReadSingleMessage();
                 }
                 var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
                 Buffer.Skip(len);

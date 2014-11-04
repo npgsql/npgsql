@@ -34,9 +34,20 @@ namespace Npgsql
         internal long? LastInsertedOID { get; private set; }
 
         /// <summary>
-        /// Indicates that at least one row has been read for any result set.
+        /// Indicates that at least one row has been read across all result sets
         /// </summary>
         bool _readOneRow;
+
+        /// <summary>
+        /// Whether the current result set has rows
+        /// </summary>
+        bool? _hasRows;
+
+        /// <summary>
+        /// If HasRows was called before any rows were read, it was forced to read messages. A pending
+        /// message may be stored here for processing in the next Read() or NextResult().
+        /// </summary>
+        IServerMessage _pendingMessage;
 
         /// <summary>
         /// Is raised whenever Close() is called.
@@ -79,15 +90,15 @@ namespace Npgsql
             if ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow)
             {
                 // TODO: See optimization proposal in #410
-                var completeMsg = _connector.SkipUntil<CommandCompleteMessage>(BackEndMessageCode.CompletedResponse);
-                ProcessRead(completeMsg);
+                var completeMsg = SkipUntil(BackEndMessageCode.CompletedResponse);
+                ProcessMessage(completeMsg);
                 return false;
             }
 
             while (true)
             {
-                var msg = _connector.ReadSingleMessage((_behavior & CommandBehavior.SequentialAccess) != 0);
-                switch (ProcessRead(msg))
+                var msg = ReadMessage();
+                switch (ProcessMessage(msg))
                 {
                     case ReadResult.RowRead:
                         return true;
@@ -101,14 +112,11 @@ namespace Npgsql
             }
         }
 
-        ReadResult ProcessRead(IServerMessage msg)
+        ReadResult ProcessMessage(IServerMessage msg)
         {
             switch (msg.Code)
             {
                 case BackEndMessageCode.RowDescription:
-                    if (_rowDescription != null) {
-                        _log.Warn("Received RowDescription but already have one");
-                    }
                     _rowDescription = (RowDescriptionMessage)msg;
                     return ReadResult.ReadAgain;
 
@@ -119,6 +127,7 @@ namespace Npgsql
                     _row = (DataRowMessageBase)msg;
                     _row.Description = _rowDescription;
                     _readOneRow = true;
+                    _hasRows = true;
                     _connector.State = ConnectorState.Fetching;
                     return ReadResult.RowRead;
 
@@ -137,6 +146,9 @@ namespace Npgsql
 
                 case BackEndMessageCode.EmptyQueryResponse:
                     _row = null;
+                    if (!_hasRows.HasValue) {
+                        _hasRows = false;
+                    }
                     _rowDescription = null;
                     State = ReaderState.BetweenResults;
                     return ReadResult.ReadAgain;
@@ -165,9 +177,8 @@ namespace Npgsql
                         _row = null;
                     }
                     // TODO: Duplication with SingleResult handling above
-                    var completedMsg = _connector.SkipUntil<CommandCompleteMessage>(BackEndMessageCode.CompletedResponse);
-                    ProcessRead(completedMsg);
-                    _rowDescription = null;
+                    var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse);
+                    ProcessMessage(completedMsg);
                     break;
 
                 case ReaderState.BetweenResults:
@@ -180,18 +191,54 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            var msg = _connector.ReadSingleMessage();
+            Debug.Assert(State == ReaderState.BetweenResults);
+
+            IServerMessage msg;
+            if ((_behavior & CommandBehavior.SingleResult) != 0)
+            {
+                Consume();
+                return false;
+            }
+
+            msg = ReadMessage();
             if (msg is ReadyForQueryMessage) {
                 State = ReaderState.Consumed;
                 return false;
             }
             Debug.Assert(msg is RowDescriptionMessage);
             _rowDescription = (RowDescriptionMessage)msg;
+            _hasRows = null;
             State = ReaderState.InResult;
             return true;
         }
 
         #endregion
+
+        IServerMessage ReadMessage()
+        {
+            if (_pendingMessage != null) {
+                var msg = _pendingMessage;
+                _pendingMessage = null;
+                return msg;
+            }
+            return _connector.ReadSingleMessage((_behavior & CommandBehavior.SequentialAccess) != 0);
+        }
+
+        IServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
+        {
+            if (_pendingMessage != null)
+            {
+                if (stopAt.Contains(_pendingMessage.Code))
+                {
+                    var msg = _pendingMessage;
+                    _pendingMessage = null;
+                    return msg;
+                }
+                _pendingMessage = null;
+            }
+            return _connector.SkipUntil(stopAt);
+        }
+
 
         public override int Depth
         {
@@ -213,7 +260,31 @@ namespace Npgsql
 
         public override bool HasRows
         {
-            get { throw new NotImplementedException(); }
+            get
+            {
+                if (_hasRows.HasValue) {
+                    return _hasRows.Value;
+                }
+                while (true)
+                {
+                    var msg = _connector.ReadSingleMessage((_behavior & CommandBehavior.SequentialAccess) != 0);
+                    switch (msg.Code)
+                    {
+                        case BackEndMessageCode.RowDescription:
+                            ProcessMessage(msg);
+                            continue;
+                        case BackEndMessageCode.DataRow:
+                            _pendingMessage = msg;
+                            return true;
+                        case BackEndMessageCode.CompletedResponse:
+                        case BackEndMessageCode.EmptyQueryResponse:
+                            _pendingMessage = msg;
+                            return false;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
         }
 
         public override string GetName(int ordinal)
@@ -223,10 +294,14 @@ namespace Npgsql
 
         public override int FieldCount
         {
-            get { throw new NotImplementedException(); }
+            get
+            {
+                // We read msdn documentation and bug report #1010649 that the common return value is 0.
+                return _rowDescription == null ? 0 : _rowDescription.NumFields;
+            }
         }
 
-        private void CleanUp(bool finishedMessages)
+        private void Consume()
         {
             switch (State)
             {
@@ -235,26 +310,33 @@ namespace Npgsql
                     return;
             }
 
-            if ((_behavior & CommandBehavior.SequentialAccess) != 0)
+            if (_row != null)
             {
-                //throw new NotImplementedException();
+                _row.Consume();
+                _row = null;
             }
-            else
+
+            // Skip over the other result sets, processing only CommandCompleted for RecordsAffected
+            while (true)
             {
-                _rowDescription = null;
-                if (_row != null)
+                var msg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.ReadyForQuery);
+                switch (msg.Code)
                 {
-                    _row.Consume();
-                    _row = null;
+                    case BackEndMessageCode.CompletedResponse:
+                        ProcessMessage(msg);
+                        continue;
+                    case BackEndMessageCode.ReadyForQuery:
+                        ProcessMessage(msg);
+                        return;
+                    default:
+                        throw new Exception("Unexpected message of type " + msg.Code);
                 }
-                _connector.SkipUntil<ReadyForQueryMessage>(BackEndMessageCode.ReadyForQuery);
             }
-            State = ReaderState.Consumed;
         }
 
         public override void Close()
         {
-            CleanUp(false);
+            Consume();
             if ((_behavior & CommandBehavior.CloseConnection) != 0) {
                 _connection.Close();
             }
