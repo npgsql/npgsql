@@ -825,199 +825,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void ByteaSupport()
-        {
-            ExecuteNonQuery(string.Format(@"INSERT INTO data(field_bytea) VALUES (E'\123\056')"));
-            var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
-            var result = (Byte[]) command.ExecuteScalar();
-            Assert.AreEqual(2, result.Length);
-        }
-
-        [Test]
-        public void ByteaEmptySupport()
-        {
-            var buff = new byte[0];
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            var result = (Byte[]) command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        private void ByteaEmptyWithPrepareSupport_Internal()
-        {
-            var buff = new byte[0];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            command.Prepare();
-            var result = (Byte[]) command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        [Test]
-        public void ByteaEmptyWithPrepareSupport()
-        {
-            ByteaEmptyWithPrepareSupport_Internal();
-        }
-
-        [Test]
-        public void ByteaEmptyWithPrepareSupport_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                ByteaEmptyWithPrepareSupport_Internal();
-            }
-        }
-
-        [Test]
-        public void ByteaLargeSupport()
-        {
-            var buff = new byte[100000];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            var result = (Byte[]) command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        private void ByteaLargeWithPrepareSupport_Internal()
-        {
-            var buff = new byte[100000];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            command.Prepare();
-            var result = (Byte[]) command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        [Test]
-        public void ByteaLargeWithPrepareSupport()
-        {
-            ByteaLargeWithPrepareSupport_Internal();
-        }
-
-        [Test]
-        public void ByteaLargeWithPrepareSupport_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                ByteaLargeWithPrepareSupport_Internal();
-            }
-        }
-
-        [Test]
-        public void ByteaInsertSupport1()
-        {
-            Byte[] toStore = {0, 1, 255, 254};
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
-            var result = (Byte[]) cmd.ExecuteScalar();
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void ByteaInsertSupport2()
-        {
-            Byte[] toStore = {1, 2, 127, 126};
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
-            var result = (Byte[]) cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void ByteaInsertWithPrepareSupport1()
-        {
-            Byte[] toStore = {0};
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.Prepare();
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
-
-            cmd.Prepare();
-            var result = (Byte[]) cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void ByteaInsertWithPrepareSupport2()
-        {
-            Byte[] toStore = {1};
-
-            var cmd = new NpgsqlCommand("insert into data(field_bytea) values (:val)", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("val", DbType.Binary));
-            cmd.Parameters[0].Value = toStore;
-            cmd.Prepare();
-            cmd.ExecuteNonQuery();
-
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
-
-            cmd.Prepare();
-            var result = (Byte[]) cmd.ExecuteScalar();
-
-            Assert.AreEqual(toStore, result);
-        }
-
-        [Test]
-        public void ByteaParameterSupport()
-        {
-            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
-            var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
-            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-            command.Parameters[":bytesData"].Value = bytes;
-            Object result = command.ExecuteNonQuery();
-            Assert.AreEqual(-1, result);
-        }
-
-        private void ByteaParameterWithPrepareSupport_Internal()
-        {
-            var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
-
-            var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
-            command.Parameters.Add(":bytesData", NpgsqlTypes.NpgsqlDbType.Bytea);
-            command.Parameters[":bytesData"].Value = bytes;
-            command.Prepare();
-            Object result = command.ExecuteNonQuery();
-            Assert.AreEqual(-1, result);
-        }
-
-        [Test]
-        public void ByteaParameterWithPrepareSupport()
-        {
-            ByteaParameterWithPrepareSupport_Internal();
-        }
-
-        [Test]
-        public void ByteaParameterWithPrepareSupport_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                ByteaParameterWithPrepareSupport_Internal();
-            }
-        }
-
-        [Test]
         public void EnumSupport()
         {
             var command = new NpgsqlCommand("insert into data(field_int2) values (:a)", Conn);
@@ -1377,8 +1184,10 @@ namespace NpgsqlTests
         [TestCase(null, NpgsqlDbType.Text,    "field_text",    @"\test", TestName = "StringWithBackslashes")]
         [TestCase(null, NpgsqlDbType.Double,  "field_float8",  Double.NaN, TestName = "DoubleNaN")]
         [TestCase(null, NpgsqlDbType.Real,    "field_float4",  Single.NaN, TestName = "SingleNaN")]
-        [TestCase(null, NpgsqlDbType.Double,  "field_float8", Double.PositiveInfinity, TestName = "DoubleInfinity")]
-        [TestCase(null, NpgsqlDbType.Real,    "field_float4", Single.PositiveInfinity, TestName = "SingleInfinity")]
+        [TestCase(null, NpgsqlDbType.Double,  "field_float8", Double.PositiveInfinity, TestName = "DoublePositiveInfinity")]
+        [TestCase(null, NpgsqlDbType.Real,    "field_float4", Single.PositiveInfinity, TestName = "SinglePositiveInfinity")]
+        [TestCase(null, NpgsqlDbType.Double,  "field_float8", Double.NegativeInfinity, TestName = "DoubleNegativeInfinity")]
+        [TestCase(null, NpgsqlDbType.Real,    "field_float4", Single.NegativeInfinity, TestName = "SingleNegativeInfinity")]
         public void InsertValue(DbType? dbType, NpgsqlDbType? npgsqlDbType, string fieldName, object value)
         {
             if (dbType.HasValue && npgsqlDbType.HasValue || (!dbType.HasValue && !npgsqlDbType.HasValue))
@@ -1391,12 +1200,22 @@ namespace NpgsqlTests
                 else
                     command.Parameters.Add(new NpgsqlParameter("a", npgsqlDbType.Value));
                 command.Parameters[0].Value = value;
-                var rowsAdded = command.ExecuteNonQuery();
-                Assert.AreEqual(1, rowsAdded);
+                Assert.That(command.ExecuteNonQuery(), Is.EqualTo(1));
             }
 
-            var result = ExecuteScalar(String.Format("SELECT {0} FROM data", fieldName));
-            Assert.AreEqual(value, result);
+            // Retrieve once with a simple query to test text decoding
+            Assert.That(ExecuteScalar(String.Format("SELECT {0} FROM data", fieldName)), Is.EqualTo(value));
+
+            // And again with a parameterized query to test binary decoding
+            using (var command = new NpgsqlCommand(String.Format("SELECT {0} FROM data", fieldName), Conn))
+            {
+                command.Prepare();
+                using (var reader = command.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(value));
+                }
+            }
         }
 
         [Test]
@@ -3012,24 +2831,6 @@ namespace NpgsqlTests
             }
         }
 
-
-        [Test]
-        public void ByteaArrayHandling()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
-                var inVal = new[] {bytes, bytes};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                var retVal = (byte[][])cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
         // Type coersion in the native to backend converters does not work so
         // well for arrays.  The rules for type coersion of array elements
         // does not work the same as for non-arrays.  This test demonstrates
@@ -3067,39 +2868,6 @@ namespace NpgsqlTests
         public void DateTimeArrayHandlingPrepared()
         {
             DateTimeArrayHandlingInternal(true);
-        }
-
-        private void ByteaArrayHandlingPreparedInternal()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var bytes = new byte[] {1,2,3,4,5,34,39,48,49,50,51,52,92,127,128,255,254,253,252,251};
-                var inVal = new[] {bytes, bytes};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (byte[][]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void ByteaArrayHandlingPrepared()
-        {
-            ByteaArrayHandlingPreparedInternal();
-        }
-
-        [Test]
-        public void ByteaArrayHandlingPrepared_SuppressBinary()
-        {
-            using (this.SuppressBackendBinary())
-            {
-                ByteaArrayHandlingPreparedInternal();
-            }
         }
 
         private void MoneyArrayHandlingInternal(bool prepare)

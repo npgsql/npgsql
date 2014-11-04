@@ -8,25 +8,23 @@ namespace Npgsql.TypeHandlers
 {
     internal class BoolHandler : TypeHandler
     {
-        internal override string PgName { get { return "bool"; } }
+        static readonly string[] _pgNames = { "bool" };
+        internal override string[] PgNames { get { return _pgNames; } }
+        internal override bool SupportsBinaryRead { get { return true; } }
 
-        const byte T = (byte) 'T';
-        const byte t = (byte) 't';
-
-        internal override void Read(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
         {
             var b = buf.ReadByte();
-            switch (field.FormatCode)
-            {
-                case FormatCode.Text:
-                    output.SetTo(b == T || b == t);
-                    return;
-                case FormatCode.Binary:
-                    output.SetTo(b != 0);
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException("format");
-            }
+            output.SetTo(b == T || b == t);
         }
+
+        internal override void ReadBinary(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        {
+            var b = buf.ReadByte();
+            output.SetTo(b != 0);
+        }
+
+        const byte T = (byte)'T';
+        const byte t = (byte)'t';
     }
 }

@@ -51,6 +51,24 @@ namespace Npgsql
             _type = TypeCode.Int64;
         }
 
+        internal void SetTo(float value)
+        {
+            _primitives.Single = value;
+            _type = TypeCode.Single;
+        }
+
+        internal void SetTo(double value)
+        {
+            _primitives.Double = value;
+            _type = TypeCode.Double;
+        }
+
+        internal void SetTo(decimal value)
+        {
+            _primitives.Decimal = value;
+            _type = TypeCode.Decimal;
+        }
+
         internal void SetTo(string value)
         {
             _string = value;
@@ -87,14 +105,14 @@ namespace Npgsql
                         return _primitives.Single.ToString();
                     case TypeCode.Double:
                         return _primitives.Double.ToString();
-                        /*
-                    case TypeCode.DateTime:
-                        return throw new NotImplementedException();
                     case TypeCode.Decimal:
-                        return throw new NotImplementedException();
-                    case TypeCode.Char:
-                        return throw new NotImplementedException();
-                     */
+                        return _primitives.Decimal.ToString();
+                    /*
+                case TypeCode.DateTime:
+                    return throw new NotImplementedException();
+                case TypeCode.Char:
+                    return throw new NotImplementedException();
+                 */
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -119,10 +137,8 @@ namespace Npgsql
                         return (byte)_primitives.Single;
                     case TypeCode.Double:
                         return (byte)_primitives.Double;
-                    /*
-                case TypeCode.Decimal:
-                    return throw new NotImplementedException();
-                 */
+                    case TypeCode.Decimal:
+                        return (byte)_primitives.Decimal;
                     case TypeCode.String:
                         return Byte.Parse(_string);
                     case TypeCode.DBNull:
@@ -151,10 +167,8 @@ namespace Npgsql
                         return (short)_primitives.Single;
                     case TypeCode.Double:
                         return (short)_primitives.Double;
-                    /*
-                case TypeCode.Decimal:
-                    return throw new NotImplementedException();
-                 */
+                    case TypeCode.Decimal:
+                        return (short)_primitives.Decimal;
                     case TypeCode.String:
                         return Int16.Parse(_string);
                     case TypeCode.DBNull:
@@ -183,10 +197,8 @@ namespace Npgsql
                         return (int) _primitives.Single;
                     case TypeCode.Double:
                         return (int) _primitives.Double;
-                        /*
                     case TypeCode.Decimal:
-                        return throw new NotImplementedException();
-                     */
+                        return (int)_primitives.Decimal;
                     case TypeCode.String:
                         return Int32.Parse(_string);
                     case TypeCode.DBNull:
@@ -215,12 +227,100 @@ namespace Npgsql
                         return (long)_primitives.Single;
                     case TypeCode.Double:
                         return (long)_primitives.Double;
-                    /*
-                case TypeCode.Decimal:
-                    return throw new NotImplementedException();
-                 */
+                    case TypeCode.Decimal:
+                        return (long)_primitives.Decimal;
                     case TypeCode.String:
                         return Int64.Parse(_string);
+                    case TypeCode.DBNull:
+                        throw new NotImplementedException("Which exception?");
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                }
+            }
+        }
+
+        internal float Float
+        {
+            get
+            {
+                switch (_type)
+                {
+                    case TypeCode.Single:
+                        return _primitives.Single;
+                    case TypeCode.Double:
+                        return (float)_primitives.Double;
+                    case TypeCode.Byte:
+                        return _primitives.Byte;
+                    case TypeCode.Int16:
+                        return _primitives.Int16;
+                    case TypeCode.Int32:
+                        return _primitives.Int32;
+                    case TypeCode.Int64:
+                        return _primitives.Int64;
+                    case TypeCode.Decimal:
+                        return (float)_primitives.Decimal;
+                    case TypeCode.String:
+                        return Single.Parse(_string);
+                    case TypeCode.DBNull:
+                        throw new NotImplementedException("Which exception?");
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                }
+            }
+        }
+
+        internal double Double
+        {
+            get
+            {
+                switch (_type)
+                {
+                    case TypeCode.Double:
+                        return _primitives.Double;
+                    case TypeCode.Single:
+                        return _primitives.Single;
+                    case TypeCode.Byte:
+                        return _primitives.Byte;
+                    case TypeCode.Int16:
+                        return _primitives.Int16;
+                    case TypeCode.Int32:
+                        return _primitives.Int32;
+                    case TypeCode.Int64:
+                        return _primitives.Int64;
+                    case TypeCode.Decimal:
+                        return (double)_primitives.Decimal;
+                    case TypeCode.String:
+                        return Double.Parse(_string);
+                    case TypeCode.DBNull:
+                        throw new NotImplementedException("Which exception?");
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                }
+            }
+        }
+
+        internal decimal Decimal
+        {
+            get
+            {
+                switch (_type)
+                {
+                    case TypeCode.Decimal:
+                        return _primitives.Decimal;
+                    case TypeCode.Byte:
+                        return _primitives.Byte;
+                    case TypeCode.Int16:
+                        return _primitives.Int16;
+                    case TypeCode.Int32:
+                        return _primitives.Int32;
+                    case TypeCode.Int64:
+                        return _primitives.Int64;
+                    case TypeCode.Single:
+                        return (decimal)_primitives.Single;
+                    case TypeCode.Double:
+                        return (decimal)_primitives.Double;
+                    case TypeCode.String:
+                        return Decimal.Parse(_string);
                     case TypeCode.DBNull:
                         throw new NotImplementedException("Which exception?");
                     default:
@@ -271,9 +371,9 @@ namespace Npgsql
                         return _primitives.Single;
                     case TypeCode.Double:
                         return _primitives.Double;
-                    /*
                     case TypeCode.Decimal:
-                        break;
+                        return _primitives.Decimal;
+                    /*
                     case TypeCode.DateTime:
                         break;
                     case TypeCode.Char:
@@ -314,6 +414,8 @@ namespace Npgsql
             internal float Single;
             [FieldOffset(0)]
             internal double Double;
+            [FieldOffset(0)]
+            internal decimal Decimal;
         }
 
         TypeCode _type;

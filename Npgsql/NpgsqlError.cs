@@ -33,300 +33,195 @@ using System.Text;
 namespace Npgsql
 {
     /// <summary>
-    /// EventArgs class to send Notice parameters, which are just NpgsqlError's in a lighter context.
-    /// </summary>
-    public class NpgsqlNoticeEventArgs : EventArgs
-    {
-        /// <summary>
-        /// Notice information.
-        /// </summary>
-        public NpgsqlError Notice = null;
-
-        internal NpgsqlNoticeEventArgs(NpgsqlError eNotice)
-        {
-            Notice = eNotice;
-        }
-    }
-
-    /// <summary>
-    /// This class represents the ErrorResponse and NoticeResponse
-    /// message sent from PostgreSQL server.
+    /// This class represents the ErrorResponse and NoticeResponse message sent from PostgreSQL server.
     /// </summary>
     [Serializable]
     public sealed class NpgsqlError
     {
         /// <summary>
-        /// Error and notice message field codes
-        /// </summary>
-        private enum ErrorFieldTypeCodes : byte
-        {
-            /// <summary>
-            /// Severity: the field contents are ERROR, FATAL, or PANIC (in an error message),
-            /// or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message), or a localized
-            /// translation of one of these. Always present.
-            /// </summary>
-            Severity = (byte)'S',
-
-            /// <summary>
-            /// Code: the SQLSTATE code for the error (see Appendix A). Not localizable. Always present.
-            /// </summary>
-            Code = (byte)'C',
-
-            /// <summary>
-            /// Message: the primary human-readable error message. This should be accurate
-            /// but terse (typically one line). Always present.
-            /// </summary>
-            Message = (byte)'M',
-
-            /// <summary>
-            /// Detail: an optional secondary error message carrying more detail about the problem.
-            /// Might run to multiple lines.
-            /// </summary>
-            Detail = (byte)'D',
-
-            /// <summary>
-            /// Hint: an optional suggestion what to do about the problem. This is intended to differ
-            /// from Detail in that it offers advice (potentially inappropriate) rather than hard facts.
-            /// Might run to multiple lines.
-            /// </summary>
-            Hint = (byte)'H',
-
-            /// <summary>
-            /// Position: the field value is a decimal ASCII integer, indicating an error cursor
-            /// position as an index into the original query string. The first character has index 1,
-            /// and positions are measured in characters not bytes.
-            /// </summary>
-            Position = (byte)'P',
-
-            /// <summary>
-            /// Internal position: this is defined the same as the P field, but it is used when the
-            /// cursor position refers to an internally generated command rather than the one submitted
-            /// by the client.
-            /// The q field will always appear when this field appears.
-            /// </summary>
-            InternalPosition = (byte)'p',
-
-            /// <summary>
-            /// Internal query: the text of a failed internally-generated command.
-            /// This could be, for example, a SQL query issued by a PL/pgSQL function.
-            /// </summary>
-            InternalQuery = (byte)'q',
-
-            /// <summary>
-            /// Where: an indication of the context in which the error occurred.
-            /// Presently this includes a call stack traceback of active procedural language functions
-            /// and internally-generated queries. The trace is one entry per line, most recent first.
-            /// </summary>
-            Where = (byte)'W',
-
-            /// <summary>
-            /// Schema name: if the error was associated with a specific database object,
-            /// the name of the schema containing that object, if any.
-            /// </summary>
-            SchemaName =  (byte)'s',
-
-            /// <summary>
-            /// Table name: if the error was associated with a specific table, the name of the table.
-            /// (Refer to the schema name field for the name of the table's schema.)
-            /// </summary>
-            TableName = (byte)'t',
-
-            /// <summary>
-            /// Column name: if the error was associated with a specific table column, the name of the column.
-            /// (Refer to the schema and table name fields to identify the table.)
-            /// </summary>
-            ColumnName = (byte)'c',
-
-            /// <summary>
-            /// Data type name: if the error was associated with a specific data type, the name of the data type.
-            /// (Refer to the schema name field for the name of the data type's schema.)
-            /// </summary>
-            DataTypeName = (byte)'d',
-
-            /// <summary>
-            /// Constraint name: if the error was associated with a specific constraint, the name of the constraint.
-            /// Refer to fields listed above for the associated table or domain.
-            /// (For this purpose, indexes are treated as constraints, even if they weren't created with constraint syntax.)
-            /// </summary>
-            ConstraintName = (byte)'n',
-
-            /// <summary>
-            /// File: the file name of the source-code location where the error was reported.
-            /// </summary>
-            File = (byte)'F',
-
-            /// <summary>
-            /// Line: the line number of the source-code location where the error was reported.
-            /// </summary>
-            Line = (byte)'L',
-
-            /// <summary>
-            /// Routine: the name of the source-code routine reporting the error.
-            /// </summary>
-            Routine = (byte)'R'
-        }
-
-        private readonly String _severity = String.Empty;
-        private readonly String _code = String.Empty;
-        private readonly String _message = String.Empty;
-        private readonly String _detail = String.Empty;
-        private readonly String _hint = String.Empty;
-        private readonly String _position = String.Empty;
-        private readonly String _internalPosition = String.Empty;
-        private readonly String _internalQuery = String.Empty;
-        private readonly String _where = String.Empty;
-        private readonly String _file = String.Empty;
-        private readonly String _line = String.Empty;
-        private readonly String _routine = String.Empty;
-        private readonly String _schemaName = String.Empty;
-        private readonly String _tableName = String.Empty;
-        private readonly String _columnName = String.Empty;
-        private readonly String _datatypeName = String.Empty;
-        private readonly String _constraintName = String.Empty;
-        private String _errorSql = String.Empty;
-
-        /// <summary>
         /// Severity code.  All versions.
         /// </summary>
-        public String Severity
-        {
-            get { return _severity; }
-        }
+        public String Severity { get; private set; }
 
         /// <summary>
         /// Error code.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Code
-        {
-            get { return _code; }
-        }
+        public String Code { get; private set; }
 
         /// <summary>
         /// Terse error message.  All versions.
         /// </summary>
-        public String Message
-        {
-            get { return _message; }
-        }
+        public String Message { get; private set; }
 
         /// <summary>
         /// Detailed error message.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Detail
-        {
-            get { return _detail; }
-        }
+        public String Detail { get; private set; }
 
         /// <summary>
         /// Suggestion to help resolve the error.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Hint
-        {
-            get { return _hint; }
-        }
+        public String Hint { get; private set; }
 
         /// <summary>
         /// Position (one based) within the query string where the error was encounterd.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Position
-        {
-            get { return _position; }
-        }
+        public String Position { get; private set; }
 
         /// <summary>
         /// Position (one based) within the query string where the error was encounterd.  This position refers to an internal command executed for example inside a PL/pgSQL function. PostgreSQL 7.4 and up.
         /// </summary>
-        public String InternalPosition
-        {
-            get { return _internalPosition; }
-        }
+        public String InternalPosition { get; private set; }
 
         /// <summary>
         /// Internal query string where the error was encounterd.  This position refers to an internal command executed for example inside a PL/pgSQL function. PostgreSQL 7.4 and up.
         /// </summary>
-        public String InternalQuery
-        {
-            get { return _internalQuery; }
-        }
+        public String InternalQuery { get; private set; }
+
         /// <summary>
         /// Trace back information.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Where
-        {
-            get { return _where; }
-        }
+        public String Where { get; private set; }
 
         /// <summary>
         /// Source file (in backend) reporting the error.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String File
-        {
-            get { return _file; }
-        }
+        public String File { get; private set; }
 
         /// <summary>
         /// Source file line number (in backend) reporting the error.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Line
-        {
-            get { return _line; }
-        }
+        public String Line { get; private set; }
 
         /// <summary>
         /// Source routine (in backend) reporting the error.  PostgreSQL 7.4 and up.
         /// </summary>
-        public String Routine
-        {
-            get { return _routine; }
-        }
+        public String Routine { get; private set; }
 
         /// <summary>
         /// Schema name which relates to the error. PostgreSQL 9.3 and up.
         /// </summary>
-        public String SchemaName
-        {
-            get { return _schemaName; }
-        }
+        public String SchemaName { get; private set; }
 
         /// <summary>
         /// Table name which relates to the error. PostgreSQL 9.3 and up.
         /// </summary>
-        public String TableName
-        {
-            get { return _tableName; }
-        }
+        public String TableName { get; private set; }
 
         /// <summary>
         /// Column name which relates to the error. PostgreSQL 9.3 and up.
         /// </summary>
-        public String ColumnName
-        {
-            get { return _columnName; }
-        }
+        public String ColumnName { get; private set; }
 
         /// <summary>
         /// Data type of column which relates to the error. PostgreSQL 9.3 and up.
         /// </summary>
-        public String DataTypeName
-        {
-            get { return _datatypeName; }
-        }
+        public String DataTypeName { get; private set; }
 
         /// <summary>
         /// Constraint name which relates to the error. PostgreSQL 9.3 and up.
         /// </summary>
-        public String ConstraintName
-        {
-            get { return _constraintName; }
-        }
+        public String ConstraintName { get; private set; }
 
         /// <summary>
         /// String containing the sql sent which produced this error.
         /// </summary>
-        public String ErrorSql
+        public String ErrorSql { get; private set; }
+
+        internal NpgsqlError(NpgsqlBufferedStream buf) : this()
         {
-            set { _errorSql = value; }
-            get { return _errorSql; }
+            while (true)
+            {
+                var code = (ErrorFieldTypeCode)buf.ReadByte();
+                switch (code)
+                {
+                    case ErrorFieldTypeCode.Done:
+                        // Null terminator; error message fully consumed.
+                        return;
+                    case ErrorFieldTypeCode.Severity:
+                        Severity = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Code:
+                        Code = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Message:
+                        Message = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Detail:
+                        Detail = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Hint:
+                        Hint = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Position:
+                        Position = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.InternalPosition:
+                        InternalPosition = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.InternalQuery:
+                        InternalQuery = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Where:
+                        Where = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.File:
+                        File = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Line:
+                        Line = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.Routine:
+                        Routine = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.SchemaName:
+                        SchemaName = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.TableName:
+                        TableName = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.ColumnName:
+                        ColumnName = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.DataTypeName:
+                        DataTypeName = buf.ReadNullTerminatedString();
+                        break;
+                    case ErrorFieldTypeCode.ConstraintName:
+                        ConstraintName = buf.ReadNullTerminatedString();
+                        break;
+                    default:
+                        // Unknown error field; consume and discard.
+                        buf.ReadNullTerminatedString();
+                        break;
+                }
+            }
+        }
+
+        internal NpgsqlError(String errorMessage) : this()
+        {
+            Message = errorMessage;
+        }
+
+        NpgsqlError()
+        {
+            Severity         = String.Empty;
+            Code             = String.Empty;
+            Message          = String.Empty;
+            Detail           = String.Empty;
+            Hint             = String.Empty;
+            Position         = String.Empty;
+            InternalPosition = String.Empty;
+            InternalQuery    = String.Empty;
+            Where            = String.Empty;
+            File             = String.Empty;
+            Line             = String.Empty;
+            Routine          = String.Empty;
+            SchemaName       = String.Empty;
+            TableName        = String.Empty;
+            ColumnName       = String.Empty;
+            DataTypeName     = String.Empty;
+            ConstraintName   = String.Empty;
+            ErrorSql         = String.Empty;
         }
 
         /// <summary>
@@ -353,122 +248,6 @@ namespace Npgsql
             return B.ToString();
         }
 
-        internal NpgsqlError(Stream stream)
-        {
-            // Check the messageLength value. If it is 1178686529, this would be the
-            // "FATA" string, which would mean a protocol 2.0 error string.
-            if (stream.ReadInt32() == 1178686529)
-            {
-                string[] v2Parts = ("FATA" + stream.ReadString()).Split(new char[] {':'}, 2);
-                if (v2Parts.Length == 2)
-                {
-                    _severity = v2Parts[0].Trim();
-                    _message = v2Parts[1].Trim();
-                }
-                else
-                {
-                    _severity = string.Empty;
-                    _message = v2Parts[0].Trim();
-                }
-            }
-            else
-            {
-                bool done = false;
-                int fieldCode;
-
-                while (! done && (fieldCode = stream.ReadByte()) != -1)
-                {
-                    switch ((byte)fieldCode)
-                    {
-                        case 0 :
-                            // Null terminator; error message fully consumed.
-                            done = true;
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Severity :
-                            _severity = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Code :
-                            _code = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Message :
-                            _message = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Detail :
-                            _detail = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Hint :
-                            _hint = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Position :
-                            _position = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.InternalPosition :
-                            _internalPosition = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.InternalQuery :
-                            _internalQuery = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Where :
-                            _where = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.File :
-                            _file = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Line :
-                            _line = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.Routine :
-                            _routine = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.SchemaName :
-                            _schemaName = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.TableName :
-                            _tableName = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.ColumnName :
-                            _columnName = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.DataTypeName :
-                            _datatypeName = stream.ReadString();
-                            ;
-                            break;
-                        case (byte)ErrorFieldTypeCodes.ConstraintName :
-                            _constraintName = stream.ReadString();
-                            ;
-                            break;
-                        default:
-                            // Unknown error field; consume and discard.
-                            stream.ReadString();
-                            ;
-                            break;
-
-                    }
-                }
-            }
-        }
-
-        internal NpgsqlError(String errorMessage)
-        {
-            _message = errorMessage;
-        }
-
         /// <summary>
         /// Backend protocol version in use.
         /// </summary>
@@ -476,5 +255,137 @@ namespace Npgsql
         {
             get { return ProtocolVersion.Version3; }
         }
+    }
+
+    /// <summary>
+    /// EventArgs class to send Notice parameters, which are just NpgsqlError's in a lighter context.
+    /// </summary>
+    public class NpgsqlNoticeEventArgs : EventArgs
+    {
+        /// <summary>
+        /// Notice information.
+        /// </summary>
+        public NpgsqlError Notice = null;
+
+        internal NpgsqlNoticeEventArgs(NpgsqlError eNotice)
+        {
+            Notice = eNotice;
+        }
+    }
+
+    /// <summary>
+    /// Error and notice message field codes
+    /// </summary>
+    enum ErrorFieldTypeCode : byte
+    {
+        /// <summary>
+        /// Terminator, marks the end of the error data.
+        /// </summary>
+        Done = 0,
+
+        /// <summary>
+        /// Severity: the field contents are ERROR, FATAL, or PANIC (in an error message),
+        /// or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message), or a localized
+        /// translation of one of these. Always present.
+        /// </summary>
+        Severity = (byte)'S',
+
+        /// <summary>
+        /// Code: the SQLSTATE code for the error (see Appendix A). Not localizable. Always present.
+        /// </summary>
+        Code = (byte)'C',
+
+        /// <summary>
+        /// Message: the primary human-readable error message. This should be accurate
+        /// but terse (typically one line). Always present.
+        /// </summary>
+        Message = (byte)'M',
+
+        /// <summary>
+        /// Detail: an optional secondary error message carrying more detail about the problem.
+        /// Might run to multiple lines.
+        /// </summary>
+        Detail = (byte)'D',
+
+        /// <summary>
+        /// Hint: an optional suggestion what to do about the problem. This is intended to differ
+        /// from Detail in that it offers advice (potentially inappropriate) rather than hard facts.
+        /// Might run to multiple lines.
+        /// </summary>
+        Hint = (byte)'H',
+
+        /// <summary>
+        /// Position: the field value is a decimal ASCII integer, indicating an error cursor
+        /// position as an index into the original query string. The first character has index 1,
+        /// and positions are measured in characters not bytes.
+        /// </summary>
+        Position = (byte)'P',
+
+        /// <summary>
+        /// Internal position: this is defined the same as the P field, but it is used when the
+        /// cursor position refers to an internally generated command rather than the one submitted
+        /// by the client.
+        /// The q field will always appear when this field appears.
+        /// </summary>
+        InternalPosition = (byte)'p',
+
+        /// <summary>
+        /// Internal query: the text of a failed internally-generated command.
+        /// This could be, for example, a SQL query issued by a PL/pgSQL function.
+        /// </summary>
+        InternalQuery = (byte)'q',
+
+        /// <summary>
+        /// Where: an indication of the context in which the error occurred.
+        /// Presently this includes a call stack traceback of active procedural language functions
+        /// and internally-generated queries. The trace is one entry per line, most recent first.
+        /// </summary>
+        Where = (byte)'W',
+
+        /// <summary>
+        /// Schema name: if the error was associated with a specific database object,
+        /// the name of the schema containing that object, if any.
+        /// </summary>
+        SchemaName = (byte)'s',
+
+        /// <summary>
+        /// Table name: if the error was associated with a specific table, the name of the table.
+        /// (Refer to the schema name field for the name of the table's schema.)
+        /// </summary>
+        TableName = (byte)'t',
+
+        /// <summary>
+        /// Column name: if the error was associated with a specific table column, the name of the column.
+        /// (Refer to the schema and table name fields to identify the table.)
+        /// </summary>
+        ColumnName = (byte)'c',
+
+        /// <summary>
+        /// Data type name: if the error was associated with a specific data type, the name of the data type.
+        /// (Refer to the schema name field for the name of the data type's schema.)
+        /// </summary>
+        DataTypeName = (byte)'d',
+
+        /// <summary>
+        /// Constraint name: if the error was associated with a specific constraint, the name of the constraint.
+        /// Refer to fields listed above for the associated table or domain.
+        /// (For this purpose, indexes are treated as constraints, even if they weren't created with constraint syntax.)
+        /// </summary>
+        ConstraintName = (byte)'n',
+
+        /// <summary>
+        /// File: the file name of the source-code location where the error was reported.
+        /// </summary>
+        File = (byte)'F',
+
+        /// <summary>
+        /// Line: the line number of the source-code location where the error was reported.
+        /// </summary>
+        Line = (byte)'L',
+
+        /// <summary>
+        /// Routine: the name of the source-code routine reporting the error.
+        /// </summary>
+        Routine = (byte)'R'
     }
 }

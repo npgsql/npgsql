@@ -30,6 +30,7 @@
 -------------------------------------------------------------------------
 */
 
+#if WHAT_DO_WE_DO_WITH_THIS
 using System;
 
 namespace NpgsqlTypes
@@ -248,3 +249,4 @@ namespace NpgsqlTypes
         }
     }
 }
+#endif

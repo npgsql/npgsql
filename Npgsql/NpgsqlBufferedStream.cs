@@ -18,6 +18,7 @@ namespace Npgsql
         int FilledBytes;
         internal int BytesLeft { get { return FilledBytes - Position; } }
 
+        byte[] _workspace = new byte[8];
         const int DefaultBufferSize = 8192;
 
         internal NpgsqlBufferedStream(Stream underlying)
@@ -51,7 +52,7 @@ namespace Npgsql
 
             while (count > 0)
             {
-                var read = Underlying.Read(_buf, FilledBytes, Math.Min(count, Size - FilledBytes));
+                var read = Underlying.Read(_buf, FilledBytes, Size - FilledBytes);
                 if (read == 0) { throw new EndOfStreamException(); }
                 count -= read;
                 FilledBytes += read;
@@ -114,13 +115,13 @@ namespace Npgsql
 
         internal byte ReadByte()
         {
-            Debug.Assert(BytesLeft >= 1);
+            Debug.Assert(BytesLeft >= sizeof(byte));
             return _buf[Position++];
         }
 
         internal short ReadInt16()
         {
-            Debug.Assert(BytesLeft >= 2);
+            Debug.Assert(BytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(_buf, Position));
             Position += 2;
             return result;
@@ -128,7 +129,7 @@ namespace Npgsql
 
         internal int ReadInt32()
         {
-            Debug.Assert(BytesLeft >= 4);
+            Debug.Assert(BytesLeft >= sizeof(int));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_buf, Position));
             Position += 4;
             return result;
@@ -136,10 +137,52 @@ namespace Npgsql
 
         internal long ReadInt64()
         {
-            Debug.Assert(BytesLeft >= 8);
+            Debug.Assert(BytesLeft >= sizeof(long));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(_buf, Position));
             Position += 8;
             return result;
+        }
+
+        internal float ReadSingle()
+        {
+            Debug.Assert(BytesLeft >= sizeof(float));
+            if (BitConverter.IsLittleEndian)
+            {
+                _workspace[3] = _buf[Position++];
+                _workspace[2] = _buf[Position++];
+                _workspace[1] = _buf[Position++];
+                _workspace[0] = _buf[Position++];
+                return BitConverter.ToSingle(_workspace, 0);
+            }
+            else
+            {
+                var result = BitConverter.ToSingle(_buf, Position);
+                Position += 4;
+                return result;
+            }
+        }
+
+        internal double ReadDouble()
+        {
+            Debug.Assert(BytesLeft >= sizeof(double));
+            if (BitConverter.IsLittleEndian)
+            {
+                _workspace[7] = _buf[Position++];
+                _workspace[6] = _buf[Position++];
+                _workspace[5] = _buf[Position++];
+                _workspace[4] = _buf[Position++];
+                _workspace[3] = _buf[Position++];
+                _workspace[2] = _buf[Position++];
+                _workspace[1] = _buf[Position++];
+                _workspace[0] = _buf[Position++];
+                return BitConverter.ToDouble(_workspace, 0);
+            }
+            else
+            {
+                var result = BitConverter.ToDouble(_buf, Position);
+                Position += 8;
+                return result;
+            }
         }
 
         internal string ReadString(int len)
