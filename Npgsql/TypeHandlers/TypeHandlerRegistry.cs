@@ -67,7 +67,7 @@ namespace Npgsql.TypeHandlers
             {
                 // TODO: Implement Sequential, SingleResult, etc.
                 //using (var dr = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
-                using (var dr = command.GetReader(CommandBehavior.Default))
+                using (var dr = command.GetReader())
                 {
                     while (dr.Read())
                     {
