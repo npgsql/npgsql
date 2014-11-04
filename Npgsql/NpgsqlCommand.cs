@@ -38,6 +38,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
+using Npgsql.Messages;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -64,7 +65,7 @@ namespace Npgsql
 
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
-        NpgsqlRowDescription _currentRowDescription;
+        RowDescriptionMessage _preparedDescription;
 
         long _lastInsertedOid;
 
@@ -459,9 +460,7 @@ namespace Npgsql
             const string portalName = "";
 
             _preparedCommandText = GetCommandText(true);
-            NpgsqlRowDescription returnRowDesc = null;
-            ParameterDescriptionResponse parameterDescription = null;
-
+            ParameterDescriptionMessage parameterDescription = null;
 
             var numInputParameters = 0;
             for (var i = 0; i < _parameters.Count; i++)
@@ -493,28 +492,24 @@ namespace Npgsql
             // Look for ParameterDescriptionResponse, NpgsqlRowDescription in the responses, discarding everything else.
             while (true)
             {
-                var msg = _connector.ReadMessage();
-                if (msg is ReadyForQueryMsg) {
-                    break;
-                }
-                var asParameterDescription = msg as ParameterDescriptionResponse;
-                if (asParameterDescription != null)
+                var msg = _connector.ReadSingleMessage();
+                switch (msg.Code)
                 {
-                    parameterDescription = asParameterDescription;
-                    continue;
-                }
-                var asRowDesc = msg as NpgsqlRowDescription;
-                if (asRowDesc != null)
-                {
-                    returnRowDesc = asRowDesc;
-                    continue;
-                }
-                var asDisposable = msg as IDisposable;
-                if (asDisposable != null)
-                {
-                    asDisposable.Dispose();
+                    case BackEndMessageCode.ParseComplete:
+                        continue;
+                    case BackEndMessageCode.ParameterDescription:
+                        parameterDescription = (ParameterDescriptionMessage)msg;
+                        continue;
+                    case BackEndMessageCode.RowDescription:
+                        _preparedDescription = (RowDescriptionMessage)msg;
+                        continue;
+                    case BackEndMessageCode.ReadyForQuery:
+                        goto AfterLoop;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
                 }
             }
+            AfterLoop:
 
             if (parameterDescription != null)
             {
@@ -532,21 +527,21 @@ namespace Npgsql
                 }
             }
 
-            if (returnRowDesc != null)
+            if (_preparedDescription != null)
             {
-                _resultFormatCodes = new short[returnRowDesc.NumFields];
+                _resultFormatCodes = new short[_preparedDescription.NumFields];
 
-                for (var i = 0; i < returnRowDesc.NumFields; i++)
+                for (var i = 0; i < _preparedDescription.NumFields; i++)
                 {
-                    var returnRowDescData = returnRowDesc[i];
+                    var returnRowDescData = _preparedDescription[i];
 
-                    if (returnRowDescData.TypeInfo != null)
+                    if (returnRowDescData.Handler != null)
                     {
                         // Binary format?
                         // PG always defaults to text encoding.  We can fix up the row description
                         // here based on support for binary encoding.  Once this is done,
                         // there is no need to request another row description after Bind.
-                        returnRowDescData.FormatCode = returnRowDescData.TypeInfo.SupportsBinaryBackendData ? FormatCode.Binary : FormatCode.Text;
+                        returnRowDescData.FormatCode = returnRowDescData.Handler.SupportsBinaryRead ? FormatCode.Binary : FormatCode.Text;
                         _resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
                     }
                     else
@@ -561,9 +556,6 @@ namespace Npgsql
                 _resultFormatCodes = new short[] { 0 };
             }
 
-            // Save the row description for use with all future Executes.
-            _currentRowDescription = returnRowDesc;
-
             _prepared = PrepareStatus.Prepared;
         }
 
@@ -572,7 +564,7 @@ namespace Npgsql
             if (_prepared == PrepareStatus.Prepared)
             {
                 _connector.ExecuteBlind("DEALLOCATE " + _planName);
-                _currentRowDescription = null;
+                _preparedDescription = null;
                 _prepared = PrepareStatus.NeedsPrepare;
             }
 
@@ -1630,8 +1622,7 @@ namespace Npgsql
                         _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
                     }
 
-                    //reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread());
-                    // TODO: Don't allocate
+                    // TODO: Allocation
                     return new NpgsqlDataReader(this, cb);
                 }
                 else
@@ -1647,7 +1638,9 @@ namespace Npgsql
                     // Tell to mediator what command is being sent.
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
-                    throw new NotImplementedException();
+                    // TODO: Allocation
+                    return new NpgsqlDataReader(this, cb, _preparedDescription);
+
                     // Construct the return reader, possibly with a saved row description from Prepare().
                     /*
                     reader = new NpgsqlDataReader(this, cb, _connector.BlockNotificationThread(), true, _currentRowDescription);

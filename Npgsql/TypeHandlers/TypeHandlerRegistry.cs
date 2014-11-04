@@ -53,8 +53,10 @@ namespace Npgsql.TypeHandlers
 
             foreach (var typeInfo in _typeHandlers.Where(th => !(th is UnknownTypeHandler)))
             {
-                nameIndex.Add(typeInfo.PgName, typeInfo);
-                inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? ", " : ""), typeInfo.PgName);
+                foreach (var pgName in typeInfo.PgNames) {
+                    nameIndex.Add(pgName, typeInfo);
+                    inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? ", " : ""), pgName);
+                }
 
                 //do the same for the equivalent array type.
 

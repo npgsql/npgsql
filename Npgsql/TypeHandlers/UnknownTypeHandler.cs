@@ -12,13 +12,11 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class UnknownTypeHandler : TypeHandler
     {
-        internal override string PgName { get { return "<unknown>"; } }
+        static readonly string[] _pgNames = { "<unknown>" };
+        internal override string[] PgNames { get { return _pgNames; } }
 
-        internal override void Read(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
         {
-            if (field.FormatCode == FormatCode.Binary) {
-                throw new InvalidCastException(String.Format("Got unknown type {0} (OID {1}) in binary format", field.Name, field.OID));
-            }
             output.SetTo(buf.ReadString(len));
         }
     }

@@ -47,6 +47,8 @@ namespace Npgsql
     {
         private readonly NpgsqlError[] errors;
 
+        internal NpgsqlException(NpgsqlBufferedStream buf) : this(new NpgsqlError(buf)) {}
+
         // To allow deserialization.
         private NpgsqlException(SerializationInfo info, StreamingContext context)
             : base(info, context)

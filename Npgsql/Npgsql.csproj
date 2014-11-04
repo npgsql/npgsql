@@ -120,12 +120,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\ParameterDescriptionMessage.cs" />
     <Compile Include="Messages\CommandCompleteMessage.cs" />
     <Compile Include="Messages\DataRowMessageBase.cs" />
     <Compile Include="Messages\DataRowSequentialMessage.cs" />
     <Compile Include="Messages\DataRowMessage.cs" />
     <Compile Include="Messages\EmptyQueryMessage.cs" />
+    <Compile Include="Messages\BindCompleteMessage.cs" />
     <Compile Include="Messages\ReadyForQueryMessage.cs" />
+    <Compile Include="Messages\ParseCompleteMessage.cs" />
     <Compile Include="Messages\RowDescriptionMessage.cs" />
     <Compile Include="NpgsqlBufferedStream.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
@@ -218,7 +221,13 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="TypeHandlers\DecimalHandler.cs" />
     <Compile Include="TypeHandlers\BoolHandler.cs" />
+    <Compile Include="TypeHandlers\ByteaHandler.cs" />
+    <Compile Include="TypeHandlers\SingleHandler.cs" />
+    <Compile Include="TypeHandlers\DoubleHandler.cs" />
+    <Compile Include="TypeHandlers\Int16Handler.cs" />
+    <Compile Include="TypeHandlers\Int64Handler.cs" />
     <Compile Include="TypeHandlers\StringHandler.cs" />
     <Compile Include="TypeHandlers\TypeHandler.cs" />
     <Compile Include="TypeHandlers\Int32Handler.cs" />

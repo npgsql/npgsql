@@ -8,21 +8,18 @@ namespace Npgsql.TypeHandlers
 {
     internal class Int32Handler : TypeHandler
     {
-        internal override string PgName { get { return "int4"; } }
+        static readonly string[] _pgNames = { "int4" };
+        internal override string[] PgNames { get { return _pgNames; } }
+        internal override bool SupportsBinaryRead { get { return true; } }
 
-        internal override void Read(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
         {
-            switch (field.FormatCode)
-            {
-                case FormatCode.Text:
-                    output.SetTo(Int32.Parse(buf.ReadString(len)));
-                    return;
-                case FormatCode.Binary:
-                    output.SetTo(buf.ReadInt32());
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException("format");
-            }
+            output.SetTo(Int32.Parse(buf.ReadString(len)));
+        }
+
+        internal override void ReadBinary(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        {
+            output.SetTo(buf.ReadInt32());
         }
     }
 }

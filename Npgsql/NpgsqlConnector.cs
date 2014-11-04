@@ -709,7 +709,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void SendParse(string prepareName, byte[] queryString, int[] parameterIDs)
         {
-            _log.Debug("Sending parse message");
+            _log.DebugFormat("Sending parse message: {0}", Encoding.UTF8.GetString(queryString));
 
             var prepareNameBytes = BackendEncoding.UTF8Encoding.GetBytes(prepareName);
             //Stream.Write(ASCIIByteArrays.ParseMessageCode, 0, 1);
@@ -843,6 +843,14 @@ namespace Npgsql
                     return new ReadyForQueryMessage(buf);
                 case BackEndMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
+                case BackEndMessageCode.ParseComplete:
+                    return ParseCompleteMessage.Instance;
+                case BackEndMessageCode.ParameterDescription:
+                    return new ParameterDescriptionMessage(buf);
+                case BackEndMessageCode.BindComplete:
+                    return BindCompleteMessage.Instance;
+                case BackEndMessageCode.ErrorResponse:
+                    throw new NpgsqlException(buf);
                 case BackEndMessageCode.CopyData:
                 case BackEndMessageCode.CopyDone:
                 case BackEndMessageCode.BackendKeyData:
@@ -850,16 +858,12 @@ namespace Npgsql
                 case BackEndMessageCode.CopyDataRows:
                 case BackEndMessageCode.CopyInResponse:
                 case BackEndMessageCode.CopyOutResponse:
-                case BackEndMessageCode.ErrorResponse:
                 case BackEndMessageCode.FunctionCallResponse:
                 case BackEndMessageCode.AuthenticationRequest:
                 case BackEndMessageCode.NoticeResponse:
                 case BackEndMessageCode.NotificationResponse:
                 case BackEndMessageCode.ParameterStatus:
-                case BackEndMessageCode.ParseComplete:
-                case BackEndMessageCode.BindComplete:
                 case BackEndMessageCode.PortalSuspended:
-                case BackEndMessageCode.ParameterDescription:
                 case BackEndMessageCode.NoData:
                 case BackEndMessageCode.CloseComplete:
                 case BackEndMessageCode.IO_ERROR:
@@ -928,7 +932,9 @@ namespace Npgsql
                 switch (message)
                 {
                     case BackEndMessageCode.ErrorResponse:
-                        var error = new NpgsqlError(Stream);
+                        throw new NotImplementedException("Got error message in old read path");
+                        /*
+                        var error = new NpgsqlError(stream);
                         _log.Trace("Received backend error: " + error.Message);
                         error.ErrorSql = Mediator.GetSqlSent();
 
@@ -944,6 +950,7 @@ namespace Npgsql
                         }
 
                         _pendingErrors.Add(error);
+                         */
                         continue;
 
                     case BackEndMessageCode.AuthenticationRequest:
@@ -1107,7 +1114,8 @@ namespace Npgsql
                         _log.Trace("Received NoticeResponse");
                         // Notices and errors are identical except that we
                         // just throw notices away completely ignored.
-                        FireNotice(new NpgsqlError(Stream));
+
+                        //FireNotice(new NpgsqlError(Stream));
                         continue;
 
                     case BackEndMessageCode.CompletedResponse:
@@ -1810,7 +1818,8 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendQuery(query);
-                ConsumeAll();
+                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                State = ConnectorState.Ready;
             }
         }
 
@@ -1821,7 +1830,8 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendQueryRaw(query);
-                ConsumeAll();
+                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                State = ConnectorState.Ready;
             }
         }
 
@@ -1831,7 +1841,8 @@ namespace Npgsql
             using (BlockNotificationThread())
             {
                 SendQuery(query);
-                ConsumeAll();
+                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                State = ConnectorState.Ready;
             }
         }
 
@@ -1842,7 +1853,8 @@ namespace Npgsql
             using (BlockNotificationThread())
             {
                 SendQueryRaw(query);
-                ConsumeAll();
+                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                State = ConnectorState.Ready;
             }
         }
 
@@ -1887,7 +1899,8 @@ namespace Npgsql
                     break;
 
             }
-            ConsumeAll();
+            SkipUntil(BackEndMessageCode.ReadyForQuery);
+            State = ConnectorState.Ready;
         }
 
         #endregion Execute blind

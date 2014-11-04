@@ -90,8 +90,7 @@ namespace Npgsql
             if ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow)
             {
                 // TODO: See optimization proposal in #410
-                var completeMsg = SkipUntil(BackEndMessageCode.CompletedResponse);
-                ProcessMessage(completeMsg);
+                Consume();
                 return false;
             }
 
@@ -157,6 +156,9 @@ namespace Npgsql
                     State = ReaderState.Consumed;
                     return ReadResult.RowNotRead;
 
+                case BackEndMessageCode.BindComplete:
+                    return ReadResult.ReadAgain;
+
                 default:
                     throw new Exception("Received unexpected backend message of type " + msg.Code);
             }
@@ -177,7 +179,7 @@ namespace Npgsql
                         _row = null;
                     }
                     // TODO: Duplication with SingleResult handling above
-                    var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse);
+                    var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
                     ProcessMessage(completedMsg);
                     break;
 
@@ -414,27 +416,20 @@ namespace Npgsql
 
         public override decimal GetDecimal(int ordinal)
         {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.Get(ordinal).Decimal;
         }
 
         public override double GetDouble(int ordinal)
         {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.Get(ordinal).Double;
         }
 
         public override float GetFloat(int ordinal)
         {
-            throw new NotImplementedException();
-        }
-
-        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
-        {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.Get(ordinal).Float;
         }
 
         public override int GetValues(object[] values)
@@ -501,6 +496,34 @@ namespace Npgsql
 #endif
 
         #endregion
+
+        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+        {
+            throw new NotImplementedException();
+        }
+
+#if NET45
+        public override Stream GetStream(int ordinal)
+#else
+        public Stream GetStream(int ordinal)
+#endif
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
+        {
+            throw new NotImplementedException();
+        }
+
+#if NET45
+        public override TextReader GetTextReader(int ordinal)
+#else
+        public TextReader GetTextReader(int ordinal)
+#endif
+        {
+            throw new NotImplementedException();
+        }
 
         #region Non-standard value getters
 
