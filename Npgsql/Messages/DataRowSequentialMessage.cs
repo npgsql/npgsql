@@ -18,6 +18,8 @@ namespace Npgsql.Messages
             _value = new NpgsqlValue();
         }
 
+        #region Seek
+
         protected override void SeekToColumn(int column)
         {
             CheckColumnIndex(column);
@@ -68,6 +70,8 @@ namespace Npgsql.Messages
             }
         }
 
+        #endregion
+
         internal override NpgsqlValue Get(int column)
         {
             if (Column == column)
@@ -91,6 +95,11 @@ namespace Npgsql.Messages
                 fieldDescription.Handler.Read(Buffer, len, fieldDescription, _value);
             }
             return _value;
+        }
+
+        internal override Stream GetStream(int ordinal)
+        {
+            throw new NotImplementedException();
         }
 
         internal override void Consume()

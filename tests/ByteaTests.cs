@@ -26,7 +26,8 @@ namespace NpgsqlTests
             var actual = new byte[expected.Length];
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
 
-            var cmd = new NpgsqlCommand(@"SELECT field_bytea, 'foo', field_bytea, field_bytea FROM data", Conn);
+            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea FROM data";
+            var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) cmd.Prepare();
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -51,9 +52,21 @@ namespace NpgsqlTests
             Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes on non-bytea");
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
             reader.GetBytes(2, 0, actual, 0, 2);
-            // Jump to the next column from the middle of the column
-            reader.GetBytes(3, 0, actual, 0, 2);
+            // Jump to another column from the middle of the column
+            reader.GetBytes(4, 0, actual, 0, 2);
             // Close in the middle of a column
+            reader.Close();
+            cmd.Dispose();
+
+            // Redo the query to test GetStream()
+            cmd = new NpgsqlCommand(queryText, Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            reader = cmd.ExecuteReader(behavior);
+            reader.Read();
+            var stream = reader.GetStream(2);
+            Assert.That(stream.Length, Is.EqualTo(expected.Length));
+            stream.Read(actual, 0, expected.Length);
+            Assert.That(actual, Is.EqualTo(expected));
             reader.Close();
             cmd.Dispose();
 

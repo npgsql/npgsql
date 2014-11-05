@@ -49,6 +49,8 @@ namespace Npgsql.Messages
             return value;
         }
 
+        #region Seek
+
         protected override void SeekToColumn(int column)
         {
             CheckColumnIndex(column);
@@ -76,6 +78,20 @@ namespace Npgsql.Messages
 
             // TODO: Seek currently accepts ints, so we're limited to 2GB blobs
             Buffer.Seek(_columnOffsets[Column] + 4 + posInColumnInt, SeekOrigin.Begin);
+        }
+
+        #endregion
+
+        internal override Stream GetStream(int column)
+        {
+            CheckColumnIndex(column);
+            CheckBytea(column);
+
+            SeekToColumn(column);
+            Buffer.Ensure(4);
+            PosInColumn = 0;
+            var len = Buffer.ReadInt32();
+            return Buffer.GetMemoryStream(len);
         }
 
         internal override void Consume()

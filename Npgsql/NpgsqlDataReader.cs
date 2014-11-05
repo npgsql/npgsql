@@ -509,7 +509,8 @@ namespace Npgsql
         public Stream GetStream(int ordinal)
 #endif
         {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.GetStream(ordinal);
         }
 
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)

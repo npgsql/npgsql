@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.Localization;
@@ -42,7 +43,7 @@ namespace Npgsql.Messages
         internal abstract NpgsqlValue Get(int ordinal);
         protected abstract void SeekToColumn(int column);
         protected abstract void SeekInColumn(long posInColumn);
-        //internal abstract long GetBytes(int column, long posInColumn, byte[] output, int outputOffset, int len);
+        internal abstract Stream GetStream(int ordinal);
 
         internal RowDescriptionMessage Description { get; set; }
         internal abstract void Consume();

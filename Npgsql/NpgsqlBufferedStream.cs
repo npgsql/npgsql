@@ -236,5 +236,14 @@ namespace Npgsql
 
             Position += (int)len;
         }
+
+        /// <summary>
+        /// Constructs and returns a memory stream over the portion of the buffer from the current
+        /// position and up to the given length. The entire region must already be in memory.s
+        /// </summary>
+        internal MemoryStream GetMemoryStream(int len)
+        {
+            return new MemoryStream(_buf, Position, len, false, false);
+        }
     }
 }
