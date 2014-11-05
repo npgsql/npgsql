@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.Localization;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql.Messages
 {
@@ -21,6 +22,11 @@ namespace Npgsql.Messages
         /// is memory and can be retrieved. Initialized to -1
         /// </summary>
         int _column;
+
+        /// <summary>
+        /// Specifies whether we are currently reading within the column, i.e. streaming it
+        /// </summary>
+        bool _inColumn;
 
         /// <summary>
         /// For streaming types (e.g. bytea), holds the length of the column.
@@ -57,7 +63,7 @@ namespace Npgsql.Messages
             if (_column < column)
             {
                 // Skip to end of column if needed
-                if (_posInColumn > 0 && _columnLen > _posInColumn)
+                if (_inColumn && _columnLen > _posInColumn)
                 {
                     Buffer.Skip(_columnLen - _posInColumn);
                 }
@@ -72,8 +78,7 @@ namespace Npgsql.Messages
                     }
                 }
 
-                _posInColumn = 0;
-                _columnLen = 0;
+                _inColumn = false;
                 _column++;
             }
         }
@@ -103,20 +108,37 @@ namespace Npgsql.Messages
             return _value;
         }
 
+        void EnsureBytea(int column)
+        {
+            var typeHandler = Description[column].Handler;
+            if (!(typeHandler is ByteaHandler)) {
+                throw new InvalidCastException(String.Format("Column type must be bytea (was {0})", typeHandler.PgName));
+            }            
+        }
+
         internal override long GetBytes(int column, long posInColumn, byte[] output, int ouputOffset, int len)
         {
+            EnsureBytea(column);
+
             if (_column != column)
             {
                 SeekToColumn(column);
                 Buffer.Ensure(4);
-                _columnLen = Buffer.ReadInt32();
                 _posInColumn = 0;
+                _columnLen = Buffer.ReadInt32();
+                _inColumn = true;
+            }
+
+            // Return column length
+            if (output == null) {
+                return _columnLen;
             }
 
             if (posInColumn < _posInColumn) {
                 throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, _column));
             }
 
+            // Need to skip some bytes within the column
             if (posInColumn > _posInColumn) {
                 Buffer.Skip(posInColumn - _posInColumn);
                 _posInColumn = posInColumn;
@@ -136,7 +158,7 @@ namespace Npgsql.Messages
         internal override void Consume()
         {
             // Skip to end of column if needed
-            if (_posInColumn > 0 && _columnLen > _posInColumn) {
+            if (_inColumn && _columnLen > _posInColumn) {
                 Buffer.Skip(_columnLen - _posInColumn);
             }
 

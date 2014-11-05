@@ -26,7 +26,7 @@ namespace NpgsqlTests
             var actual = new byte[expected.Length];
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
 
-            var cmd = new NpgsqlCommand("SELECT field_bytea, 'foo' ,field_bytea,field_bytea FROM data", Conn);
+            var cmd = new NpgsqlCommand("SELECT field_bytea, 'foo' , field_bytea, field_bytea FROM data", Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
@@ -35,11 +35,15 @@ namespace NpgsqlTests
             Assert.That(read, Is.EqualTo(2));
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
+            Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length));
             Assert.That(() => reader.GetBytes(0, 0, actual, 0, 0), Throws.Exception);
             read = reader.GetBytes(0, 2, actual, 2, 3);
             Assert.That(read, Is.EqualTo(3));
             Assert.That(actual, Is.EqualTo(expected));
+            Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length));
 
+            Assert.That(() => reader.GetBytes(1, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
             reader.GetBytes(2, 0, actual, 0, 2);
             // Jump to the next column from the middle of the column
@@ -49,24 +53,6 @@ namespace NpgsqlTests
 
             //var result = (byte[]) cmd.ExecuteScalar();
             //Assert.AreEqual(2, result.Length);
-        }
-
-        [Test]
-        public void GetBytesNull()
-        {
-            //ExecuteNonQuery(@"INSERT INTO data (field_bytea) VALUES (E'\x0102030405')");
-            byte[] bytes = { 1, 2, 3, 4, 5 };
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(bytes)));
-            using (var cmd = new NpgsqlCommand("SELECT field_bytea FROM data", Conn))
-            {
-                // TODO: Text mode?
-                cmd.Prepare();
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(bytes.Length));
-                }
-            }
         }
 
         [Test]
