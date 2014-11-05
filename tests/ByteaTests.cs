@@ -81,7 +81,7 @@ namespace NpgsqlTests
             reader.Read();
             Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception, "GetBytes with empty buffer on null");
             Assert.That(() => reader.GetBytes(0, 0, actual, 0, 1), Throws.Exception, "GetBytes on null");
-            //Assert.That(reader.IsDBNull(0), Is.True);
+            Assert.That(reader.IsDBNull(0), Is.True);
             reader.Close();
             cmd.Dispose();
 

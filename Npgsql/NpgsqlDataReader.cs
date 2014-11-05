@@ -569,7 +569,7 @@ namespace Npgsql
         public override bool IsDBNull(int ordinal)
         {
             CheckHasRow();
-            return _row.Get(ordinal).IsNull;
+            return _row.IsDBNull(ordinal);
         }
 
         public override object this[string name]
