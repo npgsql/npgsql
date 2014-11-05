@@ -80,15 +80,17 @@ namespace Npgsql.TypeHandlers
                         var handler = nameIndex[dr[0].ToString()];
                         var oid = Convert.ToInt32(dr[1]);
                         Debug.Assert(handler.Oid == -1);
-                        handler.Oid = oid;
+                        // TODO: Check if we actually need the OID here (we will for write).
+                        // If so we need to create instances of handlers per-connector, since OIDs may differ
+                        //handler.Oid = oid;
                         result[oid] = handler;
                     }
                 }
             }
 
-            foreach (var notFound in _typeHandlers.Where(t => t.Oid == -1)) {
+            /*foreach (var notFound in _typeHandlers.Where(t => t.Oid == -1)) {
                 _log.WarnFormat("Could not find type {0} in pg_type", notFound.PgNames[0]);
-            }
+            }*/
 
             connector.TypeHandlerRegistry = result;
         }

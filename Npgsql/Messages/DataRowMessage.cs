@@ -4,19 +4,18 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Npgsql.Localization;
 
 namespace Npgsql.Messages
 {
     class DataRowMessage : DataRowMessageBase
     {
-        public NpgsqlBufferedStream Buffer { get; private set; }
         List<int> _columnOffsets;
         int _endOffset;
         List<NpgsqlValue> _values;
  
-        public DataRowMessage(NpgsqlBufferedStream buf)
+        public DataRowMessage(NpgsqlBufferedStream buf) : base(buf)
         {
-            Buffer = buf;
             var columnCount = buf.ReadInt16();
             _columnOffsets = new List<int>(columnCount);
             _values = new List<NpgsqlValue>(columnCount);
@@ -34,12 +33,9 @@ namespace Npgsql.Messages
 
         internal override NpgsqlValue Get(int column)
         {
-            if (column < 0 || column >= _columnOffsets.Count) {
-                throw new IndexOutOfRangeException("Column index out of range");
-            }
             var value = _values[column];
             if (value == null) {
-                Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
+                SeekToColumn(column);
                 var len = Buffer.ReadInt32();
                 value = _values[column] = new NpgsqlValue();  // TODO: Allocation
                 if (len == -1) {
@@ -53,9 +49,33 @@ namespace Npgsql.Messages
             return value;
         }
 
-        internal override long GetBytes(int column, long posInColumn, byte[] output, int ouputOffset, int len)
+        protected override void SeekToColumn(int column)
         {
-            throw new NotImplementedException();
+            CheckColumnIndex(column);
+
+            if (Column < column)
+            {
+                Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
+                InColumn = false;
+                Column++;
+            }
+        }
+
+        protected override void SeekInColumn(long posInColumn)
+        {
+            var posInColumnInt = (int) posInColumn;
+            if (posInColumnInt != posInColumn) {
+                throw new ArgumentException("Position must be int when in non-sequential mode", "posInColumn");
+            }
+
+            if (posInColumn >= ColumnLen)
+            {
+                // TODO: What is the actual required behavior here?
+                throw new IndexOutOfRangeException();
+            }
+
+            // TODO: Seek currently accepts ints, so we're limited to 2GB blobs
+            Buffer.Seek(_columnOffsets[Column] + 4 + posInColumnInt, SeekOrigin.Begin);
         }
 
         internal override void Consume()
