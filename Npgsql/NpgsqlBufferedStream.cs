@@ -93,24 +93,6 @@ namespace Npgsql
             return Position;
         }
 
-        internal void Skip(int len)
-        {
-            if (len > BytesLeft)
-            {
-                len -= BytesLeft;
-                while (len > Size)
-                {
-                    Clear();
-                    Ensure(Size);
-                    len -= Size;
-                }
-                Clear();
-                Ensure(len);
-            }
-
-            Position += len;
-        }
-
         #region Read
 
         internal byte ReadByte()
@@ -205,6 +187,50 @@ namespace Npgsql
             return result;
         }
 
+        /// <summary>
+        /// Note that unlike the primitive readers, this reader can read any length, looping internally
+        /// and reading directly from Underlying.
+        /// </summary>
+        internal void Read(byte[] output, int outputOffset, int len)
+        {
+            if (len <= BytesLeft)
+            {
+                Array.Copy(_buf, Position, output, outputOffset, len);
+                Position += len;
+                return;
+            }
+
+            Array.Copy(_buf, Position, output, outputOffset, BytesLeft);
+            var offset = outputOffset + BytesLeft;
+            len -= BytesLeft;
+            Clear();
+            while (len > 0)
+            {
+                var read = Underlying.Read(output, offset, len);
+                if (read == 0) { throw new EndOfStreamException(); }
+                len -= read;
+                offset += read;
+            }
+        }
+
         #endregion
+
+        internal void Skip(long len)
+        {
+            if (len > BytesLeft)
+            {
+                len -= BytesLeft;
+                while (len > Size)
+                {
+                    Clear();
+                    Ensure(Size);
+                    len -= Size;
+                }
+                Clear();
+                Ensure((int)len);
+            }
+
+            Position += (int)len;
+        }
     }
 }
