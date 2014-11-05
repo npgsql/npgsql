@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
@@ -237,13 +239,138 @@ namespace Npgsql
             Position += (int)len;
         }
 
-        /// <summary>
-        /// Constructs and returns a memory stream over the portion of the buffer from the current
-        /// position and up to the given length. The entire region must already be in memory.s
-        /// </summary>
-        internal MemoryStream GetMemoryStream(int len)
+        internal Stream GetStream(int len)
         {
-            return new MemoryStream(_buf, Position, len, false, false);
+            // All requested bytes are already in memory, return a simple MemoryStream over them
+            if (len <= BytesLeft) {
+                return new MemoryStream(_buf, Position, len, false, false);
+            }
+
+            var ms = new MemoryStream(_buf, Position, BytesLeft, false, false);
+            Position = FilledBytes;
+            return new MultiStream(ms, this, len);   // TODO: Recycle?
+        }
+
+        /// <summary>
+        /// Encapsulates a block of data already in memory and pending data still not read,
+        /// exposing them as a single, concatenated stream. Used when reading sequentially.
+        /// 
+        /// When the MultiStream is closed, the buffered stream will be read up to the length given.
+        /// This consumes the column's data and leaves us at the beginning of the next column.
+        /// </summary>
+        internal class MultiStream : Stream
+        {
+            int _pos, _len;
+            readonly MemoryStream _s1;
+            readonly NpgsqlBufferedStream _buf;
+
+            /// <summary>
+            /// Constructs the MultiStream over the given streams
+            /// </summary>
+            /// <param name="memoryStream"></param>
+            /// <param name="buf"></param>
+            /// <param name="len">the total length of the combined streams</param>
+            internal MultiStream(MemoryStream memoryStream, NpgsqlBufferedStream buf, int len)
+            {
+                _s1 = memoryStream;
+                _buf = buf;
+                _len = len;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var readFromMemory = 0;
+                if (_pos > _s1.Length)
+                {
+                    readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
+                    _s1.Read(buffer, offset, readFromMemory);
+                    _pos += readFromMemory;
+                    offset += readFromMemory;
+                    count -= readFromMemory;
+                }
+
+                if (count == 0) {
+                    return readFromMemory;
+                }
+
+                return readFromMemory + _buf.Underlying.Read(buffer, offset, count);
+            }
+
+            public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                var readFromMemory = 0;
+                if (_pos > _s1.Length)
+                {
+                    readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
+                    _s1.Read(buffer, offset, readFromMemory);
+                    _pos += readFromMemory;
+                    offset += readFromMemory;
+                    count -= readFromMemory;
+                }
+
+                if (count == 0)
+                {
+                    return readFromMemory;
+                }
+
+                return readFromMemory + await _buf.Underlying.ReadAsync(buffer, offset, count, cancellationToken);                
+            }
+
+            public override void Close()
+            {
+                var needToRead = Math.Min(_len - _pos, _len - _s1.Length);
+                _buf.Skip(needToRead);
+            }
+
+            public override long Position
+            {
+                get { return _pos; }
+                set { throw new NotSupportedException(); }
+            }
+
+            public override long Length
+            {
+                get { return _len; }
+            }
+
+            public override bool CanRead
+            {
+                get { return true; }
+            }
+
+            public override bool CanSeek
+            {
+                get { return false; }
+            }
+
+            public override bool CanWrite
+            {
+                get { return false; }
+            }
+
+            #region Unsupported
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Flush()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new NotImplementedException();
+            }
+
+            #endregion
         }
     }
 }

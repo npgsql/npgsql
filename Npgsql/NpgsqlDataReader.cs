@@ -500,7 +500,12 @@ namespace Npgsql
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             CheckHasRow();
-            return _row.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
+
+            if (dataOffset < 0 || dataOffset > int.MaxValue) {
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+            }
+
+            return _row.GetBytes(ordinal, (int)dataOffset, buffer, bufferOffset, length);
         }
 
 #if NET45

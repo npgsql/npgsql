@@ -24,26 +24,25 @@ namespace Npgsql.Messages
         protected int Column;
 
         /// <summary>
-        /// Specifies whether we are currently reading within the column, i.e. streaming it
-        /// </summary>
-        protected bool InColumn;
-
-        /// <summary>
         /// For streaming types (e.g. bytea), holds the length of the column.
         /// Does not include the length prefix.
         /// </summary>
-        protected long ColumnLen;
+        protected int ColumnLen;
 
         /// <summary>
         /// For streaming types (e.g. bytea), holds the current position within the column.
         /// Does not include the length prefix.
         /// </summary>
-        protected long PosInColumn;
+        protected int PosInColumn;
 
         internal abstract NpgsqlValue Get(int ordinal);
-        protected abstract void SeekToColumn(int column);
-        protected abstract void SeekInColumn(long posInColumn);
-        internal abstract Stream GetStream(int ordinal);
+        /// <summary>
+        /// Places our position at the beginning of the given column, after the 4-byte length.
+        /// The length is available in ColumnLen.
+        /// </summary>
+        /// <param name="column"></param>
+        /// <param name="posInColumn"></param>
+        protected abstract void SeekToColumn(int column, int posInColumn);
 
         internal RowDescriptionMessage Description { get; set; }
         internal abstract void Consume();
@@ -55,32 +54,28 @@ namespace Npgsql.Messages
             Column = -1;    
         }
 
-        internal long GetBytes(int column, long posInColumn, byte[] output, int ouputOffset, int len)
+        internal long GetBytes(int column, int posInColumn, byte[] output, int ouputOffset, int len)
         {
             CheckBytea(column);
 
-            if (Column != column)
+            // Return column length
+            if (output == null)
             {
-                SeekToColumn(column);
-                Buffer.Ensure(4);
-                PosInColumn = 0;
-                ColumnLen = Buffer.ReadInt32();
-                InColumn = true;
+                // TODO: What is the required behavior when the column is null?
+                if (Column < column)
+                {
+                    SeekToColumn(column, 0);                    
+                }
+                return ColumnLen;
             }
+
+            SeekToColumn(column, posInColumn);
 
             if (ColumnLen == -1)
             {
                 // TODO: What is the actual required behavior here?
                 throw new Exception("null");
             }
-
-            // Return column length
-            if (output == null)
-            {
-                return ColumnLen;
-            }
-
-            SeekInColumn(posInColumn);
 
             // Attempt to read beyond the end of the column
             if (posInColumn + len > ColumnLen)
@@ -95,6 +90,13 @@ namespace Npgsql.Messages
             return len;
         }
 
+        internal Stream GetStream(int column)
+        {
+            CheckColumnIndex(column);
+            CheckBytea(column);
+            SeekToColumn(column, 0);
+            return Buffer.GetStream(ColumnLen);
+        }
 
         protected void CheckColumnIndex(int column)
         {
