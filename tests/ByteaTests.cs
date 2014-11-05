@@ -65,8 +65,10 @@ namespace NpgsqlTests
             reader.Read();
             var stream = reader.GetStream(2);
             Assert.That(stream.Length, Is.EqualTo(expected.Length));
-            stream.Read(actual, 0, expected.Length);
-            Assert.That(actual, Is.EqualTo(expected));
+            stream.Read(actual, 0, 2);
+            Assert.That(actual[0], Is.EqualTo(expected[0]));
+            Assert.That(actual[1], Is.EqualTo(expected[1]));
+            Assert.That(reader.GetString(3), Is.EqualTo("bar"));
             reader.Close();
             cmd.Dispose();
 
@@ -79,6 +81,7 @@ namespace NpgsqlTests
             reader.Read();
             Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception, "GetBytes with empty buffer on null");
             Assert.That(() => reader.GetBytes(0, 0, actual, 0, 1), Throws.Exception, "GetBytes on null");
+            //Assert.That(reader.IsDBNull(0), Is.True);
             reader.Close();
             cmd.Dispose();
 

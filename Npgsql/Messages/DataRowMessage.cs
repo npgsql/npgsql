@@ -35,14 +35,13 @@ namespace Npgsql.Messages
         {
             var value = _values[column];
             if (value == null) {
-                SeekToColumn(column);
-                var len = Buffer.ReadInt32();
+                SeekToColumn(column, 0);
                 value = _values[column] = new NpgsqlValue();  // TODO: Allocation
-                if (len == -1) {
+                if (ColumnLen == -1) {
                     value.SetToNull();
                 } else {
                     var fieldDescription = Description[column];
-                    fieldDescription.Handler.Read(Buffer, len, fieldDescription, value);
+                    fieldDescription.Handler.Read(Buffer, ColumnLen, fieldDescription, value);
                 }
                 return value;
             }
@@ -51,23 +50,15 @@ namespace Npgsql.Messages
 
         #region Seek
 
-        protected override void SeekToColumn(int column)
+        protected override void SeekToColumn(int column, int posInColumn)
         {
             CheckColumnIndex(column);
 
             if (Column < column)
             {
                 Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
-                InColumn = false;
-                Column++;
-            }
-        }
-
-        protected override void SeekInColumn(long posInColumn)
-        {
-            var posInColumnInt = (int) posInColumn;
-            if (posInColumnInt != posInColumn) {
-                throw new ArgumentException("Position must be int when in non-sequential mode", "posInColumn");
+                Column = column;
+                ColumnLen = Buffer.ReadInt32();
             }
 
             if (posInColumn >= ColumnLen)
@@ -76,23 +67,10 @@ namespace Npgsql.Messages
                 throw new IndexOutOfRangeException();
             }
 
-            // TODO: Seek currently accepts ints, so we're limited to 2GB blobs
-            Buffer.Seek(_columnOffsets[Column] + 4 + posInColumnInt, SeekOrigin.Begin);
+            Buffer.Seek(_columnOffsets[column] + 4 + posInColumn, SeekOrigin.Begin);
         }
 
         #endregion
-
-        internal override Stream GetStream(int column)
-        {
-            CheckColumnIndex(column);
-            CheckBytea(column);
-
-            SeekToColumn(column);
-            Buffer.Ensure(4);
-            PosInColumn = 0;
-            var len = Buffer.ReadInt32();
-            return Buffer.GetMemoryStream(len);
-        }
 
         internal override void Consume()
         {
