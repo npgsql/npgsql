@@ -499,7 +499,8 @@ namespace Npgsql
 
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
         }
 
 #if NET45

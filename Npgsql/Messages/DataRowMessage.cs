@@ -53,6 +53,11 @@ namespace Npgsql.Messages
             return value;
         }
 
+        internal override long GetBytes(int column, long posInColumn, byte[] output, int ouputOffset, int len)
+        {
+            throw new NotImplementedException();
+        }
+
         internal override void Consume()
         {
             Buffer.Seek(_endOffset, SeekOrigin.Begin);
