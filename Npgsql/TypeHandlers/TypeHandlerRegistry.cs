@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using Common.Logging;
 
 namespace Npgsql.TypeHandlers
 {
@@ -14,6 +16,8 @@ namespace Npgsql.TypeHandlers
         static List<TypeHandler> _typeHandlers;
         static readonly TypeHandler UnknownTypeHandler = new UnknownTypeHandler();
         static readonly TypeHandlerRegistry EmptyRegistry = new TypeHandlerRegistry();
+
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         TypeHandlerRegistry()
         {
@@ -51,7 +55,7 @@ namespace Npgsql.TypeHandlers
             var inList = new StringBuilder();
             var nameIndex = new Dictionary<string, TypeHandler>();
 
-            foreach (var typeInfo in _typeHandlers.Where(th => !(th is UnknownTypeHandler)))
+            foreach (var typeInfo in _typeHandlers)
             {
                 foreach (var pgName in typeInfo.PgNames) {
                     nameIndex.Add(pgName, typeInfo);
@@ -75,18 +79,26 @@ namespace Npgsql.TypeHandlers
                     {
                         var handler = nameIndex[dr[0].ToString()];
                         var oid = Convert.ToInt32(dr[1]);
-                        //handler.OID = oid;
+                        Debug.Assert(handler.Oid == -1);
+                        handler.Oid = oid;
                         result[oid] = handler;
                     }
                 }
             }
+
+            foreach (var notFound in _typeHandlers.Where(t => t.Oid == -1)) {
+                _log.WarnFormat("Could not find type {0} in pg_type", notFound.PgNames[0]);
+            }
+
             connector.TypeHandlerRegistry = result;
         }
 
         static void DiscoverTypeHandlers()
         {
             _typeHandlers = typeof(TypeHandlerRegistry).Assembly.DefinedTypes
-                .Where(t => !t.IsAbstract && t.IsSubclassOf(typeof(TypeHandler)))
+                .Where(t => !t.IsAbstract &&
+                             t.IsSubclassOf(typeof(TypeHandler)) &&
+                             t != typeof(UnknownTypeHandler))
                 .Select(Activator.CreateInstance)
                 .Cast<TypeHandler>()
                 .ToList();
