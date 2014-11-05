@@ -71,7 +71,12 @@ namespace Npgsql
             FilledBytes = 0;
         }
 
-        internal int Seek(int offset, SeekOrigin origin)
+        /// <summary>
+        /// Seeks within the current in-memory data. Does not read any data from the underlying.
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="origin"></param>
+        internal void Seek(int offset, SeekOrigin origin)
         {
             int absoluteOffset;
             switch (origin)
@@ -90,7 +95,6 @@ namespace Npgsql
             Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= FilledBytes);
 
             Position = absoluteOffset;
-            return Position;
         }
 
         #region Read
@@ -191,7 +195,7 @@ namespace Npgsql
         /// Note that unlike the primitive readers, this reader can read any length, looping internally
         /// and reading directly from Underlying.
         /// </summary>
-        internal void Read(byte[] output, int outputOffset, int len)
+        internal void ReadBytes(byte[] output, int outputOffset, int len)
         {
             if (len <= BytesLeft)
             {

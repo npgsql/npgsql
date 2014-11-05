@@ -10,66 +10,32 @@ namespace Npgsql.Messages
 {
     class DataRowSequentialMessage : DataRowMessageBase
     {
-        public NpgsqlBufferedStream Buffer { get; private set; }
-
-        /// <summary>
-        /// The number of columns in the current row
-        /// </summary>
-        int _numColumns;
-
-        /// <summary>
-        /// The index of the column that we're on, i.e. that has already been parsed, is
-        /// is memory and can be retrieved. Initialized to -1
-        /// </summary>
-        int _column;
-
-        /// <summary>
-        /// Specifies whether we are currently reading within the column, i.e. streaming it
-        /// </summary>
-        bool _inColumn;
-
-        /// <summary>
-        /// For streaming types (e.g. bytea), holds the length of the column.
-        /// Does not include the length prefix.
-        /// </summary>
-        long _columnLen;
-
-        /// <summary>
-        /// For streaming types (e.g. bytea), holds the current position within the column.
-        /// Does not include the length prefix.
-        /// </summary>
-        long _posInColumn;
-
         NpgsqlValue _value;
 
-        public DataRowSequentialMessage(NpgsqlBufferedStream buf)
+        public DataRowSequentialMessage(NpgsqlBufferedStream buf) : base(buf)
         {
-            Buffer = buf;
-            _numColumns = buf.ReadInt16();
-            _column = -1;
+            NumColumns = buf.ReadInt16();
             _value = new NpgsqlValue();
         }
 
-        public void SeekToColumn(int column)
+        protected override void SeekToColumn(int column)
         {
-            if (column < 0 || column >= _numColumns) {
-                throw new IndexOutOfRangeException("Column index out of range");
+            CheckColumnIndex(column);
+
+            if (column < Column) {
+                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, Column));
             }
 
-            if (column < _column) {
-                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, _column));
-            }
-
-            if (_column < column)
+            if (Column < column)
             {
                 // Skip to end of column if needed
-                if (_inColumn && _columnLen > _posInColumn)
+                if (InColumn && ColumnLen > PosInColumn)
                 {
-                    Buffer.Skip(_columnLen - _posInColumn);
+                    Buffer.Skip(ColumnLen - PosInColumn);
                 }
 
                 // Skip over unwanted fields
-                for (; _column < column - 1; _column++)
+                for (; Column < column - 1; Column++)
                 {
                     Buffer.Ensure(4);
                     var len = Buffer.ReadInt32();
@@ -78,17 +44,36 @@ namespace Npgsql.Messages
                     }
                 }
 
-                _inColumn = false;
-                _column++;
+                InColumn = false;
+                Column++;
+            }
+        }
+
+        protected override void SeekInColumn(long posInColumn)
+        {
+            if (posInColumn < PosInColumn) {
+                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
+            }
+
+            if (posInColumn >= ColumnLen)
+            {
+                // TODO: What is the actual required behavior here?
+                throw new IndexOutOfRangeException();
+            }
+
+            if (posInColumn > PosInColumn)
+            {
+                Buffer.Skip(posInColumn - PosInColumn);
+                PosInColumn = posInColumn;
             }
         }
 
         internal override NpgsqlValue Get(int column)
         {
-            if (_column == column)
+            if (Column == column)
             {
-                if (_posInColumn != 0) {
-                    throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, _column));
+                if (PosInColumn != 0) {
+                    throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, Column));
                 }
                 return _value;
             }
@@ -108,65 +93,18 @@ namespace Npgsql.Messages
             return _value;
         }
 
-        void EnsureBytea(int column)
-        {
-            var typeHandler = Description[column].Handler;
-            if (!(typeHandler is ByteaHandler)) {
-                throw new InvalidCastException(String.Format("Column type must be bytea (was {0})", typeHandler.PgName));
-            }            
-        }
-
-        internal override long GetBytes(int column, long posInColumn, byte[] output, int ouputOffset, int len)
-        {
-            EnsureBytea(column);
-
-            if (_column != column)
-            {
-                SeekToColumn(column);
-                Buffer.Ensure(4);
-                _posInColumn = 0;
-                _columnLen = Buffer.ReadInt32();
-                _inColumn = true;
-            }
-
-            // Return column length
-            if (output == null) {
-                return _columnLen;
-            }
-
-            if (posInColumn < _posInColumn) {
-                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, _column));
-            }
-
-            // Need to skip some bytes within the column
-            if (posInColumn > _posInColumn) {
-                Buffer.Skip(posInColumn - _posInColumn);
-                _posInColumn = posInColumn;
-            }
-
-            // Attempt to read beyond the end of the column
-            if (posInColumn + len > _columnLen) {
-                len = (int)(_columnLen - posInColumn);
-            }
-
-            Buffer.Read(output, ouputOffset, len);
-            _posInColumn += len;
-
-            return len;
-        }
-
         internal override void Consume()
         {
             // Skip to end of column if needed
-            if (_inColumn && _columnLen > _posInColumn) {
-                Buffer.Skip(_columnLen - _posInColumn);
+            if (InColumn && ColumnLen > PosInColumn) {
+                Buffer.Skip(ColumnLen - PosInColumn);
             }
 
-            while (_column < _numColumns - 1)
+            while (Column < NumColumns - 1)
             {
                 Buffer.Ensure(4);
                 Buffer.Skip(Buffer.ReadInt32());
-                _column++;
+                Column++;
             }
         }
 
