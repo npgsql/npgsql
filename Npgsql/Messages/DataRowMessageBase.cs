@@ -36,6 +36,7 @@ namespace Npgsql.Messages
         protected int PosInColumn;
 
         internal abstract NpgsqlValue Get(int ordinal);
+
         /// <summary>
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
@@ -54,8 +55,18 @@ namespace Npgsql.Messages
             Column = -1;    
         }
 
+        internal bool IsDBNull(int column)
+        {
+            CheckColumnIndex(column);
+            if (Column < column) {
+                SeekToColumn(column, 0);
+            }
+            return ColumnLen == -1;
+        }
+
         internal long GetBytes(int column, int posInColumn, byte[] output, int ouputOffset, int len)
         {
+            CheckColumnIndex(column);
             CheckBytea(column);
 
             // Return column length
@@ -81,7 +92,7 @@ namespace Npgsql.Messages
             if (posInColumn + len > ColumnLen)
             {
                 // TODO: What is the actual required behavior here?
-                len = (int)(ColumnLen - posInColumn);
+                len = ColumnLen - posInColumn;
             }
 
             Buffer.ReadBytes(output, ouputOffset, len);

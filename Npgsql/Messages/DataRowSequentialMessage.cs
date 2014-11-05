@@ -84,15 +84,6 @@ namespace Npgsql.Messages
                 return _value;
             }
 
-            /*
-            if (Column == column)
-            {
-                if (PosInColumn != 0) {
-                    throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, Column));
-                }
-                return _value;
-            }*/
-
             SeekToColumn(column, 0);
 
             if (ColumnLen == -1) {
