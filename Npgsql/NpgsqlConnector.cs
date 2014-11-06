@@ -812,7 +812,7 @@ namespace Npgsql
             var messageCode = (BackEndMessageCode) Buffer.ReadByte();
             var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
-            if (len > Buffer.BytesLeft)
+            if (len > Buffer.BytesLeft && !(messageCode == BackEndMessageCode.DataRow && sequentialRows))
             {
                 // We didn't read the entire message
                 if (len > Buffer.Size)
