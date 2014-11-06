@@ -293,7 +293,9 @@ namespace Npgsql
                     return readFromMemory;
                 }
 
-                return readFromMemory + _buf.Underlying.Read(buffer, offset, count);
+                var readFromSocket = _buf.Underlying.Read(buffer, offset, count);
+                _pos += readFromSocket;
+                return readFromMemory + readFromSocket;
             }
 
             public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -313,7 +315,9 @@ namespace Npgsql
                     return readFromMemory;
                 }
 
-                return readFromMemory + await _buf.Underlying.ReadAsync(buffer, offset, count, cancellationToken);                
+                var readFromSocket = await _buf.Underlying.ReadAsync(buffer, offset, count, cancellationToken);
+                _pos += readFromSocket;
+                return readFromMemory + readFromSocket;
             }
 
             public override void Close()
