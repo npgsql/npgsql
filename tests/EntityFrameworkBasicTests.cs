@@ -402,25 +402,12 @@ namespace NpgsqlTests
 
                 // A literal TimeSpan is written as an interval
                 Assert.AreEqual(new TimeSpan(1, 2, 3, 4), oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
-                var val1 = new TimeSpan(1, 2, 3, 4);
-                Assert.AreEqual(val1, oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
-                Assert.AreEqual(val1, oneRow.Select(p => val1).First());
 
                 // DateTimeOffset -> timestamptz
                 Assert.AreEqual(new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero), oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First());
-                var val2 = new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero);
-                Assert.AreEqual(val2, oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First());
-                Assert.AreEqual(val2, oneRow.Select(p => val2).First());
 
                 // DateTime -> timestamp
                 Assert.AreEqual(new DateTime(2014, 2, 3, 4, 5, 6, 0), oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
-                var val3 = new DateTime(2014, 2, 3, 4, 5, 6, 0);
-                Assert.AreEqual(val3, oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
-                Assert.AreEqual(val3, oneRow.Select(p => val3).First());
-
-                var val4 = new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-                Assert.AreEqual(val4, oneRow.Select(p => new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).First());
-                Assert.AreEqual(val4, oneRow.Select(p => val4).First());
             }
         }
 
