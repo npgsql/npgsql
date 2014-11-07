@@ -57,38 +57,6 @@ namespace Npgsql
         #endregion
 
         #region private classes
-#warning DEAD CODE: Private attribute isn't used anywhere except in declarations. As attribute is private, this is useless: the declaration isn't used anywhere.
-        [AttributeUsage(AttributeTargets.Property)]
-        private sealed class NpgsqlConnectionStringKeywordAttribute : Attribute
-        {
-            public Keywords Keyword;
-            public string UnderlyingConnectionKeyword;
-            public bool IsInternal = false;
-            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, bool is_internal = false)
-            {
-                this.Keyword = keyword;
-                this.UnderlyingConnectionKeyword = keyword.ToString().ToUpperInvariant();
-                this.IsInternal = is_internal;
-            }
-            public NpgsqlConnectionStringKeywordAttribute(Keywords keyword, string underlying_connection_keyword)
-            {
-                this.Keyword = keyword;
-                this.UnderlyingConnectionKeyword = underlying_connection_keyword;
-            }
-        }
-
-#warning DEAD CODE: Private attribute isn't used anywhere except in declarations. As attribute is private, this is useless: the declaration isn't used anywhere.
-        [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-        private sealed class NpgsqlConnectionStringAcceptableKeywordAttribute : Attribute
-        {
-            public string Keyword;
-            public NpgsqlConnectionStringAcceptableKeywordAttribute(string keyword)
-            {
-                this.Keyword = keyword;
-            }
-        }
-
-
         /// <summary>
         /// Class contains a cached obtained UserPrincipalName (UPN), which is the name associated with the current thread's associated user.
         /// </summary>
@@ -1037,8 +1005,6 @@ namespace Npgsql
         /// Gets or sets the backend server host name.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Host)]
-        [NpgsqlConnectionStringAcceptableKeyword("SERVER")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Host")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Host")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1052,7 +1018,6 @@ namespace Npgsql
         /// Gets or sets the backend server port.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Port)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Port")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Port")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1069,8 +1034,6 @@ namespace Npgsql
         /// <value>The name of the database to be
         /// used after a connection is opened.</value>
         [NpgsqlConnectionStringCategory("DataCategory_Source")]
-        [NpgsqlConnectionStringKeyword(Keywords.Database)]
-        [NpgsqlConnectionStringAcceptableKeyword("DB")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Database")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Database")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1084,11 +1047,6 @@ namespace Npgsql
         /// Gets or sets the login user name.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.UserName, "USER ID")]
-        [NpgsqlConnectionStringAcceptableKeyword("USER NAME")]
-        [NpgsqlConnectionStringAcceptableKeyword("USERID")]
-        [NpgsqlConnectionStringAcceptableKeyword("USER ID")]
-        [NpgsqlConnectionStringAcceptableKeyword("UID")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_UserName")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_UserName")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1127,9 +1085,6 @@ namespace Npgsql
         /// Sets the login password as a string.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.Password)]
-        [NpgsqlConnectionStringAcceptableKeyword("PSW")]
-        [NpgsqlConnectionStringAcceptableKeyword("PWD")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Password")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Password")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1144,7 +1099,6 @@ namespace Npgsql
         /// Gets or sets a value indicating whether to attempt to use SSL.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.SSL)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SSL")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SSL")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1171,7 +1125,6 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
         [NpgsqlConnectionStringCategory("DataCategory_Initialization")]
-        [NpgsqlConnectionStringKeyword(Keywords.Timeout)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Timeout")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Timeout")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1186,7 +1139,6 @@ namespace Npgsql
         /// Gets or sets the schema search path.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Context")]
-        [NpgsqlConnectionStringKeyword(Keywords.SearchPath)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SearchPath")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SearchPath")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1200,7 +1152,6 @@ namespace Npgsql
         /// Gets or sets a value indicating whether connection pooling should be used.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.Pooling)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Pooling")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Pooling")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1223,7 +1174,6 @@ namespace Npgsql
         /// </remarks>
         /// <value>The time (in seconds) to wait. The default value is 15 seconds.</value>
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.ConnectionLifeTime)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_ConnectionLifeTime")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_ConnectionLifeTime")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1238,7 +1188,6 @@ namespace Npgsql
         /// Gets or sets the minimum connection pool size.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.MinPoolSize)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_MinPoolSize")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_MinPoolSize")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1253,7 +1202,6 @@ namespace Npgsql
         /// Gets or sets the maximum connection pool size.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.MaxPoolSize)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_MaxPoolSize")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_MaxPoolSize")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1268,7 +1216,6 @@ namespace Npgsql
         /// Gets or sets a value indicating whether to listen for notifications and report them between command activity.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.SyncNotification)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_SyncNotification")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_SyncNotification")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1285,7 +1232,6 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
         [NpgsqlConnectionStringCategory("DataCategory_Initialization")]
-        [NpgsqlConnectionStringKeyword(Keywords.CommandTimeout)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_CommandTimeout")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_CommandTimeout")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1297,7 +1243,6 @@ namespace Npgsql
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
-        [NpgsqlConnectionStringKeyword(Keywords.Enlist)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_Enlist")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_Enlist")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1309,8 +1254,6 @@ namespace Npgsql
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.UseExtendedTypes)]
-        [NpgsqlConnectionStringAcceptableKeyword("USE EXTENDED TYPES")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_UseExtendedTypes")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_UseExtendedTypes")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1322,8 +1265,6 @@ namespace Npgsql
         }
 
         [NpgsqlConnectionStringCategory("DataCategory_Security")]
-        [NpgsqlConnectionStringKeyword(Keywords.IntegratedSecurity)]
-        [NpgsqlConnectionStringAcceptableKeyword("INTEGRATED SECURITY")]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_IntegratedSecurity")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_IntegratedSecurity")]
         [RefreshProperties(RefreshProperties.All)]
@@ -1376,7 +1317,6 @@ namespace Npgsql
         /// Gets or sets the ootional application name parameter to be sent to the backend during connection initiation.
         /// </summary>
         [NpgsqlConnectionStringCategory("DataCategory_Context")]
-        [NpgsqlConnectionStringKeyword(Keywords.ApplicationName)]
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_ApplicationName")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_ApplicationName")]
         [RefreshProperties(RefreshProperties.All)]
