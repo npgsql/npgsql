@@ -382,26 +382,37 @@ namespace NpgsqlTests
 
                 IQueryable<int> oneRow = context.Posts.Where(p => false).Select(p => 1).Concat(new int[] { 1 });
 
-                Assert.AreEqual(oneRow.Select(p => (byte)1).First(), (byte)1);
-                Assert.AreEqual(oneRow.Select(p => (sbyte)1).First(), (sbyte)1);
-                Assert.AreEqual(oneRow.Select(p => (short)1).First(), (short)1);
-                Assert.AreEqual(oneRow.Select(p => (long)1).First(), (long)1);
-                Assert.AreEqual(oneRow.Select(p => 1.25M).First(), 1.25M);
+                Assert.AreEqual((byte)1, oneRow.Select(p => (byte)1).First());
+                Assert.AreEqual((sbyte)1, oneRow.Select(p => (sbyte)1).First());
+                Assert.AreEqual((short)1, oneRow.Select(p => (short)1).First());
+                Assert.AreEqual((long)1, oneRow.Select(p => (long)1).First());
+                Assert.AreEqual(1.25M, oneRow.Select(p => 1.25M).First());
+                Assert.AreEqual(double.NaN, oneRow.Select(p => double.NaN).First());
+                Assert.AreEqual(double.PositiveInfinity, oneRow.Select(p => double.PositiveInfinity).First());
+                Assert.AreEqual(double.NegativeInfinity, oneRow.Select(p => double.NegativeInfinity).First());
+                Assert.AreEqual(1.12e+12, oneRow.Select(p => 1.12e+12).First());
+                Assert.AreEqual(1.12e-12, oneRow.Select(p => 1.12e-12).First());
+                Assert.AreEqual(float.NaN, oneRow.Select(p => float.NaN).First());
+                Assert.AreEqual(float.PositiveInfinity, oneRow.Select(p => float.PositiveInfinity).First());
+                Assert.AreEqual(float.NegativeInfinity, oneRow.Select(p => float.NegativeInfinity).First());
+                Assert.AreEqual(1.12e+12f, oneRow.Select(p => 1.12e+12f).First());
+                Assert.AreEqual(1.12e-12f, oneRow.Select(p => 1.12e-12f).First());
+                Assert.AreEqual((short)-32768, oneRow.Select(p => (short)-32768).First());
 
                 // A literal TimeSpan is written as an interval
-                Assert.AreEqual(oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First(), new TimeSpan(1, 2, 3, 4));
+                Assert.AreEqual(new TimeSpan(1, 2, 3, 4), oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
                 var val1 = new TimeSpan(1, 2, 3, 4);
                 Assert.AreEqual(val1, oneRow.Select(p => new TimeSpan(1, 2, 3, 4)).First());
                 Assert.AreEqual(val1, oneRow.Select(p => val1).First());
 
                 // DateTimeOffset -> timestamptz
-                Assert.AreEqual(oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First(), new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero));
+                Assert.AreEqual(new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero), oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First());
                 var val2 = new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero);
                 Assert.AreEqual(val2, oneRow.Select(p => new DateTimeOffset(2014, 2, 3, 4, 5, 6, 0, TimeSpan.Zero)).First());
                 Assert.AreEqual(val2, oneRow.Select(p => val2).First());
 
                 // DateTime -> timestamp
-                Assert.AreEqual(oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First(), new DateTime(2014, 2, 3, 4, 5, 6, 0));
+                Assert.AreEqual(new DateTime(2014, 2, 3, 4, 5, 6, 0), oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
                 var val3 = new DateTime(2014, 2, 3, 4, 5, 6, 0);
                 Assert.AreEqual(val3, oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
                 Assert.AreEqual(val3, oneRow.Select(p => val3).First());
