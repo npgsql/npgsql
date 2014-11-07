@@ -281,7 +281,7 @@ namespace Npgsql
             public override int Read(byte[] buffer, int offset, int count)
             {
                 var readFromMemory = 0;
-                if (_pos > _s1.Length)
+                if (_pos < _s1.Length)
                 {
                     readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
                     _s1.Read(buffer, offset, readFromMemory);
@@ -302,7 +302,7 @@ namespace Npgsql
             public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 var readFromMemory = 0;
-                if (_pos > _s1.Length)
+                if (_pos < _s1.Length)
                 {
                     readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
                     _s1.Read(buffer, offset, readFromMemory);
