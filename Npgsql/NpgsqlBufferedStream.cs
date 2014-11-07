@@ -63,8 +63,9 @@ namespace Npgsql
 
         internal void CopyTo(NpgsqlBufferedStream other)
         {
-            Debug.Assert(other.Size - other.BytesLeft <= BytesLeft);
-            Array.Copy(_buf, Position, other._buf, other.Position += other.FilledBytes, BytesLeft);
+            Debug.Assert(other.Size - other.FilledBytes >= BytesLeft);
+            Array.Copy(_buf, Position, other._buf, other.FilledBytes, BytesLeft);
+            other.FilledBytes += BytesLeft;
         }
 
         internal void Clear()
