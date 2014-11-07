@@ -1173,18 +1173,4 @@ namespace Npgsql
 
         #endregion Misc    
     }
-
-    /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notice</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlNoticeEventArgs">NpgsqlNoticeEventArgs</see> that contains the event data.</param>
-    public delegate void NoticeEventHandler(Object sender, NpgsqlNoticeEventArgs e);
-
-    /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlConnection.Notification">Notification</see> events.
-    /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlNotificationEventArgs">NpgsqlNotificationEventArgs</see> that contains the event data.</param>
-    public delegate void NotificationEventHandler(Object sender, NpgsqlNotificationEventArgs e);
 }

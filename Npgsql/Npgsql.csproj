@@ -120,6 +120,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Delegates.cs" />
+    <Compile Include="Enums.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
