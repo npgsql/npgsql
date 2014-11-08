@@ -325,6 +325,11 @@ namespace NpgsqlTests
             using (var cmd = new NpgsqlCommand(sql, conn))
                 return await cmd.ExecuteScalarAsync();
         }
+
+        protected static bool IsSequential(CommandBehavior behavior)
+        {
+            return (behavior & CommandBehavior.SequentialAccess) != 0;
+        }
 #endif
 
         #endregion

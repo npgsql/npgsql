@@ -15,20 +15,20 @@ namespace NpgsqlTests
         public ByteaTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        //[Timeout(3000)]
-        //[TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        //[TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
         public void Read(PrepareOrNot prepare, CommandBehavior behavior)
         {
+            // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
             var actual = new byte[expected.Length];
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
 
             const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) cmd.Prepare();
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -36,7 +36,7 @@ namespace NpgsqlTests
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
             Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-            Assert.That(() => reader.GetBytes(0, 10, actual, 0, 1), Throws.Exception, "GetBytes from after column ends");
+            Assert.That(() => reader.GetBytes(0, expected.Length + 1, actual, 0, 1), Throws.Exception, "GetBytes from after column ends");
             if (IsSequential(behavior))
                 Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception, "Seek back sequential");
             else
@@ -68,6 +68,14 @@ namespace NpgsqlTests
             stream.Read(actual, 0, 2);
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
+            stream.Close();
+            if (IsSequential(behavior))
+                Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception, "Seek back sequential");
+            else
+            {
+                Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
+                Assert.That(actual[4], Is.EqualTo(expected[0]));
+            }
             Assert.That(reader.GetString(3), Is.EqualTo("bar"));
             reader.Close();
             cmd.Dispose();
@@ -334,17 +342,12 @@ namespace NpgsqlTests
         /// </summary>
         static string EncodeHex(ICollection<byte> buf)
         {
-            var hex = new StringBuilder(@"E'\\x", buf.Count * 2);
+            var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
             foreach (byte b in buf) {
                 hex.Append(String.Format("{0:x2}", b));
             }
             hex.Append("'");
             return hex.ToString();
-        }
-
-        static bool IsSequential(CommandBehavior behavior)
-        {
-            return (behavior & CommandBehavior.SequentialAccess) != 0;
         }
 
         #endregion

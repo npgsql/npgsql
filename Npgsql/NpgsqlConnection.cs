@@ -462,6 +462,11 @@ namespace Npgsql
             get { return _settings.Enlist; }
         }
 
+        public int BufferSize
+        {
+            get { return _settings.BufferSize; }
+        }
+
         #endregion Configuration settings
 
         #region State management
