@@ -24,7 +24,7 @@ namespace Npgsql.Messages
 
         #region Seek
 
-        protected override void SeekToColumn(int column, int posInColumn)
+        protected override void SeekToColumn(int column)
         {
             CheckColumnIndex(column);
 
@@ -53,11 +53,14 @@ namespace Npgsql.Messages
 
                 Buffer.Ensure(4);
                 ColumnLen = Buffer.ReadInt32();
-                PosInColumn = 0;
+                PosInColumn = DecodedPosInColumn = 0;
                 _columnParsed = false;
-                Column++;
+                Column = column;
             }
+        }
 
+        protected override void SeekInColumn(int posInColumn)
+        {
             if (posInColumn < PosInColumn)
             {
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
@@ -76,15 +79,40 @@ namespace Npgsql.Messages
             }
         }
 
+        protected override void SeekInColumnText(int textPosInColumn)
+        {
+            if (textPosInColumn < DecodedPosInColumn)
+            {
+                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
+            }
+
+            if (textPosInColumn > DecodedPosInColumn)
+            {
+                var charsToSkip = textPosInColumn - DecodedPosInColumn;
+                int bytesSkipped, charsSkipped;
+                Buffer.SkipChars(charsToSkip, ColumnLen - PosInColumn, out bytesSkipped, out charsSkipped);
+                PosInColumn += bytesSkipped;
+                DecodedPosInColumn += charsSkipped;
+                if (charsSkipped < charsToSkip)
+                {
+                    // TODO: What is the actual required behavior here?
+                    throw new IndexOutOfRangeException();
+                }
+            }
+        }
+
         #endregion
 
         internal override NpgsqlValue Get(int column)
         {
+            CheckNotStreaming();
+
             if (_columnParsed) {
                 return _value;
             }
 
-            SeekToColumn(column, 0);
+            SeekToColumn(column);
+            SeekInColumn(0);
 
             if (ColumnLen == -1) {
                 _value.SetToNull();

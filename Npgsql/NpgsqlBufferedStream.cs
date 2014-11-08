@@ -14,64 +14,74 @@ namespace Npgsql
         internal Stream Underlying { get; private set; }
         internal int Size { get; private set; }
         internal Encoding TextEncoding { get; private set; }
-
-        byte[] _buf;
         internal int Position { get; private set; }
-        int FilledBytes;
-        internal int BytesLeft { get { return FilledBytes - Position; } }
+        internal int BytesLeft { get { return _filledBytes - Position; } }
 
-        byte[] _workspace = new byte[8];
-        const int DefaultBufferSize = 8192;
+        internal readonly byte[] _buf;
+        int _filledBytes;
+        readonly Decoder _textDecoder;
+
+        readonly byte[] _workspace = new byte[8];
+
+        /// <summary>
+        /// Used for internal temporary purposes
+        /// </summary>
+        char[] _tempCharBuf = new char[1024];
+
+        internal const int MinimumBufferSize = 1024;
+        internal const int DefaultBufferSize = 8192;
 
         internal NpgsqlBufferedStream(Stream underlying)
             : this(underlying, DefaultBufferSize, Encoding.UTF8) {}
 
         internal NpgsqlBufferedStream(Stream underlying, int size, Encoding textEncoding)
         {
-            if (size < 8)
-            {
-                throw new ArgumentOutOfRangeException("size");
+            if (size < MinimumBufferSize) {
+                throw new ArgumentOutOfRangeException("size", size, "Buffer size must be at least " + MinimumBufferSize);
             }
 
             Underlying = underlying;
             Size = size;
             _buf = new byte[Size];
             TextEncoding = textEncoding;
+            _textDecoder = TextEncoding.GetDecoder();
         }
 
-        internal void Ensure(int count)
+        internal void Ensure(int count, bool readBeyondCount=true)
         {
             Debug.Assert(count <= Size);
-            if (BytesLeft >= count) { return; }
+            count -= BytesLeft;
+            if (count <= 0) { return; }
 
-            if (Position == FilledBytes) {
+            if (Position == _filledBytes) {
                 Clear();
-            } else if (count > Size - Position) {
+            } else if (count > Size - _filledBytes) {
                 Array.Copy(_buf, Position, _buf, 0, BytesLeft);
-                FilledBytes = BytesLeft;
+                _filledBytes = BytesLeft;
                 Position = 0;
             }
 
             while (count > 0)
             {
-                var read = Underlying.Read(_buf, FilledBytes, Size - FilledBytes);
+                var toRead = readBeyondCount ? Size - _filledBytes : count;
+                var read = Underlying.Read(_buf, _filledBytes, toRead);
                 if (read == 0) { throw new EndOfStreamException(); }
                 count -= read;
-                FilledBytes += read;
+                _filledBytes += read;
             }
         }
 
         internal void CopyTo(NpgsqlBufferedStream other)
         {
-            Debug.Assert(other.Size - other.FilledBytes >= BytesLeft);
-            Array.Copy(_buf, Position, other._buf, other.FilledBytes, BytesLeft);
-            other.FilledBytes += BytesLeft;
+            Debug.Assert(other.Size - other._filledBytes >= BytesLeft);
+            Array.Copy(_buf, Position, other._buf, other._filledBytes, BytesLeft);
+            other._filledBytes += BytesLeft;
         }
 
         internal void Clear()
         {
             Position = 0;
-            FilledBytes = 0;
+            _filledBytes = 0;
         }
 
         /// <summary>
@@ -95,7 +105,7 @@ namespace Npgsql
                 default:
                     throw new ArgumentOutOfRangeException("origin");
             }
-            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= FilledBytes);
+            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
 
             Position = absoluteOffset;
         }
@@ -195,29 +205,120 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Note that unlike the primitive readers, this reader can read any length, looping internally
-        /// and reading directly from Underlying.
         /// </summary>
-        internal void ReadBytes(byte[] output, int outputOffset, int len)
+        /// and reading directly from the underlying stream
+        /// <param name="readAll">whether to loop internally until all bytes are read,
+        /// or return after a single read to the underlying stream</param>
+        internal int ReadBytes(byte[] output, int outputOffset, int len, bool readAll)
         {
             if (len <= BytesLeft)
             {
                 Array.Copy(_buf, Position, output, outputOffset, len);
                 Position += len;
-                return;
+                return len;
             }
 
             Array.Copy(_buf, Position, output, outputOffset, BytesLeft);
             var offset = outputOffset + BytesLeft;
-            len -= BytesLeft;
+            var totalRead = BytesLeft;
             Clear();
-            while (len > 0)
+            while (totalRead < len)
             {
-                var read = Underlying.Read(output, offset, len);
+                var read = Underlying.Read(output, offset, len - totalRead);
                 if (read == 0) { throw new EndOfStreamException(); }
-                len -= read;
+                totalRead += read;
+                if (!readAll) { return totalRead; }
                 offset += read;
             }
+            return len;
+        }
+
+        /// <summary>
+        /// Note that unlike the primitive readers, this reader can read any length, looping internally
+        /// and reading directly from the underlying stream
+        /// </summary>
+        /// <param name="output"></param>
+        /// <param name="outputOffset"></param>
+        /// <param name="len">(decoded) number of bytes to fill in <paramref name="output"/></param>
+        /// <param name="readAll">whether to loop internally until all bytes are read,
+        /// or return after a single read to the underlying stream</param>
+        internal int ReadBytesHex(byte[] output, int outputOffset, int len, bool readAll)
+        {
+            var encodedLen = len * 2;
+            var pass = 0;
+            var totalRead = 0;
+            while (true)
+            {
+                var bytesToProcess = Math.Min(encodedLen - totalRead, BytesLeft % 2 == 0 ? BytesLeft : BytesLeft - 1);
+                for (var i = 0; i < bytesToProcess; i += 2) {
+                    output[outputOffset++] = (byte)((DecodeHex(_buf[Position++]) << 4) | DecodeHex(_buf[Position++]));
+                }
+                totalRead += bytesToProcess;
+                if (totalRead == encodedLen || (!readAll && ++pass == 2))
+                {
+                    return totalRead / 2;
+                }
+                Ensure(1);
+            }
+        }
+
+        /// <summary>
+        /// Note that unlike the primitive readers, this reader can read any length, looping internally
+        /// and reading directly from the underlying stream.
+        /// </summary>
+        /// <param name="output">output buffer to fill</param>
+        /// <param name="outputOffset">offset in the output buffer in which to start writing</param>
+        /// <param name="charCount">number of character to be read into the output buffer</param>
+        /// <param name="byteCount">number of bytes left in the field. This method will not read bytes
+        /// beyond this count</param>
+        /// <returns>the number of bytes read</returns>
+        internal void ReadChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
+        {
+            Debug.Assert(charCount <= output.Length - outputOffset);
+
+            bytesRead = 0;
+            charsRead = 0;
+            if (charCount == 0) { return; }
+            if (BytesLeft == 0) {
+                // If there are no bytes in the buffer, read some before starting the loop
+                Ensure(1);
+            }
+
+            try
+            {
+                while (true)
+                {
+                    int bytesUsed, charsUsed;
+                    bool completed;
+                    var maxBytes = Math.Min(byteCount - bytesRead, BytesLeft);
+                    _textDecoder.Convert(_buf, Position, maxBytes, output, outputOffset, charCount - charsRead, false,
+                                         out bytesUsed, out charsUsed, out completed);
+                    Position += bytesUsed;
+                    bytesRead += bytesUsed;
+                    charsRead += charsUsed;
+                    if (charsRead == charCount || bytesRead == byteCount) {
+                        return;
+                    }
+                    outputOffset += charsUsed;
+                    Clear();
+                    Ensure(1); // Read in more data
+                }
+            }
+            finally
+            {
+                _textDecoder.Reset();
+            }
+        }
+
+        /// <summary>
+        /// Skips over characters in the buffer, reading from the underlying stream as necessary.
+        /// </summary>
+        /// <param name="charCount">the number of characters to skip over</param>
+        /// <param name="byteCount">the maximal number of bytes to process</param>
+        /// <returns>the number of bytes read</returns>
+        internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
+        {
+            ReadChars(_tempCharBuf, 0, charCount, byteCount, out bytesSkipped, out charsSkipped);
         }
 
         #endregion
@@ -240,142 +341,52 @@ namespace Npgsql
             Position += (int)len;
         }
 
-        internal Stream GetStream(int len)
-        {
-            // All requested bytes are already in memory, return a simple MemoryStream over them
-            if (len <= BytesLeft) {
-                return new MemoryStream(_buf, Position, len, false, false);
-            }
-
-            var ms = new MemoryStream(_buf, Position, BytesLeft, false, false);
-            Position = FilledBytes;
-            return new MultiStream(ms, this, len);   // TODO: Recycle?
-        }
+        #region Utilities
 
         /// <summary>
-        /// Encapsulates a block of data already in memory and pending data still not read,
-        /// exposing them as a single, concatenated stream. Used when reading sequentially.
-        /// 
-        /// When the MultiStream is closed, the buffered stream will be read up to the length given.
-        /// This consumes the column's data and leaves us at the beginning of the next column.
+        /// Decodes a byte in bytea hex format. Each byte contains a single ASCII hex digit.
         /// </summary>
-        internal class MultiStream : Stream
+        static byte DecodeHex(byte a)
         {
-            int _pos, _len;
-            readonly MemoryStream _s1;
-            readonly NpgsqlBufferedStream _buf;
-
-            /// <summary>
-            /// Constructs the MultiStream over the given streams
-            /// </summary>
-            /// <param name="memoryStream"></param>
-            /// <param name="buf"></param>
-            /// <param name="len">the total length of the combined streams</param>
-            internal MultiStream(MemoryStream memoryStream, NpgsqlBufferedStream buf, int len)
+            switch (a)
             {
-                _s1 = memoryStream;
-                _buf = buf;
-                _len = len;
+                case (byte)'0':
+                    return 0x0;
+                case (byte)'1':
+                    return 0x1;
+                case (byte)'2':
+                    return 0x2;
+                case (byte)'3':
+                    return 0x3;
+                case (byte)'4':
+                    return 0x4;
+                case (byte)'5':
+                    return 0x5;
+                case (byte)'6':
+                    return 0x6;
+                case (byte)'7':
+                    return 0x7;
+                case (byte)'8':
+                    return 0x8;
+                case (byte)'9':
+                    return 0x9;
+                case (byte)'a':
+                    return 0xa;
+                case (byte)'b':
+                    return 0xb;
+                case (byte)'c':
+                    return 0xc;
+                case (byte)'d':
+                    return 0xd;
+                case (byte)'e':
+                    return 0xe;
+                case (byte)'f':
+                    return 0xf;
+                default:
+                    throw new ArgumentOutOfRangeException("Invalid hex byte");
             }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                var readFromMemory = 0;
-                if (_pos < _s1.Length)
-                {
-                    readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
-                    _s1.Read(buffer, offset, readFromMemory);
-                    _pos += readFromMemory;
-                    offset += readFromMemory;
-                    count -= readFromMemory;
-                }
-
-                if (count == 0) {
-                    return readFromMemory;
-                }
-
-                var readFromSocket = _buf.Underlying.Read(buffer, offset, count);
-                _pos += readFromSocket;
-                return readFromMemory + readFromSocket;
-            }
-
-            public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                var readFromMemory = 0;
-                if (_pos < _s1.Length)
-                {
-                    readFromMemory = Math.Min(count, (int)_s1.Length - _pos);
-                    _s1.Read(buffer, offset, readFromMemory);
-                    _pos += readFromMemory;
-                    offset += readFromMemory;
-                    count -= readFromMemory;
-                }
-
-                if (count == 0)
-                {
-                    return readFromMemory;
-                }
-
-                var readFromSocket = await _buf.Underlying.ReadAsync(buffer, offset, count, cancellationToken);
-                _pos += readFromSocket;
-                return readFromMemory + readFromSocket;
-            }
-
-            public override void Close()
-            {
-                var needToRead = Math.Min(_len - _pos, _len - _s1.Length);
-                _buf.Skip(needToRead);
-            }
-
-            public override long Position
-            {
-                get { return _pos; }
-                set { throw new NotSupportedException(); }
-            }
-
-            public override long Length
-            {
-                get { return _len; }
-            }
-
-            public override bool CanRead
-            {
-                get { return true; }
-            }
-
-            public override bool CanSeek
-            {
-                get { return false; }
-            }
-
-            public override bool CanWrite
-            {
-                get { return false; }
-            }
-
-            #region Unsupported
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void Flush()
-            {
-                throw new NotImplementedException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotImplementedException();
-            }
-
-            #endregion
         }
+
+        #endregion
     }
 }

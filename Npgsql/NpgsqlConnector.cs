@@ -167,6 +167,7 @@ namespace Npgsql
         internal byte[] Password { get { return _settings.PasswordAsByteArray; } }
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
+        internal int BufferSize { get { return _settings.BufferSize; } }
         internal bool UseMonoSsl { get { return ValidateRemoteCertificateCallback == null; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
@@ -467,7 +468,7 @@ namespace Npgsql
             BaseStream = baseStream;
             //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
             Stream = BaseStream;
-            Buffer = new NpgsqlBufferedStream(Stream);
+            Buffer = new NpgsqlBufferedStream(Stream, BufferSize, Encoding.UTF8);
             _log.DebugFormat("Connected to {0}:{1 }", Host, Port);
         }
 
@@ -812,7 +813,7 @@ namespace Npgsql
                     buf = new NpgsqlBufferedStream(Stream, len, Buffer.TextEncoding);
                     Buffer.CopyTo(buf);
                     Buffer.Clear();
-                    buf.Ensure(len);
+                    buf.Ensure(len, false);
                 }
                 buf.Ensure(len);
             }

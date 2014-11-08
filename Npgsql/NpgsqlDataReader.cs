@@ -499,6 +499,7 @@ namespace Npgsql
 
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
+            Debug.Assert(buffer == null || length <= buffer.Length - bufferOffset);
             CheckHasRow();
 
             if (dataOffset < 0 || dataOffset > int.MaxValue) {
@@ -520,7 +521,16 @@ namespace Npgsql
 
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
-            throw new NotImplementedException();
+            Debug.Assert(buffer == null || length <= buffer.Length - bufferOffset);
+
+            CheckHasRow();
+
+            if (dataOffset < 0 || dataOffset > int.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+            }
+
+            return _row.GetChars(ordinal, (int)dataOffset, buffer, bufferOffset, length);
         }
 
 #if NET45
@@ -529,7 +539,8 @@ namespace Npgsql
         public TextReader GetTextReader(int ordinal)
 #endif
         {
-            throw new NotImplementedException();
+            CheckHasRow();
+            return _row.GetTextReader(ordinal);
         }
 
         #region Non-standard value getters

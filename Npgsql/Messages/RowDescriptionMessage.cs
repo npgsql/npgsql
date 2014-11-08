@@ -65,5 +65,8 @@ namespace Npgsql.Messages
         internal short ColumnAttributeNumber { get; set; }
         internal FormatCode FormatCode { get; set; }
         internal TypeHandler Handler { get; set; }
+
+        public bool IsBinaryFormat { get { return FormatCode == FormatCode.Binary; } }
+        public bool IsTextFormat   { get { return FormatCode == FormatCode.Text;   } }
     }
 }
