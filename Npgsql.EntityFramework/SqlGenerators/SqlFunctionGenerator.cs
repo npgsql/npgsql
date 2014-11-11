@@ -52,35 +52,22 @@ namespace Npgsql.SqlGenerators {
                 if (edmFunc != null && edmFunc.Parameters.TryGetValue(kv.Key, true, out funcParm)) {
                     //fp.Name; fp.TypeUsage; fp.Mode;
                     var pgParm = new NpgsqlParameter(funcParm.Name, DBNull.Value);
-                    if (false) { }
-                    else if (funcParm.Mode == ParameterMode.In) pgParm.Direction = System.Data.ParameterDirection.Input;
-                    else if (funcParm.Mode == ParameterMode.Out) pgParm.Direction = System.Data.ParameterDirection.Output;
-                    else if (funcParm.Mode == ParameterMode.InOut) pgParm.Direction = System.Data.ParameterDirection.InputOutput;
-                    else if (funcParm.Mode == ParameterMode.ReturnValue) pgParm.Direction = System.Data.ParameterDirection.ReturnValue;
-                    else { }
-
-                    if (false) { }
-                    else if (funcParm.TypeUsage.EdmType is PrimitiveType) {
-                        var pt = (PrimitiveType)funcParm.TypeUsage.EdmType;
-                        if (false) { }
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Binary) pgParm.DbType = System.Data.DbType.Binary;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Boolean) pgParm.DbType = System.Data.DbType.Boolean;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Byte) pgParm.DbType = System.Data.DbType.Byte;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.DateTime) pgParm.DbType = System.Data.DbType.DateTime;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.DateTimeOffset) pgParm.DbType = System.Data.DbType.DateTimeOffset;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Decimal) pgParm.DbType = System.Data.DbType.Decimal;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Double) pgParm.DbType = System.Data.DbType.Double;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Guid) pgParm.DbType = System.Data.DbType.Guid;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Int16) pgParm.DbType = System.Data.DbType.Int16;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Int32) pgParm.DbType = System.Data.DbType.Int32;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Int64) pgParm.DbType = System.Data.DbType.Int64;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.SByte) pgParm.DbType = System.Data.DbType.SByte;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Single) pgParm.DbType = System.Data.DbType.Single;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.String) pgParm.DbType = System.Data.DbType.String;
-                        else if (pt.PrimitiveTypeKind == PrimitiveTypeKind.Time) pgParm.DbType = System.Data.DbType.Time;
-                        else throw new NotSupportedException("Unknown PrimitiveTypeKind: " + pt.PrimitiveTypeKind);
+                    switch (funcParm.Mode) {
+                        case ParameterMode.In:
+                            pgParm.Direction = System.Data.ParameterDirection.Input;
+                            break;
+                        case ParameterMode.Out:
+                            pgParm.Direction = System.Data.ParameterDirection.Output;
+                            break;
+                        case ParameterMode.InOut:
+                            pgParm.Direction = System.Data.ParameterDirection.InputOutput;
+                            break;
+                        case ParameterMode.ReturnValue:
+                            pgParm.Direction = System.Data.ParameterDirection.ReturnValue;
+                            break;
                     }
-                    else throw new NotSupportedException("EdmType has to be PrimitiveType");
+
+                    pgParm.DbType = NpgsqlProviderManifest.GetDbType((funcParm.TypeUsage.EdmType as PrimitiveType).PrimitiveTypeKind);
 
                     command.Parameters.Add(pgParm);
                 }

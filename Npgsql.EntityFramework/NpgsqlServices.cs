@@ -70,7 +70,7 @@ namespace Npgsql
             DbInsertCommandTree insert;
             DbUpdateCommandTree update;
             DbDeleteCommandTree delete;
-			DbFunctionCommandTree function;
+            DbFunctionCommandTree function;
             if ((select = commandTree as DbQueryCommandTree) != null)
             {
                 sqlGenerator = new SqlSelectGenerator(select);
