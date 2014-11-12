@@ -130,6 +130,10 @@ namespace Npgsql.Messages
                     ParseTextualByteaHeader();
                 }
 
+                if (ByteaTextFormat != ByteaTextFormat.Hex) {
+                    throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
+                }
+
                 if (output == null) {
                     return DecodedColumnLen;
                 }
@@ -166,6 +170,7 @@ namespace Npgsql.Messages
                 throw new Exception("Unrecognized bytea text encoding");
             }
             if (Buffer.ReadByte() != (byte)'x') {
+                ByteaTextFormat = ByteaTextFormat.Escape;
                 throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
             }
             ByteaTextFormat = ByteaTextFormat.Hex;
