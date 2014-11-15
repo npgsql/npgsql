@@ -806,16 +806,17 @@ namespace Npgsql
             if (len > Buffer.BytesLeft && !(messageCode == BackEndMessageCode.DataRow && sequentialRows))
             {
                 // We didn't read the entire message
-                if (len > Buffer.Size)
-                {
+                if (len <= Buffer.Size) {
+                    buf.Ensure(len);
+                } else {
                     // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-                    // and copy into it (optimize with a pool later)
+                    // and copy into it
+                    // TODO: Optimize with a pool later
                     buf = new NpgsqlBufferedStream(Stream, len, Buffer.TextEncoding);
                     Buffer.CopyTo(buf);
                     Buffer.Clear();
                     buf.Ensure(len, false);
                 }
-                buf.Ensure(len);
             }
             return ParseServerMessage(buf, messageCode, len, sequentialRows);
         }
