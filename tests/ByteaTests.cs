@@ -19,7 +19,41 @@ namespace NpgsqlTests
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void Read(PrepareOrNot prepare, CommandBehavior behavior)
+        public void Get(PrepareOrNot prepare, CommandBehavior behavior)
+        {
+            // TODO: This is too small to actually test any interesting sequential behavior
+            byte[] expected = { 1, 2, 3, 4, 5 };
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
+
+            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, field_bytea FROM data";
+            var cmd = new NpgsqlCommand(queryText, Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader(behavior);
+            reader.Read();
+
+            var actual = reader.GetFieldValue<byte[]>(0);
+            Assert.That(actual, Is.EqualTo(expected));
+
+            if (IsSequential(behavior))
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+            else
+            {
+                actual[0] = 9;  // Modifying the buffer returned by Npgsql shouldn't have any effect
+                Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            }
+
+            Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+
+            Assert.That(reader[2], Is.EqualTo(expected));
+            Assert.That(reader.GetValue(3), Is.EqualTo(expected));
+        }
+
+        [Test]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
+        public void GetBytes(PrepareOrNot prepare, CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
@@ -38,7 +72,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
             Assert.That(() => reader.GetBytes(0, expected.Length + 1, actual, 0, 1), Throws.Exception, "GetBytes from after column ends");
             if (IsSequential(behavior))
-                Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception, "Seek back sequential");
+                Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
             {
                 Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
@@ -58,43 +92,81 @@ namespace NpgsqlTests
             reader.Close();
             cmd.Dispose();
 
-            // Redo the query to test GetStream()
-            cmd = new NpgsqlCommand(queryText, Conn);
+            //var result = (byte[]) cmd.ExecuteScalar();
+            //Assert.AreEqual(2, result.Length);
+        }
+
+        [Test]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
+        public void GetStream(PrepareOrNot prepare, CommandBehavior behavior)
+        {
+            // TODO: This is too small to actually test any interesting sequential behavior
+            byte[] expected = { 1, 2, 3, 4, 5 };
+            var actual = new byte[expected.Length];
+            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
+
+            const string queryText = @"SELECT field_bytea, 'foo' FROM data";
+            var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
-            reader = cmd.ExecuteReader(behavior);
+            var reader = cmd.ExecuteReader(behavior);
             reader.Read();
-            var stream = reader.GetStream(2);
+
+            var stream = reader.GetStream(0);
             Assert.That(stream.Length, Is.EqualTo(expected.Length));
             stream.Read(actual, 0, 2);
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
+            Assert.That(() => reader.GetString(1), Throws.Exception.TypeOf<InvalidOperationException>(), "Access row while streaming");
+            stream.Read(actual, 2, 1);
+            Assert.That(actual[2], Is.EqualTo(expected[2]));
             stream.Close();
             if (IsSequential(behavior))
-                Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception, "Seek back sequential");
+                Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
             {
                 Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
                 Assert.That(actual[4], Is.EqualTo(expected[0]));
             }
-            Assert.That(reader.GetString(3), Is.EqualTo("bar"));
+            Assert.That(reader.GetString(1), Is.EqualTo("foo"));
             reader.Close();
             cmd.Dispose();
+        }
 
-            // Test null column
-            ExecuteNonQuery(@"TRUNCATE data");
+        [Test]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default, TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
+        [TestCase(PrepareOrNot.Prepared, CommandBehavior.Default, TestName = "PreparedNonSequential")]
+        [TestCase(PrepareOrNot.Prepared, CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
+        public void GetNull(PrepareOrNot prepare, CommandBehavior behavior)
+        {
+            var buf = new byte[8];
             ExecuteNonQuery(@"INSERT INTO data (field_bytea) VALUES (NULL)");
-            cmd = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
+            var cmd = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
-            reader = cmd.ExecuteReader(behavior);
+            var reader = cmd.ExecuteReader(behavior);
             reader.Read();
-            Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception, "GetBytes with empty buffer on null");
-            Assert.That(() => reader.GetBytes(0, 0, actual, 0, 1), Throws.Exception, "GetBytes on null");
             Assert.That(reader.IsDBNull(0), Is.True);
+            Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception, "GetBytes");
+            Assert.That(() => reader.GetStream(0), Throws.Exception, "GetStream");
+            Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception, "GetBytes with null buffer");
             reader.Close();
             cmd.Dispose();
+        }
 
-            //var result = (byte[]) cmd.ExecuteScalar();
-            //Assert.AreEqual(2, result.Length);
+        [Test]
+        public void EmptyRoundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            var expected = new byte[0];
+            var cmd = new NpgsqlCommand("SELECT :val", Conn);
+            cmd.Parameters.Add("val", NpgsqlDbType.Bytea);
+            cmd.Parameters["val"].Value = expected;
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var result = (byte[])cmd.ExecuteScalar();
+            Assert.That(result, Is.EqualTo(expected));
+            cmd.Dispose();
         }
 
         [Test]
@@ -147,44 +219,6 @@ namespace NpgsqlTests
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void Empty()
-        {
-            var buff = new byte[0];
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            var result = (Byte[])command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        private void EmptyWithPrepare_Internal()
-        {
-            var buff = new byte[0];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            command.Prepare();
-            var result = (Byte[])command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        [Test]
-        public void EmptyWithPrepare()
-        {
-            EmptyWithPrepare_Internal();
-        }
-
-        [Test]
-        public void EmptyWithPrepare_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                EmptyWithPrepare_Internal();
             }
         }
 

@@ -10,7 +10,7 @@ namespace Npgsql.TypeHandlers
     /// Handles "conversions" for columns sent by the database with unknown OIDs.
     /// Note that this also happens in the very initial query that loads the OID mappings (chicken and egg problem).
     /// </summary>
-    internal class UnknownTypeHandler : TypeHandler
+    internal class UnknownTypeHandler : SimpleTypeHandler
     {
         static readonly string[] _pgNames = { "<unknown>" };
         internal override string[] PgNames { get { return _pgNames; } }

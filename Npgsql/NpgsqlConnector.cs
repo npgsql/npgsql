@@ -851,8 +851,8 @@ namespace Npgsql
                     return new ParameterDescriptionMessage(buf);
                 case BackEndMessageCode.BindComplete:
                     return BindCompleteMessage.Instance;
-                case BackEndMessageCode.ErrorResponse:
-                    throw new NpgsqlException(buf);
+                case BackEndMessageCode.NoData:
+                    return NoDataMessage.Instance;
                 case BackEndMessageCode.CopyData:
                 case BackEndMessageCode.CopyDone:
                 case BackEndMessageCode.BackendKeyData:
@@ -866,10 +866,11 @@ namespace Npgsql
                 case BackEndMessageCode.NotificationResponse:
                 case BackEndMessageCode.ParameterStatus:
                 case BackEndMessageCode.PortalSuspended:
-                case BackEndMessageCode.NoData:
                 case BackEndMessageCode.CloseComplete:
                 case BackEndMessageCode.IO_ERROR:
                     throw new NotImplementedException("Unimplemented message: " + code);
+                case BackEndMessageCode.ErrorResponse:
+                    throw new NpgsqlException(buf);
                 default:
                     throw new ArgumentOutOfRangeException("code", code, "Got an unknown message code: " + code);
             }

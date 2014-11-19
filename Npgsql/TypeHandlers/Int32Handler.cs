@@ -6,7 +6,7 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class Int32Handler : TypeHandler
+    internal class Int32Handler : SimpleTypeHandler
     {
         static readonly string[] _pgNames = { "int4" };
         internal override string[] PgNames { get { return _pgNames; } }
