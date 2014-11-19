@@ -13,66 +13,73 @@ namespace Npgsql
         PrimitiveUnion _primitives;
         object _object;
         string _string;
+        byte[] _binary;
 
         #region Setters
 
         internal void SetToNull()
         {
-            _type = TypeCode.DBNull;
+            Type = StorageType.Null;
         }
 
         internal void SetTo(bool value)
         {
             _primitives.Boolean = value;
-            _type = TypeCode.Boolean;
+            Type = StorageType.Boolean;
         }
 
         internal void SetTo(byte value)
         {
             _primitives.Byte = value;
-            _type = TypeCode.Byte;
+            Type = StorageType.Byte;
         }
 
         internal void SetTo(short value)
         {
             _primitives.Int16 = value;
-            _type = TypeCode.Int16;
+            Type = StorageType.Int16;
         }
 
         internal void SetTo(int value)
         {
             _primitives.Int32 = value;
-            _type = TypeCode.Int32;
+            Type = StorageType.Int32;
         }
 
         internal void SetTo(long value)
         {
             _primitives.Int64 = value;
-            _type = TypeCode.Int64;
+            Type = StorageType.Int64;
         }
 
         internal void SetTo(float value)
         {
             _primitives.Single = value;
-            _type = TypeCode.Single;
+            Type = StorageType.Single;
         }
 
         internal void SetTo(double value)
         {
             _primitives.Double = value;
-            _type = TypeCode.Double;
+            Type = StorageType.Double;
         }
 
         internal void SetTo(decimal value)
         {
             _primitives.Decimal = value;
-            _type = TypeCode.Decimal;
+            Type = StorageType.Decimal;
         }
 
         internal void SetTo(string value)
         {
             _string = value;
-            _type = TypeCode.String;
+            Type = StorageType.String;
+        }
+
+        internal void SetTo(byte[] value)
+        {
+            _binary = value;
+            Type = StorageType.Binary;
         }
 
         #endregion
@@ -83,38 +90,38 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.String:
+                    case StorageType.String:
                         return _string;
-                    case TypeCode.DBNull:
+                    case StorageType.Null:
                         return null;
-                    case TypeCode.Object:
+                    case StorageType.Object:
                         return _object.ToString();
-                    case TypeCode.Boolean:
+                    case StorageType.Boolean:
                         return _primitives.Boolean.ToString();
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte.ToString();
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16.ToString();
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32.ToString();
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64.ToString();
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return _primitives.Single.ToString();
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return _primitives.Double.ToString();
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return _primitives.Decimal.ToString();
                     /*
-                case TypeCode.DateTime:
+                case StorageType.DateTime:
                     return throw new NotImplementedException();
-                case TypeCode.Char:
+                case StorageType.Char:
                     return throw new NotImplementedException();
                  */
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to String", Type));
                 }
             }
         }
@@ -123,28 +130,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return (byte)_primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return (byte)_primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return (byte)_primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return (byte)_primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (byte)_primitives.Double;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (byte)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Byte.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Byte", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Byte", Type));
                 }
             }
         }
@@ -153,28 +158,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return (short)_primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return (short)_primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return (short)_primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (short)_primitives.Double;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (short)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Int16.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int16", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int16", Type));
                 }
             }
         }
@@ -183,28 +186,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return (int) _primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return (int) _primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (int) _primitives.Double;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (int)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Int32.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int32", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int32", Type));
                 }
             }
         }
@@ -213,28 +214,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return (long)_primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (long)_primitives.Double;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (long)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Int64.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
                 }
             }
         }
@@ -243,28 +242,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return _primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (float)_primitives.Double;
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (float)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Single.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
                 }
             }
         }
@@ -273,28 +270,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return _primitives.Double;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return _primitives.Single;
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return (double)_primitives.Decimal;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Double.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
                 }
             }
         }
@@ -303,28 +298,26 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return _primitives.Decimal;
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return (decimal)_primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return (decimal)_primitives.Double;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return Decimal.Parse(_string);
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
                 }
             }
         }
@@ -333,14 +326,12 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Boolean:
+                    case StorageType.Boolean:
                         return _primitives.Boolean;
-                    case TypeCode.DBNull:
-                        throw new NotImplementedException("Which exception?");
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to bool", _type));
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to bool", Type));
                 }
             }
         }
@@ -349,36 +340,38 @@ namespace Npgsql
         {
             get
             {
-                switch (_type)
+                switch (Type)
                 {
-                    case TypeCode.Object:
+                    case StorageType.Object:
                         return _object;
-                    case TypeCode.DBNull:
+                    case StorageType.Null:
                         return null;
-                    case TypeCode.String:
+                    case StorageType.String:
                         return _string;
-                    case TypeCode.Boolean:
+                    case StorageType.Boolean:
                         return _primitives.Boolean;
-                    case TypeCode.Byte:
+                    case StorageType.Byte:
                         return _primitives.Byte;
-                    case TypeCode.Int16:
+                    case StorageType.Int16:
                         return _primitives.Int16;
-                    case TypeCode.Int32:
+                    case StorageType.Int32:
                         return _primitives.Int32;
-                    case TypeCode.Int64:
+                    case StorageType.Int64:
                         return _primitives.Int64;
-                    case TypeCode.Single:
+                    case StorageType.Single:
                         return _primitives.Single;
-                    case TypeCode.Double:
+                    case StorageType.Double:
                         return _primitives.Double;
-                    case TypeCode.Decimal:
+                    case StorageType.Decimal:
                         return _primitives.Decimal;
                     /*
-                    case TypeCode.DateTime:
+                    case StorageType.DateTime:
                         break;
-                    case TypeCode.Char:
+                    case StorageType.Char:
                         return _primitives.Boolean;
                         */
+                    case StorageType.Binary:
+                        return _binary;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -389,7 +382,7 @@ namespace Npgsql
 
         internal bool IsNull
         {
-            get { return _type == TypeCode.DBNull; }
+            get { return Type == StorageType.Null; }
         }
 
         public override string ToString()
@@ -418,6 +411,22 @@ namespace Npgsql
             internal decimal Decimal;
         }
 
-        TypeCode _type;
+        internal StorageType Type { get; private set; }
+
+        internal enum StorageType
+        {
+            Null,
+            Object,
+            String,
+            Boolean,
+            Byte,
+            Int16,
+            Int32,
+            Int64,
+            Single,
+            Double,
+            Decimal,
+            Binary,
+        }
     }
 }

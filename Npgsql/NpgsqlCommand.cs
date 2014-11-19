@@ -503,6 +503,9 @@ namespace Npgsql
                     case BackEndMessageCode.RowDescription:
                         _preparedDescription = (RowDescriptionMessage)msg;
                         continue;
+                    case BackEndMessageCode.NoData:
+                        _preparedDescription = null;
+                        continue;
                     case BackEndMessageCode.ReadyForQuery:
                         goto AfterLoop;
                     default:

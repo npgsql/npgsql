@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -110,7 +111,7 @@ namespace Npgsql
             Position = absoluteOffset;
         }
 
-        #region Read
+        #region Read Simple
 
         internal byte ReadByte()
         {
@@ -184,12 +185,54 @@ namespace Npgsql
             }
         }
 
-        internal string ReadString(int len)
+        #endregion
+
+        /// <summary>
+        /// Note that unlike the primitive readers, this reader can read any length, looping internally
+        /// and reading directly from the underlying stream
+        /// </summary>
+        internal string ReadString(int byteCount)
         {
-            Debug.Assert(BytesLeft >= len);
-            var result = TextEncoding.GetString(_buf, Position, len);
-            Position += len;
-            return result;
+            if (byteCount <= Size)
+            {
+                Ensure(byteCount);
+                var result = TextEncoding.GetString(_buf, Position, byteCount);
+                Position += byteCount;
+                return result;
+            }
+
+            // Worst case: our buffer isn't big enough. For now, pessimistically allocate a char buffer
+            // that will hold the maximum number of characters for the column length
+            // TODO: Optimize
+            var maxChars = TextEncoding.GetMaxCharCount(byteCount);
+            var output = new char[maxChars];
+            try
+            {
+                var totalBytesRead = 0;
+                var totalCharsRead = 0;
+                var outputOffset = 0;
+                while (true)
+                {
+                    int bytesRead, charsRead;
+                    bool completed;
+                    var maxBytes = Math.Min(byteCount - totalBytesRead, BytesLeft);
+                    _textDecoder.Convert(_buf, Position, maxBytes, output, outputOffset, maxChars - totalCharsRead, false,
+                                         out bytesRead, out charsRead, out completed);
+                    Position += bytesRead;
+                    totalBytesRead += bytesRead;
+                    totalCharsRead += charsRead;
+                    if (totalBytesRead == byteCount) {
+                        return new string(output, 0, totalCharsRead);
+                    }
+                    outputOffset += charsRead;
+                    Clear();
+                    Ensure(1); // Read in more data
+                }
+            }
+            finally
+            {
+                _textDecoder.Reset();
+            }
         }
 
         internal string ReadNullTerminatedString()
@@ -206,7 +249,6 @@ namespace Npgsql
 
         /// <summary>
         /// </summary>
-        /// and reading directly from the underlying stream
         /// <param name="readAll">whether to loop internally until all bytes are read,
         /// or return after a single read to the underlying stream</param>
         internal int ReadBytes(byte[] output, int outputOffset, int len, bool readAll)
@@ -249,6 +291,7 @@ namespace Npgsql
             var totalRead = 0;
             while (true)
             {
+                // TODO: Use lookup tables as in FastConverter.cs
                 var bytesToProcess = Math.Min(encodedLen - totalRead, BytesLeft % 2 == 0 ? BytesLeft : BytesLeft - 1);
                 for (var i = 0; i < bytesToProcess; i += 2) {
                     output[outputOffset++] = (byte)((DecodeHex(_buf[Position++]) << 4) | DecodeHex(_buf[Position++]));
@@ -320,8 +363,6 @@ namespace Npgsql
         {
             ReadChars(_tempCharBuf, 0, charCount, byteCount, out bytesSkipped, out charsSkipped);
         }
-
-        #endregion
 
         internal void Skip(long len)
         {

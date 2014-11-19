@@ -120,6 +120,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\NoDataMessage.cs" />
     <Compile Include="Messages\ParameterDescriptionMessage.cs" />
     <Compile Include="Messages\CommandCompleteMessage.cs" />
     <Compile Include="Messages\DataRowMessageBase.cs" />

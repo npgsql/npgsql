@@ -6,7 +6,7 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class SingleHandler : TypeHandler
+    internal class SingleHandler : SimpleTypeHandler
     {
         static readonly string[] _pgNames = { "float4" };
         internal override string[] PgNames { get { return _pgNames; } }

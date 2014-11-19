@@ -13,24 +13,24 @@ namespace Npgsql.Messages
 {
     internal abstract class DataRowMessageBase : IServerMessage
     {
-        protected NpgsqlBufferedStream Buffer { get; private set; }
+        protected internal NpgsqlBufferedStream Buffer { get; private set; }
 
         /// <summary>
         /// The number of columns in the current row
         /// </summary>
-        protected int NumColumns;
+        internal int NumColumns;
 
         /// <summary>
         /// The index of the column that we're on, i.e. that has already been parsed, is
         /// is memory and can be retrieved. Initialized to -1
         /// </summary>
-        protected int Column;
+        internal int Column;
 
         /// <summary>
         /// For streaming types (e.g. bytea, text), holds the current byte position within the column.
         /// Does not include the length prefix.
         /// </summary>
-        protected int PosInColumn;
+        internal int PosInColumn;
 
         /// <summary>
         /// For streaming types (e.g. bytea, text), holds the current "decoded" position within the column.
@@ -38,35 +38,35 @@ namespace Npgsql.Messages
         /// (i.e. the 3rd decoded (content) byte in a hex text-encoded bytea will occupy the 7th and 8th
         /// actual bytes).
         /// </summary>
-        protected int DecodedPosInColumn;
+        internal int DecodedPosInColumn;
 
         /// <summary>
         /// For streaming types (e.g. bytea), holds the byte length of the column.
         /// Does not include the length prefix.
         /// </summary>
-        protected int ColumnLen;
+        internal int ColumnLen;
 
+        internal bool IsColumnNull { get { return ColumnLen == -1; } }
         /// <summary>
         /// For streaming types (e.g. bytea, text), holds the decoded length of the column.
         /// </summary>
-        protected int DecodedColumnLen;
+        internal int DecodedColumnLen;
 
-        ByteaTextFormat ByteaTextFormat;
+        internal ByteaTextFormat CurrentByteaTextFormat;
 
         /// <summary>
         /// Indicates whether a stream is currently open on a column. No read may occur until the stream is closed.
         /// </summary>
-        protected bool IsStreaming;
+        internal bool IsStreaming;
 
-        internal abstract NpgsqlValue Get(int ordinal);
+        internal abstract NpgsqlValue Get(int column);
 
         /// <summary>
         /// Places our position at the beginning of the given column, after the 4-byte length.
         /// The length is available in ColumnLen.
         /// </summary>
-        protected abstract void SeekToColumn(int column);
-        protected abstract void SeekInColumn(int posInColumn);
-        protected abstract void SeekInColumnText(int textPosInColumn);
+        internal abstract void SeekToColumn(int column);
+        internal abstract void SeekInColumn(int posInColumn);
 
         internal RowDescriptionMessage Description { get; set; }
         internal abstract void Consume();
@@ -78,128 +78,73 @@ namespace Npgsql.Messages
             Column = -1;    
         }
 
-        internal bool IsDBNull(int column)
-        {
-            CheckColumnIndex(column);
-            SeekToColumn(column);
-            return ColumnLen == -1;
-        }
-
-        #region Bytea
-
-        internal long GetBytes(int column, int decodedPosInColumn, byte[] output, int ouputOffset, int decodedLen)
+        internal void Read(int column, NpgsqlValue value)
         {
             CheckNotStreaming();
-            CheckColumnIndex(column);
-            CheckBytea(column);
 
             SeekToColumn(column);
-
-            if (ColumnLen == -1) {
-                // TODO: What is the actual required behavior here?
-                throw new Exception("null");
-            }
-
-            if (Description[column].IsBinaryFormat)
+            if (IsColumnNull)
             {
-                if (output == null) {
-                    return ColumnLen;
-                }
-
-                // In binary format the encoded position is the same as the byte position
-                var posInColumn = decodedPosInColumn;
-                var len = decodedLen;
-
-                SeekInColumn(posInColumn);
-
-                // Attempt to read beyond the end of the column
-                if (posInColumn + len > ColumnLen)
-                {
-                    // TODO: What is the actual required behavior here?
-                    len = ColumnLen - posInColumn;
-                }
-
-                Buffer.ReadBytes(output, ouputOffset, len, true);
-                PosInColumn += len;
-
-                return len;
+                value.SetToNull();
+                return;
             }
-            else
+            if (PosInColumn != 0)
             {
-                if (PosInColumn == 0) {
-                    ParseTextualByteaHeader();
-                }
-
-                if (ByteaTextFormat != ByteaTextFormat.Hex) {
-                    throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
-                }
-
-                if (output == null) {
-                    return DecodedColumnLen;
-                }
-
-                // Translate content position to the byte position: 2-byte header, 2 bytes per encoded byte
-                var posInColumn = 2 + decodedPosInColumn * 2;
-                SeekInColumn(posInColumn);
-                DecodedPosInColumn = decodedPosInColumn;
-
-                var len = decodedLen * 2;
-
-                // Attempt to read beyond the end of the column
-                if (decodedPosInColumn + decodedLen > DecodedColumnLen)
-                {
-                    // TODO: What is the actual required behavior here?
-                    throw new Exception("Attempt to read beyond end of column");
-                }
-
-                var read = Buffer.ReadBytesHex(output, ouputOffset, decodedLen, true);
-                Debug.Assert(read == decodedLen);
-                DecodedPosInColumn += decodedLen;
-                PosInColumn += len;
-
-                return decodedLen;
+                SeekInColumn(0);
             }
+
+            var fieldDescription = Description[column];
+            var handler = fieldDescription.Handler;
+            handler.Read(this, fieldDescription, value);
         }
 
-        void ParseTextualByteaHeader()
-        {
-            Buffer.Ensure(2);
-
-            // Must start with a backslash
-            if (Buffer.ReadByte() != (byte)'\\') {
-                throw new Exception("Unrecognized bytea text encoding");
-            }
-            if (Buffer.ReadByte() != (byte)'x') {
-                ByteaTextFormat = ByteaTextFormat.Escape;
-                throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
-            }
-            ByteaTextFormat = ByteaTextFormat.Hex;
-            PosInColumn = 2;
-            DecodedPosInColumn = 0;
-            DecodedColumnLen = (ColumnLen - 2) / 2;            
-        }
-
-        internal Stream GetStream(int column)
+        internal long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             CheckNotStreaming();
-            CheckColumnIndex(column);
-            CheckBytea(column);
-            SeekToColumn(column);
+
+            var fieldDescription = Description[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null)
+            {
+                throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
+            }
+
+            SeekToColumn(ordinal);
+
+            if (IsColumnNull)
+            {
+                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
+                // own SqlNullValueException
+                throw new InvalidCastException("The column contained NULL");
+            }
+
+            return handler.GetBytes(this, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
+        }
+
+        internal Stream GetStream(int ordinal)
+        {
+            CheckNotStreaming();
+
+            var fieldDescription = Description[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null)
+            {
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Name);
+            }
+
+            SeekToColumn(ordinal);
+            if (IsColumnNull)
+            {
+                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
+                // own SqlNullValueException
+                throw new InvalidCastException("The column contained NULL");
+            }
             SeekInColumn(0);
+
             IsStreaming = true;
             try
             {
-                if (Description[column].IsBinaryFormat)
-                {
-                    DecodedColumnLen = ColumnLen;
-                    DecodedPosInColumn = PosInColumn;
-                    return new ByteaBinaryStream(this);
-                }
-                else
-                {
-                    ParseTextualByteaHeader();
-                    return new ByteaHexStream(this);
-                }
+                return handler.GetStream(this, fieldDescription);
             }
             catch
             {
@@ -208,45 +153,48 @@ namespace Npgsql.Messages
             }
         }
 
-        #endregion
-
-        #region Text
-
-        internal long GetChars(int column, int textPosInColumn, char[] output, int outputOffset, int len)
+        internal long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
             CheckNotStreaming();
-            CheckColumnIndex(column);
-            CheckText(column);
 
-            SeekToColumn(column);
-
-            if (ColumnLen == -1)
+            var fieldDescription = Description[ordinal];
+            var handler = fieldDescription.Handler as StringHandler;
+            if (handler == null)
             {
-                // TODO: What is the actual required behavior here?
-                throw new Exception("null");
+                throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
+            }
+            SeekToColumn(ordinal);
+
+            if (IsColumnNull)
+            {
+                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
+                // own SqlNullValueException
+                throw new InvalidCastException("The column contained NULL");
             }
 
-            if (output == null) {
-                // TODO: In non-sequential mode, getting the length can be implemented by decoding the entire
-                // field - very inefficient. In sequential mode doing this prevents subsequent reading of the column.
-                throw new NotSupportedException("Cannot get length of a text field");
-            }
-
-            SeekInColumnText(textPosInColumn);
-            int bytesRead, charsRead;
-            Buffer.ReadChars(output, outputOffset, len, ColumnLen - PosInColumn, out bytesRead, out charsRead);
-            PosInColumn += bytesRead;
-            DecodedPosInColumn += charsRead;
-            return charsRead;
+            return handler.GetChars(this, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
         }
 
-        internal TextReader GetTextReader(int column)
+        internal TextReader GetTextReader(int ordinal)
         {
             CheckNotStreaming();
-            CheckColumnIndex(column);
-            CheckText(column);
-            SeekToColumn(column);
+
+            var fieldDescription = Description[ordinal];
+            var handler = fieldDescription.Handler as StringHandler;
+            if (handler == null)
+            {
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Name);
+            }
+
+            SeekToColumn(ordinal);
+            if (IsColumnNull)
+            {
+                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
+                // own SqlNullValueException
+                throw new InvalidCastException("The column contained NULL");
+            }
             SeekInColumn(0);
+
             IsStreaming = true;
             try
             {
@@ -259,17 +207,7 @@ namespace Npgsql.Messages
             }
         }
 
-        #endregion
-
         #region Checks
-
-        protected void CheckNotStreaming()
-        {
-            if (IsStreaming)
-            {
-                throw new InvalidOperationException("A stream is open on a column, close it first");
-            }
-        }
 
         protected void CheckColumnIndex(int column)
         {
@@ -278,132 +216,14 @@ namespace Npgsql.Messages
             }
         }
 
-        protected void CheckBytea(int column)
+        internal void CheckNotStreaming()
         {
-            var typeHandler = Description[column].Handler;
-            if (!(typeHandler is ByteaHandler))
+            if (IsStreaming)
             {
-                throw new InvalidCastException(String.Format("Column type must be bytea (was {0})", typeHandler.PgName));
-            }
-        }
-
-        protected void CheckText(int column)
-        {
-            var typeHandler = Description[column].Handler;
-            if (!(typeHandler is StringHandler))
-            {
-                throw new InvalidCastException(String.Format("Column type must be string (was {0})", typeHandler.PgName));
+                throw new InvalidOperationException("Column streaming is in progress, close the Stream or TextReader first.");
             }
         }
 
         #endregion
-
-        abstract class ByteaStream : Stream
-        {
-            protected readonly DataRowMessageBase Row;
-
-            protected ByteaStream(DataRowMessageBase row)
-            {
-                Row = row;
-            }
-
-            public override void Close()
-            {
-                Row.IsStreaming = false;
-            }
-
-            public override long Length
-            {
-                get { return Row.DecodedColumnLen; }
-            }
-
-            public override long Position
-            {
-                get { return Row.DecodedPosInColumn; }
-                set { throw new NotSupportedException(); }
-            }
-
-            public override bool CanRead { get { return true; } }
-            public override bool CanSeek { get { return false; } }
-            public override bool CanWrite { get { return false; } }
-
-            #region Not Supported
-
-            public override void Flush()
-            {
-                throw new NotSupportedException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotSupportedException();
-            }
-
-            #endregion
-        }
-
-        class ByteaBinaryStream : ByteaStream
-        {
-            public ByteaBinaryStream(DataRowMessageBase row) : base(row) {}
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                count = Math.Min(count, Row.ColumnLen - Row.PosInColumn);
-                var read = Row.Buffer.ReadBytes(buffer, offset, count, false);
-                Row.PosInColumn += read;
-                Row.DecodedPosInColumn += read;
-                return read;
-            }
-
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        class ByteaHexStream : ByteaStream
-        {
-            public ByteaHexStream(DataRowMessageBase row) : base(row) {}
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                count = Math.Min(count, Row.ColumnLen - Row.PosInColumn);
-                var decodedRead = Row.Buffer.ReadBytesHex(buffer, offset, count, false);
-                Row.DecodedPosInColumn += decodedRead;
-                Row.PosInColumn += decodedRead * 2;
-                return decodedRead;
-            }
-
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Indicates whether bytea text encoding uses the traditional escape format or the newer hex format.
-    /// http://www.postgresql.org/docs/current/static/datatype-binary.html
-    /// </summary>
-    enum ByteaTextFormat
-    {
-        /// <summary>
-        /// The newer hex format (the default since Postgresql 9.0)
-        /// </summary>
-        Hex,
-        /// <summary>
-        /// The traditional escape format
-        /// </summary>
-        Escape
     }
 }

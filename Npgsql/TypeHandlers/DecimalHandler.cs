@@ -7,7 +7,7 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class DecimalHandler : TypeHandler
+    internal class DecimalHandler : SimpleTypeHandler
     {
         static readonly string[] _pgNames = { "decimal", "numeric" };
         internal override string[] PgNames { get { return _pgNames; } }

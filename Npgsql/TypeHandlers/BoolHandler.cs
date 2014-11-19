@@ -6,7 +6,7 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class BoolHandler : TypeHandler
+    internal class BoolHandler : SimpleTypeHandler
     {
         static readonly string[] _pgNames = { "bool" };
         internal override string[] PgNames { get { return _pgNames; } }
