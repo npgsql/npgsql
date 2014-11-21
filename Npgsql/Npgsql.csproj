@@ -121,6 +121,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Messages\NoDataMessage.cs" />
+    <Compile Include="Messages\ParameterStatusMessage.cs" />
     <Compile Include="Messages\ParameterDescriptionMessage.cs" />
     <Compile Include="Messages\CommandCompleteMessage.cs" />
     <Compile Include="Messages\DataRowMessageBase.cs" />
@@ -222,6 +223,12 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="TypeHandlers\TimeStampTzHandler.cs" />
+    <Compile Include="TypeHandlers\TimeStampHandler.cs" />
+    <Compile Include="TypeHandlers\TimeTzHandler.cs" />
+    <Compile Include="TypeHandlers\TimeHandler.cs" />
+    <Compile Include="TypeHandlers\IntervalHandler.cs" />
+    <Compile Include="TypeHandlers\DateHandler.cs" />
     <Compile Include="TypeHandlers\DecimalHandler.cs" />
     <Compile Include="TypeHandlers\BoolHandler.cs" />
     <Compile Include="TypeHandlers\ByteaHandler.cs" />

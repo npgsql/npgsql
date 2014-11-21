@@ -10,9 +10,10 @@ namespace Npgsql.Messages
         public BackEndMessageCode Code { get { return BackEndMessageCode.ReadyForQuery; } }
 
         internal TransactionStatusIndicator TransactionStatusIndicator { get; private set; }
-        internal ReadyForQueryMessage(NpgsqlBufferedStream buf)
-        {
+
+        internal ReadyForQueryMessage Read(NpgsqlBufferedStream buf) {
             TransactionStatusIndicator = (TransactionStatusIndicator)buf.ReadByte();
+            return this;
         }
     }
 

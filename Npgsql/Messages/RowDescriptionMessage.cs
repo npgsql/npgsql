@@ -14,17 +14,24 @@ namespace Npgsql.Messages
     /// </summary>
     internal sealed class RowDescriptionMessage : IServerMessage
     {
-        List<FieldDescription> _fields;
-        Dictionary<string, int> _nameIndex;
+        readonly List<FieldDescription> _fields;
+        readonly Dictionary<string, int> _nameIndex;
 
-        public RowDescriptionMessage(NpgsqlBufferedStream buf, TypeHandlerRegistry typeHandlerRegistry)
+        internal RowDescriptionMessage()
         {
             _fields = new List<FieldDescription>();
             _nameIndex = new Dictionary<string, int>();
+        }
+
+        internal RowDescriptionMessage Read(NpgsqlBufferedStream buf, TypeHandlerRegistry typeHandlerRegistry)
+        {
+            _fields.Clear();
+            _nameIndex.Clear();
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
             {
+                // TODO: Recycle
                 var field = new FieldDescription {
                     Name = buf.ReadNullTerminatedString(),
                     TableOID = buf.ReadInt32(),
@@ -40,6 +47,7 @@ namespace Npgsql.Messages
                 _fields.Add(field);
                 _nameIndex[field.Name] = i;
             }
+            return this;
         }
 
         public FieldDescription this[int index]

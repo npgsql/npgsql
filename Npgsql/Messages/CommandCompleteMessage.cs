@@ -8,13 +8,14 @@ namespace Npgsql.Messages
 {
     internal class CommandCompleteMessage : IServerMessage
     {
-        private readonly int? _rowsAffected;
-        private readonly long? _lastInsertedOID;
+        private int? _rowsAffected;
+        private long? _lastInsertedOID;
 
-        static readonly ILog _log = LogManager.GetCurrentClassLogger();
-
-        public CommandCompleteMessage(NpgsqlBufferedStream buf, int len)
+        internal CommandCompleteMessage Read(NpgsqlBufferedStream buf, int len)
         {
+            _rowsAffected = null;
+            _lastInsertedOID = null;
+
             var tag = buf.ReadString(len-1);
             buf.Skip(1);   // Null terminator
             var tokens = tag.Split();
@@ -34,6 +35,7 @@ namespace Npgsql.Messages
                     }
                     break;
             }
+            return this;
         }
 
         public long? LastInsertedOID

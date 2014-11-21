@@ -516,9 +516,9 @@ namespace Npgsql
 
             if (parameterDescription != null)
             {
-                if (parameterDescription.TypeOIDs.Length != numInputParameters)
+                if (parameterDescription.TypeOIDs.Count != numInputParameters)
                 {
-                    throw new InvalidOperationException("Wrong number of parameters. Got " + numInputParameters + " but expected " + parameterDescription.TypeOIDs.Length + ".");
+                    throw new InvalidOperationException("Wrong number of parameters. Got " + numInputParameters + " but expected " + parameterDescription.TypeOIDs.Count + ".");
                 }
 
                 for (int i = 0, j = 0; j < numInputParameters; i++)

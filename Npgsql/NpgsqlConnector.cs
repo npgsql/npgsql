@@ -139,6 +139,16 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        #region Reusable Server Message Objects
+
+        readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
+        readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
+        readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
+        readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
+        readonly ParameterStatusMessage      _parameterStatusMessage      = new ParameterStatusMessage();
+
+        #endregion
+
         public NpgsqlConnector(NpgsqlConnection connection)
             : this(connection.CopyConnectionStringBuilder(), connection.Pooling)
         {}
@@ -807,28 +817,33 @@ namespace Npgsql
 
         internal IServerMessage ReadSingleMessage(bool sequentialRows=false)
         {
-            var buf = Buffer;
-
-            Buffer.Ensure(5);
-            var messageCode = (BackEndMessageCode) Buffer.ReadByte();
-            var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
-
-            if (len > Buffer.BytesLeft && !(messageCode == BackEndMessageCode.DataRow && sequentialRows))
+            while (true)
             {
-                // We didn't read the entire message
-                if (len <= Buffer.Size) {
-                    buf.Ensure(len);
-                } else {
-                    // Worst case: our buffer isn't big enough. For now, allocate a new buffer
-                    // and copy into it
-                    // TODO: Optimize with a pool later
-                    buf = new NpgsqlBufferedStream(Stream, len, Buffer.TextEncoding);
-                    Buffer.CopyTo(buf);
-                    Buffer.Clear();
-                    buf.Ensure(len, false);
+                var buf = Buffer;
+
+                Buffer.Ensure(5);
+                var messageCode = (BackEndMessageCode) Buffer.ReadByte();
+                var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
+
+                if (len > Buffer.BytesLeft && !(messageCode == BackEndMessageCode.DataRow && sequentialRows))
+                {
+                    // We didn't read the entire message
+                    if (len <= Buffer.Size) {
+                        buf.Ensure(len);
+                    } else {
+                        // Worst case: our buffer isn't big enough. For now, allocate a new buffer
+                        // and copy into it
+                        // TODO: Optimize with a pool later
+                        buf = new NpgsqlBufferedStream(Stream, len, Buffer.TextEncoding);
+                        Buffer.CopyTo(buf);
+                        Buffer.Clear();
+                        buf.Ensure(len, false);
+                    }
                 }
+                var msg = ParseServerMessage(buf, messageCode, len, sequentialRows);
+                if (msg != null)
+                    return msg;
             }
-            return ParseServerMessage(buf, messageCode, len, sequentialRows);
         }
 
         IServerMessage ParseServerMessage(NpgsqlBufferedStream buf, BackEndMessageCode code, int len, bool sequentialRows = false)
@@ -836,23 +851,34 @@ namespace Npgsql
             switch (code)
             {
                 case BackEndMessageCode.RowDescription:
-                    return new RowDescriptionMessage(buf, TypeHandlerRegistry);
+                    return _rowDescriptionMessage.Read(buf, TypeHandlerRegistry);
                 case BackEndMessageCode.DataRow:
+                    // TODO: Recycle
                     return sequentialRows ? (DataRowMessageBase)new DataRowSequentialMessage(buf) : new DataRowMessage(buf);
                 case BackEndMessageCode.CompletedResponse:
-                    return new CommandCompleteMessage(buf, len);
+                    return _commandCompleteMessage.Read(buf, len);
                 case BackEndMessageCode.ReadyForQuery:
-                    return new ReadyForQueryMessage(buf);
+                    return _readyForQueryMessage.Read(buf);
                 case BackEndMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
                 case BackEndMessageCode.ParseComplete:
                     return ParseCompleteMessage.Instance;
                 case BackEndMessageCode.ParameterDescription:
-                    return new ParameterDescriptionMessage(buf);
+                    return _parameterDescriptionMessage.Read(buf);
                 case BackEndMessageCode.BindComplete:
                     return BindCompleteMessage.Instance;
                 case BackEndMessageCode.NoData:
                     return NoDataMessage.Instance;
+                case BackEndMessageCode.ParameterStatus:
+                    _parameterStatusMessage.Read(buf);
+                    return null;
+                case BackEndMessageCode.NoticeResponse:
+                    // TODO: Recycle
+                    FireNotice(new NpgsqlError(buf));
+                    return null;
+                case BackEndMessageCode.NotificationResponse:
+                    FireNotification(new NpgsqlNotificationEventArgs(buf));
+                    return null;
                 case BackEndMessageCode.CopyData:
                 case BackEndMessageCode.CopyDone:
                 case BackEndMessageCode.BackendKeyData:
@@ -862,12 +888,10 @@ namespace Npgsql
                 case BackEndMessageCode.CopyOutResponse:
                 case BackEndMessageCode.FunctionCallResponse:
                 case BackEndMessageCode.AuthenticationRequest:
-                case BackEndMessageCode.NoticeResponse:
-                case BackEndMessageCode.NotificationResponse:
-                case BackEndMessageCode.ParameterStatus:
                 case BackEndMessageCode.PortalSuspended:
                 case BackEndMessageCode.CloseComplete:
                 case BackEndMessageCode.IO_ERROR:
+                    Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
                 case BackEndMessageCode.ErrorResponse:
                     throw new NpgsqlException(buf);
@@ -1146,11 +1170,12 @@ namespace Npgsql
                     case BackEndMessageCode.NotificationResponse:
                         _log.Trace("Received NotificationResponse");
                         // Eat the length
+                        /*
                         Stream.ReadInt32();
                         FireNotification(new NpgsqlNotificationEventArgs(Stream, true));
                         if (IsNotificationThreadRunning) {
                             throw new Exception("Internal state error, notification thread is running");
-                        }
+                        }*/
                         continue;
 
                     case BackEndMessageCode.ParameterStatus:

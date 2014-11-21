@@ -46,6 +46,12 @@ namespace Npgsql.Messages
                     _cachedValues[column] = value;
                 }
             }
+
+            if (value.IsNull)
+            {
+                // TODO: Which exception
+                throw new InvalidCastException("Null value");
+            }
             return value;
         }
 

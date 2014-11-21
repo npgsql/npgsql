@@ -13,6 +13,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "text" };
         internal override string[] PgNames { get { return _pgNames; } }
         internal override bool SupportsBinaryRead { get { return true; } }
+        internal override Type FieldType { get { return typeof(string); } }
 
         internal override void Read(DataRowMessageBase row, FieldDescription field, NpgsqlValue output)
         {

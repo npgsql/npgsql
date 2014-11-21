@@ -14,6 +14,7 @@ namespace Npgsql.TypeHandlers
     {
         static readonly string[] _pgNames = { "<unknown>" };
         internal override string[] PgNames { get { return _pgNames; } }
+        internal override Type FieldType { get { return typeof(string); } }
 
         internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
         {
