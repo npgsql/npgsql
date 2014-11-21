@@ -16,6 +16,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "bytea" };
         internal override string[] PgNames { get { return _pgNames; } }
         internal override bool SupportsBinaryRead { get { return true; } }
+        internal override Type FieldType { get { return typeof(byte[]); } }
 
         public long GetBytes(DataRowMessageBase row, int dataOffset, byte[] output, int bufferOffset, int len, FieldDescription field)
         {

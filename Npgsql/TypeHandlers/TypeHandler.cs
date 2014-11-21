@@ -12,6 +12,8 @@ namespace Npgsql.TypeHandlers
         internal string PgName { get { return PgNames[0]; } }
         internal int Oid { get; set; }
         internal virtual bool SupportsBinaryRead { get { return false; } }
+        internal abstract Type FieldType { get; }
+        internal virtual Type ProviderSpecificFieldType { get { return FieldType; } }
 
         protected TypeHandler()
         {

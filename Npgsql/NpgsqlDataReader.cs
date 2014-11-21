@@ -355,25 +355,24 @@ namespace Npgsql
             throw new NotImplementedException();
         }
 
-        void CheckHasRow()
+        DataRowMessageBase CheckGetRow()
         {
             if (_row == null) {
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             }
+            return _row;
         }
 
         #region Value getters
 
         public override bool GetBoolean(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Boolean;
+            return CheckGetRow().Get(ordinal).Boolean;
         }
 
         public override byte GetByte(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Byte;
+            return CheckGetRow().Get(ordinal).Byte;
         }
 
         public override char GetChar(int ordinal)
@@ -388,49 +387,42 @@ namespace Npgsql
 
         public override short GetInt16(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Int16;
+            return CheckGetRow().Get(ordinal).Int16;
         }
 
         public override int GetInt32(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Int32;
+            return CheckGetRow().Get(ordinal).Int32;
         }
 
         public override long GetInt64(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Int64;
+            return CheckGetRow().Get(ordinal).Int64;
         }
 
         public override DateTime GetDateTime(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).DateTime;
         }
 
         public override string GetString(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).String;
+            return CheckGetRow().Get(ordinal).String;
         }
 
         public override decimal GetDecimal(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Decimal;
+            return CheckGetRow().Get(ordinal).Decimal;
         }
 
         public override double GetDouble(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Double;
+            return CheckGetRow().Get(ordinal).Double;
         }
 
         public override float GetFloat(int ordinal)
         {
-            CheckHasRow();
-            return _row.Get(ordinal).Float;
+            return CheckGetRow().Get(ordinal).Float;
         }
 
         public override int GetValues(object[] values)
@@ -440,11 +432,7 @@ namespace Npgsql
 
         public override object this[int ordinal]
         {
-            get
-            {
-                CheckHasRow();
-                return _row.Get(ordinal).Object;
-            }
+            get { return GetValue(ordinal); }
         }
 
 #if OLD
@@ -505,9 +493,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
             }
 
-            CheckHasRow();
-
-            return _row.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
+            return CheckGetRow().GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
         }
 
 #if NET45
@@ -516,8 +502,7 @@ namespace Npgsql
         public Stream GetStream(int ordinal)
 #endif
         {
-            CheckHasRow();
-            return _row.GetStream(ordinal);
+            return CheckGetRow().GetStream(ordinal);
         }
 
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
@@ -528,8 +513,7 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
             }
 
-            CheckHasRow();
-            return _row.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
+            return CheckGetRow().GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
         }
 
 #if NET45
@@ -538,48 +522,51 @@ namespace Npgsql
         public TextReader GetTextReader(int ordinal)
 #endif
         {
-            CheckHasRow();
-            return _row.GetTextReader(ordinal);
+            return CheckGetRow().GetTextReader(ordinal);
         }
 
         #region Non-standard value getters
 
         public NpgsqlDate GetDate(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).Date;
         }
 
         public NpgsqlTime GetTime(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).Time;
         }
 
         public NpgsqlTimeTZ GetTimeTZ(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).TimeTZ;
         }
 
         public TimeSpan GetTimeSpan(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).TimeSpan;
+        }
+
+        public NpgsqlInterval GetInterval(int ordinal)
+        {
+            return CheckGetRow().Get(ordinal).Interval;
         }
 
         public NpgsqlTimeStamp GetTimeStamp(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).TimeStamp;
         }
 
         public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
         {
-            throw new NotImplementedException();
+            return CheckGetRow().Get(ordinal).TimeStampTz;
         }
 
         #endregion
 
         public override bool IsDBNull(int ordinal)
         {
-            CheckHasRow();
-            _row.SeekToColumn(ordinal);
+            CheckGetRow().SeekToColumn(ordinal);
             return _row.IsColumnNull;
         }
 
@@ -600,12 +587,31 @@ namespace Npgsql
 
         public override Type GetFieldType(int ordinal)
         {
-            throw new NotImplementedException();
+            CheckGetRow();
+            return _rowDescription[ordinal].Handler.FieldType;
+        }
+
+        public override Type GetProviderSpecificFieldType(int ordinal)
+        {
+            CheckGetRow();
+            return _rowDescription[ordinal].Handler.ProviderSpecificFieldType;
         }
 
         public override object GetValue(int ordinal)
         {
-            return this[ordinal];
+            // TODO: Contract: ensure result type matches the handler's
+            return CheckGetRow().Get(ordinal).Value;
+        }
+
+        public override object GetProviderSpecificValue(int ordinal)
+        {
+            // TODO: Contract: ensure result type matches the handler's
+            return CheckGetRow().Get(ordinal).ProviderSpecificValue;
+        }
+
+        public override int GetProviderSpecificValues(object[] values)
+        {
+            throw new NotImplementedException();
         }
 
         public override IEnumerator GetEnumerator()

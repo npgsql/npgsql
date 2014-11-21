@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -82,6 +83,42 @@ namespace Npgsql
             Type = StorageType.Binary;
         }
 
+        internal void SetTo(NpgsqlDate value)
+        {
+            _primitives.Date = value;
+            Type = StorageType.Date;
+        }
+
+        internal void SetTo(NpgsqlTime value)
+        {
+            _primitives.Time = value;
+            Type = StorageType.Time;
+        }
+
+        internal void SetTo(NpgsqlTimeTZ value)
+        {
+            _primitives.TimeTz = value;
+            Type = StorageType.TimeTz;
+        }
+
+        internal void SetTo(NpgsqlTimeStamp value)
+        {
+            _primitives.TimeStamp = value;
+            Type = StorageType.TimeStamp;
+        }
+
+        internal void SetTo(NpgsqlTimeStampTZ value)
+        {
+            _primitives.TimeStampTz = value;
+            Type = StorageType.TimeStampTz;
+        }
+
+        internal void SetTo(NpgsqlInterval value)
+        {
+            _primitives.Interval = value;
+            Type = StorageType.Interval;
+        }
+
         #endregion
 
         #region Getters
@@ -114,12 +151,22 @@ namespace Npgsql
                         return _primitives.Double.ToString();
                     case StorageType.Decimal:
                         return _primitives.Decimal.ToString();
+                    case StorageType.Date:
+                        return _primitives.Date.ToString();
+                    case StorageType.Time:
+                        return _primitives.Time.ToString();
+                    case StorageType.TimeTz:
+                        return _primitives.TimeTz.ToString();
+                    case StorageType.TimeStamp:
+                        return _primitives.TimeStamp.ToString();
+                    case StorageType.TimeStampTz:
+                        return _primitives.TimeStampTz.ToString();
+                    case StorageType.Interval:
+                        return _primitives.Interval.ToString();
                     /*
-                case StorageType.DateTime:
-                    return throw new NotImplementedException();
-                case StorageType.Char:
-                    return throw new NotImplementedException();
-                 */
+            case StorageType.Char:
+                return throw new NotImplementedException();
+             */
                     default:
                         throw new InvalidCastException(String.Format("Can't cast database type {0} to String", Type));
                 }
@@ -336,7 +383,127 @@ namespace Npgsql
             }
         }
 
-        internal object Object
+        internal DateTime DateTime
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Date:
+                        return (DateTime)_primitives.Date;
+                    case StorageType.Time:
+                        return (DateTime)_primitives.Time;
+                    case StorageType.TimeTz:
+                        return (DateTime)_primitives.TimeTz;
+                    case StorageType.TimeStamp:
+                        return (DateTime)_primitives.TimeStamp;
+                    case StorageType.TimeStampTz:
+                        return ((DateTime)_primitives.TimeStampTz).ToLocalTime();
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to DateTime", Type));
+                }
+            }
+        }
+
+        internal NpgsqlDate Date
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Date:
+                        return _primitives.Date;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to date", Type));
+                }
+            }
+        }
+
+        internal NpgsqlTime Time
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Time:
+                        return _primitives.Time;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to time", Type));
+                }
+            }
+        }
+
+        internal NpgsqlTimeTZ TimeTZ
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.TimeTz:
+                        return _primitives.TimeTz;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timetz", Type));
+                }
+            }
+        }
+
+        internal NpgsqlTimeStamp TimeStamp
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.TimeStamp:
+                        return _primitives.TimeStamp;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timestamp", Type));
+                }
+            }
+        }
+
+        internal NpgsqlTimeStampTZ TimeStampTz
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.TimeStampTz:
+                        return _primitives.TimeStampTz;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timestamptz", Type));
+                }
+            }
+        }
+
+        internal NpgsqlInterval Interval
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Interval:
+                        return _primitives.Interval;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to interval", Type));
+                }
+            }
+        }
+
+        internal TimeSpan TimeSpan
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Interval:
+                        return (TimeSpan)_primitives.Interval;
+                    default:
+                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timespan", Type));
+                }
+            }
+        }
+
+        internal object Value
         {
             get
             {
@@ -364,9 +531,15 @@ namespace Npgsql
                         return _primitives.Double;
                     case StorageType.Decimal:
                         return _primitives.Decimal;
+                    case StorageType.Date:
+                    case StorageType.Time:
+                    case StorageType.TimeTz:
+                    case StorageType.TimeStamp:
+                    case StorageType.TimeStampTz:
+                        return DateTime;
+                    case StorageType.Interval:
+                        return (TimeSpan)_primitives.Interval;
                     /*
-                    case StorageType.DateTime:
-                        break;
                     case StorageType.Char:
                         return _primitives.Boolean;
                         */
@@ -374,6 +547,30 @@ namespace Npgsql
                         return _binary;
                     default:
                         throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        internal object ProviderSpecificValue
+        {
+            get
+            {
+                switch (Type)
+                {
+                    case StorageType.Date:
+                        return _primitives.Date;
+                    case StorageType.Time:
+                        return _primitives.Time;
+                    case StorageType.TimeTz:
+                        return _primitives.TimeTz;
+                    case StorageType.TimeStamp:
+                        return _primitives.TimeStamp;
+                    case StorageType.TimeStampTz:
+                        return _primitives.TimeStampTz;
+                    case StorageType.Interval:
+                        return _primitives.Interval;
+                    default:
+                        return Value;
                 }
             }
         }
@@ -387,7 +584,7 @@ namespace Npgsql
 
         public override string ToString()
         {
-            return Object.ToString();
+            return Value.ToString();
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -409,6 +606,18 @@ namespace Npgsql
             internal double Double;
             [FieldOffset(0)]
             internal decimal Decimal;
+            [FieldOffset(0)]
+            internal NpgsqlDate Date;
+            [FieldOffset(0)]
+            internal NpgsqlTime Time;
+            [FieldOffset(0)]
+            internal NpgsqlTimeTZ TimeTz;
+            [FieldOffset(0)]
+            internal NpgsqlTimeStamp TimeStamp;
+            [FieldOffset(0)]
+            internal NpgsqlTimeStampTZ TimeStampTz;
+            [FieldOffset(0)]
+            internal NpgsqlInterval Interval;
         }
 
         internal StorageType Type { get; private set; }
@@ -426,6 +635,12 @@ namespace Npgsql
             Single,
             Double,
             Decimal,
+            Date,
+            Time,
+            TimeTz,
+            TimeStamp,
+            TimeStampTz,
+            Interval,
             Binary,
         }
     }

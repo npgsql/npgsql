@@ -22,6 +22,12 @@ namespace Npgsql.Messages
         internal override NpgsqlValue Get(int column)
         {
             Read(column, _value);
+            // TODO: Duplication with DataRowMessage
+            if (_value.IsNull)
+            {
+                // TODO: Which exception
+                throw new InvalidCastException("Null value");
+            }
             return _value;
         }
 

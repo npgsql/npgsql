@@ -52,10 +52,10 @@ namespace NpgsqlTests
         [Test]
         public void RecordsAffected()
         {
-            var command = new NpgsqlCommand("insert into data (field_int4) values (7); insert into data (field_int4) values (8)", Conn);
-            using (var dr = command.ExecuteReader()) {
-                Assert.AreEqual(2, dr.RecordsAffected);
-            }
+            var command = new NpgsqlCommand("INSERT INTO data (field_int4) VALUES (7); INSERT INTO data (field_int4) VALUES (8)", Conn);
+            var dr = command.ExecuteReader();
+            dr.Close();
+            Assert.That(dr.RecordsAffected, Is.EqualTo(2));
         }
 
         [Test]

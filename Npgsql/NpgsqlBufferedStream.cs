@@ -241,7 +241,7 @@ namespace Npgsql
             for (i = Position; _buf[i] != 0; i++) {
                 Debug.Assert(i <= Position + BytesLeft);
             }
-            Debug.Assert(i > Position);
+            Debug.Assert(i >= Position);
             var result = TextEncoding.GetString(_buf, Position, i - Position);
             Position = i + 1;
             return result;

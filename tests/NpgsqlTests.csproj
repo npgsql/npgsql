@@ -172,6 +172,7 @@
     <Compile Include="AsyncTests.cs" />
     <Compile Include="ByteaTests.cs" />
     <Compile Include="CopyTests.cs" />
+    <Compile Include="DateTimeTests.cs" />
     <Compile Include="EntityFrameworkBasicTests.cs" />
     <Compile Include="EntityFrameworkMigrationTests.cs" />
     <Compile Include="FunctionTests.cs">
