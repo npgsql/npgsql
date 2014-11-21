@@ -115,6 +115,13 @@ namespace Npgsql
             get { return new NpgsqlReadOnlyDictionary<string, NpgsqlParameterStatus>(_serverParameters); }
         }
 
+        /// <summary>
+        /// Commands to be executed when the reader is done.
+        /// Current usage is for when a prepared command is disposed while its reader is still open; the
+        /// actual DEALLOCATE message must be deferred.
+        /// </summary>
+        List<string> _deferredCommands;
+
         // For IsValid test
         readonly RNGCryptoServiceProvider _rng = new RNGCryptoServiceProvider();
 
@@ -145,6 +152,7 @@ namespace Npgsql
             _planIndex = 0;
             _portalIndex = 0;
             _notificationThreadStopCount = 1;
+            _deferredCommands = new List<string>();
         }
 
         #region Configuration settings
@@ -191,8 +199,10 @@ namespace Npgsql
 
                 switch (value)
                 {
-                    case ConnectorState.Closed:
                     case ConnectorState.Ready:
+                        ExecuteDeferredCommands();
+                        goto case ConnectorState.Closed;
+                    case ConnectorState.Closed:
                     case ConnectorState.Broken:
                         if (CurrentReader != null) {
                             CurrentReader.Command.State = CommandState.Idle;
@@ -1876,6 +1886,38 @@ namespace Npgsql
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Executes the command immediately if the connector is ready, otherwise schedules the command for
+        /// execution at the earliest possible convenience.
+        /// </summary>
+        /// <param name="cmd"></param>
+        internal void ExecuteOrDefer(string cmd)
+        {
+            if (State == ConnectorState.Ready) {
+                ExecuteBlind(cmd);
+            } else {
+                _deferredCommands.Add(cmd);
+            }
+        }
+
+        internal void ExecuteDeferredCommands()
+        {
+            if (!_deferredCommands.Any()) { return; }
+
+            // TODO: Not optimal, but with the current state implementation ExecuteBlind() below sets the state
+            // back to Ready, which recursively attempts to... execute deferred commands
+            var deferredCommands = _deferredCommands.ToArray();
+            _deferredCommands.Clear();
+            foreach (var cmd in deferredCommands)
+            {
+                try {
+                    ExecuteBlind(cmd);
+                } catch (Exception e) {
+                    _log.Error(String.Format("Error executing deferred command {0}", cmd), e);
+                }
+            }
         }
 
         // Unused, can be deleted?

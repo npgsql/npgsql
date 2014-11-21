@@ -1805,8 +1805,10 @@ namespace Npgsql
                 // We can implement a queue-based solution that will perform cleanup during the next possible
                 // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
                 // etc.).
-                if (_prepared == PrepareStatus.Prepared)
-                    _connector.ExecuteBlind("DEALLOCATE " + _planName);
+
+                if (_prepared == PrepareStatus.Prepared) {
+                    _connector.ExecuteOrDefer("DEALLOCATE " + _planName);
+                }
             }
             Transaction = null;
             Connection = null;
