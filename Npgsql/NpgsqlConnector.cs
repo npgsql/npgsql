@@ -889,7 +889,7 @@ namespace Npgsql
             {
                 Buffer.Ensure(5);
                 var messageCode = (BackEndMessageCode)Buffer.ReadByte();
-                if (stopAt.Contains(messageCode)) {
+                if (stopAt.Contains(messageCode) || messageCode == BackEndMessageCode.ErrorResponse) {
                     Buffer.Seek(-1, SeekOrigin.Current);
                     return ReadSingleMessage();
                 }
