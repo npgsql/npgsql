@@ -223,6 +223,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampTzHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampHandler.cs" />
     <Compile Include="TypeHandlers\TimeTzHandler.cs" />
