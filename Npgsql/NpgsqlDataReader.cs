@@ -203,16 +203,25 @@ namespace Npgsql
                 return false;
             }
 
-            msg = ReadMessage();
-            if (msg is ReadyForQueryMessage) {
-                State = ReaderState.Consumed;
-                return false;
+            while (true)
+            {
+                msg = ReadMessage();
+                switch (msg.Code)
+                {
+                    case BackEndMessageCode.CompletedResponse:
+                        // Another completion in a multi-query, process to get affected records and read again
+                        ProcessMessage(msg);
+                        continue;
+                    case BackEndMessageCode.ReadyForQuery:
+                        State = ReaderState.Consumed;
+                        return false;
+                    case BackEndMessageCode.RowDescription:
+                        _rowDescription = (RowDescriptionMessage)msg;
+                        _hasRows = null;
+                        State = ReaderState.InResult;
+                        return true;
+                }
             }
-            Debug.Assert(msg is RowDescriptionMessage);
-            _rowDescription = (RowDescriptionMessage)msg;
-            _hasRows = null;
-            State = ReaderState.InResult;
-            return true;
         }
 
         #endregion
@@ -361,6 +370,13 @@ namespace Npgsql
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             }
             return _row;
+        }
+
+        void CheckHasDescription()
+        {
+            if (_rowDescription == null) {
+                throw new InvalidOperationException("No row information is available");
+            }
         }
 
         #region Value getters
@@ -572,28 +588,30 @@ namespace Npgsql
 
         public override object this[string name]
         {
-            get { throw new NotImplementedException(); }
+            get { return GetValue(GetOrdinal(name)); }
         }
 
         public override int GetOrdinal(string name)
         {
-            throw new NotImplementedException();
+            CheckHasDescription();
+            return _rowDescription.GetFieldIndex(name);
         }
 
         public override string GetDataTypeName(int ordinal)
         {
-            throw new NotImplementedException();
+            CheckHasDescription();
+            return _rowDescription[ordinal].Name;
         }
 
         public override Type GetFieldType(int ordinal)
         {
-            CheckGetRow();
+            CheckHasDescription();
             return _rowDescription[ordinal].Handler.FieldType;
         }
 
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
-            CheckGetRow();
+            CheckHasDescription();
             return _rowDescription[ordinal].Handler.ProviderSpecificFieldType;
         }
 
