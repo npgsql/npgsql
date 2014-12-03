@@ -994,15 +994,17 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void HasRowsGetValue()
+        public void HasRows()
         {
-            var command = new NpgsqlCommand("select 1", Conn);
+            var command = new NpgsqlCommand("SELECT 1; SELECT * FROM data WHERE field_text='does_not_exist'", Conn);
             using (var dr = command.ExecuteReader())
             {
-                Assert.IsTrue(dr.HasRows);
-                Assert.IsTrue(dr.Read());
-                Assert.IsTrue(dr.HasRows);
-                Assert.AreEqual(1, dr.GetValue(0));
+                Assert.That(dr.HasRows, Is.True);
+                Assert.That(dr.Read(),  Is.True);
+                Assert.That(dr.HasRows, Is.True);
+                Assert.That(dr.Read(),  Is.False);
+                dr.NextResult();
+                Assert.That(dr.HasRows, Is.False);
             }
         }
 
