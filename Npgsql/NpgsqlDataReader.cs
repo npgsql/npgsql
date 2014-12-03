@@ -151,7 +151,7 @@ namespace Npgsql
                     }
                     _rowDescription = null;
                     State = ReaderState.BetweenResults;
-                    return ReadResult.ReadAgain;
+                    return ReadResult.RowNotRead;
 
                 case BackEndMessageCode.ReadyForQuery:
                     State = ReaderState.Consumed;
@@ -195,6 +195,7 @@ namespace Npgsql
             }
 
             Debug.Assert(State == ReaderState.BetweenResults);
+            _hasRows = null;
 
             IServerMessage msg;
             if ((_behavior & CommandBehavior.SingleResult) != 0)
