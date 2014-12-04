@@ -655,6 +655,11 @@ namespace Npgsql
             get { return direction == ParameterDirection.InputOutput || direction == ParameterDirection.Input; }
         }
 
+        internal bool IsOutputDirection
+        {
+            get { return direction == ParameterDirection.InputOutput || direction == ParameterDirection.Output; }
+        }
+
         /// <summary>
         /// Creates a new <see cref="NpgsqlParameter">NpgsqlParameter</see> that
         /// is a copy of the current instance.

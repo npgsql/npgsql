@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -114,6 +115,8 @@ namespace Npgsql
 
         ReadResult ProcessMessage(IServerMessage msg)
         {
+            Contract.Requires(msg != null);
+
             switch (msg.Code)
             {
                 case BackEndMessageCode.RowDescription:
@@ -124,11 +127,15 @@ namespace Npgsql
                     if (_rowDescription == null) {
                         throw new Exception("Got DataRow but have no RowDescription");
                     }
+                    _connector.State = ConnectorState.Fetching;
                     _row = (DataRowMessageBase)msg;
+                    Contract.Assert(_rowDescription != null);
                     _row.Description = _rowDescription;
+                    if (!_readOneRow && Command.CommandType == CommandType.StoredProcedure) {
+                        PopulateOutputParameters();
+                    }
                     _readOneRow = true;
                     _hasRows = true;
-                    _connector.State = ConnectorState.Fetching;
                     return ReadResult.RowRead;
 
                 case BackEndMessageCode.CompletedResponse:
@@ -171,14 +178,22 @@ namespace Npgsql
 
         public override bool NextResult()
         {
+            Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
+
+            if (!_readOneRow && Command.CommandType == CommandType.StoredProcedure && Command.Parameters.Any(p => p.IsOutputDirection))
+            {
+                // We have a stored procedure with output params that haven't yet been populated, read the first data row
+                Read();
+            }
+
             switch (State)
             {
                 case ReaderState.InResult:
-                    if (_row != null)
-                    {
+                    if (_row != null) {
                         _row.Consume();
                         _row = null;
                     }
+
                     // TODO: Duplication with SingleResult handling above
                     var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
                     ProcessMessage(completedMsg);
@@ -194,7 +209,7 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            Debug.Assert(State == ReaderState.BetweenResults);
+            Contract.Assert(State == ReaderState.BetweenResults);
             _hasRows = null;
 
             IServerMessage msg;
@@ -234,7 +249,15 @@ namespace Npgsql
                 _pendingMessage = null;
                 return msg;
             }
-            return _connector.ReadSingleMessage((_behavior & CommandBehavior.SequentialAccess) != 0);
+            // The first row in a stored procedure command that has output parameters needs to be traversed twice -
+            // once for populating the output parameters and once for the actual result set traversal. So in this
+            // case we can't be sequential.
+            var sequential = (_behavior & CommandBehavior.SequentialAccess) != 0 && !(
+                !_readOneRow &&
+                Command.CommandType == CommandType.StoredProcedure &&
+                Command.Parameters.Any(p => p.IsOutputDirection)
+            );
+            return _connector.ReadSingleMessage(sequential);
         }
 
         IServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
@@ -363,6 +386,33 @@ namespace Npgsql
         public override DataTable GetSchemaTable()
         {
             throw new NotImplementedException();
+        }
+
+        void PopulateOutputParameters()
+        {
+            Contract.Requires(Command.CommandType == CommandType.StoredProcedure);
+            Contract.Requires(_row != null);
+            Contract.Requires(_rowDescription != null);
+
+            var pending = new Queue<NpgsqlParameter>();
+            var taken = new List<int>();
+            foreach (NpgsqlParameter p in Command.Parameters.Where(p => p.IsOutputDirection))
+            {
+                int idx;
+                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx)) {
+                    p.Value = _row.Get(idx).Value;
+                    taken.Add(idx);
+                } else {
+                    pending.Enqueue(p);
+                }
+            }
+            for (int i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
+            {
+                if (!taken.Contains(i))
+                {
+                    pending.Dequeue().Value = _row.Get(i).Value;
+                }
+            }
         }
 
         DataRowMessageBase CheckGetRow()
