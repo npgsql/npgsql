@@ -18,10 +18,10 @@ namespace Npgsql.Messages
         public DataRowMessage(NpgsqlBufferedStream buf) : base(buf)
         {
             // TODO: Recycle message objects rather than recreating for each row
-            var columnCount = buf.ReadInt16();
-            _columnOffsets = new List<int>(columnCount);
-            _cachedValues = new List<NpgsqlValue>(columnCount);
-            for (var i = 0; i < columnCount; i++)
+            NumColumns = buf.ReadInt16();
+            _columnOffsets = new List<int>(NumColumns);
+            _cachedValues = new List<NpgsqlValue>(NumColumns);
+            for (var i = 0; i < NumColumns; i++)
             {
                 _cachedValues.Add(null);
                 _columnOffsets.Add(buf.Position);

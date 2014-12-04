@@ -82,6 +82,15 @@ namespace Npgsql.Messages
             throw new KeyNotFoundException("Field not found in row: " + name);
         }
 
+        /// <summary>
+        /// Given a string name, returns the field's ordinal index in the row.
+        /// </summary>
+        internal bool TryGetFieldIndex(string name, out int fieldIndex)
+        {
+            return _nameIndex.TryGetValue(name, out fieldIndex) ||
+                   _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
+        }
+
         public BackEndMessageCode Code { get { return BackEndMessageCode.RowDescription; } }
 
         #region Kana comparers

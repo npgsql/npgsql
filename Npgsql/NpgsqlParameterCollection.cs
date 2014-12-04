@@ -57,7 +57,7 @@ namespace Npgsql
     [Editor(typeof(NpgsqlParametersEditor), typeof(System.Drawing.Design.UITypeEditor))]
 #endif
 
-    public sealed class NpgsqlParameterCollection : DbParameterCollection
+    public sealed class NpgsqlParameterCollection : DbParameterCollection, IEnumerable<NpgsqlParameter>
     {
         private readonly List<NpgsqlParameter> InternalList = new List<NpgsqlParameter>();
 
@@ -609,13 +609,18 @@ namespace Npgsql
 
         #region IEnumerable Member
 
+        IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
+        {
+            return InternalList.GetEnumerator();
+        }
+
         /// <summary>
         /// Returns an enumerator that can iterate through the collection.
         /// </summary>
         /// <returns>An <see cref="System.Collections.IEnumerator">IEnumerator</see> that can be used to iterate through the collection.</returns>
         public override IEnumerator GetEnumerator()
         {
-            return this.InternalList.GetEnumerator();
+            return InternalList.GetEnumerator();
         }
 
         #endregion
