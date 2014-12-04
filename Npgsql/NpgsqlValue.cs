@@ -131,8 +131,6 @@ namespace Npgsql
                 {
                     case StorageType.String:
                         return _string;
-                    case StorageType.Null:
-                        return null;
                     case StorageType.Object:
                         return _object.ToString();
                     case StorageType.Boolean:
@@ -168,7 +166,7 @@ namespace Npgsql
                 return throw new NotImplementedException();
              */
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to String", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -196,7 +194,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Byte.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Byte", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -224,7 +222,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Int16.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int16", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -252,7 +250,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Int32.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int32", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -280,7 +278,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Int64.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -308,7 +306,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Single.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -336,7 +334,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Double.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -364,7 +362,7 @@ namespace Npgsql
                     case StorageType.String:
                         return Decimal.Parse(_string);
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to Int64", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -378,7 +376,7 @@ namespace Npgsql
                     case StorageType.Boolean:
                         return _primitives.Boolean;
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to bool", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -400,7 +398,7 @@ namespace Npgsql
                     case StorageType.TimeStampTz:
                         return ((DateTime)_primitives.TimeStampTz).ToLocalTime();
                     default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to DateTime", Type));
+                        throw CreateConversionException();
                 }
             }
         }
@@ -409,13 +407,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.Date:
-                        return _primitives.Date;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to date", Type));
-                }
+                if (Type == StorageType.Date)
+                    return _primitives.Date;
+                throw CreateConversionException();
             }
         }
 
@@ -423,13 +417,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.Time:
-                        return _primitives.Time;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to time", Type));
-                }
+                if (Type == StorageType.Time)
+                    return _primitives.Time;
+                throw CreateConversionException();
             }
         }
 
@@ -437,13 +427,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.TimeTz:
-                        return _primitives.TimeTz;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timetz", Type));
-                }
+                if (Type == StorageType.TimeTz)
+                    return _primitives.TimeTz;
+                throw CreateConversionException();
             }
         }
 
@@ -451,13 +437,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.TimeStamp:
-                        return _primitives.TimeStamp;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timestamp", Type));
-                }
+                if (Type == StorageType.TimeStamp)
+                    return _primitives.TimeStamp;
+                throw CreateConversionException();
             }
         }
 
@@ -465,13 +447,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.TimeStampTz:
-                        return _primitives.TimeStampTz;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timestamptz", Type));
-                }
+                if (Type == StorageType.TimeStampTz)
+                    return _primitives.TimeStampTz;
+                throw CreateConversionException();
             }
         }
 
@@ -479,13 +457,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.Interval:
-                        return _primitives.Interval;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to interval", Type));
-                }
+                if (Type == StorageType.Interval)
+                    return _primitives.Interval;
+                throw CreateConversionException();
             }
         }
 
@@ -493,13 +467,9 @@ namespace Npgsql
         {
             get
             {
-                switch (Type)
-                {
-                    case StorageType.Interval:
-                        return (TimeSpan)_primitives.Interval;
-                    default:
-                        throw new InvalidCastException(String.Format("Can't cast database type {0} to timespan", Type));
-                }
+                if (Type == StorageType.Interval)
+                    return (TimeSpan)_primitives.Interval;
+                throw CreateConversionException();
             }
         }
 
@@ -512,7 +482,7 @@ namespace Npgsql
                     case StorageType.Object:
                         return _object;
                     case StorageType.Null:
-                        return null;
+                        return DBNull.Value;
                     case StorageType.String:
                         return _string;
                     case StorageType.Boolean:
@@ -580,6 +550,14 @@ namespace Npgsql
         internal bool IsNull
         {
             get { return Type == StorageType.Null; }
+        }
+
+        Exception CreateConversionException()
+        {
+            // TODO: Is InvalidCastException the best choice for NULL?
+            throw Type == StorageType.Null
+                ? new InvalidCastException("Column contains NULL")
+                : new InvalidCastException(String.Format("Can't cast database type {0} to String", Type));
         }
 
         public override string ToString()

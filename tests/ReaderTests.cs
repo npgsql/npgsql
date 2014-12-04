@@ -33,9 +33,9 @@ using NUnit.Framework;
 namespace NpgsqlTests
 {
     [TestFixture]
-    public class DataReaderTests : TestBase
+    public class ReaderTests : TestBase
     {
-        public DataReaderTests(string backendVersion) : base(backendVersion) { }
+        public ReaderTests(string backendVersion) : base(backendVersion) { }
 
 /*        [Test]
         public void TestNew()
@@ -553,21 +553,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void IsDBNull()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text, field_int4) VALUES ('X', 1)");
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (2)");
-            var command = new NpgsqlCommand("SELECT field_text FROM data ORDER BY field_int4", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.IsFalse(dr.IsDBNull(0));
-                dr.Read();
-                Assert.IsTrue(dr.IsDBNull(0));
-            }
-        }
-
-        [Test]
         public void TypesNames()
         {
             var command = new NpgsqlCommand("SELECT field_int2, field_int4, field_int8, field_numeric, field_text, field_bool, field_timestamp FROM data WHERE 1 = 2;", Conn);
@@ -981,15 +966,19 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void GetValueWithNullFields()
+        public void Null()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand(@"SELECT field_int4 FROM data", Conn);
-            using (var dr = command.ExecuteReader())
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
+
+            using (var command = new NpgsqlCommand("SELECT field_text FROM data", Conn))
+            using (var reader = command.ExecuteReader())
             {
-                dr.Read();
-                var result = dr.IsDBNull(0);
-                Assert.IsTrue(result);
+                reader.Read();
+
+                Assert.That(reader.IsDBNull(0), Is.True);
+                Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
+                Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
+                Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
         }
 

@@ -185,7 +185,7 @@
     <Compile Include="CommandTests.cs" />
     <Compile Include="ConnectionTests.cs" />
     <Compile Include="DataAdapterTests.cs" />
-    <Compile Include="DataReaderTests.cs" />
+    <Compile Include="ReaderTests.cs" />
     <Compile Include="ExceptionTests.cs" />
     <Compile Include="SpeedTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">

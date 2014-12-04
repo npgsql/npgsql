@@ -23,6 +23,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
@@ -417,5 +418,15 @@ namespace NpgsqlTests
         }
 
         #endregion
+
+        static TestBase()
+        {
+            // See http://research.microsoft.com/en-us/projects/contracts/userdoc.pdf, Test Harness Setup
+            Contract.ContractFailed += (sender, e) =>
+            {
+                e.SetUnwind();
+                Assert.Fail(e.FailureKind.ToString() + ":" + e.Message);
+            };
+        }
     }
 }

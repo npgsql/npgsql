@@ -145,14 +145,17 @@ namespace NpgsqlTests
         [Test]
         public void ExecuteScalar()
         {
-            for (var i = 0; i < 6; i++)
-                ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
-
-            using (var command = new NpgsqlCommand("select count(*) from data", Conn))
+            using (var command = new NpgsqlCommand("SELECT field_text FROM data", Conn))
             {
-                Object result = command.ExecuteScalar();
-                Assert.AreEqual(6, result);
-                //reader.FieldCount
+                Assert.That(command.ExecuteScalar(), Is.Null);
+
+                ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
+                Assert.That(command.ExecuteScalar(), Is.EqualTo(DBNull.Value));
+
+                ExecuteNonQuery(@"TRUNCATE data");
+                for (var i = 0; i < 2; i++)
+                    ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
+                Assert.That(command.ExecuteScalar(), Is.EqualTo("X"));
             }
         }
 

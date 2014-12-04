@@ -47,11 +47,6 @@ namespace Npgsql.Messages
                 }
             }
 
-            if (value.IsNull)
-            {
-                // TODO: Which exception
-                throw new InvalidCastException("Null value");
-            }
             return value;
         }
 
