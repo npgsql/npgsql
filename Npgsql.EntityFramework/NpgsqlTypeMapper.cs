@@ -36,7 +36,7 @@ namespace Npgsql
 		private readonly Tuple<Type, RelationalTypeMapping>[] _simpleMappings =
 		{
 			Tuple.Create(typeof(int), new RelationalTypeMapping("int4", DbType.Int32)),
-			Tuple.Create(typeof(DateTime), new RelationalTypeMapping("timestamp", DbType.DateTime2)),
+			Tuple.Create(typeof(DateTime), new RelationalTypeMapping("timestamp", DbType.DateTime)),
 			Tuple.Create(typeof(Guid), new RelationalTypeMapping("uuid", DbType.Guid)),
 			Tuple.Create(typeof(bool), new RelationalTypeMapping("bool", DbType.Boolean)),
 			Tuple.Create(typeof(byte), new RelationalTypeMapping("int2", DbType.Byte)),
