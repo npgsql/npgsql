@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+#if !ENTITIES7
+using System.Data.Common;
 using System.Data.Entity.Infrastructure;
 
 namespace Npgsql
@@ -19,3 +20,4 @@ namespace Npgsql
         }
     }
 }
+#endif

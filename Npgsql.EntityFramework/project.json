@@ -1,0 +1,38 @@
+{
+	"version": "7.0.0-*",
+	"description": "PostgreSQL data store for Entity Framework.",
+	"compilationOptions": {
+		"warningsAsErrors": false,
+		"define": ["ENTITIES7"]
+	},
+	"dependencies": {
+		"EntityFramework.Migrations": "7.0.0-*",
+		"EntityFramework.Relational": "7.0.0-*",
+		"Npgsql": "2.2.3"
+	},
+	"code": [ "**\\*.cs"],
+	"frameworks": {
+		"net451": {
+			"frameworkAssemblies": {
+				"System.Core": "",
+        		"System.Data": "",
+        		"System.Configuration": "",
+        		"System.Xml": "",
+        		"System.Runtime.Serialization": "",
+        		"System.Transactions": "",
+        		"System.Xml.Linq": ""
+			}
+		},
+		"aspnet50": {
+			"frameworkAssemblies": {
+				"System.Core": "",
+        		"System.Data": "",
+        		"System.Configuration": "",
+        		"System.Xml": "",
+        		"System.Runtime.Serialization": "",
+        		"System.Transactions": "",
+        		"System.Xml.Linq": ""
+			}
+		}
+	}
+}

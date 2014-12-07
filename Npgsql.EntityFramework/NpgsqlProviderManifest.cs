@@ -1,8 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data.Common;
-#if ENTITIES6
+
+#if ENTITIES7
+using Microsoft.Data.Entity;
+#elif ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Metadata.Edm;
 #else
