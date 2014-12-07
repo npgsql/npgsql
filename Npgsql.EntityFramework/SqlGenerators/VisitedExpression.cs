@@ -1,3 +1,4 @@
+#if !ENTITIES7
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1208,3 +1209,4 @@ namespace Npgsql.SqlGenerators
         }
     }
 }
+#endif
