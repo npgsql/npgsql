@@ -33,18 +33,27 @@ namespace Npgsql
 {
     public class NpgsqlDataStoreServices : DataStoreServices
 	{
-		public NpgsqlDataStoreServices() {
+		private readonly NpgsqlDataStore _store;
+		private readonly NpgsqlDataStoreCreator _creator;
+		private readonly NpgsqlServerConnection _connection;
+		private readonly ModelBuilderFactory _modelBuilderFactory;
+		
+		public NpgsqlDataStoreServices(NpgsqlDataStore store, NpgsqlDataStoreCreator creator, NpgsqlServerConnection connection, ModelBuilderFactory modelBuilderFactory) {
+			_store = store;
+			_creator = creator;
+			_connection = connection;
+			_modelBuilderFactory = modelBuilderFactory;
 		}
 		
 		public override DataStoreConnection Connection {
 			get {
-				throw new NotImplementedException();
+				return _connection;
 			}
 		}
 
 		public override DataStoreCreator Creator {
 			get {
-				throw new NotImplementedException();
+				return _creator;
 			}
 		}
 
@@ -56,13 +65,13 @@ namespace Npgsql
 
 		public override IModelBuilderFactory ModelBuilderFactory {
 			get {
-				throw new NotImplementedException();
+				return _modelBuilderFactory;
 			}
 		}
 
 		public override DataStore Store {
 			get {
-				throw new NotImplementedException();
+				return _store;
 			}
 		}
 
