@@ -1,5 +1,5 @@
 #if ENTITIES7
-// NpgsqlDataStore.cs
+// NpgsqlDataStoreCreator.cs
 //
 // Author:
 //    Dylan Borg (borgdylan@hotmail.com)
@@ -23,48 +23,45 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using Microsoft.Data.Entity.ChangeTracking;
-using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Metadata;
-using Microsoft.Data.Entity.Query;
-using Microsoft.Framework.Logging;
-using Remotion.Linq;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.Storage;
 
 namespace Npgsql
 {
-    public class NpgsqlDataStore : DataStore
+    public class NpgsqlDataStoreCreator : DataStoreCreator
 	{
-		public NpgsqlDataStore (StateManager stateManager, DbContextService<IModel> model, EntityKeyFactorySource entityKeyFactorySource, EntityMaterializerSource entityMaterializerSource, ClrCollectionAccessorSource collectionAccessorSource, ClrPropertySetterSource propertySetterSource, ILoggerFactory loggerFactory) : base(stateManager, model, entityKeyFactorySource, entityMaterializerSource, collectionAccessorSource, propertySetterSource, loggerFactory) {
-		}
-
-		public NpgsqlDataStore() {
+		
+		public NpgsqlDataStoreCreator() {
 		}
 
 		
-		public override IAsyncEnumerable<TResult> AsyncQuery<TResult> (QueryModel queryModel, CancellationToken cancellationToken) {
-			throw new NotImplementedException();
-		}
-		
-		public override IEnumerable<TResult> Query<TResult> (QueryModel queryModel) {
+		public override bool EnsureCreated (IModel model) {
 			throw new NotImplementedException();
 		}
 
-		public override int SaveChanges (IReadOnlyList<StateEntry> stateEntries) {
-			throw new NotImplementedException();
-		}
-
-		public override Task<int> SaveChangesAsync ( IReadOnlyList<StateEntry> stateEntries, CancellationToken cancellationToken) {
+		public override Task<bool> EnsureCreatedAsync (IModel model, CancellationToken cancellationToken) {
 			throw new NotImplementedException();
 		}
 		
-		public virtual Task<int> SaveChangesAsync ( IReadOnlyList<StateEntry> stateEntries) {
-			return SaveChangesAsync(stateEntries, default(CancellationToken));
+		public virtual Task<bool> EnsureCreatedAsync (IModel model) {
+			return EnsureCreatedAsync(model, default(CancellationToken));
 		}
+
+		public override bool EnsureDeleted (IModel model) {
+			throw new NotImplementedException();
+		}
+
+		public override Task<bool> EnsureDeletedAsync (IModel model, CancellationToken cancellationToken) {
+			throw new NotImplementedException();
+		}
+		
+		public virtual Task<bool> EnsureDeletedAsync (IModel model) {
+			return EnsureDeletedAsync(model, default(CancellationToken));
+		}
+		
 	}
 }
 
