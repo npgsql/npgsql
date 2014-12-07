@@ -1,10 +1,10 @@
 #if ENTITIES7
-// NpgsqlMigrationSqlGenerator.cs
+// NpgsqlMigrationCoreGenerator.cs
 //
 // Author:
-//    David Karlaš (david.karlas@gmail.com)
+//    Dylan Borg (borgdylan@hotmail.com)
 //
-//    Copyright (C) 2014 David Karlaš
+//    Copyright (C) 2014 Dylan Borg
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,10 +34,10 @@ using Microsoft.Data.Entity.Migrations.Model;
 
 namespace Npgsql
 {
-    public class NpgsqlMigrationSqlGenerator : MigrationCodeGenerator
+    public class NpgsqlMigrationCodeGenerator : MigrationCodeGenerator
     {
 		
-		public NpgsqlMigrationSqlGenerator(ModelCodeGenerator modelCodeGenerator) : base(modelCodeGenerator) {
+		public NpgsqlMigrationCodeGenerator(ModelCodeGenerator modelCodeGenerator) : base(modelCodeGenerator) {
 		}
 		
 		public override void Generate ( AddPrimaryKeyOperation addPrimaryKeyOperation,  IndentedStringBuilder stringBuilder) {
