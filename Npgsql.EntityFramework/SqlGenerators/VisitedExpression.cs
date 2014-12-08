@@ -1,3 +1,4 @@
+#if !ENTITIES7
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -218,12 +219,8 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
-                    sqlText.Append("::uuid");
-                    break;
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
+                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
                     // Escape syntax is needed for strings with escape values.
                     // We don't check if there are escaped strings for performance reasons.
                     // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
@@ -1197,3 +1194,4 @@ namespace Npgsql.SqlGenerators
         }
     }
 }
+#endif
