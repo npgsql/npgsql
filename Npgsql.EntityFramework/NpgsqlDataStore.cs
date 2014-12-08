@@ -34,37 +34,18 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Entity.Storage;
+using Microsoft.Data.Entity.Relational;
 
 namespace Npgsql
 {
-    public class NpgsqlDataStore : DataStore
+    public class NpgsqlDataStore : RelationalDataStore
 	{
-		public NpgsqlDataStore (StateManager stateManager, DbContextService<IModel> model, EntityKeyFactorySource entityKeyFactorySource, EntityMaterializerSource entityMaterializerSource, ClrCollectionAccessorSource collectionAccessorSource, ClrPropertySetterSource propertySetterSource, ILoggerFactory loggerFactory) : base(stateManager, model, entityKeyFactorySource, entityMaterializerSource, collectionAccessorSource, propertySetterSource, loggerFactory) {
+		public NpgsqlDataStore (StateManager stateManager, DbContextService<IModel> model, EntityKeyFactorySource entityKeyFactorySource, EntityMaterializerSource entityMaterializerSource, ClrCollectionAccessorSource collectionAccessorSource, ClrPropertySetterSource propertySetterSource, NpgsqlServerConnection connection, NpgsqlBatchPreparer batchPreparer, NpgsqlBatchExecutor batchExecutor, ILoggerFactory loggerFactory) : base(stateManager, model, entityKeyFactorySource, entityMaterializerSource, collectionAccessorSource, propertySetterSource, connection, batchPreparer, batchExecutor, loggerFactory) {
 		}
 
 		public NpgsqlDataStore() {
 		}
 
-		
-		public override IAsyncEnumerable<TResult> AsyncQuery<TResult> (QueryModel queryModel, CancellationToken cancellationToken) {
-			throw new NotImplementedException();
-		}
-		
-		public override IEnumerable<TResult> Query<TResult> (QueryModel queryModel) {
-			throw new NotImplementedException();
-		}
-
-		public override int SaveChanges (IReadOnlyList<StateEntry> stateEntries) {
-			throw new NotImplementedException();
-		}
-
-		public override Task<int> SaveChangesAsync ( IReadOnlyList<StateEntry> stateEntries, CancellationToken cancellationToken) {
-			throw new NotImplementedException();
-		}
-		
-		public virtual Task<int> SaveChangesAsync ( IReadOnlyList<StateEntry> stateEntries) {
-			return SaveChangesAsync(stateEntries, default(CancellationToken));
-		}
 	}
 }
 
