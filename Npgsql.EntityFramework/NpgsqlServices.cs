@@ -174,3 +174,4 @@ namespace Npgsql
     }
 }
 #endif
+#endif
