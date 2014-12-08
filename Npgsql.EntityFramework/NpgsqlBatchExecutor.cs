@@ -23,9 +23,12 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-using System;
-using Microsoft.Data.Entity.Infrastructure;
+using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Metadata;
+using Microsoft.Data.Entity.Relational.Metadata;
 using Microsoft.Data.Entity.Relational.Update;
+using Microsoft.Data.Entity.Utilities;
+using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Framework.Logging;
 
 namespace Npgsql
@@ -36,7 +39,7 @@ namespace Npgsql
 		public NpgsqlBatchExecutor() {
 		}
 		
-		public NpgsqlBatchExecutor(SqlServerTypeMapper typeMapper, DbContextService<DbContext> context, ILoggerFactory loggerFactory) : base(typeMapper, context, loggerFactory) {
+		public NpgsqlBatchExecutor(NpgsqlTypeMapper typeMapper, DbContextService<DbContext> context, ILoggerFactory loggerFactory) : base(typeMapper, context, loggerFactory) {
 		}
 
 	}
