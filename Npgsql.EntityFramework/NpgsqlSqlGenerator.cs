@@ -60,11 +60,11 @@ namespace Npgsql
 		}
 		
 		public override string DelimitIdentifier(string identifier) {
-			throw new NotImplementedException();
+			return "\"" + identifier + "\"";
 		}
 		
 		public override string EscapeIdentifier(string identifier) {
-			throw new NotImplementedException();
+			return identifier.Replace("\"", "\"\"");
 		}
 		
 	}
