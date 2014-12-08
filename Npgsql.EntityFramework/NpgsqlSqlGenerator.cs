@@ -35,21 +35,21 @@ namespace Npgsql
 {
 	public class NpgsqlSqlGenerator : SqlGenerator {
 
-		public override void AppendInsertOperation(StringBuilder commandStringBuilder, ModificationCommand command) {
-			throw new NotImplementedException();
-		}
-		
-		public override void AppendUpdateOperation(StringBuilder commandStringBuilder, ModificationCommand command) {
-			throw new NotImplementedException();
-		}
-		
+		//public override void AppendInsertOperation(StringBuilder commandStringBuilder, ModificationCommand command) {
+		//	throw new NotImplementedException();
+		//}
+		//
+		//public override void AppendUpdateOperation(StringBuilder commandStringBuilder, ModificationCommand command) {
+		//	throw new NotImplementedException();
+		//}
+		//
 		public override void AppendSelectAffectedCountCommand(StringBuilder commandStringBuilder, SchemaQualifiedName schemaQualifiedName) {
 			throw new NotImplementedException();
 		}
 		
-		public override void AppendBatchHeader(StringBuilder commandStringBuilder) {
-			throw new NotImplementedException();
-		}
+		//public override void AppendBatchHeader(StringBuilder commandStringBuilder) {
+		//	throw new NotImplementedException();
+		//}
 		
 		protected override void AppendIdentityWhereCondition(StringBuilder commandStringBuilder, ColumnModification columnModification) {
 			throw new NotImplementedException();
@@ -59,13 +59,14 @@ namespace Npgsql
 			throw new NotImplementedException();
 		}
 		
-		public override string DelimitIdentifier(string identifier) {
-			return "\"" + identifier + "\"";
-		}
-		
-		public override string EscapeIdentifier(string identifier) {
-			return identifier.Replace("\"", "\"\"");
-		}
+		//NOTE: Do not uncomment since base class implements them in the same way
+		//public override string DelimitIdentifier(string identifier) {
+		//	return "\"" + identifier + "\"";
+		//}
+		//
+		//public override string EscapeIdentifier(string identifier) {
+		//	return identifier.Replace("\"", "\"\"");
+		//}
 		
 	}
 }
