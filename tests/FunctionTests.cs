@@ -126,13 +126,13 @@ namespace NpgsqlTests
                  FROM pg_proc INNER JOIN pg_namespace ns ON pg_proc.pronamespace = ns.oid
                  WHERE ns.nspname = 'public'";
 
-            var funcs = new List<Tuple<string, string>>();
+            var funcs = new Dictionary<string, string>();
             using (var cmd = new NpgsqlCommand(query, Conn))
             using (var rdr = cmd.ExecuteReader())
                 while (rdr.Read())
-                    funcs.Add(new Tuple<string, string>(rdr.GetString(0), rdr.GetString(1)));
+                    funcs[rdr.GetString(0)] = rdr.GetString(1);
             foreach (var func in funcs)
-                ExecuteNonQuery(String.Format(@"DROP FUNCTION ""{0}"" ({1})", func.Item1, func.Item2));
+                ExecuteNonQuery(String.Format(@"DROP FUNCTION ""{0}"" ({1})", func.Key, func.Value));
         }
         #endregion Setup / Teardown
     }
