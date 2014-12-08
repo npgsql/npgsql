@@ -49,8 +49,8 @@ namespace Npgsql
 			Tuple.Create(typeof(ulong), new RelationalTypeMapping("int8", DbType.UInt64))
 		};
 		
-		private readonly RelationalTypeMapping _nonKeyStringMapping = new RelationalTypeMapping("text", DbType.String);
-		private readonly RelationalTypeMapping _nonKeyByteArrayMapping = new RelationalTypeMapping("bytea", DbType.Binary);
+		private readonly RelationalTypeMapping _stringMapping = new RelationalTypeMapping("text", DbType.String);
+		private readonly RelationalTypeMapping _byteArrayMapping = new RelationalTypeMapping("bytea", DbType.Binary);
 		private readonly RelationalTypeMapping _rowVersionMapping = new RelationalSizedTypeMapping("rowversion", DbType.Binary, 8);
 		
 		public override RelationalTypeMapping GetTypeMapping(string specifiedType, string storageName, Type propertyType, bool isKey, bool isConcurrencyToken) {
@@ -60,13 +60,13 @@ namespace Npgsql
 				return mapping.Item2;
 			}
 			if (propertyType == typeof(string)) {
-				return _nonKeyStringMapping;
+				return _stringMapping;
 			}
 			if (propertyType == typeof(byte[])) {
 				if (isConcurrencyToken) {
 					return _rowVersionMapping;
 				}
-				return _nonKeyByteArrayMapping;
+				return _byteArrayMapping;
 			}
 			return base.GetTypeMapping(specifiedType, storageName, propertyType, isKey, isConcurrencyToken);
 		}
