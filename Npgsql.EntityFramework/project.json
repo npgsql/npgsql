@@ -20,7 +20,8 @@
         		"System.Xml": "",
         		"System.Runtime.Serialization": "",
         		"System.Transactions": "",
-        		"System.Xml.Linq": ""
+        		"System.Xml.Linq": "",
+				"System.Runtime": ""
 			}
 		},
 		"aspnet50": {
