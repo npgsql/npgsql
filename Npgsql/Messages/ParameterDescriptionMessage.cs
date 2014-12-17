@@ -6,7 +6,7 @@ using Common.Logging;
 
 namespace Npgsql.Messages
 {
-    internal class ParameterDescriptionMessage : IServerMessage
+    internal class ParameterDescriptionMessage : ServerMessage
     {
         internal List<int> TypeOIDs { get; private set; }
 
@@ -15,7 +15,7 @@ namespace Npgsql.Messages
             TypeOIDs = new List<int>();
         }
 
-        internal ParameterDescriptionMessage Read(NpgsqlBufferedStream buf)
+        internal ParameterDescriptionMessage Load(NpgsqlBuffer buf)
         {
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();
@@ -25,6 +25,6 @@ namespace Npgsql.Messages
             return this;
         }
 
-        public BackEndMessageCode Code { get { return BackEndMessageCode.ParameterDescription; } }
+        internal override BackEndMessageCode Code { get { return BackEndMessageCode.ParameterDescription; } }
     }
 }

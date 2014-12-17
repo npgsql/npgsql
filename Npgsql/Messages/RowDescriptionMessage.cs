@@ -13,7 +13,7 @@ namespace Npgsql.Messages
     /// This class represents a RowDescription message sent from
     /// the PostgreSQL.
     /// </summary>
-    internal sealed class RowDescriptionMessage : IServerMessage
+    internal sealed class RowDescriptionMessage : ServerMessage
     {
         readonly List<FieldDescription> _fields;
         readonly Dictionary<string, int> _nameIndex;
@@ -26,7 +26,7 @@ namespace Npgsql.Messages
             _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.INSTANCE);
         }
 
-        internal RowDescriptionMessage Read(NpgsqlBufferedStream buf, TypeHandlerRegistry typeHandlerRegistry)
+        internal RowDescriptionMessage Load(NpgsqlBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
         {
             _fields.Clear();
             _nameIndex.Clear();
@@ -91,7 +91,7 @@ namespace Npgsql.Messages
                    _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
         }
 
-        public BackEndMessageCode Code { get { return BackEndMessageCode.RowDescription; } }
+        internal override BackEndMessageCode Code { get { return BackEndMessageCode.RowDescription; } }
 
         #region Kana comparers
 

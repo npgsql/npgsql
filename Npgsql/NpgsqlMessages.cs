@@ -37,88 +37,9 @@ namespace Npgsql
     /// Marker interface which identifies a class which represents part of
     /// a response from the server.
     /// </summary>
-    internal interface IServerMessage
+    internal abstract class ServerMessage
     {
-        BackEndMessageCode Code { get; }
-    }
-
-    internal class ReadyForQueryMsg : IServerMessage
-    {
-        public BackEndMessageCode Code { get { return BackEndMessageCode.ReadyForQuery; } }
-        internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
-    }
-
-    internal class CopyInResponseMsg : IServerMessage
-    {
-        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyInResponse; } }
-        internal static readonly CopyInResponseMsg Instance = new CopyInResponseMsg();
-    }
-
-    internal class CopyOutResponseMsg : IServerMessage
-    {
-        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyOutResponse; } }
-        internal static readonly CopyOutResponseMsg Instance = new CopyOutResponseMsg();
-    }
-
-    internal class CopyDataMsg : IServerMessage
-    {
-        public BackEndMessageCode Code { get { return BackEndMessageCode.CopyData; } }
-        internal static readonly CopyDataMsg Instance = new CopyDataMsg();
-    }
-
-    /// <summary>
-    /// Represents a completed response message.
-    /// </summary>
-    internal class CompletedResponse : IServerMessage
-    {
-        private readonly int? _rowsAffected;
-        private readonly long? _lastInsertedOID;
-
-        public CompletedResponse(Stream stream)
-        {
-            string[] tokens = stream.ReadString().Split();
-            if (tokens.Length > 1)
-            {
-                int rowsAffected;
-                if (int.TryParse(tokens[tokens.Length - 1], out rowsAffected))
-                    _rowsAffected = rowsAffected;
-                else
-                    _rowsAffected = null;
-
-            }
-            _lastInsertedOID = (tokens.Length > 2 && tokens[0].Trim().ToUpperInvariant() == "INSERT")
-                                   ? long.Parse(tokens[1])
-                                   : (long?)null;
-        }
-
-        public long? LastInsertedOID
-        {
-            get { return _lastInsertedOID; }
-        }
-
-        public int? RowsAffected
-        {
-            get { return _rowsAffected; }
-        }
-
-        public BackEndMessageCode Code { get { return BackEndMessageCode.CompletedResponse; } }
-    }
-
-    internal class ParameterDescriptionResponse : IServerMessage
-    {
-        private readonly int[] _typeoids;
-
-        public ParameterDescriptionResponse(int[] typeoids)
-        {
-            _typeoids = typeoids;
-        }
-
-        public int[] TypeOIDs
-        {
-            get { return _typeoids; }
-        }
-
-        public BackEndMessageCode Code { get { return BackEndMessageCode.ParameterDescription; } }
+        internal abstract BackEndMessageCode Code { get; }
     }
 
     /// <summary>
@@ -189,19 +110,5 @@ namespace Npgsql
         CloseComplete = '3'
     }
 
-    internal enum AuthenticationRequestType
-    {
-        AuthenticationOk = 0,
-        AuthenticationKerberosV4 = 1,
-        AuthenticationKerberosV5 = 2,
-        AuthenticationClearTextPassword = 3,
-        AuthenticationCryptPassword = 4,
-        AuthenticationMD5Password = 5,
-        AuthenticationSCMCredential = 6,
-        AuthenticationGSS = 7,
-        AuthenticationGSSContinue = 8,
-        AuthenticationSSPI = 9
-    }
-    
     #pragma warning restore 1591
 }

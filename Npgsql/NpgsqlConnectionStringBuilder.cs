@@ -214,7 +214,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
             valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
-            valueDescriptions.Add(Keywords.BufferSize, new ValueDescription(NpgsqlBufferedStream.DefaultBufferSize));
+            valueDescriptions.Add(Keywords.BufferSize, new ValueDescription(NpgsqlBuffer.DefaultBufferSize));
             valueDescriptions.Add(Keywords.Pooling, new ValueDescription(true));
             valueDescriptions.Add(Keywords.ConnectionLifeTime, new ValueDescription(typeof(Int32)));
             valueDescriptions.Add(Keywords.MinPoolSize, new ValueDescription((Int32)1));
@@ -646,7 +646,7 @@ namespace Npgsql
         [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_BufferSize")]
         [NpgsqlConnectionStringDescription("ConnectionProperty_Description_BufferSize")]
         [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(NpgsqlBufferedStream.DefaultBufferSize)]
+        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
         public int BufferSize
         {
             get { return _bufferSize; }

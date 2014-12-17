@@ -1,22 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class TimeStampTzHandler : SimpleTypeHandler
+    internal class TimeStampTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStampTZ>, ITypeHandler<NpgsqlTimeStampTZ>
     {
         static readonly string[] _pgNames = { "timestamptz" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override Type FieldType { get { return typeof(DateTime); } }
-        internal override Type ProviderSpecificFieldType { get { return typeof(NpgsqlTimeStampTZ); } }
 
-        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(NpgsqlTimeStampTZ.Parse(buf.ReadString(len)));
+            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
+            return (DateTime)((ITypeHandler<NpgsqlTimeStampTZ>)this).Read(buf, fieldDescription, len);
+        }
+
+        NpgsqlTimeStampTZ ITypeHandler<NpgsqlTimeStampTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    return NpgsqlTimeStampTZ.Parse(buf.ReadString(len));
+                case FormatCode.Binary:
+                    throw new NotSupportedException();
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
         }
     }
 }

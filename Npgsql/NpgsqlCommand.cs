@@ -1596,7 +1596,7 @@ namespace Npgsql
             CheckConnectionState();
 
             // Block the notification thread before writing anything to the wire.
-            using (_connector.BlockNotificationThread())
+            //using (_connector.BlockNotificationThread())
             {
                 State = CommandState.InProgress;
 

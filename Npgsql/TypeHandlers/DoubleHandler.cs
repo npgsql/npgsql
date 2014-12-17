@@ -6,21 +6,23 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class DoubleHandler : SimpleTypeHandler
+    internal class DoubleHandler : TypeHandler<double>
     {
         static readonly string[] _pgNames = { "float8" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override bool SupportsBinaryRead { get { return true; } }
-        internal override Type FieldType { get { return typeof(double); } }
+        public override bool SupportsBinaryRead { get { return true; } }
 
-        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        public override double Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(Double.Parse(buf.ReadString(len)));
-        }
-
-        internal override void ReadBinary(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
-        {
-            output.SetTo(buf.ReadDouble());
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    return Double.Parse(buf.ReadString(len));
+                case FormatCode.Binary:
+                    return buf.ReadDouble();
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
         }
     }
 }

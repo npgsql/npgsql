@@ -15,67 +15,69 @@ namespace NpgsqlTests
         public DateTimeTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        public void Date()
+        public void ReadDate([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             // TODO: Decide on the DateTime kind (#346)
             var expectedDateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
             var expectedNpgsqlDate = new NpgsqlDate(expectedDateTime);
             ExecuteNonQuery("INSERT INTO data (field_date) VALUES ('2002-03-04')");
-            using (var cmd = new NpgsqlCommand("SELECT field_date FROM data", Conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
+            var cmd = new NpgsqlCommand("SELECT '2002-03-04'::DATE", Conn);
 
-                // Regular type (DateTime)
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (DateTime)));
-                Assert.That(reader.GetDateTime(0), Is.EqualTo(expectedDateTime));
-                Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(expectedDateTime));
-                Assert.That(reader[0], Is.EqualTo(expectedDateTime));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expectedDateTime));
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
 
-                // Provider-specific type (NpgsqlDate)
-                Assert.That(reader.GetDate(0), Is.EqualTo(expectedNpgsqlDate));
-                Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDate)));
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlDate));
-                // TODO: Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(expectedNpgsqlDate));
-            }
+            // Regular type (DateTime)
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (DateTime)));
+            Assert.That(reader.GetDateTime(0), Is.EqualTo(expectedDateTime));
+            Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(expectedDateTime));
+            Assert.That(reader[0], Is.EqualTo(expectedDateTime));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expectedDateTime));
+
+            // Provider-specific type (NpgsqlDate)
+            Assert.That(reader.GetDate(0), Is.EqualTo(expectedNpgsqlDate));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDate)));
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlDate));
+            Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(expectedNpgsqlDate));
+
+            cmd.Dispose();
         }
 
         [Test]
-        public void Time()
+        public void ReadTime([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             // TODO: Decide on the DateTime kind (#346)
             var expectedNpgsqlTime = new NpgsqlTime(10, 3, 45, 345000);
             var expectedDateTime = new DateTime(expectedNpgsqlTime.Ticks, DateTimeKind.Unspecified);
-            ExecuteNonQuery("INSERT INTO data(field_time) VALUES ('10:03:45.345')");
-            using (var cmd = new NpgsqlCommand("SELECT field_time FROM data", Conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
+            var cmd = new NpgsqlCommand("SELECT '10:03:45.345'::TIME", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
 
-                // Regular type (DateTime)
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime)));
-                Assert.That(reader.GetDateTime(0), Is.EqualTo(expectedDateTime));
-                Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(expectedDateTime));
-                Assert.That(reader[0], Is.EqualTo(expectedDateTime));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expectedDateTime));
+            // Regular type (DateTime)
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime)));
+            Assert.That(reader.GetDateTime(0), Is.EqualTo(expectedDateTime));
+            Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(expectedDateTime));
+            Assert.That(reader[0], Is.EqualTo(expectedDateTime));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expectedDateTime));
 
-                // Provider-specific type (NpgsqlTime)
-                Assert.That(reader.GetTime(0), Is.EqualTo(expectedNpgsqlTime));
-                Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTime)));
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlTime));
-                // TODO: Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(expectedNpgsqlTime));
-            }
+            // Provider-specific type (NpgsqlTime)
+            Assert.That(reader.GetTime(0), Is.EqualTo(expectedNpgsqlTime));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTime)));
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlTime));
+            Assert.That(reader.GetFieldValue<NpgsqlTime>(0), Is.EqualTo(expectedNpgsqlTime));
+
+            reader.Close();
+            cmd.Dispose();
         }
 
         [Test]
-        public void TimeTz()
+        public void ReadTimeTz()
         {
             // TODO: Decide on the DateTime kind (#346)
             var expectedNpgsqlTimeTz = new NpgsqlTimeTZ(13, 3, 45, 001000, new NpgsqlTimeZone(-5, 0));
             var expectedDateTime = new DateTime(expectedNpgsqlTimeTz.AtTimeZone(NpgsqlTimeZone.UTC).Ticks, DateTimeKind.Utc).ToLocalTime();
-            ExecuteNonQuery("INSERT INTO data (field_timetz) VALUES ('13:03:45.001-05')");
-            using (var cmd = new NpgsqlCommand("SELECT field_timetz FROM data", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT '13:03:45.001-05'::TIMETZ", Conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
@@ -91,7 +93,7 @@ namespace NpgsqlTests
                 Assert.That(reader.GetTimeTZ(0), Is.EqualTo(expectedNpgsqlTimeTz));
                 Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeTZ)));
                 Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlTimeTz));
-                // TODO: Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(expectedNpgsqlTime));
+                Assert.That(reader.GetFieldValue<NpgsqlTimeTZ>(0), Is.EqualTo(expectedNpgsqlTimeTz));
             }
         }
 
@@ -101,8 +103,7 @@ namespace NpgsqlTests
             // TODO: Decide on the DateTime kind (#346)
             var expectedNpgsqlTimeStamp = new NpgsqlTimeStamp(new NpgsqlDate(2002, 2, 2), new NpgsqlTime(9, 0, 23.345));
             var expectedDateTime = new DateTime(expectedNpgsqlTimeStamp.Ticks, DateTimeKind.Utc);
-            ExecuteNonQuery("INSERT INTO data (field_timestamp) VALUES ('2002-02-02 09:00:23.345')");
-            using (var cmd = new NpgsqlCommand("SELECT field_timestamp FROM data", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT '2002-02-02 09:00:23.345'::TIMESTAMP", Conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
@@ -118,7 +119,7 @@ namespace NpgsqlTests
                 Assert.That(reader.GetTimeStamp(0), Is.EqualTo(expectedNpgsqlTimeStamp));
                 Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeStamp)));
                 Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlTimeStamp));
-                // TODO: Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(expectedNpgsqlTime));
+                Assert.That(reader.GetFieldValue<NpgsqlTimeStamp>(0), Is.EqualTo(expectedNpgsqlTimeStamp));
             }
         }
 
@@ -127,8 +128,7 @@ namespace NpgsqlTests
         {
             var expectedNpgsqlInterval = new NpgsqlInterval(1, 2, 3, 4, 5);
             var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
-            ExecuteNonQuery("INSERT INTO data (field_interval) VALUES ('1 days 2 hours 3 minutes 4 seconds 5 milliseconds')");
-            using (var cmd = new NpgsqlCommand("SELECT field_interval FROM data", Conn))
+            using (var cmd = new NpgsqlCommand("SELECT '1 days 2 hours 3 minutes 4 seconds 5 milliseconds'::INTERVAL", Conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
@@ -144,7 +144,7 @@ namespace NpgsqlTests
                 Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
                 Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlInterval)));
                 Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
-                // TODO: Assert.That(reader.GetFieldValue<NpgsqlInterval>(0), Is.EqualTo(expectedNpgsqlInterval));
+                Assert.That(reader.GetFieldValue<NpgsqlInterval>(0), Is.EqualTo(expectedNpgsqlInterval));
             }
         }
 

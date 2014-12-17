@@ -6,27 +6,27 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class BoolHandler : SimpleTypeHandler
+    internal class BoolHandler : TypeHandler<bool>
     {
         static readonly string[] _pgNames = { "bool" };
         internal override string[] PgNames { get { return _pgNames; } }
-
-        internal override bool SupportsBinaryRead { get { return true; } }
-        internal override Type FieldType { get { return typeof (bool); } }
-
-        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
-        {
-            var b = buf.ReadByte();
-            output.SetTo(b == T || b == t);
-        }
-
-        internal override void ReadBinary(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
-        {
-            var b = buf.ReadByte();
-            output.SetTo(b != 0);
-        }
+        public override bool SupportsBinaryRead { get { return true; } }
 
         const byte T = (byte)'T';
         const byte t = (byte)'t';
+
+        public override bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    var b = buf.ReadByte();
+                    return b == T || b == t;
+                case FormatCode.Binary:
+                    return buf.ReadByte() != 0;
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
+        }
     }
 }

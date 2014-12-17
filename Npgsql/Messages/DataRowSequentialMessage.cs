@@ -1,39 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.Localization;
-using Npgsql.TypeHandlers;
 
 namespace Npgsql.Messages
 {
-    class DataRowSequentialMessage : DataRowMessageBase
+    class DataRowSequentialMessage : DataRowMessage
     {
-        readonly NpgsqlValue _value;
-
-        public DataRowSequentialMessage(NpgsqlBufferedStream buf) : base(buf)
+        internal override DataRowMessage Load(NpgsqlBuffer buf)
         {
             NumColumns = buf.ReadInt16();
-            _value = new NpgsqlValue();
+            Buffer = buf;
+            Column = -1;
+            return this;
         }
 
-        internal override NpgsqlValue Get(int column)
-        {
-            Read(column, _value);
-            return _value;
-        }
-
+        /// <summary>
+        /// Places our position at the beginning of the given column, after the 4-byte length.
+        /// The length is available in ColumnLen.
+        /// </summary>
         internal override void SeekToColumn(int column)
         {
             CheckColumnIndex(column);
 
-            if (column < Column) {
+            if (column < Column)
+            {
                 throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, Column));
             }
 
-            if (column == Column) {
+            if (column == Column)
+            {
                 return;
             }
 
@@ -49,7 +46,8 @@ namespace Npgsql.Messages
             {
                 Buffer.Ensure(4);
                 var len = Buffer.ReadInt32();
-                if (len != -1) {
+                if (len != -1)
+                {
                     Buffer.Skip(len);
                 }
             }
@@ -84,15 +82,16 @@ namespace Npgsql.Messages
         {
             // Skip to end of column if needed
             var remainingInColumn = (ColumnLen == -1 ? 0 : ColumnLen - PosInColumn);
-            if (remainingInColumn > 0) {
+            if (remainingInColumn > 0)
+            {
                 Buffer.Skip(remainingInColumn);
             }
 
-            while (Column < NumColumns - 1)
+            // Skip over the remaining columns in the row
+            for (; Column < NumColumns - 1; Column++)
             {
                 Buffer.Ensure(4);
                 Buffer.Skip(Buffer.ReadInt32());
-                Column++;
             }
         }
     }

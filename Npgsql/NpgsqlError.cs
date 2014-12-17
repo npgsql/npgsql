@@ -128,7 +128,7 @@ namespace Npgsql
         /// </summary>
         public String ErrorSql { get; private set; }
 
-        internal NpgsqlError(NpgsqlBufferedStream buf) : this()
+        internal NpgsqlError(NpgsqlBuffer buf) : this()
         {
             while (true)
             {

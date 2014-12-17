@@ -6,21 +6,29 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class SingleHandler : SimpleTypeHandler
+    internal class SingleHandler : TypeHandler<float>,
+        ITypeHandler<double>
     {
         static readonly string[] _pgNames = { "float4" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override bool SupportsBinaryRead { get { return true; } }
-        internal override Type FieldType { get { return typeof(float); } }
+        public override bool SupportsBinaryRead { get { return true; } }
 
-        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        public override float Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(Single.Parse(buf.ReadString(len)));
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    return Single.Parse(buf.ReadString(len));
+                case FormatCode.Binary:
+                    return buf.ReadSingle();
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
         }
 
-        internal override void ReadBinary(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        double ITypeHandler<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(buf.ReadSingle());
+            return Read(buf, fieldDescription, len);
         }
     }
 }

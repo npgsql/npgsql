@@ -293,20 +293,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\DataRowNonSequentialMessage.cs" />
     <Compile Include="Messages\NoDataMessage.cs" />
-    <Compile Include="Messages\ParameterStatusMessage.cs" />
     <Compile Include="Messages\ParameterDescriptionMessage.cs" />
     <Compile Include="Messages\CommandCompleteMessage.cs" />
-    <Compile Include="Messages\DataRowMessageBase.cs" />
-    <Compile Include="Messages\DataRowSequentialMessage.cs" />
     <Compile Include="Messages\DataRowMessage.cs" />
     <Compile Include="Messages\EmptyQueryMessage.cs" />
     <Compile Include="Messages\BindCompleteMessage.cs" />
+    <Compile Include="Messages\AuthenticationMessages.cs" />
     <Compile Include="Messages\ReadyForQueryMessage.cs" />
     <Compile Include="Messages\ParseCompleteMessage.cs" />
     <Compile Include="Messages\RowDescriptionMessage.cs" />
-    <Compile Include="NpgsqlBufferedStream.cs" />
+    <Compile Include="Messages\DataRowSequentialMessage.cs" />
+    <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
+    <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
     <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
@@ -329,7 +330,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>L10N.resx</DependentUpon>
     </Compile>
-    <Compile Include="NpgsqlValue.cs" />
+    <Compile Include="CachedValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
     <Compile Include="BackendEncoding.cs" />
@@ -337,12 +338,6 @@
     <Compile Include="HashAlgorithm.cs" />
     <Compile Include="MD5.cs" />
     <Compile Include="MD5CryptoServiceProvider.cs" />
-    <Compile Include="NpgsqlAsciiRow.cs" />
-    <Compile Include="NpgsqlAsciiRow.Async.cs">
-      <DependentUpon>NpgsqlAsciiRow.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
-    <Compile Include="NpgsqlBackEndKeyData.cs" />
     <Compile Include="NpgsqlCommand.cs" />
     <Compile Include="NpgsqlCommand.Async.cs">
       <DependentUpon>NpgsqlCommand.cs</DependentUpon>
@@ -376,12 +371,6 @@
     <Compile Include="NpgsqlParameterStatus.cs" />
     <Compile Include="NpgsqlPromotableSinglePhaseNotification.cs" />
     <Compile Include="NpgsqlResourceManager.cs" />
-    <Compile Include="NpgsqlRow.cs" />
-    <Compile Include="NpgsqlRow.Async.cs">
-      <DependentUpon>NpgsqlRow.cs</DependentUpon>
-      <Generator>AsyncGenerator</Generator>
-    </Compile>
-    <Compile Include="NpgsqlRowDescription.cs" />
     <Compile Include="NpgsqlSchema.cs" />
     <Compile Include="NpgsqlTransaction.cs" />
     <Compile Include="NpgsqlTransactionCallbacks.cs" />
@@ -396,6 +385,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampTzHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampHandler.cs" />
@@ -411,9 +401,9 @@
     <Compile Include="TypeHandlers\Int16Handler.cs" />
     <Compile Include="TypeHandlers\Int64Handler.cs" />
     <Compile Include="TypeHandlers\StringHandler.cs" />
-    <Compile Include="TypeHandlers\TypeHandler.cs" />
+    <Compile Include="TypeHandler.cs" />
     <Compile Include="TypeHandlers\Int32Handler.cs" />
-    <Compile Include="TypeHandlers\TypeHandlerRegistry.cs" />
+    <Compile Include="TypeHandlerRegistry.cs" />
     <Compile Include="TypeHandlers\UnknownTypeHandler.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -81,207 +81,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void GetBoolean()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_bool) VALUES (true)");
-            var command = new NpgsqlCommand(@"SELECT field_bool FROM DATA", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetBoolean(0);
-                Assert.AreEqual(true, result);
-            }
-        }
-
-        [Test]
-        public void GetChars()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand("SELECT field_text FROM DATA", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = new Char[6];
-                dr.GetChars(0, 0, result, 0, 6);
-                Assert.AreEqual("Random", new String(result));
-            }
-        }
-
-        [Test]
-        public void GetCharsSequential()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand("SELECT field_text FROM data;", Conn);
-            using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
-            {
-                dr.Read();
-                var result = new Char[6];
-                dr.GetChars(0, 0, result, 0, 6);
-                Assert.AreEqual("Random", new String(result));
-            }
-        }
-
-        [Test]
-        public void GetBytes1()
-        {
-            ExecuteNonQuery(string.Format(@"INSERT INTO data (field_bytea) VALUES ({0}'\{1}123\{1}056')", ! Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"));
-            var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = new Byte[2];
-
-                var a = dr.GetBytes(0, 0, result, 0, 2);
-                var b = dr.GetBytes(0, result.Length, result, 0, 2);
-
-                Assert.AreEqual('S', (Char) result[0]);
-                Assert.AreEqual('.', (Char) result[1]);
-                Assert.AreEqual(2, a);
-                Assert.AreEqual(0, b);
-            }
-        }
-
-        [Test]
-        public void GetBytes2()
-        {
-            var command = new NpgsqlCommand(string.Format(@"select {0}'\{1}001\{1}002\{1}003'::bytea;", ! Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"), Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = new Byte[3];
-
-                var a = dr.GetBytes(0, 0, result, 0, 0);
-                var b = dr.GetBytes(0, 0, result, 0, 1);
-                var c = dr.GetBytes(0, 0, result, 0, 2);
-                var d = dr.GetBytes(0, 0, result, 0, 3);
-
-                Assert.AreEqual(1, result[0]);
-                Assert.AreEqual(2, result[1]);
-                Assert.AreEqual(3, result[2]);
-                Assert.AreEqual(0, a);
-                Assert.AreEqual(1, b);
-                Assert.AreEqual(2, c);
-                Assert.AreEqual(3, d);
-            }
-        }
-
-        [Test]
-        [Ignore]
-        public void GetBytesSequential()
-        {
-            var command = new NpgsqlCommand("select field_bytea from tablef where field_serial = 1;", Conn);
-
-            using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
-            {
-                dr.Read();
-                var result = new Byte[2];
-
-                var a = dr.GetBytes(0, 0, result, 0, 2);
-                var b = dr.GetBytes(0, result.Length, result, 0, 2);
-
-                Assert.AreEqual('S', (Char)result[0]);
-                Assert.AreEqual('.', (Char)result[1]);
-                Assert.AreEqual(2, a);
-                Assert.AreEqual(0, b);
-            }
-        }
-
-        [Test]
-        public void GetInt32()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
-            var command = new NpgsqlCommand("SELECT field_int4 FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetInt32(0);
-                //ConsoleWriter cw = new ConsoleWriter(Console.Out);
-                //cw.WriteLine(result.GetType().Name);
-                Assert.AreEqual(4, result);
-            }
-        }
-
-        [Test]
-        public void GetInt16()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_int2) VALUES (2)");
-            var command = new NpgsqlCommand("SELECT field_int2 FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetInt16(0);
-                Assert.AreEqual(2, result);
-            }
-        }
-
-        [Test]
-        public void GetDecimal()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_numeric) VALUES (4.23)");
-            var command = new NpgsqlCommand(@"SELECT field_numeric FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetDecimal(0);
-                Assert.AreEqual(4.2300000M, result);
-            }
-        }
-
-        [Test]
-        public void GetDouble()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_float8) VALUES (.123456789012345)");
-            var command = new NpgsqlCommand("SELECT field_float8 FROM data;", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                //Double result = Double.Parse(dr.GetInt32(2).ToString());
-                var result = dr.GetDouble(0);
-                Assert.AreEqual(.123456789012345D, result);
-            }
-        }
-
-        [Test]
-        public void GetFloat()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_float4) VALUES (.123456)");
-            var command = new NpgsqlCommand("SELECT field_float4 FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                //Single result = Single.Parse(dr.GetInt32(2).ToString());
-                var result = dr.GetFloat(0);
-                Assert.AreEqual(.123456F, result);
-            }
-        }
-
-        [Test]
-        public void GetMoney()
-        {
-            var cmd = new NpgsqlCommand("select :param", Conn);
-            const decimal monAmount = 1234.5m;
-            cmd.Parameters.Add("param", NpgsqlDbType.Money).Value = monAmount;
-            using (var rdr = cmd.ExecuteReader())
-            {
-                rdr.Read();
-                Assert.AreEqual(monAmount, rdr[0]);
-            }
-        }
-
-        [Test]
-        public void GetString()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand("SELECT field_text FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetString(0);
-                Assert.AreEqual("Random text", result);
-            }
-        }
-
-        [Test]
         public void GetStringWithParameter()
         {
             const string text = "Random text";
@@ -375,58 +174,6 @@ namespace NpgsqlTests
                 // This line should throw the invalid operation exception as the datareader will
                 // have an empty resultset.
                 Console.WriteLine(dr.IsDBNull(1));
-            }
-        }
-
-        [Test]
-        public void GetInt32ArrayFieldType()
-        {
-            var command = new NpgsqlCommand("select cast(null as integer[])", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.AreEqual(typeof(int[]), dr.GetFieldType(0));
-            }
-        }
-
-        [Test]
-        public void TestMultiDimensionalArray()
-        {
-            var command = new NpgsqlCommand("select :i", Conn);
-            command.Parameters.AddWithValue(":i", (new decimal[,]{{0,1,2},{3,4,5}}));
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(2, (dr[0] as Array).Rank);
-                var da = (decimal[,])dr[0];
-                Assert.AreEqual(da.GetUpperBound(0), 1);
-                Assert.AreEqual(da.GetUpperBound(1), 2);
-                decimal cmp = 0m;
-                foreach(decimal el in da)
-                    Assert.AreEqual(el, cmp++);
-            }
-        }
-
-        [Test]
-        public void TestArrayOfBytea1()
-        {
-            var command = new NpgsqlCommand("select get_byte(:i[1], 2)", Conn);
-            command.Parameters.AddWithValue(":i", new byte[][]{new byte[]{0,1,2}, new byte[]{3,4,5}});
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(dr[0], 2);
-            }
-        }
-
-        [Test]
-        public void TestArrayOfBytea2()
-        {
-            var command = new NpgsqlCommand("select get_byte(:i[1], 2)", Conn);
-            command.Parameters.AddWithValue(":i", new byte[][]{new byte[]{1,2,3}, new byte[]{4,5,6}});
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(dr[0], 3);
             }
         }
 
@@ -586,11 +333,11 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
             var command = new NpgsqlCommand(@"SELECT * FROM data", Conn);
-            var dr = command.ExecuteReader(CommandBehavior.SingleRow);
-            var i = 0;
-            while (dr.Read())
-                i++;
-            Assert.AreEqual(1, i);
+            var reader = command.ExecuteReader(CommandBehavior.SingleRow);
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.Read(), Is.False);
+            reader.Close();
+            command.Dispose();
         }
 
         [Test]
@@ -978,6 +725,7 @@ namespace NpgsqlTests
                 Assert.That(reader.IsDBNull(0), Is.True);
                 Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
                 Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
+                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(DBNull.Value));
                 Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
         }

@@ -6,12 +6,12 @@ using Common.Logging;
 
 namespace Npgsql.Messages
 {
-    internal class CommandCompleteMessage : IServerMessage
+    internal class CommandCompleteMessage : ServerMessage
     {
         private int? _rowsAffected;
         private long? _lastInsertedOID;
 
-        internal CommandCompleteMessage Read(NpgsqlBufferedStream buf, int len)
+        internal CommandCompleteMessage Load(NpgsqlBuffer buf, int len)
         {
             _rowsAffected = null;
             _lastInsertedOID = null;
@@ -48,6 +48,6 @@ namespace Npgsql.Messages
             get { return _rowsAffected; }
         }
 
-        public BackEndMessageCode Code { get { return BackEndMessageCode.CompletedResponse; } }
+        internal override BackEndMessageCode Code { get { return BackEndMessageCode.CompletedResponse; } }
     }
 }

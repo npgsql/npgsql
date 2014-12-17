@@ -23,17 +23,17 @@ namespace Npgsql
     public class NpgsqlDataReader : DbDataReader
     {
         internal NpgsqlCommand Command { get; private set; }
-        NpgsqlConnector _connector;
-        NpgsqlConnection _connection;
-        CommandBehavior _behavior;
+        readonly NpgsqlConnector _connector;
+        readonly NpgsqlConnection _connection;
+        readonly CommandBehavior _behavior;
 
         // TODO: Protect with Interlocked?
         internal ReaderState State { get; private set; }
 
         RowDescriptionMessage _rowDescription;
-        DataRowMessageBase _row;
+        DataRowMessage _row;
         int _recordsAffected;
-        internal long? LastInsertedOID { get; private set; }
+        internal long? LastInsertedOid { get; private set; }
 
         /// <summary>
         /// Indicates that at least one row has been read across all result sets
@@ -49,23 +49,40 @@ namespace Npgsql
         /// If HasRows was called before any rows were read, it was forced to read messages. A pending
         /// message may be stored here for processing in the next Read() or NextResult().
         /// </summary>
-        IServerMessage _pendingMessage;
+        ServerMessage _pendingMessage;
 
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
         public event EventHandler ReaderClosed;
 
+        /// <summary>
+        /// In non-sequential mode, contains the cached values already read from the current row
+        /// </summary>
+        RowCache _rowCache;
+
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
+
+        internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
+        internal bool IsCaching { get { return !IsSequential; } }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
         {
+            if (command.CommandType == CommandType.StoredProcedure && (behavior & CommandBehavior.SequentialAccess) != 0) {
+                throw new Exception("A StoredProcedure call can't be sequential");
+            }
+            Contract.EndContractBlock();
+
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
-            _rowDescription = rowDescription;
             _recordsAffected = -1;
+            _rowDescription = rowDescription;
+            if (IsCaching)
+            {
+                _rowCache = new RowCache();
+            }
         }
 
         #region Read
@@ -113,7 +130,7 @@ namespace Npgsql
             }
         }
 
-        ReadResult ProcessMessage(IServerMessage msg)
+        ReadResult ProcessMessage(ServerMessage msg)
         {
             Contract.Requires(msg != null);
 
@@ -124,13 +141,13 @@ namespace Npgsql
                     return ReadResult.ReadAgain;
 
                 case BackEndMessageCode.DataRow:
-                    if (_rowDescription == null) {
-                        throw new Exception("Got DataRow but have no RowDescription");
-                    }
-                    _connector.State = ConnectorState.Fetching;
-                    _row = (DataRowMessageBase)msg;
                     Contract.Assert(_rowDescription != null);
-                    _row.Description = _rowDescription;
+                    _connector.State = ConnectorState.Fetching;
+                    _row = (DataRowMessage)msg;
+                    Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
+                    if (IsCaching) {
+                        _rowCache.Clear();
+                    }
                     if (!_readOneRow && Command.CommandType == CommandType.StoredProcedure) {
                         PopulateOutputParameters();
                     }
@@ -147,7 +164,7 @@ namespace Npgsql
                             : _recordsAffected + completed.RowsAffected.Value;
                     }
                     if (completed.LastInsertedOID.HasValue) {
-                        LastInsertedOID = completed.LastInsertedOID;
+                        LastInsertedOid = completed.LastInsertedOID;
                     }
                     goto case BackEndMessageCode.EmptyQueryResponse;
 
@@ -212,7 +229,7 @@ namespace Npgsql
             Contract.Assert(State == ReaderState.BetweenResults);
             _hasRows = null;
 
-            IServerMessage msg;
+            ServerMessage msg;
             if ((_behavior & CommandBehavior.SingleResult) != 0)
             {
                 Consume();
@@ -242,7 +259,7 @@ namespace Npgsql
 
         #endregion
 
-        IServerMessage ReadMessage()
+        ServerMessage ReadMessage()
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
@@ -260,7 +277,7 @@ namespace Npgsql
             return _connector.ReadSingleMessage(sequential);
         }
 
-        IServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
+        ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
         {
             if (_pendingMessage != null)
             {
@@ -337,6 +354,12 @@ namespace Npgsql
             }
         }
 
+        #region Cleanup / Dispose
+
+        /// <summary>
+        /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
+        /// queries
+        /// </summary>
         private void Consume()
         {
             switch (State)
@@ -383,7 +406,659 @@ namespace Npgsql
             }
         }
 
+        #endregion
+
+        /// <summary>
+        /// Returns the current row, or throws an exception if a row isn't available
+        /// </summary>
+        private DataRowMessage Row
+        {
+            get
+            {
+                if (_row == null) {
+                    throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                }
+                return _row;
+            }
+        }
+
+        #region Simple value getters
+
+        public override bool GetBoolean(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumnWithoutCache<bool>(ordinal);
+        }
+
+        public override byte GetByte(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumnWithoutCache<byte>(ordinal);
+        }
+
+        public override char GetChar(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumnWithoutCache<char>(ordinal);
+        }
+
+        public override short GetInt16(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<short>(ordinal);
+        }
+
+        public override int GetInt32(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<int>(ordinal);
+        }
+
+        public override long GetInt64(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+            
+            return ReadColumn<long>(ordinal);
+        }
+
+        public override DateTime GetDateTime(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<DateTime>(ordinal);
+        }
+
+        public override string GetString(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<string>(ordinal);
+        }
+
+        public override decimal GetDecimal(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<decimal>(ordinal);
+        }
+
+        public override double GetDouble(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<double>(ordinal);
+        }
+
+        public override float GetFloat(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<float>(ordinal);
+        }
+
+        public override Guid GetGuid(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            throw new NotImplementedException();
+        }
+
+        public override int GetValues(object[] values)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override object this[int ordinal]
+        {
+            get
+            {
+                #region Contracts
+                if (FieldCount == 0)
+                    throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                if (ordinal < 0 || ordinal >= FieldCount)
+                    throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                Contract.EndContractBlock();
+                #endregion
+
+                return GetValue(ordinal);
+            }
+        }
+
+        #endregion
+
+        #region Provider-specific type getters
+
+        public NpgsqlDate GetDate(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<NpgsqlDate>(ordinal);
+        }
+
+        public NpgsqlTime GetTime(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumnWithoutCache<NpgsqlTime>(ordinal);
+        }
+
+        public NpgsqlTimeTZ GetTimeTZ(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<NpgsqlTimeTZ>(ordinal);
+        }
+
+        public TimeSpan GetTimeSpan(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<TimeSpan>(ordinal);
+        }
+
+        public NpgsqlInterval GetInterval(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<NpgsqlInterval>(ordinal);
+        }
+
+        public NpgsqlTimeStamp GetTimeStamp(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumn<NpgsqlTimeStamp>(ordinal);
+        }
+
+        public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return ReadColumnWithoutCache<NpgsqlTimeStampTZ>(ordinal);
+        }
+
+        #endregion
+
+        #region Special binary getters
+
+        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            if (dataOffset < 0 || dataOffset > int.MaxValue)
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
+                throw new IndexOutOfRangeException("bufferOffset must be between 0 and " + (buffer.Length - 1));
+            if (buffer != null && length > buffer.Length - bufferOffset)
+                throw new ArgumentException("length must not exceed ", "length");
+            Contract.Ensures(Contract.Result<long>() >= 0);
+            #endregion
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null) {
+                throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
+            }
+
+            var row = Row;
+            row.CheckNotStreaming();
+            row.SeekToColumn(ordinal);
+            row.CheckNotNull();
+            return handler.GetBytes(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
+        }
+
+#if NET45
+        public override Stream GetStream(int ordinal)
+#else
+        public Stream GetStream(int ordinal)
+#endif
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.Ensures(Contract.Result<Stream>() != null);
+            #endregion
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as ByteaHandler;
+            if (handler == null) {
+                throw new InvalidCastException("GetStream() not supported for type " + fieldDescription.Name);
+            }
+
+            var row = Row;
+            row.CheckNotStreaming();
+            row.CheckNotNull();
+            row.SeekToColumnStart(ordinal);
+
+            row.IsStreaming = true;
+            try
+            {
+                return handler.GetStream(row, fieldDescription);
+            }
+            catch
+            {
+                row.IsStreaming = false;
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region Special text getters
+
+        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            if (dataOffset < 0 || dataOffset > int.MaxValue)
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
+                throw new IndexOutOfRangeException("bufferOffset must be between 0 and " + (buffer.Length - 1));
+            if (buffer != null && length > buffer.Length - bufferOffset)
+                throw new ArgumentException("length must not exceed ", "length");
+            Contract.Ensures(Contract.Result<long>() >= 0);
+            #endregion
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as StringHandler;
+            if (handler == null) {
+                throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
+            }
+
+            var row = Row;
+            row.CheckNotStreaming();
+            row.SeekToColumn(ordinal);
+            row.CheckNotNull();
+            return handler.GetChars(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
+        }
+
+#if NET45
+        public override TextReader GetTextReader(int ordinal)
+#else
+        public TextReader GetTextReader(int ordinal)
+#endif
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.Ensures(Contract.Result<TextReader>() != null);
+            #endregion
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler as StringHandler;
+            if (handler == null)
+            {
+                throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Name);
+            }
+
+            var row = Row;
+            row.CheckNotStreaming();
+            row.CheckNotNull();
+            row.SeekToColumnStart(ordinal);
+            row.SeekToColumn(ordinal);
+
+            row.IsStreaming = true;
+            try
+            {
+                return new StreamReader(new ByteaBinaryStream(row));
+            }
+            catch
+            {
+                row.IsStreaming = false;
+                throw;
+            }
+        }
+
+        #endregion
+
+        public override bool IsDBNull(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            Row.SeekToColumn(ordinal);
+            return _row.IsColumnNull;
+        }
+
+        public override object this[string name]
+        {
+            get { return GetValue(GetOrdinal(name)); }
+        }
+
+        public override int GetOrdinal(string name)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (String.IsNullOrEmpty(name))
+                throw new ArgumentException("name cannot be empty", "name");
+            Contract.EndContractBlock();
+            #endregion
+
+            return _rowDescription.GetFieldIndex(name);
+        }
+
+        public override string GetDataTypeName(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return _rowDescription[ordinal].Name;
+        }
+
+        public override Type GetFieldType(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return _rowDescription[ordinal].Handler.FieldType;
+        }
+
+        public override Type GetProviderSpecificFieldType(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return _rowDescription[ordinal].Handler.ProviderSpecificFieldType;
+        }
+
+        public override object GetValue(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.Ensures(Contract.Result<object>() == DBNull.Value|| GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
+            #endregion
+
+            CachedValue<object> cache = null;
+            if (IsCaching)
+            {
+                cache = _rowCache.Get<object>(ordinal);
+                if (cache.IsSet && !cache.IsProviderSpecificValue) {
+                    return cache.Value;
+                }
+            }
+
+            // TODO: Code duplication with ReadColumn<T>
+            _row.SeekToColumnStart(ordinal);
+            if (_row.IsColumnNull) {
+                return DBNull.Value;
+            }
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler;
+            // The buffer might not contain the entire column in sequential mode.
+            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
+            // For simple, primitive type handlers we need to handle this here.
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            {
+                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
+                _row.Buffer.Ensure(_row.ColumnLen);
+            }
+            var result = handler.ReadValueAsObject(_row.Buffer, fieldDescription, _row.ColumnLen);
+            _row.PosInColumn += _row.ColumnLen;
+
+            if (IsCaching)
+            {
+                Contract.Assert(cache != null);
+                cache.Value = result;
+                cache.IsProviderSpecificValue = false;
+            }
+            return result;
+        }
+
         public override DataTable GetSchemaTable()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override T GetFieldValue<T>(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            //return ReadColumn<T>(ordinal);
+            var t = typeof(T);
+            if (!t.IsArray) {
+                return ReadColumn<T>(ordinal);
+            }
+
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler;
+
+            // If the type handler can simply return the requested array, call it as usual. This is the case
+            // of reading a bytea as a byte[]
+            var tHandler = handler as ITypeHandler<T>;
+            if (tHandler != null) {
+                return ReadColumn<T>(ordinal);
+            }
+
+            // We need to treat this as an actuall array type, these need special treatment because of
+            // typing/generics reasons
+            var elementType = t.GetElementType();
+            var arrayHandler = handler as ArrayHandler;
+            if (arrayHandler == null) {
+                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
+            }
+
+            if (arrayHandler.ElementFieldType == elementType)
+            {
+                return (T)GetValue(ordinal);
+            }
+            if (arrayHandler.ElementProviderSpecificFieldType == elementType)
+            {
+                return (T)GetProviderSpecificValue(ordinal);
+            }
+            throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", handler.PgName, typeof(T).Name));
+        }
+
+        public override object GetProviderSpecificValue(int ordinal)
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetProviderSpecificFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
+            #endregion
+
+            CachedValue<object> cache = null;
+            if (IsCaching)
+            {
+                cache = _rowCache.Get<object>(ordinal);
+                if (cache.IsSet && cache.IsProviderSpecificValue) {
+                    return cache.Value;
+                }
+            }
+
+            // TODO: Code duplication with ReadColumn<T>
+            _row.SeekToColumnStart(ordinal);
+            if (_row.IsColumnNull) {
+                return DBNull.Value;
+            }
+            var fieldDescription = _rowDescription[ordinal];
+            var handler = fieldDescription.Handler;
+            // The buffer might not contain the entire column in sequential mode.
+            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
+            // For simple, primitive type handlers we need to handle this here.
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            {
+                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
+                _row.Buffer.Ensure(_row.ColumnLen);
+            }
+            var result = handler.ReadPsvAsObject(_row.Buffer, fieldDescription, _row.ColumnLen);
+            _row.PosInColumn += _row.ColumnLen;
+
+            if (IsCaching)
+            {
+                Contract.Assert(cache != null);
+                cache.Value = result;
+                cache.IsProviderSpecificValue = true;
+            }
+            return result;
+        }
+
+        public override int GetProviderSpecificValues(object[] values)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override IEnumerator GetEnumerator()
         {
             throw new NotImplementedException();
         }
@@ -396,296 +1071,83 @@ namespace Npgsql
 
             var pending = new Queue<NpgsqlParameter>();
             var taken = new List<int>();
-            foreach (NpgsqlParameter p in Command.Parameters.Where(p => p.IsOutputDirection))
+            foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
             {
                 int idx;
-                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx)) {
-                    p.Value = _row.Get(idx).Value;
+                if (_rowDescription.TryGetFieldIndex(p.CleanName, out idx))
+                {
+                    // TODO: Provider-specific check?
+                    p.Value = GetValue(idx);
                     taken.Add(idx);
-                } else {
+                }
+                else
+                {
                     pending.Enqueue(p);
                 }
             }
-            for (int i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
+            for (var i = 0; pending.Count != 0 && i != _row.NumColumns; ++i)
             {
                 if (!taken.Contains(i))
                 {
-                    pending.Dequeue().Value = _row.Get(i).Value;
+                    // TODO: Need to get the provider-specific value based on the out param's type
+                    pending.Dequeue().Value = GetValue(i);
                 }
             }
         }
 
-        DataRowMessageBase CheckGetRow()
-        {
-            if (_row == null) {
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
-            }
-            return _row;
-        }
-
-        void CheckHasDescription()
-        {
-            if (_rowDescription == null) {
-                throw new InvalidOperationException("No row information is available");
-            }
-        }
-
-        #region Value getters
-
-        public override bool GetBoolean(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Boolean;
-        }
-
-        public override byte GetByte(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Byte;
-        }
-
-        public override char GetChar(int ordinal)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override Guid GetGuid(int ordinal)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override short GetInt16(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Int16;
-        }
-
-        public override int GetInt32(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Int32;
-        }
-
-        public override long GetInt64(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Int64;
-        }
-
-        public override DateTime GetDateTime(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).DateTime;
-        }
-
-        public override string GetString(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).String;
-        }
-
-        public override decimal GetDecimal(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Decimal;
-        }
-
-        public override double GetDouble(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Double;
-        }
-
-        public override float GetFloat(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Float;
-        }
-
-        public override int GetValues(object[] values)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override object this[int ordinal]
-        {
-            get { return GetValue(ordinal); }
-        }
-
-#if OLD
-        public override object this[int ordinal]
-        {
-            get { return GetValueInternal(ordinal); }
-        }
-
-        object GetValueInternal(int ordinal)
-        {
-            object providerValue = GetProviderSpecificValue(ordinal);
-            NpgsqlBackendTypeInfo backendTypeInfo;
-            if (Command.ExpectedTypes != null && Command.ExpectedTypes.Length > ordinal && Command.ExpectedTypes[ordinal] != null)
-            {
-                return ExpectedTypeConverter.ChangeType(providerValue, Command.ExpectedTypes[ordinal]);
-            }
-            else if ((_connection == null || !_connection.UseExtendedTypes) && TryGetTypeInfo(ordinal, out backendTypeInfo))
-                return backendTypeInfo.ConvertToFrameworkType(providerValue);
-            return providerValue;
-        }
-
-        public override object GetProviderSpecificValue(int ordinal)
-        {
-            throw new NotImplementedException();
-            var field = SeekToColumn(ordinal);
-            var len = _row.Buffer.ReadInt32();
-
-            if (field.FormatCode == FormatCode.Text)
-            {
-                //return
-                    //NpgsqlTypesHelper.ConvertBackendStringToSystemType(field.TypeInfo, _row.Buffer, len,
-                    //                                                   field.TypeModifier);
-            }
-            else
-            {
-                //return
-                    //NpgsqlTypesHelper.ConvertBackendBytesToSystemType(field.TypeInfo, _row.Buffer, len,
-                    //                                                  field.TypeModifier);
-            }
-        }
-
-        internal bool TryGetTypeInfo(int fieldIndex, out NpgsqlBackendTypeInfo backendTypeInfo)
-        {
-            if (_rowDescription == null)
-            {
-                throw new IndexOutOfRangeException(); //Essentially, all indices are out of range.
-            }
-            return (backendTypeInfo = _rowDescription[fieldIndex].TypeInfo) != null;
-        }
+#if NET45
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-
-        #endregion
-
-        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+        T ReadColumnWithoutCache<T>(int ordinal)
         {
-            Debug.Assert(buffer == null || length <= buffer.Length - bufferOffset);
-            if (dataOffset < 0 || dataOffset > int.MaxValue) {
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
-            }
+            _row.SeekToColumnStart(ordinal);
+            Row.CheckNotNull();
+            var fieldDescription = _rowDescription[ordinal];
 
-            return CheckGetRow().GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
+            var handler = fieldDescription.Handler as ITypeHandler<T>;
+            if (handler == null) {
+                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof (T).Name));
+            }
+            // The buffer might not contain the entire column in sequential mode.
+            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
+            // For simple, primitive type handlers we need to handle this here.
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            {
+                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
+                _row.Buffer.Ensure(_row.ColumnLen);
+            }
+            var result = handler.Read(_row.Buffer, fieldDescription, _row.ColumnLen);
+            _row.PosInColumn += _row.ColumnLen;
+            return result;
         }
 
 #if NET45
-        public override Stream GetStream(int ordinal)
-#else
-        public Stream GetStream(int ordinal)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
+        T ReadColumn<T>(int ordinal)
         {
-            return CheckGetRow().GetStream(ordinal);
-        }
-
-        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
-        {
-            Debug.Assert(buffer == null || length <= buffer.Length - bufferOffset);
-            if (dataOffset < 0 || dataOffset > int.MaxValue)
+            CachedValue<T> cache = null;
+            if (IsCaching)
             {
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+                cache = _rowCache.Get<T>(ordinal);
+                if (cache.IsSet) {
+                    return cache.Value;
+                }
             }
-
-            return CheckGetRow().GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
+            var result = ReadColumnWithoutCache<T>(ordinal);
+            if (IsCaching)
+            {
+                Contract.Assert(cache != null);
+                cache.Value = result;
+            }
+            return result;
         }
 
-#if NET45
-        public override TextReader GetTextReader(int ordinal)
-#else
-        public TextReader GetTextReader(int ordinal)
-#endif
+        [ContractInvariantMethod]
+        void ObjectInvariants()
         {
-            return CheckGetRow().GetTextReader(ordinal);
-        }
-
-        #region Non-standard value getters
-
-        public NpgsqlDate GetDate(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Date;
-        }
-
-        public NpgsqlTime GetTime(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Time;
-        }
-
-        public NpgsqlTimeTZ GetTimeTZ(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).TimeTZ;
-        }
-
-        public TimeSpan GetTimeSpan(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).TimeSpan;
-        }
-
-        public NpgsqlInterval GetInterval(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).Interval;
-        }
-
-        public NpgsqlTimeStamp GetTimeStamp(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).TimeStamp;
-        }
-
-        public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
-        {
-            return CheckGetRow().Get(ordinal).TimeStampTz;
-        }
-
-        #endregion
-
-        public override bool IsDBNull(int ordinal)
-        {
-            CheckGetRow().SeekToColumn(ordinal);
-            return _row.IsColumnNull;
-        }
-
-        public override object this[string name]
-        {
-            get { return GetValue(GetOrdinal(name)); }
-        }
-
-        public override int GetOrdinal(string name)
-        {
-            CheckHasDescription();
-            return _rowDescription.GetFieldIndex(name);
-        }
-
-        public override string GetDataTypeName(int ordinal)
-        {
-            CheckHasDescription();
-            return _rowDescription[ordinal].Name;
-        }
-
-        public override Type GetFieldType(int ordinal)
-        {
-            CheckHasDescription();
-            return _rowDescription[ordinal].Handler.FieldType;
-        }
-
-        public override Type GetProviderSpecificFieldType(int ordinal)
-        {
-            CheckHasDescription();
-            return _rowDescription[ordinal].Handler.ProviderSpecificFieldType;
-        }
-
-        public override object GetValue(int ordinal)
-        {
-            // TODO: Contract: ensure result type matches the handler's
-            return CheckGetRow().Get(ordinal).Value;
-        }
-
-        public override object GetProviderSpecificValue(int ordinal)
-        {
-            // TODO: Contract: ensure result type matches the handler's
-            return CheckGetRow().Get(ordinal).ProviderSpecificValue;
-        }
-
-        public override int GetProviderSpecificValues(object[] values)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override IEnumerator GetEnumerator()
-        {
-            throw new NotImplementedException();
+            Contract.Invariant(IsSequential  || _rowCache != null);
+            Contract.Invariant(IsCaching     || _rowCache == null);
         }
     }
 

@@ -8,20 +8,24 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class StringHandler : TypeHandler
+    internal class StringHandler : TypeHandler<string>, ITypeHandler<char[]>
     {
         static readonly string[] _pgNames = { "text" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override bool SupportsBinaryRead { get { return true; } }
-        internal override Type FieldType { get { return typeof(string); } }
+        public override bool SupportsBinaryRead { get { return true; } }
+        public override bool IsArbitraryLength { get { return true; } }
 
-        internal override void Read(DataRowMessageBase row, FieldDescription field, NpgsqlValue output)
+        public override string Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(row.Buffer.ReadString(row.ColumnLen));
-            row.PosInColumn = row.ColumnLen;
+            return buf.ReadString(len);
         }
 
-        public long GetChars(DataRowMessageBase row, int decodedOffset, char[] output, int outputOffset, int decodedLen, FieldDescription field)
+        char[] ITypeHandler<char[]>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            return buf.ReadChars(len);
+        }
+
+        public long GetChars(DataRowMessage row, int decodedOffset, char[] output, int outputOffset, int decodedLen, FieldDescription field)
         {
             if (output == null)
             {
