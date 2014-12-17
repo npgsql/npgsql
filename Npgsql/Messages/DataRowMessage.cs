@@ -1,83 +1,114 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Text;
 using Npgsql.Localization;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql.Messages
 {
-    class DataRowMessage : DataRowMessageBase
+    abstract class DataRowMessage : ServerMessage
     {
-        readonly List<int> _columnOffsets;
-        readonly int _endOffset;
-        readonly List<NpgsqlValue> _cachedValues;
- 
-        public DataRowMessage(NpgsqlBufferedStream buf) : base(buf)
+        protected internal NpgsqlBuffer Buffer { get; protected set; }
+
+        /// <summary>
+        /// The number of columns in the current row
+        /// </summary>
+        internal int NumColumns;
+
+        /// <summary>
+        /// The index of the column that we're on, i.e. that has already been parsed, is
+        /// is memory and can be retrieved. Initialized to -1
+        /// </summary>
+        internal int Column;
+
+        /// <summary>
+        /// For streaming types (e.g. bytea, text), holds the current byte position within the column.
+        /// Does not include the length prefix.
+        /// </summary>
+        internal int PosInColumn;
+
+        /// <summary>
+        /// For streaming types (e.g. bytea, text), holds the current "decoded" position within the column.
+        /// For text, this is the character index. For text-encoded bytea, this holds the decoded position
+        /// (i.e. the 3rd decoded (content) byte in a hex text-encoded bytea will occupy the 7th and 8th
+        /// actual bytes).
+        /// </summary>
+        internal int DecodedPosInColumn;
+
+        /// <summary>
+        /// For streaming types (e.g. bytea), holds the byte length of the column.
+        /// Does not include the length prefix.
+        /// </summary>
+        internal int ColumnLen;
+
+        internal bool IsColumnNull { get { return ColumnLen == -1; } }
+        /// <summary>
+        /// For streaming types (e.g. bytea, text), holds the decoded length of the column.
+        /// </summary>
+        internal int DecodedColumnLen;
+
+        internal ByteaTextFormat CurrentByteaTextFormat;
+
+        /// <summary>
+        /// Indicates whether a stream is currently open on a column. No read may occur until the stream is closed.
+        /// </summary>
+        internal bool IsStreaming;
+
+        internal override BackEndMessageCode Code { get { return BackEndMessageCode.DataRow; } }
+
+        internal abstract DataRowMessage Load(NpgsqlBuffer buf);
+
+        /// <summary>
+        /// Places our position at the beginning of the given column, after the 4-byte length.
+        /// The length is available in ColumnLen.
+        /// </summary>
+        internal abstract void SeekToColumn(int column);
+        internal abstract void SeekInColumn(int posInColumn);
+        /// <summary>
+        /// Consumes the current row, allowing the reader to read in the next one.
+        /// </summary>
+        internal abstract void Consume();
+
+        internal void SeekToColumnStart(int column)
         {
-            // TODO: Recycle message objects rather than recreating for each row
-            NumColumns = buf.ReadInt16();
-            _columnOffsets = new List<int>(NumColumns);
-            _cachedValues = new List<NpgsqlValue>(NumColumns);
-            for (var i = 0; i < NumColumns; i++)
-            {
-                _cachedValues.Add(null);
-                _columnOffsets.Add(buf.Position);
-                var len = buf.ReadInt32();
-                if (len != -1) {
-                    buf.Seek(len, SeekOrigin.Current);                    
-                }
+            CheckNotStreaming();
+            SeekToColumn(column);
+            if (PosInColumn != 0) {
+                SeekInColumn(0);
             }
-            _endOffset = buf.Position;
         }
 
-        internal override NpgsqlValue Get(int column)
+        #region Checks
+
+        protected void CheckColumnIndex(int column)
         {
-            var value = _cachedValues[column];
-            if (value == null)
+            if (column < 0 || column >= NumColumns)
             {
-                value = new NpgsqlValue();  // TODO: Allocation
-                Read(column, value);
-
-                // Don't cache binary since the user may modify it
-                if (value.Type != NpgsqlValue.StorageType.Binary) {
-                    _cachedValues[column] = value;
-                }
-            }
-
-            return value;
-        }
-
-        internal override void SeekToColumn(int column)
-        {
-            CheckColumnIndex(column);
-
-            if (Column != column)
-            {
-                Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
-                Column = column;
-                ColumnLen = Buffer.ReadInt32();
-                PosInColumn = DecodedPosInColumn = 0;
+                throw new IndexOutOfRangeException("Column index out of range");
             }
         }
 
-        internal override void SeekInColumn(int posInColumn)
+        internal void CheckNotStreaming()
         {
-            if (posInColumn > ColumnLen)
+            if (IsStreaming)
             {
-                // TODO: What is the actual required behavior here?
-                throw new IndexOutOfRangeException();
+                throw new InvalidOperationException("Column streaming is in progress, close the Stream or TextReader first.");
             }
-
-            Buffer.Seek(_columnOffsets[Column] + 4 + posInColumn, SeekOrigin.Begin);
-            PosInColumn = posInColumn;
         }
 
-        internal override void Consume()
+        internal void CheckNotNull()
         {
-            Buffer.Seek(_endOffset, SeekOrigin.Begin);
+            if (IsColumnNull)
+            {
+                // TODO: What actual exception to throw here? Oracle throws InvalidCast, SqlClient throws its
+                // own SqlNullValueException
+                throw new InvalidCastException("Column is null");
+            }
         }
+
+        #endregion
     }
 }

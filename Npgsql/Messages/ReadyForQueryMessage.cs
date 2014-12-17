@@ -5,13 +5,13 @@ using System.Text;
 
 namespace Npgsql.Messages
 {
-    internal class ReadyForQueryMessage : IServerMessage
+    internal class ReadyForQueryMessage : ServerMessage
     {
-        public BackEndMessageCode Code { get { return BackEndMessageCode.ReadyForQuery; } }
+        internal override BackEndMessageCode Code { get { return BackEndMessageCode.ReadyForQuery; } }
 
         internal TransactionStatusIndicator TransactionStatusIndicator { get; private set; }
 
-        internal ReadyForQueryMessage Read(NpgsqlBufferedStream buf) {
+        internal ReadyForQueryMessage Load(NpgsqlBuffer buf) {
             TransactionStatusIndicator = (TransactionStatusIndicator)buf.ReadByte();
             return this;
         }

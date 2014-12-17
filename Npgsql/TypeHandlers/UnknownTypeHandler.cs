@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
@@ -10,15 +11,14 @@ namespace Npgsql.TypeHandlers
     /// Handles "conversions" for columns sent by the database with unknown OIDs.
     /// Note that this also happens in the very initial query that loads the OID mappings (chicken and egg problem).
     /// </summary>
-    internal class UnknownTypeHandler : SimpleTypeHandler
+    internal class UnknownTypeHandler : TypeHandler<string>
     {
-        static readonly string[] _pgNames = { "<unknown>" };
+        static readonly string[] _pgNames = { "unknown" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override Type FieldType { get { return typeof(string); } }
 
-        internal override void ReadText(NpgsqlBufferedStream buf, int len, FieldDescription field, NpgsqlValue output)
+        public override string Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            output.SetTo(buf.ReadString(len));
+            return buf.ReadString(len);
         }
     }
 }

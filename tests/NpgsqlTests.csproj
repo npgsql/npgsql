@@ -168,6 +168,7 @@
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArrayTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="AsyncTests.cs" />
     <Compile Include="ByteaTests.cs" />
@@ -180,6 +181,7 @@
     </Compile>
     <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
+    <Compile Include="SimpleTypeTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Npgsql;
@@ -13,34 +14,18 @@ namespace NpgsqlTests
         public TextTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        public void GetStringSequential([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
-        {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";BufferSize=16"))
-            {
-                conn.Open();
-                const string expected = "This string is longer than the connection buffer";
-                using (var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'", expected), conn))
-                using (var rdr = cmd.ExecuteReader(behavior))
-                {
-                    rdr.Read();
-                    Assert.That(rdr.GetString(0), Is.EqualTo(expected));
-                }
-            }
-        }
-
-        [Test]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void Get(PrepareOrNot prepare, CommandBehavior behavior)
+        public void Read(PrepareOrNot prepare, CommandBehavior behavior)
         {
             var builder = new StringBuilder("ABCDEééé", Conn.BufferSize);
             builder.Append('X', Conn.BufferSize);
             var expected = builder.ToString();
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", expected));
 
-            const string queryText = @"SELECT field_text, 'foo', field_text, field_text FROM data";
+            const string queryText = @"SELECT field_text, 'foo', field_text, field_text, field_text, field_text FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
@@ -59,6 +44,8 @@ namespace NpgsqlTests
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
             Assert.That(reader.GetFieldValue<string>(2), Is.EqualTo(expected));
             Assert.That(reader.GetValue(3), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<string>(4), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<char[]>(5), Is.EqualTo(expected.ToCharArray()));
         }
 
         [Test]
@@ -107,9 +94,6 @@ namespace NpgsqlTests
             // Close in the middle of a column
             reader.Close();
             cmd.Dispose();
-
-            //var result = (byte[]) cmd.ExecuteScalar();
-            //Assert.AreEqual(2, result.Length);
         }
 
         [Test]
@@ -170,7 +154,36 @@ namespace NpgsqlTests
             Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception, "GetChars with null buffer");
             reader.Close();
             cmd.Dispose();
+        }
 
+        // Older tests from here
+
+        [Test]
+        public void GetChars()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
+            var command = new NpgsqlCommand("SELECT field_text FROM DATA", Conn);
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+                var result = new Char[6];
+                dr.GetChars(0, 0, result, 0, 6);
+                Assert.AreEqual("Random", new String(result));
+            }
+        }
+
+        [Test]
+        public void GetCharsSequential()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
+            var command = new NpgsqlCommand("SELECT field_text FROM data;", Conn);
+            using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                dr.Read();
+                var result = new Char[6];
+                dr.GetChars(0, 0, result, 0, 6);
+                Assert.AreEqual("Random", new String(result));
+            }
         }
     }
 }

@@ -907,12 +907,13 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
+        // ReSharper disable once InconsistentNaming
         public int ProcessID
         {
             get
             {
                 CheckConnectionOpen();
-                return Connector.BackEndKeyData.ProcessID;
+                return Connector.BackendProcessId;
             }
         }
 

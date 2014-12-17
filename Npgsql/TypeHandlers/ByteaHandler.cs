@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -11,35 +12,72 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class ByteaHandler : TypeHandler
+    internal class ByteaHandler : TypeHandler<byte[]>
     {
         static readonly string[] _pgNames = { "bytea" };
         internal override string[] PgNames { get { return _pgNames; } }
-        internal override bool SupportsBinaryRead { get { return true; } }
-        internal override Type FieldType { get { return typeof(byte[]); } }
+        public override bool SupportsBinaryRead { get { return true; } }
+        public override bool IsArbitraryLength { get { return true; } }
 
-        public long GetBytes(DataRowMessageBase row, int dataOffset, byte[] output, int bufferOffset, int len, FieldDescription field)
+        public override byte[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            if (field.IsBinaryFormat) {
-                return GetBytesBinary(row, dataOffset, output, bufferOffset, len);
-            }
-
-            if (row.PosInColumn == 0) {
-                ParseTextualByteaHeader(row);
-            }
-
-            switch (row.CurrentByteaTextFormat)
+            byte[] result;
+            switch (fieldDescription.FormatCode)
             {
-                case ByteaTextFormat.Hex:
-                    return GetBytesHex(row, dataOffset, output, bufferOffset, len);
-                case ByteaTextFormat.Escape:
-                    throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
+                case FormatCode.Binary:
+                    result = new byte[len];
+                    buf.ReadBytes(result, 0, len, true);
+                    break;
+
+                case FormatCode.Text:
+                    switch (ParseTextualByteaHeader(buf))
+                    {
+                        case ByteaTextFormat.Hex:
+                            var decodedLen = (len - 2) / 2;
+                            result = new byte[decodedLen];
+                            buf.ReadBytesHex(result, 0, decodedLen, true);
+                            break;
+                        case ByteaTextFormat.Escape:
+                            throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
+                        default:
+                            throw PGUtil.ThrowIfReached();
+                    }
+                    break;
+
                 default:
-                    throw new ArgumentOutOfRangeException("Unknown bytea text encoding: " + row.CurrentByteaTextFormat);
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
+            return result;
+        }
+
+        public long GetBytes(DataRowMessage row, int dataOffset, byte[] output, int bufferOffset, int len, FieldDescription field)
+        {
+            if (row.PosInColumn == 0) {
+                PreparePartialFieldAccess(row, field);
+            }
+
+            switch (field.FormatCode)
+            {
+                case FormatCode.Binary:
+                    return GetBytesBinary(row, dataOffset, output, bufferOffset, len);
+
+                case FormatCode.Text:
+                    switch (row.CurrentByteaTextFormat)
+                    {
+                        case ByteaTextFormat.Hex:
+                            return GetBytesHex(row, dataOffset, output, bufferOffset, len);
+                        case ByteaTextFormat.Escape:
+                            throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
+                        default:
+                            throw new ArgumentOutOfRangeException("Unknown bytea text encoding: " + row.CurrentByteaTextFormat);
+                    }
+
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
         }
 
-        internal long GetBytesBinary(DataRowMessageBase row, int offset, byte[] output, int outputOffset, int len)
+        long GetBytesBinary(DataRowMessage row, int offset, byte[] output, int outputOffset, int len)
         {
             if (output == null) {
                 return row.ColumnLen;
@@ -57,7 +95,7 @@ namespace Npgsql.TypeHandlers
             return len;
         }
 
-        internal long GetBytesHex(DataRowMessageBase row, int decodedOffset, byte[] output, int outputOffset, int decodedLen)
+        long GetBytesHex(DataRowMessage row, int decodedOffset, byte[] output, int outputOffset, int decodedLen)
         {
             if (output == null) {
                 return row.DecodedColumnLen;
@@ -81,40 +119,64 @@ namespace Npgsql.TypeHandlers
             return decodedLen;
         }
 
-        internal Stream GetStream(DataRowMessageBase row, FieldDescription field)
+        internal Stream GetStream(DataRowMessage row, FieldDescription field)
         {
-            if (field.IsBinaryFormat)
+            Contract.Requires(row.PosInColumn == 0);
+
+            PreparePartialFieldAccess(row, field);
+            switch (field.FormatCode)
             {
-                row.DecodedPosInColumn = 0;
-                row.DecodedColumnLen = row.ColumnLen;
-                return new ByteaBinaryStream(row);
-            }
-            else
-            {
-                ParseTextualByteaHeader(row);
-                return new ByteaHexStream(row);
+                case FormatCode.Text:
+                    return new ByteaHexStream(row);
+                case FormatCode.Binary:
+                    return new ByteaBinaryStream(row);
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
         }
 
-        protected void ParseTextualByteaHeader(DataRowMessageBase row)
+        static ByteaTextFormat ParseTextualByteaHeader(NpgsqlBuffer buf)
         {
-            row.Buffer.Ensure(2);
+            buf.Ensure(2);
 
             // Must start with a backslash
-            if (row.Buffer.ReadByte() != (byte)'\\') {
+            if (buf.ReadByte() != (byte)'\\') {
                 throw new Exception("Unrecognized bytea text encoding");
             }
 
-            if (row.Buffer.ReadByte() != (byte)'x')
+            return buf.ReadByte() == (byte)'x' ? ByteaTextFormat.Hex : ByteaTextFormat.Escape;
+        }
+
+        void PreparePartialFieldAccess(DataRowMessage row, FieldDescription field)
+        {
+            Contract.Requires(row.PosInColumn == 0);
+
+            switch (field.FormatCode)
             {
-                row.CurrentByteaTextFormat = ByteaTextFormat.Escape;
-                return;
+                case FormatCode.Binary:
+                    row.DecodedColumnLen = row.ColumnLen;
+                    break;
+
+                case FormatCode.Text:
+                    row.CurrentByteaTextFormat = ParseTextualByteaHeader(row.Buffer);
+                    switch (row.CurrentByteaTextFormat)
+                    {
+                        case ByteaTextFormat.Hex:
+                            row.PosInColumn = 2;
+                            row.DecodedColumnLen = (row.ColumnLen - 2) / 2;
+                            break;
+                        case ByteaTextFormat.Escape:
+                            throw new NotImplementedException("Traditional bytea text escape encoding not (yet) implemented");
+                        default:
+                            throw PGUtil.ThrowIfReached();
+                    }
+                    break;
+
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
 
-            row.CurrentByteaTextFormat = ByteaTextFormat.Hex;
-            row.PosInColumn = 2;
             row.DecodedPosInColumn = 0;
-            row.DecodedColumnLen = (row.ColumnLen - 2) / 2;
         }
 
 #if PREVIOUS_IMPLEMENTATION
@@ -204,33 +266,15 @@ namespace Npgsql.TypeHandlers
 #endif
         }
 #endif
-
-        internal override void Read(DataRowMessageBase row, FieldDescription field, NpgsqlValue output)
-        {
-            if (field.IsTextFormat)
-            {
-                ParseTextualByteaHeader(row);
-            }
-            else
-            {
-                // TODO: This sucks
-                row.DecodedColumnLen = row.ColumnLen;
-            }
-
-            var outputBuffer = new byte[row.DecodedColumnLen];
-            var read = GetBytes(row, 0, outputBuffer, 0, outputBuffer.Length, field);
-            Debug.Assert(read == outputBuffer.Length);
-            output.SetTo(outputBuffer);
-        }
     }
 
     #region Streams
 
     abstract class ByteaStream : Stream
     {
-        protected readonly DataRowMessageBase Row;
+        protected readonly DataRowMessage Row;
 
-        protected ByteaStream(DataRowMessageBase row)
+        protected ByteaStream(DataRowMessage row)
         {
             Row = row;
         }
@@ -282,7 +326,7 @@ namespace Npgsql.TypeHandlers
 
     class ByteaBinaryStream : ByteaStream
     {
-        public ByteaBinaryStream(DataRowMessageBase row) : base(row) { }
+        public ByteaBinaryStream(DataRowMessage row) : base(row) { }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -292,20 +336,11 @@ namespace Npgsql.TypeHandlers
             Row.DecodedPosInColumn += read;
             return read;
         }
-
-#if NET45
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
-        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#endif
-        {
-            throw new NotImplementedException();
-        }
     }
 
     class ByteaHexStream : ByteaStream
     {
-        public ByteaHexStream(DataRowMessageBase row) : base(row) { }
+        public ByteaHexStream(DataRowMessage row) : base(row) { }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -314,15 +349,6 @@ namespace Npgsql.TypeHandlers
             Row.DecodedPosInColumn += decodedRead;
             Row.PosInColumn += decodedRead * 2;
             return decodedRead;
-        }
-
-#if NET45
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
-        public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#endif
-        {
-            throw new NotImplementedException();
         }
     }
 

@@ -19,13 +19,13 @@ namespace NpgsqlTests
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void Get(PrepareOrNot prepare, CommandBehavior behavior)
+        public void Read(PrepareOrNot prepare, CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
 
-            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, field_bytea FROM data";
+            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, field_bytea, field_bytea FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
@@ -39,13 +39,14 @@ namespace NpgsqlTests
             else
             {
                 actual[0] = 9;  // Modifying the buffer returned by Npgsql shouldn't have any effect
-                Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+                //Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
             }
 
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
 
             Assert.That(reader[2], Is.EqualTo(expected));
             Assert.That(reader.GetValue(3), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<byte[]>(4), Is.EqualTo(expected));
         }
 
         [Test]
@@ -160,7 +161,7 @@ namespace NpgsqlTests
         public void EmptyRoundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var expected = new byte[0];
-            var cmd = new NpgsqlCommand("SELECT :val", Conn);
+            var cmd = new NpgsqlCommand("SELECT :val::BYTEA", Conn);
             cmd.Parameters.Add("val", NpgsqlDbType.Bytea);
             cmd.Parameters["val"].Value = expected;
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
@@ -168,6 +169,8 @@ namespace NpgsqlTests
             Assert.That(result, Is.EqualTo(expected));
             cmd.Dispose();
         }
+
+        // Older tests from here
 
         [Test]
         public void MultidimensionalRoundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
@@ -186,6 +189,50 @@ namespace NpgsqlTests
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
+            }
+        }
+
+        [Test]
+        public void GetBytes1()
+        {
+            ExecuteNonQuery(string.Format(@"INSERT INTO data (field_bytea) VALUES ({0}'\{1}123\{1}056')", !Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"));
+            var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+                var result = new Byte[2];
+
+                var a = dr.GetBytes(0, 0, result, 0, 2);
+                var b = dr.GetBytes(0, result.Length, result, 0, 2);
+
+                Assert.AreEqual('S', (Char)result[0]);
+                Assert.AreEqual('.', (Char)result[1]);
+                Assert.AreEqual(2, a);
+                Assert.AreEqual(0, b);
+            }
+        }
+
+        [Test]
+        public void GetBytes2()
+        {
+            var command = new NpgsqlCommand(string.Format(@"select {0}'\{1}001\{1}002\{1}003'::bytea;", !Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"), Conn);
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+                var result = new Byte[3];
+
+                var a = dr.GetBytes(0, 0, result, 0, 0);
+                var b = dr.GetBytes(0, 0, result, 0, 1);
+                var c = dr.GetBytes(0, 0, result, 0, 2);
+                var d = dr.GetBytes(0, 0, result, 0, 3);
+
+                Assert.AreEqual(1, result[0]);
+                Assert.AreEqual(2, result[1]);
+                Assert.AreEqual(3, result[2]);
+                Assert.AreEqual(0, a);
+                Assert.AreEqual(1, b);
+                Assert.AreEqual(2, c);
+                Assert.AreEqual(3, d);
             }
         }
 

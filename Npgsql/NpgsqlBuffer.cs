@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    internal class NpgsqlBufferedStream
+    internal class NpgsqlBuffer
     {
         internal Stream Underlying { get; private set; }
         internal int Size { get; private set; }
@@ -32,14 +33,15 @@ namespace Npgsql
         internal const int MinimumBufferSize = 1024;
         internal const int DefaultBufferSize = 8192;
 
-        internal NpgsqlBufferedStream(Stream underlying)
+        internal NpgsqlBuffer(Stream underlying)
             : this(underlying, DefaultBufferSize, Encoding.UTF8) {}
 
-        internal NpgsqlBufferedStream(Stream underlying, int size, Encoding textEncoding)
+        internal NpgsqlBuffer(Stream underlying, int size, Encoding textEncoding)
         {
             if (size < MinimumBufferSize) {
                 throw new ArgumentOutOfRangeException("size", size, "Buffer size must be at least " + MinimumBufferSize);
             }
+            Contract.EndContractBlock();
 
             Underlying = underlying;
             Size = size;
@@ -48,9 +50,9 @@ namespace Npgsql
             _textDecoder = TextEncoding.GetDecoder();
         }
 
-        internal void Ensure(int count, bool readBeyondCount=true)
+        internal void Ensure(int count)
         {
-            Debug.Assert(count <= Size);
+            Contract.Requires(count <= Size);
             count -= BytesLeft;
             if (count <= 0) { return; }
 
@@ -64,7 +66,7 @@ namespace Npgsql
 
             while (count > 0)
             {
-                var toRead = readBeyondCount ? Size - _filledBytes : count;
+                var toRead = Size - _filledBytes;
                 var read = Underlying.Read(_buf, _filledBytes, toRead);
                 if (read == 0) { throw new EndOfStreamException(); }
                 count -= read;
@@ -72,9 +74,32 @@ namespace Npgsql
             }
         }
 
-        internal void CopyTo(NpgsqlBufferedStream other)
+        /// <summary>
+        /// Reads in the requested bytes into the buffer, or if the buffer isn't big enough, allocates a new
+        /// temporary buffer and reads into it. Returns the buffer that contains the data (either itself or the
+        /// temp buffer). Used in cases where we absolutely have to have an entire value in memory and cannot
+        /// read it in sequentially.
+        /// </summary>
+        internal NpgsqlBuffer EnsureOrAllocateTemp(int count)
         {
-            Debug.Assert(other.Size - other._filledBytes >= BytesLeft);
+            if (count <= Size) {
+                Ensure(count);
+                return this;
+            }
+
+            // Worst case: our buffer isn't big enough. For now, allocate a new buffer
+            // and copy into it
+            // TODO: Optimize with a pool later?
+            var tempBuf = new NpgsqlBuffer(Underlying, count, TextEncoding);
+            CopyTo(tempBuf);
+            Clear();
+            tempBuf.Ensure(count);
+            return tempBuf;
+        }
+
+        internal void CopyTo(NpgsqlBuffer other)
+        {
+            Contract.Assert(other.Size - other._filledBytes >= BytesLeft);
             Array.Copy(_buf, Position, other._buf, other._filledBytes, BytesLeft);
             other._filledBytes += BytesLeft;
         }
@@ -115,13 +140,13 @@ namespace Npgsql
 
         internal byte ReadByte()
         {
-            Debug.Assert(BytesLeft >= sizeof(byte));
+            Contract.Requires(BytesLeft >= sizeof(byte));
             return _buf[Position++];
         }
 
         internal short ReadInt16()
         {
-            Debug.Assert(BytesLeft >= sizeof(short));
+            Contract.Requires(BytesLeft >= sizeof(short));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(_buf, Position));
             Position += 2;
             return result;
@@ -129,7 +154,7 @@ namespace Npgsql
 
         internal int ReadInt32()
         {
-            Debug.Assert(BytesLeft >= sizeof(int));
+            Contract.Requires(BytesLeft >= sizeof(int));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_buf, Position));
             Position += 4;
             return result;
@@ -137,7 +162,7 @@ namespace Npgsql
 
         internal long ReadInt64()
         {
-            Debug.Assert(BytesLeft >= sizeof(long));
+            Contract.Requires(BytesLeft >= sizeof(long));
             var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(_buf, Position));
             Position += 8;
             return result;
@@ -145,7 +170,7 @@ namespace Npgsql
 
         internal float ReadSingle()
         {
-            Debug.Assert(BytesLeft >= sizeof(float));
+            Contract.Requires(BytesLeft >= sizeof(float));
             if (BitConverter.IsLittleEndian)
             {
                 _workspace[3] = _buf[Position++];
@@ -164,7 +189,7 @@ namespace Npgsql
 
         internal double ReadDouble()
         {
-            Debug.Assert(BytesLeft >= sizeof(double));
+            Contract.Requires(BytesLeft >= sizeof(double));
             if (BitConverter.IsLittleEndian)
             {
                 _workspace[7] = _buf[Position++];
@@ -188,6 +213,33 @@ namespace Npgsql
         #endregion
 
         /// <summary>
+        /// Converts a given number of bytes into a char array and returns it. Expects the required bytes
+        /// to already be in the buffer
+        /// </summary>
+        internal char[] ReadChars(int byteCount)
+        {
+            if (byteCount <= Size)
+            {
+                Ensure(byteCount);
+                var result = TextEncoding.GetChars(_buf, Position, byteCount);
+                Position += byteCount;
+                return result;
+            }
+
+            // Worst case: our buffer isn't big enough. For now, pessimistically allocate a char buffer
+            // that will hold the maximum number of characters for the column length
+            // TODO: Optimize
+            var pessimisticNumChars = TextEncoding.GetMaxCharCount(byteCount);
+            var pessimisticOutput = new char[pessimisticNumChars];
+            var actualNumChars = PopulateCharArray(pessimisticOutput, byteCount);
+            if (actualNumChars == pessimisticNumChars)
+                return pessimisticOutput;
+            var output = new char[actualNumChars];
+            Array.Copy(pessimisticOutput, 0, output, 0, actualNumChars);
+            return output;
+        }
+
+        /// <summary>
         /// Note that unlike the primitive readers, this reader can read any length, looping internally
         /// and reading directly from the underlying stream
         /// </summary>
@@ -204,8 +256,14 @@ namespace Npgsql
             // Worst case: our buffer isn't big enough. For now, pessimistically allocate a char buffer
             // that will hold the maximum number of characters for the column length
             // TODO: Optimize
-            var maxChars = TextEncoding.GetMaxCharCount(byteCount);
-            var output = new char[maxChars];
+            var pessimisticNumChars = TextEncoding.GetMaxCharCount(byteCount);
+            var pessimisticOutput = new char[pessimisticNumChars];
+            var actualNumChars = PopulateCharArray(pessimisticOutput, byteCount);
+            return new string(pessimisticOutput, 0, actualNumChars);
+        }
+
+        int PopulateCharArray(char[] output, int byteCount)
+        {
             try
             {
                 var totalBytesRead = 0;
@@ -216,13 +274,14 @@ namespace Npgsql
                     int bytesRead, charsRead;
                     bool completed;
                     var maxBytes = Math.Min(byteCount - totalBytesRead, BytesLeft);
-                    _textDecoder.Convert(_buf, Position, maxBytes, output, outputOffset, maxChars - totalCharsRead, false,
+                    _textDecoder.Convert(_buf, Position, maxBytes, output, outputOffset, output.Length - totalCharsRead, false,
                                          out bytesRead, out charsRead, out completed);
                     Position += bytesRead;
                     totalBytesRead += bytesRead;
                     totalCharsRead += charsRead;
-                    if (totalBytesRead == byteCount) {
-                        return new string(output, 0, totalCharsRead);
+                    if (totalBytesRead == byteCount)
+                    {
+                        return totalCharsRead;
                     }
                     outputOffset += charsRead;
                     Clear();
@@ -239,9 +298,9 @@ namespace Npgsql
         {
             int i;
             for (i = Position; _buf[i] != 0; i++) {
-                Debug.Assert(i <= Position + BytesLeft);
+                Contract.Assume(i <= Position + BytesLeft);
             }
-            Debug.Assert(i >= Position);
+            Contract.Assert(i >= Position);
             var result = TextEncoding.GetString(_buf, Position, i - Position);
             Position = i + 1;
             return result;
@@ -251,7 +310,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="readAll">whether to loop internally until all bytes are read,
         /// or return after a single read to the underlying stream</param>
-        internal int ReadBytes(byte[] output, int outputOffset, int len, bool readAll)
+        internal int ReadBytes(byte[] output, int outputOffset, int len, bool readAll=false)
         {
             if (len <= BytesLeft)
             {
@@ -317,7 +376,7 @@ namespace Npgsql
         /// <returns>the number of bytes read</returns>
         internal void ReadChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
         {
-            Debug.Assert(charCount <= output.Length - outputOffset);
+            Contract.Requires(charCount <= output.Length - outputOffset);
 
             bytesRead = 0;
             charsRead = 0;
@@ -366,6 +425,8 @@ namespace Npgsql
 
         internal void Skip(long len)
         {
+            Contract.Requires(len >= 0);
+
             if (len > BytesLeft)
             {
                 len -= BytesLeft;

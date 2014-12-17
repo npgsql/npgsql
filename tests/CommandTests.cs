@@ -160,6 +160,16 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void DisposeCommandInMiddleOfRead()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1, 2", Conn);
+            cmd.ExecuteReader();
+            cmd.Dispose();
+            cmd = new NpgsqlCommand("SELECT 3", Conn);
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(3));
+        }
+
+        [Test]
         public void TransactionSetOk()
         {
             ExecuteNonQuery("INSERT INTO data (field_text) VALUES ('X')");
@@ -2096,37 +2106,6 @@ namespace NpgsqlTests
             a.ExecuteScalar();
         }
 
-        private void MoneyHandlingInternal(bool prepare)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                decimal inVal = 12345.12m;
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Money);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                if (prepare)
-                {
-                    cmd.Prepare();
-                }
-
-                var retVal = (decimal) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal, retVal);
-            }
-        }
-
-        [Test]
-        public void MoneyHandling()
-        {
-            MoneyHandlingInternal(false);
-        }
-
-        [Test]
-        public void MoneyHandlingPrepared()
-        {
-            MoneyHandlingInternal(true);
-        }
-
         private void TimeStampHandlingInternal(bool prepare)
         {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
@@ -2273,360 +2252,6 @@ namespace NpgsqlTests
             // This is caused by having an error with the prepared statement and later, Npgsql is trying to release the plan as it was successful created.
             var cmd = new NpgsqlCommand("sele", Conn);
             cmd.Prepare();
-        }
-
-        [Test]
-        public void TestBug1010488ArrayParameterWithNullValue()
-        {
-            // Test by Christ Akkermans
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
-            AS $$
-            DECLARE
-            BEGIN
-            END
-            $$ LANGUAGE plpgsql;", Conn).ExecuteNonQuery();
-
-            using (var cmd = new NpgsqlCommand("NullTest", Conn))
-            {
-                var parameter = new NpgsqlParameter("", NpgsqlDbType.Integer | NpgsqlDbType.Array);
-                parameter.Value = new object[] {5, 5, DBNull.Value};
-                cmd.Parameters.Add(parameter);
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void TestBug1010675ArrayParameterWithNullValue()
-        {
-            new NpgsqlCommand(@"CREATE OR REPLACE FUNCTION NullTest (input INT4[]) RETURNS VOID
-            AS $$
-            DECLARE
-            BEGIN
-            END
-            $$ LANGUAGE plpgsql;", Conn).ExecuteNonQuery();
-
-            using (var cmd = new NpgsqlCommand("NullTest", Conn))
-            {
-                NpgsqlParameter parameter = new NpgsqlParameter("", NpgsqlDbType.Integer | NpgsqlDbType.Array);
-                parameter.Value = new object[] {5, 5, null};
-                cmd.Parameters.Add(parameter);
-                cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void VarCharArrayHandling()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Varchar | NpgsqlDbType.Array);
-                parameter.Value = new object[] {"test", "test"};
-                cmd.Parameters.Add(parameter);
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void DoubleArrayHandling()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] {1.2d, 1.3d};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                var retVal = (Double[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void DoubleArrayHandlingZeroItem()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new Double[] {};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                var retVal = (Double[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-            }
-        }
-
-        private void DecimalArrayHandlingInternal(bool prepare)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] { 1d, 1000d, 1000000d };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Numeric | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                if (prepare)
-                {
-                    cmd.Prepare();
-                }
-
-                var retVal = (decimal[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void DecimalArrayHandling()
-        {
-            DecimalArrayHandlingInternal(false);
-        }
-
-        [Test]
-        public void DecimalArrayHandlingPrepared()
-        {
-            DecimalArrayHandlingInternal(true);
-        }
-
-        [Test]
-        public void TextArrayHandling()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] {"Array element", "Array element with a '", "Array element with a \"", "Array element with a ,", "Array element with a \\"};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                var retVal = (string[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        private void TextArrayHandlingPreparedInternal()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] {"Array element", "Array element with a '", "Array element with a \"", "Array element with a ,", "Array element with a \\"};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Text | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (string[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void TextArrayHandlingPrepared()
-        {
-            TextArrayHandlingPreparedInternal();
-        }
-
-        [Test]
-        public void TextArrayHandlingPrepared_SuppressBinary()
-        {
-            using (this.SuppressBackendBinary())
-            {
-                TextArrayHandlingPreparedInternal();
-            }
-        }
-
-        private void IntArrayHandlingPreparedInternal()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] {1, 2, 3, 0xFE, 0xFD, 0xFC};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (int[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void IntArrayHandlingPrepared()
-        {
-            IntArrayHandlingPreparedInternal();
-        }
-
-        [Test]
-        public void IntArrayHandlingPrepared_SuppressBinary()
-        {
-            using (this.SuppressBackendBinary())
-            {
-                IntArrayHandlingPreparedInternal();
-            }
-        }
-
-        private void DoubleArrayHandlingPreparedInternal()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] {12345.12345d, 98765.98765d};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (Double[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void DoubleArrayHandlingPrepared()
-        {
-            DoubleArrayHandlingPreparedInternal();
-        }
-
-        [Test]
-        public void DoubleArrayHandlingPrepared_SuppressBinary()
-        {
-            using (this.SuppressBackendBinary())
-            {
-                DoubleArrayHandlingPreparedInternal();
-            }
-        }
-
-        [Test]
-        public void DoubleArrayHandlingZeroItemPrepared()
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new Double[] {};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (Double[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-            }
-        }
-
-        [Test]
-        public void DoubleArrayHandlingValues([Values(true, false)] bool prepareCommand)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] { double.NaN, 12345.12345d, double.PositiveInfinity, double.NegativeInfinity };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                if (prepareCommand)
-                    cmd.Prepare();
-
-                var retVal = (Double[])cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void SingleArrayHandlingValues([Values(true, false)] bool prepareCommand)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] { float.NaN, 12345.12345f, float.PositiveInfinity, float.NegativeInfinity };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Real | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                if (prepareCommand)
-                    cmd.Prepare();
-
-                var retVal = (float[])cmd.ExecuteScalar();
-                Assert.That(retVal, Is.EqualTo(inVal).Within(100).Ulps);
-            }
-        }
-
-        // Type coersion in the native to backend converters does not work so
-        // well for arrays.  The rules for type coersion of array elements
-        // does not work the same as for non-arrays.  This test demonstrates
-        // the problem.
-        private void DateTimeArrayHandlingInternal(bool prepare)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                var inVal = new[] { DateTime.Now, DateTime.Now.AddDays(7) };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                if (prepare)
-                {
-                    cmd.Prepare();
-                }
-
-                var retVal = (DateTime[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        [Ignore]
-        public void DateTimeArrayHandling()
-        {
-            DateTimeArrayHandlingInternal(false);
-        }
-
-        [Test]
-        [Ignore]
-        public void DateTimeArrayHandlingPrepared()
-        {
-            DateTimeArrayHandlingInternal(true);
-        }
-
-        private void MoneyArrayHandlingInternal(bool prepare)
-        {
-            using (var cmd = new NpgsqlCommand("select :p1", Conn))
-            {
-                decimal[] inVal = new[] {12345.12m, 98765.98m};
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Money | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-
-                if (prepare)
-                {
-                    cmd.Prepare();
-                }
-
-                var retVal = (decimal[]) cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void MoneyArrayHandling()
-        {
-            MoneyArrayHandlingInternal(false);
-        }
-
-        [Test]
-        public void MoneyArrayHandlingPrepared()
-        {
-            MoneyArrayHandlingInternal(true);
         }
 
         [Test]
@@ -2833,18 +2458,6 @@ namespace NpgsqlTests
             NpgsqlCommandBuilder.DeriveParameters(command);
             Assert.AreEqual(":x", command.Parameters[0].ParameterName);
             Assert.AreEqual(":y", command.Parameters[1].ParameterName);
-        }
-
-        [Test]
-        public void NegativeMoneySupport()
-        {
-            var command = new NpgsqlCommand("select '-10.5'::money", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetDecimal(0);
-                Assert.AreEqual(-10.5, result);
-            }
         }
 
         [Test]
@@ -3257,20 +2870,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void TestIEnumerableAsArray()
-        {
-            using (var command = new NpgsqlCommand("SELECT :array", Conn))
-            {
-                var expected = new[] { 1, 2, 3, 4 };
-                command.Parameters.AddWithValue("array", expected.Select(x => x));
-                var res = command.ExecuteScalar() as int[];
-
-                Assert.NotNull(res);
-                CollectionAssert.AreEqual(expected, res);
-            }
-        }
-
-        [Test]
         [MinPgVersion(9, 2, 0, "json data type not yet introduced")]
         public void InsertJsonValueDataType()
         {
@@ -3601,20 +3200,6 @@ namespace NpgsqlTests
                     Assert.AreEqual(new DateTime(2008, 1, 1), reader.GetValue(0));
                     Assert.AreEqual(new DateTime(2008, 1, 1), reader.GetValue(1));
                 }
-            }
-        }
-
-        [Test]
-        public void TestEmptyIEnumerableAsArray()
-        {
-            using (var command = new NpgsqlCommand("SELECT :array", Conn))
-            {
-                var expected = new[] { 1, 2, 3, 4 };
-                command.Parameters.AddWithValue("array", expected.Where(x => false));
-                var res = command.ExecuteScalar() as int[];
-
-                Assert.NotNull(res);
-                Assert.AreEqual(0, res.Length);
             }
         }
 
