@@ -96,8 +96,9 @@ namespace NpgsqlTests
             var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime[])));
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDate[])));
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
         }
 
         // Older tests
