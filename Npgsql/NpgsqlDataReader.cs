@@ -991,7 +991,7 @@ namespace Npgsql
             // We need to treat this as an actuall array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
-            var arrayHandler = handler as ArrayHandler;
+            var arrayHandler = handler as IArrayHandler;
             if (arrayHandler == null) {
                 throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
             }
