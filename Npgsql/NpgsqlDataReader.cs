@@ -349,8 +349,7 @@ namespace Npgsql
         {
             get
             {
-                // We read msdn documentation and bug report #1010649 that the common return value is 0.
-                return _rowDescription == null ? 0 : _rowDescription.NumFields;
+                return _row == null ? 0 : _rowDescription.NumFields;
             }
         }
 
