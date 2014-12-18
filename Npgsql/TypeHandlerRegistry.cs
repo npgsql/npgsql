@@ -91,17 +91,34 @@ namespace Npgsql
                         result[oid] = handler;
 
                         var arrayOid = Convert.ToInt32(dr[2]);
-                        if (arrayOid != 0)
-                        {
-                            // The backend has a corresponding array type for this type.
-                            // Use reflection to create a constructed type from the generic ArrayHandler<,,>
-                            // generic type definition.
-                            var arrayHandlerType = typeof(ArrayHandler<,,>).MakeGenericType(handler.FieldType, handler.ProviderSpecificFieldType, handler.GetType());
-                            var textDelimiter = dr.GetString(3)[0];
-                            var arrayHandler = (TypeHandler)Activator.CreateInstance(arrayHandlerType, handler, textDelimiter);
-                            // arrayHandler.Oid = oid;
-                            result[arrayOid] = arrayHandler;
+                        if (arrayOid == 0) {
+                            continue;
                         }
+
+                        // The backend has a corresponding array type for this type.
+                        // Use reflection to create a constructed type from the relevant ArrayHandler
+                        // generic type definition.
+                        var textDelimiter = dr.GetString(3)[0];
+                        ArrayHandler arrayHandler;
+
+                        var asBitStringHandler = handler as BitStringHandler;
+                        if (asBitStringHandler != null)
+                        {
+                            // BitString requires a special array handler which returns bool or BitArray
+                            arrayHandler = new BitStringArrayHandler(asBitStringHandler, textDelimiter);
+                        }
+                        else  if (handler is ITypeHandlerWithPsv)
+                        {
+                            var arrayHandlerType = typeof(ArrayHandlerWithPsv<,>).MakeGenericType(handler.GetFieldType(), handler.GetProviderSpecificFieldType());
+                            arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, handler, textDelimiter);
+                        }
+                        else
+                        {
+                            var arrayHandlerType = typeof(ArrayHandler<>).MakeGenericType(handler.GetFieldType());
+                            arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, handler, textDelimiter);
+                        }
+                        // arrayHandler.Oid = oid;
+                        result[arrayOid] = arrayHandler;
                     }
                 }
             }
@@ -117,10 +134,10 @@ namespace Npgsql
         {
             _scalarTypeHandlers = Assembly.GetExecutingAssembly()
                 .DefinedTypes
-                .Where(t => !t.IsAbstract &&
-                            t.IsSubclassOf(typeof (TypeHandler)) &&
-                            //t != typeof(UnknownTypeHandler) &&
-                            t != typeof(ArrayHandler<,,>))
+                .Where(t => t.IsSubclassOf(typeof (TypeHandler)) &&
+                            !t.IsAbstract &&
+                            !typeof(ArrayHandler).IsAssignableFrom(t)  // Arrays are taken care of later
+                )
                 .Select(Activator.CreateInstance)
                 .Cast<TypeHandler>()
                 .ToList();

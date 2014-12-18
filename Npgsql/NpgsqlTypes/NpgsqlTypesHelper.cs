@@ -303,6 +303,7 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("bytea", typeof(Byte[]));
 
+            /*
             nativeTypeMapping.AddType("bit", NpgsqlDbType.Bit, DbType.Object, false,
                                             BasicNativeToBackendTypeConverter.ToBitText,
                                             BasicNativeToBackendTypeConverter.ToBitBinary);
@@ -310,8 +311,8 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddType("varbit", NpgsqlDbType.Varbit, DbType.Object, false,
                                             BasicNativeToBackendTypeConverter.ToBitText,
                                             BasicNativeToBackendTypeConverter.ToBitBinary);
-
-            nativeTypeMapping.AddTypeAlias("varbit", typeof(BitString));
+            */
+            //nativeTypeMapping.AddTypeAlias("varbit", typeof(BitString));
 
             nativeTypeMapping.AddType("bool", NpgsqlDbType.Boolean, DbType.Boolean, false,
                                             BasicNativeToBackendTypeConverter.BooleanToBooleanText,
@@ -504,15 +505,17 @@ namespace NpgsqlTypes
                                             BasicBackendToNativeTypeConverter.ByteaTextToByteArray,
                                             BasicBackendToNativeTypeConverter.ByteaBinaryToByteArray);
 
+            /*
             yield return
                 new NpgsqlBackendTypeInfo(0, "bit", NpgsqlDbType.Bit, DbType.Object, typeof (BitString),
                                             BasicBackendToNativeTypeConverter.ToBitText,
                                             BasicBackendToNativeTypeConverter.ToBitBinary);
-
+             
             yield return
                 new NpgsqlBackendTypeInfo(0, "varbit", NpgsqlDbType.Varbit, DbType.Object, typeof(BitString),
                                             BasicBackendToNativeTypeConverter.ToBitText,
                                             BasicBackendToNativeTypeConverter.ToBitBinary);
+            */
 
             yield return
                 new NpgsqlBackendTypeInfo(0, "bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(Boolean),

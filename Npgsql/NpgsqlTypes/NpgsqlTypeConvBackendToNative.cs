@@ -213,7 +213,7 @@ namespace NpgsqlTypes
                 default: throw new Exception("Unexpected integer binary field length");
             }
         }
-
+        /*
         /// <summary>
         /// Convert a postgresql bit to a System.Boolean if length is 1, else a BitString.
         /// </summary>
@@ -235,7 +235,9 @@ namespace NpgsqlTypes
             BitString bs = BitString.Parse(BackendData);
             return TypeInfo.NpgsqlDbType == NpgsqlDbType.Bit && TypeModifier == 1 ? (object)bs[0] : bs;
         }
+        */
 
+        /*
         /// <summary>
         /// Convert a postgresql bit to a System.Boolean if length is 1, else a BitString.
         /// </summary>
@@ -245,7 +247,7 @@ namespace NpgsqlTypes
             BitString bs = new BitString(BackendData);
             return TypeInfo.NpgsqlDbType == NpgsqlDbType.Bit && TypeModifier == 1 ? (object)bs[0] : bs;
         }
-
+        */
         private static bool ByteArrayEqual(byte[] l, byte[] r)
         {
             if (l.Length != r.Length)

@@ -10,9 +10,11 @@ using NpgsqlTypes;
 namespace Npgsql.Messages
 {
     /// <summary>
-    /// This class represents a RowDescription message sent from
-    /// the PostgreSQL.
+    /// A RowDescription message sent from the backend.
     /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/9.4/static/protocol-message-formats.html
+    /// </remarks>
     internal sealed class RowDescriptionMessage : ServerMessage
     {
         readonly List<FieldDescription> _fields;
@@ -22,8 +24,8 @@ namespace Npgsql.Messages
         internal RowDescriptionMessage()
         {
             _fields = new List<FieldDescription>();
-            _nameIndex = new Dictionary<string, int>(KanaWidthInsensitiveComparer.INSTANCE);
-            _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.INSTANCE);
+            _nameIndex = new Dictionary<string, int>(KanaWidthInsensitiveComparer.Instance);
+            _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.Instance);
         }
 
         internal RowDescriptionMessage Load(NpgsqlBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
@@ -95,48 +97,85 @@ namespace Npgsql.Messages
 
         #region Kana comparers
 
-        static readonly CompareInfo COMPARE_INFO = CultureInfo.InvariantCulture.CompareInfo;
+        static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
         private sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
         {
-            public static readonly KanaWidthInsensitiveComparer INSTANCE = new KanaWidthInsensitiveComparer();
+            public static readonly KanaWidthInsensitiveComparer Instance = new KanaWidthInsensitiveComparer();
             private KanaWidthInsensitiveComparer() { }
             public bool Equals(string x, string y)
             {
-                return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
+                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
             }
             public int GetHashCode(string obj)
             {
-                return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
+                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth).GetHashCode();
             }
         }
 
         private sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
         {
-            public static readonly KanaWidthCaseInsensitiveComparer INSTANCE = new KanaWidthCaseInsensitiveComparer();
+            public static readonly KanaWidthCaseInsensitiveComparer Instance = new KanaWidthCaseInsensitiveComparer();
             private KanaWidthCaseInsensitiveComparer() { }
             public bool Equals(string x, string y)
             {
-                return COMPARE_INFO.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+                return CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
             }
             public int GetHashCode(string obj)
             {
-                return COMPARE_INFO.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+                return CompareInfo.GetSortKey(obj, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
             }
         }
 
         #endregion
     }
 
+    /// <summary>
+    /// A descriptive record on a single field received from Postgresql.
+    /// See RowDescription in http://www.postgresql.org/docs/9.4/static/protocol-message-formats.html
+    /// </summary>
     internal sealed class FieldDescription
     {
+        /// <summary>
+        /// The field name.
+        /// </summary>
         internal string Name { get; set; }
+
+        /// <summary>
+        /// The object ID of the field's data type.
+        /// </summary>
         internal int OID { get; set; }
+
+        /// <summary>
+        /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
+        /// </summary>
         internal short TypeSize { get; set; }
+
+        /// <summary>
+        /// The type modifier (see pg_attribute.atttypmod). The meaning of the modifier is type-specific.
+        /// </summary>
         internal int TypeModifier { get; set; }
+
+        /// <summary>
+        /// If the field can be identified as a column of a specific table, the object ID of the table; otherwise zero.
+        /// </summary>
         internal int TableOID { get; set; }
+
+        /// <summary>
+        /// If the field can be identified as a column of a specific table, the attribute number of the column; otherwise zero.
+        /// </summary>
         internal short ColumnAttributeNumber { get; set; }
+
+        /// <summary>
+        /// The format code being used for the field.
+        /// Currently will be zero (text) or one (binary).
+        /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
+        /// </summary>
         internal FormatCode FormatCode { get; set; }
+
+        /// <summary>
+        /// The Npgsql type handler assigned to handle this field.
+        /// </summary>
         internal TypeHandler Handler { get; set; }
 
         public bool IsBinaryFormat { get { return FormatCode == FormatCode.Binary; } }

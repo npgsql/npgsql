@@ -11,83 +11,51 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    internal interface IArrayHandler
-    {
-        Type ElementFieldType { get; }
-        Type ElementProviderSpecificFieldType { get; }
-    }
-
+    /// <summary>
+    /// Base class for all type handlers which handle PostgreSQL arrays.
+    /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/arrays.html
     /// </remarks>
-    /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
-    /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
-    /// <typeparam name="THandler">The Npgsql TypeHandler for <typeparamref name="TNormal"/></typeparam>
-    internal class ArrayHandler<TNormal, TPsv, THandler> : TypeHandler, IArrayHandler
-        where THandler : TypeHandler, ITypeHandler<TNormal>, ITypeHandler<TPsv>
+    internal abstract class ArrayHandler : TypeHandler
     {
         static readonly string[] _pgNames = { "array" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
         public override bool IsArbitraryLength { get { return true; } }
 
+        internal override Type GetFieldType(FieldDescription fieldDescription)
+        {
+            return typeof (Array);
+        }
+
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
+        {
+            return typeof (Array);
+        }
+
+        internal abstract Type GetElementFieldType(FieldDescription fieldDescription);
+        internal abstract Type GetElementPsvType(FieldDescription fieldDescription);
+
         /// <summary>
         /// The type handler for the element that this array type holds
         /// </summary>
-        internal THandler ElementHandler { get; private set; }
-
-        /// <summary>
-        /// The type of the elements contained within this array
-        /// </summary>
-        public Type ElementFieldType { get { return typeof(TNormal); } }
-        /// <summary>
-        /// The provider-specific type of the elements contained within this array,
-        /// </summary>
-        public Type ElementProviderSpecificFieldType { get { return typeof(TPsv); } }
+        internal TypeHandler ElementHandler { get; private set; }
 
         /// <summary>
         /// The delimiter character for this array.
         /// </summary>
         internal char TextDelimiter { get; private set; }
 
-        public ArrayHandler(TypeHandler elementHandler, char textDelimiter)
+        protected ArrayHandler(TypeHandler elementHandler, char textDelimiter)
         {
-            ElementHandler = (THandler)elementHandler;
+            ElementHandler = elementHandler;
             TextDelimiter = textDelimiter;
-        }
-
-        internal override Type FieldType { get { return typeof(Array); } }
-        internal override Type ProviderSpecificFieldType { get { return typeof(Array); } }
-
-        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return ReadText<TNormal>(buf, fieldDescription, len);
-                case FormatCode.Binary:
-                    return ReadBinary<TNormal>(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return ReadText<TPsv>(buf, fieldDescription, len);
-                case FormatCode.Binary:
-                    return ReadBinary<TPsv>(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
         }
 
         #region Binary
 
-        Array ReadBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        protected Array ReadBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Assert(ElementHandler.SupportsBinaryRead);
 
@@ -95,7 +63,8 @@ namespace Npgsql.TypeHandlers
             // TODO: Temporary unoptimized solution: if the column is larger than the buffer size, allocate a new
             // buffer. We could also load data progressively as we need it below, eliminating this allocation
             // most times. But what happens if a single element is larger than the buffer size...
-            if (len > buf.BytesLeft) {
+            if (len > buf.BytesLeft)
+            {
                 buf = buf.EnsureOrAllocateTemp(len);
             }
 
@@ -103,11 +72,13 @@ namespace Npgsql.TypeHandlers
             var nDims = buf.ReadInt32();
 
             // Sanity check.
-            if (nDims < 0) {
+            if (nDims < 0)
+            {
                 throw new Exception("Invalid array dimension count encountered in binary array header");
             }
 
-            if (nDims > 32) {
+            if (nDims > 32)
+            {
                 throw new NotSupportedException(String.Format("Array with {0} dimensions encountered, only 32 are supported in .NET", nDims));
             }
 
@@ -207,63 +178,10 @@ namespace Npgsql.TypeHandlers
 
         #region Text
 
-#if AHHHH
         /// <summary>
         /// Creates an array from pg text representation.
         /// </summary>
-        Array ReadText<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            var s = buf.ReadString(len);
-
-            // First go through all the opening braces to get the number of dimensions
-            var nDims = 0;
-            foreach (var c in s)
-            {
-                if (Char.IsWhiteSpace(c)) {
-                    continue;
-                }
-                if (c == '{')
-                {
-                    nDims++;
-                    continue;
-                }
-                break;
-            }
-
-            // PG handles 0-dimension arrays, but .NET does not.  Return a 0-size 1-dimensional array.
-            if (nDims == 0) {
-                return new T[0];
-            }
-
-            if (nDims > 32) {
-                throw new NotSupportedException(String.Format("Array with {0} dimensions encountered, only 32 are supported in .NET", nDims));
-            }
-
-            var dst = Array.CreateInstance(typeof(T), dimLengths, dimLBounds);
-
-            /*
-            if (nDims == 1)
-            {
-                PopulateOneDimensionalBinary(buf, fieldDescription, (T[])dst);
-                return dst;
-            }*/
-
-            var dstOffsets = new int[nDims];
-
-            // Right after the dimension descriptors begins array data.
-            // Populate the new array.
-
-            PopulateBinary<T>(buf, fieldDescription, dimLengths, dimLBounds, 0, dst, dstOffsets);
-            return dst;
-
-
-        }
-#endif
-
-        /// <summary>
-        /// Creates an array from pg text representation.
-        /// </summary>
-        Array ReadText<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        protected Array ReadText<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Assume(buf.TextEncoding == Encoding.UTF8, "Array text decoding currently depends on encoding being UTF8");
 
@@ -344,7 +262,8 @@ namespace Npgsql.TypeHandlers
             if (dimensions.Count == 1) //1-dimension array so we can just use ArrayList.ToArray()
             {
                 var result = new T[dimensions[0]];
-                for (var i = 0; i < dimensions[0]; i++) {
+                for (var i = 0; i < dimensions[0]; i++)
+                {
                     result[i] = (T)list[i];
                 }
                 return result;
@@ -533,5 +452,84 @@ namespace Npgsql.TypeHandlers
             }
         }
         #endregion
+    }
+
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// </remarks>
+    /// <typeparam name="T">The .NET type contained as an element within this array</typeparam>
+    internal class ArrayHandler<T> : ArrayHandler
+    {
+        /// <summary>
+        /// The type of the elements contained within this array
+        /// </summary>
+        /// <param name="fieldDescription"></param>
+        internal override Type GetElementFieldType(FieldDescription fieldDescription)
+        {
+            return typeof(T);
+        }
+
+        /// <summary>
+        /// The provider-specific type of the elements contained within this array,
+        /// </summary>
+        /// <param name="fieldDescription"></param>
+        internal override Type GetElementPsvType(FieldDescription fieldDescription)
+        {
+            return typeof(T);
+        }
+
+        public ArrayHandler(TypeHandler elementHandler, char textDelimiter)
+            : base(elementHandler, textDelimiter) { }
+
+        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    return ReadText<T>(buf, fieldDescription, len);
+                case FormatCode.Binary:
+                    return ReadBinary<T>(buf, fieldDescription, len);
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
+        }
+
+        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            return ReadValueAsObject(buf, fieldDescription, len);
+        }
+    }
+
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// </remarks>
+    /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
+    /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
+    internal class ArrayHandlerWithPsv<TNormal, TPsv> : ArrayHandler<TNormal>, ITypeHandlerWithPsv
+    {
+        /// <summary>
+        /// The provider-specific type of the elements contained within this array,
+        /// </summary>
+        /// <param name="fieldDescription"></param>
+        internal override Type GetElementPsvType(FieldDescription fieldDescription)
+        {
+            return typeof(TPsv);
+        }
+
+        public ArrayHandlerWithPsv(TypeHandler elementHandler, char textDelimiter)
+            : base(elementHandler, textDelimiter) {}
+
+        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            switch (fieldDescription.FormatCode)
+            {
+                case FormatCode.Text:
+                    return ReadText<TPsv>(buf, fieldDescription, len);
+                case FormatCode.Binary:
+                    return ReadBinary<TPsv>(buf, fieldDescription, len);
+                default:
+                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
+        }
     }
 }

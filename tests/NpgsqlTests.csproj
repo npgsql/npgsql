@@ -168,12 +168,13 @@
     <Reference Include="System.ComponentModel.DataAnnotations" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArrayTests.cs" />
+    <Compile Include="Types\ArrayTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="AsyncTests.cs" />
-    <Compile Include="ByteaTests.cs" />
+    <Compile Include="Types\BitStringTests.cs" />
+    <Compile Include="Types\ByteaTests.cs" />
     <Compile Include="CopyTests.cs" />
-    <Compile Include="DateTimeTests.cs" />
+    <Compile Include="Types\DateTimeTests.cs" />
     <Compile Include="EntityFrameworkBasicTests.cs" />
     <Compile Include="EntityFrameworkMigrationTests.cs" />
     <Compile Include="FunctionTests.cs">
@@ -181,7 +182,7 @@
     </Compile>
     <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
-    <Compile Include="SimpleTypeTests.cs" />
+    <Compile Include="Types\SimpleTypeTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />
@@ -196,7 +197,7 @@
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
     <Compile Include="TestUtil.cs" />
-    <Compile Include="TextTests.cs" />
+    <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
     <Compile Include="xmlModel\XmlTest.Views.cs" />

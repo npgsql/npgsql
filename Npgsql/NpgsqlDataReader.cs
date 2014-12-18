@@ -894,7 +894,8 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            return _rowDescription[ordinal].Handler.FieldType;
+            var fieldDescription = _rowDescription[ordinal];
+            return fieldDescription.Handler.GetFieldType(fieldDescription);
         }
 
         public override Type GetProviderSpecificFieldType(int ordinal)
@@ -907,7 +908,8 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            return _rowDescription[ordinal].Handler.ProviderSpecificFieldType;
+            var fieldDescription = _rowDescription[ordinal];
+            return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
         }
 
         public override object GetValue(int ordinal)
@@ -987,19 +989,19 @@ namespace Npgsql
                 return ReadColumn<T>(ordinal);
             }
 
-            // We need to treat this as an actuall array type, these need special treatment because of
+            // We need to treat this as an actual array type, these need special treatment because of
             // typing/generics reasons
             var elementType = t.GetElementType();
-            var arrayHandler = handler as IArrayHandler;
+            var arrayHandler = handler as ArrayHandler;
             if (arrayHandler == null) {
                 throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
             }
 
-            if (arrayHandler.ElementFieldType == elementType)
+            if (arrayHandler.GetElementFieldType(fieldDescription) == elementType)
             {
                 return (T)GetValue(ordinal);
             }
-            if (arrayHandler.ElementProviderSpecificFieldType == elementType)
+            if (arrayHandler.GetElementPsvType(fieldDescription) == elementType)
             {
                 return (T)GetProviderSpecificValue(ordinal);
             }
