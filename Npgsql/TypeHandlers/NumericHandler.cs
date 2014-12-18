@@ -6,7 +6,10 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class DecimalHandler : TypeHandler<decimal>,
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
+    /// </remarks>
+    internal class NumericHandler : TypeHandler<decimal>,
         ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<int>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>,
         ITypeHandler<string>

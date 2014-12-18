@@ -12,6 +12,9 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-binary.html
+    /// </remarks>
     internal class ByteaHandler : TypeHandler<byte[]>
     {
         static readonly string[] _pgNames = { "bytea" };

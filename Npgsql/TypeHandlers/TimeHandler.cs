@@ -8,6 +8,9 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// </remarks>
     internal class TimeHandler : TypeHandlerWithPsv<DateTime, NpgsqlTime>, ITypeHandler<NpgsqlTime>
     {
         static readonly string[] _pgNames = { "time" };

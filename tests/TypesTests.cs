@@ -616,18 +616,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void NpgsqlMacAddress()
-        {
-            System.Net.NetworkInformation.PhysicalAddress local =
-                System.Net.NetworkInformation.PhysicalAddress.Parse("012345ABCDEF");
-            var mac = new NpgsqlMacAddress(local);
-            var mac2 = new NpgsqlMacAddress("01:23-45-aB,cD.eF");
-
-            Assert.AreEqual(mac, mac2);
-            Assert.AreEqual(mac.ToString(), mac2.ToString());
-        }
-
-        [Test]
         public void Bug1011018()
         {
             var p = new NpgsqlParameter();

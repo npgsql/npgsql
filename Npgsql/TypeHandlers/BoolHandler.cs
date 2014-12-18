@@ -6,6 +6,9 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-boolean.html
+    /// </remarks>
     internal class BoolHandler : TypeHandler<bool>
     {
         static readonly string[] _pgNames = { "bool" };

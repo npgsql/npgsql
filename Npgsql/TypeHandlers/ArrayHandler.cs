@@ -15,9 +15,9 @@ namespace Npgsql.TypeHandlers
         Type ElementProviderSpecificFieldType { get; }
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
     /// <typeparam name="THandler">The Npgsql TypeHandler for <typeparamref name="TNormal"/></typeparam>

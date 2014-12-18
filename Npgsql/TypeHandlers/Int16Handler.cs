@@ -6,6 +6,9 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
+    /// </remarks>
     internal class Int16Handler : TypeHandler<short>,
         ITypeHandler<byte>, ITypeHandler<int>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,

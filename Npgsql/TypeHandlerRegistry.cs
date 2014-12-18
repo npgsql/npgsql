@@ -38,7 +38,6 @@ namespace Npgsql
             {
                 TypeHandler result;
                 if (!_oidIndex.TryGetValue(oid, out result)) {
-                    //_log.Debug("Unknown type OID received from database: " + oid);
                     result = UnknownTypeHandler;
                 }
                 return result;

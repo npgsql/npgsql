@@ -432,11 +432,12 @@ namespace NpgsqlTypes
             nativeTypeMapping.AddTypeAlias("inet", typeof (IPAddress));
             nativeTypeMapping.AddTypeAlias("inet", typeof (NpgsqlInet));
 
+            /*
             nativeTypeMapping.AddType("macaddr", NpgsqlDbType.MacAddr, DbType.Object, true,
                                             ExtendedNativeToBackendTypeConverter.ToMacAddress);
-
-            nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
-            nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
+            */
+            //nativeTypeMapping.AddTypeAlias("macaddr", typeof(PhysicalAddress));
+            //nativeTypeMapping.AddTypeAlias("macaddr", typeof(NpgsqlMacAddress));
 
             nativeTypeMapping.AddType("uuid", NpgsqlDbType.Uuid, DbType.Guid, true);
             nativeTypeMapping.AddTypeAlias("uuid", typeof (Guid));
@@ -550,13 +551,14 @@ namespace NpgsqlTypes
                                             typeof(IPAddress),
                                             ipaddress => (IPAddress)(NpgsqlInet)ipaddress,
                                             npgsqlinet => (npgsqlinet is IPAddress ? (NpgsqlInet)(IPAddress) npgsqlinet : npgsqlinet));
+            /*
             yield return
                 new NpgsqlBackendTypeInfo(0, "macaddr", NpgsqlDbType.MacAddr, DbType.Object, typeof(NpgsqlMacAddress),
                                             ExtendedBackendToNativeTypeConverter.ToMacAddress,
                                             typeof(PhysicalAddress),
                                             macAddress => (PhysicalAddress)(NpgsqlMacAddress)macAddress,
                                             npgsqlmacaddr => (npgsqlmacaddr is PhysicalAddress ? (NpgsqlMacAddress)(PhysicalAddress)npgsqlmacaddr : npgsqlmacaddr));
-
+            */
             yield return
                 new NpgsqlBackendTypeInfo(0, "money", NpgsqlDbType.Money, DbType.Currency, typeof (Decimal),
                                             BasicBackendToNativeTypeConverter.ToMoney);

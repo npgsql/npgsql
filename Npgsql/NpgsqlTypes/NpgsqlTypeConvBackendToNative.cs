@@ -509,6 +509,7 @@ namespace NpgsqlTypes
             return new NpgsqlInet(BackendData);
         }
 
+        /*
         /// <summary>
         /// MAC Address.
         /// </summary>
@@ -518,6 +519,7 @@ namespace NpgsqlTypes
 
             return new NpgsqlMacAddress(BackendData);
         }
+        */
 
         internal static Object ToGuid(NpgsqlBackendTypeInfo TypeInfo, byte[] bBackendData, Int16 TypeSize, Int32 TypeModifier)
         {
