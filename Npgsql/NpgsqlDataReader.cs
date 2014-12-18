@@ -577,7 +577,7 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            throw new NotImplementedException();
+            return ReadColumn<Guid>(ordinal);
         }
 
         public override int GetValues(object[] values)
@@ -787,7 +787,7 @@ namespace Npgsql
             #endregion
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as StringHandler;
+            var handler = fieldDescription.Handler as TextHandler;
             if (handler == null) {
                 throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
             }
@@ -814,7 +814,7 @@ namespace Npgsql
             #endregion
 
             var fieldDescription = _rowDescription[ordinal];
-            var handler = fieldDescription.Handler as StringHandler;
+            var handler = fieldDescription.Handler as TextHandler;
             if (handler == null)
             {
                 throw new InvalidCastException("GetTextReader() not supported for type " + fieldDescription.Name);

@@ -9,6 +9,9 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-money.html
+    /// </remarks>
     internal class MoneyHandler : TypeHandler<decimal>
     {
         static readonly string[] _pgNames = { "money" };

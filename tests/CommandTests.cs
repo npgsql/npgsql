@@ -1669,34 +1669,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void InetTypeSupport()
-        {
-            var command = new NpgsqlCommand("INSERT INTO data(field_inet) VALUES (:a);", Conn);
-            var p = new NpgsqlParameter("a", NpgsqlDbType.Inet);
-            p.Value = new NpgsqlInet("127.0.0.1");
-            command.Parameters.Add(p);
-            command.ExecuteNonQuery();
-
-            command = new NpgsqlCommand("SELECT field_inet FROM data WHERE field_serial = (SELECT(field_serial) FROM data)", Conn);
-            var result = command.ExecuteScalar();
-            Assert.AreEqual((IPAddress) new NpgsqlInet("127.0.0.1"), (IPAddress) result);
-        }
-
-        [Test]
-        public void IPAddressTypeSupport()
-        {
-            var command = new NpgsqlCommand("insert into data(field_inet) values (:a);", Conn);
-            var p = new NpgsqlParameter("a", NpgsqlDbType.Inet);
-            p.Value = IPAddress.Parse("127.0.0.1");
-            command.Parameters.Add(p);
-            command.ExecuteNonQuery();
-
-            command = new NpgsqlCommand("select field_inet from data where field_serial = (select max(field_serial) from data);", Conn);
-            var result = command.ExecuteScalar();
-            Assert.AreEqual(IPAddress.Parse("127.0.0.1"), result);
-        }
-
-        [Test]
         public void BitTypeSupportWithPrepare()
         {
             using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
@@ -2866,56 +2838,6 @@ namespace NpgsqlTests
             using (var command = new NpgsqlCommand("select -- lc;lc /* lc;lc */\r\n1", Conn))
             {
                 Assert.AreEqual(1, command.ExecuteScalar());
-            }
-        }
-
-        [Test]
-        [MinPgVersion(9, 2, 0, "json data type not yet introduced")]
-        public void InsertJsonValueDataType()
-        {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
-            {
-                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
-            }
-        }
-
-        [Test]
-        [MinPgVersion(9, 4, 0, "jsonb data type not yet introduced")]
-        public void InsertJsonbValueDataType()
-        {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
-            {
-                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Jsonb;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
-            }
-        }
-
-        [Test]
-        [MinPgVersion(9, 1, 0, "hstore data type not yet introduced")]
-        public void InsertHstoreValueDataType()
-        {
-            CreateSchema("hstore");
-            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
-            ExecuteNonQuery(@"ALTER TABLE data DROP COLUMN IF EXISTS field_hstore");
-            try
-            {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "42704")
-                    TestUtil.Inconclusive("HSTORE does not seem to be installed at the backend");
-            }
-
-            ExecuteNonQuery(@"SET search_path = public, hstore");
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
-            {
-                cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
             }
         }
 

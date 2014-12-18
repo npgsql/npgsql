@@ -37,9 +37,7 @@ namespace NpgsqlTests
             if (IsSequential(behavior))
                 Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
-            {
                 Assert.That(reader[0], Is.EqualTo(expected));
-            }
 
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
             Assert.That(reader.GetFieldValue<string>(2), Is.EqualTo(expected));
@@ -97,10 +95,10 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default, TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.Default, TestName = "PreparedNonSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential")]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
         public void GetTextReader(PrepareOrNot prepare, CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
@@ -136,10 +134,10 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default, TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.Default, TestName = "PreparedNonSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential")]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
         public void Null(PrepareOrNot prepare, CommandBehavior behavior)
         {
             var buf = new char[8];
@@ -153,6 +151,21 @@ namespace NpgsqlTests
             Assert.That(() => reader.GetTextReader(0), Throws.Exception, "GetTextReader");
             Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception, "GetChars with null buffer");
             reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test, Description("Tests some types which are aliased to strings")]
+        [TestCase("varchar")]
+        [TestCase("name")]
+        public void AliasedTypes(string typename)
+        {
+            const string expected = "some_text";
+            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'::{1}", expected, typename), Conn);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetString(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
+            reader.Dispose();
             cmd.Dispose();
         }
 

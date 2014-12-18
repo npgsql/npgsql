@@ -716,6 +716,7 @@ namespace NpgsqlTypes
             return BackendEncoding.UTF8Encoding.GetBytes(String.Format("({0})", B));
         }
 
+        /*
         /// <summary>
         /// Convert to a postgres MAC Address.
         /// </summary>
@@ -726,7 +727,7 @@ namespace NpgsqlTypes
                 return BackendEncoding.UTF8Encoding.GetBytes(((NpgsqlMacAddress)NativeData).ToString());
             }
             return BackendEncoding.UTF8Encoding.GetBytes(NativeData.ToString());
-        }
+        }*/
 
         /// <summary>
         /// Circle.

@@ -9,6 +9,9 @@ namespace Npgsql.TypeHandlers
     /// <summary>
     /// Type handler for the Postgresql "char" type, used only internally
     /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-character.html
+    /// </remarks>
     internal class InternalCharHandler : TypeHandler<char>
     {
         static readonly string[] _pgNames = { "char" };

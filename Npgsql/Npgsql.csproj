@@ -307,6 +307,8 @@
     <Compile Include="Messages\DataRowSequentialMessage.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
+    <Compile Include="TypeHandlers\MacaddrHandler.cs" />
+    <Compile Include="TypeHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\BitString.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
@@ -386,6 +388,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
+    <Compile Include="TypeHandlers\UuidHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampTzHandler.cs" />
     <Compile Include="TypeHandlers\TimeStampHandler.cs" />
@@ -393,14 +396,14 @@
     <Compile Include="TypeHandlers\TimeHandler.cs" />
     <Compile Include="TypeHandlers\IntervalHandler.cs" />
     <Compile Include="TypeHandlers\DateHandler.cs" />
-    <Compile Include="TypeHandlers\DecimalHandler.cs" />
+    <Compile Include="TypeHandlers\NumericHandler.cs" />
     <Compile Include="TypeHandlers\BoolHandler.cs" />
     <Compile Include="TypeHandlers\ByteaHandler.cs" />
     <Compile Include="TypeHandlers\SingleHandler.cs" />
     <Compile Include="TypeHandlers\DoubleHandler.cs" />
     <Compile Include="TypeHandlers\Int16Handler.cs" />
     <Compile Include="TypeHandlers\Int64Handler.cs" />
-    <Compile Include="TypeHandlers\StringHandler.cs" />
+    <Compile Include="TypeHandlers\TextHandler.cs" />
     <Compile Include="TypeHandler.cs" />
     <Compile Include="TypeHandlers\Int32Handler.cs" />
     <Compile Include="TypeHandlerRegistry.cs" />

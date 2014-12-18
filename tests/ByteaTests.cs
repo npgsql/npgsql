@@ -37,10 +37,7 @@ namespace NpgsqlTests
             if (IsSequential(behavior))
                 Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
-            {
-                actual[0] = 9;  // Modifying the buffer returned by Npgsql shouldn't have any effect
-                //Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
-            }
+                Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
 
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
 

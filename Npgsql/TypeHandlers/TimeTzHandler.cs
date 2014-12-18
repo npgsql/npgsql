@@ -8,6 +8,9 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// </remarks>
     internal class TimeTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeTZ>, ITypeHandler<NpgsqlTimeTZ>
     {
         static readonly string[] _pgNames = { "timetz" };

@@ -8,6 +8,9 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// </remarks>
     internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlInterval>, ITypeHandler<NpgsqlInterval>
     {
         static readonly string[] _pgNames = { "interval" };

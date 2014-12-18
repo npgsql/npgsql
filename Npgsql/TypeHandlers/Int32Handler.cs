@@ -6,12 +6,15 @@ using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
+    /// </remarks>
     internal class Int32Handler : TypeHandler<int>,
         ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,
     ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "int4" };
+        static readonly string[] _pgNames = { "int4", "oid" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
