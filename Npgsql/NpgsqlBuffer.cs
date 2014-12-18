@@ -19,19 +19,24 @@ namespace Npgsql
         internal int Position { get; private set; }
         internal int BytesLeft { get { return _filledBytes - Position; } }
 
-        internal readonly byte[] _buf;
+        internal byte[] _buf;
         int _filledBytes;
         readonly Decoder _textDecoder;
 
-        readonly byte[] _workspace = new byte[8];
+        readonly byte[] _workspace;
 
         /// <summary>
         /// Used for internal temporary purposes
         /// </summary>
-        char[] _tempCharBuf = new char[1024];
+        char[] _tempCharBuf;
 
-        internal const int MinimumBufferSize = 1024;
+        /// <summary>
+        /// The minimum buffer size possible.
+        /// </summary>
+        internal const int MinimumBufferSize = 4096;
         internal const int DefaultBufferSize = 8192;
+
+        #region Constructors
 
         internal NpgsqlBuffer(Stream underlying)
             : this(underlying, DefaultBufferSize, Encoding.UTF8) {}
@@ -48,7 +53,21 @@ namespace Npgsql
             _buf = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
+            _tempCharBuf = new char[1024];
+            _workspace = new byte[8];
         }
+
+        /// <summary>
+        /// A total hack for reading elements of text-encoded arrays
+        /// </summary>
+        internal NpgsqlBuffer(string content, Encoding textEncoding)
+        {
+            TextEncoding = textEncoding;
+            _buf = TextEncoding.GetBytes(content);
+            Size = _filledBytes = _buf.Length;
+        }
+
+        #endregion
 
         internal void Ensure(int count)
         {
