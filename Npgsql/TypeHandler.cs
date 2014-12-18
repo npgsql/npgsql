@@ -52,8 +52,9 @@ namespace Npgsql
         internal abstract string[] PgNames { get; }
         internal string PgName { get { return PgNames[0]; } }
         internal int Oid { get; set; }
-        internal abstract Type FieldType { get; }
-        internal abstract Type ProviderSpecificFieldType { get; }
+        internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
+        internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
+
         /// <summary>
         /// Whether this type handler supports reading the binary Postgresql representation for its type.
         /// </summary>
@@ -61,7 +62,7 @@ namespace Npgsql
 
         /// <summary>
         /// If true, the type handler reads values of totally arbitrary length. These type handlers are expected
-        /// to  handle reading from socket on its own if the buffer doesn't contain enough data.
+        /// to handle reading from socket on its own if the buffer doesn't contain enough data.
         /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
         /// </summary>
         public virtual bool IsArbitraryLength { get { return false; } }
@@ -77,8 +78,15 @@ namespace Npgsql
 
     internal abstract class TypeHandler<T> : TypeHandler, ITypeHandler<T>
     {
-        internal override Type FieldType { get { return typeof(T); } }
-        internal override Type ProviderSpecificFieldType { get { return typeof(T); } }
+        internal override Type GetFieldType(FieldDescription fieldDescription)
+        {
+            return typeof(T);
+        }
+
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
+        {
+            return typeof(T);
+        }
 
         internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -94,14 +102,23 @@ namespace Npgsql
     }
 
     /// <summary>
+    /// A marking interface to allow us to know whether a given type handler has a provider-specific type
+    /// distinct from its regular type
+    /// </summary>
+    internal interface ITypeHandlerWithPsv {}
+
+    /// <summary>
     /// A type handler that supports a provider-specific value which is different from the regular value (e.g.
     /// NpgsqlDate and DateTime)
     /// </summary>
     /// <typeparam name="T">the regular value type returned by this type handler</typeparam>
     /// <typeparam name="TPsv">the type of the provider-specific value returned by this type handler</typeparam>
-    internal abstract class TypeHandlerWithPsv<T, TPsv> : TypeHandler<T>
+    internal abstract class TypeHandlerWithPsv<T, TPsv> : TypeHandler<T>, ITypeHandlerWithPsv
     {
-        internal override Type ProviderSpecificFieldType { get { return typeof(TPsv); } }
+        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
+        {
+            return typeof (TPsv);
+        }
 
         internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

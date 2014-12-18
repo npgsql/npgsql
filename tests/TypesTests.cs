@@ -623,43 +623,5 @@ namespace NpgsqlTests
             p.Value = DateTime.Now;
             Object o = p.Value;
         }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue()
-        {
-            var b = new BitString(true, 32);
-            Assert.AreEqual("11111111111111111111111111111111", b.ToString());
-        }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue2()
-        {
-            var b = new BitString(true, 6);
-            Assert.AreEqual("111111", b.ToString());
-        }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue3()
-        {
-            var b = new BitString(true, 32);
-            var b2 = new BitString("11111111111111111111111111111111");
-            Assert.IsTrue(b == b2);
-        }
-
-        [Test]
-        public void BitStringSupport()
-        {
-            const string bitMask = "1101101101101101101101101011011011010110110110";
-            var b = new BitString(bitMask);
-            Assert.AreEqual(bitMask, b.ToString());
-        }
-
-        [Test]
-        public void BitStringSupport2()
-        {
-            const string bitMask = "110110110110110110110110101101101";
-            var b = new BitString(bitMask);
-            Assert.AreEqual(bitMask, b.ToString());
-        }
     }
 }

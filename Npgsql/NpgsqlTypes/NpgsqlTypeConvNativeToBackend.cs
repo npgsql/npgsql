@@ -439,6 +439,7 @@ namespace NpgsqlTypes
             return BitConverter.GetBytes(IPAddress.HostToNetworkOrder(Convert.ToInt64(NativeData)));
         }
 
+        /*
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
@@ -470,7 +471,9 @@ namespace NpgsqlTypes
             }
             return BackendEncoding.UTF8Encoding.GetBytes(((BitString)NativeData).ToString("E"));
         }
+        */
 
+        /*
         /// <summary>
         /// Convert to a postgresql bit.
         /// </summary>
@@ -489,6 +492,7 @@ namespace NpgsqlTypes
             
             return ((BitString)NativeData).ToPostgreSQLBinary();
          }
+        */
 
         /// <summary>
         /// Convert to a postgresql timestamp.
