@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
@@ -22,7 +23,7 @@ namespace Npgsql.TypeHandlers
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return Decimal.Parse(buf.ReadString(len));
+                    return Decimal.Parse(buf.ReadString(len), CultureInfo.InvariantCulture);
                 case FormatCode.Binary:
                     throw new NotSupportedException();
                 default:
