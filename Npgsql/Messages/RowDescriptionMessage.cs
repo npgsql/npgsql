@@ -81,7 +81,7 @@ namespace Npgsql.Messages
             int ret;
             if (_nameIndex.TryGetValue(name, out ret) || _caseInsensitiveNameIndex.TryGetValue(name, out ret))
                 return ret;
-            throw new KeyNotFoundException("Field not found in row: " + name);
+            throw new IndexOutOfRangeException("Field not found in row: " + name);
         }
 
         /// <summary>
