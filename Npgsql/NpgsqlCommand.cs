@@ -1626,7 +1626,6 @@ namespace Npgsql
                         _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
                     }
 
-                    // TODO: Allocation
                     return new NpgsqlDataReader(this, cb);
                 }
                 else

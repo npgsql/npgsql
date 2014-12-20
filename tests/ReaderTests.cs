@@ -29,6 +29,7 @@ using Npgsql;
 using NpgsqlTypes;
 
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace NpgsqlTests
 {
@@ -48,6 +49,41 @@ namespace NpgsqlTests
 
             while(dr.Read());
         }*/
+
+        [Test]
+        public void EmptyResultSet()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1 WHERE FALSE", Conn);
+            var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read(), Is.False);
+            Assert.That(reader.FieldCount, Is.EqualTo(1));
+            Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>());
+            cmd.Dispose();
+        }
+
+        [Test]
+        public void FieldCount()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1; SELECT 2,3", Conn);
+            var reader = cmd.ExecuteReader();
+            Assert.That(reader.FieldCount, Is.EqualTo(1));
+            reader.Read();
+            Assert.That(reader.FieldCount, Is.EqualTo(1));
+            reader.Read();
+            Assert.That(reader.FieldCount, Is.EqualTo(1));
+            reader.NextResult();
+            Assert.That(reader.FieldCount, Is.EqualTo(2));
+            reader.NextResult();
+            Assert.That(reader.FieldCount, Is.EqualTo(0));
+            reader.Close();
+
+            cmd.CommandText = "INSERT INTO data (field_int4) VALUES (1)";
+            reader = cmd.ExecuteReader();
+            // Note MSDN docs that seem to say we should case -1 in this case: http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
+            // But SqlClient returns 0
+            Assert.That(() => reader.FieldCount, Is.EqualTo(0));
+            cmd.Dispose();
+        }
 
         [Test]
         public void RecordsAffected()
