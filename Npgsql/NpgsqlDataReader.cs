@@ -52,6 +52,11 @@ namespace Npgsql
         ServerMessage _pendingMessage;
 
         /// <summary>
+        /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
+        /// </summary>
+        DataTable _cachedSchemaTable;
+
+        /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
         public event EventHandler ReaderClosed;
@@ -244,6 +249,7 @@ namespace Npgsql
 
             Contract.Assert(State == ReaderState.BetweenResults);
             _hasRows = null;
+            _cachedSchemaTable = null;
 
             if ((_behavior & CommandBehavior.SingleResult) != 0)
             {
@@ -370,7 +376,15 @@ namespace Npgsql
 
         public override string GetName(int ordinal)
         {
-            throw new NotImplementedException();
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+            Contract.EndContractBlock();
+            #endregion
+
+            return _rowDescription[ordinal].Name;
         }
 
         /// <summary>
@@ -905,24 +919,30 @@ namespace Npgsql
             return _rowDescription.GetFieldIndex(name);
         }
 
+        /// <summary>
+        /// Gets the data type information for the specified field.
+        /// This will be the Postgresql type name (e.g. int4), not the .NET type (<see cref="GetFieldType"/>)
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
         public override string GetDataTypeName(int ordinal)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (FieldCount == 0)
+                throw new InvalidOperationException("No resultset is currently being traversed");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
             Contract.EndContractBlock();
             #endregion
 
-            return _rowDescription[ordinal].Name;
+            return _rowDescription[ordinal].Handler.PgName;
         }
 
         public override Type GetFieldType(int ordinal)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (FieldCount == 0)
+                throw new InvalidOperationException("No resultset is currently being traversed");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
             Contract.EndContractBlock();
@@ -935,8 +955,8 @@ namespace Npgsql
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            if (FieldCount == 0)
+                throw new InvalidOperationException("No resultset is currently being traversed");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
             Contract.EndContractBlock();
@@ -990,11 +1010,6 @@ namespace Npgsql
                 cache.IsProviderSpecificValue = false;
             }
             return result;
-        }
-
-        public override DataTable GetSchemaTable()
-        {
-            throw new NotImplementedException();
         }
 
         public override T GetFieldValue<T>(int ordinal)
@@ -1177,6 +1192,399 @@ namespace Npgsql
             }
             return result;
         }
+
+        #region Schema metadata table
+
+        /// <summary>
+        /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
+        /// </summary>
+        public override DataTable GetSchemaTable()
+        {
+            #region Contracts
+            if (FieldCount == 0)
+                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            Contract.Ensures(Contract.Result<DataTable>() != null);
+            #endregion
+
+            if (_cachedSchemaTable != null) {
+                return _cachedSchemaTable;
+            }
+
+            var result = new DataTable("SchemaTable");
+
+            result.Columns.Add("AllowDBNull", typeof(bool));
+            result.Columns.Add("BaseCatalogName", typeof(string));
+            result.Columns.Add("BaseColumnName", typeof(string));
+            result.Columns.Add("BaseSchemaName", typeof(string));
+            result.Columns.Add("BaseTableName", typeof(string));
+            result.Columns.Add("ColumnName", typeof(string));
+            result.Columns.Add("ColumnOrdinal", typeof(int));
+            result.Columns.Add("ColumnSize", typeof(int));
+            result.Columns.Add("DataType", typeof(Type));
+            result.Columns.Add("IsUnique", typeof(bool));
+            result.Columns.Add("IsKey", typeof(bool));
+            result.Columns.Add("IsAliased", typeof(bool));
+            result.Columns.Add("IsExpression", typeof(bool));
+            result.Columns.Add("IsIdentity", typeof(bool));
+            result.Columns.Add("IsAutoIncrement", typeof(bool));
+            result.Columns.Add("IsRowVersion", typeof(bool));
+            result.Columns.Add("IsHidden", typeof(bool));
+            result.Columns.Add("IsLong", typeof(bool));
+            result.Columns.Add("IsReadOnly", typeof(bool));
+            result.Columns.Add("NumericPrecision", typeof(int));
+            result.Columns.Add("NumericScale", typeof(int));
+            result.Columns.Add("ProviderSpecificDataType", typeof(Type));
+            result.Columns.Add("ProviderType", typeof(Type));
+
+            FillSchemaTable(result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// The maximum byte size of variable-width columns
+        /// </summary>
+        const int MaxColumnLength = 2147483647; // 2GB
+
+        private void FillSchemaTable(DataTable schema)
+        {
+            var oidTableLookup = new Dictionary<long, Table>();
+            var keyLookup = new KeyLookup();
+            // needs to be null because there is a difference
+            // between an empty dictionary and not setting it
+            // the default values will be different
+            Dictionary<string, Column> columnLookup = null;
+
+            // TODO: This is probably not what KeyInfo is supposed to do...
+            if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
+            {
+                var tableOids = new List<int>();
+                for (var i = 0; i != _rowDescription.NumFields; ++i)
+                {
+                    if (_rowDescription[i].TableOID != 0 && !tableOids.Contains(_rowDescription[i].TableOID))
+                    {
+                        tableOids.Add(_rowDescription[i].TableOID);
+                    }
+                }
+                oidTableLookup = GetTablesFromOids(tableOids);
+
+                if (oidTableLookup.Count == 1)
+                {
+                    // only 1, but we can't index into the Dictionary
+                    foreach (var key in oidTableLookup.Keys)
+                    {
+                        keyLookup = GetKeys((int)key);
+                    }
+                }
+
+                columnLookup = GetColumns();
+            }
+
+            for (var i = 0; i < _rowDescription.NumFields; i++)
+            {
+                var field = _rowDescription[i];
+                var row = schema.NewRow();
+
+                var baseColumnName = GetBaseColumnName(columnLookup, i);
+
+                row["AllowDBNull"] = IsNullable(columnLookup, i);
+                row["BaseColumnName"] = baseColumnName;
+                if (field.TableOID != 0 && oidTableLookup.ContainsKey(field.TableOID))
+                {
+                    row["BaseCatalogName"] = oidTableLookup[_rowDescription[i].TableOID].Catalog;
+                    row["BaseSchemaName"] = oidTableLookup[_rowDescription[i].TableOID].Schema;
+                    row["BaseTableName"] = oidTableLookup[_rowDescription[i].TableOID].Name;
+                }
+                else
+                {
+                    row["BaseCatalogName"] = row["BaseSchemaName"] = row["BaseTableName"] = "";
+                }
+                row["ColumnName"] = GetName(i);
+                row["ColumnOrdinal"] = i + 1;
+
+                if (field.TypeModifier != -1 && field.Handler is TextHandler)
+                {
+                    row["ColumnSize"] = field.TypeModifier - 4;
+                }
+                else if (field.TypeModifier != -1 && field.Handler is BitStringHandler)
+                {
+                    row["ColumnSize"] = field.TypeModifier;
+                }
+                else
+                {
+                    row["ColumnSize"] = (int)field.TypeSize;
+                }
+                row["DataType"] = GetFieldType(i); // non-standard
+                row["IsUnique"] = IsUnique(keyLookup, baseColumnName);
+                row["IsKey"] = IsKey(keyLookup, baseColumnName);
+                row["IsAliased"] = string.CompareOrdinal((string)row["ColumnName"], baseColumnName) != 0;
+                row["IsExpression"] = false;
+                row["IsIdentity"] = false;   // TODO
+                row["IsAutoIncrement"] = IsAutoIncrement(columnLookup, i);
+                row["IsRowVersion"] = false;
+                row["IsHidden"] = false;
+                row["IsLong"] = false;   // TODO
+                row["IsReadOnly"] = false;   // TODO (check for views?)
+                if (field.TypeModifier != -1 && field.Handler is NumericHandler)
+                {
+                    row["NumericPrecision"] = ((field.TypeModifier - 4) >> 16) & ushort.MaxValue;
+                    row["NumericScale"] = (field.TypeModifier - 4) & ushort.MaxValue;
+                }
+                else
+                {
+                    row["NumericPrecision"] = 0;
+                    row["NumericScale"] = 0;
+                }
+                row["ProviderType"] = GetFieldType(i);
+                if (_rowDescription[i].Handler is ITypeHandlerWithPsv) {
+                    row["ProviderSpecificDataType"] = GetProviderSpecificFieldType(i);
+                }
+
+                schema.Rows.Add(row);
+            }
+        }
+
+        private static bool IsKey(KeyLookup keyLookup, string fieldName)
+        {
+            return keyLookup.PrimaryKey.Contains(fieldName);
+        }
+
+        private static bool IsUnique(KeyLookup keyLookup, string fieldName)
+        {
+            return keyLookup.UniqueColumns.Contains(fieldName);
+        }
+
+        private bool IsNullable(Dictionary<string, Column> columnLookup, int fieldIndex)
+        {
+            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
+            {
+                return true;
+            }
+
+            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            Column col;
+            return !columnLookup.TryGetValue(lookupKey, out col) || !col.NotNull;
+        }
+
+        private bool IsAutoIncrement(Dictionary<string, Column> columnLookup, int fieldIndex)
+        {
+            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
+            {
+                return false;
+            }
+
+            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            Column col;
+            return
+                columnLookup.TryGetValue(lookupKey, out col)
+                    ? col.ColumnDefault is string && col.ColumnDefault.ToString().StartsWith("nextval(")
+                    : true;
+        }
+
+        string GetBaseColumnName(Dictionary<string, Column> columnLookup, int fieldIndex)
+        {
+            if (columnLookup == null || _rowDescription[fieldIndex].TableOID == 0)
+            {
+                return GetName(fieldIndex);
+            }
+
+            var lookupKey = string.Format("{0},{1}", _rowDescription[fieldIndex].TableOID, _rowDescription[fieldIndex].ColumnAttributeNumber);
+            Column col;
+            return columnLookup.TryGetValue(lookupKey, out col) ? col.Name : GetName(fieldIndex);
+        }
+
+        KeyLookup GetKeys(Int32 tableOid)
+        {
+            const string getKeys = "select a.attname, ci.relname, i.indisprimary from pg_catalog.pg_class ct, pg_catalog.pg_class ci, pg_catalog.pg_attribute a, pg_catalog.pg_index i WHERE ct.oid=i.indrelid AND ci.oid=i.indexrelid AND a.attrelid=ci.oid AND i.indisunique AND ct.oid = :tableOid order by ci.relname";
+
+            var lookup = new KeyLookup();
+
+            using (var metadataConn = _connection.Clone())
+            {
+                var c = new NpgsqlCommand(getKeys, metadataConn);
+                c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
+
+                using (var dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                {
+                    string previousKeyName = null;
+                    string possiblyUniqueColumn = null;
+                    // loop through adding any column that is primary to the primary key list
+                    // add any column that is the only column for that key to the unique list
+                    // unique here doesn't mean general unique constraint (with possibly multiple columns)
+                    // it means all values in this single column must be unique
+                    while (dr.Read())
+                    {
+                        var columnName = dr.GetString(0);
+                        var currentKeyName = dr.GetString(1);
+                        // if i.indisprimary
+                        if (dr.GetBoolean(2))
+                        {
+                            // add column name as part of the primary key
+                            lookup.PrimaryKey.Add(columnName);
+                        }
+                        if (currentKeyName != previousKeyName)
+                        {
+                            if (possiblyUniqueColumn != null)
+                            {
+                                lookup.UniqueColumns.Add(possiblyUniqueColumn);
+                            }
+                            possiblyUniqueColumn = columnName;
+                        }
+                        else
+                        {
+                            possiblyUniqueColumn = null;
+                        }
+                        previousKeyName = currentKeyName;
+                    }
+                    // if finished reading and have a possiblyUniqueColumn name that is
+                    // not null, then it is the name of a unique column
+                    if (possiblyUniqueColumn != null)
+                    {
+                        lookup.UniqueColumns.Add(possiblyUniqueColumn);
+                    }
+                    return lookup;
+                }
+            }
+        }
+
+        class KeyLookup
+        {
+            /// <summary>
+            /// Contains the column names as the keys
+            /// </summary>
+            public readonly List<string> PrimaryKey = new List<string>();
+
+            /// <summary>
+            /// Contains all unique columns
+            /// </summary>
+            public readonly List<string> UniqueColumns = new List<string>();
+        }
+
+        struct Table
+        {
+            public readonly string Catalog;
+            public readonly string Schema;
+            public readonly string Name;
+            public readonly int Id;
+
+            public Table(IDataReader rdr)
+            {
+                Catalog = rdr.GetString(0);
+                Schema = rdr.GetString(1);
+                Name = rdr.GetString(2);
+                Id = rdr.GetInt32(3);
+            }
+        }
+
+        Dictionary<long, Table> GetTablesFromOids(List<int> oids)
+        {
+            if (oids.Count == 0) {
+                return new Dictionary<long, Table>(); //Empty collection is simpler than requiring tests for null;
+            }
+
+            // the column index is used to find data.
+            // any changes to the order of the columns needs to be reflected in struct Tables
+            var sb = new StringBuilder("SELECT current_database(), nc.nspname, c.relname, c.oid FROM pg_namespace nc, pg_class c WHERE c.relnamespace = nc.oid AND (c.relkind = 'r' OR c.relkind = 'v') AND c.oid IN (");
+            var first = true;
+            foreach (var oid in oids)
+            {
+                if (!first)
+                {
+                    sb.Append(',');
+                }
+                sb.Append(oid);
+                first = false;
+            }
+            sb.Append(')');
+
+            using (var connection = _connection.Clone())
+            {
+                using (var command = new NpgsqlCommand(sb.ToString(), connection))
+                {
+                    using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                    {
+                        var oidLookup = new Dictionary<long, Table>(oids.Count);
+                        while (reader.Read())
+                        {
+                            var t = new Table(reader);
+                            oidLookup.Add(t.Id, t);
+                        }
+                        return oidLookup;
+                    }
+                }
+            }
+        }
+
+        class Column
+        {
+            public readonly string Name;
+            public readonly bool NotNull;
+            public readonly int TableId;
+            public readonly short ColumnNum;
+            public readonly object ColumnDefault;
+
+            public string Key
+            {
+                get { return string.Format("{0},{1}", TableId, ColumnNum); }
+            }
+
+            public Column(IDataReader rdr)
+            {
+                Name = rdr.GetString(0);
+                NotNull = rdr.GetBoolean(1);
+                TableId = rdr.GetInt32(2);
+                ColumnNum = rdr.GetInt16(3);
+                ColumnDefault = rdr.GetValue(4);
+            }
+        }
+
+        Dictionary<string, Column> GetColumns()
+        {
+            var sb = new StringBuilder();
+
+            // the column index is used to find data.
+            // any changes to the order of the columns needs to be reflected in struct Columns
+            sb.Append("SELECT a.attname AS column_name, a.attnotnull AS column_notnull, a.attrelid AS table_id, a.attnum AS column_num, d.adsrc as column_default");
+            sb.Append(" FROM pg_attribute a LEFT OUTER JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum WHERE a.attnum > 0 AND (");
+            var first = true;
+            for (var i = 0; i < _rowDescription.NumFields; ++i)
+            {
+                if (_rowDescription[i].TableOID == 0) { continue; }
+                if (!first)
+                {
+                    sb.Append(" OR ");
+                }
+                sb.AppendFormat("(a.attrelid={0} AND a.attnum={1})", _rowDescription[i].TableOID,
+                    _rowDescription[i].ColumnAttributeNumber);
+                first = false;
+            }
+            sb.Append(')');
+
+            // if the loop ended without setting first to false, then there will be no results from the query
+            if (first)
+            {
+                return null;
+            }
+
+            using (var connection = _connection.Clone())
+            {
+                using (var command = new NpgsqlCommand(sb.ToString(), connection))
+                {
+                    using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                    {
+                        var columnLookup = new Dictionary<string, Column>();
+                        while (reader.Read())
+                        {
+                            var column = new Column(reader);
+                            columnLookup.Add(column.Key, column);
+                        }
+                        return columnLookup;
+                    }
+                }
+            }
+        }
+
+        #endregion Schema metadata table
 
         [ContractInvariantMethod]
         void ObjectInvariants()

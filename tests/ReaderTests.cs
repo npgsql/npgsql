@@ -166,14 +166,43 @@ namespace NpgsqlTests
         [Test]
         public void GetValueByName()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
-            var command = new NpgsqlCommand(@"SELECT field_text FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = (String) dr["field_text"];
-                Assert.AreEqual("Random text", result);
-            }
+            var command = new NpgsqlCommand(@"SELECT 'Random text' AS real_column", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            Assert.That(dr["real_column"], Is.EqualTo("Random text"));
+            Assert.That(() => dr["non_existing"], Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            command.Dispose();
+        }
+
+        [Test]
+        public void GetDataTypeName()
+        {
+            var command = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            Assert.That(dr.GetDataTypeName(0), Is.EqualTo("int4"));
+            command.Dispose();
+        }
+
+        [Test]
+        public void GetName()
+        {
+            var command = new NpgsqlCommand(@"SELECT 1 AS some_column", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            Assert.That(dr.GetName(0), Is.EqualTo("some_column"));
+            command.Dispose();
+        }
+
+        [Test]
+        public void GetOrdinal()
+        {
+            var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
+            Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            command.Dispose();
         }
 
         [Test]
@@ -455,12 +484,15 @@ namespace NpgsqlTests
             }
         }
 
+        #region GetSchemaTable
+
         [Test]
         public void PrimaryKeyFieldsMetadataSupport()
         {
             var command = new NpgsqlCommand("SELECT * FROM data", Conn);
             using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
             {
+                dr.Read();
                 var metadata = dr.GetSchemaTable();
                 var keyfound = false;
 
@@ -481,11 +513,6 @@ namespace NpgsqlTests
         [Test]
         public void IsIdentityMetadataSupport()
         {
-            DoIsIdentityMetadataSupport();
-        }
-
-        public virtual void DoIsIdentityMetadataSupport()
-        {
             var command = new NpgsqlCommand("SELECT * FROM data", Conn);
 
             using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
@@ -503,17 +530,7 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("Tests fetching the schema during a read operation")]
-        public void GetSchemaDuringRead()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('foo')");
-            using (var dr = new NpgsqlCommand(@"SELECT field_text FROM data", Conn).ExecuteReader())
-            {
-                dr.Read();
-                var metadata = Conn.GetSchema("Tables", new string[] { null, null, "data" });
-                Assert.That(metadata.Rows.Count, Is.EqualTo(1));
-            }
-        }
+        #endregion
 
         [Test]
         public void HasRowsWithoutResultset()
@@ -579,32 +596,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException(typeof(IndexOutOfRangeException))]
-        public void FieldNameDoesntExistOnGetOrdinal()
-        {
-            var command = new NpgsqlCommand("select field_serial from data", Conn);
-
-            using (var dr = command.ExecuteReader())
-            {
-                int idx =  dr.GetOrdinal("field_int");
-            }
-        }
-
-        [Test]
-        [ExpectedException(typeof(IndexOutOfRangeException))]
-        public void FieldNameDoesntExist()
-        {
-            var command = new NpgsqlCommand("select field_serial from data", Conn);
-
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Object a = dr["field_int"];
-                Assert.IsNotNull(a);
-            }
-        }
-
-        [Test]
         public void FieldNameKanaWidthWideRequestForNarrowFieldName()
         {//Should ignore Kana width and hence find the first of these two fields
             var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ, 124 as ヲァィゥェォャ", Conn);
@@ -631,17 +622,12 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException(typeof(IndexOutOfRangeException))]
         public void FieldIndexDoesntExist()
         {
-            var command = new NpgsqlCommand("select field_serial from data", Conn);
-
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Object a = dr[5];
-                Assert.IsNotNull(a);
-            }
+            var command = new NpgsqlCommand("SELECT 1", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            Assert.That(() => dr[5], Throws.Exception.TypeOf<IndexOutOfRangeException>());
         }
 
         [Test]
