@@ -27,6 +27,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -2671,7 +2672,7 @@ namespace NpgsqlTests
             // bit(2)
             cmd.CommandText = "select '11'::bit(2)";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (BitString), result.GetType());
+            Assert.AreEqual(typeof (BitArray), result.GetType());
 
             // boolean
             cmd.CommandText = "select 'true'::boolean";
