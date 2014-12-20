@@ -59,20 +59,29 @@ namespace Npgsql
         /// <summary>
         /// In non-sequential mode, contains the cached values already read from the current row
         /// </summary>
-        RowCache _rowCache;
+        readonly RowCache _rowCache;
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
-        internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
+        internal bool IsSequential
+        {
+            get
+            {
+                // The first row in a stored procedure command that has output parameters needs to be traversed twice -
+                // once for populating the output parameters and once for the actual result set traversal. So in this
+                // case we can't be sequential.
+                return ((_behavior & CommandBehavior.SequentialAccess) != 0) && !(
+                    Command.CommandType == CommandType.StoredProcedure &&
+                    !_readOneRow &&
+                    Command.Parameters.Any(p => p.IsOutputDirection)
+                );
+            }
+        }
+
         internal bool IsCaching { get { return !IsSequential; } }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
         {
-            if (command.CommandType == CommandType.StoredProcedure && (behavior & CommandBehavior.SequentialAccess) != 0) {
-                throw new Exception("A StoredProcedure call can't be sequential");
-            }
-            Contract.EndContractBlock();
-
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
@@ -266,15 +275,7 @@ namespace Npgsql
                 _pendingMessage = null;
                 return msg;
             }
-            // The first row in a stored procedure command that has output parameters needs to be traversed twice -
-            // once for populating the output parameters and once for the actual result set traversal. So in this
-            // case we can't be sequential.
-            var sequential = (_behavior & CommandBehavior.SequentialAccess) != 0 && !(
-                !_readOneRow &&
-                Command.CommandType == CommandType.StoredProcedure &&
-                Command.Parameters.Any(p => p.IsOutputDirection)
-            );
-            return _connector.ReadSingleMessage(sequential);
+            return _connector.ReadSingleMessage(IsSequential);
         }
 
         ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
