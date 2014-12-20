@@ -82,15 +82,23 @@ namespace Npgsql
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
         {
+            Contract.Requires((command.IsPrepared  && rowDescription != null) ||
+                              (!command.IsPrepared && rowDescription == null));
+
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
             _recordsAffected = -1;
-            _rowDescription = rowDescription;
-            if (IsCaching)
-            {
+            if (IsCaching) {
                 _rowCache = new RowCache();
+            }
+            if (command.IsPrepared) {
+                State = ReaderState.InResult;
+                _rowDescription = rowDescription;
+            } else {
+                State = ReaderState.BetweenResults;
+                NextResultSetInternal();
             }
         }
 
@@ -182,7 +190,6 @@ namespace Npgsql
                     if (!_hasRows.HasValue) {
                         _hasRows = false;
                     }
-                    _rowDescription = null;
                     State = ReaderState.BetweenResults;
                     return ReadResult.RowNotRead;
 
@@ -238,16 +245,23 @@ namespace Npgsql
             Contract.Assert(State == ReaderState.BetweenResults);
             _hasRows = null;
 
-            ServerMessage msg;
             if ((_behavior & CommandBehavior.SingleResult) != 0)
             {
                 Consume();
                 return false;
             }
 
+            return NextResultSetInternal();
+        }
+
+        bool NextResultSetInternal()
+        {
+            Contract.Requires(State == ReaderState.BetweenResults);
+            _rowDescription = null;
+
             while (true)
             {
-                msg = ReadMessage();
+                var msg = ReadMessage();
                 switch (msg.Code)
                 {
                     case BackEndMessageCode.CompletedResponse:
@@ -262,6 +276,8 @@ namespace Npgsql
                         _hasRows = null;
                         State = ReaderState.InResult;
                         return true;
+                    default:
+                        throw new Exception("Unexpected message type received during NextResult: " + msg.Code);
                 }
             }
         }
@@ -293,10 +309,12 @@ namespace Npgsql
             return _connector.SkipUntil(stopAt);
         }
 
-
-        public override int Depth
+        /// <summary>
+        /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
+        /// </summary>
+        public override Int32 Depth
         {
-            get { throw new NotImplementedException(); }
+            get { return 0; }
         }
 
         /// <summary>
@@ -341,16 +359,31 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Indicates whether the reader is currently positioned on a row, i.e. whether reading a
+        /// column is possible.
+        /// This property is different from <see cref="HasRows"/> in that <see cref="HasRows"/> will
+        /// return true even if attempting to read a column will fail, e.g. before <see cref="Read"/>
+        /// has been called
+        /// </summary>
+        public bool IsOnRow { get { return _row != null; } }
+
         public override string GetName(int ordinal)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Gets the number of columns in the current row.
+        /// </summary>
         public override int FieldCount
         {
             get
             {
-                return _row == null ? 0 : _rowDescription.NumFields;
+                // Note MSDN docs that seem to say we should case -1 in this case:
+                // http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
+                // But SqlClient returns 0
+                return _rowDescription == null ? 0 : _rowDescription.NumFields;
             }
         }
 
@@ -427,7 +460,7 @@ namespace Npgsql
         public override bool GetBoolean(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -440,7 +473,7 @@ namespace Npgsql
         public override byte GetByte(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -453,7 +486,7 @@ namespace Npgsql
         public override char GetChar(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -466,7 +499,7 @@ namespace Npgsql
         public override short GetInt16(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -479,7 +512,7 @@ namespace Npgsql
         public override int GetInt32(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -492,7 +525,7 @@ namespace Npgsql
         public override long GetInt64(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -505,7 +538,7 @@ namespace Npgsql
         public override DateTime GetDateTime(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -518,7 +551,7 @@ namespace Npgsql
         public override string GetString(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -531,7 +564,7 @@ namespace Npgsql
         public override decimal GetDecimal(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -544,7 +577,7 @@ namespace Npgsql
         public override double GetDouble(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -557,7 +590,7 @@ namespace Npgsql
         public override float GetFloat(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -570,7 +603,7 @@ namespace Npgsql
         public override Guid GetGuid(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -590,7 +623,7 @@ namespace Npgsql
             get
             {
                 #region Contracts
-                if (FieldCount == 0)
+                if (!IsOnRow)
                     throw new InvalidOperationException("Invalid attempt to read when no data is present.");
                 if (ordinal < 0 || ordinal >= FieldCount)
                     throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -608,7 +641,7 @@ namespace Npgsql
         public NpgsqlDate GetDate(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -621,7 +654,7 @@ namespace Npgsql
         public NpgsqlTime GetTime(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -634,7 +667,7 @@ namespace Npgsql
         public NpgsqlTimeTZ GetTimeTZ(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -647,7 +680,7 @@ namespace Npgsql
         public TimeSpan GetTimeSpan(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -660,7 +693,7 @@ namespace Npgsql
         public NpgsqlInterval GetInterval(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -673,7 +706,7 @@ namespace Npgsql
         public NpgsqlTimeStamp GetTimeStamp(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -686,7 +719,7 @@ namespace Npgsql
         public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -703,7 +736,7 @@ namespace Npgsql
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -736,7 +769,7 @@ namespace Npgsql
 #endif
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -773,7 +806,7 @@ namespace Npgsql
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -806,7 +839,7 @@ namespace Npgsql
 #endif
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -843,7 +876,7 @@ namespace Npgsql
         public override bool IsDBNull(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -862,7 +895,7 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (String.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", "name");
@@ -875,7 +908,7 @@ namespace Npgsql
         public override string GetDataTypeName(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -888,7 +921,7 @@ namespace Npgsql
         public override Type GetFieldType(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -902,7 +935,7 @@ namespace Npgsql
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -916,7 +949,7 @@ namespace Npgsql
         public override object GetValue(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -967,7 +1000,7 @@ namespace Npgsql
         public override T GetFieldValue<T>(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
@@ -1012,7 +1045,7 @@ namespace Npgsql
         public override object GetProviderSpecificValue(int ordinal)
         {
             #region Contracts
-            if (FieldCount == 0)
+            if (!IsOnRow)
                 throw new InvalidOperationException("Invalid attempt to read when no data is present.");
             if (ordinal < 0 || ordinal >= FieldCount)
                 throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
