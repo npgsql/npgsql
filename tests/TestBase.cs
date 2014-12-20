@@ -418,15 +418,5 @@ namespace NpgsqlTests
         }
 
         #endregion
-
-        static TestBase()
-        {
-            // See http://research.microsoft.com/en-us/projects/contracts/userdoc.pdf, Test Harness Setup
-            Contract.ContractFailed += (sender, e) =>
-            {
-                e.SetUnwind();
-                Assert.Fail(e.FailureKind.ToString() + ":" + e.Message);
-            };
-        }
     }
 }
