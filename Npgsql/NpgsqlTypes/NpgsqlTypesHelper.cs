@@ -378,7 +378,7 @@ namespace NpgsqlTypes
 
             nativeTypeMapping.AddTypeAlias("time", typeof (NpgsqlTime));
 
-            nativeTypeMapping.AddType("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, true,
+            nativeTypeMapping.AddType("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, true,
                                             ExtendedNativeToBackendTypeConverter.ToTimeStamp);
 
             nativeTypeMapping.AddTypeAlias("timestamptz", typeof(NpgsqlTimeStampTZ));
@@ -628,7 +628,7 @@ namespace NpgsqlTypes
                                             ExtendedBackendToNativeTypeConverter.ToTimeStampTZ);
 
                 yield return
-                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof(NpgsqlTimeStampTZ),
+                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(NpgsqlTimeStampTZ),
                                             ExtendedBackendToNativeTypeConverter.ToTimeStampTZ);
             }
             else
@@ -676,11 +676,11 @@ namespace NpgsqlTypes
                                             npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime) npgsqlTimestampTZ : npgsqlTimestampTZ));
 
                 yield return
-                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTime, typeof (NpgsqlTimeStampTZ),
+                    new NpgsqlBackendTypeInfo(0, "timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof (NpgsqlTimeStampTZ),
                                             ExtendedBackendToNativeTypeConverter.ToTimeStampTZ,
-                                            typeof(DateTime),
-                                            timestamptz => ((DateTime)(NpgsqlTimeStampTZ)timestamptz).ToLocalTime(),
-                                            npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime)npgsqlTimestampTZ : npgsqlTimestampTZ is DateTimeOffset ? (NpgsqlTimeStampTZ)(DateTimeOffset)npgsqlTimestampTZ : npgsqlTimestampTZ));
+                                            typeof(DateTimeOffset),
+                                            timestamptz => (DateTimeOffset)(NpgsqlTimeStampTZ)timestamptz,
+                                            npgsqlTimestampTZ => (npgsqlTimestampTZ is DateTimeOffset ? (NpgsqlTimeStampTZ)(DateTimeOffset)npgsqlTimestampTZ : npgsqlTimestampTZ is DateTime ? (NpgsqlTimeStampTZ)(DateTime)npgsqlTimestampTZ : npgsqlTimestampTZ));
             }
         }
 

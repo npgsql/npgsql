@@ -1102,8 +1102,7 @@ namespace NpgsqlTests
         public void DateTimeSupportTimezone()
         {
             ExecuteNonQuery("INSERT INTO data(field_timestamp_with_timezone) VALUES ('2002-02-02 09:00:23.345Z')");
-            var d = (DateTime) ExecuteScalar("SET TIME ZONE 5; SELECT field_timestamp_with_timezone FROM data");
-            Assert.AreEqual(DateTimeKind.Local, d.Kind);
+            var d = (DateTimeOffset) ExecuteScalar("SET TIME ZONE 5; SELECT field_timestamp_with_timezone FROM data");
             Assert.AreEqual("2002-02-02 09:00:23Z", d.ToUniversalTime().ToString("u"));
         }
 
@@ -1113,8 +1112,8 @@ namespace NpgsqlTests
             ExecuteNonQuery("INSERT INTO data(field_timestamp_with_timezone) VALUES ('2002-02-02 09:00:23.345Z')");
             //Changed the comparison. Did thisassume too much about ToString()?
             NpgsqlCommand command = new NpgsqlCommand("set time zone 5; select field_timestamp_with_timezone from data", Conn);
-            var s = ((DateTime) command.ExecuteScalar()).ToUniversalTime().ToString();
-            Assert.AreEqual(new DateTime(2002, 02, 02, 09, 00, 23).ToString(), s);
+            var d = ((DateTimeOffset)command.ExecuteScalar()).ToUniversalTime();
+            Assert.AreEqual(new DateTime(2002, 02, 02, 09, 00, 23, 345), d.DateTime);
         }
 
         [Test]
@@ -1122,9 +1121,9 @@ namespace NpgsqlTests
         {
             //2009-11-11 20:15:43.019-03:30
             NpgsqlCommand command = new NpgsqlCommand("set time zone 5;select timestamptz'2009-11-11 20:15:43.019-03:30';", Conn);
-            var d = (DateTime) command.ExecuteScalar();
-            Assert.AreEqual(DateTimeKind.Local, d.Kind);
+            var d = (DateTimeOffset)command.ExecuteScalar();
             Assert.AreEqual("2009-11-11 23:45:43Z", d.ToUniversalTime().ToString("u"));
+            Assert.AreEqual(5, d.Offset.TotalHours);
         }
 
         [Test]
@@ -1133,7 +1132,11 @@ namespace NpgsqlTests
             //1929-08-19 00:00:00+01:19:32
             // This test was provided by Christ Akkermans.
             var command = new NpgsqlCommand("SET TIME ZONE 'Europe/Amsterdam';SELECT '1929-08-19 00:00:00'::timestamptz;", Conn);
-            var d = (DateTime) command.ExecuteScalar();
+            var d = (DateTimeOffset)command.ExecuteScalar();
+            Assert.AreEqual(new DateTime(1929,08,19), d.DateTime);
+            Assert.AreEqual(1, d.Offset.TotalHours);
+            Assert.AreEqual(19, d.Offset.TotalMinutes);
+            Assert.AreEqual(32, d.Offset.TotalSeconds);
         }
 
         [Test]

@@ -1011,5 +1011,25 @@ namespace NpgsqlTests
                 var ts = dr.GetTimeSpan(0);
             }
         }
+
+        [Test]
+        public void TimestampTzAsDateTimeOffset()
+        {
+            var command = new NpgsqlCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CAST('2014-06-05 15:18:58.79 + 01' AS timestamptz) AS dauer";
+            command.Connection = Conn;
+
+            using (var dr = command.ExecuteReader())
+            {
+                Assert.IsTrue(dr.HasRows);
+                Assert.IsTrue(dr.Read());
+                Assert.IsTrue(dr.HasRows);
+
+                var dt = dr.GetValue(0);
+
+                Assert.IsInstanceOf<DateTimeOffset>(dt);
+            }
+        }
     }
 }
