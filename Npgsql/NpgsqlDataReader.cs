@@ -87,8 +87,7 @@ namespace Npgsql
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
         {
-            Contract.Requires((command.IsPrepared  && rowDescription != null) ||
-                              (!command.IsPrepared && rowDescription == null));
+            Contract.Requires(command.IsPrepared || rowDescription == null);
 
             Command = command;
             _connector = command.Connector;
@@ -270,6 +269,7 @@ namespace Npgsql
                 var msg = ReadMessage();
                 switch (msg.Code)
                 {
+                    case BackEndMessageCode.EmptyQueryResponse:
                     case BackEndMessageCode.CompletedResponse:
                         // Another completion in a multi-query, process to get affected records and read again
                         ProcessMessage(msg);
@@ -1682,13 +1682,6 @@ namespace Npgsql
         }
 
         #endregion Schema metadata table
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(IsSequential  || _rowCache != null);
-            Contract.Invariant(IsCaching     || _rowCache == null);
-        }
     }
 
     enum ReaderState
