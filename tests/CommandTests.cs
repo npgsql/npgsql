@@ -396,21 +396,23 @@ namespace NpgsqlTests
                     ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
 
                 Int32 i = 0;
-                var command = new NpgsqlCommand("declare te cursor for select * from data;", Conn);
+                var command = new NpgsqlCommand("DECLARE TE CURSOR FOR SELECT * FROM DATA", Conn);
                 command.ExecuteNonQuery();
-                command.CommandText = "fetch forward 3 in te;";
+                command.CommandText = "FETCH FORWARD 3 IN TE";
                 var dr = command.ExecuteReader();
 
                 while (dr.Read())
                     i++;
                 Assert.AreEqual(3, i);
+                dr.Close();
 
                 i = 0;
-                command.CommandText = "fetch backward 1 in te;";
+                command.CommandText = "FETCH BACKWARD 1 IN TE";
                 var dr2 = command.ExecuteReader();
                 while (dr2.Read())
                     i++;
                 Assert.AreEqual(1, i);
+                dr.Close();
 
                 command.CommandText = "close te;";
                 command.ExecuteNonQuery();
@@ -447,19 +449,6 @@ namespace NpgsqlTests
             }
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'test'"), Is.EqualTo(1));
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
-        }
-
-        [Test]
-        public void RTFStatementInsert()
-        {
-            var command = new NpgsqlCommand("insert into data(field_text) values (:p0);", Conn);
-            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-            command.Parameters["p0"].Value = @"{\rtf1\ansi\ansicpg1252\uc1 \deff0\deflang1033\deflangfe1033{";
-            var dr = command.ExecuteReader();
-            Assert.IsNotNull(dr);
-
-            var result = (String)new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data);", Conn).ExecuteScalar();
-            Assert.AreEqual(@"{\rtf1\ansi\ansicpg1252\uc1 \deff0\deflang1033\deflangfe1033{", result);
         }
 
         [Test]
@@ -510,22 +499,22 @@ namespace NpgsqlTests
         }
 
         [Test, Description("Makes sure that calling Prepare() twice on a command deallocates the first prepared statement")]
-        public void PrepareStatementDoublePrepare()
+        public void DoublePrepare()
         {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0)", Conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
-                cmd.Parameters["p0"].Value = "test";
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
+            var cmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES (:p0)", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Text));
+            cmd.Parameters["p0"].Value = "test";
+            cmd.Prepare();
+            cmd.ExecuteNonQuery();
 
-                cmd.CommandText = "INSERT INTO data (field_int4) VALUES (:p0)";
-                cmd.Parameters.Clear();
-                cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
-                cmd.Parameters["p0"].Value = 8;
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
-            }
+            cmd.CommandText = "INSERT INTO data (field_int4) VALUES (:p0)";
+            cmd.Parameters.Clear();
+            cmd.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
+            cmd.Parameters["p0"].Value = 8;
+            cmd.Prepare();
+            cmd.ExecuteNonQuery();
+
+            cmd.Dispose();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
         }
 
@@ -1439,16 +1428,14 @@ namespace NpgsqlTests
                                   end
                                   $BODY$
                                   language 'plpgsql' volatile called on null input security invoker;");
-                var command = new NpgsqlCommand("testtimestamptzparameter", Conn);
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
-                using (var dr = command.ExecuteReader())
-                {
-                    var count = 0;
-                    while (dr.Read())
-                        count++;
-                    Assert.IsTrue(count > 1);
-                }
+                var cmd = new NpgsqlCommand("testtimestamptzparameter", Conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
+                var dr = cmd.ExecuteReader();
+                Assert.That(dr.Read(), Is.True);
+                Assert.That(dr.Read(), Is.True);
+                Assert.That(dr.Read(), Is.False);
+                cmd.Dispose();
             }
         }
 
@@ -2465,6 +2452,7 @@ namespace NpgsqlTests
             }
         }
 
+        // TODO: Need to set command type to stored procedure? Wrote to Emill on gitter
         [Test]
         public void InputAndOutputParameters([Values(true, false)] bool prepareCommand)
         {
