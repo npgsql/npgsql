@@ -128,7 +128,7 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            if ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow)
+            if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
             {
                 // TODO: See optimization proposal in #410
                 Consume();
@@ -378,9 +378,9 @@ namespace Npgsql
         {
             #region Contracts
             if (FieldCount == 0)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoResultSetAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -475,9 +475,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -488,9 +488,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -501,9 +501,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -514,9 +514,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -527,9 +527,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -540,9 +540,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
             
@@ -553,9 +553,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -566,9 +566,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -579,9 +579,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -592,9 +592,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -605,9 +605,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -618,9 +618,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -629,7 +629,19 @@ namespace Npgsql
 
         public override int GetValues(object[] values)
         {
-            throw new NotImplementedException();
+            #region Contracts
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (!IsOnRow)
+                throw new InvalidOperationException(L10N.NoRowAvailable);
+            Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
+            #endregion
+
+            var count = Math.Min(FieldCount, values.Length);
+            for (var i = 0; i < count; i++) {
+                values[i] = GetValue(i);
+            }
+            return count;
         }
 
         public override object this[int ordinal]
@@ -638,9 +650,9 @@ namespace Npgsql
             {
                 #region Contracts
                 if (!IsOnRow)
-                    throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                    throw new InvalidOperationException(L10N.NoRowAvailable);
                 if (ordinal < 0 || ordinal >= FieldCount)
-                    throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                    throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
                 Contract.EndContractBlock();
                 #endregion
 
@@ -652,84 +664,155 @@ namespace Npgsql
 
         #region Provider-specific type getters
 
+        /// <summary>
+        /// Gets the value of the specified column as an <see cref="NpgsqlDate"/>,
+        /// Npgsql's provider-specific type for dates.
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL's date type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
+        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
+        /// The standard <see cref="GetProviderSpecificValue"/> method will also return this type, but has
+        /// the disadvantage of boxing the value.
+        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public NpgsqlDate GetDate(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumn<NpgsqlDate>(ordinal);
         }
 
+        // TODO: Probably get rid of this, we can use TimeSpan or DateTime, see https://github.com/npgsql/npgsql/issues/347
         public NpgsqlTime GetTime(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumnWithoutCache<NpgsqlTime>(ordinal);
         }
 
+        // TODO: Replace with DateTimeOffset?
+        /// <summary>
+        /// Gets the value of the specified column as an <see cref="NpgsqlTimeTZ"/>,
+        /// Npgsql's provider-specific type for dates.
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL has a "time with time zone" type, which combines a time of day with a time zone.
+        /// Since .NET contains no analog type, the PostgreSQL value can be fetched as <see cref="NpgsqlTimeTZ"/>.
+        /// The standard ADO.NET <see cref="GetProviderSpecificValue"/> method will also return this
+        /// type, but has the disadvantage of boxing the value.
+        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
+        // ReSharper disable once InconsistentNaming
         public NpgsqlTimeTZ GetTimeTZ(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumn<NpgsqlTimeTZ>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as a TimeSpan,
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
+        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
+        /// and ranges from roughly -29247 to 29247 years.
+        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public TimeSpan GetTimeSpan(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumn<TimeSpan>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an <see cref="NpgsqlInterval"/>,
+        /// Npgsql's provider-specific type for time spans.
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
+        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
+        /// and ranges from roughly -29247 to 29247 years. If you require values from outside TimeSpan's
+        /// range use this accessor.
+        /// The standard ADO.NET <see cref="GetProviderSpecificValue"/> method will also return this
+        /// type, but has the disadvantage of boxing the value.
+        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public NpgsqlInterval GetInterval(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumn<NpgsqlInterval>(ordinal);
         }
 
+        /// <summary>
+        /// Gets the value of the specified column as an <see cref="NpgsqlTimeStamp"/>,
+        /// Npgsql's provider-specific type for date/time timestamps. Note that this type covers
+        /// both PostgreSQL's "timestamp with time zone" and "timestamp without time zone" types,
+        /// which differ only in how they are converted upon input/output.
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL's timestamp type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
+        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
+        /// The standard <see cref="GetProviderSpecificValue"/> method will also return this type, but has
+        /// the disadvantage of boxing the value.
+        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
         public NpgsqlTimeStamp GetTimeStamp(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
             return ReadColumn<NpgsqlTimeStamp>(ordinal);
         }
 
+        // TODO: Remove, not needed
         public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
         {
             #region Contracts
@@ -751,15 +834,15 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format(L10N.MustBeBetweenXAndY, "dataOffset", 0, int.MaxValue));
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException("bufferOffset must be between 0 and " + (buffer.Length - 1));
-            if (buffer != null && length > buffer.Length - bufferOffset)
-                throw new ArgumentException("length must not exceed ", "length");
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
+            if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
+                throw new ArgumentException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset), "length");
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -784,9 +867,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.Ensures(Contract.Result<Stream>() != null);
             #endregion
 
@@ -821,15 +904,15 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, "dataOffset must be between 0 and Int32.MaxValue");
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format(L10N.MustBeBetweenXAndY, "dataOffset", 0, int.MaxValue));
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException("bufferOffset must be between 0 and " + (buffer.Length - 1));
-            if (buffer != null && length > buffer.Length - bufferOffset)
-                throw new ArgumentException("length must not exceed ", "length");
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
+            if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
+                throw new ArgumentException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset), "length");
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -854,9 +937,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.Ensures(Contract.Result<TextReader>() != null);
             #endregion
 
@@ -891,9 +974,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -910,9 +993,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (String.IsNullOrEmpty(name))
-                throw new ArgumentException("name cannot be empty", "name");
+                throw new ArgumentException(String.Format(L10N.CannotBeEmpty, "name"), "name");
             Contract.EndContractBlock();
             #endregion
 
@@ -929,9 +1012,9 @@ namespace Npgsql
         {
             #region Contracts
             if (FieldCount == 0)
-                throw new InvalidOperationException("No resultset is currently being traversed");
+                throw new InvalidOperationException(L10N.NoResultSetAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -942,9 +1025,9 @@ namespace Npgsql
         {
             #region Contracts
             if (FieldCount == 0)
-                throw new InvalidOperationException("No resultset is currently being traversed");
+                throw new InvalidOperationException(L10N.NoResultSetAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -956,9 +1039,9 @@ namespace Npgsql
         {
             #region Contracts
             if (FieldCount == 0)
-                throw new InvalidOperationException("No resultset is currently being traversed");
+                throw new InvalidOperationException(L10N.NoResultSetAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -970,10 +1053,10 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
-            Contract.Ensures(Contract.Result<object>() == DBNull.Value|| GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
             #endregion
 
             CachedValue<object> cache = null;
@@ -1016,9 +1099,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.EndContractBlock();
             #endregion
 
@@ -1061,9 +1144,9 @@ namespace Npgsql
         {
             #region Contracts
             if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+                throw new InvalidOperationException(L10N.NoRowAvailable);
             if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
             Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetProviderSpecificFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
             #endregion
 
@@ -1105,12 +1188,25 @@ namespace Npgsql
 
         public override int GetProviderSpecificValues(object[] values)
         {
-            throw new NotImplementedException();
+            #region Contracts
+            if (values == null)
+                throw new ArgumentNullException("values");
+            if (!IsOnRow)
+                throw new InvalidOperationException(L10N.NoRowAvailable);
+            Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
+            #endregion
+
+            var count = Math.Min(FieldCount, values.Length);
+            for (var i = 0; i < count; i++)
+            {
+                values[i] = GetProviderSpecificValue(i);
+            }
+            return count;
         }
 
         public override IEnumerator GetEnumerator()
         {
-            throw new NotImplementedException();
+            return new DbEnumerator(this);
         }
 
         void PopulateOutputParameters()
@@ -1240,11 +1336,6 @@ namespace Npgsql
 
             return result;
         }
-
-        /// <summary>
-        /// The maximum byte size of variable-width columns
-        /// </summary>
-        const int MaxColumnLength = 2147483647; // 2GB
 
         private void FillSchemaTable(DataTable schema)
         {

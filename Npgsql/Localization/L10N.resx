@@ -160,7 +160,7 @@
     <value>Current connection timeout value, 'Connect Timeout=X' in the connection string</value>
   </data>
   <data name="DatabaseDescription" xml:space="preserve">
-    <value>Current PostgreSQL database, 'Database=X' in the connection string</value>
+    <value>Database</value>
   </data>
   <data name="NoNestedTransactions" xml:space="preserve">
     <value>Nested/Concurrent transactions aren't supported.</value>
@@ -242,9 +242,6 @@
   </data>
   <data name="Protocol" xml:space="preserve">
     <value>Protocol Version</value>
-  </data>
-  <data name="DatabaseDescription" xml:space="preserve">
-    <value>Database</value>
   </data>
   <data name="Database" xml:space="preserve">
     <value>Database</value>
@@ -401,5 +398,17 @@
   </data>
   <data name="ReadOnlyWriteError" xml:space="preserve">
     <value>The collection is read-only</value>
+  </data>
+  <data name="MustBeBetweenXAndY" xml:space="preserve">
+    <value>{0} must be between {1} and {2}</value>
+  </data>
+  <data name="NoRowAvailable" xml:space="preserve">
+    <value>No row is available</value>
+  </data>
+  <data name="CannotBeEmpty" xml:space="preserve">
+    <value>{0} cannot be empty</value>
+  </data>
+  <data name="NoResultSetAvailable" xml:space="preserve">
+    <value>No resultset is currently being traversed</value>
   </data>
 </root>

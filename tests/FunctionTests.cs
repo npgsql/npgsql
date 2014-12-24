@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using Npgsql;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace NpgsqlTests
@@ -111,6 +112,30 @@ namespace NpgsqlTests
             cmd.CommandType = CommandType.StoredProcedure;
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Is.Empty);
+        }
+
+        [Test]
+        public void TestOutParameter2()
+        {
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
+            var command = new NpgsqlCommand("testoutparameter2", Conn);
+            command.CommandType = CommandType.StoredProcedure;
+
+            command.Parameters.Add(new NpgsqlParameter("@x", NpgsqlDbType.Integer)).Value = 1;
+            command.Parameters.Add(new NpgsqlParameter("@y", NpgsqlDbType.Integer)).Value = 2;
+            command.Parameters.Add(new NpgsqlParameter("@sum", NpgsqlDbType.Integer));
+            command.Parameters.Add(new NpgsqlParameter("@product", NpgsqlDbType.Refcursor));
+
+            command.Parameters["@sum"].Direction = ParameterDirection.Output;
+            command.Parameters["@product"].Direction = ParameterDirection.Output;
+
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+
+                Assert.AreEqual(3, command.Parameters["@sum"].Value);
+                Assert.AreEqual(2, command.Parameters["@product"].Value);
+            }
         }
 
         #region Setup / Teardown

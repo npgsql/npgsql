@@ -206,6 +206,36 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void GetValues()
+        {
+            var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            var values = new object[4];
+            Assert.That(dr.GetValues(values), Is.EqualTo(3));
+            Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new DateTime(2014, 1, 1), null }));
+            values = new object[2];
+            Assert.That(dr.GetValues(values), Is.EqualTo(2));
+            Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
+            command.Dispose();
+        }
+
+        [Test]
+        public void GetProviderSpecificValues()
+        {
+            var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", Conn);
+            var dr = command.ExecuteReader();
+            dr.Read();
+            var values = new object[4];
+            Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
+            Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
+            values = new object[2];
+            Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
+            Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
+            command.Dispose();
+        }
+
+        [Test]
         public void ExcuteReaderGettingEmptyResultSetWithOutputParameter()
         {
             var command = new NpgsqlCommand("select * from data where field_text = NULL;", Conn);
@@ -379,6 +409,16 @@ namespace NpgsqlTests
                 Assert.AreEqual("bool", dr.GetDataTypeName(5));
                 Assert.AreEqual("timestamp", dr.GetDataTypeName(6));
             }
+        }
+
+        [Test]
+        public void SchemaOnly()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1 AS some_column", Conn);
+            var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly);
+            Assert.That(reader.Read(), Is.False);
+            var t = reader.GetSchemaTable();
+            Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
         }
 
         [Test]
@@ -708,29 +748,6 @@ namespace NpgsqlTests
                     upd.CommandText = "select * from data";
                     upd.Prepare();
                 }
-            }
-        }
-
-        [Test]
-        public void TestOutParameter2()
-        {
-            var command = new NpgsqlCommand("testoutparameter2", Conn);
-            command.CommandType = CommandType.StoredProcedure;
-
-            command.Parameters.Add(new NpgsqlParameter("@x", NpgsqlDbType.Integer)).Value = 1;
-            command.Parameters.Add(new NpgsqlParameter("@y", NpgsqlDbType.Integer)).Value = 2;
-            command.Parameters.Add(new NpgsqlParameter("@sum", NpgsqlDbType.Integer));
-            command.Parameters.Add(new NpgsqlParameter("@product", NpgsqlDbType.Refcursor));
-
-            command.Parameters["@sum"].Direction = ParameterDirection.Output;
-            command.Parameters["@product"].Direction = ParameterDirection.Output;
-
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-
-                Assert.AreEqual(3, command.Parameters["@sum"].Value);
-                Assert.AreEqual(2, command.Parameters["@product"].Value);
             }
         }
 
