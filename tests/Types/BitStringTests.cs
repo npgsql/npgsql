@@ -81,6 +81,66 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        // Older tests from here
+
+        [Test]
+        public void BitTypeSupport()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
+            {
+                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
+                p.Value = true;
+                command.Parameters.Add(p);
+                command.ExecuteNonQuery();
+            }
+
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+        }
+
+        [Test]
+        public void BitTypeSupport2()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
+            {
+                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
+                p.Value = 3;
+                command.Parameters.Add(p);
+                command.ExecuteNonQuery();
+            }
+
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data);"));
+        }
+
+        [Test]
+        public void BitTypeSupport3()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
+            {
+                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
+                p.Value = 6;
+                command.Parameters.Add(p);
+                command.ExecuteNonQuery();
+            }
+
+            Assert.IsFalse((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+        }
+
+        [Test]
+        public void BitTypeSupportWithPrepare()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_bit) VALUES (:a);", Conn))
+            {
+                var p = new NpgsqlParameter("a", NpgsqlDbType.Bit);
+                p.Value = true;
+                command.Parameters.Add(p);
+                command.Prepare();
+                command.ExecuteNonQuery();
+            }
+
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+        }
+
+        // TODO: Bring this test back
 #if FIX
         [Test]
         public void BitString([Values(true, false)] bool prepareCommand)

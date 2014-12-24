@@ -148,6 +148,50 @@ namespace NpgsqlTests
             }
         }
 
+        // Older tests
+
+        [Test]
+        public void ReturnInfinityDateTimeSupportNpgsqlDbType()
+        {
+            var command = new NpgsqlCommand("insert into data(field_timestamp) values ('infinity'::timestamp);", Conn);
+            command.ExecuteNonQuery();
+
+            command = new NpgsqlCommand("select field_timestamp from data where field_serial = (select max(field_serial) from data);", Conn);
+            var result = command.ExecuteScalar();
+            Assert.AreEqual(DateTime.MaxValue, result);
+        }
+
+        [Test]
+        public void ReturnMinusInfinityDateTimeSupportNpgsqlDbType()
+        {
+            var command = new NpgsqlCommand("insert into data(field_timestamp) values ('-infinity'::timestamp);", Conn);
+            command.ExecuteNonQuery();
+
+            command = new NpgsqlCommand("select field_timestamp from data where field_serial = (select max(field_serial) from data);", Conn);
+            var result = command.ExecuteScalar();
+            Assert.AreEqual(DateTime.MinValue, result);
+        }
+
+        [Test]
+        public void MinusInfinityDateTimeSupport()
+        {
+            var command = Conn.CreateCommand();
+            command.Parameters.Add(new NpgsqlParameter("p0", DateTime.MinValue));
+            command.CommandText = "select 1 where current_date=:p0";
+            var result = command.ExecuteScalar();
+            Assert.AreEqual(null, result);
+        }
+
+        [Test]
+        public void PlusInfinityDateTimeSupport()
+        {
+            var command = Conn.CreateCommand();
+            command.Parameters.Add(new NpgsqlParameter("p0", DateTime.MaxValue));
+            command.CommandText = "select 1 where current_date=:p0";
+            var result = command.ExecuteScalar();
+            Assert.AreEqual(null, result);
+        }
+
         [Test]
         public void DateTimeSupport()
         {
@@ -345,6 +389,37 @@ namespace NpgsqlTests
 
                 Assert.AreEqual(tsInsert.AtTimeZone(NpgsqlTimeZone.UTC), tsSelect.AtTimeZone(NpgsqlTimeZone.UTC));
             }
+        }
+
+        private void TimeStampHandlingInternal(bool prepare)
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                DateTime inVal = DateTime.Parse("02/28/2000 02:20:20 PM", CultureInfo.InvariantCulture);
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
+                parameter.Value = inVal;
+                cmd.Parameters.Add(parameter);
+
+                if (prepare)
+                {
+                    cmd.Prepare();
+                }
+
+                var retVal = (DateTime)cmd.ExecuteScalar();
+                Assert.AreEqual(inVal, retVal);
+            }
+        }
+
+        [Test]
+        public void TimeStampHandling()
+        {
+            TimeStampHandlingInternal(false);
+        }
+
+        [Test]
+        public void TimeStampHandlingPrepared()
+        {
+            TimeStampHandlingInternal(true);
         }
     }
 }
