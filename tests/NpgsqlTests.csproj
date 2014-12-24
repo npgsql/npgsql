@@ -182,6 +182,7 @@
     </Compile>
     <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
+    <Compile Include="Types\GeometricTypeTests.cs" />
     <Compile Include="Types\SimpleTypeTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />

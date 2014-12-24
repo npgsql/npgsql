@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using Npgsql;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace NpgsqlTests
@@ -196,6 +197,64 @@ namespace NpgsqlTests
                 var result = new Char[6];
                 dr.GetChars(0, 0, result, 0, 6);
                 Assert.AreEqual("Random", new String(result));
+            }
+        }
+
+        [Test]
+        public void SingleChar([Values(true, false)] bool prepareCommand)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                var testArr = new byte[] { prepareCommand ? (byte)200 : (byte)'}', prepareCommand ? (byte)0 : (byte)'"', 3 };
+                var testArr2 = new char[] { prepareCommand ? (char)200 : '}', prepareCommand ? (char)0 : '"', (char)3 };
+
+                cmd.CommandText = "Select 'a'::\"char\", (-3)::\"char\", :p1, :p2, :p3, :p4, :p5, :p6, :p7, :p8";
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.SingleChar) { Value = 'b' });
+                cmd.Parameters.Add(new NpgsqlParameter("p2", NpgsqlDbType.SingleChar) { Value = 66 });
+                cmd.Parameters.Add(new NpgsqlParameter("p3", NpgsqlDbType.SingleChar) { Value = "" });
+                cmd.Parameters.Add(new NpgsqlParameter("p4", NpgsqlDbType.SingleChar) { Value = "\0" });
+                cmd.Parameters.Add(new NpgsqlParameter("p5", NpgsqlDbType.SingleChar) { Value = "a" });
+                cmd.Parameters.Add(new NpgsqlParameter("p6", NpgsqlDbType.SingleChar) { Value = (byte)231 });
+                cmd.Parameters.Add(new NpgsqlParameter("p7", NpgsqlDbType.SingleChar | NpgsqlDbType.Array) { Value = testArr });
+                cmd.Parameters.Add(new NpgsqlParameter("p8", NpgsqlDbType.SingleChar | NpgsqlDbType.Array) { Value = testArr2 });
+                if (prepareCommand)
+                    cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var expected = new char[] { 'a', (char)(256 - 3), 'b', (char)66, '\0', '\0', 'a', (char)231 };
+                    for (int i = 0; i < expected.Length; i++)
+                    {
+                        Assert.AreEqual(expected[i], reader.GetChar(i));
+                    }
+                    var arr = (char[])reader.GetValue(8);
+                    var arr2 = (char[])reader.GetValue(9);
+                    Assert.AreEqual(testArr.Length, arr.Length);
+                    for (int i = 0; i < arr.Length; i++)
+                    {
+                        Assert.AreEqual(testArr[i], arr[i]);
+                        Assert.AreEqual(testArr2[i], arr2[i]);
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void AnsiStringSupport()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_text) VALUES (:a)", Conn))
+            {
+                command.Parameters.Add(new NpgsqlParameter("a", DbType.AnsiString));
+                command.Parameters[0].Value = "TesteAnsiString";
+                var rowsAdded = command.ExecuteNonQuery();
+                Assert.AreEqual(1, rowsAdded);
+
+                command.CommandText = String.Format("SELECT COUNT(*) FROM data WHERE field_text = '{0}'",
+                                                    command.Parameters[0].Value);
+                command.Parameters.Clear();
+                var result = command.ExecuteScalar();
+                // The missed cast is needed as Server7.2 returns Int32 and Server7.3+ returns Int64
+                Assert.AreEqual(1, result);
             }
         }
     }

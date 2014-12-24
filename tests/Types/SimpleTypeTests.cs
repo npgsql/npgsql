@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
+using System.Threading;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -316,6 +319,185 @@ namespace NpgsqlTests
                 cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
                 Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
             }
+        }
+
+        // Older tests
+
+        [Test]
+        public void ByteSupport()
+        {
+            using (var command = new NpgsqlCommand("INSERT INTO data(field_int2) VALUES (:a)", Conn))
+            {
+                command.Parameters.Add(new NpgsqlParameter("a", DbType.Byte));
+                command.Parameters[0].Value = 2;
+                var rowsAdded = command.ExecuteNonQuery();
+                Assert.AreEqual(1, rowsAdded);
+                command.Parameters.Clear();
+            }
+        }
+
+        [Test]
+        public void DoubleWithoutPrepared()
+        {
+            var command = new NpgsqlCommand("select :field_float8", Conn);
+            command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
+            double x = 1d / 7d; ;
+            command.Parameters[0].Value = x;
+            var valueReturned = command.ExecuteScalar();
+            Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);
+            Console.WriteLine("Actual=  {0}", valueReturned);
+            Console.WriteLine("Expected={0}", x);
+        }
+
+        [Test]
+        public void DoubleValueSupportWithExtendedQuery()
+        {
+            ExecuteNonQuery("INSERT INTO data(field_float8) VALUES (.123456789012345)");
+            using (var command = new NpgsqlCommand("select count(*) from data where field_float8 = :a", Conn))
+            {
+                command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Double));
+                command.Parameters[0].Value = 0.123456789012345D;
+                command.Prepare();
+                var rows = command.ExecuteScalar();
+                Assert.AreEqual(1, rows);
+            }
+        }
+
+        [Test]
+        public void PrecisionScaleNumericSupport()
+        {
+            ExecuteNonQuery("INSERT INTO data (field_numeric) VALUES (-4.3)");
+
+            using (var command = new NpgsqlCommand("SELECT field_numeric FROM data", Conn))
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+                var result = dr.GetDecimal(0);
+                Assert.AreEqual(-4.3000000M, result);
+                //Assert.AreEqual(11, result.Precision);
+                //Assert.AreEqual(7, result.Scale);
+            }
+        }
+
+        [Test]
+        public void NumberConversionWithCulture()
+        {
+            using (var cmd = new NpgsqlCommand("select :p1", Conn))
+            {
+                Thread.CurrentThread.CurrentCulture = new CultureInfo("es-ES");
+                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double);
+                parameter.Value = 5.5;
+                cmd.Parameters.Add(parameter);
+                var result = cmd.ExecuteScalar();
+                Thread.CurrentThread.CurrentCulture = new CultureInfo("");
+                Assert.AreEqual(5.5, result);
+            }
+        }
+
+        [Test]
+        public void TestBoolParameter1()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            var command = new NpgsqlCommand("select case when (foo is null) then false else foo end as bar from (select :a as foo) as x", Conn);
+            var p0 = new NpgsqlParameter(":a", true);
+            // with setting pramater type
+            p0.DbType = DbType.Boolean;
+            command.Parameters.Add(p0);
+            command.ExecuteScalar();
+        }
+
+        [Test]
+        public void TestBoolParameter2()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            var command = new NpgsqlCommand("select case when (foo is null) then false else foo end as bar from (select :a as foo) as x", Conn);
+            var p0 = new NpgsqlParameter(":a", true);
+            // not setting parameter type
+            command.Parameters.Add(p0);
+            command.ExecuteScalar();
+        }
+
+        private void TestBoolParameter_Internal(bool prepare)
+        {
+            // Add test for prepared queries with bool parameter.
+            // This test was created based on a report from Andrus Moor in the help forum:
+            // http://pgfoundry.org/forum/forum.php?thread_id=15672&forum_id=519&group_id=1000140
+
+            var command = new NpgsqlCommand("select :boolValue", Conn);
+
+            command.Parameters.Add(":boolValue", NpgsqlDbType.Boolean);
+
+            if (prepare)
+            {
+                command.Prepare();
+            }
+
+            command.Parameters["boolvalue"].Value = false;
+
+            Assert.IsFalse((bool)command.ExecuteScalar());
+
+            command.Parameters["boolvalue"].Value = true;
+
+            Assert.IsTrue((bool)command.ExecuteScalar());
+        }
+
+        [Test]
+        public void TestBoolParameter()
+        {
+            TestBoolParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared()
+        {
+            TestBoolParameter_Internal(true);
+        }
+
+        [Test]
+        public void TestBoolParameterPrepared_SuppressBinary()
+        {
+            using (SuppressBackendBinary())
+            {
+                TestBoolParameter_Internal(true);
+            }
+        }
+
+        [Test]
+        [Ignore]
+        public void TestBoolParameterPrepared2()
+        {
+            // will throw exception if bool parameter can't be used as boolean expression
+            var command = new NpgsqlCommand("select :boolValue", Conn);
+            var p0 = new NpgsqlParameter(":boolValue", false);
+            // not setting parameter type
+            command.Parameters.Add(p0);
+            command.Prepare();
+
+            Assert.IsFalse((bool)command.ExecuteScalar());
+        }
+
+        [Test]
+        public void TestUUIDDataType()
+        {
+            const string createTable =
+                @"DROP TABLE if exists public.person;
+                  CREATE TABLE public.person (
+                    person_id serial PRIMARY KEY NOT NULL,
+                    person_uuid uuid NOT NULL
+                  ) WITH(OIDS=FALSE);";
+            var command = new NpgsqlCommand(createTable, Conn);
+            command.ExecuteNonQuery();
+
+            NpgsqlParameter uuidDbParam = new NpgsqlParameter(":param1", NpgsqlDbType.Uuid);
+            uuidDbParam.Value = Guid.NewGuid();
+
+            command = new NpgsqlCommand(@"INSERT INTO person (person_uuid) VALUES (:param1);", Conn);
+            command.Parameters.Add(uuidDbParam);
+            command.ExecuteNonQuery();
+
+            command = new NpgsqlCommand("SELECT person_uuid::uuid FROM person LIMIT 1", Conn);
+            var result = command.ExecuteScalar();
+            Assert.AreEqual(typeof(Guid), result.GetType());
         }
 
         public SimpleTypeTests(string backendVersion) : base(backendVersion) { }
