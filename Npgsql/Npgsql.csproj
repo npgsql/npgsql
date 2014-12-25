@@ -308,6 +308,13 @@
     <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\BoxHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\LineHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\CircleHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\PolygonHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\PathHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\LineSegmentHandler.cs" />
+    <Compile Include="TypeHandlers\Geometric\PointHandler.cs" />
     <Compile Include="TypeHandlers\MacaddrHandler.cs" />
     <Compile Include="TypeHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />

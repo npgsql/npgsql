@@ -2151,69 +2151,69 @@ namespace NpgsqlTests
             // http://www.postgresql.org/docs/9.1/static/datatype.html
 
             // bigint
-            var cmd = new NpgsqlCommand("select 1::bigint", Conn);
+            var cmd = new NpgsqlCommand("SELECT 1::BIGINT", Conn);
             var result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Int64), result.GetType());
+            Assert.AreEqual(typeof(long), result.GetType());
 
             // bit
-            cmd.CommandText = "select '1'::bit(1)";
+            cmd.CommandText = "SELECT '1'::BIT(1)";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Boolean), result.GetType());
+            Assert.AreEqual(typeof(bool), result.GetType());
 
             // bit(2)
-            cmd.CommandText = "select '11'::bit(2)";
+            cmd.CommandText = "SELECT '11'::BIT(2)";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (BitArray), result.GetType());
+            Assert.AreEqual(typeof(BitArray), result.GetType());
 
             // boolean
-            cmd.CommandText = "select 'true'::boolean";
+            cmd.CommandText = "SELECT 'true'::BOOLEAN";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Boolean), result.GetType());
+            Assert.AreEqual(typeof(bool), result.GetType());
 
             // boolean
-            cmd.CommandText = "select 1::boolean";
+            cmd.CommandText = "SELECT 1::BOOLEAN";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Boolean), result.GetType());
+            Assert.AreEqual(typeof(bool), result.GetType());
 
             // box
-            cmd.CommandText = "select '((7,4),(8,3))'::box";
+            cmd.CommandText = "SELECT '((7,4),(8,3))'::BOX";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (NpgsqlBox), result.GetType());
+            Assert.AreEqual(typeof(NpgsqlBox), result.GetType());
 
             // bytea
             cmd.CommandText = string.Format(@"SELECT {0}'\{1}xDEADBEEF'::bytea;", Conn.UseConformantStrings ? "" : "E", Conn.UseConformantStrings ? "" : @"\");
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Byte[]), result.GetType());
+            Assert.AreEqual(typeof(byte[]), result.GetType());
 
             // bytea
             cmd.CommandText = string.Format(@"SELECT {0}'\{1}001\{1}002\{1}003\{1}377\{1}376\{1}375'::bytea;", ! Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\");
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Byte[]), result.GetType());
+            Assert.AreEqual(typeof(byte[]), result.GetType());
 
             // varchar(2)
-            cmd.CommandText = "select 'aa'::varchar(2);";
+            cmd.CommandText = "SELECT 'aa'::VARCHAR(2);";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (String), result.GetType());
+            Assert.AreEqual(typeof(string), result.GetType());
 
             // char(2)
-            cmd.CommandText = "select 'aa'::char(2);";
+            cmd.CommandText = "SELECT 'aa'::CHAR(2);";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (String), result.GetType());
+            Assert.AreEqual(typeof(string), result.GetType());
 
             // cidr
-            cmd.CommandText = "select '192.168/24'::cidr";
+            cmd.CommandText = "SELECT '192.168/24'::CIDR";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (String), result.GetType());
+            Assert.AreEqual(typeof(string), result.GetType());
 
             // int4
-            cmd.CommandText = "select 1::int4";
+            cmd.CommandText = "SELECT 1::INT4";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Int32), result.GetType());
+            Assert.AreEqual(typeof(int), result.GetType());
 
             // int8
-            cmd.CommandText = "select 1::int8";
+            cmd.CommandText = "SELECT 1::INT8";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof (Int64), result.GetType());
+            Assert.AreEqual(typeof(long), result.GetType());
 
             /*
             // time
