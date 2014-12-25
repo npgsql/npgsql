@@ -812,8 +812,12 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents a PostgreSQL inet type.
+    /// Represents a PostgreSQL inet type, which is a combination of an IPAddress and a
+    /// subnet mask.
     /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
+    /// </remarks>
     public struct NpgsqlInet : IEquatable<NpgsqlInet>
     {
         public IPAddress addr;
