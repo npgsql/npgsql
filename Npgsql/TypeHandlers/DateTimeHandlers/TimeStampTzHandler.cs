@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html

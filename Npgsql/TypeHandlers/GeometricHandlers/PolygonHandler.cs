@@ -8,31 +8,41 @@ using System.Text.RegularExpressions;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers.Geometric
+namespace Npgsql.TypeHandlers.GeometricHandlers
 {
     /// <summary>
-    /// Type handler for the PostgreSQL geometric circle type.
+    /// Type handler for the PostgreSQL geometric polygon type.
     /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
-    internal class CircleHandler : TypeHandler<NpgsqlCircle>, ITypeHandler<string>
+    internal class PolygonHandler : TypeHandler<NpgsqlPolygon>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "circle" };
+        static readonly string[] _pgNames = { "polygon" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
-        public override NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public override NpgsqlPolygon Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return NpgsqlCircle.Parse(buf.ReadString(len));
+                    return NpgsqlPolygon.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
+                    return ReadBinary(buf, fieldDescription, len);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        NpgsqlPolygon ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            var numPoints = buf.ReadInt32();
+            var points = new List<NpgsqlPoint>(numPoints);
+            for (var i = 0; i < numPoints; i++) {
+                points.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
+            }
+            return new NpgsqlPolygon(points);
         }
 
         string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

@@ -8,28 +8,28 @@ using System.Text.RegularExpressions;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers.Geometric
+namespace Npgsql.TypeHandlers.GeometricHandlers
 {
     /// <summary>
-    /// Type handler for the PostgreSQL geometric line segment type.
+    /// Type handler for the PostgreSQL geometric point type.
     /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
-    internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>, ITypeHandler<string>
+    internal class PointHandler : TypeHandler<NpgsqlPoint>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "lseg" };
+        static readonly string[] _pgNames = { "point" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
-        public override NpgsqlLSeg Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public override NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return NpgsqlLSeg.Parse(buf.ReadString(len));
+                    return NpgsqlPoint.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
+                    return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
@@ -48,5 +48,4 @@ namespace Npgsql.TypeHandlers.Geometric
             }
         }
     }
-
 }

@@ -1,33 +1,29 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
-    internal class TimeTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeTZ>, ITypeHandler<NpgsqlTimeTZ>
+    internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStamp>, ITypeHandler<NpgsqlTimeStamp>
     {
-        static readonly string[] _pgNames = { "timetz" };
+        static readonly string[] _pgNames = { "timestamp" };
         internal override string[] PgNames { get { return _pgNames; } }
 
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeTZ?
-            return (DateTime)((ITypeHandler<NpgsqlTimeTZ>)this).Read(buf, fieldDescription, len);
+            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
+            return (DateTime)((ITypeHandler<NpgsqlTimeStamp>)this).Read(buf, fieldDescription, len);
         }
 
-        NpgsqlTimeTZ ITypeHandler<NpgsqlTimeTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlTimeStamp ITypeHandler<NpgsqlTimeStamp>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return NpgsqlTimeTZ.Parse(buf.ReadString(len));
+                    return NpgsqlTimeStamp.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
                     throw new NotSupportedException();
                 default:

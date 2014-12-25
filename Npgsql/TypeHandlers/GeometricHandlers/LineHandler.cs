@@ -8,31 +8,28 @@ using System.Text.RegularExpressions;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.GeometricHandlers
 {
     /// <summary>
-    /// Type handler for the PostgreSQL geometric box type.
+    /// Type handler for the PostgreSQL geometric line type.
     /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
-    internal class BoxHandler : TypeHandler<NpgsqlBox>, ITypeHandler<string>
+    internal class LineHandler : TypeHandler<NpgsqlLine>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "box" };
+        static readonly string[] _pgNames = { "line" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
-        public override NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public override NpgsqlLine Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return NpgsqlBox.Parse(buf.ReadString(len));
+                    return NpgsqlLine.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    return new NpgsqlBox(
-                        new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
-                        new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble())
-                    );
+                    return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
