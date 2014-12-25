@@ -35,6 +35,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(short)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -55,6 +56,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(int)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -88,6 +90,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(long)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -101,6 +104,7 @@ namespace NpgsqlTests
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetDouble(0), Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(double)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -114,6 +118,7 @@ namespace NpgsqlTests
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetFloat(0), Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(float)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -134,6 +139,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(decimal)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -154,6 +160,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetBoolean(1), Is.False);
             Assert.That(reader.GetValue(0), Is.True);
             Assert.That(reader.GetProviderSpecificValue(0), Is.True);
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
             reader.Close();
             cmd.Dispose();
         }
@@ -174,6 +181,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetValue(0), Is.EqualTo(12345.12m));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(12345.12m));
             Assert.That(reader.GetDecimal(1), Is.EqualTo(-10.5m));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(decimal)));
             reader.Close();
             cmd.Dispose();
         }
@@ -197,12 +205,14 @@ namespace NpgsqlTests
             Assert.That(reader.GetFieldValue<IPAddress>(0), Is.EqualTo(expectedIp));
             Assert.That(reader[0], Is.EqualTo(expectedIp));
             Assert.That(reader.GetValue(0), Is.EqualTo(expectedIp));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IPAddress)));
 
             // Provider-specific type (NpgsqlInet)
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedInet));
             Assert.That(reader.GetFieldValue<NpgsqlInet>(0), Is.EqualTo(expectedInet));
             Assert.That(reader.GetString(0), Is.EqualTo(expectedInet.ToString()));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
 
             reader.Dispose();
             cmd.Dispose();
@@ -218,6 +228,8 @@ namespace NpgsqlTests
             Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected));
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(PhysicalAddress)));
+
             reader.Dispose();
             cmd.Dispose();
         }
@@ -237,6 +249,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetFieldValue<Guid>(0), Is.EqualTo(expected));
             Assert.That(reader.GetValue(0),            Is.EqualTo(expected));
             Assert.That(reader.GetString(0),           Is.EqualTo(expected.ToString()));
+            Assert.That(reader.GetFieldType(0),        Is.EqualTo(typeof(Guid)));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -253,6 +266,8 @@ namespace NpgsqlTests
             Assert.That(reader.GetChar(0), Is.EqualTo(','));
             Assert.That(reader.GetValue(0), Is.EqualTo(','));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(','));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(char)));
+
             reader.Dispose();
             cmd.Dispose();
         }
@@ -267,6 +282,7 @@ namespace NpgsqlTests
             Assert.That(reader.GetString(0), Is.EqualTo(expected));
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
             reader.Dispose();
             cmd.Dispose();
         }

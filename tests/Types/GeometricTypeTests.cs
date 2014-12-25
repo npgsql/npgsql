@@ -18,89 +18,103 @@ namespace NpgsqlTests.Types
     class GeometricTypeTests : TestBase
     {
         [Test]
-        public void TestPointSupport()
+        public void ReadPoint([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_point) VALUES ( '(4, 3)' )");
-            var command = new NpgsqlCommand("select field_point from data", Conn);
-            var p = (NpgsqlPoint)command.ExecuteScalar();
-            Assert.AreEqual(4, p.X);
-            Assert.AreEqual(3, p.Y);
+            var cmd = new NpgsqlCommand("SELECT '(1.2,3.4)'::POINT", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var p = (NpgsqlPoint)reader.GetValue(0);
+            Assert.That(p.X, Is.EqualTo(1.2));
+            Assert.That(p.Y, Is.EqualTo(3.4));
+            Assert.That(reader.GetString(0), Is.EqualTo("(1.2,3.4)"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlPoint)));
         }
 
         [Test]
-        public void TestBoxSupport()
+        public void ReadLine([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_box) VALUES ( '(4, 3), (5, 4)'::box )");
-            var command = new NpgsqlCommand("select field_box from data", Conn);
-            var box = (NpgsqlBox)command.ExecuteScalar();
-            Assert.AreEqual(5, box.UpperRight.X);
-            Assert.AreEqual(4, box.UpperRight.Y);
-            Assert.AreEqual(4, box.LowerLeft.X);
-            Assert.AreEqual(3, box.LowerLeft.Y);
+            var cmd = new NpgsqlCommand("SELECT '{1,2,3}'::LINE", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var l = (NpgsqlLine)reader.GetValue(0);
+            Assert.That(l, Is.EqualTo(new NpgsqlLine(1, 2, 3)));
+            Assert.That(reader.GetString(0), Is.EqualTo("{1,2,3}"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlLine)));
         }
 
         [Test]
-        public void TestLSegSupport()
+        public void ReadLineSegment([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_lseg) VALUES ( '(4, 3), (5, 4)'::lseg )");
-            var command = new NpgsqlCommand("select field_lseg from data", Conn);
-            var lseg = (NpgsqlLSeg)command.ExecuteScalar();
-            Assert.AreEqual(4, lseg.Start.X);
-            Assert.AreEqual(3, lseg.Start.Y);
-            Assert.AreEqual(5, lseg.End.X);
-            Assert.AreEqual(4, lseg.End.Y);
+            var cmd = new NpgsqlCommand("SELECT '[(1,2),(3,4)]'::LSEG", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var l = (NpgsqlLSeg)reader.GetValue(0);
+            Assert.That(l, Is.EqualTo(new NpgsqlLSeg(1, 2, 3, 4)));
+            Assert.That(reader.GetString(0), Is.EqualTo("[(1,2),(3,4)]"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlLSeg)));
         }
 
         [Test]
-        public void TestClosedPathSupport()
+        public void ReadBox([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_path) VALUES ( '((4, 3), (5, 4))'::path )");
-            var command = new NpgsqlCommand("select field_path from data", Conn);
-            var path = (NpgsqlPath)command.ExecuteScalar();
-            Assert.AreEqual(false, path.Open);
-            Assert.AreEqual(2, path.Count);
-            Assert.AreEqual(4, path[0].X);
-            Assert.AreEqual(3, path[0].Y);
-            Assert.AreEqual(5, path[1].X);
-            Assert.AreEqual(4, path[1].Y);
+            var cmd = new NpgsqlCommand("SELECT '(4,3),(2,1)'::BOX", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var b = (NpgsqlBox)reader.GetValue(0);
+            //var expected = new NpgsqlBox(new NpgsqlPoint(4, 1), new NpgsqlPoint(2, 3));
+            Assert.That(b, Is.EqualTo(new NpgsqlBox(new NpgsqlPoint(4, 3), new NpgsqlPoint(2, 1))));
+            Assert.That(reader.GetString(0), Is.EqualTo("(4,3),(2,1)"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlBox)));
         }
 
         [Test]
-        public void TestOpenPathSupport()
+        public void ReadPath([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_path) VALUES ( '[(4, 3), (5, 4)]'::path )");
-            var command = new NpgsqlCommand("select field_path from data", Conn);
-            var path = (NpgsqlPath)command.ExecuteScalar();
-            Assert.AreEqual(true, path.Open);
-            Assert.AreEqual(2, path.Count);
-            Assert.AreEqual(4, path[0].X);
-            Assert.AreEqual(3, path[0].Y);
-            Assert.AreEqual(5, path[1].X);
-            Assert.AreEqual(4, path[1].Y);
+            var cmd = new NpgsqlCommand("SELECT '((1,2),(3,4))'::PATH, '[(1,2),(3,4)]'::PATH", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var closed = (NpgsqlPath)reader.GetValue(0);
+            Assert.That(closed.Open, Is.False);
+            Assert.That(closed, Is.EqualTo(new NpgsqlPath(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4))));
+            Assert.That(reader.GetString(0), Is.EqualTo("((1,2),(3,4))"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlPath)));
+
+            var open = (NpgsqlPath)reader.GetValue(1);
+            Assert.That(open.Open, Is.True);
+            Assert.That(open, Is.EqualTo(new NpgsqlPath(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4))));
+            Assert.That(reader.GetString(1), Is.EqualTo("[(1,2),(3,4)]"));
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(NpgsqlPath)));
         }
 
         [Test]
-        public void TestPolygonSupport()
+        public void ReadPolygon([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_polygon) VALUES ( '((4, 3), (5, 4))'::polygon )");
-            var command = new NpgsqlCommand("select field_polygon from data", Conn);
-            var polygon = (NpgsqlPolygon)command.ExecuteScalar();
-            Assert.AreEqual(2, polygon.Count);
-            Assert.AreEqual(4, polygon[0].X);
-            Assert.AreEqual(3, polygon[0].Y);
-            Assert.AreEqual(5, polygon[1].X);
-            Assert.AreEqual(4, polygon[1].Y);
+            var cmd = new NpgsqlCommand("SELECT '((1,2),(3,4))'::POLYGON", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var p = (NpgsqlPolygon)reader.GetValue(0);
+            Assert.That(p, Is.EqualTo(new NpgsqlPolygon(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4))));
+            Assert.That(reader.GetString(0), Is.EqualTo("((1,2),(3,4))"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlPolygon)));
         }
 
         [Test]
-        public void TestCircleSupport()
+        public void ReadCircle([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            ExecuteNonQuery("INSERT INTO data (field_circle) VALUES ( '< (4, 3), 5 >'::circle )");
-            var command = new NpgsqlCommand("select field_circle from data", Conn);
-            var circle = (NpgsqlCircle)command.ExecuteScalar();
-            Assert.AreEqual(4, circle.Center.X);
-            Assert.AreEqual(3, circle.Center.Y);
-            Assert.AreEqual(5, circle.Radius);
+            var cmd = new NpgsqlCommand("SELECT '<(1,2),0.5>'::CIRCLE", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var c = (NpgsqlCircle)reader.GetValue(0);
+            Assert.That(c, Is.EqualTo(new NpgsqlCircle(1, 2, 0.5)));
+            Assert.That(reader.GetString(0), Is.EqualTo("<(1,2),0.5>"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlCircle)));
         }
 
         [Test]
