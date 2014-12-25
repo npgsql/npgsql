@@ -56,64 +56,6 @@ namespace NpgsqlTests.Types
         }
 
         /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
-        /// </summary>
-        [Test]
-        public void ReadInet()
-        {
-            var expectedIp = IPAddress.Parse("192.168.1.1");
-            var expectedInet = new NpgsqlInet(expectedIp, 24);
-            var cmd = new NpgsqlCommand("SELECT '192.168.1.1/24'::INET", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-
-            // Regular type (IPAddress)
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IPAddress)));
-            Assert.That(reader.GetFieldValue<IPAddress>(0), Is.EqualTo(expectedIp));
-            Assert.That(reader[0], Is.EqualTo(expectedIp));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expectedIp));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IPAddress)));
-
-            // Provider-specific type (NpgsqlInet)
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedInet));
-            Assert.That(reader.GetFieldValue<NpgsqlInet>(0), Is.EqualTo(expectedInet));
-            Assert.That(reader.GetString(0), Is.EqualTo(expectedInet.ToString()));
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
-
-            reader.Dispose();
-            cmd.Dispose();
-        }
-
-        /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
-        /// </summary>
-        [Test]
-        public void ReadMacaddr()
-        {
-            var expected = PhysicalAddress.Parse("08-00-2B-01-02-03");
-            var cmd = new NpgsqlCommand("SELECT '08-00-2b-01-02-03'::MACADDR", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(PhysicalAddress)));
-
-            reader.Dispose();
-            cmd.Dispose();
-        }
-
-        /// <summary>
-        /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
-        /// </summary>
-        [Test]
-        public void ReadCidr()
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
         /// http://www.postgresql.org/docs/9.4/static/datatype-uuid.html
         /// </summary>
         [Test]
