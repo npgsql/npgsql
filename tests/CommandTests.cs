@@ -1315,29 +1315,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void LastInsertedOidSupport()
-        {
-            var insertCommand = new NpgsqlCommand("insert into data(field_text) values ('a');", Conn);
-            // Insert this dummy row, just to enable us to see what was the last oid in order we can assert it later.
-            insertCommand.ExecuteNonQuery();
-
-            var selectCommand = new NpgsqlCommand("select max(oid) from data;", Conn);
-            var previousOid = (Int32) selectCommand.ExecuteScalar();
-
-            insertCommand.ExecuteNonQuery();
-
-            Assert.AreEqual(previousOid + 1, insertCommand.LastInsertedOID);
-        }
-
-        /*[Test]
-        public void SetServerVersionToNull()
-        {
-            ServerVersion o = Conn.ServerVersion;
-            if(o == null)
-              return;
-        }*/
-
-        [Test]
         public void VerifyFunctionNameWithDeriveParameters()
         {
             try
@@ -1445,6 +1422,7 @@ namespace NpgsqlTests
             Assert.AreEqual(5, result);
         }
 
+        // TODO: Fix according to #438
         [Test]
         public void FunctionTestTimestamptzParameterSupport()
         {

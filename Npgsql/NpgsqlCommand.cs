@@ -68,8 +68,6 @@ namespace Npgsql
         byte[] _preparedCommandText;
         RowDescriptionMessage _preparedDescription;
 
-        long _lastInsertedOid;
-
         // locals about function support so we don`t need to check it everytime a function is called.
         bool _functionChecksDone;
         bool _functionNeedsColumnListDefinition; // Functions don't return record by default.
@@ -295,14 +293,6 @@ namespace Npgsql
                         throw new ArgumentOutOfRangeException();
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns oid of inserted row. This is only updated when using executenonQuery and when command inserts just a single row. If table is created without oids, this will always be 0.
-        /// </summary>
-        public Int64 LastInsertedOID
-        {
-            get { return _lastInsertedOid; }
         }
 
         /// <summary>

@@ -34,7 +34,6 @@ namespace Npgsql
         RowDescriptionMessage _rowDescription;
         DataRowMessage _row;
         int _recordsAffected;
-        internal long? LastInsertedOid { get; private set; }
 
         /// <summary>
         /// Indicates that at least one row has been read across all result sets
@@ -187,7 +186,7 @@ namespace Npgsql
                             : _recordsAffected + completed.RowsAffected.Value;
                     }
                     if (completed.LastInsertedOID.HasValue) {
-                        LastInsertedOid = completed.LastInsertedOID;
+                        LastInsertedOID = completed.LastInsertedOID.Value;
                     }
                     goto case BackEndMessageCode.EmptyQueryResponse;
 
@@ -336,6 +335,12 @@ namespace Npgsql
         {
             get { return _recordsAffected; }
        }
+
+        /// <summary>
+        /// Returns the OID of the last inserted row.
+        /// If table is created without OIDs, this will always be 0.
+        /// </summary>
+        public long LastInsertedOID { get; private set; }
 
         public override bool HasRows
         {

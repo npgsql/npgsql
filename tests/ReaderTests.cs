@@ -88,32 +88,33 @@ namespace NpgsqlTests
         [Test]
         public void RecordsAffected()
         {
-            var command = new NpgsqlCommand("INSERT INTO data (field_int4) VALUES (7); INSERT INTO data (field_int4) VALUES (8)", Conn);
-            var dr = command.ExecuteReader();
-            dr.Close();
-            Assert.That(dr.RecordsAffected, Is.EqualTo(2));
+            var cmd = new NpgsqlCommand("INSERT INTO data (field_int4) VALUES (7); INSERT INTO data (field_int4) VALUES (8)", Conn);
+            var reader = cmd.ExecuteReader();
+            reader.Close();
+            Assert.That(reader.RecordsAffected, Is.EqualTo(2));
+
+            cmd = new NpgsqlCommand("SELECT * FROM data", Conn);
+            reader = cmd.ExecuteReader();
+            reader.Close();
+            Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
+
+            cmd = new NpgsqlCommand("UPDATE data SET field_int4=8", Conn);
+            reader = cmd.ExecuteReader();
+            reader.Close();
+            Assert.That(reader.RecordsAffected, Is.EqualTo(0));
         }
 
         [Test]
-        public void RecordsAffectedSelect()
+        public void LastInsertedOID()
         {
-            var command = new NpgsqlCommand("SELECT * FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Close();
-                Assert.That(dr.RecordsAffected, Is.EqualTo(-1));
-            }
-        }
+            var insertCmd = new NpgsqlCommand("INSERT INTO data (field_text) VALUES ('a')", Conn);
+            insertCmd.ExecuteNonQuery();
 
-        [Test]
-        public void RecordsAffectedUpdateZero()
-        {
-            var command = new NpgsqlCommand("UPDATE data SET field_int4=8", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Close();
-                Assert.That(dr.RecordsAffected, Is.EqualTo(0));
-            }
+            var selectCmd = new NpgsqlCommand("SELECT MAX(oid) FROM data", Conn);
+            var previousOid = (int)selectCmd.ExecuteScalar();
+
+            var reader = insertCmd.ExecuteReader();
+            Assert.That(reader.LastInsertedOID, Is.EqualTo(previousOid + 1));
         }
 
         [Test]
