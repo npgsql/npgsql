@@ -8,54 +8,31 @@ using System.Text.RegularExpressions;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers.Geometric
+namespace Npgsql.TypeHandlers.GeometricHandlers
 {
     /// <summary>
-    /// Type handler for the PostgreSQL geometric path segment type (open or closed).
+    /// Type handler for the PostgreSQL geometric circle type.
     /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
-    internal class PathHandler : TypeHandler<NpgsqlPath>, ITypeHandler<string>
+    internal class CircleHandler : TypeHandler<NpgsqlCircle>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "path" };
+        static readonly string[] _pgNames = { "circle" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
-        public override NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public override NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
                 case FormatCode.Text:
-                    return NpgsqlPath.Parse(buf.ReadString(len));
+                    return NpgsqlCircle.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
+                    return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
-        }
-
-        NpgsqlPath ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            bool open;
-            var openByte = buf.ReadByte();
-            switch (openByte)
-            {
-                case 1:
-                    open = false;
-                    break;
-                case 0:
-                    open = true;
-                    break;
-                default:
-                    throw new Exception("Error decoding binary geometric path: bad open byte");
-            }
-            var numPoints = buf.ReadInt32();
-            var result = new NpgsqlPath(open);
-            for (var i = 0; i < numPoints; i++) {
-                result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
-            }
-            return result;
         }
 
         string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
@@ -71,5 +48,4 @@ namespace Npgsql.TypeHandlers.Geometric
             }
         }
     }
-
 }

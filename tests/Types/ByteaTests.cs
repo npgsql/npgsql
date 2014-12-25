@@ -10,6 +10,12 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    /// <summary>
+    /// Tests on the PostgreSQL bytea type
+    /// </summary>
+    /// <summary>
+    /// http://www.postgresql.org/docs/9.4/static/datatype-binary.html
+    /// </summary>
     class ByteaTests : TestBase
     {
         public ByteaTests(string backendVersion) : base(backendVersion) {}

@@ -10,6 +10,12 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    /// <summary>
+    /// Tests on PostgreSQL date/time types
+    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
+    /// </remarks>
     class DateTimeTests : TestBase
     {
         public DateTimeTests(string backendVersion) : base(backendVersion) {}

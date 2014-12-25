@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Npgsql.Messages;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html

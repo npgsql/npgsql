@@ -183,7 +183,7 @@
     <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
     <Compile Include="Types\GeometricTypeTests.cs" />
-    <Compile Include="Types\SimpleTypeTests.cs" />
+    <Compile Include="Types\NumericTypeTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />
@@ -198,6 +198,7 @@
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
     <Compile Include="TestUtil.cs" />
+    <Compile Include="Types\MiscTypeTests.cs" />
     <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />

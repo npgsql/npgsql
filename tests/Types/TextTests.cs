@@ -10,6 +10,12 @@ using NUnit.Framework;
 
 namespace NpgsqlTests
 {
+    /// <summary>
+    /// Tests on PostgreSQL text
+    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.4/static/datatype-character.html
+    /// </remarks>
     public class TextTests : TestBase
     {
         public TextTests(string backendVersion) : base(backendVersion) {}

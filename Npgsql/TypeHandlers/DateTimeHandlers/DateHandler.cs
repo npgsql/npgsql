@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
@@ -23,7 +19,7 @@ namespace Npgsql.TypeHandlers
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            return (DateTime) ((ITypeHandler<NpgsqlDate>) this).Read(buf, fieldDescription, len);
+            return (System.DateTime) ((ITypeHandler<NpgsqlDate>) this).Read(buf, fieldDescription, len);
         }
 
         NpgsqlDate ITypeHandler<NpgsqlDate>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

@@ -16,6 +16,7 @@ using Common.Logging;
 using Npgsql.Localization;
 using Npgsql.Messages;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;
 
 namespace Npgsql

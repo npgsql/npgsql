@@ -10,6 +10,12 @@ using NUnit.Framework.Constraints;
 
 namespace NpgsqlTests
 {
+    /// <summary>
+    /// Tests on PostgreSQL arrays
+    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/9.4/static/arrays.html
+    /// </remarks>
     class ArrayTests : TestBase
     {
         public ArrayTests(string backendVersion) : base(backendVersion) {}
