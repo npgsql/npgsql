@@ -16,6 +16,8 @@ namespace Npgsql.Messages
             NumColumns = buf.ReadInt16();
             Buffer = buf;
             Column = -1;
+            ColumnLen = -1;
+            PosInColumn = DecodedPosInColumn = 0;
             // TODO: Recycle message objects rather than recreating for each row
             _columnOffsets = new List<int>(NumColumns);
             for (var i = 0; i < NumColumns; i++)
