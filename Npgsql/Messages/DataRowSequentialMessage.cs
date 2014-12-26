@@ -14,6 +14,8 @@ namespace Npgsql.Messages
             NumColumns = buf.ReadInt16();
             Buffer = buf;
             Column = -1;
+            ColumnLen = -1;
+            PosInColumn = DecodedPosInColumn = 0;
             return this;
         }
 
