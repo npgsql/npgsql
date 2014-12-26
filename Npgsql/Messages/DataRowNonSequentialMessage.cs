@@ -48,10 +48,8 @@ namespace Npgsql.Messages
 
         internal override void SeekInColumn(int posInColumn)
         {
-            if (posInColumn >= ColumnLen)
-            {
-                // TODO: What is the actual required behavior here?
-                throw new IndexOutOfRangeException();
+            if (posInColumn > ColumnLen) {
+                posInColumn = ColumnLen;
             }
 
             Buffer.Seek(_columnOffsets[Column] + 4 + posInColumn, SeekOrigin.Begin);

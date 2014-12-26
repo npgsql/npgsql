@@ -848,7 +848,7 @@ namespace Npgsql
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
                 throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new ArgumentException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset), "length");
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -887,8 +887,8 @@ namespace Npgsql
 
             var row = Row;
             row.CheckNotStreaming();
-            row.CheckNotNull();
             row.SeekToColumnStart(ordinal);
+            row.CheckNotNull();
 
             row.IsStreaming = true;
             try
@@ -918,7 +918,7 @@ namespace Npgsql
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
                 throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new ArgumentException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset), "length");
+                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -958,9 +958,8 @@ namespace Npgsql
 
             var row = Row;
             row.CheckNotStreaming();
-            row.CheckNotNull();
             row.SeekToColumnStart(ordinal);
-            row.SeekToColumn(ordinal);
+            row.CheckNotNull();
 
             row.IsStreaming = true;
             try

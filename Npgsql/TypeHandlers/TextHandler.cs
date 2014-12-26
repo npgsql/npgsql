@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -29,9 +30,15 @@ namespace Npgsql.TypeHandlers
         {
             if (output == null)
             {
-                // TODO: In non-sequential mode, getting the length can be implemented by decoding the entire
-                // field - very inefficient. In sequential mode doing this prevents subsequent reading of the column.
-                throw new NotImplementedException("Cannot get length of a text field for now");
+                // Note: Getting the length of a text column means decoding the entire field,
+                // very inefficient and also consumes the column in sequential mode. But this seems to
+                // be SqlClient's behavior as well.
+                int bytesSkipped, charsSkipped;
+                row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
+                Contract.Assume(bytesSkipped == row.ColumnLen - row.PosInColumn);
+                row.PosInColumn += bytesSkipped;
+                row.DecodedPosInColumn += charsSkipped;
+                return row.DecodedPosInColumn;
             }
 
             if (decodedOffset < row.DecodedPosInColumn)
