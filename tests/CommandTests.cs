@@ -2466,9 +2466,8 @@ namespace NpgsqlTests
                 cmd.Parameters.Add(c);
                 if (prepareCommand)
                     cmd.Prepare();
-                using (var reader = cmd.ExecuteReader())
+                using (cmd.ExecuteReader())
                 {
-                    reader.Read();
                     Assert.AreEqual(5, b.Value);
                     Assert.AreEqual(3, c.Value);
                 }
