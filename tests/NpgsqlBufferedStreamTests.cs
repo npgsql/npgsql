@@ -96,7 +96,7 @@ namespace NpgsqlTests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            Buffer = new NpgsqlBuffer(Underlying, 10, Encoding.UTF8);
+            Buffer = new NpgsqlBuffer(Underlying);
         }
 
         NpgsqlBuffer Buffer;

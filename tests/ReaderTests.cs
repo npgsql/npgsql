@@ -101,7 +101,7 @@ namespace NpgsqlTests
             cmd = new NpgsqlCommand("UPDATE data SET field_int4=8", Conn);
             reader = cmd.ExecuteReader();
             reader.Close();
-            Assert.That(reader.RecordsAffected, Is.EqualTo(0));
+            Assert.That(reader.RecordsAffected, Is.EqualTo(2));
         }
 
         [Test]
