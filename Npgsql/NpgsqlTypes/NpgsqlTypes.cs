@@ -111,7 +111,7 @@ namespace NpgsqlTypes
 
         public override string ToString()
         {
-            return String.Format("({0},{1})", X, Y);
+            return String.Format(CultureInfo.InvariantCulture, "({0},{1})", X, Y);
         }
     }
 
@@ -168,7 +168,7 @@ namespace NpgsqlTypes
 
         public override String ToString()
         {
-            return String.Format("{{{0},{1},{2}}}", _a, _b, _c);
+            return String.Format(CultureInfo.InvariantCulture, "{{{0},{1},{2}}}", _a, _b, _c);
         }
 
         public override int GetHashCode()
@@ -248,7 +248,7 @@ namespace NpgsqlTypes
 
         public override String ToString()
         {
-            return String.Format("[{0},{1}]", _start, _end);
+            return String.Format(CultureInfo.InvariantCulture, "[{0},{1}]", _start, _end);
         }
 
         public override int GetHashCode()
@@ -347,7 +347,7 @@ namespace NpgsqlTypes
 
         public override string ToString()
         {
-            return String.Format("{0},{1}", _upperRight, _lowerLeft);
+            return String.Format(CultureInfo.InvariantCulture, "{0},{1}", _upperRight, _lowerLeft);
         }
 
         public static NpgsqlBox Parse(string s)
@@ -518,13 +518,8 @@ namespace NpgsqlTypes
             for (i = 0; i < _points.Count; i++)
             {
                 var p = _points[i];
-                sb.Append('(');
-                sb.Append(p.X);
-                sb.Append(',');
-                sb.Append(p.Y);
-                sb.Append(")");
-                if (i < _points.Count - 1)
-                {
+                sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1})", p.X, p.Y);
+                if (i < _points.Count - 1) {
                     sb.Append(",");
                 }
             }
@@ -637,7 +632,7 @@ namespace NpgsqlTypes
         {
             if (Count != other.Count)
                 return false;
-            else if(ReferenceEquals(_points, _points))//Shortcut for copies of each other.
+            if (ReferenceEquals(_points, other._points))
                 return true;
             for (int i = 0; i != Count; ++i)
             {
@@ -700,13 +695,8 @@ namespace NpgsqlTypes
             for (i = 0; i < _points.Count; i++)
             {
                 var p = _points[i];
-                sb.Append('(');
-                sb.Append(p.X);
-                sb.Append(',');
-                sb.Append(p.Y);
-                sb.Append(")");
-                if (i < _points.Count - 1)
-                {
+                sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1}", p.X, p.Y);
+                if (i < _points.Count - 1) {
                     sb.Append(",");
                 }
             }
@@ -784,15 +774,15 @@ namespace NpgsqlTypes
             }
 
             return new NpgsqlCircle(
-                Single.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                Single.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                Single.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
+                Double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                Double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
+                Double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
             );
         }
 
         public override String ToString()
         {
-            return string.Format("<({0},{1}),{2}>", _x, _y, _radius);
+            return string.Format(CultureInfo.InvariantCulture, "<({0},{1}),{2}>", _x, _y, _radius);
         }
 
         public static bool operator ==(NpgsqlCircle x, NpgsqlCircle y)
