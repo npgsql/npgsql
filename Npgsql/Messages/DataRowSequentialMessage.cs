@@ -10,6 +10,7 @@ namespace Npgsql.Messages
     {
         internal override DataRowMessage Load(NpgsqlBuffer buf)
         {
+            buf.Ensure(sizeof(short));
             NumColumns = buf.ReadInt16();
             Buffer = buf;
             Column = -1;
