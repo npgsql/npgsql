@@ -66,7 +66,7 @@ namespace NpgsqlTests
             var actual = new char[expected.Length];
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
 
-            const string queryText = @"SELECT field_text, 'foo', field_text, 'bar', field_text, field_text FROM data";
+            const string queryText = @"SELECT field_text, 3, field_text, 4, field_text, field_text, field_text FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
@@ -75,9 +75,9 @@ namespace NpgsqlTests
             Assert.That(reader.GetChars(0, 0, actual, 0, 2), Is.EqualTo(2));
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
-            //Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-            Assert.That(() => reader.GetChars(0, expected.Length + 1, actual, 0, 1), Throws.Exception, "GetChars from after column ends");
-            // Note that the column was consumed in the previous line
+            Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+            // Note: Unlike with bytea, finding out the length of the column consumes it (variable-width
+            // UTF8 encoding)
             Assert.That(reader.GetChars(2, 0, actual, 0, 2), Is.EqualTo(2));
             if (IsSequential(behavior))
                 Assert.That(() => reader.GetChars(2, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
@@ -92,11 +92,15 @@ namespace NpgsqlTests
 
             Assert.That(() => reader.GetChars(3, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
             Assert.That(() => reader.GetChars(3, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
-            Assert.That(reader.GetString(3), Is.EqualTo("bar"));
+            Assert.That(reader.GetInt32(3), Is.EqualTo(4));
             reader.GetChars(4, 0, actual, 0, 2);
             // Jump to another column from the middle of the column
             reader.GetChars(5, 0, actual, 0, 2);
+            Assert.That(reader.GetChars(5, expected.Length - 1, actual, 0, 2), Is.EqualTo(1), "Length greater than data length");
+            Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+            Assert.That(() => reader.GetChars(5, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
             // Close in the middle of a column
+            reader.GetChars(6, 0, actual, 0, 2);
             reader.Close();
             cmd.Dispose();
         }

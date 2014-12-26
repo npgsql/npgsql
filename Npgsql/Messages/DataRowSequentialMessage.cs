@@ -68,10 +68,8 @@ namespace Npgsql.Messages
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
             }
 
-            if (posInColumn > ColumnLen)
-            {
-                // TODO: What is the actual required behavior here?
-                throw new IndexOutOfRangeException();
+            if (posInColumn > ColumnLen) {
+                posInColumn = ColumnLen;
             }
 
             if (posInColumn > PosInColumn)

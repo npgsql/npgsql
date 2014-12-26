@@ -53,10 +53,10 @@ namespace NpgsqlTests
         }
 
         [Test]
-        //[TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        //[TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
+        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        //[TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
+        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
         public void GetBytes(PrepareOrNot prepare, CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
@@ -64,7 +64,7 @@ namespace NpgsqlTests
             var actual = new byte[expected.Length];
             ExecuteNonQuery(String.Format(@"INSERT INTO data (field_bytea) VALUES ({0})", EncodeHex(expected)));
 
-            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea FROM data";
+            const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea, field_bytea FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
@@ -74,7 +74,6 @@ namespace NpgsqlTests
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
             Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-            Assert.That(() => reader.GetBytes(0, expected.Length + 1, actual, 0, 1), Throws.Exception, "GetBytes from after column ends");
             if (IsSequential(behavior))
                 Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
@@ -92,7 +91,11 @@ namespace NpgsqlTests
             reader.GetBytes(2, 0, actual, 0, 2);
             // Jump to another column from the middle of the column
             reader.GetBytes(4, 0, actual, 0, 2);
+            Assert.That(reader.GetBytes(4, expected.Length - 1, actual, 0, 2), Is.EqualTo(1), "Length greater than data length");
+            Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+            Assert.That(() => reader.GetBytes(4, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
             // Close in the middle of a column
+            reader.GetBytes(5, 0, actual, 0, 2);
             reader.Close();
             cmd.Dispose();
 
@@ -195,49 +198,7 @@ namespace NpgsqlTests
             }
         }
 
-        [Test]
-        public void GetBytes1()
-        {
-            ExecuteNonQuery(string.Format(@"INSERT INTO data (field_bytea) VALUES ({0}'\{1}123\{1}056')", !Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"));
-            var command = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = new Byte[2];
-
-                var a = dr.GetBytes(0, 0, result, 0, 2);
-                var b = dr.GetBytes(0, result.Length, result, 0, 2);
-
-                Assert.AreEqual('S', (Char)result[0]);
-                Assert.AreEqual('.', (Char)result[1]);
-                Assert.AreEqual(2, a);
-                Assert.AreEqual(0, b);
-            }
-        }
-
-        [Test]
-        public void GetBytes2()
-        {
-            var command = new NpgsqlCommand(string.Format(@"select {0}'\{1}001\{1}002\{1}003'::bytea;", !Conn.UseConformantStrings ? "E" : "", Conn.UseConformantStrings ? "" : @"\"), Conn);
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = new Byte[3];
-
-                var a = dr.GetBytes(0, 0, result, 0, 0);
-                var b = dr.GetBytes(0, 0, result, 0, 1);
-                var c = dr.GetBytes(0, 0, result, 0, 2);
-                var d = dr.GetBytes(0, 0, result, 0, 3);
-
-                Assert.AreEqual(1, result[0]);
-                Assert.AreEqual(2, result[1]);
-                Assert.AreEqual(3, result[2]);
-                Assert.AreEqual(0, a);
-                Assert.AreEqual(1, b);
-                Assert.AreEqual(2, c);
-                Assert.AreEqual(3, d);
-            }
-        }
+        // Older tests
 
         [Test]
         public void Prepared()

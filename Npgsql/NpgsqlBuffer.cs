@@ -434,12 +434,21 @@ namespace Npgsql
         /// <summary>
         /// Skips over characters in the buffer, reading from the underlying stream as necessary.
         /// </summary>
-        /// <param name="charCount">the number of characters to skip over</param>
+        /// <param name="charCount">the number of characters to skip over.
+        /// int.MaxValue means all available characters (limited only by <paramref name="byteCount"/>).
+        /// </param>
         /// <param name="byteCount">the maximal number of bytes to process</param>
         /// <returns>the number of bytes read</returns>
         internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
         {
-            ReadChars(_tempCharBuf, 0, charCount, byteCount, out bytesSkipped, out charsSkipped);
+            charsSkipped = bytesSkipped = 0;
+            while (charsSkipped < charCount && bytesSkipped < byteCount)
+            {
+                int bSkipped, cSkipped;
+                ReadChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out bSkipped, out cSkipped);
+                charsSkipped += cSkipped;
+                bytesSkipped += bSkipped;
+            }
         }
 
         internal void Skip(long len)
