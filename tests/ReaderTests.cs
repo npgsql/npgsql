@@ -237,7 +237,7 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void ExcuteReaderGettingEmptyResultSetWithOutputParameter()
+        public void ExecuteReaderGettingEmptyResultSetWithOutputParameter()
         {
             var command = new NpgsqlCommand("select * from data where field_text = NULL;", Conn);
             var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);

@@ -68,21 +68,7 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
-        internal bool IsSequential
-        {
-            get
-            {
-                // The first row in a stored procedure command that has output parameters needs to be traversed twice -
-                // once for populating the output parameters and once for the actual result set traversal. So in this
-                // case we can't be sequential.
-                return ((_behavior & CommandBehavior.SequentialAccess) != 0) && !(
-                    Command.CommandType == CommandType.StoredProcedure &&
-                    !_readOneRow &&
-                    Command.Parameters.Any(p => p.IsOutputDirection)
-                );
-            }
-        }
-
+        internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
@@ -104,11 +90,19 @@ namespace Npgsql
                 State = ReaderState.BetweenResults;
                 NextResultSetInternal();
             }
+            if (Command.Parameters.Any(p => p.IsOutputDirection)) {
+                PopulateOutputParameters();
+            }
         }
 
         #region Read
 
         public override bool Read()
+        {
+            return DoRead(IsSequential);
+        }
+
+        bool DoRead(bool sequentialRow)
         {
             if (_row != null) {
                 _row.Consume();
@@ -136,7 +130,7 @@ namespace Npgsql
 
             while (true)
             {
-                var msg = ReadMessage();
+                var msg = ReadMessage(sequentialRow);
                 switch (ProcessMessage(msg))
                 {
                     case ReadResult.RowRead:
@@ -166,12 +160,7 @@ namespace Npgsql
                     _connector.State = ConnectorState.Fetching;
                     _row = (DataRowMessage)msg;
                     Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
-                    if (IsCaching) {
-                        _rowCache.Clear();
-                    }
-                    if (!_readOneRow && Command.CommandType == CommandType.StoredProcedure) {
-                        PopulateOutputParameters();
-                    }
+                    if (IsCaching) { _rowCache.Clear(); }
                     _readOneRow = true;
                     _hasRows = true;
                     return ReadResult.RowRead;
@@ -217,12 +206,6 @@ namespace Npgsql
         {
             Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
-            if (!_readOneRow && Command.CommandType == CommandType.StoredProcedure && Command.Parameters.Any(p => p.IsOutputDirection))
-            {
-                // We have a stored procedure with output params that haven't yet been populated, read the first data row
-                Read();
-            }
-
             switch (State)
             {
                 case ReaderState.InResult:
@@ -266,7 +249,7 @@ namespace Npgsql
 
             while (true)
             {
-                var msg = ReadMessage();
+                var msg = ReadMessage(IsSequential);
                 switch (msg.Code)
                 {
                     case BackEndMessageCode.EmptyQueryResponse:
@@ -290,14 +273,14 @@ namespace Npgsql
 
         #endregion
 
-        ServerMessage ReadMessage()
+        ServerMessage ReadMessage(bool sequentialRow)
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
                 _pendingMessage = null;
                 return msg;
             }
-            return _connector.ReadSingleMessage(IsSequential);
+            return _connector.ReadSingleMessage(sequentialRow);
         }
 
         ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
@@ -351,7 +334,7 @@ namespace Npgsql
                 }
                 while (true)
                 {
-                    var msg = _connector.ReadSingleMessage((_behavior & CommandBehavior.SequentialAccess) != 0);
+                    var msg = _connector.ReadSingleMessage(IsSequential);
                     switch (msg.Code)
                     {
                         case BackEndMessageCode.RowDescription:
@@ -1214,11 +1197,38 @@ namespace Npgsql
             return new DbEnumerator(this);
         }
 
+        /// <summary>
+        /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
+        /// once for populating the output parameters and once for the actual result set traversal. So in this
+        /// case we can't be sequential.
+        /// </summary>
         void PopulateOutputParameters()
         {
-            Contract.Requires(Command.CommandType == CommandType.StoredProcedure);
-            Contract.Requires(_row != null);
             Contract.Requires(_rowDescription != null);
+            Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
+
+            while (_row == null)
+            {
+                var msg = _connector.ReadSingleMessage(false);
+                switch (msg.Code)
+                {
+                    case BackEndMessageCode.DataRow:
+                        _pendingMessage = msg;
+                        _row = (DataRowNonSequentialMessage) msg;
+                        break;
+                    case BackEndMessageCode.CompletedResponse:
+                    case BackEndMessageCode.EmptyQueryResponse:
+                        _pendingMessage = msg;
+                        return;
+                    case BackEndMessageCode.BindComplete:
+                        continue;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);
+                }
+            }
+
+            Contract.Assume(_rowDescription.NumFields == _row.NumColumns);
+            if (IsCaching) { _rowCache.Clear(); }
 
             var pending = new Queue<NpgsqlParameter>();
             var taken = new List<int>();
