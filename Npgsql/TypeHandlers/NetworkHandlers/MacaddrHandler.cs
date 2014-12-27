@@ -8,7 +8,7 @@ using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.NetworkHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html

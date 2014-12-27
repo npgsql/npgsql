@@ -695,7 +695,7 @@ namespace NpgsqlTypes
             for (i = 0; i < _points.Count; i++)
             {
                 var p = _points[i];
-                sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1}", p.X, p.Y);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "({0},{1})", p.X, p.Y);
                 if (i < _points.Count - 1) {
                     sb.Append(",");
                 }

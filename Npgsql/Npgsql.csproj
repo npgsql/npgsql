@@ -315,8 +315,9 @@
     <Compile Include="TypeHandlers\GeometricHandlers\PathHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\LineSegmentHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\PointHandler.cs" />
-    <Compile Include="TypeHandlers\MacaddrHandler.cs" />
-    <Compile Include="TypeHandlers\InetHandler.cs" />
+    <Compile Include="TypeHandlers\NetworkHandlers\CidrHandler.cs" />
+    <Compile Include="TypeHandlers\NetworkHandlers\MacaddrHandler.cs" />
+    <Compile Include="TypeHandlers\NetworkHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
     <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
