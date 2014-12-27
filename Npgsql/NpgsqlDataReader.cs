@@ -102,7 +102,7 @@ namespace Npgsql
             return DoRead(IsSequential);
         }
 
-        bool DoRead(bool sequentialRow)
+        bool DoRead(bool isSequential)
         {
             if (_row != null) {
                 _row.Consume();
@@ -130,7 +130,7 @@ namespace Npgsql
 
             while (true)
             {
-                var msg = ReadMessage(sequentialRow);
+                var msg = ReadMessage(isSequential);
                 switch (ProcessMessage(msg))
                 {
                     case ReadResult.RowRead:
@@ -273,14 +273,14 @@ namespace Npgsql
 
         #endregion
 
-        ServerMessage ReadMessage(bool sequentialRow)
+        ServerMessage ReadMessage(bool isSequential)
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
                 _pendingMessage = null;
                 return msg;
             }
-            return _connector.ReadSingleMessage(sequentialRow);
+            return _connector.ReadSingleMessage(isSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
         ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
@@ -334,7 +334,7 @@ namespace Npgsql
                 }
                 while (true)
                 {
-                    var msg = _connector.ReadSingleMessage(IsSequential);
+                    var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
                         case BackEndMessageCode.RowDescription:
@@ -1209,7 +1209,7 @@ namespace Npgsql
 
             while (_row == null)
             {
-                var msg = _connector.ReadSingleMessage(false);
+                var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
                 switch (msg.Code)
                 {
                     case BackEndMessageCode.DataRow:
