@@ -425,12 +425,12 @@ namespace NpgsqlTests
         [Test]
         public void SingleResult()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
-            using (var cmd = new NpgsqlCommand(@"SELECT * FROM data; SELECT * FROM data", Conn))
-            using (var rdr = cmd.ExecuteReader(CommandBehavior.SingleResult))
-            {
-                Assert.That(rdr.NextResult(), Is.False);
-            }
+            var cmd = new NpgsqlCommand(@"SELECT 1; SELECT 2", Conn);
+            var rdr = cmd.ExecuteReader(CommandBehavior.SingleResult);
+            Assert.That(rdr.Read(), Is.True);
+            Assert.That(rdr.GetInt32(0), Is.EqualTo(1));
+            Assert.That(rdr.NextResult(), Is.False);
+            rdr.Close();
         }
 
         [Test]

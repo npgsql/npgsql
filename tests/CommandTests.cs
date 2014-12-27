@@ -2452,7 +2452,6 @@ namespace NpgsqlTests
             }
         }
 
-        // TODO: Need to set command type to stored procedure? Wrote to Emill on gitter
         [Test]
         public void InputAndOutputParameters([Values(true, false)] bool prepareCommand)
         {
