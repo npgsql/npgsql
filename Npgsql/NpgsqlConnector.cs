@@ -923,7 +923,7 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal ServerMessage ReadSingleMessage(bool sequentialRow = false, bool ignoreNotifications = true)
+        internal ServerMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             NpgsqlError error = null;
 
@@ -936,10 +936,20 @@ namespace Npgsql
                 Contract.Assume(Enum.IsDefined(typeof(BackEndMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
-                if (len > Buffer.BytesLeft && !(messageCode == BackEndMessageCode.DataRow && sequentialRow)) {
+                if (messageCode == BackEndMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential)
+                {
+                    if (dataRowLoadingMode == DataRowLoadingMode.Skip)
+                    {
+                        Buffer.Skip(len);
+                        continue;
+                    }
+                }
+                else if (len > Buffer.BytesLeft)
+                {
                     buf = buf.EnsureOrAllocateTemp(len);
                 }
-                var msg = ParseServerMessage(buf, messageCode, len, sequentialRow);
+
+                var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
                 if (msg != null || !ignoreNotifications && (messageCode == BackEndMessageCode.NoticeResponse || messageCode == BackEndMessageCode.NotificationResponse))
                 {
                     if (error != null)
@@ -956,14 +966,17 @@ namespace Npgsql
             }
         }
 
-        ServerMessage ParseServerMessage(NpgsqlBuffer buf, BackEndMessageCode code, int len, bool sequentialRows = false)
+        ServerMessage ParseServerMessage(NpgsqlBuffer buf, BackEndMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
         {
             switch (code)
             {
                 case BackEndMessageCode.RowDescription:
                     return _rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
                 case BackEndMessageCode.DataRow:
-                    return sequentialRows ? _dataRowSequentialMessage.Load(buf) : _dataRowNonSequentialMessage.Load(buf);
+                    Contract.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
+                    return dataRowLoadingMode == DataRowLoadingMode.Sequential
+                        ? _dataRowSequentialMessage.Load(buf)
+                        : _dataRowNonSequentialMessage.Load(buf);
                 case BackEndMessageCode.CompletedResponse:
                     return _commandCompleteMessage.Load(buf, len);
                 case BackEndMessageCode.ReadyForQuery:
@@ -1045,53 +1058,17 @@ namespace Npgsql
         /// </summary>
         internal ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
         {
-            Debug.Assert(!stopAt.Any(c => c == BackEndMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
+            Contract.Requires(!stopAt.Any(c => c == BackEndMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true)
             {
-                Buffer.Ensure(5);
-                var messageCode = (BackEndMessageCode)Buffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof(BackEndMessageCode), messageCode), "Unknown message code: " + messageCode);
-
-                if (messageCode == BackEndMessageCode.DataRow)
-                {
-                    var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
-                    Contract.Assume(len >= 0);
-                    Buffer.Skip(len);
-                }
-                else
-                {
-                    Buffer.Seek(-1, SeekOrigin.Current);
-                    var msg = ReadSingleMessage();
-
-                    if (stopAt.Contains(messageCode))
-                    {
-                        return msg;
-                    }
+                var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
+                Contract.Assert(!(msg is DataRowMessage));
+                if (stopAt.Contains(msg.Code)) {
+                    return msg;
                 }
             }
         }
-
-        /// <summary>
-        /// Consumes and disposes all backend messages until the next ReadyForQuery
-        /// </summary>
-        /*
-        [GenerateAsync]
-        internal void ConsumeAll()
-        {
-            while (true)
-            {
-                var msg = ReadMessage();
-                if (msg is ReadyForQueryMsg)
-                    return;
-                var asDisposable = msg as IDisposable;
-                if (asDisposable != null)
-                {
-                    asDisposable.Dispose();
-                }
-            }
-        }
-         */
 
         #endregion Backend message processing
 
@@ -1501,7 +1478,7 @@ namespace Npgsql
                     {
                         while (_connector.Buffer.BytesLeft > 0)
                         {
-                            var msg = _connector.ReadSingleMessage(false, false);
+                            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
                             {
                                 Contract.Assert(msg == null, "Expected null after processing a notification");
@@ -1561,7 +1538,7 @@ namespace Npgsql
                     {
                         while (BaseStream.DataAvailable || Buffer.BytesLeft > 0)
                         {
-                            var msg = ReadSingleMessage(false, false);
+                            var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
                             {
                                 Contract.Assert(msg == null, "Expected null after processing a notification");
@@ -1918,6 +1895,25 @@ namespace Npgsql
         /// The connector is engaged in a COPY OUT operation.
         /// </summary>
         CopyOut,
+    }
+
+    /// <summary>
+    /// Specifies how to load/parse DataRow messages as they're received from the backend.
+    /// </summary>
+    internal enum DataRowLoadingMode
+    {
+        /// <summary>
+        /// Load DataRows in non-sequential mode
+        /// </summary>
+        NonSequential,
+        /// <summary>
+        /// Load DataRows in sequential mode
+        /// </summary>
+        Sequential,
+        /// <summary>
+        /// Skip DataRow messages altogether
+        /// </summary>
+        Skip
     }
 
     /// <summary>
