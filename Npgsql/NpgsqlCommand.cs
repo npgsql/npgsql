@@ -83,6 +83,8 @@ namespace Npgsql
         const string AnonymousPortal = "";
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        internal NpgsqlConnector.NotificationBlock _notificationBlock;
+
         #endregion Fields
 
         #region Constructors
@@ -441,7 +443,10 @@ namespace Npgsql
             _log.Debug("Prepare command");
             CheckConnectionState();
             UnPrepare();
-            PrepareInternal();
+            using (_connector.BlockNotifications())
+            {
+                PrepareInternal();
+            }
         }
 
         void PrepareInternal()
@@ -1585,12 +1590,14 @@ namespace Npgsql
         {
             CheckConnectionState();
 
+            NpgsqlDataReader reader = null;
+
             // Block the notification thread before writing anything to the wire.
+            _notificationBlock = _connector.BlockNotifications();
             //using (_connector.BlockNotificationThread())
+            try
             {
                 State = CommandState.InProgress;
-
-                NpgsqlDataReader reader;
 
                 _connector.SetBackendCommandTimeout(CommandTimeout);
 
@@ -1616,7 +1623,7 @@ namespace Npgsql
                         _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
                     }
 
-                    return new NpgsqlDataReader(this, cb);
+                    return reader = new NpgsqlDataReader(this, cb);
                 }
                 else
                 {
@@ -1632,7 +1639,7 @@ namespace Npgsql
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
                     // TODO: Allocation
-                    return new NpgsqlDataReader(this, cb, _preparedDescription);
+                    return reader = new NpgsqlDataReader(this, cb, _preparedDescription);
 
                     // Construct the return reader, possibly with a saved row description from Prepare().
                     /*
@@ -1645,6 +1652,13 @@ namespace Npgsql
                 }
 
                 return reader;
+            }
+            finally
+            {
+                if (reader == null && _notificationBlock != null)
+                {
+                    _notificationBlock.Dispose();
+                }
             }
         }
 

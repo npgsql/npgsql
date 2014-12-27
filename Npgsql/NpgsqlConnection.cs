@@ -180,11 +180,10 @@ namespace Npgsql
             Connector.Notice += NoticeDelegate;
             Connector.Notification += NotificationDelegate;
 
-            if (SyncNotification)
+            /*if (SyncNotification)
             {
-                // Disable async notifications for now
-                //Connector.AddNotificationThread();
-            }
+                
+            }*/
 
             if (Enlist)
             {
@@ -667,11 +666,10 @@ namespace Npgsql
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
 
-            if (SyncNotification)
+            /*if (SyncNotification)
             {
-                // Disable async notifications for now
-                //Connector.RemoveNotificationThread();
-            }
+                
+            }*/
 
             if (Pooling)
             {

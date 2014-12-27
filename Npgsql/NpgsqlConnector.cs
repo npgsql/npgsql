@@ -136,6 +136,10 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        SemaphoreSlim _notificationSemaphore;
+        byte[] _emptyBuffer = new byte[0];
+        int _notificationBlockRecursionDepth;
+
         #region Reusable Server Message Objects
 
         readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
@@ -362,6 +366,11 @@ namespace Npgsql
             NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
 
             State = ConnectorState.Ready;
+
+            if (_settings.SyncNotification)
+            {
+                AddNotificationListener();
+            }
         }
 
         public void RawOpen(int timeout)
@@ -914,8 +923,10 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal ServerMessage ReadSingleMessage(bool sequentialRow=false)
+        internal ServerMessage ReadSingleMessage(bool sequentialRow = false, bool ignoreNotifications = true)
         {
+            NpgsqlError error = null;
+
             while (true)
             {
                 var buf = Buffer;
@@ -929,8 +940,19 @@ namespace Npgsql
                     buf = buf.EnsureOrAllocateTemp(len);
                 }
                 var msg = ParseServerMessage(buf, messageCode, len, sequentialRow);
-                if (msg != null)
+                if (msg != null || !ignoreNotifications && (messageCode == BackEndMessageCode.NoticeResponse || messageCode == BackEndMessageCode.NotificationResponse))
+                {
+                    if (error != null)
+                    {
+                        Contract.Assert(messageCode == BackEndMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
+                        throw new NpgsqlException(error);
+                    }
                     return msg;
+                }
+                else if (messageCode == BackEndMessageCode.ErrorResponse)
+                {
+                    error = new NpgsqlError(buf);
+                }
             }
         }
 
@@ -1007,7 +1029,7 @@ namespace Npgsql
                     Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
                 case BackEndMessageCode.ErrorResponse:
-                    throw new NpgsqlException(buf);
+                    return null;
                 case BackEndMessageCode.FunctionCallResponse:
                     // We don't use the obsolete function call protocol
                     throw new Exception("Unexpected backend message: " + code);
@@ -1030,14 +1052,23 @@ namespace Npgsql
                 Buffer.Ensure(5);
                 var messageCode = (BackEndMessageCode)Buffer.ReadByte();
                 Contract.Assume(Enum.IsDefined(typeof(BackEndMessageCode), messageCode), "Unknown message code: " + messageCode);
-                if (stopAt.Contains(messageCode) || messageCode == BackEndMessageCode.ErrorResponse)
+
+                if (messageCode == BackEndMessageCode.DataRow)
+                {
+                    var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
+                    Contract.Assume(len >= 0);
+                    Buffer.Skip(len);
+                }
+                else
                 {
                     Buffer.Seek(-1, SeekOrigin.Current);
-                    return ReadSingleMessage();
+                    var msg = ReadSingleMessage();
+
+                    if (stopAt.Contains(messageCode))
+                    {
+                        return msg;
+                    }
                 }
-                var len = Buffer.ReadInt32() - 4; // Transmitted length includes itself
-                Contract.Assume(len >= 0);
-                Buffer.Skip(len);
             }
         }
 
@@ -1384,6 +1415,12 @@ namespace Npgsql
             }
             catch { }
 
+            try
+            {
+                RemoveNotificationListener();
+            }
+            catch { }
+
             Stream = null;
             BackendParams.Clear();
             ServerVersion = null;
@@ -1445,6 +1482,110 @@ namespace Npgsql
 
         #endregion Close
 
+        #region Sync notification
+
+        internal class NotificationBlock : IDisposable
+        {
+            NpgsqlConnector _connector;
+
+            public NotificationBlock(NpgsqlConnector connector)
+            {
+                _connector = connector;
+            }
+
+            public void Dispose()
+            {
+                if (_connector != null)
+                {
+                    if (--_connector._notificationBlockRecursionDepth == 0)
+                    {
+                        while (_connector.Buffer.BytesLeft > 0)
+                        {
+                            var msg = _connector.ReadSingleMessage(false, false);
+                            if (msg != null)
+                            {
+                                Contract.Assert(msg == null, "Expected null after processing a notification");
+                            }
+                        }
+                        if (_connector._notificationSemaphore != null)
+                        {
+                            _connector._notificationSemaphore.Release();
+                        }
+                    }
+                }
+                _connector = null;
+            }
+        }
+
+        [GenerateAsync]
+        internal NotificationBlock BlockNotifications()
+        {
+            if (_notificationSemaphore != null)
+            {
+                var n = new NotificationBlock(this);
+                if (++_notificationBlockRecursionDepth == 1)
+                    _notificationSemaphore.Wait();
+                return n;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        internal void AddNotificationListener()
+        {
+            _notificationSemaphore = new SemaphoreSlim(1);
+            var task = BaseStream.ReadAsync(_emptyBuffer, 0, 0);
+            task.ContinueWith(NotificationHandler);
+        }
+
+        internal void RemoveNotificationListener()
+        {
+            _notificationSemaphore = null;
+        }
+
+        internal void NotificationHandler(System.Threading.Tasks.Task<int> task)
+        {
+            if (task.Exception != null || task.Result != 0)
+            {
+                // The stream is dead
+                return;
+            }
+
+            var semaphore = _notificationSemaphore; // To avoid problems when closing the connection
+            if (semaphore != null)
+            {
+                semaphore.WaitAsync().ContinueWith(t => {
+                    try
+                    {
+                        while (BaseStream.DataAvailable || Buffer.BytesLeft > 0)
+                        {
+                            var msg = ReadSingleMessage(false, false);
+                            if (msg != null)
+                            {
+                                Contract.Assert(msg == null, "Expected null after processing a notification");
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                        try
+                        {
+                            BaseStream.ReadAsync(_emptyBuffer, 0, 0).ContinueWith(NotificationHandler);
+                        }
+                        catch { }
+                    }
+                });
+            }
+        }
+
+        #endregion Sync notification
+
         #region Supported features
 
         internal bool SupportsApplicationName { get; private set; }
@@ -1493,7 +1634,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlind(string query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
                 SendQuery(query);
@@ -1505,7 +1646,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlind(byte[] query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
                 SendQueryRaw(query);
@@ -1517,7 +1658,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(string query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SendQuery(query);
                 SkipUntil(BackEndMessageCode.ReadyForQuery);
@@ -1529,7 +1670,7 @@ namespace Npgsql
         internal void ExecuteBlindSuppressTimeout(byte[] query)
         {
             // Block the notification thread before writing anything to the wire.
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SendQueryRaw(query);
                 SkipUntil(BackEndMessageCode.ReadyForQuery);

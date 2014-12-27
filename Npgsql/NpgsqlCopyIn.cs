@@ -168,7 +168,7 @@ namespace Npgsql
                     {
                         // Stop Notification thread so we can process this message.
                         // See bug 1010796
-                        //using (_context.BlockNotificationThread())
+                        using (_context.BlockNotifications())
                         {
                             _context.SendCopyInDone();
                         }
@@ -202,7 +202,7 @@ namespace Npgsql
                     {
                         // Stop Notification thread so we can process this message.
                         // See bug 1010796
-                        //using (_context.BlockNotificationThread())
+                        using (_context.BlockNotifications())
                         {
                             _context.SendCopyInFail(message);
                         }

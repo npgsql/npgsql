@@ -23,13 +23,17 @@ namespace Npgsql
 {
     public class NpgsqlDataReader : DbDataReader
     {
+        private ReaderState _state;
         internal NpgsqlCommand Command { get; private set; }
         readonly NpgsqlConnector _connector;
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
 
         // TODO: Protect with Interlocked?
-        internal ReaderState State { get; private set; }
+        internal ReaderState State {
+            get { return _state; }
+            private set { _state = value; }
+        }
 
         RowDescriptionMessage _rowDescription;
         DataRowMessage _row;
@@ -93,6 +97,7 @@ namespace Npgsql
             if (Command.Parameters.Any(p => p.IsOutputDirection)) {
                 PopulateOutputParameters();
             }
+            _connector.CurrentReader = this;
         }
 
         #region Read
@@ -121,27 +126,35 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
+            try
             {
-                // TODO: See optimization proposal in #410
-                Consume();
-                return false;
-            }
-
-            while (true)
-            {
-                var msg = ReadMessage(sequentialRow);
-                switch (ProcessMessage(msg))
+                if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
                 {
-                    case ReadResult.RowRead:
-                        return true;
-                    case ReadResult.RowNotRead:
-                        return false;
-                    case ReadResult.ReadAgain:
-                        continue;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    // TODO: See optimization proposal in #410
+                    Consume();
+                    return false;
                 }
+
+                while (true)
+                {
+                    var msg = ReadMessage(sequentialRow);
+                    switch (ProcessMessage(msg))
+                    {
+                        case ReadResult.RowRead:
+                            return true;
+                        case ReadResult.RowNotRead:
+                            return false;
+                        case ReadResult.ReadAgain:
+                            continue;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
+            catch (NpgsqlException)
+            {
+                CleanUpDueToException();
+                throw;
             }
         }
 
@@ -206,40 +219,49 @@ namespace Npgsql
         {
             Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
-            switch (State)
+            try
             {
-                case ReaderState.InResult:
-                    if (_row != null) {
-                        _row.Consume();
-                        _row = null;
-                    }
+                switch (State)
+                {
+                    case ReaderState.InResult:
+                        if (_row != null)
+                        {
+                            _row.Consume();
+                            _row = null;
+                        }
 
-                    // TODO: Duplication with SingleResult handling above
-                    var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
-                    ProcessMessage(completedMsg);
-                    break;
+                        // TODO: Duplication with SingleResult handling above
+                        var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
+                        ProcessMessage(completedMsg);
+                        break;
 
-                case ReaderState.BetweenResults:
-                    break;
+                    case ReaderState.BetweenResults:
+                        break;
 
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
+                    case ReaderState.Consumed:
+                    case ReaderState.Closed:
+                        return false;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                Contract.Assert(State == ReaderState.BetweenResults);
+                _hasRows = null;
+                _cachedSchemaTable = null;
+
+                if ((_behavior & CommandBehavior.SingleResult) != 0)
+                {
+                    Consume();
                     return false;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                }
+
+                return NextResultSetInternal();
             }
-
-            Contract.Assert(State == ReaderState.BetweenResults);
-            _hasRows = null;
-            _cachedSchemaTable = null;
-
-            if ((_behavior & CommandBehavior.SingleResult) != 0)
+            catch (NpgsqlException)
             {
-                Consume();
-                return false;
+                CleanUpDueToException();
+                throw;
             }
-
-            return NextResultSetInternal();
         }
 
         bool NextResultSetInternal()
@@ -432,6 +454,10 @@ namespace Npgsql
         public override void Close()
         {
             Consume();
+            if (Command._notificationBlock != null) {
+                Command._notificationBlock.Dispose();
+                Command._notificationBlock = null;
+            }
             if ((_behavior & CommandBehavior.CloseConnection) != 0) {
                 _connection.Close();
             }
@@ -440,6 +466,17 @@ namespace Npgsql
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
             }
+        }
+
+        private void CleanUpDueToException()
+        {
+            // The ReadyForQuery message that is sent after the ErrorResponse has already been consumed
+            if (Command._notificationBlock != null)
+            {
+                Command._notificationBlock.Dispose();
+                Command._notificationBlock = null;
+            }
+            State = ReaderState.Consumed;
         }
 
         #endregion

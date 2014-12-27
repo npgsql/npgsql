@@ -412,7 +412,7 @@ namespace NpgsqlTests
                 while (dr2.Read())
                     i++;
                 Assert.AreEqual(1, i);
-                dr.Close();
+                dr2.Close();
 
                 command.CommandText = "close te;";
                 command.ExecuteNonQuery();
