@@ -17,6 +17,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     {
         static readonly string[] _pgNames = { "numeric" };
         internal override string[] PgNames { get { return _pgNames; } }
+        public override bool IsArbitraryLength { get { return true; } }
 
         public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
