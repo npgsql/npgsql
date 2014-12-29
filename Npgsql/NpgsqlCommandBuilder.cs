@@ -176,7 +176,7 @@ namespace Npgsql
                 }
 
                 string[] names = null;
-                int[] types = null;
+                uint[] types = null;
                 char[] modes = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
@@ -188,7 +188,7 @@ namespace Npgsql
                         if (serverVersion >= new Version("8.1.0"))
                         {
                             if (!rdr.IsDBNull(2))
-                                types = rdr.GetValue(2) as int[];
+                                types = rdr.GetValue(2) as uint[];
                             if (!rdr.IsDBNull(3))
                                 modes = rdr.GetValue(3) as char[];
                         }
@@ -196,7 +196,7 @@ namespace Npgsql
                         {
                             if (rdr.IsDBNull(1) || rdr.GetString(1) == "")
                                 return;  // Parameterless function
-                            types = rdr.GetString(1).Split().Select(int.Parse).ToArray();
+                            types = rdr.GetString(1).Split().Select(uint.Parse).ToArray();
                         }
                     }
                     else 

@@ -40,9 +40,9 @@ namespace Npgsql.Messages
                 // TODO: Recycle
                 var field = new FieldDescription {
                     Name = buf.ReadNullTerminatedString(),
-                    TableOID = buf.ReadInt32(),
+                    TableOID = buf.ReadUInt32(),
                     ColumnAttributeNumber = buf.ReadInt16(),
-                    OID = buf.ReadInt32(),
+                    OID = buf.ReadUInt32(),
                     TypeSize = buf.ReadInt16(),
                     TypeModifier = buf.ReadInt32(),
                     FormatCode = (FormatCode) buf.ReadInt16()
@@ -144,7 +144,7 @@ namespace Npgsql.Messages
         /// <summary>
         /// The object ID of the field's data type.
         /// </summary>
-        internal int OID { get; set; }
+        internal uint OID { get; set; }
 
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
@@ -159,7 +159,7 @@ namespace Npgsql.Messages
         /// <summary>
         /// If the field can be identified as a column of a specific table, the object ID of the table; otherwise zero.
         /// </summary>
-        internal int TableOID { get; set; }
+        internal uint TableOID { get; set; }
 
         /// <summary>
         /// If the field can be identified as a column of a specific table, the attribute number of the column; otherwise zero.

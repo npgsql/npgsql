@@ -213,7 +213,7 @@ namespace NpgsqlTypes
             // Placeholder for null bitmap flag, which isn't used?
             dst.WriteInt32(0);
             // Write the OID of the elements of the array.
-            dst.WriteInt32(options.OidToNameMapping[_elementConverter.Name].OID);
+            dst.WriteInt32((int)options.OidToNameMapping[_elementConverter.Name].OID);
 
             // White dimension descriptors.
             for (int i = 0 ; i < NativeData.Rank ; i++)

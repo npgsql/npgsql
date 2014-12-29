@@ -15,7 +15,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,
     ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "int4", "oid" };
+        static readonly string[] _pgNames = { "int4" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 

@@ -14,7 +14,7 @@ namespace Npgsql
 {
     internal class TypeHandlerRegistry
     {
-        readonly Dictionary<int, TypeHandler> _oidIndex;
+        readonly Dictionary<uint, TypeHandler> _oidIndex;
 
         static List<TypeHandler> _scalarTypeHandlers;
         static readonly TypeHandler UnknownTypeHandler = new UnknownTypeHandler();
@@ -24,7 +24,7 @@ namespace Npgsql
 
         TypeHandlerRegistry()
         {
-            _oidIndex = new Dictionary<int, TypeHandler>();
+            _oidIndex = new Dictionary<uint, TypeHandler>();
         }
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">A Postgresql type OID</param>
         /// <returns>A type handler that can be used to encode and decode values.</returns>
-        internal TypeHandler this[int oid]
+        internal TypeHandler this[uint oid]
         {
             get
             {
@@ -83,14 +83,14 @@ namespace Npgsql
                     while (dr.Read())
                     {
                         var handler = nameIndex[dr.GetString(0)];
-                        var oid = Convert.ToInt32(dr.GetString(1));
-                        Debug.Assert(handler.Oid == -1);
+                        var oid = Convert.ToUInt32(dr[1]);
+                        Debug.Assert(handler.Oid == 0);
                         // TODO: Check if we actually need the OID here (we will for write).
                         // If so we need to create instances of handlers per-connector, since OIDs may differ
                         //handler.Oid = oid;
                         result[oid] = handler;
 
-                        var arrayOid = Convert.ToInt32(dr[2]);
+                        var arrayOid = Convert.ToUInt32(dr[2]);
                         if (arrayOid == 0) {
                             continue;
                         }

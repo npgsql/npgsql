@@ -12,7 +12,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 
-namespace NpgsqlTests
+namespace NpgsqlTests.Types
 {
     /// <summary>
     /// Tests on PostgreSQL numeric types
@@ -64,15 +64,17 @@ namespace NpgsqlTests
             cmd.Dispose();
         }
 
-        [Test, Description("Tests some types which are aliased to int32")]
+        [Test, Description("Tests some types which are aliased to UInt32")]
         [TestCase("oid")]
-        public void ReadInt32Aliases(string typename)
+        [TestCase("xid")]
+        [TestCase("cid")]
+        public void ReadUInt32Aliases(string typename)
         {
-            const int expected = 8;
-            var cmd = new NpgsqlCommand(String.Format("SELECT {0}::{1}", expected, typename), Conn);
+            const uint expected = 8;
+            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'::{1}", expected, typename), Conn);
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetInt32(0), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             reader.Dispose();
             cmd.Dispose();
         }
@@ -217,6 +219,24 @@ namespace NpgsqlTests
                 var result = cmd.ExecuteScalar();
                 Thread.CurrentThread.CurrentCulture = new CultureInfo("");
                 Assert.AreEqual(5.5, result);
+            }
+        }
+
+        [Test]
+        public void TestMoney([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "select 1::money, 123.45::money, 1234567890123.45::money";
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.AreEqual(1M, reader.GetValue(0));
+                    Assert.AreEqual(123.45M, reader.GetValue(1));
+                    Assert.AreEqual(1234567890123.45M, reader.GetValue(2));
+                }
             }
         }
 

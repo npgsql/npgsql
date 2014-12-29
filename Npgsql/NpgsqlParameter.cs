@@ -605,9 +605,9 @@ namespace Npgsql
         internal bool IsBound { get; private set; }
         internal byte[] BoundValue { get; private set; }
         internal short BoundFormatCode { get; private set; }
-        internal int TypeOID { get; private set; }
+        internal uint TypeOID { get; private set; }
 
-        internal void SetTypeOID(int oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
+        internal void SetTypeOID(uint oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
         {
             TypeOID = oid;
 

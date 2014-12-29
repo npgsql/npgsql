@@ -51,7 +51,7 @@ namespace Npgsql
     {
         internal abstract string[] PgNames { get; }
         internal string PgName { get { return PgNames[0]; } }
-        internal int Oid { get; set; }
+        internal uint Oid { get; set; }
         internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
 
@@ -69,7 +69,7 @@ namespace Npgsql
 
         protected TypeHandler()
         {
-            Oid = -1;
+            Oid = 0;
         }
 
         internal abstract object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);

@@ -43,7 +43,7 @@ namespace NpgsqlTypes
     /// </summary>
     internal class NpgsqlBackendTypeMapping
     {
-        private readonly Dictionary<int, NpgsqlBackendTypeInfo> OIDIndex;
+        private readonly Dictionary<uint, NpgsqlBackendTypeInfo> OIDIndex;
         private readonly Dictionary<string, NpgsqlBackendTypeInfo> NameIndex;
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace NpgsqlTypes
         /// </summary>
         public NpgsqlBackendTypeMapping()
         {
-            OIDIndex = new Dictionary<int, NpgsqlBackendTypeInfo>();
+            OIDIndex = new Dictionary<uint, NpgsqlBackendTypeInfo>();
             NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>();
         }
 
@@ -60,7 +60,7 @@ namespace NpgsqlTypes
         /// </summary>
         private NpgsqlBackendTypeMapping(NpgsqlBackendTypeMapping Other)
         {
-            OIDIndex = new Dictionary<int, NpgsqlBackendTypeInfo>(Other.OIDIndex);
+            OIDIndex = new Dictionary<uint, NpgsqlBackendTypeInfo>(Other.OIDIndex);
             NameIndex = new Dictionary<string, NpgsqlBackendTypeInfo>(Other.NameIndex);
         }
 
@@ -88,7 +88,7 @@ namespace NpgsqlTypes
         /// <param name="Type">System type to convert fields of this type to.</param>
         /// <param name="BackendTextConvert">Data conversion handler for text encoding.</param>
         /// <param name="BackendBinaryConvert">Data conversion handler for binary data.</param>
-        public void AddType(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+        public void AddType(UInt32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
                             ConvertBackendTextToNativeHandler BackendTextConvert = null,
                             ConvertBackendBinaryToNativeHandler BackendBinaryConvert = null)
         {
@@ -103,7 +103,7 @@ namespace NpgsqlTypes
             get { return NameIndex.Count; }
         }
 
-        public bool TryGetValue(int oid, out NpgsqlBackendTypeInfo value)
+        public bool TryGetValue(uint oid, out NpgsqlBackendTypeInfo value)
         {
             return OIDIndex.TryGetValue(oid, out value);
         }
@@ -111,7 +111,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Retrieve the NpgsqlBackendTypeInfo with the given backend type OID, or null if none found.
         /// </summary>
-        public NpgsqlBackendTypeInfo this[Int32 OID]
+        public NpgsqlBackendTypeInfo this[uint OID]
         {
             get
             {
@@ -143,7 +143,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Determine if a NpgsqlBackendTypeInfo with the given backend type OID exists in this mapping.
         /// </summary>
-        public Boolean ContainsOID(Int32 OID)
+        public Boolean ContainsOID(uint OID)
         {
             return OIDIndex.ContainsKey(OID);
         }

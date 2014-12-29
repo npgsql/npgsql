@@ -396,6 +396,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
+    <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />
     <Compile Include="TypeHandlers\UuidHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeStampTzHandler.cs" />

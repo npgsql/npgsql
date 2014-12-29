@@ -37,7 +37,7 @@ namespace Npgsql
 
         RowDescriptionMessage _rowDescription;
         DataRowMessage _row;
-        int _recordsAffected;
+        uint? _recordsAffected;
 
         /// <summary>
         /// Indicates that at least one row has been read across all result sets
@@ -83,7 +83,7 @@ namespace Npgsql
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
-            _recordsAffected = -1;
+            _recordsAffected = null;
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
@@ -182,9 +182,9 @@ namespace Npgsql
                     var completed = (CommandCompleteMessage) msg;
                     if (completed.RowsAffected.HasValue)
                     {
-                        _recordsAffected = _recordsAffected == -1
-                            ? completed.RowsAffected.Value
-                            : _recordsAffected + completed.RowsAffected.Value;
+                        _recordsAffected = !_recordsAffected.HasValue
+                            ? completed.RowsAffected
+                            : _recordsAffected.Value + completed.RowsAffected.Value;
                     }
                     if (completed.LastInsertedOID.HasValue) {
                         LastInsertedOID = completed.LastInsertedOID.Value;
@@ -338,14 +338,14 @@ namespace Npgsql
 
         public override int RecordsAffected
         {
-            get { return _recordsAffected; }
+            get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
        }
 
         /// <summary>
         /// Returns the OID of the last inserted row.
         /// If table is created without OIDs, this will always be 0.
         /// </summary>
-        public long LastInsertedOID { get; private set; }
+        public uint LastInsertedOID { get; private set; }
 
         public override bool HasRows
         {
@@ -1120,7 +1120,11 @@ namespace Npgsql
             return result;
         }
 
+#if NET45
         public override T GetFieldValue<T>(int ordinal)
+#else
+        public T GetFieldValue<T>(int ordinal)
+#endif
         {
             #region Contracts
             if (!IsOnRow)
@@ -1391,7 +1395,7 @@ namespace Npgsql
 
         private void FillSchemaTable(DataTable schema)
         {
-            var oidTableLookup = new Dictionary<long, Table>();
+            var oidTableLookup = new Dictionary<uint, Table>();
             var keyLookup = new KeyLookup();
             // needs to be null because there is a difference
             // between an empty dictionary and not setting it
@@ -1401,7 +1405,7 @@ namespace Npgsql
             // TODO: This is probably not what KeyInfo is supposed to do...
             if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
             {
-                var tableOids = new List<int>();
+                var tableOids = new List<uint>();
                 for (var i = 0; i != _rowDescription.NumFields; ++i)
                 {
                     if (_rowDescription[i].TableOID != 0 && !tableOids.Contains(_rowDescription[i].TableOID))
@@ -1608,21 +1612,21 @@ namespace Npgsql
             public readonly string Catalog;
             public readonly string Schema;
             public readonly string Name;
-            public readonly int Id;
+            public readonly uint Id;
 
-            public Table(IDataReader rdr)
+            public Table(NpgsqlDataReader rdr)
             {
                 Catalog = rdr.GetString(0);
                 Schema = rdr.GetString(1);
                 Name = rdr.GetString(2);
-                Id = rdr.GetInt32(3);
+                Id = rdr.GetFieldValue<uint>(3);
             }
         }
 
-        Dictionary<long, Table> GetTablesFromOids(List<int> oids)
+        Dictionary<uint, Table> GetTablesFromOids(List<uint> oids)
         {
             if (oids.Count == 0) {
-                return new Dictionary<long, Table>(); //Empty collection is simpler than requiring tests for null;
+                return new Dictionary<uint, Table>(); //Empty collection is simpler than requiring tests for null;
             }
 
             // the column index is used to find data.
@@ -1646,7 +1650,7 @@ namespace Npgsql
                 {
                     using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
-                        var oidLookup = new Dictionary<long, Table>(oids.Count);
+                        var oidLookup = new Dictionary<uint, Table>(oids.Count);
                         while (reader.Read())
                         {
                             var t = new Table(reader);
@@ -1662,7 +1666,7 @@ namespace Npgsql
         {
             public readonly string Name;
             public readonly bool NotNull;
-            public readonly int TableId;
+            public readonly uint TableId;
             public readonly short ColumnNum;
             public readonly object ColumnDefault;
 
@@ -1671,11 +1675,11 @@ namespace Npgsql
                 get { return string.Format("{0},{1}", TableId, ColumnNum); }
             }
 
-            public Column(IDataReader rdr)
+            public Column(NpgsqlDataReader rdr)
             {
                 Name = rdr.GetString(0);
                 NotNull = rdr.GetBoolean(1);
-                TableId = rdr.GetInt32(2);
+                TableId = rdr.GetFieldValue<uint>(2);
                 ColumnNum = rdr.GetInt16(3);
                 ColumnDefault = rdr.GetValue(4);
             }

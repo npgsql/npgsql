@@ -467,7 +467,7 @@ namespace Npgsql
                 }
             }
 
-            var parameterTypeOIDs = new int[numInputParameters];
+            var parameterTypeOIDs = new uint[numInputParameters];
 
             for (int i = 0, j = 0; i < _parameters.Count; i++)
             {

@@ -111,7 +111,7 @@ namespace NpgsqlTests
             insertCmd.ExecuteNonQuery();
 
             var selectCmd = new NpgsqlCommand("SELECT MAX(oid) FROM data", Conn);
-            var previousOid = (int)selectCmd.ExecuteScalar();
+            var previousOid = (uint)selectCmd.ExecuteScalar();
 
             var reader = insertCmd.ExecuteReader();
             Assert.That(reader.LastInsertedOID, Is.EqualTo(previousOid + 1));

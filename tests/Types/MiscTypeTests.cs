@@ -59,10 +59,12 @@ namespace NpgsqlTests.Types
         /// http://www.postgresql.org/docs/9.4/static/datatype-uuid.html
         /// </summary>
         [Test]
-        public void ReadUuid()
+        public void ReadUuid([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             var expected = new Guid("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
             var cmd = new NpgsqlCommand("SELECT 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID", Conn);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetGuid(0), Is.EqualTo(expected));

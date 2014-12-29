@@ -179,6 +179,14 @@ namespace Npgsql
             return result;
         }
 
+        internal uint ReadUInt32()
+        {
+            Contract.Requires(BytesLeft >= sizeof(int));
+            var result = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(_buf, Position));
+            Position += 4;
+            return result;
+        }
+
         internal long ReadInt64()
         {
             Contract.Requires(BytesLeft >= sizeof(long));

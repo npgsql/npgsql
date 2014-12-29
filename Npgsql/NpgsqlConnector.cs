@@ -826,7 +826,7 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void SendParse(string prepareName, byte[] queryString, int[] parameterIDs)
+        internal void SendParse(string prepareName, byte[] queryString, uint[] parameterIDs)
         {
             _log.DebugFormat("Sending parse message: {0}", Encoding.UTF8.GetString(queryString));
 
@@ -850,7 +850,7 @@ namespace Npgsql
                 .WriteInt16((short)parameterIDs.Length);
 
             for (var i = 0; i < parameterIDs.Length; i++) {
-                Stream.WriteInt32(parameterIDs[i]);
+                Stream.WriteInt32((int)parameterIDs[i]);
             }
 
             Stream.Flush();

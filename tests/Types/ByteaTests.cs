@@ -8,7 +8,7 @@ using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-namespace NpgsqlTests
+namespace NpgsqlTests.Types
 {
     /// <summary>
     /// Tests on the PostgreSQL bytea type
