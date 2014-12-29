@@ -11,6 +11,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         static readonly string[] _pgNames = { "timetz" };
         internal override string[] PgNames { get { return _pgNames; } }
+        public override bool SupportsBinaryRead { get { return true; } }
 
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -25,7 +26,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 case FormatCode.Text:
                     return NpgsqlTimeTZ.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    throw new NotSupportedException();
+                    // Adjusting from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
+                    return new NpgsqlTimeTZ(buf.ReadInt64() * 10, new NpgsqlTimeZone(0, 0, -buf.ReadInt32()));
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }

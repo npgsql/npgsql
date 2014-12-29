@@ -25,10 +25,18 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 case FormatCode.Text:
                     return NpgsqlInterval.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    throw new NotSupportedException();
+                    return ReadBinary(buf);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        NpgsqlInterval ReadBinary(NpgsqlBuffer buf)
+        {
+            var ticks = buf.ReadInt64();
+            var day = buf.ReadInt32();
+            var month = buf.ReadInt32();
+            return new NpgsqlInterval(month, day, ticks * 10);
         }
     }
 }

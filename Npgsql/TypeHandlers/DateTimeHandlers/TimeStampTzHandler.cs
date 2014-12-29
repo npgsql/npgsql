@@ -11,6 +11,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         static readonly string[] _pgNames = { "timestamptz" };
         internal override string[] PgNames { get { return _pgNames; } }
+        public override bool SupportsBinaryRead { get { return true; } }
 
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -25,10 +26,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 case FormatCode.Text:
                     return NpgsqlTimeStampTZ.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    throw new NotSupportedException();
+                    return ReadBinary(buf);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        NpgsqlTimeStampTZ ReadBinary(NpgsqlBuffer buf)
+        {
+            // The Int64 contains just the time in UTC, no time zone information
+            var ts = NpgsqlTimeStamp.FromInt64(buf.ReadInt64());
+            return new NpgsqlTimeStampTZ(ts.Date, new NpgsqlTimeTZ(ts.Time, NpgsqlTimeZone.UTC));
         }
     }
 }

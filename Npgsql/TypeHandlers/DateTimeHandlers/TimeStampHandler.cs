@@ -11,6 +11,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         static readonly string[] _pgNames = { "timestamp" };
         internal override string[] PgNames { get { return _pgNames; } }
+        public override bool SupportsBinaryRead { get { return true; } }
 
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -25,7 +26,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 case FormatCode.Text:
                     return NpgsqlTimeStamp.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    throw new NotSupportedException();
+                    return NpgsqlTimeStamp.FromInt64(buf.ReadInt64());
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
