@@ -2618,5 +2618,21 @@ namespace NpgsqlTests
                 }
             }
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/416")]
+        public void PreparedDisposeWithOpenReader()
+        {
+            var cmd1 = new NpgsqlCommand("SELECT 1", Conn);
+            var cmd2 = new NpgsqlCommand("SELECT 1", Conn);
+            cmd1.Prepare();
+            cmd2.Prepare();
+            var reader = cmd2.ExecuteReader();
+            reader.Read();
+            cmd1.Dispose();
+            cmd2.Dispose();
+            reader.Close();
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+        }
     }
 }

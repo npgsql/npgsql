@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vcs-root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="73129bc3-e931-4fed-a525-a847b2b3b185" type="jetbrains.git" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Github</name>
+  <param name="agentCleanFilesPolicy" value="ALL_UNTRACKED" />
+  <param name="agentCleanPolicy" value="ON_BRANCH_CHANGE" />
+  <param name="authMethod" value="TEAMCITY_SSH_KEY" />
+  <param name="branch" value="master" />
+  <param name="ignoreKnownHosts" value="true" />
+  <param name="submoduleCheckout" value="CHECKOUT" />
+  <param name="teamcity:branchSpec"><![CDATA[-:refs/heads/gh-pages
++:refs/heads/(*)
+# The following activates building PRs
+# Deactivated pending build server lockdown
++:refs/pull/*/merge]]></param>
+  <param name="teamcitySshKey" value="npgsql-teamcity" />
+  <param name="url" value="git@github.com:npgsql/npgsql.git" />
+  <param name="username" value="git" />
+  <param name="usernameStyle" value="USERID" />
+</vcs-root>
+
