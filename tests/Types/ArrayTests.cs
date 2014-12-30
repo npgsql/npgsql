@@ -107,6 +107,26 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
         }
 
+        [Test, Description("Reads an one-dimensional array with lower bound != 0")]
+        public void ReadNonZeroLowerBounded([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            var cmd = new NpgsqlCommand("SELECT '[2:3]={ 8, 9 }'::INT[]", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] { 8, 9 }));
+            reader.Close();
+            cmd.Dispose();
+
+            cmd = new NpgsqlCommand("SELECT '[2:3][2:3]={ {8,9}, {1,2} }'::INT[][]", Conn);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(new[,] { {8,9}, {1,2} }));
+            reader.Close();
+            cmd.Dispose();
+        }
+
         // Older tests
 
         [Test]

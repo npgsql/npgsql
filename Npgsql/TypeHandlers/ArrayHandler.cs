@@ -103,7 +103,7 @@ namespace Npgsql.TypeHandlers
                 dimLBounds[dimOffset] = buf.ReadInt32() - 1;
             }
 
-            var dst = Array.CreateInstance(typeof(T), dimLengths, dimLBounds);
+            var dst = Array.CreateInstance(typeof(T), dimLengths);
 
             if (nDims == 1)
             {
@@ -116,7 +116,7 @@ namespace Npgsql.TypeHandlers
             // Right after the dimension descriptors begins array data.
             // Populate the new array.
 
-            PopulateBinary<T>(buf, fieldDescription, dimLengths, dimLBounds, 0, dst, dstOffsets);
+            PopulateBinary<T>(buf, fieldDescription, dimLengths, 0, dst, dstOffsets);
             return dst;
         }
 
@@ -125,12 +125,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         void PopulateOneDimensionalBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, T[] dst)
         {
-            var lowerBound = dst.GetLowerBound(0);
-            var upperBound = dst.GetUpperBound(0);
-
             var handler = (ITypeHandler<T>)ElementHandler;
 
-            for (var i = lowerBound; i <= upperBound; i++)
+            for (var i = 0; i < dst.Length; i++)
             {
                 var elementLen = buf.ReadInt32();
 
@@ -142,18 +139,15 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        void PopulateBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int[] dimLengths, int[] dimLBounds, int dimOffset, Array dst, int[] dstOffsets)
+        void PopulateBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int[] dimLengths, int dimOffset, Array dst, int[] dstOffsets)
         {
-            var dimensionLBound = dimLBounds[dimOffset];
-            var end = dimensionLBound + dimLengths[dimOffset];
-
             if (dimOffset < dimLengths.Length - 1)
             {
                 // Drill down recursively until we hit a single dimension array.
-                for (var i = dimensionLBound; i < end; i++)
+                for (var i = 0; i < dimLengths[dimOffset]; i++)
                 {
                     dstOffsets[dimOffset] = i;
-                    PopulateBinary<T>(buf, fieldDescription, dimLengths, dimLBounds, dimOffset + 1, dst, dstOffsets);
+                    PopulateBinary<T>(buf, fieldDescription, dimLengths, dimOffset + 1, dst, dstOffsets);
                 }
                 return;
             }
@@ -161,7 +155,7 @@ namespace Npgsql.TypeHandlers
             var handler = (ITypeHandler<T>)ElementHandler;
 
             // Populate a single dimension array.
-            for (var i = dimensionLBound; i < end; i++)
+            for (var i = 0; i < dimLengths[dimOffset]; i++)
             {
                 dstOffsets[dimOffset] = i;
 
@@ -185,8 +179,20 @@ namespace Npgsql.TypeHandlers
         {
             Contract.Assume(buf.TextEncoding == Encoding.UTF8, "Array text decoding currently depends on encoding being UTF8");
 
+            var s = buf.ReadString(len);
+
+            // Read and discard optional leading lower/upper bound information
+            if (s[0] == '[')
+            {
+                var i = s.IndexOf('=');
+                if (i == -1) {
+                    throw new Exception("Array text representation started with [ but has no =");
+                }
+                s = s.Substring(i + 1);
+            }
+
             //first create an arraylist, then convert it to an array.
-            return ToArray<T>(ToArrayList<T>(buf.ReadString(len), fieldDescription));
+            return ToArray<T>(ToArrayList<T>(s, fieldDescription));
         }
 
         /// <summary>
