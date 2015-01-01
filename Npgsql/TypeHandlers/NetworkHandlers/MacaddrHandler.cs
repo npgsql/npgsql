@@ -19,6 +19,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.MacAddr };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+
         public override PhysicalAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -62,6 +65,32 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        PhysicalAddress GetValue(object value)
+        {
+            var val = value is PhysicalAddress ? (PhysicalAddress)value : PhysicalAddress.Parse((string)value);
+            if (val.GetAddressBytes().Length != 6)
+                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
+            return val;
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            var val = GetValue(value);
+            writer.WriteString(val.ToString());
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 10;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var val = GetValue(value);
+            buf.WriteInt32(6);
+            buf.WriteBytes(val.GetAddressBytes());
         }
     }
 }

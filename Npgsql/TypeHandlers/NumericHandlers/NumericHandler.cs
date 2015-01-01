@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -18,6 +20,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         static readonly string[] _pgNames = { "numeric" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool IsArbitraryLength { get { return true; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Numeric };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.VarNumeric };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
+        static readonly DbType[][] _dbTypes2 = { new DbType[] { DbType.Decimal } };
+        internal override DbType[][] DbTypeAliases { get { return _dbTypes2; } }
 
         public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

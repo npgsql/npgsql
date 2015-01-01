@@ -23,6 +23,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         public override bool SupportsBinaryRead { get { return true; } }
         public override bool IsArbitraryLength { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Path };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+
         public override NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)

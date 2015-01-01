@@ -6,19 +6,47 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
     internal class TextHandler : TypeHandler<string>, ITypeHandler<char[]>
     {
-        static readonly string[] _pgNames = { "text", "varchar", "bpchar", "name" };
+        static readonly string[] _pgNames = { "text", "varchar", "bpchar", "name", "xml" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
         public override bool IsArbitraryLength { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Text, NpgsqlDbType.Varchar, NpgsqlDbType.Char, NpgsqlDbType.Name, NpgsqlDbType.Xml };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.String, null, DbType.StringFixedLength, null, DbType.Xml };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
+
+        public override bool PreferTextWrite { get { return true; } }
+
         public override string Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return buf.ReadString(len);
+        }
+
+        public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
+        {
+            switch (npgsqlDbType)
+            {
+                case NpgsqlDbType.Char:
+                    return size > 0 ? "bpchar(" + size + ")" : "bpchar";
+                case NpgsqlDbType.Varchar:
+                    return size > 0 ? "varchar(" + size + ")" : "varchar";
+                case NpgsqlDbType.Text:
+                    return "text";
+                case NpgsqlDbType.Name:
+                    return "name";
+                case NpgsqlDbType.Xml:
+                    return "xml";
+            }
+            Contract.Assert(false, "Can't lookup NpgsqlDbType in this handler");
+            return null;
         }
 
         char[] ITypeHandler<char[]>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

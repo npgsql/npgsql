@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -16,6 +17,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Oid, NpgsqlDbType.Xid, NpgsqlDbType.Cid };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+
         public override uint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -27,6 +31,23 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            var i = (uint)value;
+            writer.WriteString(i.ToString(CultureInfo.InvariantCulture));
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 8;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            buf.WriteInt32(4);
+            buf.WriteInt32((int)(uint)value);
         }
     }
 }

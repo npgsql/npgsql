@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
@@ -15,8 +17,14 @@ namespace Npgsql.TypeHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Boolean };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.Boolean };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
+
         const byte T = (byte)'T';
         const byte t = (byte)'t';
+        const byte f = (byte)'f';
 
         public override bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -30,6 +38,24 @@ namespace Npgsql.TypeHandlers
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            var v = ((IConvertible)value).ToBoolean(null);
+            writer.WriteSingleChar(v ? (char)t : (char)f);
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 5;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var v = ((IConvertible)value).ToBoolean(null);
+            buf.WriteInt32(1);
+            buf.WriteByte(v ? (byte)1 : (byte)0);
         }
     }
 }

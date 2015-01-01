@@ -24,6 +24,10 @@ namespace Npgsql.TypeHandlers
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
         public override bool IsArbitraryLength { get { return true; } }
 
+        public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
+
+        internal const int MaxDimensions = 6;
+
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
             return typeof (Array);
@@ -63,7 +67,7 @@ namespace Npgsql.TypeHandlers
             // TODO: Temporary unoptimized solution: if the column is larger than the buffer size, allocate a new
             // buffer. We could also load data progressively as we need it below, eliminating this allocation
             // most times. But what happens if a single element is larger than the buffer size...
-            if (len > buf.BytesLeft)
+            if (len > buf.ReadBytesLeft)
             {
                 buf = buf.EnsureOrAllocateTemp(len);
             }
@@ -503,6 +507,114 @@ namespace Npgsql.TypeHandlers
         internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return ReadValueAsObject(buf, fieldDescription, len);
+        }
+
+        public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
+        {
+            return ElementHandler.GetCastName(size, npgsqlDbType) + "[]";
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            Array arr = (Array)value;
+            var escapeState = writer.PushEscapeDoubleQuoteWithBackspace();
+            WriteTextRecursive(arr, writer, 0, arr.GetEnumerator(), escapeState.DoubleQuote);
+            writer.ResetEscapeState(escapeState);
+        }
+
+        void WriteTextRecursive(Array arr, NpgsqlTextWriter writer, int curDim, IEnumerator enumerator, byte[] doubleQuote)
+        {
+            var len = arr.GetLength(curDim);
+
+            writer.WriteSingleChar('{');
+            if (curDim == arr.Rank - 1)
+            {
+                for (var i = 0; i < len; i++)
+                {
+                    if (i != 0)
+                        writer.WriteSingleChar(',');
+                    writer.WriteRawByteArray(doubleQuote);
+                    enumerator.MoveNext();
+                    ElementHandler.WriteText(enumerator.Current, writer);
+                    writer.WriteRawByteArray(doubleQuote);
+                }
+            }
+            else
+            {
+                for (var i = 0; i < len; i++)
+                {
+                    if (i != 0)
+                        writer.WriteSingleChar(',');
+                    WriteTextRecursive(arr, writer, curDim + 1, enumerator, doubleQuote);
+                }
+            }
+            writer.WriteSingleChar('}');
+        }
+
+        public override int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        {
+            Array arr = (Array)value;
+            uint elementOid = registry.GetElementOidFromArrayOid(oid);
+            TypeHandler elementHandler = registry[elementOid];
+            int sizeArrPos = sizeArr.Count;
+            sizeArr.Add(0);
+            sizeArr.Add(0);
+
+            bool hasNulls = false;
+
+            int totalLength = 16; // length(4) + ndim (4) + has_nulls (4) + element_oid (4)
+            totalLength += arr.Rank * 8; // dim (4) + lBound (4)
+
+            foreach (var element in arr)
+            {
+                totalLength += (element == null ? 4 : elementHandler.BinarySize(registry, elementOid, element, sizeArr));
+                if (element == null)
+                    hasNulls = true;
+            }
+
+            sizeArr[sizeArrPos] = totalLength;
+            sizeArr[sizeArrPos + 1] = hasNulls ? 1 : 0;
+
+            return totalLength;
+        }
+
+        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        {
+            Array arr = (Array)value;
+            uint elementOid = registry.GetElementOidFromArrayOid(oid);
+            TypeHandler elementHandler = registry[elementOid];
+
+            var totalLength = sizeArr[sizeArrPos++];
+            var hasNulls = sizeArr[sizeArrPos++];
+
+            if (arr.Rank > MaxDimensions)
+                throw new OverflowException("Too many dimensions for PostgreSQL. Max allowed: " + MaxDimensions);
+
+            var headerLength = 16 + arr.Rank * 8;
+            var fitsInBuffer = totalLength <= buf.Size;
+            buf.EnsureWrite(fitsInBuffer ? totalLength : headerLength);
+
+            buf.WriteInt32(totalLength - 4);
+            buf.WriteInt32(arr.Rank);
+            buf.WriteInt32(hasNulls); // Actually not used by backend
+            buf.WriteInt32((int)elementOid);
+            for (var i = 0; i < arr.Rank; i++)
+            {
+                buf.WriteInt32(arr.GetLength(i));
+                buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
+            }
+
+            foreach (var element in arr)
+            {
+                if (element == null)
+                {
+                    buf.EnsuredWriteInt32(-1);
+                }
+                else
+                {
+                    elementHandler.WriteBinary(registry, elementOid, element, buf, sizeArr, ref sizeArrPos);
+                }
+            }
         }
     }
 

@@ -306,7 +306,13 @@
     <Compile Include="Messages\RowDescriptionMessage.cs" />
     <Compile Include="Messages\DataRowSequentialMessage.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
+    <Compile Include="NpgsqlBuffer.Async.cs">
+      <DependentUpon>NpgsqlBuffer.cs</DependentUpon>
+      <Generator>AsyncGenerator</Generator>
+    </Compile>
+    <Compile Include="NpgsqlTextWriter.cs" />
     <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\BoxHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\LineHandler.cs" />
@@ -397,6 +403,7 @@
     </Compile>
     <Compile Include="TypeHandlers\ArrayHandler.cs" />
     <Compile Include="TypeHandlers\NumericHandlers\UInt32Handler.cs" />
+    <Compile Include="TypeHandlers\RangeHandler.cs" />
     <Compile Include="TypeHandlers\UuidHandler.cs" />
     <Compile Include="TypeHandlers\MoneyHandler.cs" />
     <Compile Include="TypeHandlers\DateTimeHandlers\TimeStampTzHandler.cs" />

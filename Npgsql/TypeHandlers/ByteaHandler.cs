@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
@@ -21,6 +23,11 @@ namespace Npgsql.TypeHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
         public override bool IsArbitraryLength { get { return true; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Bytea };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.Binary };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
 
         public override byte[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -51,6 +58,54 @@ namespace Npgsql.TypeHandlers
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
             return result;
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 4 + ((byte[])value).Length;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var arr = (byte[])value;
+            buf.EnsuredWriteInt32(arr.Length);
+            buf.WriteBytes(arr);
+        }
+
+        static readonly byte[] HexDigits = new byte[16] { (byte)'0', (byte)'1', (byte)'2', (byte)'3', (byte)'4', (byte)'5', (byte)'6', (byte)'7',
+                                                          (byte)'8', (byte)'9', (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', (byte)'f' };
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            byte[] arr = (byte[])value;
+
+            writer.WriteSingleChar('\\');
+            writer.WriteSingleChar('x');
+
+            if (arr.Length < 256)
+            {
+                foreach (var b in arr)
+                {
+                    writer.WriteSingleChar((char)HexDigits[b >> 4]);
+                    writer.WriteSingleChar((char)HexDigits[b & 0xf]);
+                }
+            }
+            else
+            {
+                byte[] buf = new byte[256];
+                for (int i = 0, pos = 0; i < (arr.Length + 127) / 128; i++)
+                {
+                    var end = Math.Min(pos + 128, arr.Length);
+                    var len = end - pos;
+                    for (var j = 0; pos < end; pos++)
+                    {
+                        var b = arr[pos];
+                        buf[j++] = HexDigits[b >> 4];
+                        buf[j++] = HexDigits[b & 0xf];
+                    }
+                    writer.WriteRawByteArray(buf, 0, len * 2);
+                }
+            }
         }
 
         public long GetBytes(DataRowMessage row, int dataOffset, byte[] output, int bufferOffset, int len, FieldDescription field)

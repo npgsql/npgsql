@@ -265,6 +265,25 @@ namespace NpgsqlTests.Types
             Assert.AreEqual(typeof(Guid), result.GetType());
         }
 
+        [Test]
+        public void TestRange()
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                object obj;
+
+                cmd.CommandText = "select '[2,10)'::int4range";
+                cmd.Prepare();
+                obj = cmd.ExecuteScalar();
+                Assert.AreEqual(new NpgsqlRange<int>(2, true, false, 10, false, false), obj);
+
+                cmd.CommandText = "select array['[2,10)'::int4range, '[3,9)'::int4range]";
+                cmd.Prepare();
+                obj = cmd.ExecuteScalar();
+                Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
+            }
+        }
+
         public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }

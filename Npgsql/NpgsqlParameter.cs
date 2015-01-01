@@ -56,10 +56,8 @@ namespace Npgsql
         private Int32 size = 0;
 
         // Fields to implement IDataParameter
-        //private NpgsqlDbType                    npgsqldb_type = NpgsqlDbType.Text;
-        //private DbType                    db_type = DbType.String;
-        private NpgsqlNativeTypeInfo type_info;
-        private NpgsqlBackendTypeInfo backendTypeInfo;
+        private NpgsqlDbType?              npgsqldb_type;
+        private DbType?                    db_type;
         private ParameterDirection direction = ParameterDirection.Input;
         private Boolean is_nullable = false;
         private String m_Name = String.Empty;
@@ -70,8 +68,6 @@ namespace Npgsql
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
         private bool explicitUnknown = false;
-
-        private static readonly NpgsqlNativeTypeInfo defaultTypeInfo = NpgsqlTypesHelper.GetNativeTypeInfo(DbType.Object);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
@@ -99,19 +95,6 @@ namespace Npgsql
         {
             this.ParameterName = parameterName;
             this.Value = value;
-
-            /*if ((this.value == null) || (this.value == DBNull.Value))
-            {
-                // don't really know what to do - leave default and do further exploration
-                // Default type for null values is String.
-                this.value = DBNull.Value;
-                type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-            }
-            else if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
-            {
-                throw new InvalidCastException(String.Format(resman.GetString("Exception_ImpossibleToCast"), value.GetType()));
-            }*/
-
         }
 
         /// <summary>
@@ -347,21 +330,19 @@ namespace Npgsql
         {
             get
             {
-                if (type_info == null)
-                    return defaultTypeInfo.DbType;
-                else
-                    return TypeInfo.DbType;
-            } // [TODO] Validate data type.
+                if (db_type.HasValue)
+                    return db_type.Value;
+                if (npgsqldb_type.HasValue)
+                    return TypeHandlerRegistry.GetDbTypeFromNpgsqlDbType(npgsqldb_type.Value);
+                return DbType.Object;
+            }
             set
             {
                 ClearBind();
+                npgsqldb_type = TypeHandlerRegistry.GetNpgsqlDbTypeFromDbType(value);
+                db_type = value;
 
-                if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
-                {
-                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
-                }
-                backendTypeInfo = null;
-                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
+                explicitUnknown = value == DbType.Object;
             }
         }
 
@@ -374,11 +355,10 @@ namespace Npgsql
         {
             get
             {
-                if (type_info == null)
-                    return defaultTypeInfo.NpgsqlDbType;
-                else
-                    return TypeInfo.NpgsqlDbType;
-            } // [TODO] Validate data type.
+                if (npgsqldb_type.HasValue)
+                    return npgsqldb_type.Value;
+                return NpgsqlDbType.Unknown;
+            }
             set
             {
                 ClearBind(); 
@@ -386,17 +366,17 @@ namespace Npgsql
                 {
                     throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
                 }
-                if (!NpgsqlTypesHelper.TryGetNativeTypeInfo(value, out type_info))
+                if (value == NpgsqlDbType.Range)
                 {
-                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value));
+                    throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
                 }
-                backendTypeInfo = null;
+                npgsqldb_type = value;
 
-                explicitUnknown = type_info.NpgsqlDbType == NpgsqlDbType.Unknown;
+                explicitUnknown = value == NpgsqlDbType.Unknown;
             }
         }
 
-        internal NpgsqlNativeTypeInfo TypeInfo
+        /*internal NpgsqlNativeTypeInfo TypeInfo
         {
             get
             {
@@ -407,7 +387,7 @@ namespace Npgsql
                 }
                 return type_info;
             }
-        }
+        }*/
 
         /// <summary>
         /// Gets or sets a value indicating whether the parameter is input-only,
@@ -539,38 +519,12 @@ namespace Npgsql
             } // [TODO] Check and validate data type.
             set
             {
-                if ((value == null) || (value == DBNull.Value) || explicitUnknown)
-                {
-                    this.value = value;
-                    this.npgsqlValue = value;
+                this.value = value;
+                this.npgsqlValue = value;
 
-                    ClearBind();
+                ClearBind();
 
-                    //if (type_info == null)
-                    //{
-                    //    type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-                    //}
-                    return;
-                }
-
-                if (type_info == null && !NpgsqlTypesHelper.TryGetNativeTypeInfo(value.GetType(), out type_info))
-                {
-                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
-                }
-
-                if (backendTypeInfo == null && !NpgsqlTypesHelper.TryGetBackendTypeInfo(type_info.Name, out backendTypeInfo))
-                {
-                    throw new InvalidCastException(String.Format(L10N.ImpossibleToCast, value.GetType()));
-
-                }
-                else
-                {
-                    this.npgsqlValue = backendTypeInfo.ConvertToProviderType(value);
-                    this.value = backendTypeInfo.ConvertToFrameworkType(npgsqlValue);
-
-                    ClearBind();
-                }
-
+                return;
             }
         }
 
@@ -582,11 +536,23 @@ namespace Npgsql
         [TypeConverter(typeof(StringConverter)), Category("Data")]
         public Object NpgsqlValue
         {
-            get { return npgsqlValue; }
+            get { return npgsqlValue ?? value; }
             set {
                 Value = value;
                 ClearBind();
             }
+        }
+
+        internal bool IsNull
+        {
+            get { return value == null || value is DBNull; }
+        }
+
+        internal uint GetTypeOid(TypeHandlerRegistry registry)
+        {
+            return npgsqldb_type.HasValue
+                ? registry.GetOidFromNpgsqlDbType(npgsqldb_type.Value) // Todo: enum/composite types
+                : registry.InferTypeOidFromValue(value);
         }
 
         /// <summary>
@@ -595,35 +561,25 @@ namespace Npgsql
         public override void ResetDbType()
         {
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-            type_info = null;
-            backendTypeInfo = null;
+            db_type = null;
+            npgsqldb_type = null;
             explicitUnknown = false;
             this.Value = Value;
             ClearBind();
         }
 
         internal bool IsBound { get; private set; }
-        internal byte[] BoundValue { get; private set; }
         internal short BoundFormatCode { get; private set; }
         internal uint TypeOID { get; private set; }
 
         internal void SetTypeOID(uint oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
         {
             TypeOID = oid;
-
-            // If the db backend specified another type, we have to use that one.
-            NpgsqlBackendTypeInfo backendTypeInfo;
-            nativeToBackendTypeConverterOptions.OidToNameMapping.TryGetValue(TypeOID, out backendTypeInfo);
-            if (backendTypeInfo != null && backendTypeInfo.Name != TypeInfo.Name && !explicitUnknown)
-            {
-                NpgsqlDbType = backendTypeInfo.NpgsqlDbType;
-                Value = NpgsqlValue;
-            }
         }
 
         internal void Bind(NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
         {
-            BoundValue = TypeInfo.ConvertToBackend(NpgsqlValue, true, nativeToBackendTypeConverterOptions);
+            /*BoundValue = TypeInfo.ConvertToBackend(NpgsqlValue, true, nativeToBackendTypeConverterOptions);
             if (BoundValue == null)
             {
                 BoundFormatCode = (short)FormatCode.Binary;
@@ -631,14 +587,14 @@ namespace Npgsql
             else
             {
                 BoundFormatCode = TypeInfo.SupportsBinaryBackendData ? (short)FormatCode.Binary : (short)FormatCode.Text;
-            }
+            }*/
             IsBound = true;
         }
 
         void ClearBind()
         {
             IsBound = false;
-            BoundValue = null;
+            //BoundValue = null;
         }
 
         /// <summary>
@@ -673,7 +629,8 @@ namespace Npgsql
             clone.precision = precision;
             clone.scale = scale;
             clone.size = size;
-            clone.type_info = type_info;
+            clone.db_type = db_type;
+            clone.npgsqldb_type = npgsqldb_type;
             clone.direction = direction;
             clone.is_nullable = is_nullable;
             clone.m_Name = m_Name;

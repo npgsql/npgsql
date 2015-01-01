@@ -22,14 +22,14 @@ namespace Npgsql.Messages
             _columnOffsets = new List<int>(NumColumns);
             for (var i = 0; i < NumColumns; i++)
             {
-                _columnOffsets.Add(buf.Position);
+                _columnOffsets.Add(buf.ReadPosition);
                 var len = buf.ReadInt32();
                 if (len != -1)
                 {
                     buf.Seek(len, SeekOrigin.Current);
                 }
             }
-            _endOffset = buf.Position;
+            _endOffset = buf.ReadPosition;
             return this;
         }
 

@@ -22,6 +22,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Point };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+
         public override NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -46,6 +49,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 20;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var p = value is string ? NpgsqlPoint.Parse((string)value) : (NpgsqlPoint)value;
+            buf.WriteDouble(p.X);
+            buf.WriteDouble(p.Y);
         }
     }
 }

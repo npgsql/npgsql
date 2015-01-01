@@ -75,26 +75,34 @@ namespace Npgsql
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null, bool schemaOnlyExtendedQuery = false)
         {
-            Contract.Requires(command.IsPrepared || rowDescription == null);
+            Contract.Requires(command.IsPrepared || rowDescription == null || schemaOnlyExtendedQuery);
 
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
             _recordsAffected = null;
+
+            _connector.State = ConnectorState.Executing;
+            
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            if (command.IsPrepared) {
+            if (schemaOnlyExtendedQuery)
+            {
+                State = ReaderState.Consumed;
+                _rowDescription = rowDescription;
+            }
+            else if (command.IsPrepared) {
                 State = ReaderState.InResult;
                 _rowDescription = rowDescription;
             } else {
                 State = ReaderState.BetweenResults;
                 NextResultSetInternal();
             }
-            if (Command.Parameters.Any(p => p.IsOutputDirection)) {
+            if (Command.Parameters.Any(p => p.IsOutputDirection) && !schemaOnlyExtendedQuery) {
                 PopulateOutputParameters();
             }
             _connector.CurrentReader = this;
@@ -274,6 +282,8 @@ namespace Npgsql
                 var msg = ReadMessage(IsSequential);
                 switch (msg.Code)
                 {
+                    case BackEndMessageCode.NoData:
+                        continue;
                     case BackEndMessageCode.EmptyQueryResponse:
                     case BackEndMessageCode.CompletedResponse:
                         // Another completion in a multi-query, process to get affected records and read again
@@ -1103,7 +1113,7 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
             {
                 Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
                 _row.Buffer.Ensure(_row.ColumnLen);
@@ -1198,7 +1208,7 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
             {
                 Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
                 _row.Buffer.Ensure(_row.ColumnLen);
@@ -1245,6 +1255,7 @@ namespace Npgsql
         /// </summary>
         void PopulateOutputParameters()
         {
+            // TODO: Should we really use Contract here, instead of throwing an Exception?
             Contract.Requires(_rowDescription != null);
             Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
 
@@ -1313,7 +1324,7 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
             {
                 Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
                 _row.Buffer.Ensure(_row.ColumnLen);

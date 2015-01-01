@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -18,6 +20,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         static readonly string[] _pgNames = { "int4" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Integer };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.Int32 };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
 
         public override int Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -65,6 +72,24 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            var i = GetIConvertibleValue<int>(value);
+            writer.WriteString(i.ToString(CultureInfo.InvariantCulture));
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 8;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var i = GetIConvertibleValue<int>(value);
+            buf.WriteInt32(4);
+            buf.WriteInt32(i);
         }
     }
 }

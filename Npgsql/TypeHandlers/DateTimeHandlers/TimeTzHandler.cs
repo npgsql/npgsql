@@ -13,6 +13,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
 
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.TimeTZ };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+
+        public override bool SupportsBinaryWrite
+        {
+            get
+            {
+                return false; // TODO: Implement
+            }
+        }
+
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeTZ?
@@ -30,6 +41,27 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     return new NpgsqlTimeTZ(buf.ReadInt64() * 10, new NpgsqlTimeZone(0, 0, -buf.ReadInt32()));
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            }
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            if (value is DateTime)
+            {
+                writer.WriteString(((DateTime)value).ToString("HH:mm:ss.ffffff", System.Globalization.DateTimeFormatInfo.InvariantInfo));
+            }
+            else
+            {
+                NpgsqlTimeTZ time;
+                if (value is TimeSpan)
+                {
+                    time = (NpgsqlTimeTZ)(TimeSpan)value;
+                }
+                else
+                {
+                    time = (NpgsqlTimeTZ)value;
+                }
+                writer.WriteString(time.ToString());
             }
         }
     }

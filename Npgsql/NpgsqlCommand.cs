@@ -41,6 +41,7 @@ using Common.Logging;
 using Npgsql.Localization;
 using Npgsql.Messages;
 using NpgsqlTypes;
+using System.Diagnostics.Contracts;
 
 namespace Npgsql
 {
@@ -66,7 +67,8 @@ namespace Npgsql
 
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
-        RowDescriptionMessage _preparedDescription;
+        RowDescriptionMessage _rowDescription;
+        SchemaOnlyResult _schemaOnlyResult;
 
         // locals about function support so we don`t need to check it everytime a function is called.
         bool _functionChecksDone;
@@ -77,7 +79,8 @@ namespace Npgsql
         static readonly Array ParamNameCharTable;
         internal Type[] ExpectedTypes { get; set; }
 
-        short[] _resultFormatCodes;
+
+        FormatCode[] _resultFormatCodes;
 
         internal const int DefaultTimeout = 20;
         const string AnonymousPortal = "";
@@ -445,117 +448,457 @@ namespace Npgsql
             UnPrepare();
             using (_connector.BlockNotifications())
             {
-                PrepareInternal();
+                WriteQuery(true, false);
             }
         }
 
-        void PrepareInternal()
+        string RewriteSqlForCommandType()
         {
-            // Use the extended query parsing...
-            _planName = _connector.NextPlanName();
-            const string portalName = "";
+            if (CommandType == CommandType.Text)
+                return CommandText;
+            if (CommandType == CommandType.TableDirect)
+                return "SELECT * FROM " + CommandText;
 
-            _preparedCommandText = GetCommandText(true);
-            ParameterDescriptionMessage parameterDescription = null;
+            Contract.Assert(CommandType == CommandType.StoredProcedure, "Invalid CommandType");
 
-            var numInputParameters = 0;
-            for (var i = 0; i < _parameters.Count; i++)
-            {
-                if (_parameters[i].IsInputDirection)
-                {
-                    numInputParameters++;
-                }
-            }
+            var numInput = _parameters.Count(p => p.IsInputDirection);
 
-            var parameterTypeOIDs = new uint[numInputParameters];
+            return "SELECT * FROM " + CommandText + "(" + string.Join(",", Enumerable.Range(1, numInput).Select(i => "$" + i.ToString())) + ")";
+        }
 
+        void SetUpBind(uint[] parameterTypeOIDs, NpgsqlTextWriter[] parameterTexts, int[] parameterSizes, FormatCode[] formatCodes, List<int> sizeArr)
+        {
+            // Traverse parameters
             for (int i = 0, j = 0; i < _parameters.Count; i++)
             {
                 if (_parameters[i].IsInputDirection)
                 {
-                    parameterTypeOIDs[j++] = _parameters[i].TypeInfo.NpgsqlDbType == NpgsqlDbType.Unknown ? 0 : _connector.OidToNameMapping[_parameters[i].TypeInfo.Name].OID;
-                }
-            }
+                    // Figure out whether text or binary should be used.
+                    // If binary, only get the sizes here.
+                    // If text, write everything to buffers (NpgsqlTextWriters)
 
-            // Write Parse, Describe, and Sync messages to the wire.
-            _connector.SendParse(_planName, _preparedCommandText, parameterTypeOIDs);
-            _connector.SendDescribeStatement(_planName);
-            _connector.SendSync();
+                    var handler = _connector.TypeHandlerRegistry[parameterTypeOIDs[j]];
 
-            // Tell to mediator what command is being sent.
-            _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Parse);
-
-            // Look for ParameterDescriptionResponse, NpgsqlRowDescription in the responses, discarding everything else.
-            while (true)
-            {
-                var msg = _connector.ReadSingleMessage();
-                switch (msg.Code)
-                {
-                    case BackEndMessageCode.ParseComplete:
-                        continue;
-                    case BackEndMessageCode.ParameterDescription:
-                        parameterDescription = (ParameterDescriptionMessage)msg;
-                        continue;
-                    case BackEndMessageCode.RowDescription:
-                        _preparedDescription = (RowDescriptionMessage)msg;
-                        continue;
-                    case BackEndMessageCode.NoData:
-                        _preparedDescription = null;
-                        continue;
-                    case BackEndMessageCode.ReadyForQuery:
-                        goto AfterLoop;
-                    default:
-                        throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
-                }
-            }
-            AfterLoop:
-
-            if (parameterDescription != null)
-            {
-                if (parameterDescription.TypeOIDs.Count != numInputParameters)
-                {
-                    throw new InvalidOperationException("Wrong number of parameters. Got " + numInputParameters + " but expected " + parameterDescription.TypeOIDs.Count + ".");
-                }
-
-                for (int i = 0, j = 0; j < numInputParameters; i++)
-                {
-                    if (_parameters[i].IsInputDirection)
+                    if (!handler.SupportsBinaryWrite || handler.PreferTextWrite)
                     {
-                        _parameters[i].SetTypeOID(parameterDescription.TypeOIDs[j++], _connector.NativeToBackendTypeConverterOptions);
-                    }
-                }
-            }
-
-            if (_preparedDescription != null)
-            {
-                _resultFormatCodes = new short[_preparedDescription.NumFields];
-
-                for (var i = 0; i < _preparedDescription.NumFields; i++)
-                {
-                    var returnRowDescData = _preparedDescription[i];
-
-                    if (returnRowDescData.Handler != null)
-                    {
-                        // Binary format?
-                        // PG always defaults to text encoding.  We can fix up the row description
-                        // here based on support for binary encoding.  Once this is done,
-                        // there is no need to request another row description after Bind.
-                        returnRowDescData.FormatCode = returnRowDescData.Handler.SupportsBinaryRead ? FormatCode.Binary : FormatCode.Text;
-                        _resultFormatCodes[i] = (short)returnRowDescData.FormatCode;
+                        formatCodes[j] = FormatCode.Text;
+                        if (!_parameters[i].IsNull)
+                        {
+                            parameterTexts[j] = new NpgsqlTextWriter();
+                            handler.WriteText(_parameters[i].Value, parameterTexts[j]);
+                            parameterSizes[j] = parameterTexts[j].GetTotalByteLength();
+                        }
                     }
                     else
                     {
-                        // Text format (default).
-                        _resultFormatCodes[i] = (short)FormatCode.Text;
+                        formatCodes[j] = FormatCode.Binary;
+                        if (!_parameters[i].IsNull)
+                        {
+                            parameterSizes[j] = handler.BinarySize(_connector.TypeHandlerRegistry, parameterTypeOIDs[j], _parameters[i].Value, sizeArr) - 4;
+                        }
                     }
+
+                    j++;
+                }
+            }
+        }
+
+        void SendBind(NpgsqlBuffer buf, int numInputParameters, uint[] parameterTypeOIDs, NpgsqlTextWriter[] parameterTexts, int[] parameterSizes, FormatCode[] formatCodes, List<int> sizeArr, FormatCode[] resultFormatCodes = null)
+        {
+            int formatCodesSum = formatCodes.Sum(c => (int)c);
+            int formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == formatCodes.Length ? 1 : formatCodes.Length;
+
+            int totalSize =
+                4 + // Message length
+                1 + // Unnamed portal name
+                _planName.Length + 1 + // Statement name
+                2 + // Number of parameter format codes that follow (0 means all text, 1 means that the following should be applied to all parameters)
+                2 * formatCodeListLength + // List of format codes
+                2 + // Number of parameters
+                4 * numInputParameters + parameterSizes.Sum() +
+                2 + // Number of result format codes
+                2 * (resultFormatCodes == null ? 1 : resultFormatCodes.Length); // Use binary for everything that is received if unknown
+
+            buf.EnsureWrite(5 + 1 + _planName.Length + 1 + 2 + 2);
+            buf.WriteByte((byte)FrontEndMessageCode.Bind);
+            buf.WriteInt32(totalSize);
+            buf.WriteByte(0); // Empty portal name
+            buf.WriteString(_planName, _planName.Length);
+            buf.WriteByte(0);
+            buf.WriteInt16(formatCodeListLength);
+            if (formatCodeListLength == 1)
+            {
+                buf.WriteInt16((short)FormatCode.Binary);
+            }
+            else if (formatCodeListLength > 1)
+            {
+                if (2 * formatCodeListLength <= buf.Size)
+                {
+                    buf.EnsureWrite(2 * formatCodeListLength);
+                    foreach (var code in formatCodes)
+                        buf.WriteInt16((short)code);
+                }
+                else
+                {
+                    // Special case
+                    foreach (var code in formatCodes)
+                        buf.EnsuredWriteInt16((short)code);
+                }
+            }
+
+            buf.EnsuredWriteInt16(numInputParameters);
+
+            // Traverse parameters
+            int sizeForWriteBinary = 0;
+            for (int i = 0, j = 0; i < _parameters.Count; i++)
+            {
+                if (_parameters[i].IsInputDirection)
+                {
+                    // Here we actually write the values since we now know all sizes
+                    // Text: use stored text
+                    // Binary: convert on the fly. If exception occurs (format exceptions etc.),
+                    // send zeros for the rest and set the last format code to something invalid, which will definitely make the backend
+                    // throw an exception which we can recover from instead of leaving the connector in an undefined state
+
+                    if (_parameters[i].IsNull)
+                    {
+                        buf.EnsuredWriteInt32(-1);
+                    }
+                    else
+                    {
+                        if (formatCodes[j] == FormatCode.Text)
+                        {
+                            buf.EnsuredWriteInt32(parameterSizes[j]);
+                            parameterTexts[j].WriteToOutputBuffer(buf);
+                        }
+                        else
+                        {
+                            var handler = _connector.TypeHandlerRegistry[parameterTypeOIDs[j]];
+                            var flushedBytesBeforeThisValue = buf.TotalBytesFlushed;
+                            try
+                            {
+                                handler.WriteBinary(_connector.TypeHandlerRegistry, parameterTypeOIDs[j], _parameters[i].Value, buf, sizeArr, ref sizeForWriteBinary);
+                            }
+                            catch (Exception e)
+                            {
+                                if (e is System.Net.Sockets.SocketException || e is EndOfStreamException || e is ThreadAbortException)
+                                    throw;
+
+                                if (buf.TotalBytesFlushed == 0)
+                                {
+                                    // Yay, we have not written anything yet to the network stream so we can just drop what was in the buffer
+                                    buf.WritePosition = 0;
+                                    throw;
+                                }
+                                else
+                                {
+                                    // Here comes a tricky part, we must send a complete Bind message, but an incorrect one so that the backend will generate an error
+                                    throw new NotImplementedException("Not implemented recovery");
+                                }
+                            }
+                        }
+                    }
+                    j++;
+                }
+            }
+            Contract.Assert(sizeForWriteBinary == sizeArr.Count, "Mismatched size arr counter");
+
+            // Send result format codes
+            buf.EnsureWrite(4);
+            buf.WriteInt16(resultFormatCodes == null ? 1 : resultFormatCodes.Length);
+            if (resultFormatCodes != null)
+            {
+                if (buf.WriteSpaceLeft >= 2 * resultFormatCodes.Length)
+                    foreach (var code in resultFormatCodes)
+                        buf.WriteInt16((short)code);
+                else
+                {
+                    foreach (var code in resultFormatCodes)
+                        buf.EnsuredWriteInt16((short)code);
                 }
             }
             else
             {
-                _resultFormatCodes = new short[] { 0 };
+                buf.WriteInt16((short)FormatCode.Binary);
             }
 
-            _prepared = PrepareStatus.Prepared;
+            // Bind has now been sent!
+        }
+
+        byte[] WriteQuery(bool prepare, bool onlySchema)
+        {
+            var buf = _connector.Buffer;
+            Contract.Assert(buf.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
+            Contract.Assert(buf.WritePosition == 0, "WritePosition should be 0");
+
+            string query = RewriteSqlForCommandType();
+
+            buf.WriteByte((byte)FrontEndMessageCode.Parse); // Might be updated
+            buf.WriteInt32(0); // Will be updated
+            if (prepare)
+            {
+                _planName = _connector.NextPlanName();
+                buf.WriteString(_planName, _planName.Length);
+                buf.WriteByte(0);
+            } else {
+                _planName = "";
+                buf.WriteByte(0); // Empty statement name, might be overwritten by a space character if we must use simple protocol
+            }
+
+            byte[] savedQueryCopy = null;
+            uint[] parameterTypeOIDs;
+
+            var writer = new NpgsqlTextWriter(buf);
+
+            var processingResult = AppendCommandReplacingParameterValues(writer, query, false);
+            if (processingResult != QueryProcessingResult.OK)
+            {
+                if (prepare)
+                {
+                    throw new NotSupportedException("Multiple statements are not supported for prepared queries");
+                }
+                bool space = false;
+                if (processingResult == QueryProcessingResult.MustRedoWithSimpleProtocol)
+                {
+                    buf.WritePosition = 0;
+                    
+                    buf.WriteByte((byte)FrontEndMessageCode.Query);
+                    buf.WriteInt32(0); // Will be updated
+                    writer = new NpgsqlTextWriter(buf);
+                    AppendCommandReplacingParameterValues(writer, query, true);
+                }
+                else // (if processingResult == QueryProcessingResult.ChangeToSimpleProtocol)
+                {
+                    buf._buf[0] = (byte)FrontEndMessageCode.Query;
+                    buf._buf[5] = (byte)' '; // Write a whitespace to not change meaning of the query
+                    space = true;
+                }
+                // The query is now ready
+                savedQueryCopy = writer.GetTruncatedCopy();
+                writer.WriteSingleChar('\0');
+                buf.WritePosition = 1;
+                buf.WriteInt32(4 + (space ? 1 : 0) + writer.GetTotalByteLength());
+                writer.WriteToOutputBuffer();
+                
+                // Tell to mediator what command is being sent.
+                _connector.Mediator.SetSqlSent(savedQueryCopy, NpgsqlMediator.SQLSentType.Simple);
+
+                buf.Flush();
+
+                parameterTypeOIDs = null;
+
+                if (onlySchema)
+                    _schemaOnlyResult = SchemaOnlyResult.UsedSimpleQuery;
+            }
+            else // OK: We can continue to use the extended protocol
+            {
+                var numInputParameters = _parameters.Count(p => p.IsInputDirection);
+                parameterTypeOIDs = new uint[numInputParameters];
+                for (int i = 0, j = 0; i < _parameters.Count; i++)
+                {
+                    if (_parameters[i].IsInputDirection)
+                    {
+                        parameterTypeOIDs[j++] = _parameters[i].GetTypeOid(_connector.TypeHandlerRegistry);
+                    }
+                }
+
+                NpgsqlTextWriter[] parameterTexts = null;
+                int[] parameterSizes = null;
+                FormatCode[] formatCodes = null;
+                List<int> sizeArr = null;
+
+                if (!prepare && !onlySchema)
+                {
+                    // We do this before we write the query to the socket so we can
+                    // recover easily if SetUpBind throws an exception (due to invalid parameters)
+
+                    parameterTexts = new NpgsqlTextWriter[numInputParameters];
+                    parameterSizes = new int[numInputParameters];
+                    formatCodes = new FormatCode[numInputParameters];
+                    sizeArr = new List<int>();
+
+                    SetUpBind(parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr);
+                }
+
+                savedQueryCopy = writer.GetTruncatedCopy();
+                writer.WriteSingleChar('\0');
+                buf.WritePosition = 1;
+                buf.WriteInt32(4 + _planName.Length + 1 + writer.GetTotalByteLength() + 2 + 4 * numInputParameters);
+                buf.ResetTotalBytesFlushed();
+                writer.WriteToOutputBuffer();
+                
+                // Tell to mediator what command is being sent.
+                _connector.Mediator.SetSqlSent(savedQueryCopy, NpgsqlMediator.SQLSentType.Simple);
+
+                if (2 + 4 * numInputParameters <= buf.Size)
+                {
+                    buf.EnsureWrite(2 + 4 * numInputParameters);
+                    buf.WriteInt16(numInputParameters);
+                    foreach (var oid in parameterTypeOIDs)
+                        buf.WriteInt32((int)oid);
+                }
+                else
+                {
+                    // Special case, very many parameters, not common
+                    buf.EnsuredWriteInt16(numInputParameters);
+                    foreach (var oid in parameterTypeOIDs)
+                        buf.EnsuredWriteInt32((int)oid);
+                }
+
+                // Parse has now been sent!
+
+                if (prepare || onlySchema)
+                {
+                    // Only send Describe statement + Sync
+
+                    buf.EnsureWrite(1 + 4 + 1 + _planName.Length + 1 + 1 + 4);
+                    buf.WriteByte((byte)FrontEndMessageCode.Describe);
+                    buf.WriteInt32(4 + 1 + _planName.Length + 1);
+                    buf.WriteByte((byte)FrontEndMessageCode.DescribeStatement);
+                    if (_planName != "")
+                        buf.WriteString(_planName, _planName.Length);
+                    buf.WriteByte(0);
+
+                    buf.WriteByte((byte)FrontEndMessageCode.Sync);
+                    buf.WriteInt32(4);
+
+                    buf.Flush();
+
+                    _preparedCommandText = savedQueryCopy;
+                }
+                else
+                {
+                    SendBind(buf, numInputParameters, parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr);
+
+                    buf.EnsureWrite(
+                        1 + 4 + 1 + 1 +
+                        1 + 4 + 1 + 4 +
+                        1 + 4);
+
+                    // Describe
+                    buf.WriteByte((byte)FrontEndMessageCode.Describe);
+                    buf.WriteInt32(4 + 1 + 1);
+                    buf.WriteByte((byte)FrontEndMessageCode.DescribePortal);
+                    buf.WriteByte(0); // Empty portal name
+
+                    // Execute
+                    buf.WriteByte((byte)FrontEndMessageCode.Execute);
+                    buf.WriteInt32(4 + 1 + 4);
+                    buf.WriteByte(0); // Empty portal name
+                    buf.WriteInt32(0); // Maximum number of rows, 0 = no limit
+
+                    // Sync
+                    buf.WriteByte((byte)FrontEndMessageCode.Sync);
+                    buf.WriteInt32(4);
+
+                    buf.Flush();
+                }
+
+                // Everything has now been sent and flushed
+                // Now read everything until RowDescription/NoData
+                ParameterDescriptionMessage parameterDescription = null;
+                RowDescriptionMessage rowDescriptionMessage = null;
+                bool noData = false;
+                for (; ; )
+                {
+                    var msg = _connector.ReadSingleMessage();
+                    switch (msg.Code)
+                    {
+                        case BackEndMessageCode.ParseComplete:
+                            continue;
+                        case BackEndMessageCode.BindComplete:
+                            Contract.Assume(!prepare && !onlySchema);
+                            goto AfterLoop;
+                        case BackEndMessageCode.ParameterDescription:
+                            parameterDescription = (ParameterDescriptionMessage)msg;
+                            continue;
+                        case BackEndMessageCode.RowDescription:
+                            rowDescriptionMessage = (RowDescriptionMessage)msg;
+                            continue;
+                        case BackEndMessageCode.NoData:
+                            noData = true;
+                            continue;
+                        case BackEndMessageCode.ReadyForQuery:
+                            Contract.Assume(prepare || onlySchema);
+                            goto AfterLoop;
+                        default:
+                            throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
+                    }
+                }
+            AfterLoop:
+
+                if (parameterDescription != null)
+                {
+                    Contract.Assume(prepare || onlySchema);
+                    if (parameterDescription.TypeOIDs.Count != parameterTypeOIDs.Length)
+                    {
+                        throw new InvalidOperationException("Wrong number of parameters. Got " + parameterTypeOIDs.Length + " but expected " + parameterDescription.TypeOIDs.Count + ".");
+                    }
+
+                    for (int i = 0, j = 0; j < parameterTypeOIDs.Length; i++)
+                    {
+                        if (_parameters[i].IsInputDirection)
+                        {
+                            uint oidFromBackend = parameterDescription.TypeOIDs[j];
+                            if (oidFromBackend != parameterTypeOIDs[j])
+                            {
+                                Contract.Assert(parameterTypeOIDs[j] == 0 || _connector.TypeHandlerRegistry[parameterTypeOIDs[j]].PgName == "unknown", "Parameter type shouldn't be changed on non-unknown inputs");
+                                _parameters[i].SetTypeOID(oidFromBackend, _connector.NativeToBackendTypeConverterOptions);
+                            }
+
+                            j++;
+                        }
+                    }
+                }
+
+                if (rowDescriptionMessage != null)
+                {
+                    if (prepare)
+                        _resultFormatCodes = new FormatCode[rowDescriptionMessage.NumFields];
+
+                    for (var i = 0; i < rowDescriptionMessage.NumFields; i++)
+                    {
+                        var returnRowDescData = rowDescriptionMessage[i];
+
+                        if (returnRowDescData.Handler != null)
+                        {
+                            // Binary format?
+                            // PG always defaults to text encoding.  We can fix up the row description
+                            // here based on support for binary encoding.  Once this is done,
+                            // there is no need to request another row description after Bind.
+                            // Row Description messages from Describe Statement will always have FormatCode.Text since what we specify is not known yet
+                            returnRowDescData.FormatCode = returnRowDescData.Handler.SupportsBinaryRead ? FormatCode.Binary : FormatCode.Text;
+                            if (prepare)
+                                _resultFormatCodes[i] = returnRowDescData.FormatCode;
+                        }
+                    }
+                    _rowDescription = rowDescriptionMessage;
+                }
+                else
+                {
+                    if (prepare)
+                        _resultFormatCodes = new FormatCode[] { }; // All text
+                    _rowDescription = null;
+                }
+
+                if (prepare)
+                    _prepared = PrepareStatus.Prepared;
+
+                if (onlySchema)
+                {
+                    Contract.Assert(noData || _rowDescription != null);
+                    _schemaOnlyResult = noData ? SchemaOnlyResult.HasNoData : SchemaOnlyResult.HasRowDescription;
+                }
+            }
+
+            return savedQueryCopy;
+        }
+
+        enum SchemaOnlyResult
+        {
+            UsedSimpleQuery,
+            HasRowDescription,
+            HasNoData
         }
 
         void UnPrepare()
@@ -563,7 +906,7 @@ namespace Npgsql
             if (_prepared == PrepareStatus.Prepared)
             {
                 _connector.ExecuteBlind("DEALLOCATE " + _planName);
-                _preparedDescription = null;
+                _rowDescription = null;
                 _prepared = PrepareStatus.NeedsPrepare;
             }
 
@@ -574,17 +917,7 @@ namespace Npgsql
 
         #region Query preparation
 
-        /// <summary>
-        /// This method substitutes the <see cref="NpgsqlCommand.Parameters">Parameters</see>, if exist, in the command
-        /// to their actual values.
-        /// The parameter name format is <b>:ParameterName</b>.
-        /// </summary>
-        /// <returns>A version of <see cref="NpgsqlCommand.CommandText">CommandText</see> with the <see cref="NpgsqlCommand.Parameters">Parameters</see> inserted.</returns>
-        internal byte[] GetCommandText()
-        {
-            return string.IsNullOrEmpty(_planName) ? GetCommandText(false) : GetExecuteCommandText();
-        }
-
+#if false
         bool CheckFunctionNeedsColumnDefinitionList()
         {
             // If and only if a function returns "record" and has no OUT ("o" in proargmodes), INOUT ("b"), or TABLE
@@ -780,6 +1113,7 @@ namespace Npgsql
                 }
             }
 
+            commandBuilder.Write(ASCIIByteArrays.Byte_0, 0, 1);
             return commandBuilder.ToArray();
         }
 
@@ -806,23 +1140,27 @@ namespace Npgsql
                 }
             }
         }
+#endif
 
-        void AppendParameterPlaceHolder(Stream dest, NpgsqlParameter parameter, int paramNumber)
+        static void AppendParameterPlaceHolder(NpgsqlTextWriter dest, NpgsqlParameter parameter, int paramNumber, TypeHandlerRegistry typeHandlerRegistry)
         {
-            dest.WriteByte((byte)ASCIIBytes.ParenLeft);
+            dest.WriteSingleChar('(');
 
             if (parameter.UseCast && parameter.Size > 0)
             {
-                dest.WriteString("${0}::{1}", paramNumber, parameter.TypeInfo.GetCastName(parameter.Size));
+                var oid = parameter.GetTypeOid(typeHandlerRegistry);
+                var handler = typeHandlerRegistry[oid];
+                dest.WriteString(string.Format("${0}::{1}", paramNumber, handler.GetCastName(parameter.Size, typeHandlerRegistry.GetNpgsqlDbTypeFromOid(oid))));
             }
             else
             {
                 dest.WriteString("$" + paramNumber);
             }
 
-            dest.WriteByte((byte)ASCIIBytes.ParenRight);
+            dest.WriteSingleChar(')');
         }
 
+#if FALSE
         void AppendParameterValues(Stream dest)
         {
             var first = true;
@@ -846,26 +1184,44 @@ namespace Npgsql
                 }
             }
         }
+#endif
 
-        void AppendParameterValue(Stream dest, NpgsqlParameter parameter)
+        static void AppendParameterValue(NpgsqlTextWriter dest, NpgsqlParameter parameter, TypeHandlerRegistry typeHandlerRegistry, bool standardConformantStrings)
         {
-            var serialised = parameter.TypeInfo.ConvertToBackend(parameter.NpgsqlValue, false, Connector.NativeToBackendTypeConverterOptions);
+            var oid = parameter.GetTypeOid(typeHandlerRegistry);
+            var handler = typeHandlerRegistry[oid];
 
-            // Add parentheses wrapping parameter value before the type cast to avoid problems with Int16.MinValue, Int32.MinValue and Int64.MinValue
-            // See bug #1010543
-            // Check if this parenthesis can be collapsed with the previous one about the array support. This way, we could use
-            // only one pair of parentheses for the two purposes instead of two pairs.
-            dest.WriteByte((byte)ASCIIBytes.ParenLeft);
-            dest.WriteByte((byte) ASCIIBytes.ParenLeft);
-            dest.WriteBytes(serialised);
-            dest.WriteByte((byte)ASCIIBytes.ParenRight);
+            dest.WriteSingleChar('(');
+            if (parameter.IsNull)
+            {
+                dest.WriteString("null");
+            }
+            else if (standardConformantStrings)
+            {
+                dest.WriteSingleChar('\'');
+                var state = dest.PushEscapeSingleQuoteWithSingleQuote();
+                handler.WriteText(parameter.Value, dest);
+                dest.ResetEscapeState(state);
+                dest.WriteSingleChar('\'');
+            }
+            else
+            {
+                dest.WriteSingleChar('E');
+                dest.WriteSingleChar('\'');
+                var state = dest.PushEscapeSingleQuoteWithBackspace();
+                handler.WriteText(parameter.Value, dest);
+                dest.ResetEscapeState(state);
+                dest.WriteSingleChar('\'');
+            }
 
             if (parameter.UseCast)
             {
-                dest.WriteString("::{0}", parameter.TypeInfo.GetCastName(parameter.Size));
+                dest.WriteSingleChar(':');
+                dest.WriteSingleChar(':');
+                dest.WriteString(handler.GetCastName(parameter.Size, typeHandlerRegistry.GetNpgsqlDbTypeFromOid(oid)));
             }
 
-            dest.WriteByte((byte)ASCIIBytes.ParenRight);
+            dest.WriteSingleChar(')');
         }
 
         static bool IsParamNameChar(char ch)
@@ -903,12 +1259,15 @@ namespace Npgsql
         /// </summary>
         /// <param name="dest">Stream to which to append output.</param>
         /// <param name="src">Command text.</param>
-        /// <param name="prepare"></param>
+        /// <param name="simpleProtocol">We are definitely using the simple protocol</param>
         /// <param name="allowMultipleStatements"></param>
-        /// <returns>false if the query has multiple statements which are not allowed</returns>
-        bool AppendCommandReplacingParameterValues(Stream dest, string src, bool prepare, bool allowMultipleStatements)
+        /// <returns></returns>
+        QueryProcessingResult AppendCommandReplacingParameterValues(NpgsqlTextWriter dest, string src, bool simpleProtocol)
         {
-            var standardConformantStrings = _connection != null && _connection.Connector != null && _connection.Connector.IsConnected ? _connection.UseConformantStrings : true;
+            Contract.Assert(_connector != null && _connector.IsConnected, "Should have an open connection");
+
+            var standardConformantStrings = _connection != null ? _connection.UseConformantStrings : true;
+            var typeHandlerRegistry = _connector.TypeHandlerRegistry;
 
             var currCharOfs = 0;
             var end = src.Length;
@@ -919,9 +1278,11 @@ namespace Npgsql
             var currTokenBeg = 0;
             var blockCommentLevel = 0;
 
+            var mustUseSimpleProtocol = simpleProtocol;
+
             Dictionary<NpgsqlParameter, int> paramOrdinalMap = null;
 
-            if (prepare)
+            if (!simpleProtocol)
             {
                 paramOrdinalMap = new Dictionary<NpgsqlParameter, int>();
 
@@ -934,11 +1295,11 @@ namespace Npgsql
                 }
             }
 
-            if (allowMultipleStatements && _parameters.Count == 0)
+            /*if (allowMultipleStatements && _parameters.Count == 0 && !checkForMultipleStatements)
             {
                 dest.WriteString(src);
                 return true;
-            }
+            }*/
 
         None:
             if (currCharOfs >= end)
@@ -959,7 +1320,7 @@ namespace Npgsql
                     case '"': goto DoubleQuoted;
                     case ':': if (lastChar != ':') goto ParamStart; else break;
                     case '@': if (lastChar != '@') goto ParamStart; else break;
-                    case ';': if (!allowMultipleStatements) goto SemiColon; else break;
+                    case ';': goto SemiColon;
 
                     case 'e':
                     case 'E': if (!IsLetter(lastChar)) goto EscapedStart; else break;
@@ -980,7 +1341,7 @@ namespace Npgsql
                 {
                     if (currCharOfs - 1 > currTokenBeg)
                     {
-                        dest.WriteString(src.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        dest.WriteString(src, currTokenBeg, currCharOfs - 1 - currTokenBeg);
                     }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
@@ -1007,13 +1368,13 @@ namespace Npgsql
                     {
                         if (parameter.IsInputDirection)
                         {
-                            if (prepare)
+                            if (!simpleProtocol)
                             {
-                                AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter]);
+                                AppendParameterPlaceHolder(dest, parameter, paramOrdinalMap[parameter], typeHandlerRegistry);
                             }
                             else
                             {
-                                AppendParameterValue(dest, parameter);
+                                AppendParameterValue(dest, parameter, typeHandlerRegistry, standardConformantStrings);
                             }
                             currTokenBeg = currCharOfs;
                         }
@@ -1284,16 +1645,32 @@ namespace Npgsql
                 ch = src[currCharOfs++];
                 if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f') // We don't check for comments after the last ; yet
                 {
-                    return false;
+                    if (!simpleProtocol && paramOrdinalMap.Count > 0)
+                    {
+                        // Failed, we must revert and do the simple protocol since this query has multiple statements and parameters
+                        return QueryProcessingResult.MustRedoWithSimpleProtocol;
+                    }
+
+                    mustUseSimpleProtocol = true;
+                    lastChar = '\0';
+                    goto NoneContinue;
                 }
             }
         // implicit goto Finish
 
         Finish:
-            dest.WriteString(src.Substring(currTokenBeg, end - currTokenBeg));
-            return true;
+            dest.WriteString(src, currTokenBeg, end - currTokenBeg);
+            return mustUseSimpleProtocol && !simpleProtocol ? QueryProcessingResult.ChangeToSimpleProtocol : QueryProcessingResult.OK;
         }
 
+        enum QueryProcessingResult
+        {
+            ChangeToSimpleProtocol,
+            MustRedoWithSimpleProtocol,
+            OK
+        }
+
+#if FALSE
         byte[] GetExecuteCommandText()
         {
             var result = new MemoryStream();
@@ -1335,6 +1712,7 @@ namespace Npgsql
 
             return result.ToArray();
         }
+#endif
 
         #endregion Query preparation
 
@@ -1592,6 +1970,9 @@ namespace Npgsql
 
             NpgsqlDataReader reader = null;
 
+            if (_prepared == PrepareStatus.NeedsPrepare)
+                Prepare();
+
             // Block the notification thread before writing anything to the wire.
             _notificationBlock = _connector.BlockNotifications();
             //using (_connector.BlockNotificationThread())
@@ -1601,36 +1982,43 @@ namespace Npgsql
 
                 _connector.SetBackendCommandTimeout(CommandTimeout);
 
-                if (_prepared == PrepareStatus.NeedsPrepare)
-                {
-                    PrepareInternal();
-                }
-
+                
                 if (_prepared == PrepareStatus.NotPrepared)
                 {
-                    var commandText = GetCommandText();
+                    WriteQuery(false, (cb & CommandBehavior.SchemaOnly) != 0);
 
-                    // Write the Query message to the wire.
-                    _connector.SendQuery(commandText);
-
-                    // Tell to mediator what command is being sent.
-                    if (_prepared == PrepareStatus.NotPrepared)
-                    {
-                        _connector.Mediator.SetSqlSent(commandText, NpgsqlMediator.SQLSentType.Simple);
-                    }
+                    if ((cb & CommandBehavior.SchemaOnly) == 0 || _schemaOnlyResult == SchemaOnlyResult.UsedSimpleQuery)
+                        return reader = new NpgsqlDataReader(this, cb);
                     else
-                    {
-                        _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
-                    }
-
-                    return reader = new NpgsqlDataReader(this, cb);
+                        return reader = new NpgsqlDataReader(this, cb, _rowDescription, true);
                 }
                 else
                 {
                     // Bind the parameters, execute and sync
-                    for (var i = 0; i < _parameters.Count; i++)
-                        _parameters[i].Bind(_connector.NativeToBackendTypeConverterOptions);
-                    _connector.SendBind(AnonymousPortal, _planName, _parameters, _resultFormatCodes);
+
+                    var numInputParameters = _parameters.Count(p => p.IsInputDirection);
+                    var parameterTypeOIDs = new uint[numInputParameters];
+                    for (int i = 0, j = 0; i < _parameters.Count; i++)
+                    {
+                        if (_parameters[i].IsInputDirection)
+                        {
+                            parameterTypeOIDs[j++] = _parameters[i].GetTypeOid(_connector.TypeHandlerRegistry);
+                        }
+                    }
+
+                    NpgsqlTextWriter[] parameterTexts = null;
+                    int[] parameterSizes = null;
+                    FormatCode[] formatCodes = null;
+                    List<int> sizeArr = null;
+
+                    parameterTexts = new NpgsqlTextWriter[numInputParameters];
+                    parameterSizes = new int[numInputParameters];
+                    formatCodes = new FormatCode[numInputParameters];
+                    sizeArr = new List<int>();
+
+                    _connector.Buffer.ResetTotalBytesFlushed();
+                    SetUpBind(parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr);
+                    SendBind(_connector.Buffer, numInputParameters, parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr, _resultFormatCodes);
 
                     _connector.SendExecute();
                     _connector.SendSync();
@@ -1639,7 +2027,7 @@ namespace Npgsql
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
 
                     // TODO: Allocation
-                    return reader = new NpgsqlDataReader(this, cb, _preparedDescription);
+                    return reader = new NpgsqlDataReader(this, cb, _rowDescription);
 
                     // Construct the return reader, possibly with a saved row description from Prepare().
                     /*
@@ -1653,10 +2041,14 @@ namespace Npgsql
 
                 return reader;
             }
+            catch (NpgsqlException)
+            {
+                _connector.State = ConnectorState.Ready;
+                throw;
+            }
             finally
             {
-                if (reader == null && _notificationBlock != null)
-                {
+                if (reader == null && _notificationBlock != null) {
                     _notificationBlock.Dispose();
                 }
             }
@@ -1783,23 +2175,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.ConnectionNotOpen);
             }
 
-            switch (Connector.State)
-            {
-                case ConnectorState.Ready:
-                    return;
-                case ConnectorState.Closed:
-                case ConnectorState.Broken:
-                case ConnectorState.Connecting:
-                    throw new InvalidOperationException(L10N.ConnectionNotOpen);
-                case ConnectorState.Executing:
-                case ConnectorState.Fetching:
-                    throw new InvalidOperationException("There is already an open DataReader associated with this Command which must be closed first.");
-                case ConnectorState.CopyIn:
-                case ConnectorState.CopyOut:
-                    throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
-                default:
-                    throw new ArgumentOutOfRangeException("Connector.State", "Unknown state: " + Connector.State);
-            }
+            Connector.CheckReadyState();
         }
 
         internal NpgsqlConnector Connector
