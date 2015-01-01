@@ -22,7 +22,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "array" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool IsArbitraryLength { get { return true; } }
+        public override bool CanReadFromSocket { get { return true; } }
 
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {

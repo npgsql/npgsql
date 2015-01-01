@@ -14,7 +14,7 @@ namespace Npgsql
         /// to  handle reading from socket on its own if the buffer doesn't contain enough data.
         /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
         /// </summary>
-        bool IsArbitraryLength { get; }
+        bool CanReadFromSocket { get; }
         /// <summary>
         /// Whether this type handler supports reading the binary Postgresql representation for its type.
         /// </summary>
@@ -39,11 +39,11 @@ namespace Npgsql
         public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Requires(SupportsBinaryRead || fieldDescription.IsTextFormat);
-            Contract.Requires(buf.BytesLeft >= len || IsArbitraryLength);
+            Contract.Requires(buf.BytesLeft >= len || CanReadFromSocket);
             return default(T);
         }
 
-        public bool IsArbitraryLength { get { return default(bool); } }
+        public bool CanReadFromSocket { get { return default(bool); } }
         public bool SupportsBinaryRead { get { return default(bool); } }
     }
 
@@ -65,7 +65,7 @@ namespace Npgsql
         /// to handle reading from socket on its own if the buffer doesn't contain enough data.
         /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
         /// </summary>
-        public virtual bool IsArbitraryLength { get { return false; } }
+        public virtual bool CanReadFromSocket { get { return false; } }
 
         protected TypeHandler()
         {

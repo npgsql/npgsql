@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "bytea" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
-        public override bool IsArbitraryLength { get { return true; } }
+        public override bool CanReadFromSocket { get { return true; } }
 
         public override byte[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

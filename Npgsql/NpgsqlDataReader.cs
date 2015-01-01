@@ -1066,12 +1066,11 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
-            {
-                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
-                _row.Buffer.Ensure(_row.ColumnLen);
+            var buf = _row.Buffer;
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
             }
-            var result = handler.ReadValueAsObject(_row.Buffer, fieldDescription, _row.ColumnLen);
+            var result = handler.ReadValueAsObject(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
 
             if (IsCaching)
@@ -1157,12 +1156,11 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
-            {
-                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
-                _row.Buffer.Ensure(_row.ColumnLen);
+            var buf = _row.Buffer;
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
             }
-            var result = handler.ReadPsvAsObject(_row.Buffer, fieldDescription, _row.ColumnLen);
+            var result = handler.ReadPsvAsObject(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
 
             if (IsCaching)
@@ -1272,12 +1270,11 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.IsArbitraryLength)
-            {
-                Contract.Assume(_row.ColumnLen <= _row.Buffer.Size);
-                _row.Buffer.Ensure(_row.ColumnLen);
+            var buf = _row.Buffer;
+            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
             }
-            var result = handler.Read(_row.Buffer, fieldDescription, _row.ColumnLen);
+            var result = handler.Read(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
             return result;
         }
