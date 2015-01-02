@@ -31,7 +31,7 @@ namespace NpgsqlTests.Types
         {
             var expected = new BitArray(bits.Length);
             for (var i = 0; i < bits.Length; i++)
-                expected[i] = bits[bits.Length - i - 1] == '1';
+                expected[i] = bits[i] == '1';
 
             var cmd = new NpgsqlCommand(String.Format("SELECT B'{0}'::BIT VARYING", bits), Conn);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }

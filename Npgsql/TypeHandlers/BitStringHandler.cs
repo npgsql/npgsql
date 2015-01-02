@@ -106,19 +106,19 @@ namespace Npgsql.TypeHandlers
             var numBits = buf.ReadInt32();
             numBytes -= 4;
             var result = new BitArray(numBits);
-            var bitNo = numBits - 1;
+            var bitNo = 0;
             for (var byteNo = 0; byteNo < numBytes-1; byteNo++)
             {
                 var chunk = buf.ReadByte();
-                for (var i = 7; i >= 0; i--, bitNo--) {
+                for (var i = 7; i >= 0; i--, bitNo++) {
                     result[bitNo] = (chunk & (1 << i)) != 0;
                 }
             }
-            if (bitNo >= 0)
+            if (bitNo < numBits)
             {
-                var remainder = bitNo;
+                var remainder = numBits - bitNo;
                 var lastChunk = buf.ReadByte();
-                for (var i = 7; i >= 7 - remainder; i--, bitNo--) {
+                for (var i = 7; i >= 8 - remainder; i--, bitNo++) {
                     result[bitNo] = (lastChunk & (1 << i)) != 0;
                 }
             }
@@ -132,7 +132,7 @@ namespace Npgsql.TypeHandlers
         BitArray ReadText(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var result = new BitArray(len);
-            for (var i = len-1; i >= 0; i--)
+            for (var i = 0; i < len; i++)
             {
                 var b = buf.ReadByte();
                 switch (b)
