@@ -180,11 +180,10 @@ namespace Npgsql
             Connector.Notice += NoticeDelegate;
             Connector.Notification += NotificationDelegate;
 
-            if (SyncNotification)
+            /*if (SyncNotification)
             {
-                // Disable async notifications for now
-                //Connector.AddNotificationThread();
-            }
+                
+            }*/
 
             if (Enlist)
             {
@@ -597,7 +596,7 @@ namespace Npgsql
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         {
             _log.Debug("Beginning transaction with isolation level " + level);
-            CheckConnectionOpen();
+            CheckConnectionReady();
 
             if (Connector.Transaction != null) {
                 throw new InvalidOperationException(L10N.NoNestedTransactions);
@@ -667,11 +666,10 @@ namespace Npgsql
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
 
-            if (SyncNotification)
+            /*if (SyncNotification)
             {
-                // Disable async notifications for now
-                //Connector.RemoveNotificationThread();
-            }
+                
+            }*/
 
             if (Pooling)
             {
@@ -1003,7 +1001,7 @@ namespace Npgsql
             }
 
             if (Connector != null) {
-                throw new InvalidOperationException(L10N.ConnNotOpen);
+                throw new InvalidOperationException(L10N.ConnOpen);
             }
         }
 
@@ -1012,6 +1010,21 @@ namespace Npgsql
             if (_disposed) {
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
+        }
+
+        internal void CheckConnectionReady()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
+            }
+
+            if (Connector == null)
+            {
+                throw new InvalidOperationException(L10N.ConnNotOpen);
+            }
+
+            Connector.CheckReadyState();
         }
 
         #endregion State checks

@@ -176,6 +176,8 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
+            Connection.CheckConnectionReady();
+
             _conn.Connector.ExecuteBlindSuppressTimeout(QueryManager.RollbackTransaction);
             _conn.Connector.Transaction = null;
             _conn = null;
@@ -186,13 +188,14 @@ namespace Npgsql
         /// </summary>
         public void Rollback(String savePointName)
         {
-
             CheckDisposed();
 
             if (_conn == null)
             {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
+
+            Connection.CheckConnectionReady();
 
             if (!_conn.Connector.SupportsSavepoint)
             {
@@ -212,13 +215,14 @@ namespace Npgsql
         /// </summary>
         public void Save(String savePointName)
         {
-
             CheckDisposed();
 
             if (_conn == null)
             {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
+
+            Connection.CheckConnectionReady();
 
             if (!_conn.Connector.SupportsSavepoint)
             {

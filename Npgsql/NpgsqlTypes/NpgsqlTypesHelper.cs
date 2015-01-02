@@ -773,7 +773,7 @@ namespace NpgsqlTypes
                     while (dr.Read())
                     {
                         NpgsqlBackendTypeInfo typeInfo = nameIndex[dr[0].ToString()];
-                        typeInfo._OID = Convert.ToInt32(dr[1]);
+                        typeInfo._OID = Convert.ToUInt32(dr[1]);
                         mapping.AddType(typeInfo);
                     }
                 }

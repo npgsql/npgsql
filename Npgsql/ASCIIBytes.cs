@@ -114,6 +114,9 @@ namespace Npgsql
         internal static readonly byte[] NEG_INFINITY_QUOTED = BackendEncoding.UTF8Encoding.GetBytes("'-INFINITY'");
         internal static readonly byte[] LineTerminator  = BackendEncoding.UTF8Encoding.GetBytes("\r\n");
         internal static readonly byte[] NAN_QUOTED      = BackendEncoding.UTF8Encoding.GetBytes("'NaN'");
+        internal static readonly byte[] SingleQuote     = { (byte)'\'' };
+        internal static readonly byte[] DoubleQuote     = { (byte)'"' };
+        internal static readonly byte[] BackSlash = { (byte)'\\' };
 
         internal static readonly byte[] BindMessageCode         = { (byte)FrontEndMessageCode.Bind            };
         internal static readonly byte[] DescribeMessageCode     = { (byte)FrontEndMessageCode.Describe        };
@@ -126,6 +129,7 @@ namespace Npgsql
         internal static readonly byte[] SyncMessageCode         = { (byte)FrontEndMessageCode.Sync            };
         internal static readonly byte[] TerminationMessageCode  = { (byte)FrontEndMessageCode.Termination     };
 
-        internal static readonly byte[] DescribePortalCode      = { (byte)'P' };
-        internal static readonly byte[] DescribeStatementCode   = { (byte)'S' };    }
+        internal static readonly byte[] DescribePortalCode      = { (byte)FrontEndMessageCode.DescribePortal };
+        internal static readonly byte[] DescribeStatementCode   = { (byte)FrontEndMessageCode.DescribeStatement };
+    }
 }

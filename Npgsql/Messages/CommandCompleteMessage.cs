@@ -8,8 +8,8 @@ namespace Npgsql.Messages
 {
     internal class CommandCompleteMessage : ServerMessage
     {
-        internal long? LastInsertedOID { get; private set; }
-        internal int? RowsAffected { get; private set; }
+        internal uint? LastInsertedOID { get; private set; }
+        internal uint? RowsAffected { get; private set; }
 
         internal CommandCompleteMessage Load(NpgsqlBuffer buf, int len)
         {
@@ -23,7 +23,7 @@ namespace Npgsql.Messages
             switch (tokens[0])
             {
                 case "INSERT":
-                    var lastInsertedOID = long.Parse(tokens[1]);
+                    var lastInsertedOID = uint.Parse(tokens[1]);
                     if (lastInsertedOID != 0) {
                         LastInsertedOID = lastInsertedOID;
                     }
@@ -32,8 +32,8 @@ namespace Npgsql.Messages
                 case "UPDATE":
                 case "DELETE":
                 case "COPY":
-                    int rowsAffected;
-                    if (int.TryParse(tokens[tokens.Length - 1], out rowsAffected)) {
+                    uint rowsAffected;
+                    if (uint.TryParse(tokens[tokens.Length - 1], out rowsAffected)) {
                         RowsAffected = rowsAffected;
                     }
                     break;

@@ -66,6 +66,8 @@ namespace Npgsql
         Bind = (byte) 'B',
         Execute = (byte) 'E',
         Describe = (byte) 'D',
+        DescribePortal = (byte) 'P',
+        DescribeStatement = (byte) 'S',
         Close = (byte) 'C',
         Sync = (byte) 'S',
         PasswordMessage = (byte) 'p',

@@ -8,7 +8,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 
-namespace NpgsqlTests
+namespace NpgsqlTests.Types
 {
     /// <summary>
     /// Tests on PostgreSQL arrays

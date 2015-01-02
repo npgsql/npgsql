@@ -59,10 +59,12 @@ namespace NpgsqlTests.Types
         /// http://www.postgresql.org/docs/9.4/static/datatype-uuid.html
         /// </summary>
         [Test]
-        public void ReadUuid()
+        public void ReadUuid([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             var expected = new Guid("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
             var cmd = new NpgsqlCommand("SELECT 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID", Conn);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetGuid(0), Is.EqualTo(expected));
@@ -261,6 +263,25 @@ namespace NpgsqlTests.Types
             command = new NpgsqlCommand("SELECT person_uuid::uuid FROM person LIMIT 1", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(typeof(Guid), result.GetType());
+        }
+
+        [Test]
+        public void TestRange()
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                object obj;
+
+                cmd.CommandText = "select '[2,10)'::int4range";
+                cmd.Prepare();
+                obj = cmd.ExecuteScalar();
+                Assert.AreEqual(new NpgsqlRange<int>(2, true, false, 10, false, false), obj);
+
+                cmd.CommandText = "select array['[2,10)'::int4range, '[3,9)'::int4range]";
+                cmd.Prepare();
+                obj = cmd.ExecuteScalar();
+                Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
+            }
         }
 
         public MiscTypeTests(string backendVersion) : base(backendVersion) {}

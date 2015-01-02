@@ -4,6 +4,8 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using Npgsql.Messages;
+using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql
 {
@@ -39,7 +41,7 @@ namespace Npgsql
         public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Requires(SupportsBinaryRead || fieldDescription.IsTextFormat);
-            Contract.Requires(buf.BytesLeft >= len || CanReadFromSocket);
+            Contract.Requires(buf.ReadBytesLeft >= len || CanReadFromSocket);
             return default(T);
         }
 
@@ -49,9 +51,16 @@ namespace Npgsql
 
     internal abstract class TypeHandler : ITypeHandler
     {
+        static readonly NpgsqlDbType?[] _emptyNpgsqlDbTypeArray = new NpgsqlDbType?[0];
+        static readonly DbType?[] _emptyDbTypeArray = new DbType?[0];
+        static readonly DbType[][] _emptyDbTypeArray2 = new DbType[0][];
+
         internal abstract string[] PgNames { get; }
         internal string PgName { get { return PgNames[0]; } }
-        internal int Oid { get; set; }
+        internal virtual NpgsqlDbType?[] NpgsqlDbTypes { get { return _emptyNpgsqlDbTypeArray; } }
+        internal virtual DbType?[] DbTypes { get { return _emptyDbTypeArray; } }
+        internal virtual DbType[][] DbTypeAliases { get { return _emptyDbTypeArray2; } }
+        internal uint Oid { get; set; }
         internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
 
@@ -69,11 +78,52 @@ namespace Npgsql
 
         protected TypeHandler()
         {
-            Oid = -1;
+            Oid = 0;
         }
 
         internal abstract object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
         internal abstract object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+
+        public virtual bool PreferTextWrite { get { return false; } }
+        public virtual bool SupportsBinaryWrite { get { return true; } }
+
+        public virtual string GetCastName(int size, NpgsqlDbType npgsqlDbType)
+        {
+            for (var i = 0; i < PgNames.Length; i++)
+            {
+                if (NpgsqlDbTypes[i] == npgsqlDbType)
+                    return PgNames[i];
+            }
+            Contract.Assert(false, "Can't lookup NpgsqlDbType in this handler");
+            return null;
+        }
+
+        public virtual int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        {
+            return BinarySize(value);
+        }
+        protected virtual int BinarySize(object value)
+        {
+            throw new NotImplementedException("BinarySize for " + this.GetType().ToString());
+        }
+        public virtual void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        {
+            WriteBinary(value, buf);
+        }
+        protected virtual void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            throw new NotImplementedException("WriteBinary for " + this.GetType().ToString());
+        }
+
+        public virtual void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            writer.WriteString(value.ToString());
+        }
+
+        protected static T GetIConvertibleValue<T>(object value) where T : IConvertible
+        {
+            return value is T ? (T)value : (T)Convert.ChangeType(value, typeof(T), null);
+        }
     }
 
     internal abstract class TypeHandler<T> : TypeHandler, ITypeHandler<T>

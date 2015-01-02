@@ -1872,7 +1872,6 @@ namespace NpgsqlTests
             Assert.AreEqual(param.Precision, newParam.Precision);
             Assert.AreEqual(param.Scale, newParam.Scale);
             Assert.AreEqual(param.Size, newParam.Size);
-            Assert.AreEqual(param.TypeInfo, newParam.TypeInfo);
             Assert.AreEqual(param.Direction, newParam.Direction);
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);

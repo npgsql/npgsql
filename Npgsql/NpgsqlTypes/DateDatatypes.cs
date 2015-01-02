@@ -1086,9 +1086,17 @@ namespace NpgsqlTypes
         private static readonly int[] LeapYearMaxes = new int[] {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
         public const int MaxYear = 5874897;
         public const int MinYear = -4714;
-        public static readonly NpgsqlDate Epoch = new NpgsqlDate(1970, 1, 1);
         public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
         public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
+
+        /// <summary>
+        /// Represents the date 1970-01-01
+        /// </summary>
+        public static readonly NpgsqlDate Epoch = new NpgsqlDate(1970, 1, 1);
+
+        /// <summary>
+        /// Represents the date 0001-01-01
+        /// </summary>
         public static readonly NpgsqlDate Era = new NpgsqlDate(0);
 
         public static NpgsqlDate Now
@@ -1685,7 +1693,7 @@ namespace NpgsqlTypes
 
         public static NpgsqlTimeZone operator -(NpgsqlTimeZone tz)
         {
-            return new NpgsqlTimeZone(-tz._totalSeconds);
+            return new NpgsqlTimeZone(-tz._totalSeconds * NpgsqlInterval.TicksPerSecond);
         }
 
         public static NpgsqlTimeZone operator +(NpgsqlTimeZone tz)
@@ -2753,6 +2761,41 @@ namespace NpgsqlTypes
                     {
                         throw new FormatException();
                     }
+            }
+        }
+
+        /// <summary>
+        /// Creates a NpgsqlTimeStamp from backend binary format
+        /// </summary>
+        /// <param name="value">Number of microseconds since 2000-01-01 00:00:00</param>
+        internal static NpgsqlTimeStamp FromInt64(long value)
+        {
+            if (value == long.MaxValue) return Infinity;
+            if (value == long.MinValue) return MinusInfinity;
+            if (value >= 0)
+            {
+                int date = (int)(value / 86400000000L);
+                long time = value % 86400000000L;
+
+                date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
+                time *= 10; // To 100ns
+
+                return new NpgsqlTimeStamp(new NpgsqlDate(date), new NpgsqlTime(time));
+            }
+            else
+            {
+                value = -value;
+                int date = (int)(value / 86400000000L);
+                long time = value % 86400000000L;
+                if (time != 0)
+                {
+                    ++date;
+                    time = 86400000000L - time;
+                }
+                date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
+                time *= 10; // To 100ns
+
+                return new NpgsqlTimeStamp(new NpgsqlDate(date), new NpgsqlTime(time));
             }
         }
 

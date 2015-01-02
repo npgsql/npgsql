@@ -143,6 +143,10 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        SemaphoreSlim _notificationSemaphore;
+        byte[] _emptyBuffer = new byte[0];
+        int _notificationBlockRecursionDepth;
+
         #region Reusable Server Message Objects
 
         readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
@@ -293,6 +297,27 @@ namespace Npgsql
             }
         }
 
+        internal void CheckReadyState()
+        {
+            switch (State)
+            {
+                case ConnectorState.Ready:
+                    return;
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                case ConnectorState.Connecting:
+                    throw new InvalidOperationException(L10N.ConnectionNotOpen);
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                    throw new InvalidOperationException("There is already an open DataReader associated with this Connection which must be closed first.");
+                case ConnectorState.CopyIn:
+                case ConnectorState.CopyOut:
+                    throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
+                default:
+                    throw new ArgumentOutOfRangeException("Connector.State", "Unknown state: " + State);
+            }
+        }
+
         #endregion
 
         #region Open
@@ -372,6 +397,11 @@ namespace Npgsql
             NativeToBackendTypeConverterOptions.OidToNameMapping = NpgsqlTypesHelper.CreateAndLoadInitialTypesMapping(this).Clone();
 
             State = ConnectorState.Ready;
+
+            if (_settings.SyncNotification)
+            {
+                AddNotificationListener();
+            }
         }
 
         public void RawOpen(int timeout)
@@ -629,25 +659,25 @@ namespace Npgsql
                 .Select(kv => kv.Key.Length + kv.Value.Length + 2)
                 .Sum();
 
-            Stream
+            Buffer
                 .WriteInt32(packetSize)
                 .WriteInt32(PGUtil.ConvertProtocolVersion(ProtocolVersion.Version3));
 
             foreach (var kv in encodedParams)
             {
-                Stream
+                Buffer
                     .WriteBytesNullTerminated(kv.Key)
                     .WriteBytesNullTerminated(kv.Value);
             }
 
-            Stream.WriteByte(ASCIIByteArrays.Byte_0);
-            Stream.Flush();
+            Buffer.WriteByte(0);
+            Buffer.Flush();
         }
 
         #endregion Startup
 
         #region Bind
-
+#if FALSE
         [GenerateAsync]
         internal void SendBind(string portalName, string statementName, NpgsqlParameterCollection parameters, short[] resultFormatCodes)
         {
@@ -661,7 +691,13 @@ namespace Npgsql
             // If all are binary, we send a list with length one, containing a 1 (indicates binary).
             // Otherwise, we send the whole list.
 
-            var len = 0;
+            var headerLen =
+                    4 + // Message length (32 bits)
+                    portalNameBytes.Length + 1 + // Portal name + null terminator
+                    statementNameBytes.Length + 1 + // Statement name + null terminator
+                    2; // Parameter format code array length (16 bits)
+
+            var len = headerLen;
             var numInputParameters = 0;
             var allSameFormatCode = -1;
             for (var i = 0; i < parameters.Count; i++)
@@ -669,7 +705,7 @@ namespace Npgsql
                 if (parameters[i].IsInputDirection)
                 {
                     numInputParameters++;
-                    len += 4;
+                    len += 4; // Length of the length
                     if (parameters[i].BoundValue != null)
                     {
                         len += parameters[i].BoundValue.Length;
@@ -686,12 +722,8 @@ namespace Npgsql
             }
 
             len +=
-                    4 + // Message length (32 bits)
-                    portalNameBytes.Length + 1 + // Portal name + null terminator
-                    statementNameBytes.Length + 1 + // Statement name + null terminator
-                    2 + // Parameter format code array length (16 bits)
-                    (allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters) * 2 + // Parameter format code array (16 bits per code)
-                    2; // Parameter value array length (16 bits)
+                (allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters) * 2 + // Parameter format code array (16 bits per code)
+                2; // Parameter value array length (16 bits)
 
             var allSameResultFormatCode = -1;
             for (var i = 0; i < resultFormatCodes.Length; i++)
@@ -706,12 +738,13 @@ namespace Npgsql
                 }
             }
 
-            len +=
-                    2 + // Result format code array length (16 bits)
-                    (allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length) * 2; // Result format code array (16 bits per code)
+            len += 
+                2 + // Length of result format code array
+                (allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length) * 2; // Result format code array (16 bits per code)
 
-            Stream
-                .WriteByte(ASCIIByteArrays.BindMessageCode)
+            Buffer
+                .EnsureWrite(headerLen + 2)
+                .WriteByte((byte)FrontEndMessageCode.Bind)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .WriteBytesNullTerminated(statementNameBytes)
@@ -721,7 +754,7 @@ namespace Npgsql
             {
                 if (allSameFormatCode == 1)
                 {
-                    Stream.WriteInt16((short)FormatCode.Binary);
+                    Buffer.WriteInt16((short)FormatCode.Binary);
                 }
                 else if (allSameFormatCode == -2)
                 {
@@ -729,12 +762,12 @@ namespace Npgsql
                     {
                         if (parameters[i].IsInputDirection)
                         {
-                            Stream.WriteInt16(parameters[i].BoundFormatCode);
+                            Buffer.EnsuredWriteInt16(parameters[i].BoundFormatCode);
                         }
                     }
                 }
 
-                Stream.WriteInt16((short)numInputParameters);
+                Buffer.EnsuredWriteInt16((short)numInputParameters);
 
                 for (var i = 0; i < parameters.Count; i++)
                 {
@@ -743,12 +776,12 @@ namespace Npgsql
                         var value = parameters[i].BoundValue;
                         if (value == null)
                         {
-                            Stream.WriteInt32(-1);
+                            Buffer.EnsuredWriteInt32(-1);
                         }
                         else
                         {
-                            Stream
-                                .WriteInt32(value.Length)
+                            Buffer
+                                .EnsuredWriteInt32(value.Length)
                                 .WriteBytes(value);
                         }
                     }
@@ -756,23 +789,25 @@ namespace Npgsql
             }
             else
             {
-                Stream.WriteInt16(0); // Number of parameter values sent
+                Buffer.WriteInt16(0); // Number of parameter values sent
             }
 
-            Stream.WriteInt16((short)(allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length));
+            Buffer.EnsureWrite(4);
+            Buffer.WriteInt16((short)(allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length));
 
             if (allSameResultFormatCode == 1)
             {
-                Stream.WriteInt16((short)FormatCode.Binary);
+                Buffer.WriteInt16((short)FormatCode.Binary);
             }
             else if (allSameResultFormatCode == -2)
             {
                 foreach (var code in resultFormatCodes)
                 {
-                    Stream.WriteInt16(code);
+                    Buffer.EnsuredWriteInt16(code);
                 }
             }
         }
+#endif
 
         #endregion
 
@@ -782,17 +817,17 @@ namespace Npgsql
         internal void SendQuery(string query)
         {
             _log.DebugFormat("Sending query: {0}", query);
-            QueryManager.WriteQuery(Stream, query);
-            Stream.Flush();
+            QueryManager.WriteQuery(Buffer, query);
+            Buffer.Flush();
             State = ConnectorState.Executing;
         }
 
         [GenerateAsync]
         internal void SendQuery(byte[] query)
         {
-            _log.Debug(m => m("Sending query: {0}", Encoding.UTF8.GetString(query)));
-            QueryManager.WriteQuery(Stream, query);
-            Stream.Flush();
+            _log.Debug(m => m("Sending query: {0}", Encoding.UTF8.GetString(query, 0, query.Length - 1)));
+            QueryManager.WriteQuery(Buffer, query);
+            Buffer.Flush();
             State = ConnectorState.Executing;
         }
 
@@ -805,8 +840,8 @@ namespace Npgsql
         internal void SendQueryRaw(byte[] rawQuery)
         {
             _log.Debug("Sending raw query");
-            Stream.Write(rawQuery, 0, rawQuery.Length);
-            Stream.Flush();
+            Buffer.Write(rawQuery, 0, rawQuery.Length);
+            Buffer.Flush();
             State = ConnectorState.Executing;
         }
 
@@ -819,42 +854,40 @@ namespace Npgsql
         {
             _log.Debug("Sending authenticate message");
 
-            Stream
-                .WriteByte(ASCIIByteArrays.PasswordMessageCode)
-                .WriteInt32(4 + password.Length)
-                .WriteBytes(password)
-                .Flush();
+            Buffer
+                .WriteByte((byte)FrontEndMessageCode.PasswordMessage)
+                .WriteInt32(4 + password.Length);
+            Buffer.WriteBytes(password);
+            Buffer.Flush();
         }
 
         [GenerateAsync]
-        internal void SendParse(string prepareName, byte[] queryString, int[] parameterIDs)
+        internal void SendParse(string statementName, byte[] queryString, uint[] parameterIDs)
         {
             _log.DebugFormat("Sending parse message: {0}", Encoding.UTF8.GetString(queryString));
 
-            var prepareNameBytes = BackendEncoding.UTF8Encoding.GetBytes(prepareName);
-            //Stream.Write(ASCIIByteArrays.ParseMessageCode, 0, 1);
+            var prepareNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
+            //Buffer.Write(ASCIIByteArrays.ParseMessageCode, 0, 1);
 
             // message length =
             // Int32 self
             // name of prepared statement + 1 null string terminator +
-            // query string + 1 null string terminator
+            // query string (inclusive 1 null string terminator)
             // + Int16
             // + Int32 * number of parameters.
-            var messageLength = 4 + prepareNameBytes.Length + 1 + queryString.Length + 1 +
+            var messageLength = 4 + prepareNameBytes.Length + 1 + queryString.Length +
                                   2 + (parameterIDs.Length * 4);
 
-            Stream
-                .WriteByte(ASCIIByteArrays.ParseMessageCode)
+            Buffer
+                .WriteByte((byte)FrontEndMessageCode.Parse)
                 .WriteInt32(messageLength)
                 .WriteBytesNullTerminated(prepareNameBytes)
-                .WriteBytesNullTerminated(queryString)
-                .WriteInt16((short)parameterIDs.Length);
+                .WriteBytes(queryString)
+                .EnsuredWriteInt16((short)parameterIDs.Length);
 
             for (var i = 0; i < parameterIDs.Length; i++) {
-                Stream.WriteInt32(parameterIDs[i]);
+                Buffer.EnsuredWriteInt32((int)parameterIDs[i]);
             }
-
-            Stream.Flush();
         }
 
         [GenerateAsync]
@@ -862,8 +895,9 @@ namespace Npgsql
         {
             _log.Debug("Sending sync message");
 
-            Stream
-                .WriteByte(ASCIIByteArrays.SyncMessageCode)
+            Buffer
+                .EnsureWrite(5)
+                .WriteByte((byte)FrontEndMessageCode.Sync)
                 .WriteInt32(4)
                 .Flush();
         }
@@ -874,10 +908,11 @@ namespace Npgsql
             _log.Debug("Sending describe portal message");
             var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
             var len = 4 + 1 + portalNameBytes.Length + 1;
-            Stream
-                .WriteByte(ASCIIByteArrays.DescribeMessageCode)
+            Buffer
+                .EnsureWrite(1 + len)
+                .WriteByte((byte)FrontEndMessageCode.Describe)
                 .WriteInt32(len)
-                .WriteByte(ASCIIByteArrays.DescribePortalCode)
+                .WriteByte((byte)FrontEndMessageCode.DescribePortal)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .Flush();
         }
@@ -888,10 +923,11 @@ namespace Npgsql
             _log.Debug("Sending describe statement message");
             var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
             var len = 4 + 1 + statementNameBytes.Length + 1;
-            Stream
-                .WriteByte(ASCIIByteArrays.DescribeMessageCode)
+            Buffer
+                .EnsureWrite(1 + len)
+                .WriteByte((byte)FrontEndMessageCode.Describe)
                 .WriteInt32(len)
-                .WriteByte(ASCIIByteArrays.DescribeStatementCode)
+                .WriteByte((byte)FrontEndMessageCode.DescribeStatement)
                 .WriteBytesNullTerminated(statementNameBytes)
                 .Flush();
         }
@@ -903,8 +939,9 @@ namespace Npgsql
 
             var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
             var len = 4 + portalNameBytes.Length + 1 + 4;
-            Stream
-                .WriteByte(ASCIIByteArrays.ExecuteMessageCode)
+            Buffer
+                .EnsureWrite(1 + len)
+                .WriteByte((byte)FrontEndMessageCode.Execute)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .WriteInt32(maxRows);
@@ -915,8 +952,9 @@ namespace Npgsql
         {
             _log.Debug("Sending flush message");
 
-            Stream
-                .WriteByte(ASCIIByteArrays.FlushMessageCode)
+            Buffer
+                .EnsureWrite(5)
+                .WriteByte((byte)FrontEndMessageCode.Flush)
                 .WriteInt32(4);
         }
 
@@ -924,8 +962,10 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal ServerMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode=DataRowLoadingMode.NonSequential)
+        internal ServerMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
+            NpgsqlError error = null;
+
             while (true)
             {
                 var buf = Buffer;
@@ -937,25 +977,31 @@ namespace Npgsql
 
                 if (messageCode == BackEndMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential)
                 {
-                    switch (dataRowLoadingMode)
+                    if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
-                        case DataRowLoadingMode.Sequential:
-                            break;
-                        case DataRowLoadingMode.Skip:
-                            Buffer.Skip(len);
-                            continue;
-                        default:
-                            throw PGUtil.ThrowIfReached();
+                        Buffer.Skip(len);
+                        continue;
                     }
                 }
-                else if (len > Buffer.BytesLeft)
+                else if (len > Buffer.ReadBytesLeft)
                 {
                     buf = buf.EnsureOrAllocateTemp(len);
                 }
 
                 var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
-                if (msg != null)
+                if (msg != null || !ignoreNotifications && (messageCode == BackEndMessageCode.NoticeResponse || messageCode == BackEndMessageCode.NotificationResponse))
+                {
+                    if (error != null)
+                    {
+                        Contract.Assert(messageCode == BackEndMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
+                        throw new NpgsqlException(error);
+                    }
                     return msg;
+                }
+                else if (messageCode == BackEndMessageCode.ErrorResponse)
+                {
+                    error = new NpgsqlError(buf);
+                }
             }
         }
 
@@ -1035,7 +1081,7 @@ namespace Npgsql
                     Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
                 case BackEndMessageCode.ErrorResponse:
-                    throw new NpgsqlException(buf);
+                    return null;
                 case BackEndMessageCode.FunctionCallResponse:
                     // We don't use the obsolete function call protocol
                     throw new Exception("Unexpected backend message: " + code);
@@ -1069,14 +1115,15 @@ namespace Npgsql
 
         internal NpgsqlCopyFormat CopyFormat { get; private set; }
 
+        // TODO: Currently unused
         NpgsqlCopyFormat ReadCopyHeader()
         {
-            var copyFormat = (byte)Stream.ReadByte();
-            var numCopyFields = Stream.ReadInt16();
+            var copyFormat = (byte)Buffer.ReadByte();
+            var numCopyFields = Buffer.ReadInt16();
             var copyFieldFormats = new short[numCopyFields];
             for (short i = 0; i < numCopyFields; i++)
             {
-                copyFieldFormats[i] = Stream.ReadInt16();
+                copyFieldFormats[i] = Buffer.ReadInt16();
             }
             return new NpgsqlCopyFormat(copyFormat, copyFieldFormats);
         }
@@ -1114,9 +1161,10 @@ namespace Npgsql
         /// </summary>
         internal void SendCopyInData(byte[] buf, int off, int len)
         {
-            Stream.WriteByte((byte)FrontEndMessageCode.CopyData);
-            Stream.WriteInt32(len + 4);
-            Stream.Write(buf, off, len);
+            Buffer.EnsureWrite(5);
+            Buffer.WriteByte((byte)FrontEndMessageCode.CopyData);
+            Buffer.WriteInt32(len + 4);
+            Buffer.Write(buf, off, len);
         }
 
         /// <summary>
@@ -1126,8 +1174,8 @@ namespace Npgsql
         {
             throw new NotImplementedException();
             /*
-            Stream.WriteByte((byte)FrontEndMessageCode.CopyDone);
-            Stream.WriteInt32(4); // message without data
+            Buffer.WriteByte((byte)FrontEndMessageCode.CopyDone);
+            Buffer.WriteInt32(4); // message without data
             ConsumeAll();
              */
         }
@@ -1142,10 +1190,10 @@ namespace Npgsql
         {
             throw new NotImplementedException();
             /*
-            Stream.WriteByte((byte)FrontEndMessageCode.CopyFail);
+            Buffer.WriteByte((byte)FrontEndMessageCode.CopyFail);
             var buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
-            Stream.WriteInt32(4 + buf.Length);
-            Stream.Write(buf, 0, buf.Length);
+            Buffer.WriteInt32(4 + buf.Length);
+            Buffer.Write(buf, 0, buf.Length);
             ConsumeAll();
              */
         }
@@ -1344,7 +1392,8 @@ namespace Npgsql
             const int len = 16;
             const int cancelRequestCode = 1234 << 16 | 5678;
 
-            Stream
+            Buffer
+                .EnsureWrite(len)
                 .WriteInt32(len)
                 .WriteInt32(cancelRequestCode)
                 .WriteInt32(backendProcessId)
@@ -1370,8 +1419,9 @@ namespace Npgsql
                 case ConnectorState.Ready:
                     try
                     {
-                        Stream
-                            .WriteByte(ASCIIByteArrays.TerminationMessageCode)
+                        Buffer
+                            .EnsureWrite(5)
+                            .WriteByte((byte)FrontEndMessageCode.Termination)
                             .WriteInt32(4)
                             .Flush();
                     }
@@ -1385,7 +1435,14 @@ namespace Npgsql
             }
             catch { }
 
+            try
+            {
+                RemoveNotificationListener();
+            }
+            catch { }
+
             Stream = null;
+            Buffer = null;
             BackendParams.Clear();
             ServerVersion = null;
             State = ConnectorState.Closed;
@@ -1446,6 +1503,110 @@ namespace Npgsql
 
         #endregion Close
 
+        #region Sync notification
+
+        internal class NotificationBlock : IDisposable
+        {
+            NpgsqlConnector _connector;
+
+            public NotificationBlock(NpgsqlConnector connector)
+            {
+                _connector = connector;
+            }
+
+            public void Dispose()
+            {
+                if (_connector != null)
+                {
+                    if (--_connector._notificationBlockRecursionDepth == 0)
+                    {
+                        while (_connector.Buffer.ReadBytesLeft > 0)
+                        {
+                            var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
+                            if (msg != null)
+                            {
+                                Contract.Assert(msg == null, "Expected null after processing a notification");
+                            }
+                        }
+                        if (_connector._notificationSemaphore != null)
+                        {
+                            _connector._notificationSemaphore.Release();
+                        }
+                    }
+                }
+                _connector = null;
+            }
+        }
+
+        [GenerateAsync]
+        internal NotificationBlock BlockNotifications()
+        {
+            if (_notificationSemaphore != null)
+            {
+                var n = new NotificationBlock(this);
+                if (++_notificationBlockRecursionDepth == 1)
+                    _notificationSemaphore.Wait();
+                return n;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        internal void AddNotificationListener()
+        {
+            _notificationSemaphore = new SemaphoreSlim(1);
+            var task = BaseStream.ReadAsync(_emptyBuffer, 0, 0);
+            task.ContinueWith(NotificationHandler);
+        }
+
+        internal void RemoveNotificationListener()
+        {
+            _notificationSemaphore = null;
+        }
+
+        internal void NotificationHandler(System.Threading.Tasks.Task<int> task)
+        {
+            if (task.Exception != null || task.Result != 0)
+            {
+                // The stream is dead
+                return;
+            }
+
+            var semaphore = _notificationSemaphore; // To avoid problems when closing the connection
+            if (semaphore != null)
+            {
+                semaphore.WaitAsync().ContinueWith(t => {
+                    try
+                    {
+                        while (BaseStream.DataAvailable || Buffer.ReadBytesLeft > 0)
+                        {
+                            var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
+                            if (msg != null)
+                            {
+                                Contract.Assert(msg == null, "Expected null after processing a notification");
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                        try
+                        {
+                            BaseStream.ReadAsync(_emptyBuffer, 0, 0).ContinueWith(NotificationHandler);
+                        }
+                        catch { }
+                    }
+                });
+            }
+        }
+
+        #endregion Sync notification
+
         #region Supported features
 
         internal bool SupportsApplicationName { get; private set; }
@@ -1494,7 +1655,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlind(string query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
                 SendQuery(query);
@@ -1506,7 +1667,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlind(byte[] query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
                 SendQueryRaw(query);
@@ -1518,7 +1679,7 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlindSuppressTimeout(string query)
         {
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SendQuery(query);
                 SkipUntil(BackEndMessageCode.ReadyForQuery);
@@ -1530,7 +1691,7 @@ namespace Npgsql
         internal void ExecuteBlindSuppressTimeout(byte[] query)
         {
             // Block the notification thread before writing anything to the wire.
-            //using (BlockNotificationThread())
+            using (BlockNotifications())
             {
                 SendQueryRaw(query);
                 SkipUntil(BackEndMessageCode.ReadyForQuery);
@@ -1726,13 +1887,13 @@ namespace Npgsql
         internal void TestConnector()
         {
             SendSync();
-            Stream.Flush();
+            Buffer.Flush();
             var buffer = new Queue<int>();
             //byte[] compareBuffer = new byte[6];
             int[] messageSought = { 'Z', 0, 0, 0, 5 };
             for (; ; )
             {
-                var newByte = Stream.ReadByte();
+                var newByte = (int)Buffer.ReadByte();
                 switch (newByte)
                 {
                     case -1:
@@ -1770,6 +1931,7 @@ namespace Npgsql
         }
 
         #endregion Misc
+
     }
 
     /// <summary>

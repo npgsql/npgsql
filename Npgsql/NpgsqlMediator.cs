@@ -70,13 +70,13 @@ namespace Npgsql
                     return "";
 
                 case SQLSentType.Parse:
-                    return string.Format("{{PARSE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
+                    return string.Format("{{PARSE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent, 0, _sqlSent.Length - 1));
 
                 case SQLSentType.Execute :
-                    return string.Format("{{EXECUTE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent));
+                    return string.Format("{{EXECUTE}} {0}", BackendEncoding.UTF8Encoding.GetString(_sqlSent, 0, _sqlSent.Length - 1));
 
                 default :
-                    return BackendEncoding.UTF8Encoding.GetString(_sqlSent);
+                    return BackendEncoding.UTF8Encoding.GetString(_sqlSent, 0, _sqlSent.Length - 1);
 
             } 
         }

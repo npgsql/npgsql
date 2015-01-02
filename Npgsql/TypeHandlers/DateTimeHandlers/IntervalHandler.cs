@@ -1,6 +1,7 @@
 ﻿using System;
 using Npgsql.Messages;
 using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -12,6 +13,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         static readonly string[] _pgNames = { "interval" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Interval };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
 
         public override TimeSpan Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -25,10 +29,42 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 case FormatCode.Text:
                     return NpgsqlInterval.Parse(buf.ReadString(len));
                 case FormatCode.Binary:
-                    throw new NotSupportedException();
+                    return ReadBinary(buf);
                 default:
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
+        }
+
+        NpgsqlInterval ReadBinary(NpgsqlBuffer buf)
+        {
+            var ticks = buf.ReadInt64();
+            var day = buf.ReadInt32();
+            var month = buf.ReadInt32();
+            return new NpgsqlInterval(month, day, ticks * 10);
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            writer.WriteString((value is TimeSpan)
+                ? ((NpgsqlInterval)(TimeSpan)value).ToString()
+                : ((NpgsqlInterval)value).ToString());
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 20;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var interval = (value is TimeSpan)
+                ? ((NpgsqlInterval)(TimeSpan)value)
+                : ((NpgsqlInterval)value);
+
+            buf.WriteInt32(16);
+            buf.WriteInt64(interval.Ticks / 10); // TODO: round?
+            buf.WriteInt32(interval.Days);
+            buf.WriteInt32(interval.Months);
         }
     }
 }

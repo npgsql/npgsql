@@ -23,17 +23,21 @@ namespace Npgsql
 {
     public class NpgsqlDataReader : DbDataReader
     {
+        private ReaderState _state;
         internal NpgsqlCommand Command { get; private set; }
         readonly NpgsqlConnector _connector;
         readonly NpgsqlConnection _connection;
         readonly CommandBehavior _behavior;
 
         // TODO: Protect with Interlocked?
-        internal ReaderState State { get; private set; }
+        internal ReaderState State {
+            get { return _state; }
+            private set { _state = value; }
+        }
 
         RowDescriptionMessage _rowDescription;
         DataRowMessage _row;
-        int _recordsAffected;
+        uint? _recordsAffected;
 
         /// <summary>
         /// Indicates that at least one row has been read across all result sets
@@ -71,28 +75,37 @@ namespace Npgsql
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null, bool schemaOnlyExtendedQuery = false)
         {
-            Contract.Requires(command.IsPrepared || rowDescription == null);
+            Contract.Requires(command.IsPrepared || rowDescription == null || schemaOnlyExtendedQuery);
 
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
-            _recordsAffected = -1;
+            _recordsAffected = null;
+
+            _connector.State = ConnectorState.Executing;
+            
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            if (command.IsPrepared) {
+            if (schemaOnlyExtendedQuery)
+            {
+                State = ReaderState.Consumed;
+                _rowDescription = rowDescription;
+            }
+            else if (command.IsPrepared) {
                 State = ReaderState.InResult;
                 _rowDescription = rowDescription;
             } else {
                 State = ReaderState.BetweenResults;
                 NextResultSetInternal();
             }
-            if (Command.Parameters.Any(p => p.IsOutputDirection)) {
+            if (Command.Parameters.Any(p => p.IsOutputDirection) && !schemaOnlyExtendedQuery) {
                 PopulateOutputParameters();
             }
+            _connector.CurrentReader = this;
         }
 
         #region Read
@@ -121,27 +134,35 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
             }
 
-            if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
+            try
             {
-                // TODO: See optimization proposal in #410
-                Consume();
-                return false;
-            }
-
-            while (true)
-            {
-                var msg = ReadMessage(isSequential);
-                switch (ProcessMessage(msg))
+                if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
                 {
-                    case ReadResult.RowRead:
-                        return true;
-                    case ReadResult.RowNotRead:
-                        return false;
-                    case ReadResult.ReadAgain:
-                        continue;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    // TODO: See optimization proposal in #410
+                    Consume();
+                    return false;
                 }
+
+                while (true)
+                {
+                    var msg = ReadMessage(isSequential);
+                    switch (ProcessMessage(msg))
+                    {
+                        case ReadResult.RowRead:
+                            return true;
+                        case ReadResult.RowNotRead:
+                            return false;
+                        case ReadResult.ReadAgain:
+                            continue;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
+            catch (NpgsqlException)
+            {
+                CleanUpDueToException();
+                throw;
             }
         }
 
@@ -169,9 +190,9 @@ namespace Npgsql
                     var completed = (CommandCompleteMessage) msg;
                     if (completed.RowsAffected.HasValue)
                     {
-                        _recordsAffected = _recordsAffected == -1
-                            ? completed.RowsAffected.Value
-                            : _recordsAffected + completed.RowsAffected.Value;
+                        _recordsAffected = !_recordsAffected.HasValue
+                            ? completed.RowsAffected
+                            : _recordsAffected.Value + completed.RowsAffected.Value;
                     }
                     if (completed.LastInsertedOID.HasValue) {
                         LastInsertedOID = completed.LastInsertedOID.Value;
@@ -206,37 +227,48 @@ namespace Npgsql
         {
             Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
-            switch (State)
+            try
             {
-                case ReaderState.InResult:
-                    if (_row != null) {
-                        _row.Consume();
-                        _row = null;
-                    }
+                switch (State)
+                {
+                    case ReaderState.InResult:
+                        if (_row != null)
+                        {
+                            _row.Consume();
+                            _row = null;
+                        }
 
-                    // TODO: Duplication with SingleResult handling above
-                    var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
-                    ProcessMessage(completedMsg);
-                    break;
+                        // TODO: Duplication with SingleResult handling above
+                        var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
+                        ProcessMessage(completedMsg);
+                        break;
 
-                case ReaderState.BetweenResults:
-                    break;
+                    case ReaderState.BetweenResults:
+                        break;
 
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
+                    case ReaderState.Consumed:
+                    case ReaderState.Closed:
+                        return false;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                Contract.Assert(State == ReaderState.BetweenResults);
+                _hasRows = null;
+                _cachedSchemaTable = null;
+
+                if ((_behavior & CommandBehavior.SingleResult) != 0)
+                {
+                    Consume();
                     return false;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                }
+
+                return NextResultSetInternal();
             }
-
-            Contract.Assert(State == ReaderState.BetweenResults);
-            _hasRows = null;
-            _cachedSchemaTable = null;
-
-            if ((_behavior & CommandBehavior.SingleResult) != 0)
+            catch (NpgsqlException)
             {
-                Consume();
-                return false;
+                CleanUpDueToException();
+                throw;
             }
 
             return NextResultSetInternal();
@@ -252,6 +284,8 @@ namespace Npgsql
                 var msg = ReadMessage(IsSequential);
                 switch (msg.Code)
                 {
+                    case BackEndMessageCode.NoData:
+                        continue;
                     case BackEndMessageCode.EmptyQueryResponse:
                     case BackEndMessageCode.CompletedResponse:
                         // Another completion in a multi-query, process to get affected records and read again
@@ -316,14 +350,14 @@ namespace Npgsql
 
         public override int RecordsAffected
         {
-            get { return _recordsAffected; }
+            get { return _recordsAffected.HasValue ? (int)_recordsAffected.Value : -1; }
        }
 
         /// <summary>
         /// Returns the OID of the last inserted row.
         /// If table is created without OIDs, this will always be 0.
         /// </summary>
-        public long LastInsertedOID { get; private set; }
+        public uint LastInsertedOID { get; private set; }
 
         public override bool HasRows
         {
@@ -432,6 +466,10 @@ namespace Npgsql
         public override void Close()
         {
             Consume();
+            if (Command._notificationBlock != null) {
+                Command._notificationBlock.Dispose();
+                Command._notificationBlock = null;
+            }
             if ((_behavior & CommandBehavior.CloseConnection) != 0) {
                 _connection.Close();
             }
@@ -440,6 +478,17 @@ namespace Npgsql
             if (ReaderClosed != null) {
                 ReaderClosed(this, EventArgs.Empty);
             }
+        }
+
+        private void CleanUpDueToException()
+        {
+            // The ReadyForQuery message that is sent after the ErrorResponse has already been consumed
+            if (Command._notificationBlock != null)
+            {
+                Command._notificationBlock.Dispose();
+                Command._notificationBlock = null;
+            }
+            State = ReaderState.Consumed;
         }
 
         #endregion
@@ -720,6 +769,10 @@ namespace Npgsql
 
             return ReadColumn<NpgsqlTimeTZ>(ordinal);
         }
+
+        #endregion
+
+        #region Provider-specific type getters
 
         /// <summary>
         /// Gets the value of the specified column as a TimeSpan,
@@ -1067,9 +1120,9 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-            }
+             }
             var result = handler.ReadValueAsObject(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
 
@@ -1082,7 +1135,11 @@ namespace Npgsql
             return result;
         }
 
+#if NET45
         public override T GetFieldValue<T>(int ordinal)
+#else
+        public T GetFieldValue<T>(int ordinal)
+#endif
         {
             #region Contracts
             if (!IsOnRow)
@@ -1157,9 +1214,9 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-            }
+             }
             var result = handler.ReadPsvAsObject(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
 
@@ -1202,6 +1259,7 @@ namespace Npgsql
         /// </summary>
         void PopulateOutputParameters()
         {
+            // TODO: Should we really use Contract here, instead of throwing an Exception?
             Contract.Requires(_rowDescription != null);
             Contract.Requires(Command.Parameters.Any(p => p.IsOutputDirection));
 
@@ -1271,9 +1329,9 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.BytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.CanReadFromSocket) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-            }
+             }
             var result = handler.Read(buf, fieldDescription, _row.ColumnLen);
             _row.PosInColumn += _row.ColumnLen;
             return result;
@@ -1351,7 +1409,7 @@ namespace Npgsql
 
         private void FillSchemaTable(DataTable schema)
         {
-            var oidTableLookup = new Dictionary<long, Table>();
+            var oidTableLookup = new Dictionary<uint, Table>();
             var keyLookup = new KeyLookup();
             // needs to be null because there is a difference
             // between an empty dictionary and not setting it
@@ -1361,7 +1419,7 @@ namespace Npgsql
             // TODO: This is probably not what KeyInfo is supposed to do...
             if ((_behavior & CommandBehavior.KeyInfo) == CommandBehavior.KeyInfo)
             {
-                var tableOids = new List<int>();
+                var tableOids = new List<uint>();
                 for (var i = 0; i != _rowDescription.NumFields; ++i)
                 {
                     if (_rowDescription[i].TableOID != 0 && !tableOids.Contains(_rowDescription[i].TableOID))
@@ -1568,21 +1626,21 @@ namespace Npgsql
             public readonly string Catalog;
             public readonly string Schema;
             public readonly string Name;
-            public readonly int Id;
+            public readonly uint Id;
 
-            public Table(IDataReader rdr)
+            public Table(NpgsqlDataReader rdr)
             {
                 Catalog = rdr.GetString(0);
                 Schema = rdr.GetString(1);
                 Name = rdr.GetString(2);
-                Id = rdr.GetInt32(3);
+                Id = rdr.GetFieldValue<uint>(3);
             }
         }
 
-        Dictionary<long, Table> GetTablesFromOids(List<int> oids)
+        Dictionary<uint, Table> GetTablesFromOids(List<uint> oids)
         {
             if (oids.Count == 0) {
-                return new Dictionary<long, Table>(); //Empty collection is simpler than requiring tests for null;
+                return new Dictionary<uint, Table>(); //Empty collection is simpler than requiring tests for null;
             }
 
             // the column index is used to find data.
@@ -1606,7 +1664,7 @@ namespace Npgsql
                 {
                     using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
-                        var oidLookup = new Dictionary<long, Table>(oids.Count);
+                        var oidLookup = new Dictionary<uint, Table>(oids.Count);
                         while (reader.Read())
                         {
                             var t = new Table(reader);
@@ -1622,7 +1680,7 @@ namespace Npgsql
         {
             public readonly string Name;
             public readonly bool NotNull;
-            public readonly int TableId;
+            public readonly uint TableId;
             public readonly short ColumnNum;
             public readonly object ColumnDefault;
 
@@ -1631,11 +1689,11 @@ namespace Npgsql
                 get { return string.Format("{0},{1}", TableId, ColumnNum); }
             }
 
-            public Column(IDataReader rdr)
+            public Column(NpgsqlDataReader rdr)
             {
                 Name = rdr.GetString(0);
                 NotNull = rdr.GetBoolean(1);
-                TableId = rdr.GetInt32(2);
+                TableId = rdr.GetFieldValue<uint>(2);
                 ColumnNum = rdr.GetInt16(3);
                 ColumnDefault = rdr.GetValue(4);
             }

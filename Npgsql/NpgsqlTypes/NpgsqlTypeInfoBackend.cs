@@ -60,7 +60,7 @@ namespace NpgsqlTypes
         private readonly ConvertProviderTypeToFrameworkTypeHander _convertProviderToFramework;
         private readonly ConvertFrameworkTypeToProviderTypeHander _convertFrameworkToProvider;
 
-        internal Int32 _OID;
+        internal uint _OID;
         private readonly String _Name;
         private readonly NpgsqlDbType _NpgsqlDbType;
         private readonly DbType _DbType;
@@ -77,7 +77,7 @@ namespace NpgsqlTypes
         /// <param name="Type">System type to convert fields of this type to.</param>
         /// <param name="ConvertBackendTextToNative">Data conversion handler for text encoding.</param>
         /// <param name="ConvertBackendBinaryToNative">Data conversion handler for binary data.</param>
-        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+        public NpgsqlBackendTypeInfo(UInt32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
                                         ConvertBackendTextToNativeHandler ConvertBackendTextToNative = null,
                                         ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative = null)
         {
@@ -96,7 +96,7 @@ namespace NpgsqlTypes
             _ConvertBackendBinaryToNative = ConvertBackendBinaryToNative;
         }
 
-        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+        public NpgsqlBackendTypeInfo(UInt32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
                                         ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
                                         ConvertBackendBinaryToNativeHandler ConvertBackendBinaryToNative,
                                         Type frameworkType,
@@ -109,7 +109,7 @@ namespace NpgsqlTypes
             _convertFrameworkToProvider = convertFrameworkToProvider;
         }
 
-        public NpgsqlBackendTypeInfo(Int32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
+        public NpgsqlBackendTypeInfo(UInt32 OID, String Name, NpgsqlDbType NpgsqlDbType, DbType DbType, Type Type,
                                         ConvertBackendTextToNativeHandler ConvertBackendTextToNative,
                                         Type frameworkType,
                                         ConvertProviderTypeToFrameworkTypeHander convertProviderToFramework,
@@ -124,7 +124,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Type OID provided by the backend server.
         /// </summary>
-        public Int32 OID
+        public UInt32 OID
         {
             get { return _OID; }
         }

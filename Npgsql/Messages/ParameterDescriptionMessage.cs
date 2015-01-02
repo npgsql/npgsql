@@ -8,11 +8,11 @@ namespace Npgsql.Messages
 {
     internal class ParameterDescriptionMessage : ServerMessage
     {
-        internal List<int> TypeOIDs { get; private set; }
+        internal List<uint> TypeOIDs { get; private set; }
 
         internal ParameterDescriptionMessage()
         {
-            TypeOIDs = new List<int>();
+            TypeOIDs = new List<uint>();
         }
 
         internal ParameterDescriptionMessage Load(NpgsqlBuffer buf)
@@ -20,7 +20,7 @@ namespace Npgsql.Messages
             var numParams = buf.ReadInt16();
             TypeOIDs.Clear();
             for (var i = 0; i < numParams; i++) {
-                TypeOIDs.Add(buf.ReadInt32());
+                TypeOIDs.Add(buf.ReadUInt32());
             }
             return this;
         }

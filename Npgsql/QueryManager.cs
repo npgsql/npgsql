@@ -14,22 +14,43 @@ namespace Npgsql
     /// </summary>
     internal static class QueryManager
     {
+        internal static void WriteQuery(NpgsqlBuffer buffer, string query)
+        {
+            var strlen = BackendEncoding.UTF8Encoding.GetByteCount(query);
+            var len = 4 + strlen + 1;
+            buffer
+                .EnsureWrite(5)
+                .WriteByte((byte)FrontEndMessageCode.Query)
+                .WriteInt32(len)
+                .WriteString(query, len)
+                .EnsuredWriteByte(0)
+                .Flush();
+        }
+
         internal static void WriteQuery(Stream stream, string query)
         {
-            WriteQuery(stream, BackendEncoding.UTF8Encoding.GetBytes(query));
+            var bytes = BackendEncoding.UTF8Encoding.GetBytes(query);
+            var len = 4 + bytes.Length + 1;
+            stream
+                .WriteBytes(ASCIIByteArrays.QueryMessageCode)
+                .WriteInt32(len)
+                .WriteString(query, len)
+                .WriteBytes(ASCIIByteArrays.Byte_0)
+                .Flush();
         }
 
 #if NET45
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        internal static void WriteQuery(Stream stream, byte[] query)
+        internal static void WriteQuery(NpgsqlBuffer buffer, byte[] query)
         {
-            var len = 4 + query.Length + 1;
+            var len = 4 + query.Length;
 
-            stream
-                .WriteByte(ASCIIByteArrays.QueryMessageCode)
+            buffer
+                .EnsureWrite(5)
+                .WriteByte((byte)FrontEndMessageCode.Query)
                 .WriteInt32(len)
-                .WriteBytesNullTerminated(query)
+                .WriteBytes(query)
                 .Flush();
         }
 

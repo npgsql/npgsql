@@ -89,6 +89,16 @@ namespace NpgsqlTests.Types
             Assert.That(open, Is.EqualTo(new NpgsqlPath(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4))));
             Assert.That(reader.GetString(1), Is.EqualTo("[(1,2),(3,4)]"));
             Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(NpgsqlPath)));
+            reader.Close();
+
+            var longPath = string.Join(",", Enumerable.Range(1, 10000).Select(i => "(" + i + ",1)"));
+            cmd.CommandText = "SELECT '" + longPath + "'::PATH";
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
+            reader = cmd.GetReader(CommandBehavior.SequentialAccess);
+            reader.Read();
+            Assert.That(reader.GetFieldValue<NpgsqlPath>(0).Count, Is.EqualTo(10000));
+            reader.Close();
         }
 
         [Test]

@@ -651,7 +651,6 @@ namespace Npgsql
         /// <summary>
         /// Read a 32-bit integer from the given array in the correct byte order.
         /// </summary>
-        [GenerateAsync]
         public static Int32 ReadInt32(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(src, offset));
@@ -682,7 +681,6 @@ namespace Npgsql
         /// <summary>
         /// Read a 16-bit integer from the given array in the correct byte order.
         /// </summary>
-        [GenerateAsync]
         public static Int16 ReadInt16(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(src, offset));

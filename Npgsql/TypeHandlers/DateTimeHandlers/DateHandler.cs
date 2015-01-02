@@ -1,6 +1,7 @@
 ﻿using System;
 using Npgsql.Messages;
 using NpgsqlTypes;
+using System.Data;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
@@ -12,6 +13,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         static readonly string[] _pgNames = { "date" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Date };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.Date };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
 
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
@@ -42,6 +48,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             var binDate = buf.ReadInt32();
 
+            if (binDate == int.MaxValue)
+                return new NpgsqlDate(DateTime.MaxValue);
+            if (binDate == int.MinValue)
+                return new NpgsqlDate(DateTime.MinValue);
+
+            // TODO: Is this really necessary? binDate is the number of days since 2000-01-01 and NpgsqlDate stores the number of days since 0001-01-01,
+            // so we should just shift the integer by the number of days between 0001-01-01 and 2000-01-01?
+
             var julian = (uint)(binDate + PostgresEpochJdate);
             uint quad;
             uint extra;
@@ -63,6 +77,52 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var month = (quad + 10) % MonthsPerYear + 1;
 
             return new NpgsqlDate((int) year, (int) month, (int) day);
+        }
+
+        public override void WriteText(object value, NpgsqlTextWriter writer)
+        {
+            if (value is DateTime)
+            {
+                var dt = (DateTime)value;
+                if (dt == DateTime.MinValue)
+                    writer.WriteString("-infinity");
+                else if (dt == DateTime.MaxValue)
+                    writer.WriteString("infinity");
+                else
+                    writer.WriteString(dt.ToString("yyyy-MM-dd"));
+            }
+            else
+            {
+                // Handle NpgsqlDate and other possible types
+                writer.WriteString(value.ToString());
+            }
+        }
+
+        protected override int BinarySize(object value)
+        {
+            return 8;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            buf.WriteInt32(4);
+            
+            if (value is DateTime)
+            {
+                value = new NpgsqlDate((DateTime)value);
+            }
+            else if (value is string)
+            {
+                value = NpgsqlDate.Parse((string)value);
+            }
+
+            var dt = (NpgsqlDate)value;
+            if (dt == new NpgsqlDate(DateTime.MinValue))
+                buf.WriteInt32(int.MinValue);
+            else if (dt == new NpgsqlDate(DateTime.MaxValue))
+                buf.WriteInt32(int.MaxValue);
+            else
+                buf.WriteInt32(dt.DaysSinceEra - 730119);
         }
     }
 }

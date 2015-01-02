@@ -1,5 +1,7 @@
-﻿using System;
+﻿using NpgsqlTypes;
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 
@@ -17,5 +19,12 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "unknown" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return false; } }
+
+        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Unknown };
+        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        static readonly DbType?[] _dbTypes = { DbType.Object };
+        internal override DbType?[] DbTypes { get { return _dbTypes; } }
+
+        public override bool SupportsBinaryWrite { get { return false; } }
     }
 }
