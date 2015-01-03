@@ -269,7 +269,7 @@ namespace Npgsql
         {
             get
             {
-                return NpgsqlDbType != NpgsqlDbType.Unknown;
+                return npgsqldb_type != NpgsqlDbType.Unknown;
 
                 /*
                 // Prevents casts to be added for null values when they aren't needed.

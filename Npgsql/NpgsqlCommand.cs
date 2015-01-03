@@ -649,6 +649,7 @@ namespace Npgsql
             uint[] parameterTypeOIDs;
 
             var writer = new NpgsqlTextWriter(buf);
+            buf.WritePosition = 0; // The writer takes over the write position. We put 0 here to handle if an exception is later thrown.
 
             var processingResult = AppendCommandReplacingParameterValues(writer, query, false);
             if (processingResult != QueryProcessingResult.OK)
@@ -660,8 +661,6 @@ namespace Npgsql
                 bool space = false;
                 if (processingResult == QueryProcessingResult.MustRedoWithSimpleProtocol)
                 {
-                    buf.WritePosition = 0;
-                    
                     buf.WriteByte((byte)FrontEndMessageCode.Query);
                     buf.WriteInt32(0); // Will be updated
                     writer = new NpgsqlTextWriter(buf);
@@ -1214,7 +1213,7 @@ namespace Npgsql
                 dest.WriteSingleChar('\'');
             }
 
-            if (parameter.UseCast)
+            if ((!parameter.IsNull || parameter.NpgsqlDbType != NpgsqlDbType.Unknown) && parameter.UseCast && !(handler is Npgsql.TypeHandlers.UnknownTypeHandler))
             {
                 dest.WriteSingleChar(':');
                 dest.WriteSingleChar(':');

@@ -165,6 +165,8 @@ namespace Npgsql
                         var name = dr.GetString(0);
                         var oid = Convert.ToUInt32(dr[1]);
                         var typtype = dr.GetString(2)[0];
+                        var arrayOid = Convert.ToUInt32(dr[3]);
+
                         if (typtype == 'r')
                         {
                             rangeNames[oid] = name;
@@ -209,7 +211,6 @@ namespace Npgsql
                             }
                         }
 
-                        var arrayOid = Convert.ToUInt32(dr[3]);
                         if (arrayOid == 0) {
                             continue;
                         }
@@ -221,7 +222,12 @@ namespace Npgsql
                         var arrayHandler = CreateArrayHandler(handler, textDelimiter);
 
                         result._npgsqlDbTypeToOid[npgsqlDbType | NpgsqlDbType.Array] = arrayOid;
-                        result._typeToOid[arrayHandler.GetFieldType(null)] = arrayOid;
+                        result._oidToNpgsqlDbType[arrayOid] = npgsqlDbType | NpgsqlDbType.Array;
+
+                        var elementFieldType = handler.GetFieldType();
+                        result._typeToOid[elementFieldType.MakeArrayType()] = arrayOid;
+                        for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                            result._typeToOid[elementFieldType.MakeArrayType(i)] = arrayOid;
 
                         // arrayHandler.Oid = oid;
                         result[arrayOid] = arrayHandler;
@@ -247,8 +253,15 @@ namespace Npgsql
 
                         result._npgsqlDbTypeToOid[NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid]] = oid;
                         result._npgsqlDbTypeToOid[NpgsqlDbType.Array | NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid]] = arrayOfRangeOid;
+                        result._oidToNpgsqlDbType[oid] = NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid];
+                        result._oidToNpgsqlDbType[arrayOfRangeOid] = NpgsqlDbType.Array | NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid];
                         result._typeToOid[rangeHandler.GetFieldType()] = oid;
                         result._typeToOid[arrayRangeHandler.GetFieldType(null)] = oid;
+
+                        var rangeFieldType = rangeHandler.GetFieldType();
+                        result._typeToOid[rangeFieldType.MakeArrayType()] = arrayOfRangeOid;
+                        for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                            result._typeToOid[rangeFieldType.MakeArrayType(i)] = arrayOfRangeOid;
 
                         result[oid] = rangeHandler;
                         result._rangeOidToElementOid[oid] = elementOid;

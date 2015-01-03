@@ -511,7 +511,7 @@ namespace Npgsql.TypeHandlers
 
         public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
         {
-            return ElementHandler.GetCastName(size, npgsqlDbType) + "[]";
+            return ElementHandler.GetCastName(size, npgsqlDbType & ~NpgsqlDbType.Array) + "[]";
         }
 
         public override void WriteText(object value, NpgsqlTextWriter writer)

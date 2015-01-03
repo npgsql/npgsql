@@ -95,5 +95,18 @@ namespace Npgsql.TypeHandlers
             row.DecodedPosInColumn += charsRead;
             return charsRead;
         }
+
+        public override int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        {
+            var size = Encoding.UTF8.GetByteCount(value.ToString());
+            sizeArr.Add(size);
+            return size;
+        }
+
+        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        {
+            var size = sizeArr[sizeArrPos++];
+            buf.WriteString(value.ToString(), size);
+        }
     }
 }
