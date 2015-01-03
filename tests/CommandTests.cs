@@ -918,7 +918,7 @@ namespace NpgsqlTests
                                 select 4 as result;
                               ' language 'sql'");
             //NpgsqlConnection conn = new NpgsqlConnection(ConnectionString);
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", Conn);
+            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType", Conn);
             command.CommandType = CommandType.StoredProcedure;
             NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
             p.Value = 2;
@@ -948,7 +948,7 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION ambiguousParameterType(int2, int4, int8, text, varchar(10), char(5)) returns int4 as '
                                 select 4 as result;
                               ' language 'sql'");
-            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType(:a, :b, :c, :d, :e, :f)", Conn);
+            NpgsqlCommand command = new NpgsqlCommand("ambiguousParameterType", Conn);
             command.CommandType = CommandType.StoredProcedure;
             NpgsqlParameter p = new NpgsqlParameter("a", DbType.Int16);
             p.Value = 2;
