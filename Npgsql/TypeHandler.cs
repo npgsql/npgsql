@@ -76,6 +76,13 @@ namespace Npgsql
         /// </summary>
         public virtual bool CanReadFromSocket { get { return false; } }
 
+        /// <summary>
+        /// If true, parameters with no explicit DbType/NpgsqlDbType but with values that has the same type as
+        /// the field type of this handler, this handler is automatically chosen when sending values to the database.
+        /// The default is true.
+        /// </summary>
+        public virtual bool AllowAutoInferring { get { return true; } }
+
         protected TypeHandler()
         {
             Oid = 0;

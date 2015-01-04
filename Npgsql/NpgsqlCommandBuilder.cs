@@ -194,9 +194,9 @@ namespace Npgsql
                         }
                         if (types == null)
                         {
-                            if (rdr.IsDBNull(1) || rdr.GetString(1) == "")
+                            if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
                                 return;  // Parameterless function
-                            types = rdr.GetString(1).Split().Select(uint.Parse).ToArray();
+                            types = rdr.GetFieldValue<uint[]>(1);
                         }
                     }
                     else 

@@ -106,7 +106,6 @@ namespace Npgsql
 
         internal NpgsqlDbType GetNpgsqlDbTypeFromOid(uint oid)
         {
-            Contract.Assume(oid != 0, "Invalid oid for getting NpgsqlDbType from oid");
             NpgsqlDbType npgsqlDbType;
             if (_oidToNpgsqlDbType.TryGetValue(oid, out npgsqlDbType))
                 return npgsqlDbType;
@@ -237,7 +236,7 @@ namespace Npgsql
                                 result._oidToNpgsqlDbType[oid] = npgsqlDbType;
 
                                 // Take the first occurance of the type
-                                if (!result._typeToOid.ContainsKey(handler.GetFieldType()))
+                                if (handler.AllowAutoInferring && !result._typeToOid.ContainsKey(handler.GetFieldType()))
                                 {
                                     result._typeToOid[handler.GetFieldType()] = oid;
                                 }
@@ -270,10 +269,13 @@ namespace Npgsql
                         result._npgsqlDbTypeToOid[npgsqlDbType | NpgsqlDbType.Array] = arrayOid;
                         result._oidToNpgsqlDbType[arrayOid] = npgsqlDbType | NpgsqlDbType.Array;
 
-                        var elementFieldType = handler.GetFieldType();
-                        result._typeToOid[elementFieldType.MakeArrayType()] = arrayOid;
-                        for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                            result._typeToOid[elementFieldType.MakeArrayType(i)] = arrayOid;
+                        if (arrayHandler.AllowAutoInferring)
+                        {
+                            var elementFieldType = handler.GetFieldType();
+                            result._typeToOid[elementFieldType.MakeArrayType()] = arrayOid;
+                            for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                                result._typeToOid[elementFieldType.MakeArrayType(i)] = arrayOid;
+                        }
 
                         // arrayHandler.Oid = oid;
                         result[arrayOid] = arrayHandler;
@@ -301,13 +303,19 @@ namespace Npgsql
                         result._npgsqlDbTypeToOid[NpgsqlDbType.Array | NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid]] = arrayOfRangeOid;
                         result._oidToNpgsqlDbType[oid] = NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid];
                         result._oidToNpgsqlDbType[arrayOfRangeOid] = NpgsqlDbType.Array | NpgsqlDbType.Range | result._oidToNpgsqlDbType[elementOid];
-                        result._typeToOid[rangeHandler.GetFieldType()] = oid;
-                        result._typeToOid[arrayRangeHandler.GetFieldType(null)] = oid;
+                        if (rangeHandler.AllowAutoInferring)
+                        {
+                            result._typeToOid[rangeHandler.GetFieldType()] = oid;
+                            result._typeToOid[arrayRangeHandler.GetFieldType(null)] = oid;
+                        }
 
-                        var rangeFieldType = rangeHandler.GetFieldType();
-                        result._typeToOid[rangeFieldType.MakeArrayType()] = arrayOfRangeOid;
-                        for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                            result._typeToOid[rangeFieldType.MakeArrayType(i)] = arrayOfRangeOid;
+                        if (arrayRangeHandler.AllowAutoInferring)
+                        {
+                            var rangeFieldType = rangeHandler.GetFieldType();
+                            result._typeToOid[rangeFieldType.MakeArrayType()] = arrayOfRangeOid;
+                            for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                                result._typeToOid[rangeFieldType.MakeArrayType(i)] = arrayOfRangeOid;
+                        }
 
                         result[oid] = rangeHandler;
                         result._rangeOidToElementOid[oid] = elementOid;
