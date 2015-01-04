@@ -29,6 +29,7 @@ namespace Npgsql
         internal byte[] _buf;
         int _filledBytes;
         readonly Decoder _textDecoder;
+        readonly Encoder _textEncoder;
 
         readonly byte[] _workspace;
 
@@ -64,6 +65,7 @@ namespace Npgsql
             _buf = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
+            _textEncoder = TextEncoding.GetEncoder();
             _tempCharBuf = new char[1024];
             _workspace = new byte[8];
         }
@@ -746,6 +748,22 @@ namespace Npgsql
             _buf[_writePosition++] = (byte)i;
 
             return this;
+        }
+
+        internal void WriteStringSimple(string s)
+        {
+            Contract.Requires(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
+
+            WritePosition += TextEncoding.GetBytes(s, 0, s.Length, _buf, WritePosition);
+        }
+
+        internal void WriteStringPartial(char[] chars, int charIndex, int charCount,
+                                         bool flush, out int charsUsed, out bool completed)
+        {
+            int bytesUsed;
+            _textEncoder.Convert(chars, charIndex, charCount, _buf, WritePosition, WriteSpaceLeft,
+                                 flush, out charsUsed, out bytesUsed, out completed);
+            WritePosition += bytesUsed;
         }
 
         [GenerateAsync]

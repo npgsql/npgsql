@@ -42,6 +42,7 @@ using Npgsql.Localization;
 using Npgsql.Messages;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
+using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
@@ -448,7 +449,9 @@ namespace Npgsql
             UnPrepare();
             using (_connector.BlockNotifications())
             {
-                WriteQuery(true, false);
+                _planName = _connector.NextPlanName();
+                PrepareParseAndDescribeMessages(_planName);
+                _connector.SendAllMessages();
             }
         }
 
@@ -719,18 +722,10 @@ namespace Npgsql
             if (prepare || onlySchema)
             {
                 // Only send Describe statement + Sync
-
-                buf.EnsureWrite(1 + 4 + 1 + _planName.Length + 1 + 1 + 4);
-                buf.WriteByte((byte)FrontendMessageCode.Describe);
-                buf.WriteInt32(4 + 1 + _planName.Length + 1);
-                buf.WriteByte((byte)FrontendMessageCode.DescribeStatement);
-                if (_planName != "")
-                    buf.WriteString(_planName, _planName.Length);
-                buf.WriteByte(0);
-
-                buf.WriteByte((byte)FrontendMessageCode.Sync);
-                buf.WriteInt32(4);
-
+                var describeMessage = new DescribeMessage(DescribeType.Statement, _planName);
+                describeMessage.Prepare();
+                describeMessage.Write(buf);
+                SyncMessage.Instance.Write(buf);
                 buf.Flush();
 
                 _preparedCommandText = savedQueryCopy;
@@ -739,26 +734,18 @@ namespace Npgsql
             {
                 SendBind(buf, numInputParameters, parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr);
 
-                buf.EnsureWrite(
-                    1 + 4 + 1 + 1 +
-                    1 + 4 + 1 + 4 +
-                    1 + 4);
-
                 // Describe
-                buf.WriteByte((byte)FrontendMessageCode.Describe);
-                buf.WriteInt32(4 + 1 + 1);
-                buf.WriteByte((byte)FrontendMessageCode.DescribePortal);
-                buf.WriteByte(0); // Empty portal name
+                var describeMessage = new DescribeMessage(DescribeType.Portal, "");
+                describeMessage.Prepare();
+                describeMessage.Write(buf);
 
                 // Execute
-                buf.WriteByte((byte)FrontendMessageCode.Execute);
-                buf.WriteInt32(4 + 1 + 4);
-                buf.WriteByte(0); // Empty portal name
-                buf.WriteInt32(0); // Maximum number of rows, 0 = no limit
+                var executeMessage = new ExecuteMessage();
+                executeMessage.Prepare();
+                executeMessage.Write(buf);
 
                 // Sync
-                buf.WriteByte((byte)FrontendMessageCode.Sync);
-                buf.WriteInt32(4);
+                SyncMessage.Instance.Write(buf);
 
                 buf.Flush();
             }
@@ -1651,7 +1638,7 @@ namespace Npgsql
         [GenerateAsync]
         object ExecuteScalarInternal()
         {
-            using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+            using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
             {
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
@@ -1788,6 +1775,130 @@ namespace Npgsql
         }
 
         [GenerateAsync]
+        internal NpgsqlDataReader GetReader(CommandBehavior behavior = CommandBehavior.Default)
+        {
+            CheckConnectionState();
+
+            // TODO: Actual checks...
+            Contract.Assert(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
+            Contract.Assert(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
+
+            NpgsqlDataReader reader = null;
+
+            if (_prepared == PrepareStatus.NeedsPrepare)
+                Prepare();
+
+            PrepareMessageChain(behavior);
+
+            // Block the notification thread before writing anything to the wire.
+            _notificationBlock = _connector.BlockNotifications();
+            //using (_connector.BlockNotificationThread())
+            try
+            {
+                State = CommandState.InProgress;
+
+                // TODO: Can this be combined into the message chain?
+                _connector.SetBackendCommandTimeout(CommandTimeout);
+                _connector.SendAllMessages();
+
+                BackendMessage msg;
+                do
+                {
+                    msg = _connector.ReadSingleMessage();
+                } while (!ProcessMessage(msg, behavior));
+
+                return new NpgsqlDataReader(this, behavior, _rowDescription);
+            }
+            catch (NpgsqlException)
+            {
+                _connector.State = ConnectorState.Ready;
+                throw;
+            }
+            finally
+            {
+                if (reader == null && _notificationBlock != null)
+                {
+                    _notificationBlock.Dispose();
+                }
+            }
+        }
+
+        bool ProcessMessage(BackendMessage msg, CommandBehavior behavior)
+        {
+            switch (msg.Code)
+            {
+                case BackendMessageCode.ParseComplete:
+                    Contract.Assume(!IsPrepared);
+                    return false;
+                case BackendMessageCode.ParameterDescription:
+                    return false;
+                case BackendMessageCode.RowDescription:
+                    Contract.Assume(!IsPrepared);
+                    Contract.Assert(_rowDescription == null);
+                    _rowDescription = (RowDescriptionMessage)msg;
+                    return false;
+                case BackendMessageCode.NoData:
+                    Contract.Assume(!IsPrepared);
+                    Contract.Assert(_rowDescription == null);
+                    return false;
+                case BackendMessageCode.BindComplete:
+                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
+                    return true;
+                case BackendMessageCode.ReadyForQuery:
+                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
+                    throw new NotImplementedException("SchemaOnly");
+                default:
+                    throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
+            }            
+        }
+
+        void PrepareParseAndDescribeMessages(string planName="")
+        {
+            var rewrittenQuery = RewriteSqlForCommandType();
+            var queries = ProcessRawQueryText(rewrittenQuery);
+            Contract.Assert(queries.Count == 1 || _parameters.All(p => !p.IsInputDirection), "Multiquery with parameters");
+            if (queries.Count > 1)
+            {
+                throw new NotImplementedException("Multiqueries");
+            }
+
+            var parseMessage = new ParseMessage(queries[0], planName);
+            var hasInputParams = _parameters.Any(p => p.IsInputDirection);
+
+            if (hasInputParams)
+            {
+                foreach (var inputParam in _parameters.Where(p => p.IsInputDirection))
+                {
+                    parseMessage.ParameterTypeOIDs.Add(inputParam.GetTypeOid(_connector.TypeHandlerRegistry));
+                }
+            }
+            _connector.AddMessage(parseMessage);
+            _connector.AddMessage(new DescribeMessage(DescribeType.Statement, planName));
+        }
+
+        void PrepareMessageChain(CommandBehavior behavior)
+        {
+            if (_prepared == PrepareStatus.NotPrepared) {
+                PrepareParseAndDescribeMessages();
+            }
+
+            if ((behavior & CommandBehavior.SchemaOnly) == 0)
+            {
+                // In SchemaOnly mode we skip over Bind and Execute
+                var bindMessage = new BindMessage();
+                bindMessage.Prepare();
+                _connector.AddMessage(bindMessage);
+                _connector.AddMessage(new ExecuteMessage(
+                    _prepared == PrepareStatus.Prepared ? _planName : "",
+                    (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0
+                ));
+            }
+
+            _connector.AddMessage(SyncMessage.Instance);
+        }
+
+#if OLD
+        [GenerateAsync]
         internal NpgsqlDataReader GetReader(CommandBehavior cb = CommandBehavior.Default)
         {
             CheckConnectionState();
@@ -1844,8 +1955,13 @@ namespace Npgsql
                     SetUpBind(parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr);
                     SendBind(_connector.Buffer, numInputParameters, parameterTypeOIDs, parameterTexts, parameterSizes, formatCodes, sizeArr, _resultFormatCodes);
 
-                    _connector.SendExecute();
-                    _connector.SendSync();
+                    var executeMessage = new ExecuteMessage();
+                    executeMessage.Prepare();
+                    executeMessage.Write(_connector.Buffer);
+
+                    SyncMessage.Instance.Write(_connector.Buffer);
+
+                    _connector.Buffer.Flush();
 
                     // Tell to mediator what command is being sent.
                     _connector.Mediator.SetSqlSent(_preparedCommandText, NpgsqlMediator.SQLSentType.Execute);
@@ -1877,7 +1993,7 @@ namespace Npgsql
                 }
             }
         }
-
+#endif
         #endregion
 
         #region Transactions

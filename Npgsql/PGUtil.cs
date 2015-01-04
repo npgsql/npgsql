@@ -86,22 +86,6 @@ namespace Npgsql
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
-        ///<summary>
-        /// This method takes a ProtocolVersion and returns an integer
-        /// version number that the Postgres backend will recognize in a
-        /// startup packet.
-        /// </summary>
-        internal static Int32 ConvertProtocolVersion(ProtocolVersion Ver)
-        {
-            switch (Ver)
-            {
-                case ProtocolVersion.Version3:
-                    return (int) ServerVersionCode.ProtocolVersion3;
-            }
-
-            throw new ArgumentOutOfRangeException();
-        }
-
         /// <summary>
         /// This method takes a version string as returned by SELECT VERSION() and returns
         /// a valid version string ("7.2.2" for example).
@@ -794,14 +778,7 @@ namespace Npgsql
         Version3 = 3
     }
 
-    public enum ServerVersionCode
-    {
-        ProtocolVersion2 = 2 << 16, // 131072
-        ProtocolVersion3 = 3 << 16 // 196608
-    }
-
-    internal enum FormatCode :
-        short
+    internal enum FormatCode : short
     {
         Text = 0,
         Binary = 1

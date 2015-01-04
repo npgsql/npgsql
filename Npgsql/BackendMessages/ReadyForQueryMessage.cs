@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Npgsql.Messages
 {
-    internal class ReadyForQueryMessage : ServerMessage
+    internal class ReadyForQueryMessage : BackendMessage
     {
         internal override BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
 

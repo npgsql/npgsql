@@ -88,7 +88,7 @@ namespace Npgsql
             }
 
             const string query = @"SELECT typname, pg_type.oid, typtype, typarray, typdelim, rngsubtype " +
-                                 @"FROM pg_type LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid)" +
+                                 @"FROM pg_type LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid) " +
                                  @"WHERE typname in ({0}) OR typtype = 'r' ORDER BY typtype";
             var parameterizedQuery = String.Format(query, inList);
             using (var command = new NpgsqlCommand(parameterizedQuery, connector))

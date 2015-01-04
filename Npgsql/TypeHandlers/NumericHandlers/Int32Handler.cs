@@ -15,7 +15,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     internal class Int32Handler : TypeHandler<int>,
         ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,
-    ITypeHandler<string>
+        ITypeHandler<string>
     {
         static readonly string[] _pgNames = { "int4" };
         internal override string[] PgNames { get { return _pgNames; } }

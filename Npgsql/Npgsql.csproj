@@ -293,18 +293,28 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Messages\DataRowNonSequentialMessage.cs" />
-    <Compile Include="Messages\NoDataMessage.cs" />
-    <Compile Include="Messages\ParameterDescriptionMessage.cs" />
-    <Compile Include="Messages\CommandCompleteMessage.cs" />
-    <Compile Include="Messages\DataRowMessage.cs" />
-    <Compile Include="Messages\EmptyQueryMessage.cs" />
-    <Compile Include="Messages\BindCompleteMessage.cs" />
-    <Compile Include="Messages\AuthenticationMessages.cs" />
-    <Compile Include="Messages\ReadyForQueryMessage.cs" />
-    <Compile Include="Messages\ParseCompleteMessage.cs" />
-    <Compile Include="Messages\RowDescriptionMessage.cs" />
-    <Compile Include="Messages\DataRowSequentialMessage.cs" />
+    <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
+    <Compile Include="BackendMessages\NoDataMessage.cs" />
+    <Compile Include="BackendMessages\ParameterDescriptionMessage.cs" />
+    <Compile Include="BackendMessages\CommandCompleteMessage.cs" />
+    <Compile Include="BackendMessages\DataRowMessage.cs" />
+    <Compile Include="BackendMessages\EmptyQueryMessage.cs" />
+    <Compile Include="BackendMessages\BindCompleteMessage.cs" />
+    <Compile Include="BackendMessages\AuthenticationMessages.cs" />
+    <Compile Include="BackendMessages\ReadyForQueryMessage.cs" />
+    <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
+    <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
+    <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="FrontendMessages\CancelRequestMessage.cs" />
+    <Compile Include="FrontendMessages\ExecuteMessage.cs" />
+    <Compile Include="FrontendMessages\DescribeMessage.cs" />
+    <Compile Include="FrontendMessages\CloseMessage.cs" />
+    <Compile Include="FrontendMessages\BindMessage.cs" />
+    <Compile Include="FrontendMessages\PasswordMessage.cs" />
+    <Compile Include="FrontendMessages\SyncMessage.cs" />
+    <Compile Include="FrontendMessages\FlushMessage.cs" />
+    <Compile Include="FrontendMessages\StartupMessage.cs" />
+    <Compile Include="FrontendMessages\ParseMessage.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlBuffer.Async.cs">
       <DependentUpon>NpgsqlBuffer.cs</DependentUpon>

@@ -28,18 +28,62 @@
 // Keep the xml comment warning quiet for this file.
 
 using System;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Npgsql
 {
     /// <summary>
-    /// Marker interface which identifies a class which represents part of
-    /// a response from the server.
+    /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal abstract class ServerMessage
+    internal abstract class BackendMessage
     {
         internal abstract BackendMessageCode Code { get; }
+    }
+
+    /// <summary>
+    /// Base class for all classes which represent a message sent to the PostgreSQL backend.
+    /// </summary>
+    internal abstract class FrontendMessage
+    {
+        /// <summary>
+        /// Called to prepare a message before writing to the buffer. Maybe through validation exceptions.
+        /// </summary>
+        internal virtual void Prepare() { }
+    }
+
+    /// <summary>
+    /// Represents a simple frontend message which is typically small and fits well within
+    /// the write buffer. The message is first queries for the number of bytes it requires,
+    /// and then writes itself out.
+    /// </summary>
+    internal abstract class SimpleFrontendMessage : FrontendMessage
+    {
+        /// <summary>
+        /// Returns the number of bytes needed to write this message. Can only be called after
+        /// <see cref="FrontendMessage.Prepare"/> has been called.
+        /// </summary>
+        internal abstract int Length { get; }
+
+        /// <summary>
+        /// Writes the message contents into the buffer. 
+        /// </summary>
+        internal abstract void Write(NpgsqlBuffer buf);
+    }
+
+    /// <summary>
+    /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
+    /// writing itself out.
+    /// </summary>
+    internal abstract class ComplexFrontendMessage : FrontendMessage
+    {
+        /// <param name="buf">the buffer into which to write the message.</param>
+        /// <returns>
+        /// Whether there was enough space in the buffer to contain the entire message.
+        /// If false, the buffer should be flushed and write should be called again.
+        /// </returns>
+        internal abstract bool Write(NpgsqlBuffer buf);
     }
 
     /// <summary>
@@ -50,8 +94,6 @@ namespace Npgsql
         void WriteToStream(Stream outputStream);
         Task WriteToStreamAsync(Stream outputStream);
     }
-
-    #pragma warning disable 1591
 
     internal enum FrontendMessageCode : byte
     {
@@ -112,5 +154,9 @@ namespace Npgsql
         CloseComplete = '3'
     }
 
-    #pragma warning restore 1591
+    enum DescribeType : byte
+    {
+        Statement = (byte)'S',
+        Portal = (byte)'P'
+    }
 }

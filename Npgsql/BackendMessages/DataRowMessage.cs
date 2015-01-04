@@ -9,7 +9,7 @@ using Npgsql.TypeHandlers;
 
 namespace Npgsql.Messages
 {
-    abstract class DataRowMessage : ServerMessage
+    abstract class DataRowMessage : BackendMessage
     {
         protected internal NpgsqlBuffer Buffer { get; protected set; }
 

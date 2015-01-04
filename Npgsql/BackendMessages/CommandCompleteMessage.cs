@@ -6,7 +6,7 @@ using Common.Logging;
 
 namespace Npgsql.Messages
 {
-    internal class CommandCompleteMessage : ServerMessage
+    internal class CommandCompleteMessage : BackendMessage
     {
         internal uint? LastInsertedOID { get; private set; }
         internal uint? RowsAffected { get; private set; }

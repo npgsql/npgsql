@@ -6,11 +6,11 @@ using System.Text;
 
 namespace Npgsql.Messages
 {
-    internal abstract class AuthenticationRequestMessage : ServerMessage
+    internal abstract class AuthenticationRequestMessage : BackendMessage
     {
         internal override BackendMessageCode Code { get { return BackendMessageCode.AuthenticationRequest; } }
         internal abstract AuthenticationRequestType AuthRequestType { get; }
-    }   
+    }
 
     internal class AuthenticationOkMessage : AuthenticationRequestMessage
     {

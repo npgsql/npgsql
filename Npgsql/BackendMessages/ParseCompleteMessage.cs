@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Npgsql.Messages
 {
-    internal class ParseCompleteMessage : ServerMessage
+    internal class ParseCompleteMessage : BackendMessage
     {
         internal override BackendMessageCode Code { get { return BackendMessageCode.ParseComplete; } }
         internal static readonly ParseCompleteMessage Instance = new ParseCompleteMessage();

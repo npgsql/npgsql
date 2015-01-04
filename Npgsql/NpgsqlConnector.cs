@@ -43,6 +43,7 @@ using Npgsql.Messages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Text;
+using Npgsql.FrontendMessages;
 using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 
 namespace Npgsql
@@ -118,6 +119,11 @@ namespace Npgsql
             get { return NativeToBackendTypeConverterOptions.OidToNameMapping; }
         }
 
+        /// <summary>
+        /// A chain of messages to be sent to the backend.
+        /// </summary>
+        List<FrontendMessage> _messagesToSend;
+
         internal NpgsqlDataReader CurrentReader;
 
         /// <summary>
@@ -175,6 +181,7 @@ namespace Npgsql
             BackendParams = new Dictionary<string, string>();
             Mediator = new NpgsqlMediator();
             NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
+            _messagesToSend = new List<FrontendMessage>();
             _planIndex = 0;
             _portalIndex = 0;
             _deferredCommands = new List<string>();
@@ -345,7 +352,26 @@ namespace Npgsql
             RawOpen(connectTimeRemaining);
             try
             {
-                SendStartup(Database, UserName, _settings);
+                var startupMessage = new StartupMessage(Database, UserName);
+                if (!string.IsNullOrEmpty(_settings.ApplicationName)) {
+                    startupMessage.ApplicationName = _settings.ApplicationName;
+                }
+                if (!string.IsNullOrEmpty(_settings.SearchPath)) {
+                    startupMessage.SearchPath = _settings.SearchPath;
+                }
+
+                var len = startupMessage.Length;
+                if (len >= Buffer.Size) {  // Should really never happen, just in case
+                    throw new Exception(String.Format("Buffer ({0} bytes) not big enough to contain Startup message ({1} bytes)", Buffer.Size, len));
+                }
+                startupMessage.Prepare();
+                if (startupMessage.Length > Buffer.Size) {
+                    throw new Exception("Startup message bigger than buffer");
+                }
+                startupMessage.Write(Buffer);
+                // TODO: Possible optimization: send settings like ssl_renegotiation in the same packet,
+                // reduce one roundtrip
+                Buffer.Flush();
                 HandleAuthentication();
             }
             catch
@@ -543,14 +569,15 @@ namespace Npgsql
 
         void ProcessAuthenticationMessage(AuthenticationRequestMessage msg)
         {
+            byte[] password;
             switch (msg.AuthRequestType)
             {
                 case AuthenticationRequestType.AuthenticationOk:
                     return;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
-                    SendPasswordMessage(PGUtil.NullTerminateArray(Password));
-                    return;
+                    password = PGUtil.NullTerminateArray(Password);
+                    break;
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
                     // Now do the "MD5-Thing"
@@ -596,8 +623,8 @@ namespace Npgsql
                         sb.Append(b.ToString("x2"));
                     }
 
-                    SendPasswordMessage(PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString())));
-                    return;
+                    password = PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                    break;
 
                 case AuthenticationRequestType.AuthenticationGSS:
                     if (!IntegratedSecurity) {
@@ -605,8 +632,8 @@ namespace Npgsql
                     }
                     // For GSSAPI we have to use the supplied hostname
                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                    SendPasswordMessage(SSPI.Continue(null));
-                    return;
+                    password = SSPI.Continue(null);
+                    break;
 
                 case AuthenticationRequestType.AuthenticationSSPI:
                     if (!IntegratedSecurity) {
@@ -615,201 +642,81 @@ namespace Npgsql
                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                    SendPasswordMessage(SSPI.Continue(null));
-                    return;
+                    password = SSPI.Continue(null);
+                    break;
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
                     var passwdRead = SSPI.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
-                    if (passwdRead.Length != 0) {
-                        SendPasswordMessage(passwdRead);
+                    if (passwdRead.Length != 0)
+                    {
+                        password = passwdRead;
+                        break;
                     }
                     return;
 
                 default:
                     throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, msg.AuthRequestType));
             }
-        }
-
-        #endregion
-
-        #region Startup
-
-        internal void SendStartup(string databaseName, String username, NpgsqlConnectionStringBuilder settings)
-        {
-            var parameters = new Dictionary<String, String> {
-                { "database",           databaseName },
-                { "user",               username     },
-                { "DateStyle",          "ISO"        },
-                { "client_encoding",    "UTF8"       },
-                { "lc_monetary",        "C"          },
-            };
-
-            if (!string.IsNullOrEmpty(settings.ApplicationName)) {
-                parameters.Add("application_name", settings.ApplicationName);
-            }
-
-            if (!string.IsNullOrEmpty(settings.SearchPath)) {
-                parameters.Add("search_path", settings.SearchPath);
-            }
-
-            var encodedParams = parameters.ToDictionary(kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Key),
-                                                        kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Value));
-
-            var packetSize = 4 + 4 + 1 + encodedParams
-                .Select(kv => kv.Key.Length + kv.Value.Length + 2)
-                .Sum();
-
-            Buffer
-                .WriteInt32(packetSize)
-                .WriteInt32(PGUtil.ConvertProtocolVersion(ProtocolVersion.Version3));
-
-            foreach (var kv in encodedParams)
-            {
-                Buffer
-                    .WriteBytesNullTerminated(kv.Key)
-                    .WriteBytesNullTerminated(kv.Value);
-            }
-
-            Buffer.WriteByte(0);
+            var passwordMessage = new PasswordMessage(password);
+            passwordMessage.Prepare();
+            passwordMessage.Write(Buffer);
             Buffer.Flush();
         }
 
-        #endregion Startup
+        #endregion
 
-        #region Bind
-#if FALSE
-        [GenerateAsync]
-        internal void SendBind(string portalName, string statementName, NpgsqlParameterCollection parameters, short[] resultFormatCodes)
+        internal void AddMessage(FrontendMessage msg)
         {
-            _log.Debug("Sending bind message");
+            _messagesToSend.Add(msg);
+        }
 
-            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
-            var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
-
-            // When sending format codes, the list can be optimized if all format codes are the same.
-            // If all are text, we send an empty list.
-            // If all are binary, we send a list with length one, containing a 1 (indicates binary).
-            // Otherwise, we send the whole list.
-
-            var headerLen =
-                    4 + // Message length (32 bits)
-                    portalNameBytes.Length + 1 + // Portal name + null terminator
-                    statementNameBytes.Length + 1 + // Statement name + null terminator
-                    2; // Parameter format code array length (16 bits)
-
-            var len = headerLen;
-            var numInputParameters = 0;
-            var allSameFormatCode = -1;
-            for (var i = 0; i < parameters.Count; i++)
+        [GenerateAsync]
+        internal void SendAllMessages()
+        {
+            try
             {
-                if (parameters[i].IsInputDirection)
+                foreach (var msg in _messagesToSend)
                 {
-                    numInputParameters++;
-                    len += 4; // Length of the length
-                    if (parameters[i].BoundValue != null)
-                    {
-                        len += parameters[i].BoundValue.Length;
-                    }
-                    if (allSameFormatCode == -1)
-                    {
-                        allSameFormatCode = parameters[i].BoundFormatCode;
-                    }
-                    else if (allSameFormatCode != parameters[i].BoundFormatCode)
-                    {
-                        allSameFormatCode = -2;
-                    }
+                    SendMessage(msg);
                 }
+                Buffer.Flush();
             }
-
-            len +=
-                (allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters) * 2 + // Parameter format code array (16 bits per code)
-                2; // Parameter value array length (16 bits)
-
-            var allSameResultFormatCode = -1;
-            for (var i = 0; i < resultFormatCodes.Length; i++)
+            finally
             {
-                if (allSameResultFormatCode == -1)
-                {
-                    allSameResultFormatCode = resultFormatCodes[i];
-                }
-                else if (allSameResultFormatCode != resultFormatCodes[i])
-                {
-                    allSameResultFormatCode = -2;
-                }
-            }
-
-            len += 
-                2 + // Length of result format code array
-                (allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length) * 2; // Result format code array (16 bits per code)
-
-            Buffer
-                .EnsureWrite(headerLen + 2)
-                .WriteByte((byte)FrontEndMessageCode.Bind)
-                .WriteInt32(len)
-                .WriteBytesNullTerminated(portalNameBytes)
-                .WriteBytesNullTerminated(statementNameBytes)
-                .WriteInt16((short)(allSameFormatCode >= 0 ? allSameFormatCode : numInputParameters));
-
-            if (parameters.Count > 0)
-            {
-                if (allSameFormatCode == 1)
-                {
-                    Buffer.WriteInt16((short)FormatCode.Binary);
-                }
-                else if (allSameFormatCode == -2)
-                {
-                    for (var i = 0; i < parameters.Count; i++)
-                    {
-                        if (parameters[i].IsInputDirection)
-                        {
-                            Buffer.EnsuredWriteInt16(parameters[i].BoundFormatCode);
-                        }
-                    }
-                }
-
-                Buffer.EnsuredWriteInt16((short)numInputParameters);
-
-                for (var i = 0; i < parameters.Count; i++)
-                {
-                    if (parameters[i].IsInputDirection)
-                    {
-                        var value = parameters[i].BoundValue;
-                        if (value == null)
-                        {
-                            Buffer.EnsuredWriteInt32(-1);
-                        }
-                        else
-                        {
-                            Buffer
-                                .EnsuredWriteInt32(value.Length)
-                                .WriteBytes(value);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                Buffer.WriteInt16(0); // Number of parameter values sent
-            }
-
-            Buffer.EnsureWrite(4);
-            Buffer.WriteInt16((short)(allSameResultFormatCode >= 0 ? allSameResultFormatCode : resultFormatCodes.Length));
-
-            if (allSameResultFormatCode == 1)
-            {
-                Buffer.WriteInt16((short)FormatCode.Binary);
-            }
-            else if (allSameResultFormatCode == -2)
-            {
-                foreach (var code in resultFormatCodes)
-                {
-                    Buffer.EnsuredWriteInt16(code);
-                }
+                _messagesToSend.Clear();
             }
         }
-#endif
 
-        #endregion
+        [GenerateAsync]
+        internal void SendMessage(FrontendMessage msg)
+        {
+            _log.DebugFormat("Sending: {0}", msg);
+
+            var asSimple = msg as SimpleFrontendMessage;
+            if (asSimple != null)
+            {
+                if (asSimple.Length > Buffer.WriteSpaceLeft)
+                {
+                    Buffer.Flush();
+                }
+                Contract.Assert(Buffer.WriteSpaceLeft >= asSimple.Length);
+                asSimple.Write(Buffer);
+                return;
+            }
+
+            var asComplex = msg as ComplexFrontendMessage;
+            if (asComplex != null)
+            {
+                while (!asComplex.Write(Buffer))
+                {
+                    Buffer.Flush();
+                }
+                return;
+            }
+
+            throw PGUtil.ThrowIfReached();            
+        }
+
 
         #region Query
 
@@ -847,122 +754,9 @@ namespace Npgsql
 
         #endregion
 
-        #region Simple outgoing messages
-
-        [GenerateAsync]
-        internal void SendPasswordMessage(byte[] password)
-        {
-            _log.Debug("Sending authenticate message");
-
-            Buffer
-                .WriteByte((byte)FrontendMessageCode.PasswordMessage)
-                .WriteInt32(4 + password.Length);
-            Buffer.WriteBytes(password);
-            Buffer.Flush();
-        }
-
-        [GenerateAsync]
-        internal void SendParse(string statementName, byte[] queryString, uint[] parameterIDs)
-        {
-            _log.DebugFormat("Sending parse message: {0}", Encoding.UTF8.GetString(queryString));
-
-            var prepareNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
-            //Buffer.Write(ASCIIByteArrays.ParseMessageCode, 0, 1);
-
-            // message length =
-            // Int32 self
-            // name of prepared statement + 1 null string terminator +
-            // query string (inclusive 1 null string terminator)
-            // + Int16
-            // + Int32 * number of parameters.
-            var messageLength = 4 + prepareNameBytes.Length + 1 + queryString.Length +
-                                  2 + (parameterIDs.Length * 4);
-
-            Buffer
-                .WriteByte((byte)FrontendMessageCode.Parse)
-                .WriteInt32(messageLength)
-                .WriteBytesNullTerminated(prepareNameBytes)
-                .WriteBytes(queryString)
-                .EnsuredWriteInt16((short)parameterIDs.Length);
-
-            for (var i = 0; i < parameterIDs.Length; i++) {
-                Buffer.EnsuredWriteInt32((int)parameterIDs[i]);
-            }
-        }
-
-        [GenerateAsync]
-        internal void SendSync()
-        {
-            _log.Debug("Sending sync message");
-
-            Buffer
-                .EnsureWrite(5)
-                .WriteByte((byte)FrontendMessageCode.Sync)
-                .WriteInt32(4)
-                .Flush();
-        }
-
-        [GenerateAsync]
-        internal void SendDescribePortal(string portalName)
-        {
-            _log.Debug("Sending describe portal message");
-            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
-            var len = 4 + 1 + portalNameBytes.Length + 1;
-            Buffer
-                .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontendMessageCode.Describe)
-                .WriteInt32(len)
-                .WriteByte((byte)FrontendMessageCode.DescribePortal)
-                .WriteBytesNullTerminated(portalNameBytes)
-                .Flush();
-        }
-
-        [GenerateAsync]
-        internal void SendDescribeStatement(string statementName)
-        {
-            _log.Debug("Sending describe statement message");
-            var statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(statementName);
-            var len = 4 + 1 + statementNameBytes.Length + 1;
-            Buffer
-                .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontendMessageCode.Describe)
-                .WriteInt32(len)
-                .WriteByte((byte)FrontendMessageCode.DescribeStatement)
-                .WriteBytesNullTerminated(statementNameBytes)
-                .Flush();
-        }
-
-        [GenerateAsync]
-        internal void SendExecute(string portalName="", int maxRows=0)
-        {
-            _log.Debug("Sending execute message");
-
-            var portalNameBytes = BackendEncoding.UTF8Encoding.GetBytes(portalName);
-            var len = 4 + portalNameBytes.Length + 1 + 4;
-            Buffer
-                .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontendMessageCode.Execute)
-                .WriteInt32(len)
-                .WriteBytesNullTerminated(portalNameBytes)
-                .WriteInt32(maxRows);
-        }
-
-        [GenerateAsync]
-        internal void SendFlush()
-        {
-            _log.Debug("Sending flush message");
-
-            Buffer
-                .EnsureWrite(5)
-                .WriteByte((byte)FrontendMessageCode.Flush)
-                .WriteInt32(4);
-        }
-
-        #endregion Simple outgoing messages
-
         #region Backend message processing
 
-        internal ServerMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        internal BackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             NpgsqlError error = null;
 
@@ -1005,7 +799,7 @@ namespace Npgsql
             }
         }
 
-        ServerMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
+        BackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
         {
             switch (code)
             {
@@ -1095,7 +889,7 @@ namespace Npgsql
         /// been seen. Note that when this method is called, the buffer position must be properly set at
         /// the start of the next message.
         /// </summary>
-        internal ServerMessage SkipUntil(params BackendMessageCode[] stopAt)
+        internal BackendMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
             Contract.Requires(!stopAt.Any(c => c == BackendMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
 
@@ -1375,10 +1169,7 @@ namespace Npgsql
 
             try
             {
-                // Get a raw connection, possibly SSL...
                 cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-
-                // Cancel current request.
                 cancelConnector.SendCancelRequest(BackendProcessId, BackendSecretKey);
             }
             finally
@@ -1399,6 +1190,9 @@ namespace Npgsql
                 .WriteInt32(backendProcessId)
                 .WriteInt32(backendSecretKey)
                 .Flush();
+            var cancelMessage = new CancelRequestMessage(BackendProcessId, BackendSecretKey);
+            cancelMessage.Write(Buffer);
+            Buffer.Flush();
         }
 
         #endregion Cancel
@@ -1886,7 +1680,7 @@ namespace Npgsql
         // Unused, can be deleted?
         internal void TestConnector()
         {
-            SendSync();
+            SyncMessage.Instance.Write(Buffer);
             Buffer.Flush();
             var buffer = new Queue<int>();
             //byte[] compareBuffer = new byte[6];

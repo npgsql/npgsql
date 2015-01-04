@@ -53,7 +53,7 @@ namespace Npgsql
         /// If HasRows was called before any rows were read, it was forced to read messages. A pending
         /// message may be stored here for processing in the next Read() or NextResult().
         /// </summary>
-        ServerMessage _pendingMessage;
+        BackendMessage _pendingMessage;
 
         /// <summary>
         /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
@@ -75,34 +75,38 @@ namespace Npgsql
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null, bool schemaOnlyExtendedQuery = false)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
         {
-            Contract.Requires(command.IsPrepared || rowDescription == null || schemaOnlyExtendedQuery);
-
             Command = command;
             _connector = command.Connector;
             _connection = command.Connection;
             _behavior = behavior;
             _recordsAffected = null;
 
+            if ((behavior & CommandBehavior.SchemaOnly) != 0)
+            {
+                State = ReaderState.Consumed;
+                return;
+            }
+
             _connector.State = ConnectorState.Executing;
             
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            if (schemaOnlyExtendedQuery)
-            {
-                State = ReaderState.Consumed;
-                _rowDescription = rowDescription;
-            }
-            else if (command.IsPrepared) {
+            State = ReaderState.InResult;
+            _rowDescription = rowDescription;
+
+            /*
+            if (command.IsPrepared) {
                 State = ReaderState.InResult;
                 _rowDescription = rowDescription;
             } else {
                 State = ReaderState.BetweenResults;
                 NextResultSetInternal();
             }
-            if (Command.Parameters.Any(p => p.IsOutputDirection) && !schemaOnlyExtendedQuery) {
+             */
+            if (Command.Parameters.Any(p => p.IsOutputDirection)) {
                 PopulateOutputParameters();
             }
             _connector.CurrentReader = this;
@@ -111,11 +115,6 @@ namespace Npgsql
         #region Read
 
         public override bool Read()
-        {
-            return DoRead(IsSequential);
-        }
-
-        bool DoRead(bool isSequential)
         {
             if (_row != null) {
                 _row.Consume();
@@ -145,7 +144,7 @@ namespace Npgsql
 
                 while (true)
                 {
-                    var msg = ReadMessage(isSequential);
+                    var msg = ReadMessage();
                     switch (ProcessMessage(msg))
                     {
                         case ReadResult.RowRead:
@@ -166,7 +165,7 @@ namespace Npgsql
             }
         }
 
-        ReadResult ProcessMessage(ServerMessage msg)
+        ReadResult ProcessMessage(BackendMessage msg)
         {
             Contract.Requires(msg != null);
 
@@ -281,7 +280,7 @@ namespace Npgsql
 
             while (true)
             {
-                var msg = ReadMessage(IsSequential);
+                var msg = ReadMessage();
                 switch (msg.Code)
                 {
                     case BackendMessageCode.NoData:
@@ -307,17 +306,17 @@ namespace Npgsql
 
         #endregion
 
-        ServerMessage ReadMessage(bool isSequential)
+        BackendMessage ReadMessage()
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
                 _pendingMessage = null;
                 return msg;
             }
-            return _connector.ReadSingleMessage(isSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
+            return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        ServerMessage SkipUntil(params BackendMessageCode[] stopAt)
+        BackendMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
             if (_pendingMessage != null)
             {
@@ -1276,8 +1275,6 @@ namespace Npgsql
                     case BackendMessageCode.EmptyQueryResponse:
                         _pendingMessage = msg;
                         return;
-                    case BackendMessageCode.BindComplete:
-                        continue;
                     default:
                         throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);
                 }

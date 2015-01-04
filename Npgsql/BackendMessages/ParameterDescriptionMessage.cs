@@ -6,7 +6,7 @@ using Common.Logging;
 
 namespace Npgsql.Messages
 {
-    internal class ParameterDescriptionMessage : ServerMessage
+    internal class ParameterDescriptionMessage : BackendMessage
     {
         internal List<uint> TypeOIDs { get; private set; }
 
