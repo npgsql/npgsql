@@ -50,14 +50,6 @@ namespace Npgsql.TypeHandlers
             return ReadValueAsObject(buf, fieldDescription, len);
         }
 
-        public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
-        {
-            if (npgsqlDbType == NpgsqlDbType.Bit)
-                return size > 0 ? "\"bit\"(" + size + ")" : "\"bit\"";
-            else
-                return size > 0 ? "varbit(" + size + ")" : "varbit";
-        }
-
         bool ITypeHandler<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.TypeModifier != 1) {

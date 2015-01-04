@@ -64,6 +64,19 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test]
+        public void WriteInt32()
+        {
+            var cmd = new NpgsqlCommand("SELECT @p::INTEGER", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", DbType.Int32) { Value = 8 });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
+            Assert.That(reader.GetFieldValue<int>(0), Is.EqualTo(8));
+            reader.Close();
+            cmd.Dispose();
+        }
+
         [Test, Description("Tests some types which are aliased to UInt32")]
         [TestCase("oid")]
         [TestCase("xid")]

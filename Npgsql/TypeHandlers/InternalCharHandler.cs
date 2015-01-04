@@ -30,11 +30,6 @@ namespace Npgsql.TypeHandlers
             return buf.ReadString(1)[0];
         }
 
-        public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
-        {
-            return size > 0 ? "\"char\"(" + size + ")" : "\"char\"";
-        }
-
         public override void WriteText(object value, NpgsqlTextWriter writer)
         {
             var ch = (char)value;

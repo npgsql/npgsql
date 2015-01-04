@@ -30,25 +30,6 @@ namespace Npgsql.TypeHandlers
             return buf.ReadString(len);
         }
 
-        public override string GetCastName(int size, NpgsqlDbType npgsqlDbType)
-        {
-            switch (npgsqlDbType)
-            {
-                case NpgsqlDbType.Char:
-                    return size > 0 ? "bpchar(" + size + ")" : "bpchar";
-                case NpgsqlDbType.Varchar:
-                    return size > 0 ? "varchar(" + size + ")" : "varchar";
-                case NpgsqlDbType.Text:
-                    return "text";
-                case NpgsqlDbType.Name:
-                    return "name";
-                case NpgsqlDbType.Xml:
-                    return "xml";
-            }
-            Contract.Assert(false, "Can't lookup NpgsqlDbType in this handler");
-            return null;
-        }
-
         char[] ITypeHandler<char[]>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return buf.ReadChars(len);

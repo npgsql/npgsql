@@ -94,17 +94,6 @@ namespace Npgsql
         public virtual bool PreferTextWrite { get { return false; } }
         public virtual bool SupportsBinaryWrite { get { return true; } }
 
-        public virtual string GetCastName(int size, NpgsqlDbType npgsqlDbType)
-        {
-            for (var i = 0; i < PgNames.Length; i++)
-            {
-                if (NpgsqlDbTypes[i] == npgsqlDbType)
-                    return PgNames[i];
-            }
-            Contract.Assert(false, "Can't lookup NpgsqlDbType in this handler");
-            return null;
-        }
-
         public virtual int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
         {
             return BinarySize(value);
