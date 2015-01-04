@@ -118,18 +118,18 @@ namespace Npgsql
         internal static readonly byte[] DoubleQuote     = { (byte)'"' };
         internal static readonly byte[] BackSlash = { (byte)'\\' };
 
-        internal static readonly byte[] BindMessageCode         = { (byte)FrontEndMessageCode.Bind            };
-        internal static readonly byte[] DescribeMessageCode     = { (byte)FrontEndMessageCode.Describe        };
-        internal static readonly byte[] ExecuteMessageCode      = { (byte)FrontEndMessageCode.Execute         };
-        internal static readonly byte[] FlushMessageCode        = { (byte)FrontEndMessageCode.Flush           };
-        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontEndMessageCode.FunctionCall    };
-        internal static readonly byte[] ParseMessageCode        = { (byte)FrontEndMessageCode.Parse           };
-        internal static readonly byte[] PasswordMessageCode     = { (byte)FrontEndMessageCode.PasswordMessage };
-        internal static readonly byte[] QueryMessageCode        = { (byte)FrontEndMessageCode.Query           };
-        internal static readonly byte[] SyncMessageCode         = { (byte)FrontEndMessageCode.Sync            };
-        internal static readonly byte[] TerminationMessageCode  = { (byte)FrontEndMessageCode.Termination     };
+        internal static readonly byte[] BindMessageCode         = { (byte)FrontendMessageCode.Bind            };
+        internal static readonly byte[] DescribeMessageCode     = { (byte)FrontendMessageCode.Describe        };
+        internal static readonly byte[] ExecuteMessageCode      = { (byte)FrontendMessageCode.Execute         };
+        internal static readonly byte[] FlushMessageCode        = { (byte)FrontendMessageCode.Flush           };
+        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontendMessageCode.FunctionCall    };
+        internal static readonly byte[] ParseMessageCode        = { (byte)FrontendMessageCode.Parse           };
+        internal static readonly byte[] PasswordMessageCode     = { (byte)FrontendMessageCode.PasswordMessage };
+        internal static readonly byte[] QueryMessageCode        = { (byte)FrontendMessageCode.Query           };
+        internal static readonly byte[] SyncMessageCode         = { (byte)FrontendMessageCode.Sync            };
+        internal static readonly byte[] TerminationMessageCode  = { (byte)FrontendMessageCode.Termination     };
 
-        internal static readonly byte[] DescribePortalCode      = { (byte)FrontEndMessageCode.DescribePortal };
-        internal static readonly byte[] DescribeStatementCode   = { (byte)FrontEndMessageCode.DescribeStatement };
+        internal static readonly byte[] DescribePortalCode      = { (byte)FrontendMessageCode.DescribePortal };
+        internal static readonly byte[] DescribeStatementCode   = { (byte)FrontendMessageCode.DescribeStatement };
     }
 }

@@ -7,7 +7,7 @@ namespace Npgsql.Messages
 {
     internal class NoDataMessage : ServerMessage
     {
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.NoData; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.NoData; } }
         internal static readonly NoDataMessage Instance = new NoDataMessage();
         NoDataMessage() { }
     }

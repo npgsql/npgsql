@@ -20,7 +20,7 @@ namespace Npgsql
             var len = 4 + strlen + 1;
             buffer
                 .EnsureWrite(5)
-                .WriteByte((byte)FrontEndMessageCode.Query)
+                .WriteByte((byte)FrontendMessageCode.Query)
                 .WriteInt32(len)
                 .WriteString(query, len)
                 .EnsuredWriteByte(0)
@@ -48,7 +48,7 @@ namespace Npgsql
 
             buffer
                 .EnsureWrite(5)
-                .WriteByte((byte)FrontEndMessageCode.Query)
+                .WriteByte((byte)FrontendMessageCode.Query)
                 .WriteInt32(len)
                 .WriteBytes(query)
                 .Flush();

@@ -172,11 +172,11 @@ namespace Npgsql
 
             switch (msg.Code)
             {
-                case BackEndMessageCode.RowDescription:
+                case BackendMessageCode.RowDescription:
                     _rowDescription = (RowDescriptionMessage)msg;
                     return ReadResult.ReadAgain;
 
-                case BackEndMessageCode.DataRow:
+                case BackendMessageCode.DataRow:
                     Contract.Assert(_rowDescription != null);
                     _connector.State = ConnectorState.Fetching;
                     _row = (DataRowMessage)msg;
@@ -186,7 +186,7 @@ namespace Npgsql
                     _hasRows = true;
                     return ReadResult.RowRead;
 
-                case BackEndMessageCode.CompletedResponse:
+                case BackendMessageCode.CompletedResponse:
                     var completed = (CommandCompleteMessage) msg;
                     if (completed.RowsAffected.HasValue)
                     {
@@ -197,9 +197,9 @@ namespace Npgsql
                     if (completed.LastInsertedOID.HasValue) {
                         LastInsertedOID = completed.LastInsertedOID.Value;
                     }
-                    goto case BackEndMessageCode.EmptyQueryResponse;
+                    goto case BackendMessageCode.EmptyQueryResponse;
 
-                case BackEndMessageCode.EmptyQueryResponse:
+                case BackendMessageCode.EmptyQueryResponse:
                     _row = null;
                     if (!_hasRows.HasValue) {
                         _hasRows = false;
@@ -207,11 +207,11 @@ namespace Npgsql
                     State = ReaderState.BetweenResults;
                     return ReadResult.RowNotRead;
 
-                case BackEndMessageCode.ReadyForQuery:
+                case BackendMessageCode.ReadyForQuery:
                     State = ReaderState.Consumed;
                     return ReadResult.RowNotRead;
 
-                case BackEndMessageCode.BindComplete:
+                case BackendMessageCode.BindComplete:
                     return ReadResult.ReadAgain;
 
                 default:
@@ -239,7 +239,7 @@ namespace Npgsql
                         }
 
                         // TODO: Duplication with SingleResult handling above
-                        var completedMsg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.EmptyQueryResponse);
+                        var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
                         ProcessMessage(completedMsg);
                         break;
 
@@ -284,17 +284,17 @@ namespace Npgsql
                 var msg = ReadMessage(IsSequential);
                 switch (msg.Code)
                 {
-                    case BackEndMessageCode.NoData:
+                    case BackendMessageCode.NoData:
                         continue;
-                    case BackEndMessageCode.EmptyQueryResponse:
-                    case BackEndMessageCode.CompletedResponse:
+                    case BackendMessageCode.EmptyQueryResponse:
+                    case BackendMessageCode.CompletedResponse:
                         // Another completion in a multi-query, process to get affected records and read again
                         ProcessMessage(msg);
                         continue;
-                    case BackEndMessageCode.ReadyForQuery:
+                    case BackendMessageCode.ReadyForQuery:
                         State = ReaderState.Consumed;
                         return false;
-                    case BackEndMessageCode.RowDescription:
+                    case BackendMessageCode.RowDescription:
                         _rowDescription = (RowDescriptionMessage)msg;
                         _hasRows = null;
                         State = ReaderState.InResult;
@@ -317,7 +317,7 @@ namespace Npgsql
             return _connector.ReadSingleMessage(isSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
+        ServerMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
             if (_pendingMessage != null)
             {
@@ -371,14 +371,14 @@ namespace Npgsql
                     var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
                     switch (msg.Code)
                     {
-                        case BackEndMessageCode.RowDescription:
+                        case BackendMessageCode.RowDescription:
                             ProcessMessage(msg);
                             continue;
-                        case BackEndMessageCode.DataRow:
+                        case BackendMessageCode.DataRow:
                             _pendingMessage = msg;
                             return true;
-                        case BackEndMessageCode.CompletedResponse:
-                        case BackEndMessageCode.EmptyQueryResponse:
+                        case BackendMessageCode.CompletedResponse:
+                        case BackendMessageCode.EmptyQueryResponse:
                             _pendingMessage = msg;
                             return false;
                         default:
@@ -448,13 +448,13 @@ namespace Npgsql
             // Skip over the other result sets, processing only CommandCompleted for RecordsAffected
             while (true)
             {
-                var msg = SkipUntil(BackEndMessageCode.CompletedResponse, BackEndMessageCode.ReadyForQuery);
+                var msg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery);
                 switch (msg.Code)
                 {
-                    case BackEndMessageCode.CompletedResponse:
+                    case BackendMessageCode.CompletedResponse:
                         ProcessMessage(msg);
                         continue;
-                    case BackEndMessageCode.ReadyForQuery:
+                    case BackendMessageCode.ReadyForQuery:
                         ProcessMessage(msg);
                         return;
                     default:
@@ -1268,15 +1268,15 @@ namespace Npgsql
                 var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential);
                 switch (msg.Code)
                 {
-                    case BackEndMessageCode.DataRow:
+                    case BackendMessageCode.DataRow:
                         _pendingMessage = msg;
                         _row = (DataRowNonSequentialMessage) msg;
                         break;
-                    case BackEndMessageCode.CompletedResponse:
-                    case BackEndMessageCode.EmptyQueryResponse:
+                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.EmptyQueryResponse:
                         _pendingMessage = msg;
                         return;
-                    case BackEndMessageCode.BindComplete:
+                    case BackendMessageCode.BindComplete:
                         continue;
                     default:
                         throw new ArgumentOutOfRangeException("Unexpected message type while populating output parameter: " + msg.Code);

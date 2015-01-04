@@ -7,7 +7,7 @@ namespace Npgsql.Messages
 {
     internal class ParseCompleteMessage : ServerMessage
     {
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.ParseComplete; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.ParseComplete; } }
         internal static readonly ParseCompleteMessage Instance = new ParseCompleteMessage();
         ParseCompleteMessage() { }
     }

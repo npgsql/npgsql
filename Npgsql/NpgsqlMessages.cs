@@ -39,7 +39,7 @@ namespace Npgsql
     /// </summary>
     internal abstract class ServerMessage
     {
-        internal abstract BackEndMessageCode Code { get; }
+        internal abstract BackendMessageCode Code { get; }
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ namespace Npgsql
 
     #pragma warning disable 1591
 
-    internal enum FrontEndMessageCode : byte
+    internal enum FrontendMessageCode : byte
     {
         StartupPacket = (byte) ' ',
         Termination = (byte) 'X',
@@ -74,7 +74,7 @@ namespace Npgsql
         FunctionCall = (byte)'F',
     }
 
-    internal enum BackEndMessageCode
+    internal enum BackendMessageCode
     {
         IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
 

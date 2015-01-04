@@ -7,7 +7,7 @@ namespace Npgsql.Messages
 {
     internal class EmptyQueryMessage : ServerMessage
     {
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.EmptyQueryResponse; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.EmptyQueryResponse; } }
         internal static readonly EmptyQueryMessage Instance = new EmptyQueryMessage();
         EmptyQueryMessage() { }
     }

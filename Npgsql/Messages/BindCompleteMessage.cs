@@ -7,7 +7,7 @@ namespace Npgsql.Messages
 {
     internal class BindCompleteMessage : ServerMessage
     {
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.BindComplete; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.BindComplete; } }
         internal static readonly BindCompleteMessage Instance = new BindCompleteMessage();
         BindCompleteMessage() { }
     }

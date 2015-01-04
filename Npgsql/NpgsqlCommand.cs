@@ -520,7 +520,7 @@ namespace Npgsql
                 2 * (resultFormatCodes == null ? 1 : resultFormatCodes.Length); // Use binary for everything that is received if unknown
 
             buf.EnsureWrite(5 + 1 + _planName.Length + 1 + 2 + 2);
-            buf.WriteByte((byte)FrontEndMessageCode.Bind);
+            buf.WriteByte((byte)FrontendMessageCode.Bind);
             buf.WriteInt32(totalSize);
             buf.WriteByte(0); // Empty portal name
             buf.WriteString(_planName, _planName.Length);
@@ -635,7 +635,7 @@ namespace Npgsql
 
             string query = RewriteSqlForCommandType();
 
-            buf.WriteByte((byte)FrontEndMessageCode.Parse); // Might be updated
+            buf.WriteByte((byte)FrontendMessageCode.Parse); // Might be updated
             buf.WriteInt32(0); // Will be updated
             if (prepare)
             {
@@ -721,14 +721,14 @@ namespace Npgsql
                 // Only send Describe statement + Sync
 
                 buf.EnsureWrite(1 + 4 + 1 + _planName.Length + 1 + 1 + 4);
-                buf.WriteByte((byte)FrontEndMessageCode.Describe);
+                buf.WriteByte((byte)FrontendMessageCode.Describe);
                 buf.WriteInt32(4 + 1 + _planName.Length + 1);
-                buf.WriteByte((byte)FrontEndMessageCode.DescribeStatement);
+                buf.WriteByte((byte)FrontendMessageCode.DescribeStatement);
                 if (_planName != "")
                     buf.WriteString(_planName, _planName.Length);
                 buf.WriteByte(0);
 
-                buf.WriteByte((byte)FrontEndMessageCode.Sync);
+                buf.WriteByte((byte)FrontendMessageCode.Sync);
                 buf.WriteInt32(4);
 
                 buf.Flush();
@@ -745,19 +745,19 @@ namespace Npgsql
                     1 + 4);
 
                 // Describe
-                buf.WriteByte((byte)FrontEndMessageCode.Describe);
+                buf.WriteByte((byte)FrontendMessageCode.Describe);
                 buf.WriteInt32(4 + 1 + 1);
-                buf.WriteByte((byte)FrontEndMessageCode.DescribePortal);
+                buf.WriteByte((byte)FrontendMessageCode.DescribePortal);
                 buf.WriteByte(0); // Empty portal name
 
                 // Execute
-                buf.WriteByte((byte)FrontEndMessageCode.Execute);
+                buf.WriteByte((byte)FrontendMessageCode.Execute);
                 buf.WriteInt32(4 + 1 + 4);
                 buf.WriteByte(0); // Empty portal name
                 buf.WriteInt32(0); // Maximum number of rows, 0 = no limit
 
                 // Sync
-                buf.WriteByte((byte)FrontEndMessageCode.Sync);
+                buf.WriteByte((byte)FrontendMessageCode.Sync);
                 buf.WriteInt32(4);
 
                 buf.Flush();
@@ -773,21 +773,21 @@ namespace Npgsql
                 var msg = _connector.ReadSingleMessage();
                 switch (msg.Code)
                 {
-                    case BackEndMessageCode.ParseComplete:
+                    case BackendMessageCode.ParseComplete:
                         continue;
-                    case BackEndMessageCode.BindComplete:
+                    case BackendMessageCode.BindComplete:
                         Contract.Assume(!prepare && !onlySchema);
                         goto AfterLoop;
-                    case BackEndMessageCode.ParameterDescription:
+                    case BackendMessageCode.ParameterDescription:
                         parameterDescription = (ParameterDescriptionMessage)msg;
                         continue;
-                    case BackEndMessageCode.RowDescription:
+                    case BackendMessageCode.RowDescription:
                         rowDescriptionMessage = (RowDescriptionMessage)msg;
                         continue;
-                    case BackEndMessageCode.NoData:
+                    case BackendMessageCode.NoData:
                         noData = true;
                         continue;
-                    case BackEndMessageCode.ReadyForQuery:
+                    case BackendMessageCode.ReadyForQuery:
                         Contract.Assume(prepare || onlySchema);
                         goto AfterLoop;
                     default:

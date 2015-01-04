@@ -96,7 +96,7 @@ namespace Npgsql.Messages
                    _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
         }
 
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.RowDescription; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.RowDescription; } }
 
         #region Kana comparers
 

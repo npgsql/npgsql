@@ -529,10 +529,10 @@ namespace Npgsql
                 var msg = ReadSingleMessage();
                 switch (msg.Code)
                 {
-                    case BackEndMessageCode.ReadyForQuery:
+                    case BackendMessageCode.ReadyForQuery:
                         State = ConnectorState.Ready;
                         return;
-                    case BackEndMessageCode.AuthenticationRequest:
+                    case BackendMessageCode.AuthenticationRequest:
                         ProcessAuthenticationMessage((AuthenticationRequestMessage)msg);
                         continue;
                     default:
@@ -855,7 +855,7 @@ namespace Npgsql
             _log.Debug("Sending authenticate message");
 
             Buffer
-                .WriteByte((byte)FrontEndMessageCode.PasswordMessage)
+                .WriteByte((byte)FrontendMessageCode.PasswordMessage)
                 .WriteInt32(4 + password.Length);
             Buffer.WriteBytes(password);
             Buffer.Flush();
@@ -879,7 +879,7 @@ namespace Npgsql
                                   2 + (parameterIDs.Length * 4);
 
             Buffer
-                .WriteByte((byte)FrontEndMessageCode.Parse)
+                .WriteByte((byte)FrontendMessageCode.Parse)
                 .WriteInt32(messageLength)
                 .WriteBytesNullTerminated(prepareNameBytes)
                 .WriteBytes(queryString)
@@ -897,7 +897,7 @@ namespace Npgsql
 
             Buffer
                 .EnsureWrite(5)
-                .WriteByte((byte)FrontEndMessageCode.Sync)
+                .WriteByte((byte)FrontendMessageCode.Sync)
                 .WriteInt32(4)
                 .Flush();
         }
@@ -910,9 +910,9 @@ namespace Npgsql
             var len = 4 + 1 + portalNameBytes.Length + 1;
             Buffer
                 .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontEndMessageCode.Describe)
+                .WriteByte((byte)FrontendMessageCode.Describe)
                 .WriteInt32(len)
-                .WriteByte((byte)FrontEndMessageCode.DescribePortal)
+                .WriteByte((byte)FrontendMessageCode.DescribePortal)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .Flush();
         }
@@ -925,9 +925,9 @@ namespace Npgsql
             var len = 4 + 1 + statementNameBytes.Length + 1;
             Buffer
                 .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontEndMessageCode.Describe)
+                .WriteByte((byte)FrontendMessageCode.Describe)
                 .WriteInt32(len)
-                .WriteByte((byte)FrontEndMessageCode.DescribeStatement)
+                .WriteByte((byte)FrontendMessageCode.DescribeStatement)
                 .WriteBytesNullTerminated(statementNameBytes)
                 .Flush();
         }
@@ -941,7 +941,7 @@ namespace Npgsql
             var len = 4 + portalNameBytes.Length + 1 + 4;
             Buffer
                 .EnsureWrite(1 + len)
-                .WriteByte((byte)FrontEndMessageCode.Execute)
+                .WriteByte((byte)FrontendMessageCode.Execute)
                 .WriteInt32(len)
                 .WriteBytesNullTerminated(portalNameBytes)
                 .WriteInt32(maxRows);
@@ -954,7 +954,7 @@ namespace Npgsql
 
             Buffer
                 .EnsureWrite(5)
-                .WriteByte((byte)FrontEndMessageCode.Flush)
+                .WriteByte((byte)FrontendMessageCode.Flush)
                 .WriteInt32(4);
         }
 
@@ -971,11 +971,11 @@ namespace Npgsql
                 var buf = Buffer;
 
                 Buffer.Ensure(5);
-                var messageCode = (BackEndMessageCode) Buffer.ReadByte();
-                Contract.Assume(Enum.IsDefined(typeof(BackEndMessageCode), messageCode), "Unknown message code: " + messageCode);
+                var messageCode = (BackendMessageCode) Buffer.ReadByte();
+                Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
-                if (messageCode == BackEndMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential)
+                if (messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential)
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
@@ -989,59 +989,59 @@ namespace Npgsql
                 }
 
                 var msg = ParseServerMessage(buf, messageCode, len, dataRowLoadingMode);
-                if (msg != null || !ignoreNotifications && (messageCode == BackEndMessageCode.NoticeResponse || messageCode == BackEndMessageCode.NotificationResponse))
+                if (msg != null || !ignoreNotifications && (messageCode == BackendMessageCode.NoticeResponse || messageCode == BackendMessageCode.NotificationResponse))
                 {
                     if (error != null)
                     {
-                        Contract.Assert(messageCode == BackEndMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
+                        Contract.Assert(messageCode == BackendMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
                         throw new NpgsqlException(error);
                     }
                     return msg;
                 }
-                else if (messageCode == BackEndMessageCode.ErrorResponse)
+                else if (messageCode == BackendMessageCode.ErrorResponse)
                 {
                     error = new NpgsqlError(buf);
                 }
             }
         }
 
-        ServerMessage ParseServerMessage(NpgsqlBuffer buf, BackEndMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
+        ServerMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
         {
             switch (code)
             {
-                case BackEndMessageCode.RowDescription:
+                case BackendMessageCode.RowDescription:
                     return _rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
-                case BackEndMessageCode.DataRow:
+                case BackendMessageCode.DataRow:
                     Contract.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
                     return dataRowLoadingMode == DataRowLoadingMode.Sequential
                         ? _dataRowSequentialMessage.Load(buf)
                         : _dataRowNonSequentialMessage.Load(buf);
-                case BackEndMessageCode.CompletedResponse:
+                case BackendMessageCode.CompletedResponse:
                     return _commandCompleteMessage.Load(buf, len);
-                case BackEndMessageCode.ReadyForQuery:
+                case BackendMessageCode.ReadyForQuery:
                     return _readyForQueryMessage.Load(buf);
-                case BackEndMessageCode.EmptyQueryResponse:
+                case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
-                case BackEndMessageCode.ParseComplete:
+                case BackendMessageCode.ParseComplete:
                     return ParseCompleteMessage.Instance;
-                case BackEndMessageCode.ParameterDescription:
+                case BackendMessageCode.ParameterDescription:
                     return _parameterDescriptionMessage.Load(buf);
-                case BackEndMessageCode.BindComplete:
+                case BackendMessageCode.BindComplete:
                     return BindCompleteMessage.Instance;
-                case BackEndMessageCode.NoData:
+                case BackendMessageCode.NoData:
                     return NoDataMessage.Instance;
-                case BackEndMessageCode.ParameterStatus:
+                case BackendMessageCode.ParameterStatus:
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
-                case BackEndMessageCode.NoticeResponse:
+                case BackendMessageCode.NoticeResponse:
                     // TODO: Recycle
                     FireNotice(new NpgsqlError(buf));
                     return null;
-                case BackEndMessageCode.NotificationResponse:
+                case BackendMessageCode.NotificationResponse:
                     FireNotification(new NpgsqlNotificationEventArgs(buf));
                     return null;
 
-                case BackEndMessageCode.AuthenticationRequest:
+                case BackendMessageCode.AuthenticationRequest:
                     var authType = (AuthenticationRequestType)buf.ReadInt32();
                     _log.Trace("Received AuthenticationRequest of type " + authType);
                     switch (authType)
@@ -1062,27 +1062,27 @@ namespace Npgsql
                             throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
                     }
 
-                case BackEndMessageCode.BackendKeyData:
+                case BackendMessageCode.BackendKeyData:
                     BackendProcessId = buf.ReadInt32();
                     BackendSecretKey = buf.ReadInt32();
                     return null;
 
-                case BackEndMessageCode.CopyData:
-                case BackEndMessageCode.CopyDone:
-                case BackEndMessageCode.CancelRequest:
-                case BackEndMessageCode.CopyDataRows:
-                case BackEndMessageCode.CopyInResponse:
-                case BackEndMessageCode.CopyOutResponse:
+                case BackendMessageCode.CopyData:
+                case BackendMessageCode.CopyDone:
+                case BackendMessageCode.CancelRequest:
+                case BackendMessageCode.CopyDataRows:
+                case BackendMessageCode.CopyInResponse:
+                case BackendMessageCode.CopyOutResponse:
                     throw new NotImplementedException();
 
-                case BackEndMessageCode.PortalSuspended:
-                case BackEndMessageCode.CloseComplete:
-                case BackEndMessageCode.IO_ERROR:
+                case BackendMessageCode.PortalSuspended:
+                case BackendMessageCode.CloseComplete:
+                case BackendMessageCode.IO_ERROR:
                     Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
-                case BackEndMessageCode.ErrorResponse:
+                case BackendMessageCode.ErrorResponse:
                     return null;
-                case BackEndMessageCode.FunctionCallResponse:
+                case BackendMessageCode.FunctionCallResponse:
                     // We don't use the obsolete function call protocol
                     throw new Exception("Unexpected backend message: " + code);
                 default:
@@ -1095,9 +1095,9 @@ namespace Npgsql
         /// been seen. Note that when this method is called, the buffer position must be properly set at
         /// the start of the next message.
         /// </summary>
-        internal ServerMessage SkipUntil(params BackEndMessageCode[] stopAt)
+        internal ServerMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
-            Contract.Requires(!stopAt.Any(c => c == BackEndMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
+            Contract.Requires(!stopAt.Any(c => c == BackendMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true)
             {
@@ -1162,7 +1162,7 @@ namespace Npgsql
         internal void SendCopyInData(byte[] buf, int off, int len)
         {
             Buffer.EnsureWrite(5);
-            Buffer.WriteByte((byte)FrontEndMessageCode.CopyData);
+            Buffer.WriteByte((byte)FrontendMessageCode.CopyData);
             Buffer.WriteInt32(len + 4);
             Buffer.Write(buf, off, len);
         }
@@ -1421,7 +1421,7 @@ namespace Npgsql
                     {
                         Buffer
                             .EnsureWrite(5)
-                            .WriteByte((byte)FrontEndMessageCode.Termination)
+                            .WriteByte((byte)FrontendMessageCode.Termination)
                             .WriteInt32(4)
                             .Flush();
                     }
@@ -1659,7 +1659,7 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendQuery(query);
-                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
@@ -1671,7 +1671,7 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendQueryRaw(query);
-                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
@@ -1682,7 +1682,7 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SendQuery(query);
-                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
@@ -1694,7 +1694,7 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SendQueryRaw(query);
-                SkipUntil(BackEndMessageCode.ReadyForQuery);
+                SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
@@ -1740,7 +1740,7 @@ namespace Npgsql
                     break;
 
             }
-            SkipUntil(BackEndMessageCode.ReadyForQuery);
+            SkipUntil(BackendMessageCode.ReadyForQuery);
             State = ConnectorState.Ready;
         }
 

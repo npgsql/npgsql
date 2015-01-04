@@ -57,7 +57,7 @@ namespace Npgsql.Messages
         /// </summary>
         internal bool IsStreaming;
 
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.DataRow; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
 
         internal abstract DataRowMessage Load(NpgsqlBuffer buf);
 

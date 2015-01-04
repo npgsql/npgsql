@@ -8,7 +8,7 @@ namespace Npgsql.Messages
 {
     internal abstract class AuthenticationRequestMessage : ServerMessage
     {
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.AuthenticationRequest; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.AuthenticationRequest; } }
         internal abstract AuthenticationRequestType AuthRequestType { get; }
     }   
 

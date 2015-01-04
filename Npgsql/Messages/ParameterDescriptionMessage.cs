@@ -25,6 +25,6 @@ namespace Npgsql.Messages
             return this;
         }
 
-        internal override BackEndMessageCode Code { get { return BackEndMessageCode.ParameterDescription; } }
+        internal override BackendMessageCode Code { get { return BackendMessageCode.ParameterDescription; } }
     }
 }
