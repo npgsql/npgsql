@@ -619,7 +619,7 @@ namespace Npgsql
             }
             else
             {
-                buf.WriteInt16((short)FormatCode.Binary);
+                buf.WriteInt16((short)FormatCode.Text);
             }
 
             // Bind has now been sent!
