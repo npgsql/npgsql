@@ -801,5 +801,15 @@ namespace NpgsqlTests
                 var ts = dr.GetTimeSpan(0);
             }
         }
+
+        [Test]
+        public void SequentialConsumeWithNull()
+        {
+            var command = new NpgsqlCommand("SELECT 1, NULL", Conn);
+            var reader = command.ExecuteReader(CommandBehavior.SequentialAccess);
+            reader.Read();
+            reader.Close();
+            command.Dispose();
+        }
     }
 }

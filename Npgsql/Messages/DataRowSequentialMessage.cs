@@ -92,7 +92,10 @@ namespace Npgsql.Messages
             for (; Column < NumColumns - 1; Column++)
             {
                 Buffer.Ensure(4);
-                Buffer.Skip(Buffer.ReadInt32());
+                var len = Buffer.ReadInt32();
+                if (len != -1) {
+                    Buffer.Skip(len);
+                }
             }
         }
     }
