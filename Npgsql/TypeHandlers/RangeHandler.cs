@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <summary>
-        /// The type handler for the element that this array type holds
+        /// The type handler for the element that this range type holds
         /// </summary>
         internal TypeHandler<T> ElementHandler { get; private set; }
 

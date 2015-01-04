@@ -23,9 +23,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Numeric };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.VarNumeric };
+        static readonly DbType?[] _dbTypes = { DbType.Decimal };
         internal override DbType?[] DbTypes { get { return _dbTypes; } }
-        static readonly DbType[][] _dbTypes2 = { new DbType[] { DbType.Decimal } };
+        static readonly DbType[][] _dbTypes2 = { new DbType[] { DbType.VarNumeric } };
         internal override DbType[][] DbTypeAliases { get { return _dbTypes2; } }
 
         public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

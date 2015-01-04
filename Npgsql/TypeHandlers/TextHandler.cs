@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Text, NpgsqlDbType.Varchar, NpgsqlDbType.Char, NpgsqlDbType.Name, NpgsqlDbType.Xml };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.String, null, DbType.StringFixedLength, null, DbType.Xml };
+        static readonly DbType?[] _dbTypes = { DbType.String, DbType.String, DbType.StringFixedLength, DbType.StringFixedLength, DbType.Xml };
         internal override DbType?[] DbTypes { get { return _dbTypes; } }
 
         public override bool PreferTextWrite { get { return true; } }

@@ -67,7 +67,6 @@ namespace Npgsql
         private Object npgsqlValue = null;
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
-        private bool explicitUnknown = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
@@ -324,8 +323,8 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>String</b>.</value>
-        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(DbType.String)]
+        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
+        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(DbType.Object)]
         public override DbType DbType
         {
             get
@@ -334,30 +333,36 @@ namespace Npgsql
                     return db_type.Value;
                 if (npgsqldb_type.HasValue)
                     return TypeHandlerRegistry.GetDbTypeFromNpgsqlDbType(npgsqldb_type.Value);
-                return DbType.Object;
+
+                if (IsNull)
+                    return DbType.Object;
+
+                return TypeHandlerRegistry.GetDbTypeFromNpgsqlDbType(TypeHandlerRegistry.InferNpgsqlDbTypeFromValue(value));
             }
             set
             {
                 ClearBind();
                 npgsqldb_type = TypeHandlerRegistry.GetNpgsqlDbTypeFromDbType(value);
                 db_type = value;
-
-                explicitUnknown = value == DbType.Object;
             }
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
+        /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> of the parameter.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>String</b>.</value>
-        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(NpgsqlDbType.Text)]
+        /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
+        [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(NpgsqlDbType.Unknown)]
         public NpgsqlDbType NpgsqlDbType
         {
             get
             {
                 if (npgsqldb_type.HasValue)
                     return npgsqldb_type.Value;
-                return NpgsqlDbType.Unknown;
+
+                if (IsNull)
+                    return NpgsqlDbType.Unknown;
+
+                return TypeHandlerRegistry.InferNpgsqlDbTypeFromValue(value);
             }
             set
             {
@@ -371,8 +376,6 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
                 }
                 npgsqldb_type = value;
-
-                explicitUnknown = value == NpgsqlDbType.Unknown;
             }
         }
 
@@ -563,7 +566,6 @@ namespace Npgsql
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             db_type = null;
             npgsqldb_type = null;
-            explicitUnknown = false;
             this.Value = Value;
             ClearBind();
         }
@@ -639,7 +641,6 @@ namespace Npgsql
             clone.value = value;
             clone.npgsqlValue = npgsqlValue;
             clone.sourceColumnNullMapping = sourceColumnNullMapping;
-            clone.explicitUnknown = explicitUnknown;
 
             return clone;
         }

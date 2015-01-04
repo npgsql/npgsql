@@ -27,6 +27,7 @@ namespace Npgsql
         static List<TypeHandler> _scalarTypeHandlers;
         static Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType;
         static Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType;
+        static Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType;
         static readonly TypeHandler UnknownTypeHandler = new UnknownTypeHandler();
         static readonly TypeHandlerRegistry EmptyRegistry = new TypeHandlerRegistry();
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> _registryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
@@ -105,20 +106,55 @@ namespace Npgsql
 
         internal uint InferTypeOidFromValue(object value)
         {
-            if (value == null)
-                return 0;
+            // First check the special cases and common types
+            var npgsqlDbType = InferNpgsqlDbTypeFromValue(value);
+            uint oid = 0;
+            if (npgsqlDbType != NpgsqlDbType.Unknown && _npgsqlDbTypeToOid.TryGetValue(npgsqlDbType, out oid))
+                return oid;
 
-            if (value is DateTime && ((DateTime)value).Kind == DateTimeKind.Utc)
-                return _npgsqlDbTypeToOid[NpgsqlDbType.TimestampTZ];
-
-            if (value is string || value is char || value is char[])
-                return _npgsqlDbTypeToOid[NpgsqlDbType.Text];
-
-            uint oid;
+            // If db instance specific types are used, such as composite types or enum, this one will find it
             if (_typeToOid.TryGetValue(value.GetType(), out oid))
                 return oid;
 
             return 0;
+        }
+
+        static internal NpgsqlDbType InferNpgsqlDbTypeFromValue(object value)
+        {
+            if (value == null)
+                return NpgsqlDbType.Unknown;
+
+            if (value is DateTime) {
+                if (((DateTime)value).Kind == DateTimeKind.Utc)
+                    return NpgsqlDbType.TimestampTZ;
+                else
+                    return NpgsqlDbType.Timestamp;
+            }
+
+            if (value is string || value is char || value is char[])
+                return NpgsqlDbType.Text;
+
+            NpgsqlDbType type;
+            if (_typeToNpgsqlDbType.TryGetValue(value.GetType(), out type))
+                return type;
+
+            return NpgsqlDbType.Unknown;
+        }
+
+        public static NpgsqlDbType GetNpgsqlDbTypeFromDbType(DbType dbType)
+        {
+            NpgsqlDbType t;
+            if (!_dbTypeToNpgsqlDbType.TryGetValue(dbType, out t))
+                throw new NotSupportedException("The DbType " + dbType + " is not supported for Npgsql");
+            return t;
+        }
+
+        public static DbType GetDbTypeFromNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+        {
+            DbType t;
+            if (!_npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out t))
+                return DbType.Object;
+            return t;
         }
 
         static internal void Setup(NpgsqlConnector connector)
@@ -317,21 +353,14 @@ namespace Npgsql
 
             _dbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
             _npgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
+            _typeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
 
             // Set up mapping DbType <-> NpgsqlDbType. Used by NpgsqlParameter to be able to link between these.
+            // Also set up a mapping .NET Type -> DbType/NpgsqlDbType
             foreach (var handler in _scalarTypeHandlers)
             {
-                for (var i = 0; i < handler.NpgsqlDbTypes.Length && i < handler.DbTypes.Length; i++)
-                {
-                    if (handler.NpgsqlDbTypes[i].HasValue && handler.DbTypes[i].HasValue)
-                    {
-                        var npgsqlDbType = handler.NpgsqlDbTypes[i].Value;
-                        var dbType = handler.DbTypes[i].Value;
-                        _dbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
-                        _npgsqlDbTypeToDbType[npgsqlDbType] = dbType;
-                    }
-                }
-                for (var i = 0; i < handler.NpgsqlDbTypes.Length && i < handler.DbTypeAliases.Length; i++)
+                // Read backwards, so default types (the left-most in the lists) are updated last
+                for (var i = Math.Min(handler.NpgsqlDbTypes.Length, handler.DbTypeAliases.Length) - 1; i >= 0; i--)
                 {
                     if (handler.NpgsqlDbTypes[i].HasValue && handler.DbTypeAliases[i] != null)
                     {
@@ -342,23 +371,41 @@ namespace Npgsql
                         }
                     }
                 }
+                for (var i = Math.Min(handler.NpgsqlDbTypes.Length, handler.DbTypes.Length) - 1; i >= 0; i--)
+                {
+                    if (handler.NpgsqlDbTypes[i].HasValue && handler.DbTypes[i].HasValue)
+                    {
+                        var npgsqlDbType = handler.NpgsqlDbTypes[i].Value;
+                        var dbType = handler.DbTypes[i].Value;
+                        _dbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
+                        _npgsqlDbTypeToDbType[npgsqlDbType] = dbType;
+                    }
+                }
+                if (handler.NpgsqlDbTypes.Length != 0 && handler.NpgsqlDbTypes[0].HasValue)
+                {
+                    // The default NpgsqlDbType is the first one in the list
+                    var npgsqlDbType = handler.NpgsqlDbTypes[0].Value;
+
+                    // Scalar
+                    _typeToNpgsqlDbType[handler.GetFieldType()] = npgsqlDbType;
+
+                    // Array
+                    var elementFieldType = handler.GetFieldType();
+                    _typeToNpgsqlDbType[elementFieldType.MakeArrayType()] = npgsqlDbType | NpgsqlDbType.Array;
+                    for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                        _typeToNpgsqlDbType[elementFieldType.MakeArrayType(i)] = npgsqlDbType | NpgsqlDbType.Array;
+
+                    // Range
+                    var rangeType = typeof(NpgsqlRange<>).MakeGenericType(handler.GetFieldType());
+                    _typeToNpgsqlDbType[rangeType] = npgsqlDbType | NpgsqlDbType.Range;
+
+                    // Array of range
+                    _typeToNpgsqlDbType[rangeType.MakeArrayType()] = npgsqlDbType | NpgsqlDbType.Array | NpgsqlDbType.Range;
+                    for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
+                        _typeToNpgsqlDbType[rangeType.MakeArrayType(i)] = npgsqlDbType | NpgsqlDbType.Array | NpgsqlDbType.Range;
+                }
+
             }
-        }
-
-        public static NpgsqlDbType GetNpgsqlDbTypeFromDbType(DbType dbType)
-        {
-            NpgsqlDbType t;
-            if (!_dbTypeToNpgsqlDbType.TryGetValue(dbType, out t))
-                throw new NotSupportedException("The DbType " + dbType + " is not supported for Npgsql");
-            return t;
-        }
-
-        public static DbType GetDbTypeFromNpgsqlDbType(NpgsqlDbType npgsqlDbType)
-        {
-            DbType t;
-            if (!_npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out t))
-                return DbType.Object;
-            return t;
         }
 
         static TypeHandlerRegistry()
