@@ -48,7 +48,10 @@ namespace Npgsql.Messages
                     FormatCode = (FormatCode) buf.ReadInt16()
                 };
 
-                field.Handler = typeHandlerRegistry[field.OID];
+                // If we get the exact unknown type in return, it was a literal string written in the query string
+                field.Handler = field.OID != typeHandlerRegistry.UnknownOid
+                    ? typeHandlerRegistry[field.OID]
+                    : typeHandlerRegistry[NpgsqlDbType.Text];
 
                 _fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))

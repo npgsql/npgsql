@@ -26,5 +26,12 @@ namespace Npgsql.TypeHandlers
         internal override DbType?[] DbTypes { get { return _dbTypes; } }
 
         public override bool SupportsBinaryWrite { get { return false; } }
+
+        public override string Read(NpgsqlBuffer buf, Messages.FieldDescription fieldDescription, int len)
+        {
+            if (fieldDescription.IsBinaryFormat)
+                throw new NotSupportedException("Sorry, this type was sent in binary and no type handler for this type is available in Npgsql.");
+            return buf.ReadString(len);
+        }
     }
 }

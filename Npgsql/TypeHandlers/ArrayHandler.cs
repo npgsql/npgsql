@@ -567,8 +567,10 @@ namespace Npgsql.TypeHandlers
 
             foreach (var element in arr)
             {
-                totalLength += (element == null ? 4 : elementHandler.BinarySize(registry, elementOid, element, sizeArr));
-                if (element == null)
+                var isNull = element == null || element is DBNull;
+
+                totalLength += (isNull ? 4 : elementHandler.BinarySize(registry, elementOid, element, sizeArr));
+                if (isNull)
                     hasNulls = true;
             }
 
@@ -606,7 +608,7 @@ namespace Npgsql.TypeHandlers
 
             foreach (var element in arr)
             {
-                if (element == null)
+                if (element == null || element is DBNull)
                 {
                     buf.EnsuredWriteInt32(-1);
                 }

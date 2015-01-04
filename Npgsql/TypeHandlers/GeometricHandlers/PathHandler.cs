@@ -54,9 +54,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
                 default:
                     throw new Exception("Error decoding binary geometric path: bad open byte");
             }
+            buf.Ensure(4);
             var numPoints = buf.ReadInt32();
             var result = new NpgsqlPath(open);
             for (var i = 0; i < numPoints; i++) {
+                if (buf.ReadBytesLeft < sizeof(double) * 2)
+                    buf.Ensure(Math.Min(sizeof(double) * 2 * (numPoints - i), buf.Size & -(sizeof(double) * 2)));
                 result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return result;

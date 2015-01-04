@@ -138,6 +138,87 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
+        protected override int BinarySize(object value)
+        {
+            if (value is bool)
+                return 9;
+            if (value is string)
+                return 8 + (((string)value).Length + 7) / 8;
+            else
+                return 8 + (((BitArray)value).Length + 7) / 8;
+        }
+
+        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            if (value is bool)
+            {
+                buf.EnsureWrite(9);
+                buf.WriteInt32(5);
+                buf.WriteInt32(1);
+                buf.WriteByte((bool)value ? (byte)0x80 : (byte)0);
+            }
+            else if (value is string)
+            {
+                string str = (string)value;
+                if (!System.Text.RegularExpressions.Regex.IsMatch(str, "^[01]*$"))
+                    throw new InvalidCastException("Cannot interpret as bitstring: " + str);
+
+                buf.EnsuredWriteInt32((((string)value).Length + 7) / 8);
+                for (var i = 0; i < str.Length / 8; i += 8)
+                {
+                    var b = 0;
+                    b += (str[i + 0] - '0') << 7;
+                    b += (str[i + 1] - '0') << 6;
+                    b += (str[i + 2] - '0') << 5;
+                    b += (str[i + 3] - '0') << 4;
+                    b += (str[i + 4] - '0') << 3;
+                    b += (str[i + 5] - '0') << 2;
+                    b += (str[i + 6] - '0') << 1;
+                    b += (str[i + 7] - '0');
+                    buf.EnsuredWriteByte((byte)b);
+                }
+                int lastByte = 0;
+                int mask = 0x80;
+                for (int i = str.Length & ~7; i < str.Length; i++)
+                {
+                    if (str[i] == '1')
+                        lastByte |= mask;
+                    mask >>= 1;
+                }
+                if (mask != 0x80)
+                    buf.EnsuredWriteByte((byte)lastByte);
+            }
+            else if (value is BitArray)
+            {
+                var arr = (BitArray)value;
+
+                buf.EnsuredWriteInt32((arr.Length + 7) / 8);
+                for (int i = 0; i < arr.Length / 8; i += 8)
+                {
+                    var b = 0;
+                    b += (arr[i + 0] ? 1 : 0) << 7;
+                    b += (arr[i + 1] ? 1 : 0) << 6;
+                    b += (arr[i + 2] ? 1 : 0) << 5;
+                    b += (arr[i + 3] ? 1 : 0) << 4;
+                    b += (arr[i + 4] ? 1 : 0) << 3;
+                    b += (arr[i + 5] ? 1 : 0) << 2;
+                    b += (arr[i + 6] ? 1 : 0) << 1;
+                    b += (arr[i + 7] ? 1 : 0);
+                    buf.EnsuredWriteByte((byte)b);
+                }
+                int lastByte = 0;
+                int mask = 0x80;
+                for (int i = 0; i < (arr.Length & ~7); i++)
+                {
+                    if (arr[i])
+                        lastByte |= mask;
+                    mask >>= 1;
+                }
+                if (mask != 0x80)
+                    buf.EnsuredWriteByte((byte)lastByte);
+            }
+        }
+
         #endregion
 
         #region Text
@@ -181,90 +262,10 @@ namespace Npgsql.TypeHandlers
             {
                 // TODO: hex if size is multiple of 4
                 var arr = (BitArray)value;
-                for (var i = arr.Length - 1; i >= 0; i--)
+                for (var i = 0; i < arr.Length; i++)
                 {
                     writer.WriteSingleChar(arr[i] ? '1' : '0');
                 }
-            }
-        }
-
-        protected override int BinarySize(object value)
-        {
-            if (value is bool)
-                return 5;
-            if (value is string)
-                return 4 + (((string)value).Length + 7) / 8;
-            else
-                return 4 + (((BitArray)value).Length + 7) / 8;
-        }
-
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
-        {
-            if (value is bool)
-            {
-                buf.EnsureWrite(5);
-                buf.WriteInt32(1);
-                buf.WriteByte((bool)value ? (byte)0x80 : (byte)0);
-            }
-            else if (value is string)
-            {
-                string str = (string)value;
-                if (!System.Text.RegularExpressions.Regex.IsMatch(str, "^[01]*$"))
-                    throw new InvalidCastException("Cannot interpret as bitstring: " + str);
-                char[] s = str.Reverse().ToArray();
-                buf.EnsuredWriteInt32((((string)value).Length + 7) / 8);
-                for (var i = 0; i < s.Length / 8; i += 8)
-                {
-                    var b = 0;
-                    b += (s[i + 0] - '0') << 7;
-                    b += (s[i + 1] - '0') << 6;
-                    b += (s[i + 2] - '0') << 5;
-                    b += (s[i + 3] - '0') << 4;
-                    b += (s[i + 4] - '0') << 3;
-                    b += (s[i + 5] - '0') << 2;
-                    b += (s[i + 6] - '0') << 1;
-                    b += (s[i + 7] - '0');
-                    buf.EnsuredWriteByte((byte)b);
-                }
-                int lastByte = 0;
-                int mask = 0x80;
-                for (int i = s.Length & ~7; i < s.Length; i++)
-                {
-                    if (s[i] == '1')
-                        lastByte |= mask;
-                    mask >>= 1;
-                }
-                if (mask != 0x80)
-                    buf.EnsuredWriteByte((byte)lastByte);
-            }
-            else if (value is BitArray)
-            {
-                var arr = (BitArray)value;
-
-                buf.EnsuredWriteInt32((arr.Length + 7) / 8);
-                for (int j = 0, i = arr.Length - 1; j < arr.Length / 8; j += 8, i -= 8)
-                {
-                    var b = 0;
-                    b += (arr[i - 0] ? 1 : 0) << 7;
-                    b += (arr[i - 1] ? 1 : 0) << 6;
-                    b += (arr[i - 2] ? 1 : 0) << 5;
-                    b += (arr[i - 3] ? 1 : 0) << 4;
-                    b += (arr[i - 4] ? 1 : 0) << 3;
-                    b += (arr[i - 5] ? 1 : 0) << 2;
-                    b += (arr[i - 6] ? 1 : 0) << 1;
-                    b += (arr[i - 7] ? 1 : 0);
-                    buf.EnsuredWriteByte((byte)b);
-                }
-                int lastByte = 0;
-                int mask = 0x80;
-                for (int i = (arr.Length & ~7) - 1; i >= 0; i--)
-                {
-                    if (arr[i])
-                        lastByte |= mask;
-                    mask >>= 1;
-                }
-                if (mask != 0x80)
-                    buf.EnsuredWriteByte((byte)lastByte);
             }
         }
 

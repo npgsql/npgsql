@@ -100,12 +100,13 @@ namespace Npgsql.TypeHandlers
         {
             var size = Encoding.UTF8.GetByteCount(value.ToString());
             sizeArr.Add(size);
-            return size;
+            return 4 + size;
         }
 
         public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
         {
             var size = sizeArr[sizeArrPos++];
+            buf.EnsuredWriteInt32(size);
             buf.WriteString(value.ToString(), size);
         }
     }

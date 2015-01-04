@@ -207,10 +207,12 @@ namespace Npgsql
                 for (var i = 0; i < types.Length; i++)
                 {
                     var param = new NpgsqlParameter();
-                    NpgsqlBackendTypeInfo typeInfo = null;
-                    if (!c.Connector.OidToNameMapping.TryGetValue(types[i], out typeInfo))
+
+                    // TODO: Fix enums, composite types
+                    var npgsqlDbType = c.Connector.TypeHandlerRegistry.GetNpgsqlDbTypeFromOid(types[i]);
+                    if (npgsqlDbType == NpgsqlDbType.Unknown)
                         throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
-                    param.NpgsqlDbType = typeInfo.NpgsqlDbType;
+                    param.NpgsqlDbType = npgsqlDbType;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];

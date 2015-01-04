@@ -44,6 +44,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             var numPoints = buf.ReadInt32();
             var points = new List<NpgsqlPoint>(numPoints);
             for (var i = 0; i < numPoints; i++) {
+                if (buf.ReadBytesLeft < sizeof(double) * 2)
+                    buf.Ensure(Math.Min(sizeof(double) * 2 * (numPoints - i), buf.Size & -(sizeof(double) * 2)));
                 points.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return new NpgsqlPolygon(points);

@@ -83,9 +83,15 @@ namespace Npgsql
             }
         }
 
+        internal uint UnknownOid { get; private set; }
+
         internal uint GetOidFromNpgsqlDbType(NpgsqlDbType npgsqlDbType)
         {
-            return _npgsqlDbTypeToOid[npgsqlDbType];
+            uint oid;
+            if (_npgsqlDbTypeToOid.TryGetValue(npgsqlDbType, out oid))
+                return oid;
+            else
+                throw new NotSupportedException("Your PostgreSQL version does not support the NpgsqlDbType \"" + npgsqlDbType + "\".");
         }
 
         internal uint GetElementOidFromArrayOid(uint arrayOid)
@@ -101,7 +107,11 @@ namespace Npgsql
         internal NpgsqlDbType GetNpgsqlDbTypeFromOid(uint oid)
         {
             Contract.Assume(oid != 0, "Invalid oid for getting NpgsqlDbType from oid");
-            return _oidToNpgsqlDbType[oid];
+            NpgsqlDbType npgsqlDbType;
+            if (_oidToNpgsqlDbType.TryGetValue(oid, out npgsqlDbType))
+                return npgsqlDbType;
+            else
+                return NpgsqlDbType.Unknown;
         }
 
         internal uint InferTypeOidFromValue(object value)
@@ -113,7 +123,7 @@ namespace Npgsql
                 return oid;
 
             // If db instance specific types are used, such as composite types or enum, this one will find it
-            if (_typeToOid.TryGetValue(value.GetType(), out oid))
+            if (value != null && _typeToOid.TryGetValue(value.GetType(), out oid))
                 return oid;
 
             return 0;
@@ -121,7 +131,7 @@ namespace Npgsql
 
         static internal NpgsqlDbType InferNpgsqlDbTypeFromValue(object value)
         {
-            if (value == null)
+            if (value == null || value is DBNull)
                 return NpgsqlDbType.Unknown;
 
             if (value is DateTime) {
@@ -312,6 +322,8 @@ namespace Npgsql
             }*/
 
             connector.TypeHandlerRegistry = _registryCache[connector.ConnectionString] = result;
+
+            result.UnknownOid = result.GetOidFromNpgsqlDbType(NpgsqlDbType.Unknown);
         }
 
         static ArrayHandler CreateArrayHandler(TypeHandler elementHandler, char textDelimiter)
