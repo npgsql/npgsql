@@ -98,15 +98,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 8;
+            return 4;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
-            buf.WriteInt32(4);
-            
             if (value is DateTime)
             {
                 value = new NpgsqlDate((DateTime)value);

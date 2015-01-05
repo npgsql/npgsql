@@ -53,6 +53,36 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
+        public void Write()
+        {
+            var expected = new byte[] { 0x80, 0x81 };
+            var cmd = new NpgsqlCommand("SELECT @p::BYTEA", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            reader.Close();
+            cmd.Dispose();            
+        }
+
+        [Test]
+        public void WriteLarge()
+        {
+            var expected = new byte[Conn.BufferSize + 100];
+            for (int i = 0; i < expected.Length; i++)
+                expected[i] = 8;
+            var cmd = new NpgsqlCommand("SELECT @p::BYTEA", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            reader.Close();
+            cmd.Dispose();            
+        }
+
+        [Test]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]

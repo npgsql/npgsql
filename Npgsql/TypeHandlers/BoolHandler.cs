@@ -46,15 +46,14 @@ namespace Npgsql.TypeHandlers
             writer.WriteSingleChar(v ? (char)t : (char)f);
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 5;
+            return 1;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             var v = ((IConvertible)value).ToBoolean(null);
-            buf.WriteInt32(1);
             buf.WriteByte(v ? (byte)1 : (byte)0);
         }
     }

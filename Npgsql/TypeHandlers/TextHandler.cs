@@ -16,7 +16,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "text", "varchar", "bpchar", "name", "xml" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
-        public override bool CanReadFromSocket { get { return true; } }
+        public override bool IsBufferManager { get { return true; } }
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Text, NpgsqlDbType.Varchar, NpgsqlDbType.Char, NpgsqlDbType.Name, NpgsqlDbType.Xml };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
@@ -77,18 +77,17 @@ namespace Npgsql.TypeHandlers
             return charsRead;
         }
 
-        public override int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        internal override int BinarySize(object value)
         {
-            var size = Encoding.UTF8.GetByteCount(value.ToString());
-            sizeArr.Add(size);
-            return 4 + size;
+            return Encoding.UTF8.GetByteCount(value.ToString());
         }
 
-        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
-            var size = sizeArr[sizeArrPos++];
-            buf.EnsuredWriteInt32(size);
-            buf.WriteString(value.ToString(), size);
+            throw new NotImplementedException("Chunked");
+            /*
+            buf.WriteStringvalue.ToString(), size);
+             */
         }
     }
 }

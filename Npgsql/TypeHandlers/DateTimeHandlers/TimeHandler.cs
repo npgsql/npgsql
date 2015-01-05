@@ -60,12 +60,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 12;
+            return 8;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             NpgsqlTime time;
             if (value is DateTime)
@@ -80,7 +80,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             {
                 time = (NpgsqlTime)value;
             }
-            buf.WriteInt32(8);
             buf.WriteInt64(time.Ticks / 10); // TODO: round?
         }
     }

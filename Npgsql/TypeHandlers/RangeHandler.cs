@@ -13,7 +13,7 @@ namespace Npgsql.TypeHandlers
         string[] _pgNames = { "range" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool CanReadFromSocket { get { return ElementHandler.CanReadFromSocket; } }
+        public override bool IsBufferManager { get { return ElementHandler.IsBufferManager; } }
 
         public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
@@ -70,21 +70,21 @@ namespace Npgsql.TypeHandlers
         {
             Contract.Assert(ElementHandler.SupportsBinaryRead);
 
-            if (CanReadFromSocket)
+            if (IsBufferManager)
                 buf.Ensure(1);
 
             byte flags = buf.ReadByte();
             T e1 = default(T), e2 = default(T);
             if ((flags & (Empty | LbInf)) == 0) // Is not empty and lower bound is not -inf
             {
-                if (CanReadFromSocket)
+                if (IsBufferManager)
                     buf.Ensure(4);
                 var elementLength = buf.ReadInt32();
                 e1 = ElementHandler.Read(buf, fieldDescription, elementLength);
             }
             if ((flags & (Empty | UbInf)) == 0) // Is not empty and upper bound is not inf
             {
-                if (CanReadFromSocket)
+                if (IsBufferManager)
                     buf.Ensure(4);
                 var elementLength = buf.ReadInt32();
                 e2 = ElementHandler.Read(buf, fieldDescription, elementLength);
@@ -131,8 +131,10 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public override int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        internal override int BinarySize(object value)
         {
+            throw new NotImplementedException("Chunking");
+            /*
             var range = (NpgsqlRange<T>)value;
 
             var elementOid = registry.GetElementOidFromRangeOid(oid);
@@ -140,7 +142,7 @@ namespace Npgsql.TypeHandlers
             var sizeArrPos = sizeArr.Count;
             sizeArr.Add(0);
 
-            int totalLen = 4 + 1;
+            int totalLen = 1;
 
             if (!range.IsEmpty && !range.LowerBoundIsMinusInfinity)
             {
@@ -154,10 +156,13 @@ namespace Npgsql.TypeHandlers
             sizeArr[sizeArrPos] = totalLen;
 
             return totalLen;
+             */
         }
 
-        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
+            throw new NotImplementedException();
+            /*
             var range = (NpgsqlRange<T>)value;
 
             var elementOid = registry.GetElementOidFromRangeOid(oid);
@@ -177,6 +182,7 @@ namespace Npgsql.TypeHandlers
             {
                 ElementHandler.WriteBinary(registry, elementOid, range.UpperBound, buf, sizeArr, ref sizeArrPos);
             }
+             */
         }
     }
 }

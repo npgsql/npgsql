@@ -20,40 +20,56 @@ namespace Npgsql.FrontendMessages
         /// </summary>
         string Statement { get; set; }
 
-        internal List<NpgsqlParameter> Parameters { get; private set; }
+        List<NpgsqlParameter> InputParameters { get; set; }
         internal List<FormatCode> ResultFormatCodes { get; private set; }
 
+        TypeHandlerRegistry _typeHandlerRegistry;
         State _state;
         int _paramIndex;
+        bool _wroteParamLen;
 
         const byte Code = (byte)'B';
 
-        internal BindMessage(string portal="", string statement="")
+        internal BindMessage(TypeHandlerRegistry typeHandlerRegistry, List<NpgsqlParameter> inputParameters,
+                             string portal="", string statement="")
         {
+            Contract.Requires(typeHandlerRegistry != null);
+            Contract.Requires(inputParameters != null);
+            Contract.Requires(portal != null);
+            Contract.Requires(statement != null);
+
+            _typeHandlerRegistry = typeHandlerRegistry;
             Portal = portal;
             Statement = statement;
-            Parameters = new List<NpgsqlParameter>();
+            InputParameters = inputParameters;
             _state = State.WroteNothing;
             _paramIndex = 0;
+            _wroteParamLen = false;
         }
 
         internal override void Prepare()
         {
+            Contract.Requires(InputParameters.All(p => p.IsInputDirection));
+            foreach (var inParam in InputParameters)
+            {
+                inParam.Bind(_typeHandlerRegistry);
+            }
         }
 
-        internal override bool Write(NpgsqlBuffer buf)
+        internal override bool Write(NpgsqlBuffer buf, out byte[] directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
+            directBuf = null;
 
-            var formatCodeListLength = 0;  // TEMP
-            var numInputParameters = 0;
-            var parameterSizes = new List<int>() {0};
             int[] resultFormatCodes = null;
 
             switch (_state)
             {
                 case State.WroteNothing:
+                    var formatCodesSum = InputParameters.Select(p => p.BoundFormatCode).Sum(c => (int)c);
+                    var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
+
                     var messageLengthBeforeParameters =
                         4 +                        // Message length
                         Portal.Length + 1 +
@@ -70,43 +86,34 @@ namespace Npgsql.FrontendMessages
                     }
 
                     var messageLength = messageLengthBeforeParameters +
-                        4 * numInputParameters +   // Parameter value lengths
-                        parameterSizes.Sum() +     // Parameter values
-                        2 +                        // Number of result format codes
+                        4 * InputParameters.Count +                       // Parameter lengths
+                        InputParameters.Select(p => p.BoundSize).Sum() +  // Parameter values
+                        2 +                                                // Number of result format codes
                         2 * (resultFormatCodes == null ? 1 : resultFormatCodes.Length); // Use binary for everything that is received if unknown
 
                     buf.WriteByte(Code);
                     buf.WriteInt32(messageLength);
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Portal));
                     buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Statement));
+
+                    // 0 implicitly means all-text, 1 means all binary, >1 means mix-and-match
                     buf.WriteInt16(formatCodeListLength);
                     if (formatCodeListLength == 1)
                     {
                         buf.WriteInt16((short)FormatCode.Binary);
                     }
-                    /*
                     else if (formatCodeListLength > 1)
                     {
-                        if (2 * formatCodeListLength <= buf.Size)
-                        {
-                            buf.EnsureWrite(2 * formatCodeListLength);
-                            foreach (var code in formatCodes)
-                                buf.WriteInt16((short)code);
-                        }
-                        else
-                        {
-                            // Special case
-                            foreach (var code in formatCodes)
-                                buf.EnsuredWriteInt16((short)code);
-                        }
+                        foreach (var code in InputParameters.Select(p => p.BoundFormatCode))
+                            buf.WriteInt16((short)code);
                     }
-                     */
-                    buf.WriteInt16(numInputParameters);
+
+                    buf.WriteInt16(InputParameters.Count);
                     goto case State.WroteHeader;
 
                 case State.WroteHeader:
                     _state = State.WroteHeader;
-                    if (!WriteParameters(buf)) {
+                    if (!WriteParameters(buf, out directBuf)) {
                         return false;
                     }
                     goto case State.WroteParameters;
@@ -124,43 +131,61 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        bool WriteParameters(NpgsqlBuffer buf)
+        bool WriteParameters(NpgsqlBuffer buf, out byte[] directBuf)
         {
-            return true;
-#if TODO
-            // Traverse parameters
-            int sizeForWriteBinary = 0;
-            for (; _paramIndex < Parameters.Count; _paramIndex++)
+            directBuf = null;
+            for (; _paramIndex < InputParameters.Count; _paramIndex++)
             {
-                var param = Parameters[_paramIndex];
-                if (!param.IsInputDirection)
-                {
-                    continue;
-                }
+                var param = InputParameters[_paramIndex];
 
                 if (param.IsNull)
                 {
+                    if (buf.WriteSpaceLeft < 4) {
+                        return false;
+                    }
+
                     buf.WriteInt32(-1);
                     continue;
                 }
-                if (formatCodes[j] == FormatCode.Text)
+
+                var handler = param.BoundHandler;
+                if (param.BoundFormatCode == FormatCode.Text)
                 {
-                    buf.EnsuredWriteInt32(parameterSizes[j]);
-                    parameterTexts[j].WriteToOutputBuffer(buf);
+                    throw new NotImplementedException();
+                }
+
+                if (handler.IsBufferManager)
+                {
+                    if (!_wroteParamLen)
+                    {
+                        if (buf.WriteSpaceLeft < 4) {
+                            return false;
+                        }
+                        buf.WriteInt32(param.BoundSize);
+                        _wroteParamLen = true;
+                    }
+                    if (!handler.WriteBinary(param.Value, buf, out directBuf)) {
+                        return false;
+                    }
+                    _wroteParamLen = false;
                 }
                 else
                 {
-                    var handler = _connector.TypeHandlerRegistry[parameterTypeOIDs[j]];
-                    var flushedBytesBeforeThisValue = buf.TotalBytesFlushed;
-                    handler.WriteBinary(_connector.TypeHandlerRegistry, parameterTypeOIDs[j], _parameters[i].Value, buf, sizeArr, ref sizeForWriteBinary);
+                    if (buf.WriteSpaceLeft < param.BoundSize + 4)
+                    {
+                        Contract.Assume(buf.Size < param.BoundSize + 4);
+                        return false;
+                    }
+                    buf.WriteInt32(param.BoundSize);
+                    param.BoundHandler.WriteBinary(param.Value, buf);                    
                 }
             }
-#endif
+            return true;
         }
 
         public override string ToString()
         {
-            return String.Format("[Bind(Portal={0},Statement={1},NumParams={2}]", Portal, Statement, Parameters.Count);
+            return String.Format("[Bind(Portal={0},Statement={1},NumParams={2}]", Portal, Statement, InputParameters.Count);
         }
 
         private enum State
@@ -176,7 +201,7 @@ namespace Npgsql.FrontendMessages
         {
             Contract.Invariant(Portal != null);
             Contract.Invariant(Statement != null);
-            Contract.Invariant(Parameters != null);
+            Contract.Invariant(InputParameters != null);
 
         }
     }

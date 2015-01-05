@@ -48,16 +48,18 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             writer.WriteString(string.Join(" ", (uint[])value));
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 4 +
+            return
                 12 + // dims + nulls + element oid
                 4 + 4 + // length + lower bound
                 8 * ((uint[])value).Length;
         }
 
-        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
+            throw new NotImplementedException();
+            /*
             var arr = (uint[])value;
             buf.EnsureWrite(24);
             buf.WriteInt32(20 + arr.Length * 8);
@@ -74,6 +76,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 buf.WriteInt32(4);
                 buf.WriteInt32((int)elem);
             }
+             */
         }
     }
 }

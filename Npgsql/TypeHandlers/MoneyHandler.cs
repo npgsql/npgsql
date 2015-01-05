@@ -47,15 +47,14 @@ namespace Npgsql.TypeHandlers
             writer.WriteString(money.ToString(CultureInfo.InvariantCulture));
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 12;
+            return 8;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             var money = value is decimal ? (decimal)value : Decimal.Parse(value.ToString(), CultureInfo.InvariantCulture);
-            buf.WriteInt32(8);
             buf.WriteInt64((long)(money * 100m + 0.5m /* round */));
         }
     }

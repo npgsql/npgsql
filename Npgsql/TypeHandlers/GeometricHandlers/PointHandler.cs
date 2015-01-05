@@ -51,12 +51,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             }
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 20;
+            return 16;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             var p = value is string ? NpgsqlPoint.Parse((string)value) : (NpgsqlPoint)value;
             buf.WriteDouble(p.X);

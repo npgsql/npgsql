@@ -54,6 +54,19 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
+        public void Write()
+        {
+            var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", DbType.String) { Value = "Something" });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+            Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo("Something"));
+            reader.Close();
+            cmd.Dispose();            
+        }
+
+        [Test]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]

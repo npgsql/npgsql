@@ -16,7 +16,7 @@ namespace Npgsql
         /// to  handle reading from socket on its own if the buffer doesn't contain enough data.
         /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
         /// </summary>
-        bool CanReadFromSocket { get; }
+        bool IsBufferManager { get; }
         /// <summary>
         /// Whether this type handler supports reading the binary Postgresql representation for its type.
         /// </summary>
@@ -41,11 +41,11 @@ namespace Npgsql
         public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Requires(SupportsBinaryRead || fieldDescription.IsTextFormat);
-            Contract.Requires(buf.ReadBytesLeft >= len || CanReadFromSocket);
+            Contract.Requires(buf.ReadBytesLeft >= len || IsBufferManager);
             return default(T);
         }
 
-        public bool CanReadFromSocket { get { return default(bool); } }
+        public bool IsBufferManager { get { return default(bool); } }
         public bool SupportsBinaryRead { get { return default(bool); } }
     }
 
@@ -70,11 +70,13 @@ namespace Npgsql
         public virtual bool SupportsBinaryRead { get { return false; } }
 
         /// <summary>
-        /// If true, the type handler reads values of totally arbitrary length. These type handlers are expected
-        /// to handle reading from socket on its own if the buffer doesn't contain enough data.
-        /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
+        /// If true, the type handler reads and writes values of totally arbitrary length.
+        /// These type handlers are expected to handle reading from sockets and writing to them on their own
+        /// if the buffer doesn't contain enough data (i.e. perform Ensure).
+        /// Otherwise, the type handler expects the buffer to contain enough bytes prior to Read() and
+        /// Write() being invoked by the framework.
         /// </summary>
-        public virtual bool CanReadFromSocket { get { return false; } }
+        public virtual bool IsBufferManager { get { return false; } }
 
         /// <summary>
         /// If true, parameters with no explicit DbType/NpgsqlDbType but with values that has the same type as
@@ -94,21 +96,21 @@ namespace Npgsql
         public virtual bool PreferTextWrite { get { return false; } }
         public virtual bool SupportsBinaryWrite { get { return true; } }
 
-        public virtual int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
-        {
-            return BinarySize(value);
-        }
-        protected virtual int BinarySize(object value)
+        internal virtual int BinarySize(object value)
         {
             throw new NotImplementedException("BinarySize for " + this.GetType().ToString());
         }
-        public virtual void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+
+        internal virtual bool WriteBinary(object value, NpgsqlBuffer buf, out byte[] directBuf)
         {
-            WriteBinary(value, buf);
+            Contract.Requires(IsBufferManager);
+            throw new NotImplementedException("WriteBinaryComplex for " + GetType());
         }
-        protected virtual void WriteBinary(object value, NpgsqlBuffer buf)
+
+        internal virtual void WriteBinary(object value, NpgsqlBuffer buf)
         {
-            throw new NotImplementedException("WriteBinary for " + this.GetType().ToString());
+            Contract.Requires(!IsBufferManager);
+            throw new NotImplementedException("WriteBinary for " + GetType());
         }
 
         public virtual void WriteText(object value, NpgsqlTextWriter writer)

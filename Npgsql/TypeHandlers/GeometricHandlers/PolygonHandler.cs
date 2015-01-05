@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         static readonly string[] _pgNames = { "polygon" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
-        public override bool CanReadFromSocket { get { return true; } }
+        public override bool IsBufferManager { get { return true; } }
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Polygon };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }

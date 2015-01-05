@@ -19,7 +19,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     {
         static readonly string[] _pgNames = { "numeric" };
         internal override string[] PgNames { get { return _pgNames; } }
-        public override bool CanReadFromSocket { get { return true; } }
+        public override bool IsBufferManager { get { return true; } }
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Numeric };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }

@@ -130,18 +130,20 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
+            throw new NotImplementedException();
             if (value is bool)
-                return 9;
+                return 5;
             if (value is string)
                 return 8 + (((string)value).Length + 7) / 8;
             else
                 return 8 + (((BitArray)value).Length + 7) / 8;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
+            throw new NotImplementedException();
             if (value is bool)
             {
                 buf.EnsureWrite(9);

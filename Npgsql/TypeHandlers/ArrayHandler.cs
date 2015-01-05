@@ -22,7 +22,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "array" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool CanReadFromSocket { get { return true; } }
+        public override bool IsBufferManager { get { return true; } }
 
         public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
@@ -546,8 +546,10 @@ namespace Npgsql.TypeHandlers
             writer.WriteSingleChar('}');
         }
 
-        public override int BinarySize(TypeHandlerRegistry registry, uint oid, object value, List<int> sizeArr)
+        internal override int BinarySize(object value)
         {
+            throw new NotImplementedException("Chunking");
+            /*
             Array arr = (Array)value;
             uint elementOid = registry.GetElementOidFromArrayOid(oid);
             TypeHandler elementHandler = registry[elementOid];
@@ -557,7 +559,7 @@ namespace Npgsql.TypeHandlers
 
             bool hasNulls = false;
 
-            int totalLength = 16; // length(4) + ndim (4) + has_nulls (4) + element_oid (4)
+            int totalLength = 12; // ndim (4) + has_nulls (4) + element_oid (4)
             totalLength += arr.Rank * 8; // dim (4) + lBound (4)
 
             foreach (var element in arr)
@@ -573,13 +575,14 @@ namespace Npgsql.TypeHandlers
             sizeArr[sizeArrPos + 1] = hasNulls ? 1 : 0;
 
             return totalLength;
+             */
         }
 
-        public override void WriteBinary(TypeHandlerRegistry registry, uint oid, object value, NpgsqlBuffer buf, List<int> sizeArr, ref int sizeArrPos)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
+            throw new NotImplementedException("Chunking");
+            /*
             Array arr = (Array)value;
-            uint elementOid = registry.GetElementOidFromArrayOid(oid);
-            TypeHandler elementHandler = registry[elementOid];
 
             var totalLength = sizeArr[sizeArrPos++];
             var hasNulls = sizeArr[sizeArrPos++];
@@ -612,6 +615,7 @@ namespace Npgsql.TypeHandlers
                     elementHandler.WriteBinary(registry, elementOid, element, buf, sizeArr, ref sizeArrPos);
                 }
             }
+             */
         }
     }
 

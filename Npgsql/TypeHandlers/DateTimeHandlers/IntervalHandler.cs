@@ -50,18 +50,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 : ((NpgsqlInterval)value).ToString());
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 20;
+            return 16;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             var interval = (value is TimeSpan)
                 ? ((NpgsqlInterval)(TimeSpan)value)
                 : ((NpgsqlInterval)value);
 
-            buf.WriteInt32(16);
             buf.WriteInt64(interval.Ticks / 10); // TODO: round?
             buf.WriteInt32(interval.Days);
             buf.WriteInt32(interval.Months);

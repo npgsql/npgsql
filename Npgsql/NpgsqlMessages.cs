@@ -79,11 +79,24 @@ namespace Npgsql
     internal abstract class ComplexFrontendMessage : FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
+        /// <param name="directBuf">
+        /// an option buffer that, if returned, will be written to the server directly, bypassing our
+        /// NpgsqlBuffer. This is an optimization hack for bytea.
+        /// </param>
         /// <returns>
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal abstract bool Write(NpgsqlBuffer buf);
+        internal virtual bool Write(NpgsqlBuffer buf)
+        {
+            throw new NotImplementedException("Write()");
+        }
+
+        internal virtual bool Write(NpgsqlBuffer buf, out byte[] directBuf)
+        {
+            directBuf = null;
+            return Write(buf);
+        }
     }
 
     /// <summary>

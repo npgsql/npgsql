@@ -48,15 +48,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             writer.WriteString(f.ToString(CultureInfo.InvariantCulture));
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 8;
+            return 4;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
             var f = GetIConvertibleValue<float>(value);
-            buf.WriteInt32(4);
             buf.WriteSingle(f);
         }
     }

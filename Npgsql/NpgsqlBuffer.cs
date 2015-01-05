@@ -540,6 +540,13 @@ namespace Npgsql
 
         #endregion
 
+        public void WriteBytesSimple(byte[] buf, int offset, int count)
+        {
+            Contract.Requires(count <= WriteSpaceLeft);
+            Buffer.BlockCopy(buf, offset, _buf, _writePosition, count);
+            _writePosition += count;
+        }
+
         [GenerateAsync]
         public void Write(byte[] buf, int offset, int count)
         {

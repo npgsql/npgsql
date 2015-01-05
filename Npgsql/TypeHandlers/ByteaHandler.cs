@@ -22,7 +22,7 @@ namespace Npgsql.TypeHandlers
         static readonly string[] _pgNames = { "bytea" };
         internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return true; } }
-        public override bool CanReadFromSocket { get { return true; } }
+        public override bool IsBufferManager { get { return true; } }
 
         static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Bytea };
         internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
@@ -60,16 +60,36 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        protected override int BinarySize(object value)
+        internal override int BinarySize(object value)
         {
-            return 4 + ((byte[])value).Length;
+            return ((byte[])value).Length;
         }
 
-        protected override void WriteBinary(object value, NpgsqlBuffer buf)
+        bool _returnedBuffer = false;
+
+        internal override bool WriteBinary(object value, NpgsqlBuffer buf, out byte[] directBuf)
         {
             var arr = (byte[])value;
-            buf.EnsuredWriteInt32(arr.Length);
-            buf.WriteBytes(arr);
+
+            // If the entire array fits in our buffer, copy it as usual.
+            // Otherwise, switch to direct write from the user-provided buffer
+            if (arr.Length <= buf.WriteSpaceLeft)
+            {
+                buf.WriteBytesSimple(arr, 0, arr.Length);
+                directBuf = null;
+                return true;
+            }
+
+            if (!_returnedBuffer)
+            {
+                directBuf = arr;
+                _returnedBuffer = true;
+                return false;
+            }
+
+            directBuf = null;
+            _returnedBuffer = false;
+            return true;
         }
 
         static readonly byte[] HexDigits = new byte[16] { (byte)'0', (byte)'1', (byte)'2', (byte)'3', (byte)'4', (byte)'5', (byte)'6', (byte)'7',

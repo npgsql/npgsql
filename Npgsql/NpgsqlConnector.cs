@@ -699,7 +699,7 @@ namespace Npgsql
                 {
                     Buffer.Flush();
                 }
-                Contract.Assert(Buffer.WriteSpaceLeft >= asSimple.Length);
+                Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
                 asSimple.Write(Buffer);
                 return;
             }
@@ -707,9 +707,15 @@ namespace Npgsql
             var asComplex = msg as ComplexFrontendMessage;
             if (asComplex != null)
             {
-                while (!asComplex.Write(Buffer))
+                byte[] directBuf;
+                while (!asComplex.Write(Buffer, out directBuf))
                 {
                     Buffer.Flush();
+                    // The following is an optimization hack for writing large byte arrays without passing
+                    // through our buffer
+                    if (directBuf != null) {
+                        Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                    }
                 }
                 return;
             }

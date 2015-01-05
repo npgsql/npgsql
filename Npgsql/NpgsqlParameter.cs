@@ -68,6 +68,15 @@ namespace Npgsql
         private Boolean sourceColumnNullMapping;
         private NpgsqlParameterCollection collection = null;
 
+        internal bool IsBound { get; private set; }
+        internal TypeHandler BoundHandler { get; private set; }
+        internal FormatCode BoundFormatCode { get; private set; }
+        /// <summary>
+        /// The number of bytes the bound value of this parameter requires
+        /// </summary>
+        internal int BoundSize { get; private set; }
+        internal uint TypeOID { get; private set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
@@ -551,11 +560,32 @@ namespace Npgsql
             get { return value == null || value is DBNull; }
         }
 
-        internal uint GetTypeOid(TypeHandlerRegistry registry)
+        internal void Bind(TypeHandlerRegistry registry)
         {
-            return npgsqldb_type.HasValue
+            // TODO: Make sure we do full validation here, no binding exception can occur after this method
+            // returns successfully
+            var handlerOID = npgsqldb_type.HasValue
                 ? registry.GetOidFromNpgsqlDbType(npgsqldb_type.Value) // Todo: enum/composite types
-                : registry.InferTypeOidFromValue(value);
+                : registry.InferTypeOidFromValue(value);            
+
+            BoundHandler = registry[handlerOID];
+
+            BoundFormatCode = BoundHandler.PreferTextWrite || !BoundHandler.SupportsBinaryWrite
+                ? FormatCode.Text
+                : FormatCode.Binary;
+
+            if (BoundFormatCode == FormatCode.Text)
+                throw new NotImplementedException("Text binding");
+
+            BoundSize = BoundHandler.BinarySize(Value);
+
+            IsBound = true;
+        }
+
+        void ClearBind()
+        {
+            IsBound = false;
+            BoundHandler = null;
         }
 
         /// <summary>
@@ -570,33 +600,9 @@ namespace Npgsql
             ClearBind();
         }
 
-        internal bool IsBound { get; private set; }
-        internal short BoundFormatCode { get; private set; }
-        internal uint TypeOID { get; private set; }
-
         internal void SetTypeOID(uint oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
         {
             TypeOID = oid;
-        }
-
-        internal void Bind(NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
-        {
-            /*BoundValue = TypeInfo.ConvertToBackend(NpgsqlValue, true, nativeToBackendTypeConverterOptions);
-            if (BoundValue == null)
-            {
-                BoundFormatCode = (short)FormatCode.Binary;
-            }
-            else
-            {
-                BoundFormatCode = TypeInfo.SupportsBinaryBackendData ? (short)FormatCode.Binary : (short)FormatCode.Text;
-            }*/
-            IsBound = true;
-        }
-
-        void ClearBind()
-        {
-            IsBound = false;
-            //BoundValue = null;
         }
 
         /// <summary>
