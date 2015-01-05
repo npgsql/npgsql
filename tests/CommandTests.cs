@@ -2112,6 +2112,7 @@ namespace NpgsqlTests
         [Test]
         public void VerifyFunctionWithNoParametersWithDeriveParameters()
         {
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
             var command = new NpgsqlCommand("funcb", Conn);
             NpgsqlCommandBuilder.DeriveParameters(command);
         }
