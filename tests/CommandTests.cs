@@ -230,7 +230,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC()", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var result = command.ExecuteScalar();
             Assert.AreEqual(1, result);
@@ -251,7 +251,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC()", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Prepare();
             var result = command.ExecuteScalar();
@@ -264,7 +264,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC(:a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
             command.Parameters[0].Value = 4;
@@ -277,7 +277,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC(:a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
             command.Parameters[0].Value = 4;
@@ -289,7 +289,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
-            var command = new NpgsqlCommand("funcC(:a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
             Assert.AreEqual(1, command.Parameters.Count);
@@ -320,7 +320,7 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
 
-            var command = new NpgsqlCommand("funcC(:a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
             Assert.AreEqual(1, command.Parameters.Count);
@@ -351,7 +351,7 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
 
-            var command = new NpgsqlCommand("funcC(@a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.Add(new NpgsqlParameter("a", NpgsqlDbType.Integer));
             Assert.AreEqual(1, command.Parameters.Count);
@@ -380,7 +380,7 @@ namespace NpgsqlTests
         public void FunctionCallReturnResultSet()
         {
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as 'select * from data;' language 'sql';");
-            var command = new NpgsqlCommand("funcB()", Conn);
+            var command = new NpgsqlCommand("funcB", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var dr = command.ExecuteReader();
             Assert.IsNotNull(dr);
@@ -566,7 +566,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC() returns int8 as 'select count(*) from data;' language 'sql'");
-            var command = new NpgsqlCommand("funcC()", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var p = new NpgsqlParameter("a", DbType.Int32);
             p.Direction = ParameterDirection.Output;
@@ -616,7 +616,7 @@ namespace NpgsqlTests
                                       return;
                               end;
                               ' language 'plpgsql';");
-            var command = new NpgsqlCommand("testreturnvoid()", Conn);
+            var command = new NpgsqlCommand("testreturnvoid", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.ExecuteNonQuery();
         }
@@ -761,7 +761,7 @@ namespace NpgsqlTests
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
             ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcC(int4) returns int8 as 'select count(*) from data where field_int4 = $1;' language 'sql'");
-            var command = new NpgsqlCommand("funcC(:a)", Conn);
+            var command = new NpgsqlCommand("funcC", Conn);
             command.CommandType = CommandType.StoredProcedure;
             var p = new NpgsqlParameter("a", NpgsqlDbType.Integer);
             p.Direction = ParameterDirection.InputOutput;
@@ -1428,14 +1428,21 @@ namespace NpgsqlTests
                                   end
                                   $BODY$
                                   language 'plpgsql' volatile called on null input security invoker;");
-                var cmd = new NpgsqlCommand("testtimestamptzparameter", Conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
-                var dr = cmd.ExecuteReader();
-                Assert.That(dr.Read(), Is.True);
-                Assert.That(dr.Read(), Is.True);
-                Assert.That(dr.Read(), Is.False);
-                cmd.Dispose();
+                using (var cmd = new NpgsqlCommand("testtimestamptzparameter", Conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTZ));
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        Assert.That(dr.Read(), Is.True);
+                        Assert.That(dr.Read(), Is.True);
+                        Assert.That(dr.Read(), Is.False);
+                    }
+                    
+
+                }
+                
+                
             }
         }
 
@@ -2168,7 +2175,7 @@ namespace NpgsqlTests
             // cidr
             cmd.CommandText = "SELECT '192.168/24'::CIDR";
             result = cmd.ExecuteScalar();
-            Assert.AreEqual(typeof(string), result.GetType());
+            Assert.AreEqual(typeof(NpgsqlInet), result.GetType());
 
             // int4
             cmd.CommandText = "SELECT 1::INT4";
