@@ -20,6 +20,39 @@ namespace NpgsqlTests.Types
     {
         public ByteaTests(string backendVersion) : base(backendVersion) {}
 
+        [Test, Description("Roundtrips a bytea")]
+        public void Roundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            byte[] expected = { 1, 2, 3, 4, 5 };
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Bytea);
+            var p2 = new NpgsqlParameter("p2", DbType.Binary);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            // Via NpgsqlDbType.Bytea
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+
+            // Via DbType.Binary
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(1), Is.EqualTo(expected));
+
+            // Via inference
+            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(2), Is.EqualTo(expected));
+
+            reader.Close();
+            cmd.Dispose();            
+        }
+
         [Test]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
@@ -56,12 +89,11 @@ namespace NpgsqlTests.Types
         public void Write()
         {
             var expected = new byte[] { 0x80, 0x81 };
-            var cmd = new NpgsqlCommand("SELECT @p::BYTEA", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p::BYTEA::TEXT", Conn);
             cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
-            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetString(0), Is.EqualTo("\\x8081"));
             reader.Close();
             cmd.Dispose();            
         }

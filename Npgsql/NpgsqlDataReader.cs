@@ -1119,7 +1119,7 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsBufferManager) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
              }
             var result = handler.ReadValueAsObject(buf, fieldDescription, _row.ColumnLen);
@@ -1213,7 +1213,7 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsBufferManager) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
              }
             var result = handler.ReadPsvAsObject(buf, fieldDescription, _row.ColumnLen);
@@ -1326,7 +1326,7 @@ namespace Npgsql
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
             var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsBufferManager) {
+            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
                 buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
              }
             var result = handler.Read(buf, fieldDescription, _row.ColumnLen);

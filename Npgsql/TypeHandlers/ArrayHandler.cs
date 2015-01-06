@@ -19,11 +19,8 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     internal abstract class ArrayHandler : TypeHandler
     {
-        static readonly string[] _pgNames = { "array" };
-        internal override string[] PgNames { get { return _pgNames; } }
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool IsBufferManager { get { return true; } }
-
+        public override bool IsChunking { get { return true; } }
         public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
         internal const int MaxDimensions = 6;
@@ -511,7 +508,7 @@ namespace Npgsql.TypeHandlers
 
         public override void WriteText(object value, NpgsqlTextWriter writer)
         {
-            Array arr = (Array)value;
+            var arr = (Array)value;
             var escapeState = writer.PushEscapeDoubleQuoteWithBackspace();
             WriteTextRecursive(arr, writer, 0, arr.GetEnumerator(), escapeState.DoubleQuote);
             writer.ResetEscapeState(escapeState);
@@ -546,76 +543,142 @@ namespace Npgsql.TypeHandlers
             writer.WriteSingleChar('}');
         }
 
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
-            throw new NotImplementedException("Chunking");
-            /*
-            Array arr = (Array)value;
-            uint elementOid = registry.GetElementOidFromArrayOid(oid);
-            TypeHandler elementHandler = registry[elementOid];
-            int sizeArrPos = sizeArr.Count;
-            sizeArr.Add(0);
-            sizeArr.Add(0);
+            var arr = (Array)value;
+            _hasNulls = false;
 
-            bool hasNulls = false;
-
-            int totalLength = 12; // ndim (4) + has_nulls (4) + element_oid (4)
-            totalLength += arr.Rank * 8; // dim (4) + lBound (4)
+            var len =
+                4 +            // ndim
+                4 +            // has_nulls
+                4 +            // element_oid
+                arr.Rank * 8;  // dim (4) + lBound (4)
 
             foreach (var element in arr)
             {
-                var isNull = element == null || element is DBNull;
+                len += 4;
 
-                totalLength += (isNull ? 4 : elementHandler.BinarySize(registry, elementOid, element, sizeArr));
-                if (isNull)
-                    hasNulls = true;
+                var isNull = element == null || element is DBNull;
+                if (!isNull) {
+                    len += ElementHandler.Length(element);
+                }
+                _hasNulls = true;
             }
 
-            sizeArr[sizeArrPos] = totalLength;
-            sizeArr[sizeArrPos + 1] = hasNulls ? 1 : 0;
-
-            return totalLength;
-             */
+            return len;
         }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        State _state;
+
+        /// <summary>
+        /// The array currently being written
+        /// </summary>
+        Array _array;
+        IList<T> _arrayAsList;
+        bool _hasNulls;
+        int _index;
+        bool _wroteElementLen;
+
+        internal override void PrepareChunkedWrite(object value)
         {
-            throw new NotImplementedException("Chunking");
-            /*
-            Array arr = (Array)value;
+            _state = State.WroteNothing;
+            _array = (Array) value;
+            // If the provided array is of the precise type (e.g. int[]), we can cast it to
+            // IList<T> to extract values from it without boxing/unboxing. If not, use non-generic
+            // List
+            _arrayAsList = (IList<T>)value;
+            _index = 0;
+            _wroteElementLen = false;
+        }
 
-            var totalLength = sizeArr[sizeArrPos++];
-            var hasNulls = sizeArr[sizeArrPos++];
+        internal override bool WriteBinaryChunk(NpgsqlBuffer buf, out byte[] directBuf)
+        {
+            directBuf = null;
 
-            if (arr.Rank > MaxDimensions)
-                throw new OverflowException("Too many dimensions for PostgreSQL. Max allowed: " + MaxDimensions);
+            // TODO: Should this be 6?
+            //if (arr.Rank > MaxDimensions)
+            //    throw new OverflowException("Too many dimensions for PostgreSQL. Max allowed: " + MaxDimensions);
 
-            var headerLength = 16 + arr.Rank * 8;
-            var fitsInBuffer = totalLength <= buf.Size;
-            buf.EnsureWrite(fitsInBuffer ? totalLength : headerLength);
-
-            buf.WriteInt32(totalLength - 4);
-            buf.WriteInt32(arr.Rank);
-            buf.WriteInt32(hasNulls); // Actually not used by backend
-            buf.WriteInt32((int)elementOid);
-            for (var i = 0; i < arr.Rank; i++)
+            switch (_state)
             {
-                buf.WriteInt32(arr.GetLength(i));
-                buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
-            }
+                case State.WroteNothing:
+                    var len =
+                        4 +            // ndim
+                        4 +            // has_nulls
+                        4 +            // element_oid
+                        _array.Rank * 8;  // dim (4) + lBound (4)
 
-            foreach (var element in arr)
-            {
-                if (element == null || element is DBNull)
-                {
-                    buf.EnsuredWriteInt32(-1);
-                }
-                else
-                {
-                    elementHandler.WriteBinary(registry, elementOid, element, buf, sizeArr, ref sizeArrPos);
-                }
+                    if (buf.WriteSpaceLeft < len) {
+                        Contract.Assume(buf.Size >= len, "Buffer too small for header");
+                        return false;
+                    }
+                    buf.WriteInt32(_array.Rank);
+                    buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
+                    buf.WriteInt32((int)ElementHandler.OID);
+                    for (var i = 0; i < _array.Rank; i++)
+                    {
+                        buf.WriteInt32(_array.GetLength(i));
+                        buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
+                    }
+
+                    goto case State.WritingElements;
+
+                case State.WritingElements:
+                    _state = State.WritingElements;
+                    for (; _index < _array.Length; _index++)
+                    {
+                        var element = _arrayAsList[_index];
+                        if (element == null || element is DBNull)
+                        {
+                            if (buf.WriteSpaceLeft < 4) {
+                                return false;
+                            }
+                            buf.WriteInt32(-1);
+                            continue;
+                        }
+
+                        if (ElementHandler.IsChunking)
+                        {
+                            if (!_wroteElementLen)
+                            {
+                                if (buf.WriteSpaceLeft < 4) {
+                                    return false;
+                                }
+                                buf.WriteInt32(ElementHandler.Length(element));
+                                ElementHandler.PrepareChunkedWrite(element);
+                                _wroteElementLen = true;
+                            }
+                            if (!ElementHandler.WriteBinaryChunk(buf, out directBuf)) {
+                                return false;
+                            }
+                            _wroteElementLen = false;
+                        }
+                        else
+                        {
+                            var elementLen = ElementHandler.Length(element);
+                            if (buf.WriteSpaceLeft < 4 + elementLen)
+                            {
+                                Contract.Assume(buf.Size < 4 + elementLen);
+                                return false;
+                            }
+                            buf.WriteInt32(elementLen);
+                            ElementHandler.WriteBinary(element, buf);
+                        }
+                    }
+
+                    _state = State.WroteAll;
+                    return true;
+
+            default:
+                throw PGUtil.ThrowIfReached();
             }
-             */
+        }
+
+        enum State
+        {
+            WroteNothing,
+            WritingElements,
+            WroteAll
         }
     }
 

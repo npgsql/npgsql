@@ -12,17 +12,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
+    [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     internal class DoubleHandler : TypeHandler<double>
     {
-        static readonly string[] _pgNames = { "float8" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Double };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Double };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override double Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -36,13 +28,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             }
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var d = GetIConvertibleValue<double>(value);
-            writer.WriteString(d.ToString(CultureInfo.InvariantCulture));
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 8;
         }

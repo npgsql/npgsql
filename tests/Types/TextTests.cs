@@ -20,12 +20,47 @@ namespace NpgsqlTests.Types
     {
         public TextTests(string backendVersion) : base(backendVersion) {}
 
+        [Test, Description("Roundtrips a string")]
+        public void Roundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            const string expected = "Something";
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
+            var p2 = new NpgsqlParameter("p2", DbType.String);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            // Via NpgsqlDbType.Text
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+            Assert.That(reader.GetString(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
+
+            // Via DbType.String
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(string)));
+            Assert.That(reader.GetString(1), Is.EqualTo(expected));
+
+            // Via inference
+            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(string)));
+            Assert.That(reader.GetString(2), Is.EqualTo(expected));
+
+            reader.Close();
+            cmd.Dispose();            
+        }
+
         [Test]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
         [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
         [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void Read(PrepareOrNot prepare, CommandBehavior behavior)
+        public void ReadLong(PrepareOrNot prepare, CommandBehavior behavior)
         {
             var builder = new StringBuilder("ABCDEééé", Conn.BufferSize);
             builder.Append('X', Conn.BufferSize);
@@ -51,19 +86,6 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetValue(3), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<string>(4), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<char[]>(5), Is.EqualTo(expected.ToCharArray()));
-        }
-
-        [Test]
-        public void Write()
-        {
-            var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", DbType.String) { Value = "Something" });
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-            Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo("Something"));
-            reader.Close();
-            cmd.Dispose();            
         }
 
         [Test]

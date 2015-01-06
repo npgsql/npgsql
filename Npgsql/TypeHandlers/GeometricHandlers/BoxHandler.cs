@@ -16,15 +16,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
     internal class BoxHandler : TypeHandler<NpgsqlBox>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "box" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Box };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)

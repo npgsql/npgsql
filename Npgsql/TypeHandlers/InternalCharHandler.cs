@@ -14,29 +14,15 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-character.html
     /// </remarks>
+    [TypeMapping("char", NpgsqlDbType.SingleChar)]
     internal class InternalCharHandler : TypeHandler<char>
     {
-        static readonly string[] _pgNames = { "char" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.SingleChar };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { null };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override char Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return buf.ReadString(1)[0];
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var ch = (char)value;
-            writer.WriteSingleChar(ch);
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 1;
         }

@@ -16,15 +16,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "lseg" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.LSeg };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override NpgsqlLSeg Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)

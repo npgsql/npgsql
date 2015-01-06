@@ -11,19 +11,16 @@ using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
+    [TypeMapping("text",    NpgsqlDbType.Text, new[] { DbType.String, DbType.StringFixedLength }, new[] { typeof(string), typeof(char[]) })]
+    [TypeMapping("varchar", NpgsqlDbType.Varchar)]
+    [TypeMapping("bpchar",  NpgsqlDbType.Char, typeof(char))]
+    [TypeMapping("name",    NpgsqlDbType.Name)]
+    [TypeMapping("xml",     NpgsqlDbType.Xml, DbType.Xml)]
+    //[TypeMapping("unknown", NpgsqlDbType.Unknown)]  // TODO: Definitely not sure about this!
     internal class TextHandler : TypeHandler<string>, ITypeHandler<char[]>
     {
-        static readonly string[] _pgNames = { "text", "varchar", "bpchar", "name", "xml" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-        public override bool IsBufferManager { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Text, NpgsqlDbType.Varchar, NpgsqlDbType.Char, NpgsqlDbType.Name, NpgsqlDbType.Xml };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.String, DbType.String, DbType.StringFixedLength, DbType.StringFixedLength, DbType.Xml };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
-        public override bool PreferTextWrite { get { return true; } }
+        public override bool IsChunking { get { return true; } }
+        //public override bool PreferTextWrite { get { return true; } }
 
         public override string Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -77,17 +74,30 @@ namespace Npgsql.TypeHandlers
             return charsRead;
         }
 
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
+            // TODO: Cache the length internally across strings?
             return Encoding.UTF8.GetByteCount(value.ToString());
         }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        char[] _value;
+        int _pos;
+
+        internal override void PrepareChunkedWrite(object value)
         {
-            throw new NotImplementedException("Chunked");
-            /*
-            buf.WriteStringvalue.ToString(), size);
-             */
+            _value = ((string)value).ToCharArray();
+            _pos = 0;
+        }
+
+        internal override bool WriteBinaryChunk(NpgsqlBuffer buf)
+        {
+            int charsUsed;
+            bool completed;
+            buf.WriteStringPartial(_value, _pos, _value.Length - _pos, true, out charsUsed, out completed);
+            if (completed)
+                return true;
+            _pos += charsUsed;
+            return false;
         }
     }
 }

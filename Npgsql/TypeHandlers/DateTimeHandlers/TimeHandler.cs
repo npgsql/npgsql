@@ -8,17 +8,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
+    [TypeMapping("time", NpgsqlDbType.Time, DbType.Time)]
     internal class TimeHandler : TypeHandlerWithPsv<DateTime, NpgsqlTime>, ITypeHandler<NpgsqlTime>
     {
-        static readonly string[] _pgNames = { "time" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Time };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Time };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTime?
@@ -39,28 +31,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            if (value is DateTime)
-            {
-                writer.WriteString(((DateTime)value).ToString("HH:mm:ss.ffffff", System.Globalization.DateTimeFormatInfo.InvariantInfo));
-            }
-            else
-            {
-                NpgsqlTime time;
-                if (value is TimeSpan)
-                {
-                    time = (NpgsqlTime)(TimeSpan)value;
-                }
-                else
-                {
-                    time = (NpgsqlTime)value;
-                }
-                writer.WriteString(time.ToString());
-            }
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 8;
         }

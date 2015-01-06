@@ -13,15 +13,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
     /// </remarks>
+    [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     internal class MacaddrHandler : TypeHandler<PhysicalAddress>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "macaddr" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.MacAddr };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override PhysicalAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -75,13 +69,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return val;
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var val = GetValue(value);
-            writer.WriteString(val.ToString());
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 6;
         }

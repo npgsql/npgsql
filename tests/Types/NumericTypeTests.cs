@@ -23,15 +23,24 @@ namespace NpgsqlTests.Types
     public class NumericTypeTests : TestBase
     {
         [Test]
-        public void ReadInt16([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int16([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT 8::SMALLINT", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Smallint);
+            var p2 = new NpgsqlParameter("p2", DbType.Int16);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = (short)8 };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = (long)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
+
+            // Via NpgsqlDbType
+            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
             Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
             Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
             Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
@@ -39,17 +48,35 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
             Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(short)));
+
+            // Via DbType
+            Assert.That(reader.GetInt16(1),                 Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(short)));
+
+            // Via inference
+            Assert.That(reader.GetInt16(2),                 Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(short)));
+
             reader.Dispose();
             cmd.Dispose();
         }
 
         [Test]
-        public void ReadInt32([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int32([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT 8::INTEGER", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+            var p2 = new NpgsqlParameter("p2", DbType.Int32);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = 8 };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = (long)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
+
+            // Via NpgsqlDbType
             Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
@@ -60,20 +87,16 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
             Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(int)));
-            reader.Dispose();
-            cmd.Dispose();
-        }
 
-        [Test]
-        public void WriteInt32()
-        {
-            var cmd = new NpgsqlCommand("SELECT @p::INTEGER", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", DbType.Int32) { Value = 8 });
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
-            Assert.That(reader.GetFieldValue<int>(0), Is.EqualTo(8));
-            reader.Close();
+            // Via DbType
+            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(int)));
+            Assert.That(reader.GetInt32(1),                 Is.EqualTo(8));
+
+            // Via inference
+            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(int)));
+            Assert.That(reader.GetInt32(2),                 Is.EqualTo(8));
+
+            reader.Dispose();
             cmd.Dispose();
         }
 
@@ -93,15 +116,24 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadInt64([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int64([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT 8::BIGINT", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Bigint);
+            var p2 = new NpgsqlParameter("p2", DbType.Int64);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = (long)8 };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = (short)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
+
+            // Via NpgsqlDbType
             Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
+            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
             Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
             Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
             Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
@@ -109,55 +141,124 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
             Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(long)));
+
+            // Via DbType
+            Assert.That(reader.GetInt64(1),                 Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(long)));
+
+            // Via inference
+            Assert.That(reader.GetInt64(2),                 Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(long)));
+
             reader.Dispose();
             cmd.Dispose();
         }
 
         [Test]
-        public void ReadDouble([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Double([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             const double expected = 4.123456789012345;
-            var cmd = new NpgsqlCommand("SELECT 4.123456789012345::DOUBLE PRECISION", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Double);
+            var p2 = new NpgsqlParameter("p2", DbType.Double);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetDouble(0), Is.EqualTo(expected).Within(10E-07));
+
+            // Via NpgsqlDbType
+            Assert.That(reader.GetDouble(0),    Is.EqualTo(expected).Within(10E-07));
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(double)));
+
+            // Via DbType
+            Assert.That(reader.GetDouble(1),    Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(double)));
+
+            // Via inference
+            Assert.That(reader.GetDouble(1),    Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(double)));
+
             reader.Dispose();
             cmd.Dispose();
         }
 
         [Test]
-        public void GetFloat([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Float([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             const float expected = .123456F;
-            var cmd = new NpgsqlCommand("SELECT .123456::REAL", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Real);
+            var p2 = new NpgsqlParameter("p2", DbType.Single);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetFloat(0), Is.EqualTo(expected).Within(10E-07));
+
+            // Via NpgsqlDbType
+            Assert.That(reader.GetFloat(0),     Is.EqualTo(expected).Within(10E-07));
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(float)));
+
+            // Via DbType
+            Assert.That(reader.GetFloat(1),     Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(float)));
+
+            // Via inference
+            Assert.That(reader.GetFloat(2),     Is.EqualTo(expected).Within(10E-07));
+            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(float)));
+
             reader.Dispose();
             cmd.Dispose();
         }
 
         [Test]
-        public void ReadNumeric([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Numeric([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT 8::NUMERIC", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Numeric);
+            var p2 = new NpgsqlParameter("p2", DbType.Decimal);
+            var p3 = new NpgsqlParameter("p3", DbType.VarNumeric);
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = (decimal)8 };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = p3.Value = 8;
             var reader = cmd.ExecuteReader();
             reader.Read();
+
+            // Via NpgsqlDbType
+            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
             Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
             Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
             Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
             Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
-            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
             Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
             Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(decimal)));
+
+            // Via DbType Decimal
+            Assert.That(reader.GetDecimal(1),               Is.EqualTo(8.0m));
+            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(decimal)));
+
+            // Via DbType VarNumeric
+            Assert.That(reader.GetDecimal(2),               Is.EqualTo(8.0m));
+            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(decimal)));
+
+            // Via inference
+            Assert.That(reader.GetDecimal(3),               Is.EqualTo(8.0m));
+            Assert.That(reader.GetFieldType(3),             Is.EqualTo(typeof(decimal)));
+
             reader.Dispose();
             cmd.Dispose();
         }

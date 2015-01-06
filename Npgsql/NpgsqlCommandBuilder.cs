@@ -208,6 +208,8 @@ namespace Npgsql
                 {
                     var param = new NpgsqlParameter();
 
+                    throw new NotImplementedException();
+                    /*
                     // TODO: Fix enums, composite types
                     var npgsqlDbType = c.Connector.TypeHandlerRegistry.GetNpgsqlDbTypeFromOid(types[i]);
                     if (npgsqlDbType == NpgsqlDbType.Unknown)
@@ -245,6 +247,7 @@ namespace Npgsql
                     }
                     
                     command.Parameters.Add(param);
+                     */
                 }
             }
         }

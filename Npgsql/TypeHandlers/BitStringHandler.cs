@@ -19,14 +19,11 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-bit.html
     /// </remarks>
+    [TypeMapping("varbit", NpgsqlDbType.Varbit, typeof(BitArray))]
+    [TypeMapping("bit", NpgsqlDbType.Bit)]
     internal class BitStringHandler : TypeHandler, ITypeHandler<BitArray>, ITypeHandler<bool>
     {
-        static readonly string[] _pgNames = { "bit", "varbit" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Bit, NpgsqlDbType.Varbit };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        public override bool IsChunking { get { return true; } }
 
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
@@ -53,7 +50,7 @@ namespace Npgsql.TypeHandlers
         bool ITypeHandler<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.TypeModifier != 1) {
-                throw new InvalidCastException("Can't convert a BIT({0}) type to bool, only BIT(1)", fieldDescription.TypeModifier);
+                throw new InvalidCastException(String.Format("Can't convert a BIT({0}) type to bool, only BIT(1)", fieldDescription.TypeModifier));
             }
 
             switch (fieldDescription.FormatCode)
@@ -130,28 +127,68 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
-            throw new NotImplementedException();
+            var asBitArray = value as BitArray;
+            if (asBitArray != null)
+                return 4 + (asBitArray.Length + 7) / 8;
+
             if (value is bool)
                 return 5;
-            if (value is string)
-                return 8 + (((string)value).Length + 7) / 8;
-            else
-                return 8 + (((BitArray)value).Length + 7) / 8;
+
+            var asString = value as string;
+            if (asString != null)
+                return 4 + (asString.Length + 7) / 8;
+
+            throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        object _value;
+        int _pos;
+
+        internal override void PrepareChunkedWrite(object value)
         {
-            throw new NotImplementedException();
-            if (value is bool)
+            _value = value;
+            _pos = -1;
+        }
+
+        internal override bool WriteBinaryChunk(NpgsqlBuffer buf)
+        {
+            if (_value is bool)
             {
-                buf.EnsureWrite(9);
-                buf.WriteInt32(5);
+                if (buf.WriteSpaceLeft < 5)
+                    return false;
                 buf.WriteInt32(1);
-                buf.WriteByte((bool)value ? (byte)0x80 : (byte)0);
+                buf.WriteByte((bool)_value ? (byte)0x80 : (byte)0);
+                return true;
             }
-            else if (value is string)
+
+            var bitArray = _value as BitArray;
+            if (bitArray != null)
+            {
+                if (_pos < 0)
+                {
+                    // Initial bitlength byte
+                    if (buf.WriteSpaceLeft < 4)
+                        return false;
+                    buf.WriteInt32(bitArray.Length);
+                    _pos = 0;
+                }
+                var byteLen = (bitArray.Length + 7) / 8;
+                var endPos = _pos + Math.Min(byteLen - _pos, buf.WriteSpaceLeft);
+                for (; _pos < endPos; _pos++)
+                {
+                    var bitPos = _pos * 8;
+                    var b = 0;
+                    for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
+                        b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i -1);
+                    buf.WriteByte((byte)b);
+                }
+
+                return _pos == byteLen;
+            }
+            /*
+            if (value is string)
             {
                 string str = (string)value;
                 if (!System.Text.RegularExpressions.Regex.IsMatch(str, "^[01]*$"))
@@ -182,35 +219,8 @@ namespace Npgsql.TypeHandlers
                 if (mask != 0x80)
                     buf.EnsuredWriteByte((byte)lastByte);
             }
-            else if (value is BitArray)
-            {
-                var arr = (BitArray)value;
-
-                buf.EnsuredWriteInt32((arr.Length + 7) / 8);
-                for (int i = 0; i < arr.Length / 8; i += 8)
-                {
-                    var b = 0;
-                    b += (arr[i + 0] ? 1 : 0) << 7;
-                    b += (arr[i + 1] ? 1 : 0) << 6;
-                    b += (arr[i + 2] ? 1 : 0) << 5;
-                    b += (arr[i + 3] ? 1 : 0) << 4;
-                    b += (arr[i + 4] ? 1 : 0) << 3;
-                    b += (arr[i + 5] ? 1 : 0) << 2;
-                    b += (arr[i + 6] ? 1 : 0) << 1;
-                    b += (arr[i + 7] ? 1 : 0);
-                    buf.EnsuredWriteByte((byte)b);
-                }
-                int lastByte = 0;
-                int mask = 0x80;
-                for (int i = 0; i < (arr.Length & ~7); i++)
-                {
-                    if (arr[i])
-                        lastByte |= mask;
-                    mask >>= 1;
-                }
-                if (mask != 0x80)
-                    buf.EnsuredWriteByte((byte)lastByte);
-            }
+            */
+            throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
         #endregion
@@ -236,31 +246,6 @@ namespace Npgsql.TypeHandlers
                 }
             }
             return result;
-        }
-
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            if (value is bool)
-            {
-                writer.WriteSingleChar((bool)value ? '1' : '0');
-            }
-            else if (value is string)
-            {
-                string s = (string)value;
-                if (!System.Text.RegularExpressions.Regex.IsMatch(s, "^[01]*$"))
-                    throw new InvalidCastException("Cannot interpret as bitstring: " + s);
-
-                writer.WriteString(s);
-            }
-            else
-            {
-                // TODO: hex if size is multiple of 4
-                var arr = (BitArray)value;
-                for (var i = 0; i < arr.Length; i++)
-                {
-                    writer.WriteSingleChar(arr[i] ? '1' : '0');
-                }
-            }
         }
 
         #endregion

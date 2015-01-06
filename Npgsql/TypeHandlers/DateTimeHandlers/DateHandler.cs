@@ -8,17 +8,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
+    [TypeMapping("date", NpgsqlDbType.Date, DbType.Date)]
     internal class DateHandler : TypeHandlerWithPsv<DateTime, NpgsqlDate>, ITypeHandler<NpgsqlDate>
     {
-        static readonly string[] _pgNames = { "date" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Date };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Date };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 
@@ -79,26 +71,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDate((int) year, (int) month, (int) day);
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            if (value is DateTime)
-            {
-                var dt = (DateTime)value;
-                if (dt == DateTime.MinValue)
-                    writer.WriteString("-infinity");
-                else if (dt == DateTime.MaxValue)
-                    writer.WriteString("infinity");
-                else
-                    writer.WriteString(dt.ToString("yyyy-MM-dd"));
-            }
-            else
-            {
-                // Handle NpgsqlDate and other possible types
-                writer.WriteString(value.ToString());
-            }
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 4;
         }

@@ -17,17 +17,12 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-binary.html
     /// </remarks>
+    [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, typeof(byte[]))]
     internal class ByteaHandler : TypeHandler<byte[]>
     {
-        static readonly string[] _pgNames = { "bytea" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-        public override bool IsBufferManager { get { return true; } }
+        public override bool IsChunking { get { return true; } }
 
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Bytea };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Binary };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
+        bool _returnedBuffer;
 
         public override byte[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -58,74 +53,6 @@ namespace Npgsql.TypeHandlers
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
             return result;
-        }
-
-        internal override int BinarySize(object value)
-        {
-            return ((byte[])value).Length;
-        }
-
-        bool _returnedBuffer = false;
-
-        internal override bool WriteBinary(object value, NpgsqlBuffer buf, out byte[] directBuf)
-        {
-            var arr = (byte[])value;
-
-            // If the entire array fits in our buffer, copy it as usual.
-            // Otherwise, switch to direct write from the user-provided buffer
-            if (arr.Length <= buf.WriteSpaceLeft)
-            {
-                buf.WriteBytesSimple(arr, 0, arr.Length);
-                directBuf = null;
-                return true;
-            }
-
-            if (!_returnedBuffer)
-            {
-                directBuf = arr;
-                _returnedBuffer = true;
-                return false;
-            }
-
-            directBuf = null;
-            _returnedBuffer = false;
-            return true;
-        }
-
-        static readonly byte[] HexDigits = new byte[16] { (byte)'0', (byte)'1', (byte)'2', (byte)'3', (byte)'4', (byte)'5', (byte)'6', (byte)'7',
-                                                          (byte)'8', (byte)'9', (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', (byte)'f' };
-
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            byte[] arr = (byte[])value;
-
-            writer.WriteSingleChar('\\');
-            writer.WriteSingleChar('x');
-
-            if (arr.Length < 256)
-            {
-                foreach (var b in arr)
-                {
-                    writer.WriteSingleChar((char)HexDigits[b >> 4]);
-                    writer.WriteSingleChar((char)HexDigits[b & 0xf]);
-                }
-            }
-            else
-            {
-                byte[] buf = new byte[256];
-                for (int i = 0, pos = 0; i < (arr.Length + 127) / 128; i++)
-                {
-                    var end = Math.Min(pos + 128, arr.Length);
-                    var len = end - pos;
-                    for (var j = 0; pos < end; pos++)
-                    {
-                        var b = arr[pos];
-                        buf[j++] = HexDigits[b >> 4];
-                        buf[j++] = HexDigits[b & 0xf];
-                    }
-                    writer.WriteRawByteArray(buf, 0, len * 2);
-                }
-            }
         }
 
         public long GetBytes(DataRowMessage row, int dataOffset, byte[] output, int bufferOffset, int len, FieldDescription field)
@@ -256,6 +183,48 @@ namespace Npgsql.TypeHandlers
 
             row.DecodedPosInColumn = 0;
         }
+
+        #region Write
+
+        byte[] _value;
+
+        internal override int Length(object value)
+        {
+            return ((byte[])value).Length;
+        }
+
+        internal override void PrepareChunkedWrite(object value)
+        {
+            _value = (byte[])value;
+        }
+
+        internal override bool WriteBinaryChunk(NpgsqlBuffer buf, out byte[] directBuf)
+        {
+            // If the entire array fits in our buffer, copy it as usual.
+            // Otherwise, switch to direct write from the user-provided buffer
+            if (_value.Length <= buf.WriteSpaceLeft)
+            {
+                buf.WriteBytesSimple(_value, 0, _value.Length);
+                directBuf = null;
+                return true;
+            }
+
+            if (!_returnedBuffer)
+            {
+                directBuf = _value;
+                _returnedBuffer = true;
+                return false;
+            }
+
+            directBuf = null;
+            _returnedBuffer = false;
+            return true;
+        }
+
+        #endregion
+
+        static readonly byte[] HexDigits = new byte[16] { (byte)'0', (byte)'1', (byte)'2', (byte)'3', (byte)'4', (byte)'5', (byte)'6', (byte)'7',
+                                                          (byte)'8', (byte)'9', (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', (byte)'f' };
 
 #if PREVIOUS_IMPLEMENTATION
 #if NET45

@@ -33,33 +33,71 @@ namespace NpgsqlTests.Types
             for (var i = 0; i < bits.Length; i++)
                 expected[i] = bits[i] == '1';
 
-            var cmd = new NpgsqlCommand(String.Format("SELECT B'{0}'::BIT VARYING", bits), Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Varbit);
+            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Bit);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
+
+            // Via NpgsqlDbType.Varbit
             Assert.That(reader.GetFieldValue<BitArray>(0), Is.EqualTo(expected));
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             Assert.That(() => reader.GetFieldValue<bool>(0), Throws.Exception.TypeOf<InvalidCastException>());
+
+            // Via NpgsqlDbType.Bit
+            Assert.That(reader.GetFieldValue<BitArray>(1), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(1), Is.EqualTo(expected));
+
+            // Via inference
+            Assert.That(reader.GetFieldValue<BitArray>(2), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(2), Is.EqualTo(expected));
+
             reader.Dispose();
             cmd.Dispose();
         }
 
         [Test]
-        public void ReadSingleBit([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Long()
         {
-            var cmd = new NpgsqlCommand("SELECT B'1'::BIT, B'0'::BIT, B'01'::BIT(2)", Conn);
+            throw new NotImplementedException("BitStringHandler doesn't supposed chunked reading yet");
+            var bitLen = (Conn.BufferSize + 10) * 8;
+            var expected = new BitArray(bitLen);
+            for (var i = 0; i < bitLen; i++)
+                expected[i] = i % 2 == 0;
+
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Varbit) { Value = expected };
+            cmd.Parameters.Add(p);
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected));
+            cmd.Dispose();
+        }
+
+        [Test, Description("Roundtrips a single bit")]
+        public void SingleBit([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            const bool expected = true;
+            var cmd = new NpgsqlCommand("SELECT @p, B'01'::BIT(2)", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Bit);
+            // TODO: type inference?
+            cmd.Parameters.Add(p);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
 
             Assert.That(reader.GetBoolean(0), Is.EqualTo(true));
-            Assert.That(reader.GetBoolean(1), Is.EqualTo(false));
             Assert.That(reader.GetValue(0), Is.EqualTo(true));
             Assert.That(reader.GetFieldValue<bool>(0), Is.EqualTo(true));
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
 
             // BIT(N) shouldn't be accessible as bool
-            Assert.That(() => reader.GetBoolean(2), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetBoolean(1), Throws.Exception.TypeOf<InvalidCastException>());
 
             reader.Dispose();
             cmd.Dispose();            

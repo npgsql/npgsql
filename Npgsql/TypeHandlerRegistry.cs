@@ -20,19 +20,19 @@ namespace Npgsql
 
         readonly Dictionary<string, TypeHandler> _nameIndex;
         readonly Dictionary<uint, TypeHandler> _oidIndex;
-        readonly Dictionary<uint, uint> _arrayOidToElementOid;
-        readonly Dictionary<uint, uint> _rangeOidToElementOid;
-        readonly Dictionary<NpgsqlDbType, uint> _npgsqlDbTypeToOid;
-        readonly Dictionary<DbType, uint> _dbTypeToOid;
-        readonly Dictionary<uint, NpgsqlDbType> _oidToNpgsqlDbType;
-        readonly Dictionary<Type, uint> _typeToOid;
 
-        static List<TypeHandler> _scalarTypeHandlers;
+        readonly Dictionary<DbType, TypeHandler> _byDbType;
+        readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
+        readonly Dictionary<Type, TypeHandler> _byType;
+
+        public TypeHandler UnknownTypeHandler { get; private set; }
+
+        static readonly List<Type> HandlerTypes;
+        /*
         static Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType;
         static Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType;
         static Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType;
-        static readonly TypeHandler UnknownTypeHandler = new UnknownTypeHandler();
-        static readonly TypeHandlerRegistry EmptyRegistry = new TypeHandlerRegistry();
+         */
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> _registryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
         static readonly ILog Log = LogManager.GetCurrentClassLogger();
 
@@ -42,6 +42,8 @@ namespace Npgsql
 
         static internal void Setup(NpgsqlConnector connector)
         {
+            // TODO: Implement caching again
+            /*
             TypeHandlerRegistry registry;
             if (_registryCache.TryGetValue(connector.ConnectionString, out registry))
             {
@@ -49,41 +51,64 @@ namespace Npgsql
             }
 
             connector.TypeHandlerRegistry = _registryCache[connector.ConnectionString] = new TypeHandlerRegistry(connector);
+             */
+            connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
         }
 
-        TypeHandlerRegistry()
-        {
-            _oidIndex = new Dictionary<uint, TypeHandler>();
-            _arrayOidToElementOid = new Dictionary<uint, uint>();
-            _rangeOidToElementOid = new Dictionary<uint, uint>();
-            _npgsqlDbTypeToOid = new Dictionary<NpgsqlDbType, uint>();
-            _dbTypeToOid = new Dictionary<DbType, uint>();
-            _oidToNpgsqlDbType = new Dictionary<uint, NpgsqlDbType>();
-            _typeToOid = new Dictionary<Type, uint>();
-        }
-
-        TypeHandlerRegistry(NpgsqlConnector connector) : this()
+        TypeHandlerRegistry(NpgsqlConnector connector)
         {
             Log.Debug("Loading types for connection string: " + connector.ConnectionString);
+
+            _oidIndex = new Dictionary<uint, TypeHandler>();
+            _byDbType = new Dictionary<DbType, TypeHandler>();
+            _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
+            _byType = new Dictionary<Type, TypeHandler>();
+            UnknownTypeHandler = new UnknownTypeHandler { OID=0 };
 
             // Below we'll be sending in a query to load OIDs from the backend, but parsing those results will depend
             // on... the OIDs. To solve this chicken and egg problem, set up an empty type handler registry that will
             // enable us to at least read strings via the UnknownTypeHandler
-            connector.TypeHandlerRegistry = EmptyRegistry;
+            //connector.TypeHandlerRegistry = EmptyRegistry;
+            connector.TypeHandlerRegistry = this;
 
             var inList = new StringBuilder();
             _nameIndex = new Dictionary<string, TypeHandler>();
 
-            foreach (var handler in _scalarTypeHandlers)
+            foreach (var handlerType in HandlerTypes)
             {
-                foreach (var pgName in handler.PgNames)
+                foreach (TypeMappingAttribute attr in handlerType.GetCustomAttributes(typeof(TypeMappingAttribute), false))
                 {
-                    if (_nameIndex.ContainsKey(pgName))
+                    // TODO: Pass the connector to the type handler constructor for optional customizations
+                    var handler = (TypeHandler)Activator.CreateInstance(handlerType);
+
+                    if (_nameIndex.ContainsKey(attr.PgName))
+                        throw new Exception(String.Format("Two type handlers registered on same PostgreSQL type name {0}: {1} and {2}", attr.PgName, _nameIndex[attr.PgName].GetType().Name, handlerType.Name));
+                    handler.PgName = attr.PgName;
+                    _nameIndex[attr.PgName] = handler;
+
+                    if (_byNpgsqlDbType.ContainsKey(attr.NpgsqlDbType))
+                        throw new Exception(String.Format("Two type handlers registered on same NpgsqlDbType {0}: {1} and {2}",
+                                            attr.NpgsqlDbType, _byNpgsqlDbType[attr.NpgsqlDbType].GetType().Name, handlerType.Name));
+                    _byNpgsqlDbType[attr.NpgsqlDbType] = handler;
+                    handler.NpgsqlDbType = attr.NpgsqlDbType;
+
+                    foreach (var dbType in attr.DbTypes)
                     {
-                        throw new Exception(String.Format("Two type handlers registered on same Postgresql type name: {0} and {1}", _nameIndex[pgName].GetType().Name, handler.GetType().Name));
+                        if (_byDbType.ContainsKey(dbType))
+                            throw new Exception(String.Format("Two type handlers registered on same DbType {0}: {1} and {2}",
+                                                dbType, _byDbType[dbType].GetType().Name, handlerType.Name));
+                        _byDbType[dbType] = handler;
                     }
-                    _nameIndex.Add(pgName, handler);
-                    inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? "," : ""), pgName);
+
+                    foreach (var type in attr.Types)
+                    {
+                        if (_byType.ContainsKey(type))
+                            throw new Exception(String.Format("Two type handlers registered on same .NET type {0}: {1} and {2}",
+                                                type, _byType[type].GetType().Name, handlerType.Name));
+                        _byType[type] = handler;
+                    }
+
+                    inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? "," : ""), attr.PgName);
                 }
             }
 
@@ -128,51 +153,14 @@ namespace Npgsql
             }*/
 
             connector.TypeHandlerRegistry = _registryCache[connector.ConnectionString] = this;
-
-            UnknownOid = GetOidFromNpgsqlDbType(NpgsqlDbType.Unknown);
         }
 
         void RegisterBaseType(string name, uint oid, uint arrayOID, char textDelimiter)
         {
             var handler = _nameIndex[name];
-            Contract.Assert(handler.Oid == 0);
-
-            // TODO: Check if we actually need the OID here (we will for write).
-            // If so we need to create instances of handlers per-connector, since OIDs may differ
-            //handler.Oid = oid;
+            Contract.Assume(handler.OID == 0);
+            handler.OID = oid;
             _oidIndex[oid] = handler;
-
-            NpgsqlDbType npgsqlDbType = 0;
-
-            // Map NpgsqlDbType and DbType
-            for (var i = 0; i < handler.PgNames.Length && i < handler.NpgsqlDbTypes.Length; i++)
-            {
-                if (handler.PgNames[i] == name && handler.NpgsqlDbTypes[i].HasValue)
-                {
-                    _npgsqlDbTypeToOid[handler.NpgsqlDbTypes[i].Value] = oid;
-                    npgsqlDbType = handler.NpgsqlDbTypes[i].Value;
-                    _oidToNpgsqlDbType[oid] = npgsqlDbType;
-
-                    // Take the first occurance of the type
-                    if (handler.AllowAutoInferring && !_typeToOid.ContainsKey(handler.GetFieldType()))
-                    {
-                        _typeToOid[handler.GetFieldType()] = oid;
-                    }
-                }
-            }
-            for (var i = 0; i < handler.PgNames.Length && i < handler.DbTypes.Length; i++)
-            {
-                if (handler.PgNames[i] == name && handler.DbTypes[i].HasValue)
-                    _dbTypeToOid[handler.DbTypes[i].Value] = oid;
-            }
-            for (var i = 0; i < handler.PgNames.Length && i < handler.DbTypeAliases.Length; i++)
-            {
-                if (handler.PgNames[i] == name && handler.DbTypeAliases[i] != null)
-                {
-                    foreach (var dbType in handler.DbTypeAliases[i])
-                        _dbTypeToOid[handler.DbTypes[i].Value] = oid;
-                }
-            }
 
             if (arrayOID == 0) {
                 return;
@@ -182,21 +170,9 @@ namespace Npgsql
             // Use reflection to create a constructed type from the relevant ArrayHandler
             // generic type definition.
             var arrayHandler = CreateArrayHandler(handler, textDelimiter);
-
-            _npgsqlDbTypeToOid[npgsqlDbType | NpgsqlDbType.Array] = arrayOID;
-            _oidToNpgsqlDbType[arrayOID] = npgsqlDbType | NpgsqlDbType.Array;
-
-            if (arrayHandler.AllowAutoInferring)
-            {
-                var elementFieldType = handler.GetFieldType();
-                _typeToOid[elementFieldType.MakeArrayType()] = arrayOID;
-                for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                    _typeToOid[elementFieldType.MakeArrayType(i)] = arrayOID;
-            }
-
-            // arrayHandler.Oid = oid;
+             arrayHandler.OID = arrayOID;
             _oidIndex[arrayOID] = arrayHandler;
-            _arrayOidToElementOid[arrayOID] = oid;
+            _byNpgsqlDbType.Add(NpgsqlDbType.Array | handler.NpgsqlDbType, arrayHandler);
         }
 
         void RegisterRangeType(string name, uint oid, uint arrayOID, char textDelimiter, uint elementOid)
@@ -209,33 +185,17 @@ namespace Npgsql
             }
 
             var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var rangeHandler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, name);
+            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, name);
+
+            handler.OID = oid;
+            _oidIndex[oid] = handler;
+            _byNpgsqlDbType.Add(NpgsqlDbType.Range | elementHandler.NpgsqlDbType, handler);
 
             // Array of ranges
-            var arrayRangeHandler = CreateArrayHandler(rangeHandler, ',');
-
-            _npgsqlDbTypeToOid[NpgsqlDbType.Range | _oidToNpgsqlDbType[elementOid]] = oid;
-            _npgsqlDbTypeToOid[NpgsqlDbType.Array | NpgsqlDbType.Range | _oidToNpgsqlDbType[elementOid]] = arrayOID;
-            _oidToNpgsqlDbType[oid] = NpgsqlDbType.Range | _oidToNpgsqlDbType[elementOid];
-            _oidToNpgsqlDbType[arrayOID] = NpgsqlDbType.Array | NpgsqlDbType.Range | _oidToNpgsqlDbType[elementOid];
-            if (rangeHandler.AllowAutoInferring)
-            {
-                _typeToOid[rangeHandler.GetFieldType()] = oid;
-                _typeToOid[arrayRangeHandler.GetFieldType(null)] = oid;
-            }
-
-            if (arrayRangeHandler.AllowAutoInferring)
-            {
-                var rangeFieldType = rangeHandler.GetFieldType();
-                _typeToOid[rangeFieldType.MakeArrayType()] = arrayOID;
-                for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                    _typeToOid[rangeFieldType.MakeArrayType(i)] = arrayOID;
-            }
-
-            _oidIndex[oid] = rangeHandler;
-            _rangeOidToElementOid[oid] = elementOid;
-            _oidIndex[arrayOID] = arrayRangeHandler;
-            _arrayOidToElementOid[arrayOID] = oid;
+            var arrayHandler = CreateArrayHandler(handler, ',');
+             arrayHandler.OID = arrayOID;
+            _oidIndex[arrayOID] = arrayHandler;
+            _byNpgsqlDbType.Add(NpgsqlDbType.Range | NpgsqlDbType.Array | elementHandler.NpgsqlDbType, handler);
         }
 
         static ArrayHandler CreateArrayHandler(TypeHandler elementHandler, char textDelimiter)
@@ -288,7 +248,10 @@ namespace Npgsql
         {
             get
             {
-                return this[_npgsqlDbTypeToOid[npgsqlDbType]];
+                TypeHandler handler;
+                var exists = _byNpgsqlDbType.TryGetValue(npgsqlDbType, out handler);
+                Contract.Assume(exists);
+                return handler;
             }
         }
 
@@ -296,175 +259,63 @@ namespace Npgsql
         {
             get
             {
-                uint oid = 0;
-                if (!_dbTypeToOid.TryGetValue(dbType, out oid))
-                {
+                TypeHandler handler;
+                if (!_byDbType.TryGetValue(dbType, out handler)) {
                     throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
                 }
-                return this[oid];
+                return handler;
             }
         }
 
-        internal uint UnknownOid { get; private set; }
-
-        internal uint GetOidFromNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+        internal TypeHandler this[object value]
         {
-            uint oid;
-            if (_npgsqlDbTypeToOid.TryGetValue(npgsqlDbType, out oid))
-                return oid;
-            else
-                throw new NotSupportedException("Your PostgreSQL version does not support the NpgsqlDbType \"" + npgsqlDbType + "\".");
-        }
+            get
+            {
+                if (value == null || value is DBNull)
+                    return UnknownTypeHandler;
 
-        internal uint GetElementOidFromArrayOid(uint arrayOid)
-        {
-            return _arrayOidToElementOid[arrayOid];
-        }
+                if (value is DateTime)
+                {
+                    return ((DateTime) value).Kind == DateTimeKind.Utc
+                        ? this[NpgsqlDbType.TimestampTZ]
+                        : this[NpgsqlDbType.Timestamp];
+                }
 
-        internal uint GetElementOidFromRangeOid(uint rangeOid)
-        {
-            return _rangeOidToElementOid[rangeOid];
-        }
-
-        internal NpgsqlDbType GetNpgsqlDbTypeFromOid(uint oid)
-        {
-            NpgsqlDbType npgsqlDbType;
-            if (_oidToNpgsqlDbType.TryGetValue(oid, out npgsqlDbType))
-                return npgsqlDbType;
-            else
-                return NpgsqlDbType.Unknown;
-        }
-
-        internal uint InferTypeOidFromValue(object value)
-        {
-            // First check the special cases and common types
-            var npgsqlDbType = InferNpgsqlDbTypeFromValue(value);
-            uint oid = 0;
-            if (npgsqlDbType != NpgsqlDbType.Unknown && _npgsqlDbTypeToOid.TryGetValue(npgsqlDbType, out oid))
-                return oid;
-
-            // If db instance specific types are used, such as composite types or enum, this one will find it
-            if (value != null && _typeToOid.TryGetValue(value.GetType(), out oid))
-                return oid;
-
-            return 0;
-        }
-
-        static internal NpgsqlDbType InferNpgsqlDbTypeFromValue(object value)
-        {
-            if (value == null || value is DBNull)
-                return NpgsqlDbType.Unknown;
-
-            if (value is DateTime) {
-                if (((DateTime)value).Kind == DateTimeKind.Utc)
-                    return NpgsqlDbType.TimestampTZ;
-                else
-                    return NpgsqlDbType.Timestamp;
+                return this[value.GetType()];
             }
-
-            if (value is string || value is char || value is char[])
-                return NpgsqlDbType.Text;
-
-            NpgsqlDbType type;
-            if (_typeToNpgsqlDbType.TryGetValue(value.GetType(), out type))
-                return type;
-
-            return NpgsqlDbType.Unknown;
         }
 
-        public static NpgsqlDbType GetNpgsqlDbTypeFromDbType(DbType dbType)
+        TypeHandler this[Type type]
         {
-            NpgsqlDbType t;
-            if (!_dbTypeToNpgsqlDbType.TryGetValue(dbType, out t))
-                throw new NotSupportedException("The DbType " + dbType + " is not supported for Npgsql");
-            return t;
-        }
+            get
+            {
+                if (type.IsArray) {
+                    return type == typeof(byte[])
+                        ? this[NpgsqlDbType.Bytea]
+                        : this[NpgsqlDbType.Array | this[type.GetElementType()].NpgsqlDbType];
+                }
 
-        public static DbType GetDbTypeFromNpgsqlDbType(NpgsqlDbType npgsqlDbType)
-        {
-            DbType t;
-            if (!_npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out t))
-                return DbType.Object;
-            return t;
+                TypeHandler handler;
+                if (!_byType.TryGetValue(type, out handler)) {
+                    throw new NotSupportedException("This .NET type is not supported in Npgsql: " + type);
+                }
+                return handler;
+            }
         }
 
         #endregion
 
-        #region Static Initialization
+        #region Type Discovery
 
         static TypeHandlerRegistry()
         {
-            DiscoverTypeHandlers();
-        }
-
-        static void DiscoverTypeHandlers()
-        {
-            _scalarTypeHandlers = Assembly.GetExecutingAssembly()
-                .DefinedTypes
-                .Where(t => t.IsSubclassOf(typeof (TypeHandler)) &&
-                            !t.IsAbstract &&
-                            !typeof(ArrayHandler).IsAssignableFrom(t) &&  // Arrays are taken care of later
-                            typeof(RangeHandler<>) != t
+            HandlerTypes = Assembly.GetExecutingAssembly()
+                .GetTypes()
+                .Where(t =>
+                    t.IsSubclassOf(typeof (TypeHandler)) &&
+                    t.GetCustomAttributes(typeof(TypeMappingAttribute), false).Any()
                 )
-                .Select(Activator.CreateInstance)
-                .Cast<TypeHandler>()
                 .ToList();
-
-            _dbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
-            _npgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
-            _typeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
-
-            // Set up mapping DbType <-> NpgsqlDbType. Used by NpgsqlParameter to be able to link between these.
-            // Also set up a mapping .NET Type -> DbType/NpgsqlDbType
-            foreach (var handler in _scalarTypeHandlers)
-            {
-                // Read backwards, so default types (the left-most in the lists) are updated last
-                for (var i = Math.Min(handler.NpgsqlDbTypes.Length, handler.DbTypeAliases.Length) - 1; i >= 0; i--)
-                {
-                    if (handler.NpgsqlDbTypes[i].HasValue && handler.DbTypeAliases[i] != null)
-                    {
-                        var npgsqlDbType = handler.NpgsqlDbTypes[i].Value;
-                        foreach (var dbType in handler.DbTypeAliases[i])
-                        {
-                            _dbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
-                        }
-                    }
-                }
-                for (var i = Math.Min(handler.NpgsqlDbTypes.Length, handler.DbTypes.Length) - 1; i >= 0; i--)
-                {
-                    if (handler.NpgsqlDbTypes[i].HasValue && handler.DbTypes[i].HasValue)
-                    {
-                        var npgsqlDbType = handler.NpgsqlDbTypes[i].Value;
-                        var dbType = handler.DbTypes[i].Value;
-                        _dbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
-                        _npgsqlDbTypeToDbType[npgsqlDbType] = dbType;
-                    }
-                }
-                if (handler.NpgsqlDbTypes.Length != 0 && handler.NpgsqlDbTypes[0].HasValue)
-                {
-                    // The default NpgsqlDbType is the first one in the list
-                    var npgsqlDbType = handler.NpgsqlDbTypes[0].Value;
-
-                    // Scalar
-                    _typeToNpgsqlDbType[handler.GetFieldType()] = npgsqlDbType;
-
-                    // Array
-                    var elementFieldType = handler.GetFieldType();
-                    _typeToNpgsqlDbType[elementFieldType.MakeArrayType()] = npgsqlDbType | NpgsqlDbType.Array;
-                    for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                        _typeToNpgsqlDbType[elementFieldType.MakeArrayType(i)] = npgsqlDbType | NpgsqlDbType.Array;
-
-                    // Range
-                    var rangeType = typeof(NpgsqlRange<>).MakeGenericType(handler.GetFieldType());
-                    _typeToNpgsqlDbType[rangeType] = npgsqlDbType | NpgsqlDbType.Range;
-
-                    // Array of range
-                    _typeToNpgsqlDbType[rangeType.MakeArrayType()] = npgsqlDbType | NpgsqlDbType.Array | NpgsqlDbType.Range;
-                    for (var i = 2; i <= ArrayHandler.MaxDimensions; i++)
-                        _typeToNpgsqlDbType[rangeType.MakeArrayType(i)] = npgsqlDbType | NpgsqlDbType.Array | NpgsqlDbType.Range;
-                }
-
-            }
         }
 
         #endregion

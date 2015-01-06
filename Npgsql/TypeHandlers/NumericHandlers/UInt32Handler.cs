@@ -11,15 +11,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-oid.html
     /// </remarks>
+    [TypeMapping("oid", NpgsqlDbType.Oid)]
+    [TypeMapping("xid", NpgsqlDbType.Xid)]
+    [TypeMapping("cid", NpgsqlDbType.Cid)]
     internal class UInt32Handler : TypeHandler<uint>
     {
-        static readonly string[] _pgNames = { "oid", "xid", "cid" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Oid, NpgsqlDbType.Xid, NpgsqlDbType.Cid };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override uint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -33,13 +29,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             }
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var i = (uint)value;
-            writer.WriteString(i.ToString(CultureInfo.InvariantCulture));
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 4;
         }

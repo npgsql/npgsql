@@ -6,6 +6,7 @@ using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql
 {
@@ -16,7 +17,7 @@ namespace Npgsql
         /// to  handle reading from socket on its own if the buffer doesn't contain enough data.
         /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
         /// </summary>
-        bool IsBufferManager { get; }
+        bool IsChunking { get; }
         /// <summary>
         /// Whether this type handler supports reading the binary Postgresql representation for its type.
         /// </summary>
@@ -41,33 +42,26 @@ namespace Npgsql
         public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             Contract.Requires(SupportsBinaryRead || fieldDescription.IsTextFormat);
-            Contract.Requires(buf.ReadBytesLeft >= len || IsBufferManager);
+            Contract.Requires(buf.ReadBytesLeft >= len || IsChunking);
             return default(T);
         }
 
-        public bool IsBufferManager { get { return default(bool); } }
+        public bool IsChunking { get { return default(bool); } }
         public bool SupportsBinaryRead { get { return default(bool); } }
     }
 
     internal abstract class TypeHandler : ITypeHandler
     {
-        static readonly NpgsqlDbType?[] _emptyNpgsqlDbTypeArray = new NpgsqlDbType?[0];
-        static readonly DbType?[] _emptyDbTypeArray = new DbType?[0];
-        static readonly DbType[][] _emptyDbTypeArray2 = new DbType[0][];
-
-        internal abstract string[] PgNames { get; }
-        internal string PgName { get { return PgNames[0]; } }
-        internal virtual NpgsqlDbType?[] NpgsqlDbTypes { get { return _emptyNpgsqlDbTypeArray; } }
-        internal virtual DbType?[] DbTypes { get { return _emptyDbTypeArray; } }
-        internal virtual DbType[][] DbTypeAliases { get { return _emptyDbTypeArray2; } }
-        internal uint Oid { get; set; }
+        internal string PgName { get; set; }
+        internal uint OID { get; set; }
+        internal NpgsqlDbType NpgsqlDbType { get; set; }
         internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
 
         /// <summary>
         /// Whether this type handler supports reading the binary Postgresql representation for its type.
         /// </summary>
-        public virtual bool SupportsBinaryRead { get { return false; } }
+        public virtual bool SupportsBinaryRead { get { return true; } }
 
         /// <summary>
         /// If true, the type handler reads and writes values of totally arbitrary length.
@@ -76,19 +70,7 @@ namespace Npgsql
         /// Otherwise, the type handler expects the buffer to contain enough bytes prior to Read() and
         /// Write() being invoked by the framework.
         /// </summary>
-        public virtual bool IsBufferManager { get { return false; } }
-
-        /// <summary>
-        /// If true, parameters with no explicit DbType/NpgsqlDbType but with values that has the same type as
-        /// the field type of this handler, this handler is automatically chosen when sending values to the database.
-        /// The default is true.
-        /// </summary>
-        public virtual bool AllowAutoInferring { get { return true; } }
-
-        protected TypeHandler()
-        {
-            Oid = 0;
-        }
+        public virtual bool IsChunking { get { return false; } }
 
         internal abstract object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
         internal abstract object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
@@ -96,20 +78,33 @@ namespace Npgsql
         public virtual bool PreferTextWrite { get { return false; } }
         public virtual bool SupportsBinaryWrite { get { return true; } }
 
-        internal virtual int BinarySize(object value)
+        internal virtual int Length(object value)
         {
-            throw new NotImplementedException("BinarySize for " + this.GetType().ToString());
+            throw new NotImplementedException("Length for " + GetType());
         }
 
-        internal virtual bool WriteBinary(object value, NpgsqlBuffer buf, out byte[] directBuf)
+        internal virtual void PrepareChunkedWrite(object value)
         {
-            Contract.Requires(IsBufferManager);
-            throw new NotImplementedException("WriteBinaryComplex for " + GetType());
+            Contract.Requires(IsChunking);
+            throw new NotImplementedException("PreparedChunkedWrite for " + GetType());            
+        }
+
+        internal virtual bool WriteBinaryChunk(NpgsqlBuffer buf)
+        {
+            Contract.Requires(IsChunking);
+            throw new NotImplementedException("WriteBinaryChunk for " + GetType());
+        }
+
+        internal virtual bool WriteBinaryChunk(NpgsqlBuffer buf, out byte[] directBuf)
+        {
+            Contract.Requires(IsChunking);
+            directBuf = null;
+            return WriteBinaryChunk(buf);
         }
 
         internal virtual void WriteBinary(object value, NpgsqlBuffer buf)
         {
-            Contract.Requires(!IsBufferManager);
+            Contract.Requires(!IsChunking);
             throw new NotImplementedException("WriteBinary for " + GetType());
         }
 
@@ -177,6 +172,65 @@ namespace Npgsql
         void ObjectInvariants()
         {
             Contract.Invariant(this is ITypeHandler<TPsv>);
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    [SuppressMessage("ReSharper", "LocalizableElement")]
+    class TypeMappingAttribute : Attribute
+    {
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types)
+        {
+            if (String.IsNullOrWhiteSpace(pgName))
+                throw new ArgumentException("pgName can't be empty", "pgName");
+            if (types == null)
+                throw new ArgumentNullException("types");
+            //if (npgsqlDbType == NpgsqlDbType.Unknown)
+            //    throw new ArgumentException("npgsqlDbType can't be unknown", "npgsqlDbType");
+            Contract.EndContractBlock();
+
+            PgName = pgName;
+            NpgsqlDbType = npgsqlDbType;
+            DbTypes = dbTypes ?? new DbType[0];
+            Types = types ?? new Type[0];
+        }
+
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes=null, Type type=null)
+            : this(pgName, npgsqlDbType, dbTypes ?? new DbType[0], type == null ? new Type[0] : new[] { type }) {}
+        
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type type=null)
+            : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? new Type[0] : new[] { type }) {}
+
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type)
+            : this(pgName, npgsqlDbType, new DbType[0], new[] { type }) {}
+
+        internal string PgName { get; private set; }
+        internal Type[] Types { get; private set; }
+        internal DbType[] DbTypes { get; private set; }
+        internal NpgsqlDbType NpgsqlDbType { get; private set; }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("[{0} NpgsqlDbType={1}", PgName, NpgsqlDbType);
+            if (DbTypes.Length > 0) {
+                sb.Append(" DbTypes=");
+                sb.Append(String.Join(",", DbTypes.Select(t => t.ToString())));
+            }
+            if (Types.Length > 0) {
+                sb.Append(" Types=");
+                sb.Append(String.Join(",", Types.Select(t => t.Name)));
+            }
+            sb.AppendFormat("]");
+            return sb.ToString();
+        }
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(!String.IsNullOrWhiteSpace(PgName));
+            Contract.Invariant(Types != null);
+            Contract.Invariant(DbTypes != null);
         }
     }
 }

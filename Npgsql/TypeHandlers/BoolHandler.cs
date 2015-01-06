@@ -11,20 +11,11 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-boolean.html
     /// </remarks>
+    [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     internal class BoolHandler : TypeHandler<bool>
     {
-        static readonly string[] _pgNames = { "bool" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Boolean };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Boolean };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         const byte T = (byte)'T';
         const byte t = (byte)'t';
-        const byte f = (byte)'f';
 
         public override bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -40,13 +31,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var v = ((IConvertible)value).ToBoolean(null);
-            writer.WriteSingleChar(v ? (char)t : (char)f);
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 1;
         }

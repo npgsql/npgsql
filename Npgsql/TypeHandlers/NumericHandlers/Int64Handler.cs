@@ -12,20 +12,12 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
+    [TypeMapping("int8", NpgsqlDbType.Bigint, DbType.Int64, typeof(long))]
     internal class Int64Handler : TypeHandler<long>,
         ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<int>,
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,
     ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "int8" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Bigint };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Int64 };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override long Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -74,13 +66,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var i = GetIConvertibleValue<long>(value);
-            writer.WriteString(i.ToString(CultureInfo.InvariantCulture));
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 8;
         }

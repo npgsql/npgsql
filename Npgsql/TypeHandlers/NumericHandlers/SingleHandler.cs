@@ -12,18 +12,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
-    internal class SingleHandler : TypeHandler<float>,
-        ITypeHandler<double>
+    [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
+    internal class SingleHandler : TypeHandler<float>, ITypeHandler<double>
     {
-        static readonly string[] _pgNames = { "float4" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Real };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Single };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override float Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -42,13 +33,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, fieldDescription, len);
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var f = GetIConvertibleValue<float>(value);
-            writer.WriteString(f.ToString(CultureInfo.InvariantCulture));
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 4;
         }

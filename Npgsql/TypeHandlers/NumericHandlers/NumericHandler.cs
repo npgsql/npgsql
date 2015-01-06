@@ -12,21 +12,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
+    [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal))]
     internal class NumericHandler : TypeHandler<decimal>,
         ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<int>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>,
         ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "numeric" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool IsBufferManager { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Numeric };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.Decimal };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-        static readonly DbType[][] _dbTypes2 = { new DbType[] { DbType.VarNumeric } };
-        internal override DbType[][] DbTypeAliases { get { return _dbTypes2; } }
+        public override bool SupportsBinaryWrite { get { return false; } }
 
         public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

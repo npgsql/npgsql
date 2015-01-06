@@ -16,15 +16,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
     internal class PointHandler : TypeHandler<NpgsqlPoint>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "point" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Point };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -51,7 +45,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             }
         }
 
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return 16;
         }

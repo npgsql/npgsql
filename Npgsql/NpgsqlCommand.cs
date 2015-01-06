@@ -69,7 +69,6 @@ namespace Npgsql
         PrepareStatus _prepared = PrepareStatus.NotPrepared;
         byte[] _preparedCommandText;
         RowDescriptionMessage _rowDescription;
-        SchemaOnlyResult _schemaOnlyResult;
 
         // locals about function support so we don`t need to check it everytime a function is called.
         bool _functionChecksDone;
@@ -492,13 +491,6 @@ namespace Npgsql
             var numInput = _parameters.Count(p => p.IsInputDirection);
 
             return "SELECT * FROM " + CommandText + "(" + string.Join(",", Enumerable.Range(1, numInput).Select(i => "$" + i.ToString())) + ")";
-        }
-
-        enum SchemaOnlyResult
-        {
-            UsedSimpleQuery,
-            HasRowDescription,
-            HasNoData
         }
 
         void UnPrepare()
@@ -1408,7 +1400,7 @@ namespace Npgsql
             {
                 return GetReader(behavior);
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
                 {
@@ -1540,17 +1532,11 @@ namespace Npgsql
             }
 
             var parseMessage = new ParseMessage(queries[0], planName);
-            var hasInputParams = _parameters.Any(p => p.IsInputDirection);
-            // TODO: Prespecify parameters in Parse
-            /*
-            if (hasInputParams)
+            foreach (var inputParam in _parameters.Where(p => p.IsInputDirection))
             {
-                foreach (var inputParam in _parameters.Where(p => p.IsInputDirection))
-                {
-                    parseMessage.ParameterTypeOIDs.Add(inputParam.GetTypeOid(_connector.TypeHandlerRegistry));
-                }
+                inputParam.ResolveHandler(_connector.TypeHandlerRegistry);
+                parseMessage.ParameterTypeOIDs.Add(inputParam.Handler.OID);
             }
-             */
             _connector.AddMessage(parseMessage);
             _connector.AddMessage(new DescribeMessage(DescribeType.Statement, planName));
         }

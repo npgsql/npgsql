@@ -10,11 +10,7 @@ namespace Npgsql.TypeHandlers
 {
     internal class RangeHandler<T> : TypeHandler<NpgsqlRange<T>>
     {
-        string[] _pgNames = { "range" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool IsBufferManager { get { return ElementHandler.IsBufferManager; } }
-
+        public override bool IsChunking { get { return ElementHandler.IsChunking; } }
         public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
         const int Empty = 1;
@@ -50,7 +46,7 @@ namespace Npgsql.TypeHandlers
         public RangeHandler(TypeHandler<T> elementHandler, string name)
         {
             ElementHandler = elementHandler;
-            _pgNames[0] = name;
+            PgName = name;
         }
 
         public override NpgsqlRange<T> Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
@@ -70,21 +66,21 @@ namespace Npgsql.TypeHandlers
         {
             Contract.Assert(ElementHandler.SupportsBinaryRead);
 
-            if (IsBufferManager)
+            if (IsChunking)
                 buf.Ensure(1);
 
             byte flags = buf.ReadByte();
             T e1 = default(T), e2 = default(T);
             if ((flags & (Empty | LbInf)) == 0) // Is not empty and lower bound is not -inf
             {
-                if (IsBufferManager)
+                if (IsChunking)
                     buf.Ensure(4);
                 var elementLength = buf.ReadInt32();
                 e1 = ElementHandler.Read(buf, fieldDescription, elementLength);
             }
             if ((flags & (Empty | UbInf)) == 0) // Is not empty and upper bound is not inf
             {
-                if (IsBufferManager)
+                if (IsChunking)
                     buf.Ensure(4);
                 var elementLength = buf.ReadInt32();
                 e2 = ElementHandler.Read(buf, fieldDescription, elementLength);
@@ -131,7 +127,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             throw new NotImplementedException("Chunking");
             /*

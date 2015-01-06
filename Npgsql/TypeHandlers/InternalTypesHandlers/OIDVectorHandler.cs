@@ -6,17 +6,9 @@ using System.Text;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
+    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     internal class OIDVectorHandler : TypeHandler<uint[]>
     {
-        static readonly string[] _pgNames = { "oidvector" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Oidvector };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
-        public override bool AllowAutoInferring { get { return false; } }
-
         public override uint[] Read(NpgsqlBuffer buf, Messages.FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
@@ -43,12 +35,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             }
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            writer.WriteString(string.Join(" ", (uint[])value));
-        }
-
-        internal override int BinarySize(object value)
+        internal override int Length(object value)
         {
             return
                 12 + // dims + nulls + element oid

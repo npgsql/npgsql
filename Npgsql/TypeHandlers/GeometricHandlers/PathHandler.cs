@@ -16,15 +16,10 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     internal class PathHandler : TypeHandler<NpgsqlPath>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "path" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-        public override bool IsBufferManager { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Path };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
+        public override bool IsChunking { get { return true; } }
 
         public override NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

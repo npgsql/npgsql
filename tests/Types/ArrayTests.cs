@@ -20,25 +20,41 @@ namespace NpgsqlTests.Types
     {
         public ArrayTests(string backendVersion) : base(backendVersion) {}
 
-        [Test, Description("Reads a simple, one-dimensional array of ints")]
-        public void ReadInts([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a simple, one-dimensional array of ints")]
+        public void Ints([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var expected = new[] { 1, 5, 9 };
-            var cmd = new NpgsqlCommand("SELECT '{ 1, 5, 9 }'::INTEGER[]", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
+
+            // Via NpgsqlDbType
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
+
+            // Via inference
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetFieldValue<int[]>(1), Is.EqualTo(expected));
+
             cmd.Dispose();
         }
 
-        [Test, Description("Reads a simple, one-dimensional array of strings")]
-        public void ReadStringsWithNull([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a simple, one-dimensional array of strings, including a null")]
+        public void StringsWithNull([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var expected = new[] { "value1", null, "value2" };
-            var cmd = new NpgsqlCommand(@"SELECT '{ ""value1"", NULL, ""value2"" }'::TEXT[]", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = expected };
+            cmd.Parameters.Add(p);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -48,11 +64,13 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Reads a zero-dimensional array of ints, should return empty one-dimensional")]
-        public void ReadZeroDimensional([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a zero-dimensional array of ints, should return empty one-dimensional")]
+        public void ZeroDimensional([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var expected = new int[0];
-            var cmd = new NpgsqlCommand("SELECT '{}'::INTEGER[]", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
+            cmd.Parameters.Add(p);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -62,12 +80,17 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Reads a two-dimensional array of ints")]
-        public void ReadTwoDimensionalInts([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a two-dimensional array of ints")]
+        public void TwoDimensionalInts([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var expected = new[,] { { 1, 2, 3 }, { 7, 8, 9 } };
-            var cmd = new NpgsqlCommand("SELECT '{ { 1, 2, 3 }, { 7, 8, 9 } }'::INTEGER[][]", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
@@ -92,21 +115,6 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Check the field types are returned correctly for array types, and that retrieving them doesn't consume the column")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void FieldType(PrepareOrNot prepare, CommandBehavior behavior)
-        {
-            var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
-            var reader = cmd.ExecuteReader(behavior);
-            reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
-        }
-
         [Test, Description("Reads an one-dimensional array with lower bound != 0")]
         public void ReadNonZeroLowerBounded([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
@@ -127,6 +135,26 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test, Description("Roundtrips a one-dimensional array of bytea values")]
+        public void Byteas([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            var expected = new[] { new byte[] { 1, 2 }, new byte[] { 3, 4, }};
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Bytea);
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = expected;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<byte[][]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
+            cmd.Dispose();
+        }
+
         // Older tests
 
         [Test]
@@ -144,30 +172,6 @@ namespace NpgsqlTests.Types
                 decimal cmp = 0m;
                 foreach (decimal el in da)
                     Assert.AreEqual(el, cmp++);
-            }
-        }
-
-        [Test]
-        public void TestArrayOfBytea1()
-        {
-            var command = new NpgsqlCommand("select get_byte(:i[1], 2)", Conn);
-            command.Parameters.AddWithValue(":i", new byte[][] { new byte[] { 0, 1, 2 }, new byte[] { 3, 4, 5 } });
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(dr[0], 2);
-            }
-        }
-
-        [Test]
-        public void TestArrayOfBytea2()
-        {
-            var command = new NpgsqlCommand("select get_byte(:i[1], 2)", Conn);
-            command.Parameters.AddWithValue(":i", new byte[][] { new byte[] { 1, 2, 3 }, new byte[] { 4, 5, 6 } });
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(dr[0], 3);
             }
         }
 

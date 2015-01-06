@@ -16,15 +16,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     internal class CircleHandler : TypeHandler<NpgsqlCircle>, ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "circle" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Circle };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)

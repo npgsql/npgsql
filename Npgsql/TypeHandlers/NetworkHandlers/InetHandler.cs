@@ -12,16 +12,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
     /// </remarks>
+    [TypeMapping("inet", NpgsqlDbType.Inet, typeof(IPAddress))]
     internal class InetHandler : TypeHandlerWithPsv<IPAddress, NpgsqlInet>, ITypeHandler<NpgsqlInet>,
         ITypeHandler<string>
     {
-        static readonly string[] _pgNames = { "inet" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.Inet };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-
         public override IPAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return ((ITypeHandler<NpgsqlInet>)this).Read(buf, fieldDescription, len).addr;

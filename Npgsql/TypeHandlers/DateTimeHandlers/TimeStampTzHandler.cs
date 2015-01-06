@@ -8,17 +8,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
+    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(NpgsqlTimeStampTZ))]
     internal class TimeStampTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStampTZ>, ITypeHandler<NpgsqlTimeStampTZ>
     {
-        static readonly string[] _pgNames = { "timestamptz" };
-        internal override string[] PgNames { get { return _pgNames; } }
-        public override bool SupportsBinaryRead { get { return true; } }
-
-        static readonly NpgsqlDbType?[] _npgsqlDbTypes = { NpgsqlDbType.TimestampTZ };
-        internal override NpgsqlDbType?[] NpgsqlDbTypes { get { return _npgsqlDbTypes; } }
-        static readonly DbType?[] _dbTypes = { DbType.DateTimeOffset };
-        internal override DbType?[] DbTypes { get { return _dbTypes; } }
-
         public override bool SupportsBinaryWrite
         {
             get
@@ -51,30 +43,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             // The Int64 contains just the time in UTC, no time zone information
             var ts = NpgsqlTimeStamp.FromInt64(buf.ReadInt64());
             return new NpgsqlTimeStampTZ(ts.Date, new NpgsqlTimeTZ(ts.Time, NpgsqlTimeZone.UTC));
-        }
-
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            if (value is DateTime)
-            {
-                if (DateTime.MaxValue.Equals(value))
-                {
-                    writer.WriteString("infinity");
-                }
-                else if (DateTime.MinValue.Equals(value))
-                {
-                    writer.WriteString("-infinity");
-                }
-                else
-                {
-                    writer.WriteString((((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss.ffffff", System.Globalization.DateTimeFormatInfo.InvariantInfo)));
-                }
-            }
-            else
-            {
-                // Handles NpgsqlTimeStampTZ
-                writer.WriteString(value.ToString());
-            }
         }
     }
 }

@@ -67,10 +67,10 @@ namespace Npgsql.FrontendMessages
             switch (_state)
             {
                 case State.WroteNothing:
-                    var formatCodesSum = InputParameters.Select(p => p.BoundFormatCode).Sum(c => (int)c);
+                    var formatCodesSum = InputParameters.Select(p => p.FormatCode).Sum(c => (int)c);
                     var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
 
-                    var messageLengthBeforeParameters =
+                    var headerLength =
                         4 +                        // Message length
                         Portal.Length + 1 +
                         Statement.Length + 1 +
@@ -78,14 +78,14 @@ namespace Npgsql.FrontendMessages
                         2 * formatCodeListLength + // List of format codes
                         2;                         // Number of parameters
 
-                    if (buf.WriteSpaceLeft < messageLengthBeforeParameters) {
-                        if (buf.Size < messageLengthBeforeParameters) {
+                    if (buf.WriteSpaceLeft < headerLength) {
+                        if (buf.Size < headerLength) {
                             throw new Exception("Buffer too small for Bind header");
                         }
                         return false;
                     }
 
-                    var messageLength = messageLengthBeforeParameters +
+                    var messageLength = headerLength +
                         4 * InputParameters.Count +                       // Parameter lengths
                         InputParameters.Select(p => p.BoundSize).Sum() +  // Parameter values
                         2 +                                                // Number of result format codes
@@ -104,7 +104,7 @@ namespace Npgsql.FrontendMessages
                     }
                     else if (formatCodeListLength > 1)
                     {
-                        foreach (var code in InputParameters.Select(p => p.BoundFormatCode))
+                        foreach (var code in InputParameters.Select(p => p.FormatCode))
                             buf.WriteInt16((short)code);
                     }
 
@@ -148,13 +148,13 @@ namespace Npgsql.FrontendMessages
                     continue;
                 }
 
-                var handler = param.BoundHandler;
-                if (param.BoundFormatCode == FormatCode.Text)
+                var handler = param.Handler;
+                if (param.FormatCode == FormatCode.Text)
                 {
                     throw new NotImplementedException();
                 }
 
-                if (handler.IsBufferManager)
+                if (handler.IsChunking)
                 {
                     if (!_wroteParamLen)
                     {
@@ -162,9 +162,10 @@ namespace Npgsql.FrontendMessages
                             return false;
                         }
                         buf.WriteInt32(param.BoundSize);
+                        handler.PrepareChunkedWrite(param.Value);
                         _wroteParamLen = true;
                     }
-                    if (!handler.WriteBinary(param.Value, buf, out directBuf)) {
+                    if (!handler.WriteBinaryChunk(buf, out directBuf)) {
                         return false;
                     }
                     _wroteParamLen = false;
@@ -177,7 +178,7 @@ namespace Npgsql.FrontendMessages
                         return false;
                     }
                     buf.WriteInt32(param.BoundSize);
-                    param.BoundHandler.WriteBinary(param.Value, buf);                    
+                    param.Handler.WriteBinary(param.Value, buf);                    
                 }
             }
             return true;

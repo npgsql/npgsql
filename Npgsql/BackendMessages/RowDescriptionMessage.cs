@@ -49,9 +49,7 @@ namespace Npgsql.Messages
                 };
 
                 // If we get the exact unknown type in return, it was a literal string written in the query string
-                field.Handler = field.OID != typeHandlerRegistry.UnknownOid
-                    ? typeHandlerRegistry[field.OID]
-                    : typeHandlerRegistry[NpgsqlDbType.Text];
+                field.Handler = typeHandlerRegistry[field.OID];
 
                 _fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
