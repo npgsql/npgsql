@@ -1621,6 +1621,7 @@ namespace Npgsql
 
         internal void Reset()
         {
+            if ( String.IsNullOrWhiteSpace(_initQueries) ) { return; }
 
             ExecuteOrDefer(_initQueries);
 
