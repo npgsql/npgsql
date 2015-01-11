@@ -14,9 +14,7 @@ namespace Npgsql.TypeHandlers
     /// Note that this handler is also used in the very initial query that loads the OID mappings
     /// (chicken and egg problem).
     /// </summary>
-    // TODO: bind to an actual database type? Probably not, depending on decision on binary vs. text
-    [TypeMapping("unknown", NpgsqlDbType.Unknown)]
-    internal class UnknownTypeHandler : TextHandler
+    internal class UnrecognizedTypeHandler : TextHandler
     {
         public override bool SupportsBinaryRead { get { return false; } }
         public override bool SupportsBinaryWrite { get { return false; } }

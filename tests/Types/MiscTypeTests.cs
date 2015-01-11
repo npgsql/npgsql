@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -119,17 +120,86 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Makes sure that types without a handler can still be read as strings")]
-        public void ReadUnknownType([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        [Test, Description("Makes sure that the PostgreSQL 'unknown' type (OID 705) is read properly")]
+        public void ReadUnknown([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            const string expected = "(1,2)";
-            var cmd = new NpgsqlCommand("SELECT '(1,2)'::POINT", Conn);
+            const string expected = "some_text";
+            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'", expected), Conn);
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetString(0), Is.EqualTo(expected));
             Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+        [Test, Description("Makes sure that an unrecognized PostgreSQL type is read properly")]
+        public void ReadUnrecognized([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            Assert.That(TypeHandlerRegistry.HandlerTypes
+                .SelectMany(t => t.GetCustomAttributes(typeof (TypeMappingAttribute), false))
+                .Cast<TypeMappingAttribute>()
+                .All(m => m.PgName != "regproc"),
+                "Test requires an unrecognized type to work");
+
+            // Fetch as text to have something the value to assert against
+            var expected = (string)ExecuteScalar("SELECT typinput::TEXT FROM pg_type WHERE typname='bool'");
+
+            // And now as the unrecognized type
+            var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", Conn);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetString(0), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+        [Test, Description("Sends a null value parameter")]
+        public void Null([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            var cmd = new NpgsqlCommand("SELECT @p::INT4", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Integer);
+            cmd.Parameters.Add(p);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.IsDBNull(0));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+        [Test, Description("Sends a null value parameter with no NpgsqlDbType or DbType, but with context for the backend to handle it")]
+        public void UnrecognizedNull([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn);
+            var p = new NpgsqlParameter("p", null);
+            cmd.Parameters.Add(p);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.IsDBNull(0));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+        [Test, Description("Sends a value parameter with an explicit NpgsqlDbType.Unknown, but with context for the backend to handle it")]
+        public void SendUnknown([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        {
+            var cmd = new NpgsqlCommand("SELECT @p::INT4", Conn);
+            var p = new NpgsqlParameter("p", "8");
+            cmd.Parameters.Add(p);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
+            Assert.That(reader.GetInt32(0), Is.EqualTo(8));
             reader.Dispose();
             cmd.Dispose();
         }

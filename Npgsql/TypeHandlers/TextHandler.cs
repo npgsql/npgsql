@@ -16,7 +16,7 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("bpchar",  NpgsqlDbType.Char, typeof(char))]
     [TypeMapping("name",    NpgsqlDbType.Name)]
     [TypeMapping("xml",     NpgsqlDbType.Xml, DbType.Xml)]
-    //[TypeMapping("unknown", NpgsqlDbType.Unknown)]  // TODO: Definitely not sure about this!
+    [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>, ITypeHandler<char[]>
     {
         public override bool IsChunking { get { return true; } }

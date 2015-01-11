@@ -80,6 +80,7 @@ namespace Npgsql
 
         internal virtual int Length(object value)
         {
+            Contract.Requires(value != null);
             throw new NotImplementedException("Length for " + GetType());
         }
 
@@ -181,14 +182,10 @@ namespace Npgsql
     [SuppressMessage("ReSharper", "LocalizableElement")]
     class TypeMappingAttribute : Attribute
     {
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] types)
         {
             if (String.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", "pgName");
-            if (types == null)
-                throw new ArgumentNullException("types");
-            //if (npgsqlDbType == NpgsqlDbType.Unknown)
-            //    throw new ArgumentException("npgsqlDbType can't be unknown", "npgsqlDbType");
             Contract.EndContractBlock();
 
             PgName = pgName;
@@ -197,22 +194,31 @@ namespace Npgsql
             Types = types ?? new Type[0];
         }
 
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[] types)
+            : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, types) {}
+
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes=null, Type type=null)
-            : this(pgName, npgsqlDbType, dbTypes ?? new DbType[0], type == null ? new Type[0] : new[] { type }) {}
+            : this(pgName, npgsqlDbType, dbTypes, type == null ? null : new[] { type }) {}
         
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type[] types)
             : this(pgName, npgsqlDbType, new[] { dbType }, types) {}
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type type=null)
-            : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? new Type[0] : new[] { type }) {}
+            : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? null : new[] { type }) {}
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type)
             : this(pgName, npgsqlDbType, new DbType[0], new[] { type }) {}
 
+        /// <summary>
+        /// Read-only parameter, only used by "unknown"
+        /// </summary>
+        internal TypeMappingAttribute(string pgName)
+            : this(pgName, null, null, null) {}
+
         internal string PgName { get; private set; }
         internal Type[] Types { get; private set; }
         internal DbType[] DbTypes { get; private set; }
-        internal NpgsqlDbType NpgsqlDbType { get; private set; }
+        internal NpgsqlDbType? NpgsqlDbType { get; private set; }
 
         public override string ToString()
         {

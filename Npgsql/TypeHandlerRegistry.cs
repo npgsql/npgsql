@@ -25,9 +25,9 @@ namespace Npgsql
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
 
-        public TypeHandler UnknownTypeHandler { get; private set; }
+        readonly TypeHandler _unrecognizedTypeHandler;
 
-        static readonly List<Type> HandlerTypes;
+        static internal readonly List<Type> HandlerTypes;
         static readonly Dictionary<DbType, NpgsqlDbType> NpgsqlDbTypeToDbType;
         static readonly Dictionary<Type, DbTypes> TypeToDbTypes;
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> RegistryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
@@ -60,7 +60,7 @@ namespace Npgsql
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
-            UnknownTypeHandler = new UnknownTypeHandler { OID=0 };
+            _unrecognizedTypeHandler = new UnrecognizedTypeHandler { OID=0 };
 
             // Below we'll be sending in a query to load OIDs from the backend, but parsing those results will depend
             // on... the OIDs. To solve this chicken and egg problem, set up an empty type handler registry that will
@@ -83,11 +83,15 @@ namespace Npgsql
                     handler.PgName = attr.PgName;
                     _nameIndex[attr.PgName] = handler;
 
-                    if (_byNpgsqlDbType.ContainsKey(attr.NpgsqlDbType))
-                        throw new Exception(String.Format("Two type handlers registered on same NpgsqlDbType {0}: {1} and {2}",
-                                            attr.NpgsqlDbType, _byNpgsqlDbType[attr.NpgsqlDbType].GetType().Name, handlerType.Name));
-                    _byNpgsqlDbType[attr.NpgsqlDbType] = handler;
-                    handler.NpgsqlDbType = attr.NpgsqlDbType;
+                    if (attr.NpgsqlDbType.HasValue)
+                    {
+                        var npgsqlDbType = attr.NpgsqlDbType.Value;
+                        if (_byNpgsqlDbType.ContainsKey(npgsqlDbType))
+                            throw new Exception(String.Format("Two type handlers registered on same NpgsqlDbType {0}: {1} and {2}",
+                                                attr.NpgsqlDbType, _byNpgsqlDbType[npgsqlDbType].GetType().Name, handlerType.Name));
+                        _byNpgsqlDbType[npgsqlDbType] = handler;
+                        handler.NpgsqlDbType = npgsqlDbType;
+                    }
 
                     foreach (var dbType in attr.DbTypes)
                     {
@@ -234,7 +238,7 @@ namespace Npgsql
             {
                 TypeHandler result;
                 if (!_oidIndex.TryGetValue(oid, out result)) {
-                    result = UnknownTypeHandler;
+                    result = _unrecognizedTypeHandler;
                 }
                 return result;
             }
@@ -269,7 +273,7 @@ namespace Npgsql
             get
             {
                 if (value == null || value is DBNull)
-                    return UnknownTypeHandler;
+                    return _unrecognizedTypeHandler;
 
                 if (value is DateTime)
                 {
@@ -336,13 +340,16 @@ namespace Npgsql
 
                 foreach (TypeMappingAttribute m in mappings)
                 {
-                    foreach (var dbType in m.DbTypes) {
-                        NpgsqlDbTypeToDbType[dbType] = m.NpgsqlDbType;
+                    foreach (var dbType in m.DbTypes)
+                    {
+                        Contract.Assert(m.NpgsqlDbType.HasValue);
+                        NpgsqlDbTypeToDbType[dbType] = m.NpgsqlDbType.Value;
                     }
                     foreach (var type in m.Types)
                     {
+                        Contract.Assert(m.NpgsqlDbType.HasValue);
                         TypeToDbTypes[type] = new DbTypes {
-                            NpgsqlDbType = m.NpgsqlDbType,
+                            NpgsqlDbType = m.NpgsqlDbType.Value,
                             DbType = m.DbTypes.FirstOrDefault()
                         };
                     }

@@ -257,7 +257,7 @@ namespace Npgsql
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
         /// The default value is null.</value>
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-        public override Object Value
+        public override object Value
         {
             get
             {
@@ -268,7 +268,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue)
+                if (!_npgsqlDbType.HasValue && value != null)
                 {
                     var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
                     NpgsqlDbType = dbTypes.NpgsqlDbType;
@@ -292,7 +292,7 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue)
+                if (!_npgsqlDbType.HasValue && value != null)
                 {
                     var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
                     NpgsqlDbType = dbTypes.NpgsqlDbType;
@@ -521,7 +521,7 @@ namespace Npgsql
             } else if (_value != null) {
                 Handler = registry[_value];
             } else {
-                Handler = registry.UnknownTypeHandler; // TODO: Think about this
+                Handler = registry[NpgsqlDbType.Text];
             }
         }
 
@@ -536,7 +536,9 @@ namespace Npgsql
             FormatCode = Handler.PreferTextWrite || !Handler.SupportsBinaryWrite
                 ? FormatCode.Text
                 : FormatCode.Binary;
-            BoundSize = Handler.Length(Value);
+            if (!IsNull) {
+                BoundSize = Handler.Length(Value);
+            }
             IsBound = true;
         }
 
