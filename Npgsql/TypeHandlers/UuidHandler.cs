@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Globalization;
@@ -46,5 +47,24 @@ namespace Npgsql.TypeHandlers
         {
             return Read(buf, fieldDescription, len).ToString();
         }
+
+        #region Write
+
+        internal override int Length(object value)
+        {
+            return 16;
+        }
+
+        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        {
+            var bytes = ((Guid)value).ToByteArray();
+
+            buf.WriteInt32(BitConverter.ToInt32(bytes, 0));
+            buf.WriteInt16(BitConverter.ToInt16(bytes, 4));
+            buf.WriteInt16(BitConverter.ToInt16(bytes, 6));
+            buf.WriteBytesSimple(bytes, 8, 8);
+        }
+
+        #endregion
     }
 }

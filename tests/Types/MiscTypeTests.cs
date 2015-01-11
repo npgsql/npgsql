@@ -20,18 +20,34 @@ namespace NpgsqlTests.Types
         /// http://www.postgresql.org/docs/9.4/static/datatype-boolean.html
         /// </summary>
         /// <param name="prepare"></param>
-        [Test]
-        public void ReadBool([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a bool")]
+        public void Bool([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT TRUE::BOOLEAN, FALSE::BOOLEAN", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Boolean);
+            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Boolean);
+            var p3 = new NpgsqlParameter("p3", DbType.Boolean);
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = true };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = false;
+            p2.Value = p3.Value = true;
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetBoolean(0), Is.True);
-            Assert.That(reader.GetBoolean(1), Is.False);
-            Assert.That(reader.GetValue(0), Is.True);
-            Assert.That(reader.GetProviderSpecificValue(0), Is.True);
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
+
+            Assert.That(reader.GetBoolean(0), Is.False);
+
+            for (var i = 1; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetBoolean(i),               Is.True);
+                Assert.That(reader.GetValue(i),                 Is.True);
+                Assert.That(reader.GetProviderSpecificValue(i), Is.True);
+                Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof (bool)));
+            }
+
             reader.Close();
             cmd.Dispose();
         }
@@ -58,20 +74,31 @@ namespace NpgsqlTests.Types
         /// <summary>
         /// http://www.postgresql.org/docs/9.4/static/datatype-uuid.html
         /// </summary>
-        [Test]
-        public void ReadUuid([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        [Test, Description("Roundtrips a UUID")]
+        public void Uuid([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             var expected = new Guid("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
-            var cmd = new NpgsqlCommand("SELECT 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID", Conn);
-            if (prepare == PrepareOrNot.Prepared)
-                cmd.Prepare();
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Uuid);
+            var p2 = new NpgsqlParameter("p2", DbType.Guid);
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
+            p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetGuid(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<Guid>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Guid)));
+
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetGuid(i),             Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<Guid>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i),            Is.EqualTo(expected));
+                Assert.That(reader.GetString(i),           Is.EqualTo(expected.ToString()));
+                Assert.That(reader.GetFieldType(i),        Is.EqualTo(typeof(Guid)));
+            }
+
             reader.Dispose();
             cmd.Dispose();
         }
