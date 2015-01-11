@@ -48,25 +48,19 @@ namespace Npgsql
 #if WITHDESIGN
     [TypeConverter(typeof(NpgsqlParameterConverter))]
 #endif
-
     public sealed class NpgsqlParameter : DbParameter, ICloneable
     {
         // Fields to implement IDbDataParameter interface.
         byte _precision;
         byte _scale;
-        Int32 _size;
+        int _size;
 
         // Fields to implement IDataParameter
         NpgsqlDbType? _npgsqlDbType;
         DbType? _dbType;
-        ParameterDirection _direction = ParameterDirection.Input;
-        bool _isNullable;
         string _name = String.Empty;
-        string _sourceColumn = String.Empty;
-        DataRowVersion _sourceVersion = DataRowVersion.Current;
         object _value;
         object _npgsqlValue;
-        bool _sourceColumnNullMapping;
         NpgsqlParameterCollection _collection;
 
         internal bool IsBound { get; private set; }
@@ -78,12 +72,16 @@ namespace Npgsql
         internal int BoundSize { get; private set; }
         internal uint TypeOID { get; private set; }
 
+        #region Constructors
+
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
         /// </summary>
         public NpgsqlParameter()
         {
-            //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
+            SourceColumn = String.Empty;
+            Direction = ParameterDirection.Input;
+            SourceVersion = DataRowVersion.Current;
         }
 
         /// <summary>
@@ -100,26 +98,11 @@ namespace Npgsql
         /// This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of DbType.
         /// Use <code> Convert.ToInt32(value) </code> for example to have compiler calling the correct constructor.</p>
         /// </remarks>
-        public NpgsqlParameter(String parameterName, object value)
+        public NpgsqlParameter(String parameterName, object value) : this()
         {
             ParameterName = parameterName;
             Value = value;
         }
-
-        /// <summary>
-        /// The collection to which this parameter belongs, if any.
-        /// </summary>
-        public NpgsqlParameterCollection Collection
-        {
-            get { return _collection; }
-
-            internal set
-            {
-                _collection = value;
-                ClearBind();
-            }
-        }
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
@@ -172,11 +155,12 @@ namespace Npgsql
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
+            : this()
         {
             ParameterName = parameterName;
             NpgsqlDbType = parameterType;
             _size = size;
-            _sourceColumn = sourceColumn;
+            SourceColumn = sourceColumn;
         }
 
         /// <summary>
@@ -187,11 +171,12 @@ namespace Npgsql
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn)
+            : this()
         {
             ParameterName = parameterName;
             DbType = parameterType;
             _size = size;
-            _sourceColumn = sourceColumn;
+            SourceColumn = sourceColumn;
         }
 
         /// <summary>
@@ -213,6 +198,7 @@ namespace Npgsql
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
+            : this()
         {
             ParameterName = parameterName;
             Size = size;
@@ -246,6 +232,7 @@ namespace Npgsql
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
+            : this()
         {
             ParameterName = parameterName;
             Size = size;
@@ -260,6 +247,73 @@ namespace Npgsql
             DbType = parameterType;
         }
 
+        #endregion
+
+        #region Public Properties
+
+                /// <summary>
+        /// Gets or sets the value of the parameter.
+        /// </summary>
+        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
+        /// The default value is null.</value>
+        [TypeConverter(typeof(StringConverter)), Category("Data")]
+        public override Object Value
+        {
+            get
+            {
+                return _value;
+            } // [TODO] Check and validate data type.
+            set
+            {
+                ClearBind();
+                _value = value;
+                _npgsqlValue = value;
+                if (!_npgsqlDbType.HasValue)
+                {
+                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
+                    NpgsqlDbType = dbTypes.NpgsqlDbType;
+                    if (dbTypes.DbType.HasValue) {
+                        DbType = dbTypes.DbType.Value;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the value of the parameter.
+        /// </summary>
+        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
+        /// The default value is null.</value>
+        [TypeConverter(typeof(StringConverter)), Category("Data")]
+        public object NpgsqlValue
+        {
+            get { return _npgsqlValue; }
+            set {
+                ClearBind();
+                _value = value;
+                _npgsqlValue = value;
+                if (!_npgsqlDbType.HasValue)
+                {
+                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
+                    NpgsqlDbType = dbTypes.NpgsqlDbType;
+                    if (dbTypes.DbType.HasValue) {
+                        DbType = dbTypes.DbType.Value;
+                    }
+                }
+            }
+        }
+
+        public override bool IsNullable { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the parameter is input-only,
+        /// output-only, bidirectional, or a stored procedure return value parameter.
+        /// </summary>
+        /// <value>One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see>
+        /// values. The default is <b>Input</b>.</value>
+        [Category("Data"), DefaultValue(ParameterDirection.Input)]
+        public override ParameterDirection Direction { get; set; }
+
         // Implementation of IDbDataParameter
         /// <summary>
         /// Gets or sets the maximum number of digits used to represent the
@@ -270,7 +324,7 @@ namespace Npgsql
         /// The default value is 0, which indicates that the data provider
         /// sets the precision for <b>Value</b>.</value>
         [Category("Data"), DefaultValue((Byte)0)]
-        public Byte Precision
+        public byte Precision
         {
             get { return _precision; }
             set
@@ -281,39 +335,13 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Whether to use an explicit cast when included in a query.
-        /// </summary>
-        public Boolean UseCast
-        {
-            get
-            {
-                return _npgsqlDbType != NpgsqlDbType.Unknown;
-
-                /*
-                // Prevents casts to be added for null values when they aren't needed.
-                if (!useCast && (value == DBNull.Value || value == null))
-                    return false;
-                //return useCast; //&& (value != DBNull.Value);
-                // This check for Datetime.minvalue and maxvalue is needed in order to
-                // workaround a problem when comparing date values with infinity.
-                // This is a known issue with postgresql and it is reported here:
-                // http://archives.postgresql.org/pgsql-general/2008-10/msg00535.php
-                // Josh's solution to add cast is documented here:
-                // http://pgfoundry.org/forum/message.php?msg_id=1004118
-
-                return useCast || DateTime.MinValue.Equals(value) || DateTime.MaxValue.Equals(value) || !NpgsqlTypesHelper.DefinedType(Value);
-                */
-            }
-        }
-
-        /// <summary>
         /// Gets or sets the number of decimal places to which
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.
         /// </summary>
         /// <value>The number of decimal places to which
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
         [Category("Data"), DefaultValue((Byte)0)]
-        public Byte Scale
+        public byte Scale
         {
             get { return _scale; }
             set
@@ -329,7 +357,7 @@ namespace Npgsql
         /// <value>The maximum size, in bytes, of the data within the column.
         /// The default value is inferred from the parameter value.</value>
         [Category("Data"), DefaultValue(0)]
-        public override Int32 Size
+        public override int Size
         {
             get { return _size; }
             set
@@ -381,32 +409,6 @@ namespace Npgsql
             }
         }
 
-        /*internal NpgsqlNativeTypeInfo TypeInfo
-        {
-            get
-            {
-                if (type_info == null)
-                {
-                    //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
-                    return defaultTypeInfo;
-                }
-                return type_info;
-            }
-        }*/
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the parameter is input-only,
-        /// output-only, bidirectional, or a stored procedure return value parameter.
-        /// </summary>
-        /// <value>One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see>
-        /// values. The default is <b>Input</b>.</value>
-        [Category("Data"), DefaultValue(ParameterDirection.Input)]
-        public override ParameterDirection Direction
-        {
-            get { return _direction; }
-            set { _direction = value; }
-        }
-
         /// <summary>
         /// Gets or sets a value indicating whether the parameter accepts null values.
         /// </summary>
@@ -416,19 +418,13 @@ namespace Npgsql
         [EditorBrowsable(EditorBrowsableState.Advanced), Browsable(false), DefaultValue(false), DesignOnly(true)]
 #endif
 
-        public override Boolean IsNullable
-        {
-            get { return _isNullable; }
-            set { _isNullable = value; }
-        }
-
         /// <summary>
         /// Gets or sets The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
         /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// The default is an empty string.</value>
         [DefaultValue("")]
-        public override String ParameterName
+        public override string ParameterName
         {
             get { return _name; }
             set
@@ -450,6 +446,32 @@ namespace Npgsql
             }
         }
 
+                /// <summary>
+        /// Gets or sets The name of the source column that is mapped to the
+        /// <see cref="System.Data.DataSet">DataSet</see> and used for loading or
+        /// returning the <see cref="NpgsqlParameter.Value">Value</see>.
+        /// </summary>
+        /// <value>The name of the source column that is mapped to the
+        /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
+        [Category("Data"), DefaultValue("")]
+        public override String SourceColumn { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
+        /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
+        /// </summary>
+        /// <value>One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.
+        /// The default is <b>Current</b>.</value>
+        [Category("Data"), DefaultValue(DataRowVersion.Current)]
+        public override DataRowVersion SourceVersion { get; set; }
+
+        /// <summary>
+        /// Source column mapping.
+        /// </summary>
+        public override bool SourceColumnNullMapping { get; set; }
+
+        #endregion
+
         /// <summary>
         /// The name scrubbed of any optional marker
         /// </summary>
@@ -468,81 +490,16 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see> and used for loading or
-        /// returning the <see cref="NpgsqlParameter.Value">Value</see>.
+        /// The collection to which this parameter belongs, if any.
         /// </summary>
-        /// <value>The name of the source column that is mapped to the
-        /// <see cref="System.Data.DataSet">DataSet</see>. The default is an empty string.</value>
-        [Category("Data"), DefaultValue("")]
-        public override String SourceColumn
+        public NpgsqlParameterCollection Collection
         {
-            get { return _sourceColumn; }
-            set { _sourceColumn = value; }
-        }
+            get { return _collection; }
 
-        /// <summary>
-        /// Gets or sets the <see cref="System.Data.DataRowVersion">DataRowVersion</see>
-        /// to use when loading <see cref="NpgsqlParameter.Value">Value</see>.
-        /// </summary>
-        /// <value>One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.
-        /// The default is <b>Current</b>.</value>
-        [Category("Data"), DefaultValue(DataRowVersion.Current)]
-        public override DataRowVersion SourceVersion
-        {
-            get { return _sourceVersion; }
-            set { _sourceVersion = value; }
-        }
-
-        /// <summary>
-        /// Gets or sets the value of the parameter.
-        /// </summary>
-        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
-        /// The default value is null.</value>
-        [TypeConverter(typeof(StringConverter)), Category("Data")]
-        public override Object Value
-        {
-            get
+            internal set
             {
-                return _value;
-            } // [TODO] Check and validate data type.
-            set
-            {
+                _collection = value;
                 ClearBind();
-                _value = value;
-                _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue)
-                {
-                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
-                    NpgsqlDbType = dbTypes.NpgsqlDbType;
-                    if (dbTypes.DbType.HasValue) {
-                        DbType = dbTypes.DbType.Value;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the value of the parameter.
-        /// </summary>
-        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
-        /// The default value is null.</value>
-        [TypeConverter(typeof(StringConverter)), Category("Data")]
-        public object NpgsqlValue
-        {
-            get { return _npgsqlValue; }
-            set {
-                ClearBind();
-                _value = value;
-                _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue)
-                {
-                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
-                    NpgsqlDbType = dbTypes.NpgsqlDbType;
-                    if (dbTypes.DbType.HasValue) {
-                        DbType = dbTypes.DbType.Value;
-                    }
-                }
             }
         }
 
@@ -601,28 +558,14 @@ namespace Npgsql
             ClearBind();
         }
 
-        internal void SetTypeOID(uint oid, NativeToBackendTypeConverterOptions nativeToBackendTypeConverterOptions)
-        {
-            TypeOID = oid;
-        }
-
-        /// <summary>
-        /// Source column mapping.
-        /// </summary>
-        public override bool SourceColumnNullMapping
-        {
-            get { return _sourceColumnNullMapping; }
-            set { _sourceColumnNullMapping = value; }
-        }
-
         internal bool IsInputDirection
         {
-            get { return _direction == ParameterDirection.InputOutput || _direction == ParameterDirection.Input; }
+            get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input; }
         }
 
         internal bool IsOutputDirection
         {
-            get { return _direction == ParameterDirection.InputOutput || _direction == ParameterDirection.Output; }
+            get { return Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Output; }
         }
 
         /// <summary>
@@ -634,20 +577,20 @@ namespace Npgsql
         {
             // use fields instead of properties
             // to avoid auto-initializing something like type_info
-            NpgsqlParameter clone = new NpgsqlParameter();
+            var clone = new NpgsqlParameter();
             clone._precision = _precision;
             clone._scale = _scale;
             clone._size = _size;
             clone._dbType = _dbType;
             clone._npgsqlDbType = _npgsqlDbType;
-            clone._direction = _direction;
-            clone._isNullable = _isNullable;
+            clone.Direction = Direction;
+            clone.IsNullable = IsNullable;
             clone._name = _name;
-            clone._sourceColumn = _sourceColumn;
-            clone._sourceVersion = _sourceVersion;
+            clone.SourceColumn = SourceColumn;
+            clone.SourceVersion = SourceVersion;
             clone._value = _value;
             clone._npgsqlValue = _npgsqlValue;
-            clone._sourceColumnNullMapping = _sourceColumnNullMapping;
+            clone.SourceColumnNullMapping = SourceColumnNullMapping;
 
             return clone;
         }
