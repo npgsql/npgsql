@@ -250,18 +250,6 @@ namespace NpgsqlTests
 #endif
 
         [Test]
-        public void InferType_Byte()
-        {
-            Byte value = 0x0a;
-
-            var param = new NpgsqlParameter();
-            param.Value = value;
-            // no support for byte
-            Assert.AreEqual(NpgsqlDbType.Smallint, param.NpgsqlDbType, "#1");
-            Assert.AreEqual(DbType.Int16, param.DbType, "#2");
-        }
-
-        [Test]
         public void InferType_ByteArray()
         {
             var value = new Byte[] {0x0a, 0x0d};

@@ -12,7 +12,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int2", NpgsqlDbType.Smallint, DbType.Int16, typeof(short))]
+    [TypeMapping("int2", NpgsqlDbType.Smallint, DbType.Int16, new[] { typeof(short), typeof(byte) })]
     internal class Int16Handler : TypeHandler<short>,
         ITypeHandler<byte>, ITypeHandler<int>, ITypeHandler<long>,
         ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,

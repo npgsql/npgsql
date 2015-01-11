@@ -25,13 +25,15 @@ namespace NpgsqlTests.Types
         [Test]
         public void Int16([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Smallint);
             var p2 = new NpgsqlParameter("p2", DbType.Int16);
             var p3 = new NpgsqlParameter { ParameterName = "p3", Value = (short)8 };
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = (byte)8  };
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
             if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = (long)8;
             var reader = cmd.ExecuteReader();
@@ -53,7 +55,11 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetInt16(1),                 Is.EqualTo(8));
             Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(short)));
 
-            // Via inference
+            // Via inference from short
+            Assert.That(reader.GetInt16(2),                 Is.EqualTo(8));
+            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(short)));
+
+            // Via inference from byte
             Assert.That(reader.GetInt16(2),                 Is.EqualTo(8));
             Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(short)));
 
