@@ -85,6 +85,7 @@ namespace Npgsql
 
         internal virtual void PrepareChunkedWrite(object value)
         {
+            Contract.Requires(value != null);
             Contract.Requires(IsChunking);
             throw new NotImplementedException("PreparedChunkedWrite for " + GetType());            
         }
@@ -104,6 +105,7 @@ namespace Npgsql
 
         internal virtual void WriteBinary(object value, NpgsqlBuffer buf)
         {
+            Contract.Requires(value != null);
             Contract.Requires(!IsChunking);
             throw new NotImplementedException("WriteBinary for " + GetType());
         }
