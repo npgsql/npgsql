@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             }
         }
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             return
                 12 + // dims + nulls + element oid

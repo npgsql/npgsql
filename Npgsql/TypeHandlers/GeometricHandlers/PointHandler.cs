@@ -45,10 +45,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             }
         }
 
-        internal override int Length(object value)
-        {
-            return 16;
-        }
+        internal override int Length { get { return 16; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {

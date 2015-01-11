@@ -541,7 +541,7 @@ namespace Npgsql
                 ? FormatCode.Text
                 : FormatCode.Binary;
             if (!IsNull) {
-                BoundSize = Handler.Length(Value);
+                BoundSize = Handler.GetLength(Value);
             }
             IsBound = true;
         }

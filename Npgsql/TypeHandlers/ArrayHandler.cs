@@ -543,7 +543,7 @@ namespace Npgsql.TypeHandlers
             writer.WriteSingleChar('}');
         }
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             var arr = (Array)value;
             _hasNulls = false;
@@ -560,7 +560,7 @@ namespace Npgsql.TypeHandlers
 
                 var isNull = element == null || element is DBNull;
                 if (!isNull) {
-                    len += ElementHandler.Length(element);
+                    len += ElementHandler.GetLength(element);
                 }
                 _hasNulls = true;
             }
@@ -644,7 +644,7 @@ namespace Npgsql.TypeHandlers
                                 if (buf.WriteSpaceLeft < 4) {
                                     return false;
                                 }
-                                buf.WriteInt32(ElementHandler.Length(element));
+                                buf.WriteInt32(ElementHandler.GetLength(element));
                                 ElementHandler.PrepareChunkedWrite(element);
                                 _wroteElementLen = true;
                             }
@@ -655,7 +655,7 @@ namespace Npgsql.TypeHandlers
                         }
                         else
                         {
-                            var elementLen = ElementHandler.Length(element);
+                            var elementLen = ElementHandler.GetLength(element);
                             if (buf.WriteSpaceLeft < 4 + elementLen)
                             {
                                 Contract.Assume(buf.Size < 4 + elementLen);

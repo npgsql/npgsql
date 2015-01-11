@@ -188,7 +188,7 @@ namespace Npgsql.TypeHandlers
 
         byte[] _value;
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             return ((byte[])value).Length;
         }

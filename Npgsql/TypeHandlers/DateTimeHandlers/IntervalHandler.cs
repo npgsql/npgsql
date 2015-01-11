@@ -37,10 +37,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlInterval(month, day, ticks * 10);
         }
 
-        internal override int Length(object value)
-        {
-            return 16;
-        }
+        internal override int Length { get { return 16; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {

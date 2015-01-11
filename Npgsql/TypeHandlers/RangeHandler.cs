@@ -127,7 +127,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             throw new NotImplementedException("Chunking");
             /*

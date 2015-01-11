@@ -69,10 +69,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return val;
         }
 
-        internal override int Length(object value)
-        {
-            return 6;
-        }
+        internal override int Length { get { return 6; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {

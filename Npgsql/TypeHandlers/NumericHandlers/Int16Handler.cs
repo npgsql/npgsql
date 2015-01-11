@@ -66,10 +66,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        internal override int Length(object value)
-        {
-            return 2;
-        }
+        internal override int Length { get { return 2; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {

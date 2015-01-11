@@ -127,7 +127,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)

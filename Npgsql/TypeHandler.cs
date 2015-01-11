@@ -78,10 +78,20 @@ namespace Npgsql
         public virtual bool PreferTextWrite { get { return false; } }
         public virtual bool SupportsBinaryWrite { get { return true; } }
 
-        internal virtual int Length(object value)
+        internal virtual int Length
         {
+            get
+            {
+                Contract.Requires(!IsChunking, "Chunking type handlers must override GetLength()");
+                throw new NotImplementedException("Length for " + GetType());
+            }
+        }
+
+        internal virtual int GetLength(object value)
+        {
+            Contract.Requires(IsChunking, "Only chunking type handlers may override GetLength()");
             Contract.Requires(value != null);
-            throw new NotImplementedException("Length for " + GetType());
+            return Length;
         }
 
         internal virtual void PrepareChunkedWrite(object value)

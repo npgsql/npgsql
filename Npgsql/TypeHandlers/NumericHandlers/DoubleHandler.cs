@@ -28,10 +28,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             }
         }
 
-        internal override int Length(object value)
-        {
-            return 8;
-        }
+        internal override int Length { get { return 8; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {

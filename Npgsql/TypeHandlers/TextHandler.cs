@@ -74,7 +74,7 @@ namespace Npgsql.TypeHandlers
             return charsRead;
         }
 
-        internal override int Length(object value)
+        internal override int GetLength(object value)
         {
             // TODO: Cache the length internally across strings?
             return Encoding.UTF8.GetByteCount(value.ToString());

@@ -71,10 +71,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDate((int) year, (int) month, (int) day);
         }
 
-        internal override int Length(object value)
-        {
-            return 4;
-        }
+        internal override int Length { get { return 4; } }
 
         internal override void WriteBinary(object value, NpgsqlBuffer buf)
         {
