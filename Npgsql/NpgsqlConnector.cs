@@ -687,6 +687,7 @@ namespace Npgsql
             }
         }
 
+
         [GenerateAsync]
         internal void SendMessage(FrontendMessage msg)
         {
@@ -1271,7 +1272,7 @@ namespace Npgsql
         {
             ExecuteBlind(QueryManager.DiscardAll);
 
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later
         }
 
         internal void ReleaseRegisteredListen()
@@ -1612,6 +1613,18 @@ namespace Npgsql
 
         int _planIndex;
         const String PlanNamePrefix = "s";
+
+        /// <summary>
+        /// Reset connector state.
+        /// Restore initial connection parameters resetted by "Discard ALL"
+        /// </summary>
+
+        internal void Reset()
+        {
+
+            ExecuteOrDefer(_initQueries);
+
+        }
 
         /// <summary>
         /// This method checks if the connector is still ok.
