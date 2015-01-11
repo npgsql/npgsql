@@ -704,7 +704,7 @@ namespace Npgsql
                 return;
             }
 
-            var asComplex = msg as ComplexFrontendMessage;
+            var asComplex = msg as ChunkingFrontendMessage;
             if (asComplex != null)
             {
                 byte[] directBuf;

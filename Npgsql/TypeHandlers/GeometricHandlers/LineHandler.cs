@@ -17,32 +17,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    internal class LineHandler : TypeHandler<NpgsqlLine>, ITypeHandler<string>
+    internal class LineHandler : TypeHandler<NpgsqlLine>,
+        ISimpleTypeReader<NpgsqlLine>,
+        ISimpleTypeReader<string>
     {
-        public override NpgsqlLine Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlLine Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlLine.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

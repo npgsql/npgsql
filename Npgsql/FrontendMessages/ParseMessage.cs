@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Npgsql.FrontendMessages
 {
-    class ParseMessage : ComplexFrontendMessage
+    class ParseMessage : ChunkingFrontendMessage
     {
         /// <summary>
         /// The query string to be parsed.
@@ -90,7 +90,7 @@ namespace Npgsql.FrontendMessages
                     _state = State.WritingQuery;
                     int charsUsed;
                     bool completed;
-                    buf.WriteStringPartial(_queryChars, _charPos, _queryChars.Length - _charPos, true,
+                    buf.WriteStringChunked(_queryChars, _charPos, _queryChars.Length - _charPos, true,
                                            out charsUsed, out completed);
                     if (!completed)
                     {

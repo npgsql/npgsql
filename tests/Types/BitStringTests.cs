@@ -25,8 +25,7 @@ namespace NpgsqlTests.Types
                 "10110110",
                 ""
             )]
-            String bits,
-            [Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare
+            String bits
         )
         {
             var expected = new BitArray(bits.Length);
@@ -40,7 +39,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -73,14 +71,13 @@ namespace NpgsqlTests.Types
         }
 
         [Test, Description("Roundtrips a single bit")]
-        public void SingleBit([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void SingleBit()
         {
             const bool expected = true;
             var cmd = new NpgsqlCommand("SELECT @p, B'01'::BIT(2)", Conn);
             var p = new NpgsqlParameter("p", NpgsqlDbType.Bit);
             // TODO: type inference?
             cmd.Parameters.Add(p);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -98,10 +95,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadSingleBitArray([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadSingleBitArray()
         {
             var cmd = new NpgsqlCommand(@"SELECT '{ ""B1"", ""B0"" }'::BIT[]", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 

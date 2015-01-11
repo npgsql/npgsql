@@ -106,6 +106,11 @@ namespace Npgsql
             }
         }
 
+        internal void ReadMore()
+        {
+            Ensure(ReadBytesLeft + 1);
+        }
+
         /// <summary>
         /// Reads in the requested bytes into the buffer, or if the buffer isn't big enough, allocates a new
         /// temporary buffer and reads into it. Returns the buffer that contains the data (either itself or the
@@ -279,6 +284,42 @@ namespace Npgsql
             return output;
         }
 
+        internal string ReadStringSimple(int len)
+        {
+            Contract.Requires(len <= ReadBytesLeft);
+            var result = TextEncoding.GetString(_buf, ReadPosition, len);
+            ReadPosition += len;
+            return result;
+        }
+
+        internal char[] ReadCharsSimple(int len)
+        {
+            Contract.Requires(len <= ReadBytesLeft);
+            var result = TextEncoding.GetChars(_buf, ReadPosition, len);
+            ReadPosition += len;
+            return result;
+        }
+
+        internal void ReadStringChunked(int maxByteCount, char[] chars, int charIndex,
+                                        out int bytesUsed, out int charsUsed, out bool completed)
+        {
+            try
+            {
+                var byteCount = Math.Min(maxByteCount, ReadBytesLeft);
+                _textDecoder.Convert(_buf, ReadPosition, byteCount, chars, charIndex, chars.Length - charIndex, false,
+                                     out bytesUsed, out charsUsed, out completed);
+                ReadPosition += bytesUsed;
+                if (completed) {
+                    _textDecoder.Reset();                    
+                }
+            }
+            catch
+            {
+                _textDecoder.Reset();
+                throw;
+            }
+        }
+        
         /// <summary>
         /// Note that unlike the primitive readers, this reader can read any length, looping internally
         /// and reading directly from the underlying stream
@@ -346,6 +387,14 @@ namespace Npgsql
             return result;
         }
 
+        internal int ReadBytesSimple(byte[] output, int outputOffset, int len)
+        {
+            Contract.Requires(len <= ReadBytesLeft);
+            Array.Copy(_buf, ReadPosition, output, outputOffset, len);
+            ReadPosition += len;
+            return len;
+        }
+
         /// <summary>
         /// </summary>
         /// <param name="readAll">whether to loop internally until all bytes are read,
@@ -372,36 +421,6 @@ namespace Npgsql
                 offset += read;
             }
             return len;
-        }
-
-        /// <summary>
-        /// Note that unlike the primitive readers, this reader can read any length, looping internally
-        /// and reading directly from the underlying stream
-        /// </summary>
-        /// <param name="output"></param>
-        /// <param name="outputOffset"></param>
-        /// <param name="len">(decoded) number of bytes to fill in <paramref name="output"/></param>
-        /// <param name="readAll">whether to loop internally until all bytes are read,
-        /// or return after a single read to the underlying stream</param>
-        internal int ReadBytesHex(byte[] output, int outputOffset, int len, bool readAll)
-        {
-            var encodedLen = len * 2;
-            var pass = 0;
-            var totalRead = 0;
-            while (true)
-            {
-                // TODO: Use lookup tables as in FastConverter.cs
-                var bytesToProcess = Math.Min(encodedLen - totalRead, ReadBytesLeft % 2 == 0 ? ReadBytesLeft : ReadBytesLeft - 1);
-                for (var i = 0; i < bytesToProcess; i += 2) {
-                    output[outputOffset++] = (byte)((DecodeHex(_buf[ReadPosition++]) << 4) | DecodeHex(_buf[ReadPosition++]));
-                }
-                totalRead += bytesToProcess;
-                if (totalRead == encodedLen || (!readAll && ++pass == 2))
-                {
-                    return totalRead / 2;
-                }
-                Ensure(1);
-            }
         }
 
         /// <summary>
@@ -623,7 +642,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteByte(byte b)
         {
-            Contract.Requires(WriteSpaceLeft > 0);
+            Contract.Requires(WriteSpaceLeft >= sizeof(byte));
             _buf[_writePosition++] = b;
 
             return this;
@@ -631,7 +650,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteInt64(long i)
         {
-            Contract.Requires(WriteSpaceLeft > 8);
+            Contract.Requires(WriteSpaceLeft >= sizeof(long));
             var pos = _writePosition;
             _buf[pos++] = (byte)(i >> 56);
             _buf[pos++] = (byte)(i >> 48);
@@ -648,7 +667,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteInt32(int i)
         {
-            Contract.Requires(WriteSpaceLeft > 4);
+            Contract.Requires(WriteSpaceLeft >= sizeof(int));
             var pos = _writePosition;
             _buf[pos++] = (byte)(i >> 24);
             _buf[pos++] = (byte)(i >> 16);
@@ -661,7 +680,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteInt16(int i)
         {
-            Contract.Requires(WriteSpaceLeft > 2);
+            Contract.Requires(WriteSpaceLeft >= sizeof(short));
             _buf[_writePosition++] = (byte)(i >> 8);
             _buf[_writePosition++] = (byte)i;
 
@@ -670,7 +689,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteSingle(float f)
         {
-            Contract.Requires(WriteSpaceLeft > 0);
+            Contract.Requires(WriteSpaceLeft >= sizeof(float));
             _bitConverterUnion.float4 = f;
             var pos = _writePosition;
             if (BitConverter.IsLittleEndian)
@@ -694,7 +713,7 @@ namespace Npgsql
 
         public NpgsqlBuffer WriteDouble(double d)
         {
-            Contract.Requires(WriteSpaceLeft > 0);
+            Contract.Requires(WriteSpaceLeft >= sizeof(double));
             _bitConverterUnion.float8 = d;
             var pos = _writePosition;
             if (BitConverter.IsLittleEndian)
@@ -764,7 +783,7 @@ namespace Npgsql
             WritePosition += TextEncoding.GetBytes(s, 0, s.Length, _buf, WritePosition);
         }
 
-        internal void WriteStringPartial(char[] chars, int charIndex, int charCount,
+        internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
                                          bool flush, out int charsUsed, out bool completed)
         {
             int bytesUsed;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers
 {
@@ -19,11 +20,12 @@ namespace Npgsql.TypeHandlers
         public override bool SupportsBinaryRead { get { return false; } }
         public override bool SupportsBinaryWrite { get { return false; } }
 
-        public override string Read(NpgsqlBuffer buf, Messages.FieldDescription fieldDescription, int len)
+        internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            if (fieldDescription.IsBinaryFormat)
-                throw new NotSupportedException("Sorry, this type was sent in binary and no type handler for this type is available in Npgsql.");
-            return buf.ReadString(len);
+            if (fieldDescription.IsBinaryFormat) {
+                throw new NotSupportedException("The type {0} currently unknown to Npgsql. You can retrieve it as a string by marking it as unknown, please see the FAQ.");
+            }
+            base.PrepareRead(buf, fieldDescription, len);
         }
     }
 }

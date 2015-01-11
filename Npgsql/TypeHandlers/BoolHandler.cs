@@ -12,28 +12,20 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    internal class BoolHandler : TypeHandler<bool>
+    internal class BoolHandler : TypeHandler<bool>,
+        ISimpleTypeReader<bool>, ISimpleTypeWriter
     {
         const byte T = (byte)'T';
         const byte t = (byte)'t';
 
-        public override bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    var b = buf.ReadByte();
-                    return b == T || b == t;
-                case FormatCode.Binary:
-                    return buf.ReadByte() != 0;
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return buf.ReadByte() != 0;
         }
 
-        internal override int Length { get { return 1; } }
+        public int Length { get { return 1; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var v = ((IConvertible)value).ToBoolean(null);
             buf.WriteByte(v ? (byte)1 : (byte)0);

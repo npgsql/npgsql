@@ -21,15 +21,13 @@ namespace NpgsqlTests.Types
         public DateTimeTests(string backendVersion) : base(backendVersion) {}
 
         [Test]
-        public void ReadDate([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void ReadDate()
         {
             // TODO: Decide on the DateTime kind (#346)
             var expectedDateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
             var expectedNpgsqlDate = new NpgsqlDate(expectedDateTime);
             ExecuteNonQuery("INSERT INTO data (field_date) VALUES ('2002-03-04')");
             var cmd = new NpgsqlCommand("SELECT '2002-03-04'::DATE", Conn);
-
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -50,13 +48,12 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadTime([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void ReadTime()
         {
             // TODO: Decide on the DateTime kind (#346)
             var expectedNpgsqlTime = new NpgsqlTime(10, 3, 45, 345000);
             var expectedDateTime = new DateTime(expectedNpgsqlTime.Ticks, DateTimeKind.Unspecified);
             var cmd = new NpgsqlCommand("SELECT '10:03:45.345'::TIME", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 

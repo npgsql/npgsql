@@ -17,23 +17,108 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("name",    NpgsqlDbType.Name)]
     [TypeMapping("xml",     NpgsqlDbType.Xml, DbType.Xml)]
     [TypeMapping("unknown")]
-    internal class TextHandler : TypeHandler<string>, ITypeHandler<char[]>
+    internal class TextHandler : TypeHandler<string>,
+        IChunkingTypeWriter,
+        IChunkingTypeReader<string>, IChunkingTypeReader<char[]>
     {
-        public override bool IsChunking { get { return true; } }
         //public override bool PreferTextWrite { get { return true; } }
 
-        public override string Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        #region State
+
+        char[] _chars;
+        int _byteLen, _bytePos, _charPos;
+        NpgsqlBuffer _buf;
+        bool _initialized;
+
+        #endregion
+
+        #region Read
+
+        internal virtual void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return buf.ReadString(len);
+            _initialized = false;
+            _buf = buf;
+            _byteLen = len;
+            _charPos = _bytePos = 0;
         }
 
-        char[] ITypeHandler<char[]>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return buf.ReadChars(len);
+            PrepareRead(buf, fieldDescription, len);
         }
 
-        public long GetChars(DataRowMessage row, int decodedOffset, char[] output, int outputOffset, int decodedLen, FieldDescription field)
+        void IChunkingTypeReader<char[]>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
+            PrepareRead(buf, fieldDescription, len);
+        }
+
+        public bool Read(out string result)
+        {
+            if (!_initialized)
+            {
+                if (_byteLen <= _buf.ReadBytesLeft)
+                {
+                    // Already have the entire string in the buffer, decode and return
+                    result = _buf.ReadStringSimple(_byteLen);
+                    _buf = null;
+                    return true;
+                }
+            }
+
+            char[] chars;
+            if (Read(out chars))
+            {
+                result = new string(chars);
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+        public bool Read(out char[] result)
+        {
+            if (!_initialized)
+            {
+                if (_byteLen <= _buf.ReadBytesLeft) {
+                    // Already have the entire string in the buffer, decode and return
+                    result = _buf.ReadCharsSimple(_byteLen);
+                    _buf = null;
+                    return true;
+                }
+                if (_byteLen <= _buf.Size)
+                {
+                    // Don't have the entire string in the buffer, but it can fit. Force a read to fill.
+                    result = null;
+                    return false;
+                }
+
+                // String is larger than the buffer, switch to chunking mode
+                var pessimisticNumChars = _buf.TextEncoding.GetMaxCharCount(_byteLen);
+                _chars = new char[pessimisticNumChars];
+                _initialized = true;
+            }
+            int bytesUsed, charsUsed;
+            bool completed;
+            _buf.ReadStringChunked(_byteLen - _bytePos, _chars, _charPos, out bytesUsed, out charsUsed, out completed);
+            if (completed)
+            {
+                result = _chars;
+                _buf = null;
+                _chars = null;
+                return true;
+            }
+            _bytePos += bytesUsed;
+            _charPos += charsUsed;
+            result = null;
+            return false;
+        }
+
+        public long GetChars(DataRowMessage row, int charOffset, char[] output, int outputOffset, int charsCount, FieldDescription field)
+        {
+            if (row.PosInColumn == 0) {
+                _charPos = 0;
+            }
+
             if (output == null)
             {
                 // Note: Getting the length of a text column means decoding the entire field,
@@ -43,61 +128,64 @@ namespace Npgsql.TypeHandlers
                 row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
                 Contract.Assume(bytesSkipped == row.ColumnLen - row.PosInColumn);
                 row.PosInColumn += bytesSkipped;
-                row.DecodedPosInColumn += charsSkipped;
-                return row.DecodedPosInColumn;
+                _charPos += charsSkipped;
+                return _charPos;
             }
 
-            if (decodedOffset < row.DecodedPosInColumn)
-            {
+            if (charOffset < _charPos) {
                 row.SeekInColumn(0);
-                row.DecodedPosInColumn = 0;
+                _charPos = 0;
             }
 
-            if (decodedOffset > row.DecodedPosInColumn)
+            if (charOffset > _charPos)
             {
-                var charsToSkip = decodedOffset - row.DecodedPosInColumn;
+                var charsToSkip = charOffset - _charPos;
                 int bytesSkipped, charsSkipped;
                 row.Buffer.SkipChars(charsToSkip, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
                 row.PosInColumn += bytesSkipped;
-                row.DecodedPosInColumn += charsSkipped;
-                if (charsSkipped < charsToSkip)
-                {
+                _charPos += charsSkipped;
+                if (charsSkipped < charsToSkip) {
                     // TODO: What is the actual required behavior here?
                     throw new IndexOutOfRangeException();
                 }
             }
 
             int bytesRead, charsRead;
-            row.Buffer.ReadChars(output, outputOffset, decodedLen, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
+            row.Buffer.ReadChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out bytesRead, out charsRead);
             row.PosInColumn += bytesRead;
-            row.DecodedPosInColumn += charsRead;
+            _charPos += charsRead;
             return charsRead;
         }
+        
+        #endregion
 
-        internal override int GetLength(object value)
+        #region Write
+
+        public int GetLength(object value)
         {
             // TODO: Cache the length internally across strings?
             return Encoding.UTF8.GetByteCount(value.ToString());
         }
 
-        char[] _value;
-        int _pos;
-
-        internal override void PrepareChunkedWrite(object value)
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
         {
-            _value = ((string)value).ToCharArray();
-            _pos = 0;
+            _buf = buf;
+            _chars = ((string)value).ToCharArray();
+            _bytePos = 0;
         }
 
-        internal override bool WriteBinaryChunk(NpgsqlBuffer buf)
+        public bool Write(out byte[] directBuf)
         {
+            directBuf = null;
             int charsUsed;
             bool completed;
-            buf.WriteStringPartial(_value, _pos, _value.Length - _pos, true, out charsUsed, out completed);
+            _buf.WriteStringChunked(_chars, _bytePos, _chars.Length - _bytePos, true, out charsUsed, out completed);
             if (completed)
                 return true;
-            _pos += charsUsed;
+            _bytePos += charsUsed;
             return false;
         }
+
+        #endregion
     }
 }

@@ -9,36 +9,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("timestamptz", NpgsqlDbType.TimestampTZ, DbType.DateTimeOffset, typeof(NpgsqlTimeStampTZ))]
-    internal class TimeStampTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStampTZ>, ITypeHandler<NpgsqlTimeStampTZ>
+    internal class TimeStampTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStampTZ>,
+        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeStampTZ>
     {
-        public override bool SupportsBinaryWrite
-        {
-            get
-            {
-                return false; // TODO: Implement
-            }
-        }
-
-        public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            return (DateTime)((ITypeHandler<NpgsqlTimeStampTZ>)this).Read(buf, fieldDescription, len);
+            return (DateTime)((ISimpleTypeReader<NpgsqlTimeStampTZ>)this).Read(buf, fieldDescription, len);
         }
 
-        NpgsqlTimeStampTZ ITypeHandler<NpgsqlTimeStampTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlTimeStampTZ.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlTimeStampTZ ReadBinary(NpgsqlBuffer buf)
+        NpgsqlTimeStampTZ ISimpleTypeReader<NpgsqlTimeStampTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // The Int64 contains just the time in UTC, no time zone information
             var ts = NpgsqlTimeStamp.FromInt64(buf.ReadInt64());

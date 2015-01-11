@@ -18,10 +18,9 @@ namespace NpgsqlTests.Types
     class GeometricTypeTests : TestBase
     {
         [Test]
-        public void ReadPoint([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadPoint()
         {
             var cmd = new NpgsqlCommand("SELECT '(1.2,3.4)'::POINT", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var p = (NpgsqlPoint)reader.GetValue(0);
@@ -32,10 +31,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadLine([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadLine()
         {
             var cmd = new NpgsqlCommand("SELECT '{1,2,3}'::LINE", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var l = (NpgsqlLine)reader.GetValue(0);
@@ -45,10 +43,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadLineSegment([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadLineSegment()
         {
             var cmd = new NpgsqlCommand("SELECT '[(1,2),(3,4)]'::LSEG", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var l = (NpgsqlLSeg)reader.GetValue(0);
@@ -58,10 +55,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadBox([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadBox()
         {
             var cmd = new NpgsqlCommand("SELECT '(4,3),(2,1)'::BOX", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var b = (NpgsqlBox)reader.GetValue(0);
@@ -72,10 +68,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadPath([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadPath()
         {
             var cmd = new NpgsqlCommand("SELECT '((1,2),(3,4))'::PATH, '[(1,2),(3,4)]'::PATH", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var closed = (NpgsqlPath)reader.GetValue(0);
@@ -93,8 +88,6 @@ namespace NpgsqlTests.Types
 
             var longPath = string.Join(",", Enumerable.Range(1, 10000).Select(i => "(" + i + ",1)"));
             cmd.CommandText = "SELECT '" + longPath + "'::PATH";
-            if (prepare == PrepareOrNot.Prepared)
-                cmd.Prepare();
             reader = cmd.GetReader(CommandBehavior.SequentialAccess);
             reader.Read();
             Assert.That(reader.GetFieldValue<NpgsqlPath>(0).Count, Is.EqualTo(10000));
@@ -102,10 +95,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadPolygon([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadPolygon()
         {
             var cmd = new NpgsqlCommand("SELECT '((1,2),(3,4))'::POLYGON", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var p = (NpgsqlPolygon)reader.GetValue(0);
@@ -115,10 +107,9 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadCircle([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadCircle()
         {
             var cmd = new NpgsqlCommand("SELECT '<(1,2),0.5>'::CIRCLE", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             var c = (NpgsqlCircle)reader.GetValue(0);

@@ -10,34 +10,95 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql
 {
-    interface ITypeHandler
-    {
-        /// <summary>
-        /// If true, the type handler reads values of totally arbitrary length. These type handlers are expected
-        /// to  handle reading from socket on its own if the buffer doesn't contain enough data.
-        /// Otherwise the entire column data is expected to be loaded in the buffer prior to Read() being invoked.
-        /// </summary>
-        bool IsChunking { get; }
-        /// <summary>
-        /// Whether this type handler supports reading the binary Postgresql representation for its type.
-        /// </summary>
-        bool SupportsBinaryRead { get; }
-    }
+    interface ITypeHandler {}
 
-    /// <summary>
-    /// A type handler that can read a value from a column and return it as type <typeparamref name="T"/>.
-    /// </summary>
-    /// <typeparam name="T">the type of the value returned by this type handler</typeparam>
-    [ContractClass(typeof(ITypeHandlerContract<>))]
-    // ReSharper disable once TypeParameterCanBeVariant
-    interface ITypeHandler<T> : ITypeHandler
+    interface ITypeReader<T> {}
+
+    [ContractClass(typeof(ISimpleTypeWriterContracts))]
+    interface ISimpleTypeWriter
     {
-        T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        int Length { get; }
+        void Write(object value, NpgsqlBuffer buf);
     }
 
     // ReSharper disable once InconsistentNaming
-    [ContractClassFor(typeof(ITypeHandler<>))]
-    class ITypeHandlerContract<T> : ITypeHandler<T>
+    [ContractClassFor(typeof(ISimpleTypeWriter))]
+    class ISimpleTypeWriterContracts : ISimpleTypeWriter
+    {
+        public int Length
+        {
+            get
+            {
+                Contract.Ensures(Contract.Result<int>() <= NpgsqlBuffer.MinimumBufferSize);
+                return default(int);
+            }
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            Contract.Requires(value != null);
+            Contract.Requires(buf != null);
+        }
+    }
+
+    /// <summary>
+    /// A handler which can read small, usually fixed-length values.
+    /// </summary>
+    /// <typeparam name="T">the type of the value returned by this type handler</typeparam>
+    //[ContractClass(typeof(ITypeHandlerContract<>))]
+    // ReSharper disable once TypeParameterCanBeVariant
+    interface ISimpleTypeReader<T> : ITypeReader<T>
+    {
+        /// <summary>
+        /// The entire data required to read the value is expected to be in the buffer.
+        /// </summary>
+        /// <param name="buf"></param>
+        /// <param name="fieldDescription"></param>
+        /// <param name="len"></param>
+        /// <returns></returns>
+        T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+    }
+
+    interface IChunkingTypeWriter
+    {
+        int GetLength(object value);
+        void PrepareWrite(NpgsqlBuffer buf, object value);
+        bool Write(out byte[] directBuf);
+    }
+
+    /// <summary>
+    /// A type handler which handles values of totally arbitrary length, and therefore supports chunking them.
+    /// </summary>
+    [ContractClass(typeof(IChunkingTypeReaderContracts<>))]
+    // ReSharper disable once TypeParameterCanBeVariant
+    interface IChunkingTypeReader<T> : ITypeReader<T>
+    {
+        void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        bool Read(out T result);
+    }
+
+    [ContractClassFor(typeof(IChunkingTypeReader<>))]
+    // ReSharper disable once InconsistentNaming
+    class IChunkingTypeReaderContracts<T> : IChunkingTypeReader<T>
+    {
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            Contract.Requires(buf != null);
+            Contract.Requires(fieldDescription != null);
+        }
+
+        public bool Read(out T result)
+        {
+            //Contract.Ensures(!completed || Contract.ValueAtReturn(out result) == default(T));
+            result = default(T);
+            return default(bool);
+        }
+    }
+
+    /*
+    // ReSharper disable once InconsistentNaming
+    [ContractClassFor(typeof(ISimpleTypeReader<>))]
+    class ITypeHandlerContract<T> : ISimpleTypeReader<T>
     {
         public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -48,7 +109,7 @@ namespace Npgsql
 
         public bool IsChunking { get { return default(bool); } }
         public bool SupportsBinaryRead { get { return default(bool); } }
-    }
+    }*/
 
     internal abstract class TypeHandler : ITypeHandler
     {
@@ -63,76 +124,60 @@ namespace Npgsql
         /// </summary>
         public virtual bool SupportsBinaryRead { get { return true; } }
 
-        /// <summary>
-        /// If true, the type handler reads and writes values of totally arbitrary length.
-        /// These type handlers are expected to handle reading from sockets and writing to them on their own
-        /// if the buffer doesn't contain enough data (i.e. perform Ensure).
-        /// Otherwise, the type handler expects the buffer to contain enough bytes prior to Read() and
-        /// Write() being invoked by the framework.
-        /// </summary>
-        public virtual bool IsChunking { get { return false; } }
+        internal abstract object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription);
 
-        internal abstract object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
-        internal abstract object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        internal virtual object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        {
+            // TODO: These methods aren't async-compatible
+            return ReadValueAsObject(row, fieldDescription);
+        }
 
         public virtual bool PreferTextWrite { get { return false; } }
         public virtual bool SupportsBinaryWrite { get { return true; } }
 
-        internal virtual int Length
+        internal T Read<T>(DataRowMessage row, FieldDescription fieldDescription, int len)
         {
-            get
+            Contract.Requires(row.PosInColumn == 0);
+            Contract.Ensures(row.PosInColumn == row.ColumnLen);
+
+            T result;
+
+            var asSimpleReader = this as ISimpleTypeReader<T>;
+            if (asSimpleReader != null)
             {
-                Contract.Requires(!IsChunking, "Chunking type handlers must override GetLength()");
-                throw new NotImplementedException("Length for " + GetType());
+                var buf = row.Buffer.EnsureOrAllocateTemp(len);
+                result = asSimpleReader.Read(buf, fieldDescription, row.ColumnLen);
             }
-        }
+            else
+            {
+                var asChunkingReader = this as IChunkingTypeReader<T>;
+                if (asChunkingReader == null) {
+                    throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
+                }
 
-        internal virtual int GetLength(object value)
-        {
-            Contract.Requires(IsChunking, "Only chunking type handlers may override GetLength()");
-            Contract.Requires(value != null);
-            return Length;
-        }
+                asChunkingReader.PrepareRead(row.Buffer, fieldDescription, len);
+                while (!asChunkingReader.Read(out result)) {
+                    row.Buffer.ReadMore();
+                }
+            }
 
-        internal virtual void PrepareChunkedWrite(object value)
-        {
-            Contract.Requires(value != null);
-            Contract.Requires(IsChunking);
-            throw new NotImplementedException("PreparedChunkedWrite for " + GetType());            
-        }
-
-        internal virtual bool WriteBinaryChunk(NpgsqlBuffer buf)
-        {
-            Contract.Requires(IsChunking);
-            throw new NotImplementedException("WriteBinaryChunk for " + GetType());
-        }
-
-        internal virtual bool WriteBinaryChunk(NpgsqlBuffer buf, out byte[] directBuf)
-        {
-            Contract.Requires(IsChunking);
-            directBuf = null;
-            return WriteBinaryChunk(buf);
-        }
-
-        internal virtual void WriteBinary(object value, NpgsqlBuffer buf)
-        {
-            Contract.Requires(value != null);
-            Contract.Requires(!IsChunking);
-            throw new NotImplementedException("WriteBinary for " + GetType());
-        }
-
-        public virtual void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            writer.WriteString(value.ToString());
+            row.PosInColumn += row.ColumnLen;
+            return result;
         }
 
         protected static T GetIConvertibleValue<T>(object value) where T : IConvertible
         {
             return value is T ? (T)value : (T)Convert.ChangeType(value, typeof(T), null);
         }
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(!(this is IChunkingTypeWriter && this is ISimpleTypeWriter));
+        }
     }
 
-    internal abstract class TypeHandler<T> : TypeHandler, ITypeHandler<T>
+    internal abstract class TypeHandler<T> : TypeHandler
     {
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
@@ -144,17 +189,21 @@ namespace Npgsql
             return typeof(T);
         }
 
-        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);            
+            return Read<T>(row, fieldDescription, row.ColumnLen);
         }
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read<T>(row, fieldDescription, row.ColumnLen);
         }
 
-        public abstract T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(this is ISimpleTypeReader<T> || this is IChunkingTypeReader<T>);
+        }
     }
 
     /// <summary>
@@ -176,15 +225,15 @@ namespace Npgsql
             return typeof (TPsv);
         }
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return ((ITypeHandler<TPsv>)this).Read(buf, fieldDescription, len);
+            return Read<TPsv>(row, fieldDescription, row.ColumnLen);
         }
 
         [ContractInvariantMethod]
         void ObjectInvariants()
         {
-            Contract.Invariant(this is ITypeHandler<TPsv>);
+            Contract.Invariant(this is ISimpleTypeReader<TPsv>);
         }
     }
 

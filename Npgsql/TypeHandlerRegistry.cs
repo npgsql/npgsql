@@ -121,6 +121,7 @@ namespace Npgsql
             var parameterizedQuery = String.Format(query, inList);
             using (var command = new NpgsqlCommand(parameterizedQuery, connector))
             {
+                command.AllResultTypesAreUnknown = true;
                 using (var dr = command.GetReader(CommandBehavior.SequentialAccess))
                 {
                     while (dr.Read())
@@ -222,6 +223,7 @@ namespace Npgsql
                 arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler, textDelimiter);
             }
 
+            arrayHandler.PgName = "array";
             return arrayHandler;
         }
 

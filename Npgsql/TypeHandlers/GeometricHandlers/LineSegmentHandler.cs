@@ -17,33 +17,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
-    internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>, ITypeHandler<string>
+    internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>,
+        ISimpleTypeReader<NpgsqlLSeg>,
+        ISimpleTypeReader<string>
     {
-        public override NpgsqlLSeg Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlLSeg Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlLSeg.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
-
 }

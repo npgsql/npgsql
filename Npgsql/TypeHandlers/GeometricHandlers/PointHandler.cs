@@ -17,37 +17,23 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("point", NpgsqlDbType.Point, typeof(NpgsqlPoint))]
-    internal class PointHandler : TypeHandler<NpgsqlPoint>, ITypeHandler<string>
+    internal class PointHandler : TypeHandler<NpgsqlPoint>,
+        ISimpleTypeReader<NpgsqlPoint>, ISimpleTypeWriter,
+        ISimpleTypeReader<string>
     {
-        public override NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlPoint.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
 
-        internal override int Length { get { return 16; } }
+        public int Length { get { return 16; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var p = value is string ? NpgsqlPoint.Parse((string)value) : (NpgsqlPoint)value;
             buf.WriteDouble(p.X);

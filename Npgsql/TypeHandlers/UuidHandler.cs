@@ -17,22 +17,11 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
-    internal class UuidHandler : TypeHandler<Guid>, ITypeHandler<string>
+    internal class UuidHandler : TypeHandler<Guid>,
+        ISimpleTypeReader<Guid>, ISimpleTypeWriter,
+        ISimpleTypeReader<string>
     {
-        public override Guid Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return new Guid(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        Guid ReadBinary(NpgsqlBuffer buf)
+        public Guid Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             buf.Ensure(16);
             var a = buf.ReadInt32();
@@ -43,16 +32,16 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
         }
 
         #region Write
 
-        internal override int Length { get { return 16; } }
+        public int Length { get { return 16; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var bytes = ((Guid)value).ToByteArray();
 

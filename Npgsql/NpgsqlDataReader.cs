@@ -999,7 +999,7 @@ namespace Npgsql
             row.IsStreaming = true;
             try
             {
-                return new StreamReader(new ByteaBinaryStream(row));
+                return new StreamReader(new ByteaStream(row));
             }
             catch
             {
@@ -1115,15 +1115,11 @@ namespace Npgsql
             }
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
+
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
-                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-             }
-            var result = handler.ReadValueAsObject(buf, fieldDescription, _row.ColumnLen);
-            _row.PosInColumn += _row.ColumnLen;
+            var result = handler.ReadValueAsObject(_row, fieldDescription);
 
             if (IsCaching)
             {
@@ -1148,7 +1144,6 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            //return ReadColumn<T>(ordinal);
             var t = typeof(T);
             if (!t.IsArray) {
                 return ReadColumn<T>(ordinal);
@@ -1158,8 +1153,8 @@ namespace Npgsql
             var handler = fieldDescription.Handler;
 
             // If the type handler can simply return the requested array, call it as usual. This is the case
-            // of reading a bytea as a byte[]
-            var tHandler = handler as ITypeHandler<T>;
+            // of reading a string as char[], a bytea as a byte[]...
+            var tHandler = handler as ITypeReader<T>;
             if (tHandler != null) {
                 return ReadColumn<T>(ordinal);
             }
@@ -1212,12 +1207,7 @@ namespace Npgsql
             // The buffer might not contain the entire column in sequential mode.
             // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
             // For simple, primitive type handlers we need to handle this here.
-            var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
-                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-             }
-            var result = handler.ReadPsvAsObject(buf, fieldDescription, _row.ColumnLen);
-            _row.PosInColumn += _row.ColumnLen;
+            var result = handler.ReadPsvAsObject(_row, fieldDescription);
 
             if (IsCaching)
             {
@@ -1317,21 +1307,7 @@ namespace Npgsql
             _row.SeekToColumnStart(ordinal);
             Row.CheckNotNull();
             var fieldDescription = _rowDescription[ordinal];
-
-            var handler = fieldDescription.Handler as ITypeHandler<T>;
-            if (handler == null) {
-                throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof (T).Name));
-            }
-            // The buffer might not contain the entire column in sequential mode.
-            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
-            // For simple, primitive type handlers we need to handle this here.
-            var buf = _row.Buffer;
-            if (_row.Buffer.ReadBytesLeft < _row.ColumnLen && !handler.IsChunking) {
-                buf = buf.EnsureOrAllocateTemp(_row.ColumnLen);
-             }
-            var result = handler.Read(buf, fieldDescription, _row.ColumnLen);
-            _row.PosInColumn += _row.ColumnLen;
-            return result;
+            return fieldDescription.Handler.Read<T>(_row, fieldDescription, Row.ColumnLen);
         }
 
 #if NET45

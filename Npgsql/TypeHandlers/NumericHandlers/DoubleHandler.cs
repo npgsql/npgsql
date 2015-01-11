@@ -13,24 +13,17 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
-    internal class DoubleHandler : TypeHandler<double>
+    internal class DoubleHandler : TypeHandler<double>,
+        ISimpleTypeReader<double>, ISimpleTypeWriter
     {
-        public override double Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public double Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return Double.Parse(buf.ReadString(len), CultureInfo.InvariantCulture);
-                case FormatCode.Binary:
-                    return buf.ReadDouble();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return buf.ReadDouble();
         }
 
-        internal override int Length { get { return 8; } }
+        public int Length { get { return 8; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var d = GetIConvertibleValue<double>(value);
             buf.WriteDouble(d);

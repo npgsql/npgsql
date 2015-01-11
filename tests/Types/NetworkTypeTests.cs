@@ -19,12 +19,11 @@ namespace NpgsqlTests.Types
     class NetworkTypeTests : TestBase
     {
         [Test]
-        public void ReadInetV4([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadInetV4()
         {
             var expectedIp = IPAddress.Parse("192.168.1.1");
             var expectedInet = new NpgsqlInet(expectedIp, 24);
             var cmd = new NpgsqlCommand("SELECT '192.168.1.1/24'::INET", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -48,13 +47,12 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadInetV6([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadInetV6()
         {
             const string addr = "2001:1db8:85a3:1142:1000:8a2e:1370:7334";
             var expectedIp = IPAddress.Parse(addr);
             var expectedInet = new NpgsqlInet(expectedIp, 24);
             var cmd = new NpgsqlCommand(String.Format("SELECT '{0}/24'::INET", addr), Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -78,11 +76,10 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadCidr([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadCidr()
         {
             var expectedInet = new NpgsqlInet("192.168.1.0/24");
             var cmd = new NpgsqlCommand("SELECT '192.168.1.0/24'::CIDR", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -99,11 +96,10 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadMacaddr([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void ReadMacaddr()
         {
             var expected = PhysicalAddress.Parse("08-00-2B-01-02-03");
             var cmd = new NpgsqlCommand("SELECT '08-00-2b-01-02-03'::MACADDR", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected));

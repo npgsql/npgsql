@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Npgsql.FrontendMessages
 {
-    class BindMessage : ComplexFrontendMessage
+    class BindMessage : ChunkingFrontendMessage
     {
         /// <summary>
         /// The name of the destination portal (an empty string selects the unnamed portal).
@@ -22,6 +22,8 @@ namespace Npgsql.FrontendMessages
 
         List<NpgsqlParameter> InputParameters { get; set; }
         internal List<FormatCode> ResultFormatCodes { get; private set; }
+        internal bool AllResultTypesAreUnknown { get; set; }
+        internal bool[] UnknownResultTypeList { get; set; }
 
         TypeHandlerRegistry _typeHandlerRegistry;
         State _state;
@@ -62,8 +64,6 @@ namespace Npgsql.FrontendMessages
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
             directBuf = null;
 
-            int[] resultFormatCodes = null;
-
             switch (_state)
             {
                 case State.WroteNothing:
@@ -88,8 +88,8 @@ namespace Npgsql.FrontendMessages
                     var messageLength = headerLength +
                         4 * InputParameters.Count +                       // Parameter lengths
                         InputParameters.Select(p => p.BoundSize).Sum() +  // Parameter values
-                        2 +                                                // Number of result format codes
-                        2 * (resultFormatCodes == null ? 1 : resultFormatCodes.Length); // Use binary for everything that is received if unknown
+                        2 +                                               // Number of result format codes
+                        2 * (UnknownResultTypeList == null ? 1 : UnknownResultTypeList.Length);  // Result format codes
 
                     buf.WriteByte(Code);
                     buf.WriteInt32(messageLength);
@@ -109,21 +109,31 @@ namespace Npgsql.FrontendMessages
                     }
 
                     buf.WriteInt16(InputParameters.Count);
+                    _state = State.WroteHeader;
                     goto case State.WroteHeader;
 
                 case State.WroteHeader:
-                    _state = State.WroteHeader;
-                    if (!WriteParameters(buf, out directBuf)) {
-                        return false;
-                    }
+                    if (!WriteParameters(buf, out directBuf)) { return false; }
+                    _state = State.WroteParameters;
                     goto case State.WroteParameters;
 
                 case State.WroteParameters:
-                    _state = State.WroteParameters;
-                    // TODO: Implement for real and check length!
-                    buf.WriteInt16(1);
-                    buf.WriteInt16(0);
-                    _state = State.WroteAll;
+                    if (UnknownResultTypeList != null)
+                    {
+                        if (buf.WriteSpaceLeft < 2 + UnknownResultTypeList.Length * 2) { return false; }
+                        buf.WriteInt16(UnknownResultTypeList.Length);
+                        foreach (var t in UnknownResultTypeList) {
+                            buf.WriteInt16(t ? 0 : 1);
+                        }
+                    }
+                    else
+                    {
+                        if (buf.WriteSpaceLeft < 4) { return false; }
+                        buf.WriteInt16(1);
+                        buf.WriteInt16(AllResultTypesAreUnknown ? 0 : 1);                        
+                    }
+
+                    _state = State.Done;
                     return true;
 
                 default:
@@ -140,10 +150,7 @@ namespace Npgsql.FrontendMessages
 
                 if (param.IsNull)
                 {
-                    if (buf.WriteSpaceLeft < 4) {
-                        return false;
-                    }
-
+                    if (buf.WriteSpaceLeft < 4) { return false; }
                     buf.WriteInt32(-1);
                     continue;
                 }
@@ -154,32 +161,31 @@ namespace Npgsql.FrontendMessages
                     throw new NotImplementedException();
                 }
 
-                if (handler.IsChunking)
+                var asChunkingWriter = handler as IChunkingTypeWriter;
+                if (asChunkingWriter != null)
                 {
                     if (!_wroteParamLen)
                     {
-                        if (buf.WriteSpaceLeft < 4) {
-                            return false;
-                        }
+                        if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt32(param.BoundSize);
-                        handler.PrepareChunkedWrite(param.Value);
+                        asChunkingWriter.PrepareWrite(buf, param.Value);
                         _wroteParamLen = true;
                     }
-                    if (!handler.WriteBinaryChunk(buf, out directBuf)) {
+                    if (!asChunkingWriter.Write(out directBuf)) {
                         return false;
                     }
                     _wroteParamLen = false;
+                    continue;
                 }
-                else
+
+                var asSimpleWriter = (ISimpleTypeWriter)handler;
+                if (buf.WriteSpaceLeft < param.BoundSize + 4)
                 {
-                    if (buf.WriteSpaceLeft < param.BoundSize + 4)
-                    {
-                        Contract.Assume(buf.Size < param.BoundSize + 4);
-                        return false;
-                    }
-                    buf.WriteInt32(param.BoundSize);
-                    param.Handler.WriteBinary(param.Value, buf);                    
+                    Contract.Assume(buf.Size < param.BoundSize + 4);
+                    return false;
                 }
+                buf.WriteInt32(param.BoundSize);
+                asSimpleWriter.Write(param.Value, buf);                    
             }
             return true;
         }
@@ -194,7 +200,7 @@ namespace Npgsql.FrontendMessages
             WroteNothing,
             WroteHeader,
             WroteParameters,
-            WroteAll
+            Done
         }
 
         [ContractInvariantMethod]
@@ -203,7 +209,7 @@ namespace Npgsql.FrontendMessages
             Contract.Invariant(Portal != null);
             Contract.Invariant(Statement != null);
             Contract.Invariant(InputParameters != null);
-
+            Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
         }
     }
 }

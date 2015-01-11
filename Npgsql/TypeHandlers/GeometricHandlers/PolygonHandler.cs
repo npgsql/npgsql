@@ -16,25 +16,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    // TODO: Should be chunking
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    internal class PolygonHandler : TypeHandler<NpgsqlPolygon>, ITypeHandler<string>
+    internal class PolygonHandler : TypeHandler<NpgsqlPolygon>,
+        ISimpleTypeReader<NpgsqlPolygon>,
+        ISimpleTypeReader<string>
     {
-        public override bool IsChunking { get { return true; } }
-
-        public override NpgsqlPolygon Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlPolygon.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlPolygon ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlPolygon Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var numPoints = buf.ReadInt32();
             var points = new List<NpgsqlPoint>(numPoints);
@@ -46,17 +34,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return new NpgsqlPolygon(points);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -19,11 +20,24 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     internal abstract class ArrayHandler : TypeHandler
     {
-        public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool IsChunking { get { return true; } }
-        public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
+        Array _array;
+        ReadState _readState;
+        WriteState _writeState;
+        protected NpgsqlBuffer _buf;
+        FieldDescription _fieldDescription;
+        int _dimensions;
+        int[] _dimLengths, _dimOffsets;
+        int _index;
+        int _elementLen;
 
-        internal const int MaxDimensions = 6;
+        /// <summary>
+        /// The array currently being written
+        /// </summary>
+        protected bool _hasNulls;
+        bool _wroteElementLen;
+
+        public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
+        public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
@@ -54,418 +68,379 @@ namespace Npgsql.TypeHandlers
             TextDelimiter = textDelimiter;
         }
 
-        #region Binary
+        #region Read
 
-        protected Array ReadBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        protected void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            Contract.Assert(ElementHandler.SupportsBinaryRead);
+            Contract.Assert(_readState == ReadState.NeedPrepare);
+            if (_readState != ReadState.NeedPrepare)  // Checks against recursion and bugs
+                throw new InvalidOperationException("Started reading a value before completing a previous value");
 
-            // Since we're a variable-length type handler, the buffer may not contain the entire column data.
-            // TODO: Temporary unoptimized solution: if the column is larger than the buffer size, allocate a new
-            // buffer. We could also load data progressively as we need it below, eliminating this allocation
-            // most times. But what happens if a single element is larger than the buffer size...
-            if (len > buf.ReadBytesLeft)
+            _buf = buf;
+            _fieldDescription = fieldDescription;
+            _elementLen = -1;
+            _readState = ReadState.ReadNothing;
+        }
+
+        protected bool Read<TElement>(out Array result)
+        {
+            switch (_readState)
             {
-                buf = buf.EnsureOrAllocateTemp(len);
+                case ReadState.ReadNothing:
+                    if (_buf.ReadBytesLeft < 12)
+                    {
+                        result = null;
+                        return false;
+                    }
+                    _dimensions = _buf.ReadInt32();
+                    var hasNulls = _buf.ReadInt32();            // Not populated by PG?
+                    var elementOID = _buf.ReadUInt32();
+                    Contract.Assume(elementOID == ElementHandler.OID);
+                    _dimLengths = new int[_dimensions];
+                    if (!(_array is TElement[])) {
+                        _dimOffsets = new int[_dimensions];
+                    }
+                    _index = 0;
+                    goto case ReadState.ReadHeader;
+
+                case ReadState.ReadHeader:
+                    if (_buf.ReadBytesLeft < _dimensions * 8) {
+                        result = null;
+                        return false;
+                    }
+                    for (var i = 0; i < _dimensions; i++)
+                    {
+                        _dimLengths[i] = _buf.ReadInt32();
+                        _buf.ReadInt32(); // We don't care about the lower bounds
+                    }
+                    if (_dimensions == 0)
+                    {
+                        result = new TElement[0];
+                        _readState = ReadState.NeedPrepare;
+                        return true;
+                    }
+                    _array = Array.CreateInstance(typeof(TElement), _dimLengths);
+                    _readState = ReadState.ReadingElements;
+                    goto case ReadState.ReadingElements;
+
+                case ReadState.ReadingElements:
+                    var completed = _array is TElement[]
+                        ? ReadElementsOneDimensional<TElement>()
+                        : ReadElementsMultidimensional<TElement>(0);
+
+                    if (!completed)
+                    {
+                        result = null;
+                        return false;
+                    }
+
+                    result = _array;
+                    _array = null;
+                    _buf = null;
+                    _fieldDescription = null;
+                    _readState = ReadState.NeedPrepare;
+                    return true;
+
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
-
-            // Offset 0 holds an integer dscribing the number of dimensions in the array.
-            var nDims = buf.ReadInt32();
-
-            // Sanity check.
-            if (nDims < 0)
-            {
-                throw new Exception("Invalid array dimension count encountered in binary array header");
-            }
-
-            if (nDims > 32)
-            {
-                throw new NotSupportedException(String.Format("Array with {0} dimensions encountered, only 32 are supported in .NET", nDims));
-            }
-
-            int dimOffset;
-            // Offset 12 begins an array of {int,int} objects, of length nDims.
-            buf.Skip(8);
-
-            // PG handles 0-dimension arrays, but .NET does not.  Return a 0-size 1-dimensional array.
-            if (nDims == 0)
-            {
-                return new T[0];
-            }
-
-            var dimLengths = new int[nDims];
-            var dimLBounds = new int[nDims];
-
-            // Populate array dimension lengths and lower bounds.
-            for (dimOffset = 0; dimOffset < nDims; dimOffset++)
-            {
-                dimLengths[dimOffset] = buf.ReadInt32();
-                // Lower bounds is 1-based in SQL, 0-based in .NET.
-                dimLBounds[dimOffset] = buf.ReadInt32() - 1;
-            }
-
-            var dst = Array.CreateInstance(typeof(T), dimLengths);
-
-            if (nDims == 1)
-            {
-                PopulateOneDimensionalBinary(buf, fieldDescription, (T[])dst);
-                return dst;
-            }
-
-            var dstOffsets = new int[nDims];
-
-            // Right after the dimension descriptors begins array data.
-            // Populate the new array.
-
-            PopulateBinary<T>(buf, fieldDescription, dimLengths, 0, dst, dstOffsets);
-            return dst;
         }
 
         /// <summary>
         /// Optimized population for one-dimensional arrays without boxing/unboxing
         /// </summary>
-        void PopulateOneDimensionalBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, T[] dst)
+        bool ReadElementsOneDimensional<TElement>()
         {
-            var handler = (ITypeHandler<T>)ElementHandler;
+            var array = (TElement[])_array;
 
-            for (var i = 0; i < dst.Length; i++)
+            for (; _index < array.Length; _index++) 
             {
-                var elementLen = buf.ReadInt32();
+                if (_elementLen == -1)
+                {
+                    if (_buf.ReadBytesLeft < 4) { return false; }
+                    _elementLen = _buf.ReadInt32();
+                    if (_elementLen == -1)
+                    {
+                        // TODO: Nullables
+                        array[_index] = default(TElement);
+                        continue;
+                    }
+                }
 
-                // Not good for value types, need nullables
-                dst[i] = elementLen == -1 ? default(T) : handler.Read(buf, fieldDescription, elementLen);
+                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                if (asSimpleReader != null)
+                {
+                    if (_buf.ReadBytesLeft < _elementLen) { return false; }
+                    array[_index] = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                }
+                else
+                {
+                    var asChunkingReader = (IChunkingTypeReader<TElement>)ElementHandler;
+                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    TElement element;
+                    if (!asChunkingReader.Read(out element)) { return false; }
+                    array[_index] = element;
+                }
+                _elementLen = -1;
             }
+            return true;
         }
 
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        void PopulateBinary<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int[] dimLengths, int dimOffset, Array dst, int[] dstOffsets)
+        bool ReadElementsMultidimensional<TElement>(int dimOffset)
         {
-            if (dimOffset < dimLengths.Length - 1)
+            if (dimOffset < _dimLengths.Length - 1)
             {
                 // Drill down recursively until we hit a single dimension array.
-                for (var i = 0; i < dimLengths[dimOffset]; i++)
+                for (var i = _dimOffsets[dimOffset]; i < _dimLengths[dimOffset]; i++)
                 {
-                    dstOffsets[dimOffset] = i;
-                    PopulateBinary<T>(buf, fieldDescription, dimLengths, dimOffset + 1, dst, dstOffsets);
+                    _dimOffsets[dimOffset] = i;
+                    if (!ReadElementsMultidimensional<TElement>(dimOffset + 1)) {
+                        return false;
+                    }
                 }
-                return;
+                _dimOffsets[dimOffset] = 0;
+                return true;
             }
 
-            var handler = (ITypeHandler<T>)ElementHandler;
-
-            // Populate a single dimension array.
-            for (var i = 0; i < dimLengths[dimOffset]; i++)
+            // Populate a single dimension
+            for (var i = _dimOffsets[dimOffset]; i < _dimLengths[dimOffset]; i++)
             {
-                dstOffsets[dimOffset] = i;
+                _dimOffsets[dimOffset] = i;
 
                 // Each element consists of an int length identifier, followed by that many bytes of raw data.
                 // Length -1 indicates a NULL value, and is naturally followed by no data.
-                var elementLen = buf.ReadInt32();
+                if (_elementLen == -1)
+                {
+                    if (_buf.ReadBytesLeft < 4) { return false; }
+                    _elementLen = _buf.ReadInt32();
+                    if (_elementLen == -1) {
+                        // TODO: Nullables
+                        _array.SetValue(default(TElement), _dimOffsets);
+                        continue;
+                    }
+                }
 
-                // Not good for value types, need nullables
-                dst.SetValue(elementLen == -1 ? default(T) : handler.Read(buf, fieldDescription, elementLen), dstOffsets);
+                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                if (asSimpleReader != null)
+                {
+                    if (_buf.ReadBytesLeft < _elementLen) { return false; }
+                    _array.SetValue(asSimpleReader.Read(_buf, _fieldDescription, _elementLen), _dimOffsets);
+                }
+                else
+                {
+                    var asChunkingReader = (IChunkingTypeReader<TElement>)ElementHandler;
+                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    TElement element;
+                    if (!asChunkingReader.Read(out element)) { return false; }
+                    _array.SetValue(element, _dimOffsets);
+                }
+                _elementLen = -1;
             }
+            _dimOffsets[dimOffset] = 0;
+            return true;
+        }
+
+        enum ReadState
+        {
+            NeedPrepare,
+            ReadNothing,
+            ReadHeader,
+            ReadingElements,
         }
 
         #endregion
 
-        #region Text
+        #region Write
 
-        /// <summary>
-        /// Creates an array from pg text representation.
-        /// </summary>
-        protected Array ReadText<T>(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
         {
-            Contract.Assume(buf.TextEncoding == Encoding.UTF8, "Array text decoding currently depends on encoding being UTF8");
+            Contract.Assert(_readState == ReadState.NeedPrepare);
+            if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
+                throw new InvalidOperationException("Started reading a value before completing a previous value");
 
-            var s = buf.ReadString(len);
-
-            // Read and discard optional leading lower/upper bound information
-            if (s[0] == '[')
-            {
-                var i = s.IndexOf('=');
-                if (i == -1) {
-                    throw new Exception("Array text representation started with [ but has no =");
-                }
-                s = s.Substring(i + 1);
-            }
-
-            //first create an arraylist, then convert it to an array.
-            return ToArray<T>(ToArrayList<T>(s, fieldDescription));
+            _buf = buf;
+            _array = (Array)value;
+            _dimensions = _array.Rank;
+            _index = 0;
+            _wroteElementLen = false;
+            _writeState = WriteState.WroteNothing;
         }
 
-        /// <summary>
-        /// Creates an array list from pg represenation of an array.
-        /// Multidimensional arrays are treated as ArrayLists of ArrayLists
-        /// </summary>
-        private ArrayList ToArrayList<T>(string value, FieldDescription fieldDescription)
+        public bool Write<TElement>(NpgsqlBuffer buf, out byte[] directBuf)
         {
-            var list = new ArrayList();
-            //remove the braces on either side and work on what they contain.
-            string stripBraces = value.Trim().Substring(1, value.Length - 2).Trim();
-            if (stripBraces.Length == 0)
+            directBuf = null;
+
+            switch (_writeState)
             {
-                return list;
-            }
-            if (stripBraces[0] == '{')
-            //there are still braces so we have an n-dimension array. Recursively build an ArrayList of ArrayLists
-            {
-                foreach (string arrayChunk in ArrayChunkEnumeration(stripBraces))
-                {
-                    list.Add(ToArrayList<T>(arrayChunk, fieldDescription));
-                }
-            }
-            else
-            //We're either dealing with a 1-dimension array or treating a row of an n-dimension array. In either case parse the elements and put them in our ArrayList
-            {
-                var handler = (ITypeHandler<T>)ElementHandler;
-                foreach (string token in TokenEnumeration(stripBraces))
-                {
-                    if (token == "NULL")
-                    {
-                        // TODO: Not 100% sure about this... See test ReadStringsWithNull
-                        list.Add(null);
-                        continue;
+                case WriteState.WroteNothing:
+                    var len =
+                        4 +               // ndim
+                        4 +               // has_nulls
+                        4 +               // element_oid
+                        _dimensions * 8;  // dim (4) + lBound (4)
+
+                    if (buf.WriteSpaceLeft < len) {
+                        Contract.Assume(buf.Size >= len, "Buffer too small for header");
+                        return false;
                     }
-                    // Convert each element with the element type handler
-                    // TODO: The buffer here can be recycled, repopulating the byte array again and again
-                    var buf = new NpgsqlBuffer(token, Encoding.UTF8);
-                    list.Add(handler.Read(buf, fieldDescription, buf.Size));
-                }
-            }
-            return list;
-        }
-
-        /// <summary>
-        /// Creates an n-dimensional array from an ArrayList of ArrayLists or
-        /// a 1-dimensional array from something else.
-        /// </summary>
-        /// <param name="list"><see cref="ArrayList"/> to convert</param>
-        /// <param name="elementType">Type of the elements in the list</param>
-        /// <returns><see cref="Array"/> produced.</returns>
-        private static Array ToArray<T>(ArrayList list)
-        {
-            //First we need to work out how many dimensions we're dealing with and what size each one is.
-            //We examine the arraylist we were passed for it's count. Then we recursively do that to
-            //it's first item until we hit an item that isn't an ArrayList.
-            //We then find out the type of that item.
-            List<int> dimensions = new List<int>();
-            object item = list;
-            for (ArrayList itemAsList = item as ArrayList; item is ArrayList; itemAsList = (item = itemAsList[0]) as ArrayList)
-            {
-                if (itemAsList != null)
-                {
-                    int dimension = itemAsList.Count;
-                    if (dimension == 0)
-                    {
-                        return new T[0];
+                    buf.WriteInt32(_dimensions);
+                    buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
+                    buf.WriteInt32((int)ElementHandler.OID);
+                    for (var i = 0; i < _dimensions; i++) {
+                        buf.WriteInt32(_array.GetLength(i));
+                        buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
                     }
-                    dimensions.Add(dimension);
-                }
-            }
 
-            if (dimensions.Count == 1) //1-dimension array so we can just use ArrayList.ToArray()
-            {
-                var result = new T[dimensions[0]];
-                for (var i = 0; i < dimensions[0]; i++)
-                {
-                    result[i] = (T)list[i];
-                }
-                return result;
-            }
-
-            //Get an IntSetIterator to hold the position we're setting.
-            IntSetIterator isi = new IntSetIterator(dimensions);
-            //Create our array.
-            Array ret = Array.CreateInstance(typeof(T), isi.Bounds);
-            //Get each item and put it in the array at the appropriate place.
-            foreach (object val in RecursiveArrayListEnumeration(list))
-            {
-                ret.SetValue(val, ++isi);
-            }
-            return ret;
-        }
-
-        /// <summary>
-        /// Takes a string representation of a pg 1-dimensional array
-        /// (or a 1-dimensional row within an n-dimensional array)
-        /// and allows enumeration of the string represenations of each items.
-        /// </summary>
-        private static IEnumerable<string> TokenEnumeration(string source)
-        {
-            bool inQuoted = false;
-            StringBuilder sb = new StringBuilder(source.Length);
-            //We start of not in a quoted section, with an empty StringBuilder.
-            //We iterate through each character. Generally we add that character
-            //to the string builder, but in the case of special characters we
-            //have different handling. When we reach a comma that isn't in a quoted
-            //section we yield return the string we have built and then clear it
-            //to continue with the next.
-            for (int idx = 0; idx < source.Length; ++idx)
-            {
-                char c = source[idx];
-                switch (c)
-                {
-                    case '"': //entering of leaving a quoted string
-                        inQuoted = !inQuoted;
-                        break;
-                    case ',': //ending this item, unless we're in a quoted string.
-                        if (inQuoted)
-                        {
-                            sb.Append(',');
-                        }
-                        else
-                        {
-                            yield return sb.ToString();
-                            sb = new StringBuilder(source.Length - idx);
-                        }
-                        break;
-                    case '\\': //next char is an escaped character, grab it, ignore the \ we are on now.
-                        sb.Append(source[++idx]);
-                        break;
-                    default:
-                        sb.Append(c);
-                        break;
-                }
-            }
-            yield return sb.ToString();
-        }
-
-        /// <summary>
-        /// Takes a string representation of a pg n-dimensional array
-        /// and allows enumeration of the string represenations of the next
-        /// lower level of rows (which in turn can be taken as (n-1)-dimensional arrays.
-        /// </summary>
-        private static IEnumerable<string> ArrayChunkEnumeration(string source)
-        {
-            //Iterate through the string counting { and } characters, mindful of the effects of
-            //" and \ on how the string is to be interpretted.
-            //Increment a count of braces at each { and decrement at each }
-            //If we hit a comma and the brace-count is zero then we have found an item. yield it
-            //and then we move on to the next.
-            bool inQuoted = false;
-            int braceCount = 0;
-            int startIdx = 0;
-            int len = source.Length;
-            for (int idx = 0; idx != len; ++idx)
-            {
-                switch (source[idx])
-                {
-                    case '"': //beginning or ending a quoted chunk.
-                        inQuoted = !inQuoted;
-                        break;
-                    case ',':
-                        if (braceCount == 0) //if bracecount is zero we've done our chunk
-                        {
-                            yield return source.Substring(startIdx, idx - startIdx);
-                            startIdx = idx + 1;
-                        }
-                        break;
-                    case '\\': //next character is escaped. Skip it.
-                        ++idx;
-                        break;
-                    case '{': //up the brace count if this isn't in a quoted string
-                        if (!inQuoted)
-                        {
-                            ++braceCount;
-                        }
-                        break;
-                    case '}': //lower the brace count if this isn't in a quoted string
-                        if (!inQuoted)
-                        {
-                            --braceCount;
-                        }
-                        break;
-                }
-            }
-            yield return source.Substring(startIdx);
-        }
-
-        /// <summary>
-        /// Takes an array of ints and treats them like the limits of a set of counters.
-        /// Retains a matching set of ints that is set to all zeros on the first ++
-        /// On a ++ it increments the "right-most" int. If that int reaches it's
-        /// limit it is set to zero and the one before it is incremented, and so on.
-        ///
-        /// Making this a more general purpose class is pretty straight-forward, but we'll just put what we need here.
-        /// </summary>
-        private class IntSetIterator
-        {
-            private readonly int[] _bounds;
-            private readonly int[] _current;
-
-            public IntSetIterator(int[] bounds)
-            {
-                _current = new int[(_bounds = bounds).Length];
-                _current[_current.Length - 1] = -1; //zero after first ++
-            }
-
-            public IntSetIterator(List<int> bounds)
-                : this(bounds.ToArray())
-            {
-            }
-
-            public int[] Bounds
-            {
-                get { return _bounds; }
-            }
-
-            public static implicit operator int[](IntSetIterator isi)
-            {
-                return isi._current;
-            }
-
-            public static IntSetIterator operator ++(IntSetIterator isi)
-            {
-                for (int idx = isi._current.Length - 1; ++isi._current[idx] == isi._bounds[idx]; --idx)
-                {
-                    isi._current[idx] = 0;
-                }
-                return isi;
-            }
-        }
-
-        /// <summary>
-        /// Takes an ArrayList which may be an ArrayList of ArrayLists, an ArrayList of ArrayLists of ArrayLists
-        /// and so on and enumerates the items that aren't ArrayLists (the leaf nodes if we think of the ArrayList
-        /// passed as a tree). Simply uses the ArrayLists' own IEnumerators to get that of the next,
-        /// pushing them onto a stack until we hit something that isn't an ArrayList.
-        /// <param name="list"><see cref="System.Collections.ArrayList">ArrayList</see> to enumerate</param>
-        /// <returns><see cref="System.Collections.IEnumerable">IEnumerable</see></returns>
-        /// </summary>
-        private static IEnumerable RecursiveArrayListEnumeration(ArrayList list)
-        {
-            //This sort of recursive enumeration used to be really fiddly. .NET2.0's yield makes it trivial. Hurray!
-            Stack<IEnumerator> stk = new Stack<IEnumerator>();
-            stk.Push(list.GetEnumerator());
-            while (stk.Count != 0)
-            {
-                IEnumerator ienum = stk.Peek();
-                while (ienum.MoveNext())
-                {
-                    object obj = ienum.Current;
-                    if (obj is ArrayList)
-                    {
-                        stk.Push(ienum = (obj as ArrayList).GetEnumerator());
+                    if (!(_array is TElement[])) {
+                        _dimOffsets = new int[_dimensions];
                     }
-                    else
+                    _writeState = WriteState.WritingElements;
+                    goto case WriteState.WritingElements;
+
+                case WriteState.WritingElements:
+                    var completed = _array is TElement[]
+                        ? WriteElementsOneDimensional<TElement>(buf, out directBuf)
+                        : WriteElementsMultidimensional(buf, out directBuf, 0);
+
+                    if (!completed)
                     {
-                        yield return obj;
+                        return false;
+                    }
+
+                    // TODO: Go over resources to be freed
+                    _array = null;
+                    _buf = null;
+                    _writeState = WriteState.NeedPrepare;
+                    return true;
+
+                default:
+                    throw PGUtil.ThrowIfReached();
+            }
+        }
+
+        bool WriteElementsOneDimensional<TElement>(NpgsqlBuffer buf, out byte[] directBuf)
+        {
+            var array = (TElement[])_array;
+
+            directBuf = null;
+            for (; _index < _array.Length; _index++) {
+                var element = array[_index];
+                if (element == null || element is DBNull) {
+                    if (buf.WriteSpaceLeft < 4) {
+                        return false;
+                    }
+                    buf.WriteInt32(-1);
+                    continue;
+                }
+
+                var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+                if (asSimpleWriter != null) {
+                    var elementLen = asSimpleWriter.Length;
+                    if (buf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                    buf.WriteInt32(elementLen);
+                    asSimpleWriter.Write(element, buf);
+                    continue;
+                }
+
+                var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
+                if (asChunkedWriter != null) {
+                    if (!_wroteElementLen) {
+                        if (buf.WriteSpaceLeft < 4) {
+                            return false;
+                        }
+                        buf.WriteInt32(asChunkedWriter.GetLength(element));
+                        asChunkedWriter.PrepareWrite(_buf, element);
+                        _wroteElementLen = true;
+                    }
+                    if (!asChunkedWriter.Write(out directBuf)) {
+                        return false;
+                    }
+                    _wroteElementLen = false;
+                    continue;
+                }
+
+                throw PGUtil.ThrowIfReached();
+            }
+            return true;
+        }
+
+        bool WriteElementsMultidimensional(NpgsqlBuffer buf, out byte[] directBuf, int dimOffset)
+        {
+            directBuf = null;
+            var dimLength = _array.GetLength(dimOffset);
+            if (dimOffset < _dimensions - 1)
+            {
+                // Drill down recursively until we hit a single dimension array.
+                for (var i = _dimOffsets[dimOffset]; i < dimLength; i++)
+                {
+                    _dimOffsets[dimOffset] = i;
+                    if (!WriteElementsMultidimensional(buf, out directBuf, dimOffset + 1)) {
+                        return false;
                     }
                 }
-                stk.Pop();
+                _dimOffsets[dimOffset] = 0;
+                return true;
             }
+
+            // Write a single dimension
+            for (var i = _dimOffsets[dimOffset]; i < dimLength; i++)
+            {
+                _dimOffsets[dimOffset] = i;
+
+                var element = _array.GetValue(_dimOffsets);
+
+                if (element == null || element == DBNull.Value)
+                {
+                    // Write length identifier -1 indicating NULL value.
+                    if (buf.WriteSpaceLeft < 4) { return false; }
+                    buf.WriteInt32(-1);
+                    continue;
+                }
+
+                var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+                if (asSimpleWriter != null)
+                {
+                    if (buf.WriteSpaceLeft < 4 + asSimpleWriter.Length) { return false; }
+                    buf.WriteInt32(asSimpleWriter.Length);
+                    asSimpleWriter.Write(element, buf);
+                }
+                else
+                {
+                    var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
+                    if (!_wroteElementLen) {
+                        buf.WriteInt32(asChunkingWriter.GetLength(element));
+                        asChunkingWriter.PrepareWrite(_buf, element);
+                        _wroteElementLen = true;
+                    }
+                    if (!asChunkingWriter.Write(out directBuf)) {
+                        return false;
+                    }
+                    _wroteElementLen = false;
+                }
+            }
+            _dimOffsets[dimOffset] = 0;
+            return true;
         }
+
+        enum WriteState
+        {
+            NeedPrepare,
+            WroteNothing,
+            WritingElements,
+        }
+
         #endregion
     }
 
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/arrays.html
     /// </remarks>
-    /// <typeparam name="T">The .NET type contained as an element within this array</typeparam>
-    internal class ArrayHandler<T> : ArrayHandler
+    /// <typeparam name="TElement">The .NET type contained as an element within this array</typeparam>
+    internal class ArrayHandler<TElement> : ArrayHandler,
+        IChunkingTypeReader<Array>, IChunkingTypeWriter
     {
         /// <summary>
         /// The type of the elements contained within this array
@@ -473,7 +448,7 @@ namespace Npgsql.TypeHandlers
         /// <param name="fieldDescription"></param>
         internal override Type GetElementFieldType(FieldDescription fieldDescription)
         {
-            return typeof(T);
+            return typeof(TElement);
         }
 
         /// <summary>
@@ -482,204 +457,130 @@ namespace Npgsql.TypeHandlers
         /// <param name="fieldDescription"></param>
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
         {
-            return typeof(T);
+            return typeof(TElement);
         }
 
         public ArrayHandler(TypeHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) { }
 
-        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return ReadText<T>(buf, fieldDescription, len);
-                case FormatCode.Binary:
-                    return ReadBinary<T>(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
+            Array result;
+            while (!Read<TElement>(out result)) {
+                row.Buffer.ReadMore();
             }
+            row.PosInColumn += row.ColumnLen;
+            return result;
         }
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return ReadValueAsObject(buf, fieldDescription, len);
+            return ReadValueAsObject(row, fieldDescription);
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
+        public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            var arr = (Array)value;
-            var escapeState = writer.PushEscapeDoubleQuoteWithBackspace();
-            WriteTextRecursive(arr, writer, 0, arr.GetEnumerator(), escapeState.DoubleQuote);
-            writer.ResetEscapeState(escapeState);
+            base.PrepareRead(buf, fieldDescription, len);
         }
 
-        void WriteTextRecursive(Array arr, NpgsqlTextWriter writer, int curDim, IEnumerator enumerator, byte[] doubleQuote)
+        public bool Read(out Array result)
         {
-            var len = arr.GetLength(curDim);
-
-            writer.WriteSingleChar('{');
-            if (curDim == arr.Rank - 1)
-            {
-                for (var i = 0; i < len; i++)
-                {
-                    if (i != 0)
-                        writer.WriteSingleChar(',');
-                    writer.WriteRawByteArray(doubleQuote);
-                    enumerator.MoveNext();
-                    ElementHandler.WriteText(enumerator.Current, writer);
-                    writer.WriteRawByteArray(doubleQuote);
-                }
-            }
-            else
-            {
-                for (var i = 0; i < len; i++)
-                {
-                    if (i != 0)
-                        writer.WriteSingleChar(',');
-                    WriteTextRecursive(arr, writer, curDim + 1, enumerator, doubleQuote);
-                }
-            }
-            writer.WriteSingleChar('}');
+            return base.Read<TElement>(out result);
         }
 
-        internal override int GetLength(object value)
+        public bool Write(out byte[] directBuf)
+        {
+            return base.Write<TElement>(_buf, out directBuf);
+        }
+
+        #region GetLength
+
+        public int GetLength(object value)
         {
             var arr = (Array)value;
             _hasNulls = false;
 
-            var len =
+            var headerLen =
                 4 +            // ndim
                 4 +            // has_nulls
                 4 +            // element_oid
                 arr.Rank * 8;  // dim (4) + lBound (4)
 
-            foreach (var element in arr)
+            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            if (asSimpleWriter != null)
+            {
+                return headerLen + arr.Length * (4 + asSimpleWriter.Length);
+            }
+
+            if (arr.Rank == 1)
+            {
+                return headerLen + GetLengthOneDimensional((TElement[]) arr);
+            }
+            else
+            {
+                var dimOffsets = new int[arr.Rank];
+                return headerLen + GetLengthMultidimensional(arr, 0, dimOffsets);
+            }
+        }
+
+        int GetLengthOneDimensional(TElement[] array)
+        {
+            Contract.Requires(ElementHandler is IChunkingTypeWriter);
+
+            var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
+
+            var len = 0;
+            foreach (var element in array)
             {
                 len += 4;
 
-                var isNull = element == null || element is DBNull;
-                if (!isNull) {
-                    len += ElementHandler.GetLength(element);
+                if (element == null || element is DBNull) {
+                    continue;
                 }
-                _hasNulls = true;
-            }
 
+                len += asChunkingWriter.GetLength(element);
+            }
             return len;
         }
 
-        State _state;
-
-        /// <summary>
-        /// The array currently being written
-        /// </summary>
-        Array _array;
-        IList<T> _arrayAsList;
-        bool _hasNulls;
-        int _index;
-        bool _wroteElementLen;
-
-        internal override void PrepareChunkedWrite(object value)
+        int GetLengthMultidimensional(Array array, int dimOffset, int[] dimOffsets)
         {
-            _state = State.WroteNothing;
-            _array = (Array) value;
-            // If the provided array is of the precise type (e.g. int[]), we can cast it to
-            // IList<T> to extract values from it without boxing/unboxing. If not, use non-generic
-            // List
-            _arrayAsList = (IList<T>)value;
-            _index = 0;
-            _wroteElementLen = false;
-        }
+            Contract.Requires(ElementHandler is IChunkingTypeWriter);
 
-        internal override bool WriteBinaryChunk(NpgsqlBuffer buf, out byte[] directBuf)
-        {
-            directBuf = null;
-
-            // TODO: Should this be 6?
-            //if (arr.Rank > MaxDimensions)
-            //    throw new OverflowException("Too many dimensions for PostgreSQL. Max allowed: " + MaxDimensions);
-
-            switch (_state)
+            var len = 0;
+            var dimLength = array.GetLength(dimOffset);
+            if (dimOffset < array.Rank - 1)
             {
-                case State.WroteNothing:
-                    var len =
-                        4 +            // ndim
-                        4 +            // has_nulls
-                        4 +            // element_oid
-                        _array.Rank * 8;  // dim (4) + lBound (4)
-
-                    if (buf.WriteSpaceLeft < len) {
-                        Contract.Assume(buf.Size >= len, "Buffer too small for header");
-                        return false;
-                    }
-                    buf.WriteInt32(_array.Rank);
-                    buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
-                    buf.WriteInt32((int)ElementHandler.OID);
-                    for (var i = 0; i < _array.Rank; i++)
-                    {
-                        buf.WriteInt32(_array.GetLength(i));
-                        buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
-                    }
-
-                    goto case State.WritingElements;
-
-                case State.WritingElements:
-                    _state = State.WritingElements;
-                    for (; _index < _array.Length; _index++)
-                    {
-                        var element = _arrayAsList[_index];
-                        if (element == null || element is DBNull)
-                        {
-                            if (buf.WriteSpaceLeft < 4) {
-                                return false;
-                            }
-                            buf.WriteInt32(-1);
-                            continue;
-                        }
-
-                        if (ElementHandler.IsChunking)
-                        {
-                            if (!_wroteElementLen)
-                            {
-                                if (buf.WriteSpaceLeft < 4) {
-                                    return false;
-                                }
-                                buf.WriteInt32(ElementHandler.GetLength(element));
-                                ElementHandler.PrepareChunkedWrite(element);
-                                _wroteElementLen = true;
-                            }
-                            if (!ElementHandler.WriteBinaryChunk(buf, out directBuf)) {
-                                return false;
-                            }
-                            _wroteElementLen = false;
-                        }
-                        else
-                        {
-                            var elementLen = ElementHandler.GetLength(element);
-                            if (buf.WriteSpaceLeft < 4 + elementLen)
-                            {
-                                Contract.Assume(buf.Size < 4 + elementLen);
-                                return false;
-                            }
-                            buf.WriteInt32(elementLen);
-                            ElementHandler.WriteBinary(element, buf);
-                        }
-                    }
-
-                    _state = State.WroteAll;
-                    return true;
-
-            default:
-                throw PGUtil.ThrowIfReached();
+                // Drill down recursively until we hit a single dimension array.
+                for (var i = 0; i < dimLength; i++)
+                {
+                    dimOffsets[dimOffset] = i;
+                    len += GetLengthMultidimensional(array, dimOffset + 1, dimOffsets);
+                }
+                return len;
             }
+
+            var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
+
+            // Write a single dimension
+            for (var i = 0; i < dimLength; i++)
+            {
+                len += 4;
+                dimOffsets[dimOffset] = i;
+
+                var element = array.GetValue(dimOffsets);
+
+                if (element == null || element == DBNull.Value) {
+                    continue;
+                }
+
+                len += asChunkingWriter.GetLength(element);
+            }
+            return len;
         }
 
-        enum State
-        {
-            WroteNothing,
-            WritingElements,
-            WroteAll
-        }
+        #endregion
     }
 
     /// <remarks>
@@ -701,17 +602,14 @@ namespace Npgsql.TypeHandlers
         public ArrayHandlerWithPsv(TypeHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) {}
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return ReadText<TPsv>(buf, fieldDescription, len);
-                case FormatCode.Binary:
-                    return ReadBinary<TPsv>(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
+            Array result;
+            while (!Read<TPsv>(out result)) {
+                row.Buffer.ReadMore();
             }
+            return result;
         }
     }
 }

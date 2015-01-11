@@ -76,7 +76,7 @@ namespace Npgsql
     /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
     /// writing itself out.
     /// </summary>
-    internal abstract class ComplexFrontendMessage : FrontendMessage
+    internal abstract class ChunkingFrontendMessage : FrontendMessage
     {
         /// <param name="buf">the buffer into which to write the message.</param>
         /// <param name="directBuf">

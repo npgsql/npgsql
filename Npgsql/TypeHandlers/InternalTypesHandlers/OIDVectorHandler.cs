@@ -3,39 +3,29 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Npgsql.Messages;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    internal class OIDVectorHandler : TypeHandler<uint[]>
+    internal class OIDVectorHandler : TypeHandler<uint[]>, IChunkingTypeReader<uint[]>, IChunkingTypeWriter
     {
-        public override uint[] Read(NpgsqlBuffer buf, Messages.FieldDescription fieldDescription, int len)
+        public uint[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
+            throw new NotImplementedException();
+            buf.Skip(12); // skip number of dims + has nulls flag + element oid
+            var length = buf.ReadInt32();
+            buf.Skip(4); // skip lower bound
+            var res = new uint[length];
+            for (var i = 0; i < length; i++)
             {
-                case FormatCode.Text:
-                    string[] stringArr = buf.ReadString(len).Split(' ');
-                    uint[] uintArr = new uint[stringArr.Length];
-                    for (var i = 0; i < stringArr.Length; i++)
-                        uintArr[i] = uint.Parse(stringArr[i]);
-                    return uintArr;
-                case FormatCode.Binary:
-                    buf.Skip(12); // skip number of dims + has nulls flag + element oid
-                    var length = buf.ReadInt32();
-                    buf.Skip(4); // skip lower bound
-                    var res = new uint[length];
-                    for (var i = 0; i < length; i++)
-                    {
-                        buf.Skip(4); // skip length
-                        res[i] = buf.ReadUInt32();
-                    }
-                    return res;
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
+                buf.Skip(4); // skip length
+                res[i] = buf.ReadUInt32();
             }
+            return res;
         }
 
-        internal override int GetLength(object value)
+        internal int GetLength(object value)
         {
             return
                 12 + // dims + nulls + element oid
@@ -43,7 +33,17 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 8 * ((uint[])value).Length;
         }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Write(out byte[] directBuf)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void WriteBinary(object value, NpgsqlBuffer buf)
         {
             throw new NotImplementedException();
             /*
@@ -64,6 +64,21 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 buf.WriteInt32((int)elem);
             }
              */
+        }
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Read(out uint[] result)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IChunkingTypeWriter.GetLength(object value)
+        {
+            return GetLength(value);
         }
     }
 }

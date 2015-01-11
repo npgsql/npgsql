@@ -21,10 +21,10 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     [TypeMapping("varbit", NpgsqlDbType.Varbit, typeof(BitArray))]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    internal class BitStringHandler : TypeHandler, ITypeHandler<BitArray>, ITypeHandler<bool>
+    internal class BitStringHandler : TypeHandler,
+        IChunkingTypeReader<BitArray>, IChunkingTypeWriter,
+        ISimpleTypeReader<bool>
     {
-        public override bool IsChunking { get { return true; } }
-
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
             return fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
@@ -35,54 +35,32 @@ namespace Npgsql.TypeHandlers
             return GetFieldType(fieldDescription);
         }
 
-        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
             return fieldDescription.TypeModifier == 1
-                ? (object)((ITypeHandler<bool>)this).Read(buf, fieldDescription, len)
-                : ((ITypeHandler<BitArray>)this).Read(buf, fieldDescription, len);
+                ? (object)((ISimpleTypeReader<bool>)this).Read(row.Buffer, fieldDescription, row.ColumnLen)
+                : ((ISimpleTypeReader<BitArray>)this).Read(row.Buffer, fieldDescription, row.ColumnLen);
         }
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return ReadValueAsObject(buf, fieldDescription, len);
+            return ReadValueAsObject(row, fieldDescription);
         }
 
-        bool ITypeHandler<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        bool ISimpleTypeReader<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.TypeModifier != 1) {
                 throw new InvalidCastException(String.Format("Can't convert a BIT({0}) type to bool, only BIT(1)", fieldDescription.TypeModifier));
             }
 
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    Contract.Assume(len == 1);
-                    buf.Ensure(1);
-                    var c = buf.ReadByte();
-                    switch (c)
-                    {
-                        case (byte)'0':
-                            return false;
-                        case (byte)'1':
-                            return true;
-                        default:
-                            throw new Exception("Unexpected character for BIT(1): " + c);
-
-                    }
-
-                case FormatCode.Binary:
-                    buf.Ensure(5);
-                    var bitLen = buf.ReadInt32();
-                    Contract.Assume(bitLen == 1);
-                    var b = buf.ReadByte();
-                    return (b & 128) != 0;
-
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            buf.Ensure(5);
+            var bitLen = buf.ReadInt32();
+            Contract.Assume(bitLen == 1);
+            var b = buf.ReadByte();
+            return (b & 128) != 0;
         }
-
-        BitArray ITypeHandler<BitArray>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        /*
+        BitArray ISimpleTypeReader<BitArray>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             switch (fieldDescription.FormatCode)
             {
@@ -94,6 +72,7 @@ namespace Npgsql.TypeHandlers
                     throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
             }
         }
+         */
 
         #region Binary
 
@@ -127,7 +106,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        internal override int GetLength(object value)
+        internal int GetLength(object value)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -143,16 +122,26 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Write(out byte[] directBuf)
+        {
+            throw new NotImplementedException();
+        }
+
         object _value;
         int _pos;
 
-        internal override void PrepareChunkedWrite(object value)
+        internal void PrepareChunkedWrite(object value)
         {
             _value = value;
             _pos = -1;
         }
 
-        internal override bool WriteBinaryChunk(NpgsqlBuffer buf)
+        internal bool WriteBinaryChunk(NpgsqlBuffer buf)
         {
             if (_value is bool)
             {
@@ -249,6 +238,21 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Read(out BitArray result)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IChunkingTypeWriter.GetLength(object value)
+        {
+            return GetLength(value);
+        }
     }
 
     /// <summary>
@@ -271,28 +275,16 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(BitStringHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) {}
 
-        internal override object ReadValueAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return fieldDescription.TypeModifier == 1
-                        ? ReadText<bool>(buf, fieldDescription, len)
-                        : ReadText<BitArray>(buf, fieldDescription, len);
-
-                case FormatCode.Binary:
-                    return fieldDescription.TypeModifier == 1
-                        ? ReadBinary<bool>(buf, fieldDescription, len)
-                        : ReadBinary<BitArray>(buf, fieldDescription, len);
-
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return fieldDescription.TypeModifier == 1
+                ? (object)Read<bool>(row, fieldDescription, row.ColumnLen)
+                :         Read<BitArray>(row, fieldDescription, row.ColumnLen);
         }
 
-        internal override object ReadPsvAsObject(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return ReadValueAsObject(buf, fieldDescription, len);
+            return ReadValueAsObject(row, fieldDescription);
         }
     }
 }

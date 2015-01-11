@@ -540,8 +540,12 @@ namespace Npgsql
             FormatCode = Handler.PreferTextWrite || !Handler.SupportsBinaryWrite
                 ? FormatCode.Text
                 : FormatCode.Binary;
-            if (!IsNull) {
-                BoundSize = Handler.GetLength(Value);
+            if (!IsNull)
+            {
+                var asChunkingWriter = Handler as IChunkingTypeWriter;
+                BoundSize = asChunkingWriter != null
+                    ? asChunkingWriter.GetLength(Value)
+                    : ((ISimpleTypeWriter)Handler).Length;
             }
             IsBound = true;
         }

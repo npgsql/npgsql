@@ -14,56 +14,49 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// </remarks>
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal))]
     internal class NumericHandler : TypeHandler<decimal>,
-        ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<int>, ITypeHandler<long>,
-        ITypeHandler<float>, ITypeHandler<double>,
-        ITypeHandler<string>
+        ISimpleTypeReader<decimal>,
+        ISimpleTypeReader<byte>, ISimpleTypeReader<short>, ISimpleTypeReader<int>, ISimpleTypeReader<long>,
+        ISimpleTypeReader<float>, ISimpleTypeReader<double>,
+        ISimpleTypeReader<string>
     {
         public override bool SupportsBinaryWrite { get { return false; } }
 
-        public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return Decimal.Parse(buf.ReadString(len), CultureInfo.InvariantCulture);
-                case FormatCode.Binary:
-                    throw new NotSupportedException();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            throw new NotSupportedException();
         }
 
-        byte ITypeHandler<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (byte)Read(buf, fieldDescription, len);
         }
 
-        short ITypeHandler<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (short)Read(buf, fieldDescription, len);
         }
 
-        int ITypeHandler<int>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        int ISimpleTypeReader<int>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (int)Read(buf, fieldDescription, len);
         }
 
-        long ITypeHandler<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (long)Read(buf, fieldDescription, len);
         }
 
-        float ITypeHandler<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (float)Read(buf, fieldDescription, len);
         }
 
-        double ITypeHandler<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (double)Read(buf, fieldDescription, len);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
         }

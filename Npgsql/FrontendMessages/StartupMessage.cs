@@ -32,9 +32,7 @@ namespace Npgsql.FrontendMessages
             var parameters = new Dictionary<String, String> {
                 { "database",           Database },
                 { "user",               Username },
-                { "DateStyle",          "ISO"    },
                 { "client_encoding",    "UTF8"   },
-                { "lc_monetary",        "C"      },
             };
 
             if (ApplicationName != null)

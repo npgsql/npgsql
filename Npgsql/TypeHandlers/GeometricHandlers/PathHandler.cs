@@ -16,25 +16,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
+    // TODO: Should be chunking
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    internal class PathHandler : TypeHandler<NpgsqlPath>, ITypeHandler<string>
+    internal class PathHandler : TypeHandler<NpgsqlPath>,
+        ISimpleTypeReader<NpgsqlPath>,
+        ISimpleTypeReader<string>
     {
-        public override bool IsChunking { get { return true; } }
-
-        public override NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlPath.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlPath ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             bool open;
             var openByte = buf.ReadByte();
@@ -60,18 +48,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return result;
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
-
 }

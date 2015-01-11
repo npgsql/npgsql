@@ -9,27 +9,15 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, typeof(TimeSpan))]
-    internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlInterval>, ITypeHandler<NpgsqlInterval>
+    internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlInterval>,
+        ISimpleTypeReader<TimeSpan>, ISimpleTypeReader<NpgsqlInterval>, ISimpleTypeWriter
     {
-        public override TimeSpan Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public TimeSpan Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return (TimeSpan)((ITypeHandler<NpgsqlInterval>)this).Read(buf, fieldDescription, len);
+            return (TimeSpan)((ISimpleTypeReader<NpgsqlInterval>)this).Read(buf, fieldDescription, len);
         }
 
-        NpgsqlInterval ITypeHandler<NpgsqlInterval>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlInterval.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlInterval ReadBinary(NpgsqlBuffer buf)
+        NpgsqlInterval ISimpleTypeReader<NpgsqlInterval>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var ticks = buf.ReadInt64();
             var day = buf.ReadInt32();
@@ -37,9 +25,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlInterval(month, day, ticks * 10);
         }
 
-        internal override int Length { get { return 16; } }
+        public int Length { get { return 16; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var interval = (value is TimeSpan)
                 ? ((NpgsqlInterval)(TimeSpan)value)

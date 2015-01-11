@@ -322,6 +322,50 @@ namespace Npgsql
 
         #endregion Public properties
 
+        #region Known/unknown Result Types Management
+
+        /// <summary>
+        /// Marks all of the query's result columns as either known or unknown.
+        /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+        /// attempt to parse them. They will be accessible as strings only.
+        /// </summary>
+        public bool AllResultTypesAreUnknown
+        {
+            get { return _allResultTypesAreUnknown; }
+            set
+            {
+                // TODO: Check that this isn't modified after calling prepare
+                _unknownResultTypeList = null;
+                _allResultTypesAreUnknown = value;
+            }
+        }
+
+        bool _allResultTypesAreUnknown;
+
+        /// <summary>
+        /// Marks the query's result columns as known or unknown, on a column-by-column basis.
+        /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+        /// attempt to parse them. They will be accessible as strings only.
+        /// </summary>
+        /// <remarks>
+        /// The array size must correspond exactly to the number of result columns the query returns, or an
+        /// error will be raised.
+        /// </remarks>
+        public bool[] UnknownResultTypeList
+        {
+            get { return _unknownResultTypeList; }
+            set
+            {
+                // TODO: Check that this isn't modified after calling prepare
+                _allResultTypesAreUnknown = false;
+                _unknownResultTypeList = value;
+            }
+        }
+
+        bool[] _unknownResultTypeList;
+
+        #endregion
+
         #region State management
 
         volatile int _state;
@@ -1445,6 +1489,11 @@ namespace Npgsql
                     "",
                     IsPrepared ? _planName : ""
                 );
+                if (AllResultTypesAreUnknown) {
+                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
+                } else {
+                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
+                }
                 bindMessage.Prepare();
                 _connector.AddMessage(bindMessage);
                 _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
@@ -1505,6 +1554,7 @@ namespace Npgsql
                     Contract.Assume(!IsPrepared);
                     Contract.Assert(_rowDescription == null);
                     _rowDescription = (RowDescriptionMessage)msg;
+                    FixupRowDescription(_rowDescription);
                     return false;
                 case BackendMessageCode.NoData:
                     Contract.Assume(!IsPrepared);
@@ -1519,6 +1569,22 @@ namespace Npgsql
                 default:
                     throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
             }            
+        }
+
+        /// <summary>
+        /// Fixes up the text/binary flag on result columns.
+        /// Since we send the Describe command right after the Parse and before the Bind, the resulting RowDescription
+        /// will have text format on all result columns. Fix that up.
+        /// </summary>
+        /// <param name="rowDescription"></param>
+        void FixupRowDescription(RowDescriptionMessage rowDescription)
+        {
+            for (var i = 0; i < rowDescription.NumFields; i++) {
+                _rowDescription[i].FormatCode =
+                    (UnknownResultTypeList == null ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                    ? FormatCode.Text
+                    : FormatCode.Binary;
+            }
         }
 
         void AddParseAndDescribeMessages(string planName="")
@@ -1720,6 +1786,16 @@ namespace Npgsql
         }
 
         #endregion Misc
+
+        #region Invariants
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
+        }
+
+        #endregion
     }
 
     enum CommandState

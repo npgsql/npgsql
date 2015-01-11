@@ -17,32 +17,18 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
-    internal class CircleHandler : TypeHandler<NpgsqlCircle>, ITypeHandler<string>
+    internal class CircleHandler : TypeHandler<NpgsqlCircle>,
+        ISimpleTypeReader<NpgsqlCircle>,
+        ISimpleTypeReader<string>
     {
-        public override NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlCircle.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

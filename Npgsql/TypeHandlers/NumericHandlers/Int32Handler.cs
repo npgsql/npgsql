@@ -14,61 +14,54 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// </remarks>
     [TypeMapping("int4", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
     internal class Int32Handler : TypeHandler<int>,
-        ITypeHandler<byte>, ITypeHandler<short>, ITypeHandler<long>,
-        ITypeHandler<float>, ITypeHandler<double>, ITypeHandler<decimal>,
-        ITypeHandler<string>
+        ISimpleTypeReader<int>, ISimpleTypeWriter,
+        ISimpleTypeReader<byte>, ISimpleTypeReader<short>, ISimpleTypeReader<long>,
+        ISimpleTypeReader<float>, ISimpleTypeReader<double>, ISimpleTypeReader<decimal>,
+        ISimpleTypeReader<string>
     {
-        public override int Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public int Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return Int32.Parse(buf.ReadString(len), CultureInfo.InvariantCulture);
-                case FormatCode.Binary:
-                    return buf.ReadInt32();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return buf.ReadInt32();
         }
 
-        byte ITypeHandler<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (byte)Read(buf, fieldDescription, len);
         }
 
-        short ITypeHandler<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return (short)Read(buf, fieldDescription, len);
         }
 
-        long ITypeHandler<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len);
         }
 
-        float ITypeHandler<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len);
         }
 
-        double ITypeHandler<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len);
         }
 
-        decimal ITypeHandler<decimal>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        decimal ISimpleTypeReader<decimal>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        internal override int Length { get { return 4; } }
+        public int Length { get { return 4; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var i = GetIConvertibleValue<int>(value);
             buf.WriteInt32(i);

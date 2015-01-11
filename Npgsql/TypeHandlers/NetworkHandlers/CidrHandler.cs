@@ -14,22 +14,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
-    internal class CidrHandler : TypeHandler<NpgsqlInet>, ITypeHandler<string>
+    internal class CidrHandler : TypeHandler<NpgsqlInet>,
+        ISimpleTypeReader<NpgsqlInet>, ISimpleTypeReader<string>
     {
-        public override NpgsqlInet Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return new NpgsqlInet(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlInet ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlInet Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var addressFamily = buf.ReadByte();
             var mask = buf.ReadByte();
@@ -43,17 +31,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

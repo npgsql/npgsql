@@ -8,9 +8,8 @@ using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class RangeHandler<T> : TypeHandler<NpgsqlRange<T>>
+    internal class RangeHandler<T> : TypeHandler<NpgsqlRange<T>>, IChunkingTypeReader<NpgsqlRange<T>>, IChunkingTypeWriter
     {
-        public override bool IsChunking { get { return ElementHandler.IsChunking; } }
         public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
 
         const int Empty = 1;
@@ -49,21 +48,10 @@ namespace Npgsql.TypeHandlers
             PgName = name;
         }
 
-        public override NpgsqlRange<T> Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlRange<T> Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    throw new NotImplementedException();
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlRange<T> ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
+            throw new NotImplementedException();
+            /*
             Contract.Assert(ElementHandler.SupportsBinaryRead);
 
             if (IsChunking)
@@ -90,44 +78,10 @@ namespace Npgsql.TypeHandlers
                 return NpgsqlRange<T>.Empty;
             else
                 return new NpgsqlRange<T>(e1, (flags & LbInc) != 0, (flags & LbInf) != 0, e2, (flags & UbInc) != 0, (flags & UbInf) != 0);
+             */
         }
 
-        public override void WriteText(object value, NpgsqlTextWriter writer)
-        {
-            var range = (NpgsqlRange<T>)value;
-            if (range.IsEmpty)
-            {
-                writer.WriteString("empty");
-            }
-            else
-            {
-                var escapeState = writer.PushEscapeDoubleQuoteWithDoubleQuote();
-                
-                writer.WriteSingleChar(range.LowerBoundIsInclusive ? '[' : '(');
-                
-                if (!range.LowerBoundIsMinusInfinity)
-                {
-                    writer.WriteRawByteArray(escapeState.DoubleQuote);
-                    ElementHandler.WriteText(range.LowerBound, writer);
-                    writer.WriteRawByteArray(escapeState.DoubleQuote);
-                }
-
-                writer.WriteSingleChar(',');
-
-                if (!range.UpperBoundIsInfinity)
-                {
-                    writer.WriteRawByteArray(escapeState.DoubleQuote);
-                    ElementHandler.WriteText(range.UpperBound, writer);
-                    writer.WriteRawByteArray(escapeState.DoubleQuote);
-                }
-
-                writer.WriteSingleChar(range.UpperBoundIsInclusive ? ']' : ')');
-
-                writer.ResetEscapeState(escapeState);
-            }
-        }
-
-        internal override int GetLength(object value)
+        public int GetLength(object value)
         {
             throw new NotImplementedException("Chunking");
             /*
@@ -155,7 +109,17 @@ namespace Npgsql.TypeHandlers
              */
         }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Write(out byte[] directBuf)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void WriteBinary(object value, NpgsqlBuffer buf)
         {
             throw new NotImplementedException();
             /*
@@ -179,6 +143,16 @@ namespace Npgsql.TypeHandlers
                 ElementHandler.WriteBinary(registry, elementOid, range.UpperBound, buf, sizeArr, ref sizeArrPos);
             }
              */
+        }
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Read(out NpgsqlRange<T> result)
+        {
+            throw new NotImplementedException();
         }
     }
 }

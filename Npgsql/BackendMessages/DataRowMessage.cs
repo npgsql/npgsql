@@ -50,7 +50,7 @@ namespace Npgsql.Messages
         /// </summary>
         internal int DecodedColumnLen;
 
-        internal ByteaTextFormat CurrentByteaTextFormat;
+        internal ByteaFormat CurrentByteaTextFormat;
 
         /// <summary>
         /// Indicates whether a stream is currently open on a column. No read may occur until the stream is closed.

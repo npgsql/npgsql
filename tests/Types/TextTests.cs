@@ -21,7 +21,7 @@ namespace NpgsqlTests.Types
         public TextTests(string backendVersion) : base(backendVersion) {}
 
         [Test, Description("Roundtrips a string")]
-        public void Roundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void Roundtrip()
         {
             const string expected = "Something";
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
@@ -31,7 +31,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -50,11 +49,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void ReadLong(PrepareOrNot prepare, CommandBehavior behavior)
+        public void ReadLong([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             var builder = new StringBuilder("ABCDEééé", Conn.BufferSize);
             builder.Append('X', Conn.BufferSize);
@@ -63,7 +58,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_text, 'foo', field_text, field_text, field_text, field_text FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -83,11 +77,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void GetChars(PrepareOrNot prepare, CommandBehavior behavior)
+        public void GetChars([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             const string str = "ABCDE";
@@ -97,7 +87,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_text, 3, field_text, 4, field_text, field_text, field_text FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -135,11 +124,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential")]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
-        public void GetTextReader(PrepareOrNot prepare, CommandBehavior behavior)
+        public void GetTextReader([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             const string str = "ABCDE";
@@ -149,7 +134,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_text, 'foo' FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -174,16 +158,11 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential")]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
-        public void Null(PrepareOrNot prepare, CommandBehavior behavior)
+        public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             var buf = new char[8];
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
             var cmd = new NpgsqlCommand("SELECT field_text FROM data", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
@@ -212,7 +191,7 @@ namespace NpgsqlTests.Types
         // Older tests from here
 
         [Test]
-        public void GetChars()
+        public void GetCharsOld()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Random text')");
             var command = new NpgsqlCommand("SELECT field_text FROM DATA", Conn);

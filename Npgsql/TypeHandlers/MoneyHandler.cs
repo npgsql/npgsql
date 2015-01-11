@@ -15,26 +15,17 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-money.html
     /// </remarks>
     [TypeMapping("money", NpgsqlDbType.Money, DbType.Currency)]
-    internal class MoneyHandler : TypeHandler<decimal>
+    internal class MoneyHandler : TypeHandler<decimal>,
+        ISimpleTypeReader<decimal>, ISimpleTypeWriter
     {
-        static readonly Regex ExcludeDigits = new Regex("[^0-9\\-]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-        public override decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return Convert.ToDecimal(ExcludeDigits.Replace(buf.ReadString(len), string.Empty), CultureInfo.InvariantCulture) / 100m;
-                case FormatCode.Binary:
-                    return buf.ReadInt64() / 100m;
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return buf.ReadInt64() / 100m;
         }
 
-        internal override int Length { get { return 8; } }
+        public int Length { get { return 8; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var money = value is decimal ? (decimal)value : Decimal.Parse(value.ToString(), CultureInfo.InvariantCulture);
             buf.WriteInt64((long)(money * 100m + 0.5m /* round */));

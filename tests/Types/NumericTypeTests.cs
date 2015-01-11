@@ -23,7 +23,7 @@ namespace NpgsqlTests.Types
     public class NumericTypeTests : TestBase
     {
         [Test]
-        public void Int16([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int16()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Smallint);
@@ -34,7 +34,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
             cmd.Parameters.Add(p4);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = (long)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -58,7 +57,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void Int32([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int32()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
@@ -67,7 +66,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = (long)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -106,7 +104,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void Int64([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Int64()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Bigint);
@@ -115,7 +113,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = (short)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -139,7 +136,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void Double([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Double()
         {
             const double expected = 4.123456789012345;
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
@@ -149,7 +146,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -164,7 +160,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void Float([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Float()
         {
             const float expected = .123456F;
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
@@ -174,7 +170,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -190,7 +185,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void Numeric([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public void Numeric()
         {
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Numeric);
@@ -201,7 +196,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
             cmd.Parameters.Add(p4);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = p3.Value = 8;
             var reader = cmd.ExecuteReader();
             reader.Read();

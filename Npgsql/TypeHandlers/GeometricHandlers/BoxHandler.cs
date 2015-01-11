@@ -17,35 +17,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
-    internal class BoxHandler : TypeHandler<NpgsqlBox>, ITypeHandler<string>
+    internal class BoxHandler : TypeHandler<NpgsqlBox>,
+        ISimpleTypeReader<NpgsqlBox>,
+        ISimpleTypeReader<string>
     {
-        public override NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlBox.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return new NpgsqlBox(
-                        new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
-                        new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble())
-                    );
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return new NpgsqlBox(
+                new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
+                new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble())
+            );
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return Read(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

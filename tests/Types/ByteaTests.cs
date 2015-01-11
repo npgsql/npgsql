@@ -21,7 +21,7 @@ namespace NpgsqlTests.Types
         public ByteaTests(string backendVersion) : base(backendVersion) {}
 
         [Test, Description("Roundtrips a bytea")]
-        public void Roundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void Roundtrip()
         {
             byte[] expected = { 1, 2, 3, 4, 5 };
             var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
@@ -31,7 +31,6 @@ namespace NpgsqlTests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -48,11 +47,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void Read(PrepareOrNot prepare, CommandBehavior behavior)
+        public void Read([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
@@ -60,7 +55,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_bytea, 'foo', field_bytea, field_bytea, field_bytea FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -109,11 +103,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void GetBytes(PrepareOrNot prepare, CommandBehavior behavior)
+        public void GetBytes([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
@@ -122,7 +112,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_bytea, 'foo', field_bytea, 'bar', field_bytea, field_bytea FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -160,11 +149,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default,          TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential"   )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.Default,          TestName = "PreparedNonSequential"  )]
-        [TestCase(PrepareOrNot.Prepared,    CommandBehavior.SequentialAccess, TestName = "PreparedSequential"     )]
-        public void GetStream(PrepareOrNot prepare, CommandBehavior behavior)
+        public void GetStream([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
             byte[] expected = { 1, 2, 3, 4, 5 };
@@ -173,7 +158,6 @@ namespace NpgsqlTests.Types
 
             const string queryText = @"SELECT field_bytea, 'foo' FROM data";
             var cmd = new NpgsqlCommand(queryText, Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
@@ -199,16 +183,11 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.Default, TestName = "UnpreparedNonSequential")]
-        [TestCase(PrepareOrNot.NotPrepared, CommandBehavior.SequentialAccess, TestName = "UnpreparedSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.Default, TestName = "PreparedNonSequential")]
-        [TestCase(PrepareOrNot.Prepared, CommandBehavior.SequentialAccess, TestName = "PreparedSequential")]
-        public void GetNull(PrepareOrNot prepare, CommandBehavior behavior)
+        public void GetNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             var buf = new byte[8];
             ExecuteNonQuery(@"INSERT INTO data (field_bytea) VALUES (NULL)");
             var cmd = new NpgsqlCommand("SELECT field_bytea FROM data", Conn);
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
             Assert.That(reader.IsDBNull(0), Is.True);
@@ -220,13 +199,12 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void EmptyRoundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void EmptyRoundtrip()
         {
             var expected = new byte[0];
             var cmd = new NpgsqlCommand("SELECT :val::BYTEA", Conn);
             cmd.Parameters.Add("val", NpgsqlDbType.Bytea);
             cmd.Parameters["val"].Value = expected;
-            if (prepare == PrepareOrNot.Prepared) { cmd.Prepare(); }
             var result = (byte[])cmd.ExecuteScalar();
             Assert.That(result, Is.EqualTo(expected));
             cmd.Dispose();
@@ -235,7 +213,7 @@ namespace NpgsqlTests.Types
         // Older tests from here
 
         [Test]
-        public void MultidimensionalRoundtrip([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MultidimensionalRoundtrip()
         {
             using (var cmd = new NpgsqlCommand("SELECT :p1", Conn))
             {
@@ -244,9 +222,6 @@ namespace NpgsqlTests.Types
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
                 parameter.Value = inVal;
                 cmd.Parameters.Add(parameter);
-                if (prepare == PrepareOrNot.Prepared) {
-                    cmd.Prepare();
-                }
                 var retVal = (byte[][])cmd.ExecuteScalar();
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);

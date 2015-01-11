@@ -13,29 +13,23 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
-    internal class SingleHandler : TypeHandler<float>, ITypeHandler<double>
+    internal class SingleHandler : TypeHandler<float>,
+        ISimpleTypeReader<float>, ISimpleTypeWriter,
+        ISimpleTypeReader<double>
     {
-        public override float Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public float Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return Single.Parse(buf.ReadString(len), CultureInfo.InvariantCulture);
-                case FormatCode.Binary:
-                    return buf.ReadSingle();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return buf.ReadSingle();
         }
 
-        double ITypeHandler<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len);
         }
 
-        internal override int Length { get { return 4; } }
+        public int Length { get { return 4; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             var f = GetIConvertibleValue<float>(value);
             buf.WriteSingle(f);

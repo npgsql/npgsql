@@ -13,28 +13,16 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("inet", NpgsqlDbType.Inet, typeof(IPAddress))]
-    internal class InetHandler : TypeHandlerWithPsv<IPAddress, NpgsqlInet>, ITypeHandler<NpgsqlInet>,
-        ITypeHandler<string>
+    internal class InetHandler : TypeHandlerWithPsv<IPAddress, NpgsqlInet>,
+        ISimpleTypeReader<IPAddress>, ISimpleTypeReader<NpgsqlInet>,
+        ISimpleTypeReader<string>
     {
-        public override IPAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public IPAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return ((ITypeHandler<NpgsqlInet>)this).Read(buf, fieldDescription, len).addr;
+            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).addr;
         }
 
-        NpgsqlInet ITypeHandler<NpgsqlInet>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return new NpgsqlInet(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-
-        NpgsqlInet ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var addressFamily = buf.ReadByte();
             var mask = buf.ReadByte();
@@ -48,17 +36,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
 
-        string ITypeHandler<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return buf.ReadString(len);
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len).ToString();
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return Read(buf, fieldDescription, len).ToString();
         }
     }
 }

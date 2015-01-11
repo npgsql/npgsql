@@ -9,34 +9,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date)]
-    internal class DateHandler : TypeHandlerWithPsv<DateTime, NpgsqlDate>, ITypeHandler<NpgsqlDate>
+    internal class DateHandler : TypeHandlerWithPsv<DateTime, NpgsqlDate>,
+        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlDate>, ISimpleTypeWriter
     {
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 
-        public override DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            return (System.DateTime) ((ITypeHandler<NpgsqlDate>) this).Read(buf, fieldDescription, len);
-        }
-
-        NpgsqlDate ITypeHandler<NpgsqlDate>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return NpgsqlDate.Parse(buf.ReadString(len));
-                case FormatCode.Binary:
-                    return ReadBinary(buf);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
+            return (System.DateTime) ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, fieldDescription, len);
         }
 
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        NpgsqlDate ReadBinary(NpgsqlBuffer buf)
+        NpgsqlDate ISimpleTypeReader<NpgsqlDate>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var binDate = buf.ReadInt32();
 
@@ -68,12 +56,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var day = julian - 7834 * quad / 256;
             var month = (quad + 10) % MonthsPerYear + 1;
 
-            return new NpgsqlDate((int) year, (int) month, (int) day);
+            return new NpgsqlDate((int)year, (int)month, (int)day);
         }
 
-        internal override int Length { get { return 4; } }
+        public int Length { get { return 4; } }
 
-        internal override void WriteBinary(object value, NpgsqlBuffer buf)
+        public void Write(object value, NpgsqlBuffer buf)
         {
             if (value is DateTime)
             {
