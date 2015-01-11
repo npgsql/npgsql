@@ -28,8 +28,10 @@ namespace Npgsql
         readonly TypeHandler _unrecognizedTypeHandler;
 
         static internal readonly List<Type> HandlerTypes;
-        static readonly Dictionary<DbType, NpgsqlDbType> NpgsqlDbTypeToDbType;
-        static readonly Dictionary<Type, DbTypes> TypeToDbTypes;
+        static readonly Dictionary<NpgsqlDbType, DbType> NpgsqlDbTypeToDbType;
+        static readonly Dictionary<DbType, NpgsqlDbType> DbTypeToNpgsqlDbType;
+        static readonly Dictionary<Type, NpgsqlDbType> TypeToNpgsqlDbType;
+        static readonly Dictionary<Type, DbType> TypeToDbType;
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> RegistryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
         static readonly ILog Log = LogManager.GetCurrentClassLogger();
 
@@ -306,19 +308,27 @@ namespace Npgsql
 
         internal static NpgsqlDbType ToNpgsqlDbType(DbType dbType)
         {
-            return NpgsqlDbTypeToDbType[dbType];
+            return DbTypeToNpgsqlDbType[dbType];
         }
 
-        internal static DbTypes ToDbTypes(Type type)
+        internal static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
-            if (type.IsArray)
-            {
-                var dbTypes = ToDbTypes(type.GetElementType());
-                dbTypes.NpgsqlDbType = NpgsqlDbType.Array | dbTypes.NpgsqlDbType;
-                dbTypes.DbType = null;
-                return dbTypes;
+            if (type.IsArray) {
+                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
-            return TypeToDbTypes[type];
+            return TypeToNpgsqlDbType[type];
+        }
+
+        internal static DbType ToDbType(Type type)
+        {
+            DbType dbType;
+            return TypeToDbType.TryGetValue(type, out dbType) ? dbType : DbType.Object;
+        }
+
+        internal static DbType ToDbType(NpgsqlDbType npgsqlDbType)
+        {
+            DbType dbType;
+            return NpgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out dbType) ? dbType : DbType.Object;
         }
 
         #endregion
@@ -328,41 +338,42 @@ namespace Npgsql
         static TypeHandlerRegistry()
         {
             HandlerTypes = new List<Type>();
-            NpgsqlDbTypeToDbType = new Dictionary<DbType, NpgsqlDbType>();
-            TypeToDbTypes = new Dictionary<Type, DbTypes>();
+            NpgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
+            DbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
+            TypeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
+            TypeToDbType = new Dictionary<Type, DbType>();
 
-            foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof (TypeHandler))))
+            foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof(TypeHandler))))
             {
-                var mappings = t.GetCustomAttributes(typeof (TypeMappingAttribute), false);
+                var mappings = t.GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappings.Any())
                     continue;
                 HandlerTypes.Add(t);
 
                 foreach (TypeMappingAttribute m in mappings)
                 {
+                    if (!m.NpgsqlDbType.HasValue) {
+                        continue;
+                    }
+                    var npgsqlDbType = m.NpgsqlDbType.Value;
+
+                    if (m.DbTypes.Any())
+                    {
+                        NpgsqlDbTypeToDbType[npgsqlDbType] = m.DbTypes.FirstOrDefault();
+                    }
                     foreach (var dbType in m.DbTypes)
                     {
-                        Contract.Assert(m.NpgsqlDbType.HasValue);
-                        NpgsqlDbTypeToDbType[dbType] = m.NpgsqlDbType.Value;
+                        DbTypeToNpgsqlDbType[dbType] = npgsqlDbType;
                     }
                     foreach (var type in m.Types)
                     {
-                        Contract.Assert(m.NpgsqlDbType.HasValue);
-                        TypeToDbTypes[type] = new DbTypes {
-                            NpgsqlDbType = m.NpgsqlDbType.Value,
-                            DbType = m.DbTypes.FirstOrDefault()
-                        };
+                        TypeToNpgsqlDbType[type] = npgsqlDbType;
+                        TypeToDbType[type] = m.DbTypes.FirstOrDefault();
                     }
                 }
             }
         }
 
         #endregion
-    }
-
-    struct DbTypes
-    {
-        public NpgsqlDbType NpgsqlDbType;
-        public DbType? DbType;
     }
 }

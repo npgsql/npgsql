@@ -53,9 +53,22 @@ namespace NpgsqlTests
             var p = new NpgsqlParameter("p", DbType.Int32);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
 
+            // As long as NpgsqlDbType/DbType aren't set explicitly, infer them from Value
             p = new NpgsqlParameter("p", 8);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
             Assert.That(p.DbType, Is.EqualTo(DbType.Int32));
+
+            p.Value = 3.0;
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Double));
+            Assert.That(p.DbType, Is.EqualTo(DbType.Double));
+
+            p.NpgsqlDbType = NpgsqlDbType.Bytea;
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
+
+            p.Value = "dont_change";
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
 
             p = new NpgsqlParameter("p", new int[0]);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));

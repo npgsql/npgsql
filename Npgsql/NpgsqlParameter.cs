@@ -268,14 +268,6 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue && value != null)
-                {
-                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
-                    NpgsqlDbType = dbTypes.NpgsqlDbType;
-                    if (dbTypes.DbType.HasValue) {
-                        DbType = dbTypes.DbType.Value;
-                    }
-                }
             }
         }
 
@@ -292,14 +284,6 @@ namespace Npgsql
                 ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                if (!_npgsqlDbType.HasValue && value != null)
-                {
-                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
-                    NpgsqlDbType = dbTypes.NpgsqlDbType;
-                    if (dbTypes.DbType.HasValue) {
-                        DbType = dbTypes.DbType.Value;
-                    }
-                }
             }
         }
 
@@ -374,7 +358,18 @@ namespace Npgsql
         [Category("Data"), RefreshProperties(RefreshProperties.All), DefaultValue(DbType.Object)]
         public override DbType DbType
         {
-            get { return _dbType ?? DbType.Object; }
+            get
+            {
+                if (_dbType.HasValue) {
+                    return _dbType.Value;
+                }
+
+                if (_value != null) {   // Infer from value
+                    return TypeHandlerRegistry.ToDbType(_value.GetType());
+                }
+
+                return DbType.Object;
+            }
             set
             {
                 ClearBind();
@@ -392,7 +387,15 @@ namespace Npgsql
         {
             get
             {
-                return _npgsqlDbType ?? NpgsqlDbType.Unknown;
+                if (_npgsqlDbType.HasValue) {
+                    return _npgsqlDbType.Value;
+                }
+
+                if (_value != null) {   // Infer from value
+                    return TypeHandlerRegistry.ToNpgsqlDbType(_value.GetType());
+                }
+
+                return NpgsqlDbType.Unknown;
             }
             set
             {
@@ -406,6 +409,7 @@ namespace Npgsql
 
                 ClearBind(); 
                 _npgsqlDbType = value;
+                _dbType = TypeHandlerRegistry.ToDbType(value);
             }
         }
 
