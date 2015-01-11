@@ -36,20 +36,14 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType.Text
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-            Assert.That(reader.GetString(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
-
-            // Via DbType.String
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(string)));
-            Assert.That(reader.GetString(1), Is.EqualTo(expected));
-
-            // Via inference
-            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(string)));
-            Assert.That(reader.GetString(2), Is.EqualTo(expected));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetFieldType(i),          Is.EqualTo(typeof(string)));
+                Assert.That(reader.GetString(i),             Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i),              Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<char[]>(i), Is.EqualTo(expected.ToCharArray()));
+            }
 
             reader.Close();
             cmd.Dispose();            

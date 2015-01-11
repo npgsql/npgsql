@@ -34,16 +34,14 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
-
-            // Via inference
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetFieldValue<int[]>(1), Is.EqualTo(expected));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetValue(i),                     Is.EqualTo(expected));
+                Assert.That(reader.GetProviderSpecificValue(i),     Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<int[]>(i),         Is.EqualTo(expected));
+                Assert.That(reader.GetFieldType(i),                 Is.EqualTo(typeof(Array)));
+                Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
+            }
 
             cmd.Dispose();
         }

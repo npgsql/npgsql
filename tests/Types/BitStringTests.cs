@@ -45,18 +45,12 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType.Varbit
-            Assert.That(reader.GetFieldValue<BitArray>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-            Assert.That(() => reader.GetFieldValue<bool>(0), Throws.Exception.TypeOf<InvalidCastException>());
-
-            // Via NpgsqlDbType.Bit
-            Assert.That(reader.GetFieldValue<BitArray>(1), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(1), Is.EqualTo(expected));
-
-            // Via inference
-            Assert.That(reader.GetFieldValue<BitArray>(2), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(2), Is.EqualTo(expected));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetFieldValue<BitArray>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i),                Is.EqualTo(expected));
+                Assert.That(() => reader.GetFieldValue<bool>(i), Throws.Exception.TypeOf<InvalidCastException>());
+            }
 
             reader.Dispose();
             cmd.Dispose();

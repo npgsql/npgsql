@@ -83,6 +83,7 @@ namespace NpgsqlTests
             Assert.AreEqual(1, c2.Parameters.Count);
         }
 
+        #region Constructors
 
         [Test]
         public void Constructor1()
@@ -238,27 +239,9 @@ namespace NpgsqlTests
             //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
             //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
         }
-
-        //[Test]
-        //public void CompareInfo ()
-        //{
-        //    NpgsqlParameter parameter = new NpgsqlParameter ();
-        //    Assert.AreEqual (SqlCompareOptions.None, parameter.CompareInfo, "#1");
-        //    parameter.CompareInfo = SqlCompareOptions.IgnoreNonSpace;
-        //    Assert.AreEqual (SqlCompareOptions.IgnoreNonSpace, parameter.CompareInfo, "#2");
-        //}
 #endif
 
-        [Test]
-        public void InferType_ByteArray()
-        {
-            var value = new Byte[] {0x0a, 0x0d};
-
-            var param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Bytea, param.NpgsqlDbType, "#1");
-            Assert.AreEqual(DbType.Binary, param.DbType, "#2");
-        }
+        #endregion
 
 #if NeedsPorting
 
@@ -397,81 +380,6 @@ namespace NpgsqlTests
         }
 
 #endif
-
-        [Test]
-        public void InferType_DateTime()
-        {
-            DateTime value;
-            NpgsqlParameter param;
-
-            value = DateTime.Now;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#A1");
-            Assert.AreEqual(DbType.DateTime, param.DbType, "#A2");
-
-            value = DateTime.Now;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#B1");
-            Assert.AreEqual(DbType.DateTime, param.DbType, "#B2");
-
-            value = new DateTime(1973, 8, 13);
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Timestamp, param.NpgsqlDbType, "#C1");
-            Assert.AreEqual(DbType.DateTime, param.DbType, "#C2");
-        }
-
-        [Test]
-        public void InferType_Decimal()
-        {
-            Decimal value;
-            NpgsqlParameter param;
-
-            value = Decimal.MaxValue;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#A1");
-            Assert.AreEqual(DbType.Decimal, param.DbType, "#A2");
-
-            value = Decimal.MinValue;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#B1");
-            Assert.AreEqual(DbType.Decimal, param.DbType, "#B2");
-
-            value = 214748.364m;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Numeric, param.NpgsqlDbType, "#C1");
-            Assert.AreEqual(DbType.Decimal, param.DbType, "#C2");
-        }
-
-        [Test]
-        public void InferType_Double()
-        {
-            Double value;
-            NpgsqlParameter param;
-
-            value = Double.MaxValue;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#A1");
-            Assert.AreEqual(DbType.Double, param.DbType, "#A2");
-
-            value = Double.MinValue;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#B1");
-            Assert.AreEqual(DbType.Double, param.DbType, "#B2");
-
-            value = 0d;
-            param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Double, param.NpgsqlDbType, "#C1");
-            Assert.AreEqual(DbType.Double, param.DbType, "#C2");
-        }
 
         [Test]
         [Ignore]

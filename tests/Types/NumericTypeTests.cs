@@ -39,29 +39,19 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
-            Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
-            Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
-            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(short)));
-
-            // Via DbType
-            Assert.That(reader.GetInt16(1),                 Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(short)));
-
-            // Via inference from short
-            Assert.That(reader.GetInt16(2),                 Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(short)));
-
-            // Via inference from byte
-            Assert.That(reader.GetInt16(2),                 Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(short)));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetInt16(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt32(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt64(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetByte(i),                  Is.EqualTo(8));
+                Assert.That(reader.GetFloat(i),                 Is.EqualTo(8.0f));
+                Assert.That(reader.GetDouble(i),                Is.EqualTo(8.0d));
+                Assert.That(reader.GetDecimal(i),               Is.EqualTo(8.0m));
+                Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
+                Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(short)));
+            }
 
             reader.Dispose();
             cmd.Dispose();
@@ -82,25 +72,19 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
-            Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
-            Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
-            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(int)));
-
-            // Via DbType
-            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(int)));
-            Assert.That(reader.GetInt32(1),                 Is.EqualTo(8));
-
-            // Via inference
-            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(int)));
-            Assert.That(reader.GetInt32(2),                 Is.EqualTo(8));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetInt32(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt64(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt16(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetByte(i),                  Is.EqualTo(8));
+                Assert.That(reader.GetFloat(i),                 Is.EqualTo(8.0f));
+                Assert.That(reader.GetDouble(i),                Is.EqualTo(8.0d));
+                Assert.That(reader.GetDecimal(i),               Is.EqualTo(8.0m));
+                Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
+                Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(int)));
+            }
 
             reader.Dispose();
             cmd.Dispose();
@@ -136,25 +120,19 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
-            Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
-            Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
-            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(long)));
-
-            // Via DbType
-            Assert.That(reader.GetInt64(1),                 Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(long)));
-
-            // Via inference
-            Assert.That(reader.GetInt64(2),                 Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(long)));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetInt64(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt16(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt32(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetByte(i),                  Is.EqualTo(8));
+                Assert.That(reader.GetFloat(i),                 Is.EqualTo(8.0f));
+                Assert.That(reader.GetDouble(i),                Is.EqualTo(8.0d));
+                Assert.That(reader.GetDecimal(i),               Is.EqualTo(8.0m));
+                Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
+                Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(long)));
+            }
 
             reader.Dispose();
             cmd.Dispose();
@@ -176,18 +154,11 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetDouble(0),    Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(double)));
-
-            // Via DbType
-            Assert.That(reader.GetDouble(1),    Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(double)));
-
-            // Via inference
-            Assert.That(reader.GetDouble(1),    Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(double)));
-
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetDouble(i),    Is.EqualTo(expected).Within(10E-07));
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(double)));
+            }
             reader.Dispose();
             cmd.Dispose();
         }
@@ -208,17 +179,11 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetFloat(0),     Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(float)));
-
-            // Via DbType
-            Assert.That(reader.GetFloat(1),     Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(float)));
-
-            // Via inference
-            Assert.That(reader.GetFloat(2),     Is.EqualTo(expected).Within(10E-07));
-            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(float)));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetFloat(i),     Is.EqualTo(expected).Within(10E-07));
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(float)));
+            }
 
             reader.Dispose();
             cmd.Dispose();
@@ -241,29 +206,19 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType
-            Assert.That(reader.GetDecimal(0),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetInt32(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt64(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetInt16(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetByte(0),                  Is.EqualTo(8));
-            Assert.That(reader.GetFloat(0),                 Is.EqualTo(8.0f));
-            Assert.That(reader.GetDouble(0),                Is.EqualTo(8.0d));
-            Assert.That(reader.GetValue(0),                 Is.EqualTo(8));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(8));
-            Assert.That(reader.GetFieldType(0),             Is.EqualTo(typeof(decimal)));
-
-            // Via DbType Decimal
-            Assert.That(reader.GetDecimal(1),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetFieldType(1),             Is.EqualTo(typeof(decimal)));
-
-            // Via DbType VarNumeric
-            Assert.That(reader.GetDecimal(2),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetFieldType(2),             Is.EqualTo(typeof(decimal)));
-
-            // Via inference
-            Assert.That(reader.GetDecimal(3),               Is.EqualTo(8.0m));
-            Assert.That(reader.GetFieldType(3),             Is.EqualTo(typeof(decimal)));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetDecimal(i),               Is.EqualTo(8.0m));
+                Assert.That(reader.GetInt32(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt64(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetInt16(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetByte(i),                  Is.EqualTo(8));
+                Assert.That(reader.GetFloat(i),                 Is.EqualTo(8.0f));
+                Assert.That(reader.GetDouble(i),                Is.EqualTo(8.0d));
+                Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
+                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
+                Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(decimal)));
+            }
 
             reader.Dispose();
             cmd.Dispose();

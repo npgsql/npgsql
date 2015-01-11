@@ -36,18 +36,12 @@ namespace NpgsqlTests.Types
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            // Via NpgsqlDbType.Bytea
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
-            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
-            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-
-            // Via DbType.Binary
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(byte[])));
-            Assert.That(reader.GetFieldValue<byte[]>(1), Is.EqualTo(expected));
-
-            // Via inference
-            Assert.That(reader.GetFieldType(2), Is.EqualTo(typeof(byte[])));
-            Assert.That(reader.GetFieldValue<byte[]>(2), Is.EqualTo(expected));
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetFieldType(i),          Is.EqualTo(typeof (byte[])));
+                Assert.That(reader.GetFieldValue<byte[]>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i),              Is.EqualTo(expected));
+            }
 
             reader.Close();
             cmd.Dispose();            
