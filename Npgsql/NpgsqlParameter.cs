@@ -351,6 +351,7 @@ namespace Npgsql
             {
                 ClearBind();
                 _dbType = value;
+                _npgsqlDbType = TypeHandlerRegistry.ToNpgsqlDbType(value);
             }
         }
 

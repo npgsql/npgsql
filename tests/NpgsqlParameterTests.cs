@@ -46,6 +46,15 @@ namespace NpgsqlTests
     [TestFixture]
     public class NpgsqlParameterTest
     {
+        [Test, Description("Makes sure that when NpgsqlDbType is set, DbType is set accordingly")]
+        public void NpgsqlDbTypeToDbType()
+        {
+            var p = new NpgsqlParameter("p", DbType.Int32);
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+        }
+
+        // Older tests
+
         /// <summary>
         /// Test which validates that Clear() indeed cleans up the parameters in a command so they can be added to other commands safely.
         /// </summary>
@@ -1001,20 +1010,6 @@ namespace NpgsqlTests
             Assert.IsFalse(p.SourceColumnNullMapping, "#3");
         }
 #endif
-
-        [Test]
-        public void NpgsqlDbTypeTest()
-        {
-            var p = new NpgsqlParameter("zipcode", 3510);
-            p.NpgsqlDbType = NpgsqlDbType.Timestamp;
-            Assert.AreEqual(DbType.DateTime, p.DbType, "#A:DbType");
-            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#A:NpgsqlDbType");
-            Assert.AreEqual(3510, p.Value, "#A:Value");
-            p.NpgsqlDbType = NpgsqlDbType.Varchar;
-            Assert.AreEqual(DbType.String, p.DbType, "#B:DbType");
-            Assert.AreEqual(NpgsqlDbType.Varchar, p.NpgsqlDbType, "#B:NpgsqlDbType");
-            Assert.AreEqual(3510, p.Value, "#B:Value");
-        }
 
         [Test]
         public void Bug1011100NpgsqlDbTypeTest()

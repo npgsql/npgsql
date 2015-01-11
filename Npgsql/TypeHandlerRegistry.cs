@@ -28,11 +28,7 @@ namespace Npgsql
         public TypeHandler UnknownTypeHandler { get; private set; }
 
         static readonly List<Type> HandlerTypes;
-        /*
-        static Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType;
-        static Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType;
-        static Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType;
-         */
+        static readonly Dictionary<DbType, NpgsqlDbType> _npgsqlDbTypeToDbType;
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> _registryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
         static readonly ILog Log = LogManager.GetCurrentClassLogger();
 
@@ -303,19 +299,35 @@ namespace Npgsql
             }
         }
 
+        internal static NpgsqlDbType ToNpgsqlDbType(DbType dbType)
+        {
+            return _npgsqlDbTypeToDbType[dbType];
+        }
+
         #endregion
 
         #region Type Discovery
 
         static TypeHandlerRegistry()
         {
-            HandlerTypes = Assembly.GetExecutingAssembly()
-                .GetTypes()
-                .Where(t =>
-                    t.IsSubclassOf(typeof (TypeHandler)) &&
-                    t.GetCustomAttributes(typeof(TypeMappingAttribute), false).Any()
-                )
-                .ToList();
+            HandlerTypes = new List<Type>();
+            _npgsqlDbTypeToDbType = new Dictionary<DbType, NpgsqlDbType>();
+
+            foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof (TypeHandler))))
+            {
+                var mappings = t.GetCustomAttributes(typeof (TypeMappingAttribute), false);
+                if (!mappings.Any())
+                    continue;
+                HandlerTypes.Add(t);
+
+                foreach (TypeMappingAttribute m in mappings)
+                {
+                    foreach (var dbType in m.DbTypes)
+                    {
+                        _npgsqlDbTypeToDbType[dbType] = m.NpgsqlDbType;
+                    }
+                }
+            }
         }
 
         #endregion
