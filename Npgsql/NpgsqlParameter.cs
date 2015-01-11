@@ -508,9 +508,17 @@ namespace Npgsql
             } // [TODO] Check and validate data type.
             set
             {
+                ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                ClearBind();
+                if (!_npgsqlDbType.HasValue)
+                {
+                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
+                    NpgsqlDbType = dbTypes.NpgsqlDbType;
+                    if (dbTypes.DbType.HasValue) {
+                        DbType = dbTypes.DbType.Value;
+                    }
+                }
             }
         }
 
@@ -524,9 +532,17 @@ namespace Npgsql
         {
             get { return _npgsqlValue; }
             set {
+                ClearBind();
                 _value = value;
                 _npgsqlValue = value;
-                ClearBind();
+                if (!_npgsqlDbType.HasValue)
+                {
+                    var dbTypes = TypeHandlerRegistry.ToDbTypes(value.GetType());
+                    NpgsqlDbType = dbTypes.NpgsqlDbType;
+                    if (dbTypes.DbType.HasValue) {
+                        DbType = dbTypes.DbType.Value;
+                    }
+                }
             }
         }
 

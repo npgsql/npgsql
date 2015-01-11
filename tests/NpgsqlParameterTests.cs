@@ -35,6 +35,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.IO;
+using System.Threading;
 using System.Xml;
 using Npgsql;
 using NpgsqlTypes;
@@ -46,11 +47,19 @@ namespace NpgsqlTests
     [TestFixture]
     public class NpgsqlParameterTest
     {
-        [Test, Description("Makes sure that when NpgsqlDbType is set, DbType is set accordingly")]
-        public void NpgsqlDbTypeToDbType()
+        [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
+        public void ImplicitSettingOfDbTypes()
         {
             var p = new NpgsqlParameter("p", DbType.Int32);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+
+            p = new NpgsqlParameter("p", 8);
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+            Assert.That(p.DbType, Is.EqualTo(DbType.Int32));
+
+            p = new NpgsqlParameter("p", new int[0]);
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
+            Assert.That(p.DbType, Is.EqualTo(DbType.Object));
         }
 
         // Older tests
