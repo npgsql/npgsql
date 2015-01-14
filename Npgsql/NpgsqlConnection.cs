@@ -927,7 +927,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return Connector.NativeToBackendTypeConverterOptions.UseConformantStrings;
+                return Connector.UseConformantStrings;
             }
         }
 
@@ -940,7 +940,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return Connector.NativeToBackendTypeConverterOptions.Supports_E_StringPrefix;
+                return Connector.SupportsEStringPrefix;
             }
         }
 
@@ -953,7 +953,7 @@ namespace Npgsql
             get
             {
                 CheckConnectionOpen();
-                return Connector.NativeToBackendTypeConverterOptions.SupportsHexByteFormat;
+                return Connector.SupportsHexByteFormat;
             }
         }
 

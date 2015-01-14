@@ -385,6 +385,7 @@ namespace Npgsql
              * This was causing ADO.Net to try to set a value of different type of Int32.
              * See bug 1010973 for more info.
              */
+#if INVESTIGATE
             if (parameter.SourceColumnNullMapping)
             {
                 parameter.SourceColumn = "";
@@ -392,7 +393,7 @@ namespace Npgsql
             else
 
                 parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
-
+#endif
         }
 
         /// <summary>

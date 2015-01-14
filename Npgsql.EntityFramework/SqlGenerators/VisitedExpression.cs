@@ -11,6 +11,7 @@ using System.Data.Common.CommandTrees;
 #endif
 using NpgsqlTypes;
 using System.Data;
+using System.Globalization;
 
 namespace Npgsql.SqlGenerators
 {
@@ -111,8 +112,9 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
+#if NEEDS_PORTING
             NpgsqlNativeTypeInfo typeInfo;
-            System.Globalization.NumberFormatInfo ni = NpgsqlNativeTypeInfo.NumberFormat;
+            var ni = CultureInfo.InvariantCulture.NumberFormat;
             object value = _value;
             switch (_primitiveType)
             {
@@ -236,6 +238,7 @@ namespace Npgsql.SqlGenerators
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
             base.WriteSql(sqlText);
+#endif
         }
     }
 

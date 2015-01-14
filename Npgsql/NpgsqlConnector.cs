@@ -109,17 +109,6 @@ namespace Npgsql
         internal TypeHandlerRegistry TypeHandlerRegistry { get; set; }
 
         /// <summary>
-        /// Options that control certain aspects of native to backend conversions that depend
-        /// on backend version and status.
-        /// </summary>
-        internal NativeToBackendTypeConverterOptions NativeToBackendTypeConverterOptions { get; private set; }
-
-        internal NpgsqlBackendTypeMapping OidToNameMapping
-        {
-            get { return NativeToBackendTypeConverterOptions.OidToNameMapping; }
-        }
-
-        /// <summary>
         /// A chain of messages to be sent to the backend.
         /// </summary>
         List<FrontendMessage> _messagesToSend;
@@ -180,7 +169,6 @@ namespace Npgsql
             Pooled = pooled;
             BackendParams = new Dictionary<string, string>();
             Mediator = new NpgsqlMediator();
-            NativeToBackendTypeConverterOptions = NativeToBackendTypeConverterOptions.Default.Clone(new NpgsqlBackendTypeMapping());
             _messagesToSend = new List<FrontendMessage>();
             _planIndex = 0;
             _portalIndex = 0;
@@ -1415,6 +1403,9 @@ namespace Npgsql
         internal bool SupportsSslRenegotiationLimit { get; private set; }
         internal bool SupportsSavepoint { get; private set; }
         internal bool SupportsDiscard { get; private set; }
+        internal bool SupportsEStringPrefix { get; private set; }
+        internal bool SupportsHexByteFormat { get; private set; }
+        internal bool UseConformantStrings { get; private set; }
 
         /// <summary>
         /// This method is required to set all the version dependent features flags.
@@ -1438,10 +1429,10 @@ namespace Npgsql
             // Note that it is possible that support for this prefix will vanish in some future version
             // of Postgres, in which case this test will need to be revised.
             // At that time it may also be necessary to set UseConformantStrings = true here.
-            NativeToBackendTypeConverterOptions.Supports_E_StringPrefix = (ServerVersion >= new Version(8, 1, 0));
+            SupportsEStringPrefix = (ServerVersion >= new Version(8, 1, 0));
 
             // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
-            NativeToBackendTypeConverterOptions.SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
+            SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
         }
 
         #endregion Supported features
@@ -1572,9 +1563,8 @@ namespace Npgsql
             }
 
             if (name == "standard_conforming_strings") {
-                NativeToBackendTypeConverterOptions.UseConformantStrings = (value == "on");
+                UseConformantStrings = (value == "on");
             }
-
         }
 
         /// <summary>

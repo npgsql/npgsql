@@ -321,7 +321,6 @@
       <Generator>AsyncGenerator</Generator>
     </Compile>
     <Compile Include="NpgsqlTextWriter.cs" />
-    <Compile Include="NpgsqlTypes\ArrayHandling.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\BoxHandler.cs" />
@@ -338,20 +337,12 @@
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\DateDatatypes.cs" />
     <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
-    <Compile Include="NpgsqlTypes\FastConverter.cs" />
     <Compile Include="NpgsqlTypes\FastPath.cs" />
     <Compile Include="NpgsqlTypes\FastPathArg.cs" />
     <Compile Include="NpgsqlTypes\LargeObject.cs" />
     <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlNativeToBackendOptions.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeConvBackendToNative.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeConvNativeToBackend.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoBackend.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeInfoNative.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypeMappings.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTypesHelper.cs" />
     <Compile Include="Localization\L10N.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
