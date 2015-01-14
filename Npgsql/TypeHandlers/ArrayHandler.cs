@@ -26,7 +26,7 @@ namespace Npgsql.TypeHandlers
         protected NpgsqlBuffer _buf;
         FieldDescription _fieldDescription;
         int _dimensions;
-        int[] _dimLengths, _dimOffsets;
+        int[] _dimLengths, _indices;
         int _index;
         int _elementLen;
 
@@ -98,7 +98,7 @@ namespace Npgsql.TypeHandlers
                     Contract.Assume(elementOID == ElementHandler.OID);
                     _dimLengths = new int[_dimensions];
                     if (!(_array is TElement[])) {
-                        _dimOffsets = new int[_dimensions];
+                        _indices = new int[_dimensions];
                     }
                     _index = 0;
                     goto case ReadState.ReadHeader;
@@ -126,7 +126,7 @@ namespace Npgsql.TypeHandlers
                 case ReadState.ReadingElements:
                     var completed = _array is TElement[]
                         ? ReadElementsOneDimensional<TElement>()
-                        : ReadElementsMultidimensional<TElement>(0);
+                        : ReadElementsMultidimensional<TElement>();
 
                     if (!completed)
                     {
@@ -153,35 +153,11 @@ namespace Npgsql.TypeHandlers
         {
             var array = (TElement[])_array;
 
-            for (; _index < array.Length; _index++) 
+            for (; _index < array.Length; _index++)
             {
-                if (_elementLen == -1)
-                {
-                    if (_buf.ReadBytesLeft < 4) { return false; }
-                    _elementLen = _buf.ReadInt32();
-                    if (_elementLen == -1)
-                    {
-                        // TODO: Nullables
-                        array[_index] = default(TElement);
-                        continue;
-                    }
-                }
-
-                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
-                if (asSimpleReader != null)
-                {
-                    if (_buf.ReadBytesLeft < _elementLen) { return false; }
-                    array[_index] = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
-                }
-                else
-                {
-                    var asChunkingReader = (IChunkingTypeReader<TElement>)ElementHandler;
-                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
-                    TElement element;
-                    if (!asChunkingReader.Read(out element)) { return false; }
-                    array[_index] = element;
-                }
-                _elementLen = -1;
+                TElement element;
+                if (!ReadSingleElement(out element)) { return false; }
+                array[_index] = element;
             }
             return true;
         }
@@ -189,58 +165,58 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Recursively populates an array from PB binary data representation.
         /// </summary>
-        bool ReadElementsMultidimensional<TElement>(int dimOffset)
+        bool ReadElementsMultidimensional<TElement>()
         {
-            if (dimOffset < _dimLengths.Length - 1)
+            while (true)
             {
-                // Drill down recursively until we hit a single dimension array.
-                for (var i = _dimOffsets[dimOffset]; i < _dimLengths[dimOffset]; i++)
+                TElement element;
+                if (!ReadSingleElement(out element)) { return false; }
+                _array.SetValue(element, _indices);
+                if (!MoveNextInMultidimensional()) { return true; }
+            }
+        }
+
+        bool ReadSingleElement<TElement>(out TElement element)
+        {
+            if (_elementLen == -1)
+            {
+                if (_buf.ReadBytesLeft < 4)
                 {
-                    _dimOffsets[dimOffset] = i;
-                    if (!ReadElementsMultidimensional<TElement>(dimOffset + 1)) {
-                        return false;
-                    }
+                    element = default(TElement);
+                    return false;
                 }
-                _dimOffsets[dimOffset] = 0;
+                _elementLen = _buf.ReadInt32();
+                if (_elementLen == -1)
+                {
+                    // TODO: Nullables
+                    element = default(TElement);
+                    return true;
+                }
+            }
+
+            var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+            if (asSimpleReader != null)
+            {
+                if (_buf.ReadBytesLeft < _elementLen)
+                {
+                    element = default(TElement);
+                    return false;
+                }
+                element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                _elementLen = -1;
                 return true;
             }
 
-            // Populate a single dimension
-            for (var i = _dimOffsets[dimOffset]; i < _dimLengths[dimOffset]; i++)
+            var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+            if (asChunkingReader != null)
             {
-                _dimOffsets[dimOffset] = i;
-
-                // Each element consists of an int length identifier, followed by that many bytes of raw data.
-                // Length -1 indicates a NULL value, and is naturally followed by no data.
-                if (_elementLen == -1)
-                {
-                    if (_buf.ReadBytesLeft < 4) { return false; }
-                    _elementLen = _buf.ReadInt32();
-                    if (_elementLen == -1) {
-                        // TODO: Nullables
-                        _array.SetValue(default(TElement), _dimOffsets);
-                        continue;
-                    }
-                }
-
-                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
-                if (asSimpleReader != null)
-                {
-                    if (_buf.ReadBytesLeft < _elementLen) { return false; }
-                    _array.SetValue(asSimpleReader.Read(_buf, _fieldDescription, _elementLen), _dimOffsets);
-                }
-                else
-                {
-                    var asChunkingReader = (IChunkingTypeReader<TElement>)ElementHandler;
-                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
-                    TElement element;
-                    if (!asChunkingReader.Read(out element)) { return false; }
-                    _array.SetValue(element, _dimOffsets);
-                }
+                asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                if (!asChunkingReader.Read(out element)) { return false; }
                 _elementLen = -1;
+                return true;
             }
-            _dimOffsets[dimOffset] = 0;
-            return true;
+
+            throw PGUtil.ThrowIfReached();
         }
 
         enum ReadState
@@ -295,15 +271,15 @@ namespace Npgsql.TypeHandlers
                     }
 
                     if (!(_array is TElement[])) {
-                        _dimOffsets = new int[_dimensions];
+                        _indices = new int[_dimensions];
                     }
                     _writeState = WriteState.WritingElements;
                     goto case WriteState.WritingElements;
 
                 case WriteState.WritingElements:
                     var completed = _array is TElement[]
-                        ? WriteElementsOneDimensional<TElement>(buf, out directBuf)
-                        : WriteElementsMultidimensional(buf, out directBuf, 0);
+                        ? WriteElementsOneDimensional<TElement>(out directBuf)
+                        : WriteElementsMultidimensional(out directBuf);
 
                     if (!completed)
                     {
@@ -321,108 +297,70 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        bool WriteElementsOneDimensional<TElement>(NpgsqlBuffer buf, out byte[] directBuf)
+        bool WriteElementsOneDimensional<TElement>(out byte[] directBuf)
         {
-            var array = (TElement[])_array;
-
             directBuf = null;
-            for (; _index < _array.Length; _index++) {
+
+            var array = (TElement[])_array;
+            for (; _index < _array.Length; _index++)
+            {
                 var element = array[_index];
-                if (element == null || element is DBNull) {
-                    if (buf.WriteSpaceLeft < 4) {
-                        return false;
-                    }
-                    buf.WriteInt32(-1);
-                    continue;
-                }
-
-                var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-                if (asSimpleWriter != null) {
-                    var elementLen = asSimpleWriter.Length;
-                    if (buf.WriteSpaceLeft < 4 + elementLen) { return false; }
-                    buf.WriteInt32(elementLen);
-                    asSimpleWriter.Write(element, buf);
-                    continue;
-                }
-
-                var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
-                if (asChunkedWriter != null) {
-                    if (!_wroteElementLen) {
-                        if (buf.WriteSpaceLeft < 4) {
-                            return false;
-                        }
-                        buf.WriteInt32(asChunkedWriter.GetLength(element));
-                        asChunkedWriter.PrepareWrite(_buf, element);
-                        _wroteElementLen = true;
-                    }
-                    if (!asChunkedWriter.Write(out directBuf)) {
-                        return false;
-                    }
-                    _wroteElementLen = false;
-                    continue;
-                }
-
-                throw PGUtil.ThrowIfReached();
+                if (!WriteSingleElement(element, out directBuf)) { return false; }
             }
             return true;
         }
 
-        bool WriteElementsMultidimensional(NpgsqlBuffer buf, out byte[] directBuf, int dimOffset)
+        bool WriteElementsMultidimensional(out byte[] directBuf)
+        {
+            while (true)
+            {
+                var element = _array.GetValue(_indices);
+                if (!WriteSingleElement(element, out directBuf)) { return false; }
+                if (!MoveNextInMultidimensional()) { return true; }
+            }
+        }
+
+        bool WriteSingleElement(object element, out byte[] directBuf)
         {
             directBuf = null;
-            var dimLength = _array.GetLength(dimOffset);
-            if (dimOffset < _dimensions - 1)
-            {
-                // Drill down recursively until we hit a single dimension array.
-                for (var i = _dimOffsets[dimOffset]; i < dimLength; i++)
-                {
-                    _dimOffsets[dimOffset] = i;
-                    if (!WriteElementsMultidimensional(buf, out directBuf, dimOffset + 1)) {
-                        return false;
-                    }
+
+            if (element == null || element is DBNull) {
+                if (_buf.WriteSpaceLeft < 4) {
+                    return false;
                 }
-                _dimOffsets[dimOffset] = 0;
+                _buf.WriteInt32(-1);
                 return true;
             }
 
-            // Write a single dimension
-            for (var i = _dimOffsets[dimOffset]; i < dimLength; i++)
+            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            if (asSimpleWriter != null)
             {
-                _dimOffsets[dimOffset] = i;
+                var elementLen = asSimpleWriter.Length;
+                if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
+                _buf.WriteInt32(elementLen);
+                asSimpleWriter.Write(element, _buf);
+                return true;
+            }
 
-                var element = _array.GetValue(_dimOffsets);
-
-                if (element == null || element == DBNull.Value)
-                {
-                    // Write length identifier -1 indicating NULL value.
-                    if (buf.WriteSpaceLeft < 4) { return false; }
-                    buf.WriteInt32(-1);
-                    continue;
-                }
-
-                var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-                if (asSimpleWriter != null)
-                {
-                    if (buf.WriteSpaceLeft < 4 + asSimpleWriter.Length) { return false; }
-                    buf.WriteInt32(asSimpleWriter.Length);
-                    asSimpleWriter.Write(element, buf);
-                }
-                else
-                {
-                    var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
-                    if (!_wroteElementLen) {
-                        buf.WriteInt32(asChunkingWriter.GetLength(element));
-                        asChunkingWriter.PrepareWrite(_buf, element);
-                        _wroteElementLen = true;
-                    }
-                    if (!asChunkingWriter.Write(out directBuf)) {
+            var asChunkedWriter = ElementHandler as IChunkingTypeWriter;
+            if (asChunkedWriter != null)
+            {
+                if (!_wroteElementLen) {
+                    if (_buf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _wroteElementLen = false;
+                    _buf.WriteInt32(asChunkedWriter.GetLength(element));
+                    asChunkedWriter.PrepareWrite(_buf, element);
+                    _wroteElementLen = true;
                 }
+                if (!asChunkedWriter.Write(out directBuf)) {
+                    return false;
+                }
+                _wroteElementLen = false;
+                return true;
             }
-            _dimOffsets[dimOffset] = 0;
-            return true;
+
+            throw PGUtil.ThrowIfReached();
         }
 
         enum WriteState
@@ -433,6 +371,33 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+
+        /// <summary>
+        /// When traversing a multidimensional array, moves to the next element.
+        /// Copied from Array.cs.
+        /// </summary>
+        /// <returns>
+        /// True if successfully moved to the next element, false otherwise.
+        /// </returns>
+        bool MoveNextInMultidimensional()
+        {
+            _indices[_dimensions - 1]++;
+            for (var dim = _dimensions - 1; dim >= 0; dim--)
+            {
+                if (_indices[dim] <= _array.GetUpperBound(dim)) {
+                    continue;
+                }
+
+                if (dim == 0) {
+                    return false;
+                }
+
+                for (var j = dim; j < _dimensions; j++)
+                    _indices[j] = _array.GetLowerBound(j);
+                _indices[dim - 1]++;
+            }
+            return true;
+        }
     }
 
     /// <remarks>
@@ -549,33 +514,14 @@ namespace Npgsql.TypeHandlers
             Contract.Requires(ElementHandler is IChunkingTypeWriter);
 
             var len = 0;
-            var dimLength = array.GetLength(dimOffset);
-            if (dimOffset < array.Rank - 1)
-            {
-                // Drill down recursively until we hit a single dimension array.
-                for (var i = 0; i < dimLength; i++)
-                {
-                    dimOffsets[dimOffset] = i;
-                    len += GetLengthMultidimensional(array, dimOffset + 1, dimOffsets);
-                }
-                return len;
-            }
-
             var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
-
-            // Write a single dimension
-            for (var i = 0; i < dimLength; i++)
+            foreach (var element in array)
             {
                 len += 4;
-                dimOffsets[dimOffset] = i;
 
-                var element = array.GetValue(dimOffsets);
-
-                if (element == null || element == DBNull.Value) {
-                    continue;
+                if (element != null && element != DBNull.Value) {
+                    len += asChunkingWriter.GetLength(element);
                 }
-
-                len += asChunkingWriter.GetLength(element);
             }
             return len;
         }
