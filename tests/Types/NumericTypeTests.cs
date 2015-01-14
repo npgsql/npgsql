@@ -25,16 +25,18 @@ namespace NpgsqlTests.Types
         [Test]
         public void Int16()
         {
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Smallint);
             var p2 = new NpgsqlParameter("p2", DbType.Int16);
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = (short)8 };
-            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = (byte)8  };
+            var p3 = new NpgsqlParameter("p3", DbType.Byte);
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = (short)8 };
+            var p5 = new NpgsqlParameter { ParameterName = "p5", Value = (byte)8  };
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
             cmd.Parameters.Add(p4);
-            p1.Value = p2.Value = (long)8;
+            cmd.Parameters.Add(p5);
+            p1.Value = p2.Value = p3.Value = (long)8;
             var reader = cmd.ExecuteReader();
             reader.Read();
 
@@ -219,19 +221,6 @@ namespace NpgsqlTests.Types
         }
 
         // Older tests
-
-        [Test]
-        public void ByteSupport()
-        {
-            using (var command = new NpgsqlCommand("INSERT INTO data(field_int2) VALUES (:a)", Conn))
-            {
-                command.Parameters.Add(new NpgsqlParameter("a", DbType.Byte));
-                command.Parameters[0].Value = 2;
-                var rowsAdded = command.ExecuteNonQuery();
-                Assert.AreEqual(1, rowsAdded);
-                command.Parameters.Clear();
-            }
-        }
 
         [Test]
         public void DoubleWithoutPrepared()
