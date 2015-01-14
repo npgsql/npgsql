@@ -120,8 +120,7 @@ namespace NpgsqlTests
 #endif
 
         [Test, Description("A normal insert command with one parameter")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedInsert(PrepareOrNot prepare)
+        public void ParameterizedInsert()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -134,8 +133,7 @@ namespace NpgsqlTests
                 dataParameter.ParameterName = "data";
 
                 command.Parameters.Add(dataParameter);
-                if (prepare == PrepareOrNot.Prepared)
-                    command.Prepare();
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -152,8 +150,7 @@ namespace NpgsqlTests
         #region Parameterized selects on various types
 
         [Test, Description("A single decimal roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectDecimalRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectDecimalRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -171,9 +168,7 @@ namespace NpgsqlTests
                 {
                     while (! metrics.TimesUp)
                     {
-                        if (prepare == PrepareOrNot.Prepared) {
-                            command.Prepare();
-                        }
+                        command.Prepare();
 
                         var data2 = (decimal)command.ExecuteScalar();
                         metrics.IncrementIterations();
@@ -183,8 +178,7 @@ namespace NpgsqlTests
         }
 
         [Test, Description("A large bytea roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectByteaRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectByteaRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -203,9 +197,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared) {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -218,25 +210,8 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("A large bytea roundtrip test, prepared, binary suppressed")]
-        public void ParameterizedSelectByteaRoundTripPrepared_SuppressBinary()
-        {
-            if (SuppressBinaryBackendEncoding != null)
-            {
-                using (SuppressBackendBinary())
-                {
-                    ParameterizedSelectByteaRoundTrip(PrepareOrNot.Prepared);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
-            }
-        }
-
         [Test, Description("A bigint roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectBigIntRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectBigIntRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -253,9 +228,7 @@ namespace NpgsqlTests
                     dataParameter.Value = 0xFFFFFFFFFFFFFFF;
                 }
 
-                if (prepare == PrepareOrNot.Prepared) {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -272,25 +245,8 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("A bigint roundtrip test, prepared, binary suppressed")]
-        public void ParameterizedSelectBigIntRoundTripPrepared_SuppressBinary()
-        {
-            if (SuppressBinaryBackendEncoding != null)
-            {
-                using (SuppressBackendBinary())
-                {
-                    ParameterizedSelectBigIntRoundTrip(PrepareOrNot.Prepared);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
-            }
-        }
-
         [Test, Description("A bigint array roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectBigIntArrayRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectBigIntArrayRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -311,9 +267,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared) {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -326,25 +280,8 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("A bigint array roundtrip test, prepared, binary suppressed")]
-        public void ParameterizedSelectBigIntArrayRoundTripPrepared_SuppressBinary()
-        {
-            if (SuppressBinaryBackendEncoding != null)
-            {
-                using (SuppressBackendBinary())
-                {
-                    ParameterizedSelectBigIntArrayRoundTrip(PrepareOrNot.Prepared);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
-            }
-        }
-
         [Test, Description("A text array roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectTextArrayRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectArrayRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -365,10 +302,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared)
-                {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -396,25 +330,8 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("A text array roundtrip test, prepared, binary suppressed")]
-        public void ParameterizedSelectTextArrayRoundTripPrepared_SuppressBinary()
-        {
-            if (SuppressBinaryBackendEncoding != null)
-            {
-                using (SuppressBackendBinary())
-                {
-                    ParameterizedSelectTextArrayRoundTrip(PrepareOrNot.Prepared);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
-            }
-        }
-
         [Test, Description("A bytea array roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectByteaArrayRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectByteaArrayRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -435,10 +352,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared)
-                {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -466,25 +380,8 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("A bytea array roundtrip test, prepared, binary suppressed")]
-        public void ParameterizedSelectByteaArrayRoundTripPrepared_SuppressBinary()
-        {
-            if (SuppressBinaryBackendEncoding != null)
-            {
-                using (SuppressBackendBinary())
-                {
-                    ParameterizedSelectByteaArrayRoundTrip(PrepareOrNot.Prepared);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Binary suppression not supported in this version of Npgsql; test not executed");
-            }
-        }
-
         [Test, Description("A decimal array roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectDecimalArrayRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectDecimalArrayRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -505,9 +402,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared) {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
@@ -521,8 +416,7 @@ namespace NpgsqlTests
         }
 
         [Test, Description("A money array roundtrip test")]
-        [TestCase(PrepareOrNot.NotPrepared), TestCase(PrepareOrNot.Prepared)]
-        public void ParameterizedSelectMoneyArrayRoundTrip(PrepareOrNot prepare)
+        public void ParameterizedSelectMoneyArrayRoundTrip()
         {
             using (var command = Conn.CreateCommand())
             {
@@ -543,10 +437,7 @@ namespace NpgsqlTests
                 command.Parameters.Add(dataParameter);
                 dataParameter.Value = data;
 
-                if (prepare == PrepareOrNot.Prepared)
-                {
-                    command.Prepare();
-                }
+                command.Prepare();
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {

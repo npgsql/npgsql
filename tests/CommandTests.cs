@@ -50,27 +50,6 @@ namespace NpgsqlTests
     {
         public CommandTests(string backendVersion) : base(backendVersion) { }
 
-        // Make sure SuppressBinaryBackendEncoding is initialized.
-        // Try to make this test run first by prepending '__' for sorting.  This test should run before any other tests
-        // that use binary backend suppression.
-        [Test]
-        public void __SuppressBinaryBackendEncodingInitTest()
-        {
-            if (SuppressBinaryBackendEncoding == null)
-            {
-                try
-                {
-                    InitBinaryBackendSuppression();
-
-                    throw new Exception("Unknown error occurred previously");
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("TestBase.SuppressBinaryBackendEncoding is not bound via reflection to NpgsqlTypes.NpgsqlTypesHelper.SuppressBinaryBackendEncoding", e);
-                }
-            }
-        }
-
         [Test]
         public void ParametersGetName()
         {
@@ -307,15 +286,6 @@ namespace NpgsqlTests
             FunctionCallWithParametersPrepareReturnSingleValueInternal();
         }
 
-        [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValue_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                FunctionCallWithParametersPrepareReturnSingleValueInternal();
-            }
-        }
-
         private void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
@@ -338,15 +308,6 @@ namespace NpgsqlTests
             FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal();
         }
 
-        [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbTypeInternal();
-            }
-        }
-
         private void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal()
         {
             ExecuteNonQuery(@"INSERT INTO data (field_int4) VALUES (4)");
@@ -366,15 +327,6 @@ namespace NpgsqlTests
         public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2()
         {
             FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal();
-        }
-
-        [Test]
-        public void FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                FunctionCallWithParametersPrepareReturnSingleValueNpgsqlDbType2Internal();
-            }
         }
 
         [Test]

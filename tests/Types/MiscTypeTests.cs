@@ -345,15 +345,6 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void TestBoolParameterPrepared_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                TestBoolParameter_Internal(true);
-            }
-        }
-
-        [Test]
         [Ignore]
         public void TestBoolParameterPrepared2()
         {
@@ -411,7 +402,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void TestOidVector()
+        public void OidVector()
         {
             using (var cmd = Conn.CreateCommand())
             {

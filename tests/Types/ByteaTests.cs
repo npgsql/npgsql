@@ -234,20 +234,6 @@ namespace NpgsqlTests.Types
         [Test]
         public void Prepared()
         {
-            PreparedInternal();
-        }
-
-        [Test]
-        public void Prepared_SuppressBinary()
-        {
-            using (this.SuppressBackendBinary())
-            {
-                PreparedInternal();
-            }
-        }
-
-        private void PreparedInternal()
-        {
             using (var cmd = new NpgsqlCommand("select :p1", Conn))
             {
                 var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
@@ -276,7 +262,8 @@ namespace NpgsqlTests.Types
             Assert.AreEqual(buff, result);
         }
 
-        private void LargeWithPrepare_Internal()
+        [Test]
+        public void LargeWithPrepare()
         {
             var buff = new byte[100000];
             new Random().NextBytes(buff);
@@ -286,21 +273,6 @@ namespace NpgsqlTests.Types
             command.Prepare();
             var result = (Byte[])command.ExecuteScalar();
             Assert.AreEqual(buff, result);
-        }
-
-        [Test]
-        public void LargeWithPrepare()
-        {
-            LargeWithPrepare_Internal();
-        }
-
-        [Test]
-        public void ByteaLargeWithPrepareSupport_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                LargeWithPrepare_Internal();
-            }
         }
 
         [Test]
@@ -383,7 +355,8 @@ namespace NpgsqlTests.Types
             Assert.AreEqual(-1, result);
         }
 
-        private void ParameterWithPrepare_Internal()
+        [Test]
+        public void ParameterWithPrepare()
         {
             var command = new NpgsqlCommand("select field_bytea from data where field_bytea = :bytesData", Conn);
 
@@ -393,21 +366,6 @@ namespace NpgsqlTests.Types
             command.Prepare();
             Object result = command.ExecuteNonQuery();
             Assert.AreEqual(-1, result);
-        }
-
-        [Test]
-        public void ParameterWithPrepare()
-        {
-            ParameterWithPrepare_Internal();
-        }
-
-        [Test]
-        public void ParameterWithPrepare_SuppressBinary()
-        {
-            using (SuppressBackendBinary())
-            {
-                ParameterWithPrepare_Internal();
-            }
         }
 
         #region Utilities
