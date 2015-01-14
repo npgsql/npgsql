@@ -417,9 +417,12 @@ namespace NpgsqlTests
                 Assert.AreEqual(val3, oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
                 Assert.AreEqual(val3, oneRow.Select(p => val3).First());
 
-                var val4 = new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-                Assert.AreEqual(val4, oneRow.Select(p => new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).First());
+                var val4 = new Guid("1234567890abcdef1122334455667788");
+                Assert.AreEqual(val4, oneRow.Select(p => new Guid("1234567890abcdef1122334455667788")).First());
                 Assert.AreEqual(val4, oneRow.Select(p => val4).First());
+
+                // String
+                Assert.AreEqual(@"a'b\c", oneRow.Select(p => @"a'b\c").First());
             }
         }
 

@@ -112,8 +112,6 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-#if NEEDS_PORTING
-            NpgsqlNativeTypeInfo typeInfo;
             var ni = CultureInfo.InvariantCulture.NumberFormat;
             object value = _value;
             switch (_primitiveType)
@@ -217,18 +215,11 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append('\'').Append((Guid)_value).Append('\'');
                     sqlText.Append("::uuid");
                     break;
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(NpgsqlProviderManifest.GetDbType(_primitiveType), out typeInfo);
-                    // Escape syntax is needed for strings with escape values.
-                    // We don't check if there are escaped strings for performance reasons.
-                    // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
-                    // NativeToBackendTypeConverterOptions.Default should provide the correct
-                    // formatting rules for any backend >= 8.0.
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append("E'").Append(((string)_value).Replace(@"\", @"\\").Replace("'", @"\'")).Append("'");
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);
@@ -238,7 +229,6 @@ namespace Npgsql.SqlGenerators
                     throw new NotSupportedException(string.Format("NotSupported: {0} {1}", _primitiveType, _value));
             }
             base.WriteSql(sqlText);
-#endif
         }
     }
 
