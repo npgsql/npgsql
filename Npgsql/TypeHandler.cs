@@ -128,7 +128,6 @@ namespace Npgsql
 
         internal virtual object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            // TODO: These methods aren't async-compatible
             return ReadValueAsObject(row, fieldDescription);
         }
 

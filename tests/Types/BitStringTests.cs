@@ -19,7 +19,7 @@ namespace NpgsqlTests.Types
     public class BitStringTests : TestBase
     {
         [Test]
-        public void Read(
+        public void Roundtrip(
             [Values(
                 "1011011000101111010110101101011011",  // 34 bits
                 "10110110",
@@ -57,7 +57,6 @@ namespace NpgsqlTests.Types
         [Test]
         public void Long()
         {
-            throw new NotImplementedException("BitStringHandler doesn't supposed chunked reading yet");
             var bitLen = (Conn.BufferSize + 10) * 8;
             var expected = new BitArray(bitLen);
             for (var i = 0; i < bitLen; i++)
@@ -74,9 +73,9 @@ namespace NpgsqlTests.Types
         public void SingleBit()
         {
             const bool expected = true;
-            var cmd = new NpgsqlCommand("SELECT @p, B'01'::BIT(2)", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p::BIT(1), B'01'::BIT(2)", Conn);
             var p = new NpgsqlParameter("p", NpgsqlDbType.Bit);
-            // TODO: type inference?
+            // Type inference? But bool is mapped to PG bool
             cmd.Parameters.Add(p);
             p.Value = expected;
             var reader = cmd.ExecuteReader();
@@ -85,7 +84,7 @@ namespace NpgsqlTests.Types
             Assert.That(reader.GetBoolean(0), Is.EqualTo(true));
             Assert.That(reader.GetValue(0), Is.EqualTo(true));
             Assert.That(reader.GetFieldValue<bool>(0), Is.EqualTo(true));
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof (bool)));
 
             // BIT(N) shouldn't be accessible as bool
             Assert.That(() => reader.GetBoolean(1), Throws.Exception.TypeOf<InvalidCastException>());

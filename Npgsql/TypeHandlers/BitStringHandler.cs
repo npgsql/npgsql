@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers
     /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-bit.html
+    /// http://www.postgresql.org/docs/9.4/static/datatype-bit.html
     /// </remarks>
     [TypeMapping("varbit", NpgsqlDbType.Varbit, typeof(BitArray))]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
@@ -25,6 +25,12 @@ namespace Npgsql.TypeHandlers
         IChunkingTypeReader<BitArray>, IChunkingTypeWriter,
         ISimpleTypeReader<bool>
     {
+        NpgsqlBuffer _buf;
+        int _len;
+        bool _bool;
+        BitArray _bitArray;
+        int _pos;
+
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
             return fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof (bool) : typeof(BitArray);
@@ -37,9 +43,12 @@ namespace Npgsql.TypeHandlers
 
         internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return fieldDescription.TypeModifier == 1
-                ? (object)((ISimpleTypeReader<bool>)this).Read(row.Buffer, fieldDescription, row.ColumnLen)
-                : ((ISimpleTypeReader<BitArray>)this).Read(row.Buffer, fieldDescription, row.ColumnLen);
+            var result = fieldDescription.TypeModifier == 1
+                ? (object)((ISimpleTypeReader<bool>) this).Read(row.Buffer, fieldDescription, row.ColumnLen)
+                : Read<BitArray>(row, fieldDescription, row.ColumnLen);
+
+            row.PosInColumn += row.ColumnLen;
+            return result;
         }
 
         internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
@@ -47,66 +56,85 @@ namespace Npgsql.TypeHandlers
             return ReadValueAsObject(row, fieldDescription);
         }
 
+        #region Read
+
         bool ISimpleTypeReader<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.TypeModifier != 1) {
                 throw new InvalidCastException(String.Format("Can't convert a BIT({0}) type to bool, only BIT(1)", fieldDescription.TypeModifier));
             }
 
-            buf.Ensure(5);
             var bitLen = buf.ReadInt32();
             Contract.Assume(bitLen == 1);
             var b = buf.ReadByte();
             return (b & 128) != 0;
         }
-        /*
-        BitArray ISimpleTypeReader<BitArray>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            switch (fieldDescription.FormatCode)
-            {
-                case FormatCode.Text:
-                    return ReadText(buf, fieldDescription, len);
-                case FormatCode.Binary:
-                    return ReadBinary(buf, fieldDescription, len);
-                default:
-                    throw PGUtil.ThrowIfReached("Unknown format code: " + fieldDescription.FormatCode);
-            }
-        }
-         */
 
-        #region Binary
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            _buf = buf;
+            _pos = -1;
+            _len = len - 4;   // Subtract leading bit length field
+        }
 
         /// <summary>
         /// Reads a BitArray from a binary PostgreSQL value. First 32-bit big endian length,
         /// then the data in big-endian. Zero-padded low bits in the end if length is not multiple of 8.
         /// </summary>
-        BitArray ReadBinary(NpgsqlBuffer buf, FieldDescription fieldDescription, int numBytes)
+        public bool Read(out BitArray result)
         {
-            var numBits = buf.ReadInt32();
-            numBytes -= 4;
-            var result = new BitArray(numBits);
-            var bitNo = 0;
-            for (var byteNo = 0; byteNo < numBytes - 1; byteNo++)
+            if (_pos == -1)
             {
-                var chunk = buf.ReadByte();
-                for (var i = 7; i >= 0; i--, bitNo++)
+                if (_buf.ReadBytesLeft < 4)
                 {
-                    result[bitNo] = (chunk & (1 << i)) != 0;
+                    result = null;
+                    return false;
+                }
+                var numBits = _buf.ReadInt32();
+                _bitArray = new BitArray(numBits);
+                _pos = 0;
+            }
+
+            var bitNo = _pos * 8;
+            var maxBytes = _pos + Math.Min(_len - _pos - 1, _buf.ReadBytesLeft);
+            for (; _pos < maxBytes; _pos++)
+            {
+                var chunk = _buf.ReadByte();
+                _bitArray[bitNo++] = (chunk & (1 << 7)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 6)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 5)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 4)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 3)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 2)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 1)) != 0;
+                _bitArray[bitNo++] = (chunk & (1 << 0)) != 0;
+            }
+
+            if (_pos < _len - 1)
+            {
+                result = null;
+                return false;
+            }
+
+            if (bitNo < _bitArray.Length)
+            {
+                var remainder = _bitArray.Length - bitNo;
+                var lastChunk = _buf.ReadByte();
+                for (var i = 7; i >= 8 - remainder; i--)
+                {
+                    _bitArray[bitNo++] = (lastChunk & (1 << i)) != 0;
                 }
             }
-            if (bitNo < numBits)
-            {
-                var remainder = numBits - bitNo;
-                var lastChunk = buf.ReadByte();
-                for (var i = 7; i >= 8 - remainder; i--, bitNo++)
-                {
-                    result[bitNo] = (lastChunk & (1 << i)) != 0;
-                }
-            }
-            return result;
+
+            result = _bitArray;
+            return true;
         }
 
-        internal int GetLength(object value)
+        #endregion
+
+        #region Write
+
+        int IChunkingTypeWriter.GetLength(object value)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -124,58 +152,60 @@ namespace Npgsql.TypeHandlers
 
         public void PrepareWrite(NpgsqlBuffer buf, object value)
         {
-            throw new NotImplementedException();
+            _buf = buf;
+            _pos = -1;
+
+            var bitArray = value as BitArray;
+            if (bitArray != null)
+            {
+                _bitArray = (BitArray)value;
+            }
+            else if (value is bool)
+            {
+                _bool = (bool) value;
+            }
+            else throw new InvalidCastException();
         }
 
         public bool Write(out byte[] directBuf)
         {
-            throw new NotImplementedException();
-        }
+            directBuf = null;
 
-        object _value;
-        int _pos;
-
-        internal void PrepareChunkedWrite(object value)
-        {
-            _value = value;
-            _pos = -1;
-        }
-
-        internal bool WriteBinaryChunk(NpgsqlBuffer buf)
-        {
-            if (_value is bool)
-            {
-                if (buf.WriteSpaceLeft < 5)
-                    return false;
-                buf.WriteInt32(1);
-                buf.WriteByte((bool)_value ? (byte)0x80 : (byte)0);
-                return true;
-            }
-
-            var bitArray = _value as BitArray;
-            if (bitArray != null)
+            if (_bitArray != null)
             {
                 if (_pos < 0)
                 {
                     // Initial bitlength byte
-                    if (buf.WriteSpaceLeft < 4)
+                    if (_buf.WriteSpaceLeft < 4)
                         return false;
-                    buf.WriteInt32(bitArray.Length);
+                    _buf.WriteInt32(_bitArray.Length);
                     _pos = 0;
                 }
-                var byteLen = (bitArray.Length + 7) / 8;
-                var endPos = _pos + Math.Min(byteLen - _pos, buf.WriteSpaceLeft);
+                var byteLen = (_bitArray.Length + 7) / 8;
+                var endPos = _pos + Math.Min(byteLen - _pos, _buf.WriteSpaceLeft);
                 for (; _pos < endPos; _pos++)
                 {
                     var bitPos = _pos * 8;
                     var b = 0;
-                    for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
-                        b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i -1);
-                    buf.WriteByte((byte)b);
+                    for (var i = 0; i < Math.Min(8, _bitArray.Length - bitPos); i++)
+                        b += (_bitArray[bitPos + i] ? 1 : 0) << (8 - i -1);
+                    _buf.WriteByte((byte)b);
                 }
 
-                return _pos == byteLen;
+                if (_pos < byteLen) { return false; }
+
+                _buf = null;
+                _bitArray = null;
+                return true;
             }
+
+            // Bool
+            if (_buf.WriteSpaceLeft < 5)
+                return false;
+            _buf.WriteInt32(1);
+            _buf.WriteByte(_bool ? (byte)0x80 : (byte)0);
+            return true;
+
             /*
             if (value is string)
             {
@@ -209,50 +239,9 @@ namespace Npgsql.TypeHandlers
                     buf.EnsuredWriteByte((byte)lastByte);
             }
             */
-            throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
         #endregion
-
-        #region Text
-
-        BitArray ReadText(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            var result = new BitArray(len);
-            for (var i = 0; i < len; i++)
-            {
-                var b = buf.ReadByte();
-                switch (b)
-                {
-                    case (byte)'0':
-                        result[i] = false;
-                        continue;
-                    case (byte)'1':
-                        result[i] = true;
-                        continue;
-                    default:
-                        throw new Exception("Unexpected character in bitstring: " + b);
-                }
-            }
-            return result;
-        }
-
-        #endregion
-
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool Read(out BitArray result)
-        {
-            throw new NotImplementedException();
-        }
-
-        int IChunkingTypeWriter.GetLength(object value)
-        {
-            return GetLength(value);
-        }
     }
 
     /// <summary>
