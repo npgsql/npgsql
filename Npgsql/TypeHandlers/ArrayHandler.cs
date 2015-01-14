@@ -463,67 +463,30 @@ namespace Npgsql.TypeHandlers
 
         public int GetLength(object value)
         {
-            var arr = (Array)value;
+            var array = (Array)value;
             _hasNulls = false;
 
-            var headerLen =
+            var len =
                 4 +            // ndim
                 4 +            // has_nulls
                 4 +            // element_oid
-                arr.Rank * 8;  // dim (4) + lBound (4)
+                array.Rank * 8;  // dim (4) + lBound (4)
 
+            var simpleArray = array as TElement[];
+            len += simpleArray != null
+                ? simpleArray.Sum(element => 4 + GetSingleElementLength(element))
+                : array.Cast<object>().Sum(element => 4 + GetSingleElementLength(element));
+
+            return len;
+        }
+
+        int GetSingleElementLength(object element)
+        {
+            if (element == null || element is DBNull) {
+                return 0;
+            }
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-            if (asSimpleWriter != null)
-            {
-                return headerLen + arr.Length * (4 + asSimpleWriter.Length);
-            }
-
-            if (arr.Rank == 1)
-            {
-                return headerLen + GetLengthOneDimensional((TElement[]) arr);
-            }
-            else
-            {
-                var dimOffsets = new int[arr.Rank];
-                return headerLen + GetLengthMultidimensional(arr, 0, dimOffsets);
-            }
-        }
-
-        int GetLengthOneDimensional(TElement[] array)
-        {
-            Contract.Requires(ElementHandler is IChunkingTypeWriter);
-
-            var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
-
-            var len = 0;
-            foreach (var element in array)
-            {
-                len += 4;
-
-                if (element == null || element is DBNull) {
-                    continue;
-                }
-
-                len += asChunkingWriter.GetLength(element);
-            }
-            return len;
-        }
-
-        int GetLengthMultidimensional(Array array, int dimOffset, int[] dimOffsets)
-        {
-            Contract.Requires(ElementHandler is IChunkingTypeWriter);
-
-            var len = 0;
-            var asChunkingWriter = (IChunkingTypeWriter)ElementHandler;
-            foreach (var element in array)
-            {
-                len += 4;
-
-                if (element != null && element != DBNull.Value) {
-                    len += asChunkingWriter.GetLength(element);
-                }
-            }
-            return len;
+            return asSimpleWriter != null ? asSimpleWriter.Length : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
         }
 
         #endregion
