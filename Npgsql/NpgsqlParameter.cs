@@ -552,7 +552,7 @@ namespace Npgsql
                     var asSimpleWriter = Handler as ISimpleTypeWriter;
                     if (asSimpleWriter != null)
                     {
-                        BoundSize = ((ISimpleTypeWriter)Handler).Length;
+                        BoundSize = ((ISimpleTypeWriter)Handler).GetLength(Value);
                     }
                     throw PGUtil.ThrowIfReached(String.Format("Handler {0} doesn't implement a known writer interface", Handler));
                 }

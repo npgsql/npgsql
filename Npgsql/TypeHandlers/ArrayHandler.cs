@@ -335,7 +335,7 @@ namespace Npgsql.TypeHandlers
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
             if (asSimpleWriter != null)
             {
-                var elementLen = asSimpleWriter.Length;
+                var elementLen = asSimpleWriter.GetLength(element);
                 if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
                 _buf.WriteInt32(elementLen);
                 asSimpleWriter.Write(element, _buf);
@@ -486,7 +486,7 @@ namespace Npgsql.TypeHandlers
                 return 0;
             }
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-            return asSimpleWriter != null ? asSimpleWriter.Length : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
+            return asSimpleWriter != null ? asSimpleWriter.GetLength(element) : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
         }
 
         #endregion

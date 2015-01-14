@@ -25,7 +25,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlInterval(month, day, ticks * 10);
         }
 
-        public int Length { get { return 16; } }
+        public int GetLength(object value) { return 16; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

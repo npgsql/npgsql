@@ -14,31 +14,10 @@ namespace Npgsql
 
     interface ITypeReader<T> {}
 
-    [ContractClass(typeof(ISimpleTypeWriterContracts))]
     interface ISimpleTypeWriter
     {
-        int Length { get; }
+        int GetLength(object value);
         void Write(object value, NpgsqlBuffer buf);
-    }
-
-    // ReSharper disable once InconsistentNaming
-    [ContractClassFor(typeof(ISimpleTypeWriter))]
-    class ISimpleTypeWriterContracts : ISimpleTypeWriter
-    {
-        public int Length
-        {
-            get
-            {
-                Contract.Ensures(Contract.Result<int>() <= NpgsqlBuffer.MinimumBufferSize);
-                return default(int);
-            }
-        }
-
-        public void Write(object value, NpgsqlBuffer buf)
-        {
-            Contract.Requires(value != null);
-            Contract.Requires(buf != null);
-        }
     }
 
     /// <summary>

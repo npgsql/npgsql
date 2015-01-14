@@ -23,7 +23,7 @@ namespace Npgsql.TypeHandlers
             return buf.ReadInt64() / 100m;
         }
 
-        public int Length { get { return 8; } }
+        public int GetLength(object value) { return 8; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

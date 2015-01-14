@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTime(buf.ReadInt64() * 10);
         }
 
-        public int Length { get { return 8; } }
+        public int GetLength(object value) { return 8; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

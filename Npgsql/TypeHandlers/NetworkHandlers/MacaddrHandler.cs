@@ -44,7 +44,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return val;
         }
 
-        public int Length { get { return 6; } }
+        public int GetLength(object value) { return 6; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

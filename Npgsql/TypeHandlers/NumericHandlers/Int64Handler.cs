@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public int Length { get { return 8; } }
+        public int GetLength(object value) { return 8; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
