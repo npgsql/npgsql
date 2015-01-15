@@ -87,6 +87,9 @@ namespace NpgsqlTypes
         Xid,
         Cid,
         Cidr,
+
+        TsVector,
+        TsQuery,
     }
 }
 

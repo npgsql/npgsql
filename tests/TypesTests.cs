@@ -616,6 +616,30 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TsVector()
+        {
+            NpgsqlTsVector vec;
+            
+            vec = NpgsqlTsVector.Parse("a");
+            Assert.AreEqual("'a'", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse("a ");
+            Assert.AreEqual("'a'", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse("a:1A");
+            Assert.AreEqual("'a':1A", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(@"\abc\def:1a ");
+            Assert.AreEqual("'abcdef':1A", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(@"abc:3A 'abc' abc:4B 'hello''yo' 'meh\'\\':5");
+            Assert.AreEqual(@"'abc':3A,4B 'hello''yo' 'meh''\\':5", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(" a:12345C  a:24D a:25B b c d 1 2 a:25A,26B,27,28");
+            Assert.AreEqual("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'", vec.ToString());
+        }
+
+        [Test]
         public void Bug1011018()
         {
             var p = new NpgsqlParameter();
