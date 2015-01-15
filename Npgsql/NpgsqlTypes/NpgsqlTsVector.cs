@@ -243,7 +243,6 @@ namespace NpgsqlTypes
             {
                 if (index < 0 || index >= _lexemes.Count)
                     throw new ArgumentOutOfRangeException("index");
-                Contract.EndContractBlock();
 
                 return _lexemes[index];
             }
@@ -378,7 +377,6 @@ namespace NpgsqlTypes
                 {
                     if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
                         throw new ArgumentOutOfRangeException("index");
-                    Contract.EndContractBlock();
 
                     return _wordEntryPositions[index];
                 }
@@ -386,7 +384,6 @@ namespace NpgsqlTypes
                 {
                     if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
                         throw new ArgumentOutOfRangeException("index");
-                    Contract.EndContractBlock();
 
                     _wordEntryPositions[index] = value;
                 }
