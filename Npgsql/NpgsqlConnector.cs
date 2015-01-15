@@ -676,39 +676,48 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        internal void SendMessage(FrontendMessage msg)
+        void SendMessage(FrontendMessage msg)
         {
-            _log.DebugFormat("Sending: {0}", msg);
-
-            var asSimple = msg as SimpleFrontendMessage;
-            if (asSimple != null)
+            try
             {
-                if (asSimple.Length > Buffer.WriteSpaceLeft)
-                {
-                    Buffer.Flush();
-                }
-                Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
-                asSimple.Write(Buffer);
-                return;
-            }
+                _log.DebugFormat("Sending: {0}", msg);
 
-            var asComplex = msg as ChunkingFrontendMessage;
-            if (asComplex != null)
-            {
-                byte[] directBuf;
-                while (!asComplex.Write(Buffer, out directBuf))
+                var asSimple = msg as SimpleFrontendMessage;
+                if (asSimple != null)
                 {
-                    Buffer.Flush();
-                    // The following is an optimization hack for writing large byte arrays without passing
-                    // through our buffer
-                    if (directBuf != null) {
-                        Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                    if (asSimple.Length > Buffer.WriteSpaceLeft)
+                    {
+                        Buffer.Flush();
                     }
+                    Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
+                    asSimple.Write(Buffer);
+                    return;
                 }
-                return;
-            }
 
-            throw PGUtil.ThrowIfReached();            
+                var asComplex = msg as ChunkingFrontendMessage;
+                if (asComplex != null)
+                {
+                    byte[] directBuf;
+                    while (!asComplex.Write(Buffer, out directBuf))
+                    {
+                        Buffer.Flush();
+                        // The following is an optimization hack for writing large byte arrays without passing
+                        // through our buffer
+                        if (directBuf != null)
+                        {
+                            Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                        }
+                    }
+                    return;
+                }
+
+                throw PGUtil.ThrowIfReached();
+            }
+            catch
+            {
+                State = ConnectorState.Broken;
+                throw;
+            }
         }
 
 
@@ -751,6 +760,19 @@ namespace Npgsql
         #region Backend message processing
 
         internal BackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        {
+            try
+            {
+                return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
+            }
+            catch
+            {
+                State = ConnectorState.Broken;
+                throw;
+            }
+        }
+
+        BackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             NpgsqlError error = null;
 
