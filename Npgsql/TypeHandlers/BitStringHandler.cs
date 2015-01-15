@@ -8,6 +8,7 @@ using System.Text;
 using Npgsql.Messages;
 using NpgsqlTypes;
 using System.Data;
+using System.Runtime.Remoting.Messaging;
 
 namespace Npgsql.TypeHandlers
 {
@@ -27,8 +28,8 @@ namespace Npgsql.TypeHandlers
     {
         NpgsqlBuffer _buf;
         int _len;
-        bool _bool;
         BitArray _bitArray;
+        object _value;
         int _pos;
 
         internal override Type GetFieldType(FieldDescription fieldDescription)
@@ -145,7 +146,11 @@ namespace Npgsql.TypeHandlers
 
             var asString = value as string;
             if (asString != null)
-                return 4 + (asString.Length + 7) / 8;
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(asString, "^[01]*$"))
+                    throw new InvalidCastException("Cannot interpret as ASCII BitString: " + asString);
+                return 4 + (asString.Length + 7)/8;
+            }
 
             throw new InvalidCastException("Expected BitArray, bool or string");
         }
@@ -155,90 +160,110 @@ namespace Npgsql.TypeHandlers
             _buf = buf;
             _pos = -1;
 
-            var bitArray = value as BitArray;
-            if (bitArray != null)
-            {
-                _bitArray = (BitArray)value;
-            }
-            else if (value is bool)
-            {
-                _bool = (bool) value;
-            }
-            else throw new InvalidCastException();
+            _value = value;
         }
 
         public bool Write(out byte[] directBuf)
         {
             directBuf = null;
-
-            if (_bitArray != null)
-            {
-                if (_pos < 0)
-                {
-                    // Initial bitlength byte
-                    if (_buf.WriteSpaceLeft < 4)
-                        return false;
-                    _buf.WriteInt32(_bitArray.Length);
-                    _pos = 0;
-                }
-                var byteLen = (_bitArray.Length + 7) / 8;
-                var endPos = _pos + Math.Min(byteLen - _pos, _buf.WriteSpaceLeft);
-                for (; _pos < endPos; _pos++)
-                {
-                    var bitPos = _pos * 8;
-                    var b = 0;
-                    for (var i = 0; i < Math.Min(8, _bitArray.Length - bitPos); i++)
-                        b += (_bitArray[bitPos + i] ? 1 : 0) << (8 - i -1);
-                    _buf.WriteByte((byte)b);
-                }
-
-                if (_pos < byteLen) { return false; }
-
-                _buf = null;
-                _bitArray = null;
-                return true;
+            var bitArray = _value as BitArray;
+            if (bitArray != null) {
+                return WriteBitArray(bitArray);
             }
 
-            // Bool
+            if (_value is bool) {
+                return WriteBool((bool)_value);
+            }
+
+            var str = _value as string;
+            if (str != null) {
+                return WriteString(str);
+            }
+
+            throw PGUtil.ThrowIfReached(String.Format("Bad type {0} some made its way into BitStringHandler.Write()", _value.GetType()));
+        }
+
+        bool WriteBitArray(BitArray bitArray)
+        {
+            if (_pos < 0)
+            {
+                // Initial bitlength byte
+                if (_buf.WriteSpaceLeft < 4) { return false; }
+                _buf.WriteInt32(bitArray.Length);
+                _pos = 0;
+            }
+            var byteLen = (bitArray.Length + 7) / 8;
+            var endPos = _pos + Math.Min(byteLen - _pos, _buf.WriteSpaceLeft);
+            for (; _pos < endPos; _pos++) {
+                var bitPos = _pos * 8;
+                var b = 0;
+                for (var i = 0; i < Math.Min(8, bitArray.Length - bitPos); i++)
+                    b += (bitArray[bitPos + i] ? 1 : 0) << (8 - i - 1);
+                _buf.WriteByte((byte)b);
+            }
+
+            if (_pos < byteLen) { return false; }
+
+            _buf = null;
+            _value = null;
+            return true;
+        }
+
+        bool WriteBool(bool b)
+        {
             if (_buf.WriteSpaceLeft < 5)
                 return false;
             _buf.WriteInt32(1);
-            _buf.WriteByte(_bool ? (byte)0x80 : (byte)0);
-            return true;
+            _buf.WriteByte(b ? (byte)0x80 : (byte)0);
+            _buf = null;
+            _value = null;
+            return true;            
+        }
 
-            /*
-            if (value is string)
+        bool WriteString(string str)
+        {
+            if (_pos < 0)
             {
-                string str = (string)value;
-                if (!System.Text.RegularExpressions.Regex.IsMatch(str, "^[01]*$"))
-                    throw new InvalidCastException("Cannot interpret as bitstring: " + str);
-
-                buf.EnsuredWriteInt32((((string)value).Length + 7) / 8);
-                for (var i = 0; i < str.Length / 8; i += 8)
-                {
-                    var b = 0;
-                    b += (str[i + 0] - '0') << 7;
-                    b += (str[i + 1] - '0') << 6;
-                    b += (str[i + 2] - '0') << 5;
-                    b += (str[i + 3] - '0') << 4;
-                    b += (str[i + 4] - '0') << 3;
-                    b += (str[i + 5] - '0') << 2;
-                    b += (str[i + 6] - '0') << 1;
-                    b += (str[i + 7] - '0');
-                    buf.EnsuredWriteByte((byte)b);
-                }
-                int lastByte = 0;
-                int mask = 0x80;
-                for (int i = str.Length & ~7; i < str.Length; i++)
-                {
-                    if (str[i] == '1')
-                        lastByte |= mask;
-                    mask >>= 1;
-                }
-                if (mask != 0x80)
-                    buf.EnsuredWriteByte((byte)lastByte);
+                // Initial bitlength byte
+                if (_buf.WriteSpaceLeft < 4) { return false; }
+                _buf.WriteInt32(str.Length);
+                _pos = 0;
             }
-            */
+
+            var byteLen = (str.Length + 7) / 8;
+            var bytePos = (_pos + 7) / 8;
+            var endBytePos = bytePos + Math.Min(byteLen - bytePos - 1, _buf.WriteSpaceLeft);
+
+            for (; bytePos < endBytePos; bytePos++)
+            {
+                var b = 0;
+                b += (str[_pos++] - '0') << 7;
+                b += (str[_pos++] - '0') << 6;
+                b += (str[_pos++] - '0') << 5;
+                b += (str[_pos++] - '0') << 4;
+                b += (str[_pos++] - '0') << 3;
+                b += (str[_pos++] - '0') << 2;
+                b += (str[_pos++] - '0') << 1;
+                b += (str[_pos++] - '0');
+                _buf.WriteByte((byte)b);
+            }
+
+            if (bytePos < byteLen - 1) { return false; }
+
+            if (_pos < str.Length)
+            {
+                var remainder = str.Length - _pos;
+                var lastChunk = 0;
+                for (var i = 7; i >= 8 - remainder; i--)
+                {
+                    lastChunk += (str[_pos++] - '0') << i;
+                }
+                _buf.WriteByte((byte)lastChunk);
+            }
+
+            _buf = null;
+            _value = null;
+            return true;
         }
 
         #endregion
@@ -249,8 +274,12 @@ namespace Npgsql.TypeHandlers
     /// Differs from the standard array handlers in that it returns arrays of bool for BIT(1) and arrays
     /// of BitArray otherwise (just like the scalar BitStringHandler does).
     /// </summary>
-    internal class BitStringArrayHandler : ArrayHandler
+    internal class BitStringArrayHandler : ArrayHandler,
+        IChunkingTypeReader<Array>, IChunkingTypeWriter
     {
+        FieldDescription _fieldDescription;
+        object _value;
+
         internal override Type GetElementFieldType(FieldDescription fieldDescription)
         {
             return fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
@@ -264,16 +293,51 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(BitStringHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) {}
 
-        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return fieldDescription.TypeModifier == 1
-                ? (object)Read<bool>(row, fieldDescription, row.ColumnLen)
-                :         Read<BitArray>(row, fieldDescription, row.ColumnLen);
+            base.PrepareRead(buf, fieldDescription, len);
+            _fieldDescription = fieldDescription;
         }
 
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        public bool Read(out Array result)
         {
-            return ReadValueAsObject(row, fieldDescription);
+            return _fieldDescription.TypeModifier == 1
+                ? Read<bool>(out result)
+                : Read<BitArray>(out result);
+        }
+
+        public override void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            base.PrepareWrite(buf, value);
+            _value = value;
+        }
+
+        public bool Write(out byte[] directBuf)
+        {
+            if (_value is BitArray[]) {
+                return base.Write<BitArray>(out directBuf);
+            }
+            if (_value is bool[]) {
+                return base.Write<bool>(out directBuf);
+            }
+            if (_value is string[]) {
+                return base.Write<string>(out directBuf);
+            }
+            throw PGUtil.ThrowIfReached(String.Format("Can't write type {0} as an bitstring array", _value.GetType()));
+        }
+
+        public int GetLength(object value)
+        {
+            if (value is BitArray[]) {
+                return base.GetLength<BitArray>(value);
+            }
+            if (value is bool[]) {
+                return base.GetLength<bool>(value);
+            }
+            if (value is string[]) {
+                return base.GetLength<string>(value);
+            }
+            throw new InvalidCastException(String.Format("Can't write type {0} as an bitstring array", value.GetType()));
         }
     }
 }

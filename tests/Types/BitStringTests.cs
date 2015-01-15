@@ -25,20 +25,22 @@ namespace NpgsqlTests.Types
                 "10110110",
                 ""
             )]
-            String bits
+            string bits
         )
         {
             var expected = new BitArray(bits.Length);
             for (var i = 0; i < bits.Length; i++)
                 expected[i] = bits[i] == '1';
 
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", Conn);
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Varbit);
             var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Bit);
-            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            var p3 = new NpgsqlParameter("p3", NpgsqlDbType.Varbit) { Value = bits };
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expected };
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
             p1.Value = p2.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
@@ -58,15 +60,10 @@ namespace NpgsqlTests.Types
         public void Long()
         {
             var bitLen = (Conn.BufferSize + 10) * 8;
-            var expected = new BitArray(bitLen);
+            var chars = new char[bitLen];
             for (var i = 0; i < bitLen; i++)
-                expected[i] = i % 2 == 0;
-
-            var cmd = new NpgsqlCommand("SELECT @p", Conn);
-            var p = new NpgsqlParameter("p", NpgsqlDbType.Varbit) { Value = expected };
-            cmd.Parameters.Add(p);
-            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected));
-            cmd.Dispose();
+                chars[i] = i % 2 == 0 ? '0' : '1';
+            Roundtrip(new string(chars));
         }
 
         [Test, Description("Roundtrips a single bit")]
@@ -94,14 +91,37 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadSingleBitArray()
+        public void Array()
         {
-            var cmd = new NpgsqlCommand(@"SELECT '{ ""B1"", ""B0"" }'::BIT[]", Conn);
+            var expected = new[] { new BitArray(new[] { true, false, true }), new BitArray(new[] { false }) };
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Varbit) { Value = expected };
+            cmd.Parameters.Add(p);
+            p.Value = expected;
             var reader = cmd.ExecuteReader();
             reader.Read();
 
-            Assert.That(reader.GetValue(0), Is.EqualTo(new[] { true, false }));
-            Assert.That(reader.GetFieldValue<bool[]>(0), Is.EqualTo(new[] { true, false }));
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<BitArray[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+        [Test]
+        public void SingleBitArray()
+        {
+            var expected = new[] { true, false };
+            var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Bit) { Value = expected };
+            cmd.Parameters.Add(p);
+            p.Value = expected;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<bool[]>(0), Is.EqualTo(expected));
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
 
             reader.Dispose();

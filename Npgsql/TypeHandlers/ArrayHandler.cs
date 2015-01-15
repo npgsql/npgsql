@@ -18,12 +18,12 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/arrays.html
     /// </remarks>
-    internal abstract class ArrayHandler : TypeHandler
+    internal abstract class ArrayHandler : TypeHandler<Array>
     {
         Array _array;
         ReadState _readState;
         WriteState _writeState;
-        protected NpgsqlBuffer _buf;
+        NpgsqlBuffer _buf;
         FieldDescription _fieldDescription;
         int _dimensions;
         int[] _dimLengths, _indices;
@@ -33,7 +33,7 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// The array currently being written
         /// </summary>
-        protected bool _hasNulls;
+        bool _hasNulls;
         bool _wroteElementLen;
 
         public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
@@ -231,7 +231,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public virtual void PrepareWrite(NpgsqlBuffer buf, object value)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
@@ -245,7 +245,7 @@ namespace Npgsql.TypeHandlers
             _writeState = WriteState.WroteNothing;
         }
 
-        public bool Write<TElement>(NpgsqlBuffer buf, out byte[] directBuf)
+        public bool Write<TElement>(out byte[] directBuf)
         {
             directBuf = null;
 
@@ -258,16 +258,16 @@ namespace Npgsql.TypeHandlers
                         4 +               // element_oid
                         _dimensions * 8;  // dim (4) + lBound (4)
 
-                    if (buf.WriteSpaceLeft < len) {
-                        Contract.Assume(buf.Size >= len, "Buffer too small for header");
+                    if (_buf.WriteSpaceLeft < len) {
+                        Contract.Assume(_buf.Size >= len, "Buffer too small for header");
                         return false;
                     }
-                    buf.WriteInt32(_dimensions);
-                    buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
-                    buf.WriteInt32((int)ElementHandler.OID);
+                    _buf.WriteInt32(_dimensions);
+                    _buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
+                    _buf.WriteInt32((int)ElementHandler.OID);
                     for (var i = 0; i < _dimensions; i++) {
-                        buf.WriteInt32(_array.GetLength(i));
-                        buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
+                        _buf.WriteInt32(_array.GetLength(i));
+                        _buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
                     }
 
                     if (!(_array is TElement[])) {
@@ -372,6 +372,41 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
+        #region GetLength
+
+        public int GetLength<TElement>(object value)
+        {
+            var array = value as Array;
+            if (array == null)
+                throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
+
+            _hasNulls = false;
+
+            var len =
+                4 +            // ndim
+                4 +            // has_nulls
+                4 +            // element_oid
+                array.Rank * 8;  // dim (4) + lBound (4)
+
+            var simpleArray = array as TElement[];
+            len += simpleArray != null
+                ? simpleArray.Sum(element => 4 + GetSingleElementLength(element))
+                : array.Cast<object>().Sum(element => 4 + GetSingleElementLength(element));
+
+            return len;
+        }
+
+        int GetSingleElementLength(object element)
+        {
+            if (element == null || element is DBNull) {
+                return 0;
+            }
+            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
+            return asSimpleWriter != null ? asSimpleWriter.GetLength(element) : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
+        }
+
+        #endregion
+
         /// <summary>
         /// When traversing a multidimensional array, moves to the next element.
         /// Copied from Array.cs.
@@ -428,22 +463,6 @@ namespace Npgsql.TypeHandlers
         public ArrayHandler(TypeHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) { }
 
-        internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
-            Array result;
-            while (!Read<TElement>(out result)) {
-                row.Buffer.ReadMore();
-            }
-            row.PosInColumn += row.ColumnLen;
-            return result;
-        }
-
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            return ReadValueAsObject(row, fieldDescription);
-        }
-
         public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             base.PrepareRead(buf, fieldDescription, len);
@@ -454,42 +473,15 @@ namespace Npgsql.TypeHandlers
             return base.Read<TElement>(out result);
         }
 
-        public bool Write(out byte[] directBuf)
-        {
-            return base.Write<TElement>(_buf, out directBuf);
-        }
-
-        #region GetLength
-
         public int GetLength(object value)
         {
-            var array = (Array)value;
-            _hasNulls = false;
-
-            var len =
-                4 +            // ndim
-                4 +            // has_nulls
-                4 +            // element_oid
-                array.Rank * 8;  // dim (4) + lBound (4)
-
-            var simpleArray = array as TElement[];
-            len += simpleArray != null
-                ? simpleArray.Sum(element => 4 + GetSingleElementLength(element))
-                : array.Cast<object>().Sum(element => 4 + GetSingleElementLength(element));
-
-            return len;
+            return base.GetLength<TElement>(value);
         }
 
-        int GetSingleElementLength(object element)
+        public bool Write(out byte[] directBuf)
         {
-            if (element == null || element is DBNull) {
-                return 0;
-            }
-            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-            return asSimpleWriter != null ? asSimpleWriter.GetLength(element) : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
+            return base.Write<TElement>(out directBuf);
         }
-
-        #endregion
     }
 
     /// <remarks>
@@ -510,15 +502,5 @@ namespace Npgsql.TypeHandlers
 
         public ArrayHandlerWithPsv(TypeHandler elementHandler, char textDelimiter)
             : base(elementHandler, textDelimiter) {}
-
-        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
-            Array result;
-            while (!Read<TPsv>(out result)) {
-                row.Buffer.ReadMore();
-            }
-            return result;
-        }
     }
 }
