@@ -554,7 +554,7 @@ namespace Npgsql
                     {
                         BoundSize = ((ISimpleTypeWriter)Handler).GetLength(Value);
                     }
-                    throw PGUtil.ThrowIfReached(String.Format("Handler {0} doesn't implement a known writer interface", Handler));
+                    else throw PGUtil.ThrowIfReached(String.Format("Handler {0} doesn't implement a known writer interface", Handler));
                 }
             }
             IsBound = true;
