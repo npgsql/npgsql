@@ -322,8 +322,10 @@
     </Compile>
     <Compile Include="NpgsqlTextWriter.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
+    <Compile Include="TypeHandlers\FullTextSearchHandlers\TsQueryHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsVectorHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\BoxHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\LineHandler.cs" />

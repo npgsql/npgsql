@@ -78,7 +78,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         {
             var vec = (NpgsqlTsVector)value;
 
-            return 4 + vec.Sum(l => l.Text.Length + 1 + 2 + l.Count * 2);
+            return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
         public void PrepareWrite(NpgsqlBuffer buf, object value)
@@ -86,7 +86,6 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             _lexemePos = -1;
             _buf = buf;
             _value = (NpgsqlTsVector)value;
-            _bytesLeft = GetLength(value);
         }
 
         public bool Write(out byte[] directBuf)
@@ -99,15 +98,12 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     return false;
                 _buf.WriteInt32(_value.Count);
                 _lexemePos = 0;
-                _bytesLeft -= 4;
             }
 
             for (; _lexemePos < _value.Count; _lexemePos++)
             {
-                if (_buf.WriteSpaceLeft < Math.Min(_bytesLeft, MaxSingleLexemeBytes))
+                if (_buf.WriteSpaceLeft < MaxSingleLexemeBytes)
                     return false;
-
-                int posBefore = _buf.WritePosition;
                 
                 _buf.WriteStringSimple(_value[_lexemePos].Text);
                 _buf.WriteByte(0);
@@ -116,8 +112,6 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 {
                     _buf.WriteInt16(_value[_lexemePos][i]._val);
                 }
-
-                _bytesLeft -= _buf.WritePosition - posBefore;
             }
 
             return true;

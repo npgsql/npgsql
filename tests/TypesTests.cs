@@ -640,6 +640,43 @@ namespace NpgsqlTests
         }
 
         [Test]
+        public void TsQuery()
+        {
+            NpgsqlTsQuery query;
+
+            query = new NpgsqlTsQueryLexeme("a", NpgsqlTsQueryLexeme.Weight.A | NpgsqlTsQueryLexeme.Weight.B);
+            query = new NpgsqlTsQueryOr(query, query);
+            query = new NpgsqlTsQueryOr(query, query);
+
+            var str = query.ToString();
+
+            query = NpgsqlTsQuery.Parse("a & b | c");
+            Assert.AreEqual("'a' & 'b' | 'c'", query.ToString());
+
+            query = NpgsqlTsQuery.Parse("'a''':*ab&d:d&!c");
+            Assert.AreEqual("'a''':*AB & 'd':D & !'c'", query.ToString());
+
+            query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | c | d | e");
+            Assert.AreEqual("( ( 'a' & !( 'c' | 'd' ) & !( !'a' ) & 'b' | 'c' ) | 'd' ) | 'e'", query.ToString());
+            Assert.AreEqual(query.ToString(), NpgsqlTsQuery.Parse(query.ToString()).ToString());
+
+            query = NpgsqlTsQuery.Parse("(((a:*)))");
+            Assert.AreEqual("'a':*", query.ToString());
+
+            query = NpgsqlTsQuery.Parse(@"'a\\b''cde'");
+            Assert.AreEqual(@"a\b'cde", ((NpgsqlTsQueryLexeme)query).Text);
+            Assert.AreEqual(@"'a\\b''cde'", query.ToString());
+
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a b c & &"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("&"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("|"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("!"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("("));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse(")"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("()"));
+        }
+
+        [Test]
         public void Bug1011018()
         {
             var p = new NpgsqlParameter();

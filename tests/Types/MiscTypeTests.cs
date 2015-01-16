@@ -433,6 +433,20 @@ namespace NpgsqlTests.Types
             }
         }
 
+        [Test]
+        public void TsQuery()
+        {
+            using (var cmd = Conn.CreateCommand())
+            {
+                var query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | d | e");
+
+                cmd.CommandText = "Select :p";
+                cmd.Parameters.AddWithValue("p", query);
+                var output = cmd.ExecuteScalar();
+                Assert.AreEqual(query.ToString(), output.ToString());
+            }
+        }
+
         public MiscTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }
