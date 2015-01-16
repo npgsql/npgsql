@@ -417,7 +417,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Base class for TsQuery binary operators (& and |).
+    /// Base class for TsQuery binary operators (&amp; and |).
     /// </summary>
     public abstract class NpgsqlTsQueryBinOp : NpgsqlTsQuery
     {
