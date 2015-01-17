@@ -179,6 +179,7 @@
     </Compile>
     <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
+    <Compile Include="Types\EnumTests.cs" />
     <Compile Include="Types\GeometricTypeTests.cs" />
     <Compile Include="Types\NetworkTypeTests.cs" />
     <Compile Include="Types\NumericTypeTests.cs" />
