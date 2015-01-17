@@ -37,9 +37,7 @@ namespace NpgsqlTypes
         // Binary or with other values. E.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box
 
         Array = int.MinValue,
-        Enum = 0x40000000,
-        Range = 0x20000000,
-        Composite = 0x10000000,
+        Range = 0x40000000,
 
         Bigint = 1,
 
@@ -90,6 +88,9 @@ namespace NpgsqlTypes
 
         TsVector,
         TsQuery,
+
+        Enum,
+        Composite,
     }
 }
 

@@ -139,6 +139,7 @@ namespace NpgsqlTests
                 {
                     Conn = new NpgsqlConnection(ConnectionString);
                     Conn.Open();
+                    CreateTypes();
                     CreateSchema();
                     Console.WriteLine("Schema created successfully. Backend version is " + Conn.PostgreSqlVersion);
                 }
@@ -190,6 +191,12 @@ namespace NpgsqlTests
         {
             try { Conn.Close(); }
             finally { Conn = null; }
+        }
+
+        private void CreateTypes()
+        {
+            if (ExecuteScalar("SELECT 1 FROM pg_type WHERE typname = 'test_enum'") == null)
+                ExecuteNonQuery("CREATE TYPE test_enum AS ENUM ('label1', 'label2', 'label3')");
         }
 
         private void CreateSchema()
