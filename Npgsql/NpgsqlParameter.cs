@@ -58,6 +58,7 @@ namespace Npgsql
         // Fields to implement IDataParameter
         NpgsqlDbType? _npgsqlDbType;
         DbType? _dbType;
+        Type _enumType;
         string _name = String.Empty;
         object _value;
         object _npgsqlValue;
@@ -512,19 +513,58 @@ namespace Npgsql
             get { return _value == null || _value is DBNull; }
         }
 
+        /// <summary>
+        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
+        /// For other NpgsqlDbTypes, this field is not used.
+        /// </summary>
+        public Type EnumType
+        {
+            get
+            {
+                if (_enumType != null)
+                    return _enumType;
+
+                // Try to infer type if NpgsqlDbType has not been set
+                if (!_npgsqlDbType.HasValue && _value != null) {
+                    var type = _value.GetType();
+                    if (type.IsEnum)
+                        return type;
+                    if (type.IsArray && type.GetElementType().IsEnum)
+                        return type.GetElementType();
+                }
+                return null;
+            }
+            set
+            {
+                if (value != null)
+                {
+                    if (!value.IsEnum)
+                        throw new ArgumentException("The type is not an enum type", "value");
+                    _enumType = value;
+                }
+            }
+        }
+
         internal void ResolveHandler(TypeHandlerRegistry registry)
         {
             if (Handler != null) {
                 return;
             }
 
-            if (_npgsqlDbType.HasValue) {
-                Handler = registry[_npgsqlDbType.Value];
-            } else if (_dbType.HasValue) {
+            if (_npgsqlDbType.HasValue)
+            {
+                Handler = registry[_npgsqlDbType.Value, EnumType];
+            }
+            else if (_dbType.HasValue)
+            {
                 Handler = registry[_dbType.Value];
-            } else if (_value != null) {
+            }
+            else if (_value != null)
+            {
                 Handler = registry[_value];
-            } else {
+            }
+            else
+            {
                 Handler = registry[NpgsqlDbType.Text];
             }
         }
@@ -603,6 +643,7 @@ namespace Npgsql
             clone._size = _size;
             clone._dbType = _dbType;
             clone._npgsqlDbType = _npgsqlDbType;
+            clone._enumType = _enumType;
             clone.Direction = Direction;
             clone.IsNullable = IsNullable;
             clone._name = _name;

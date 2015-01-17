@@ -25,6 +25,7 @@ namespace Npgsql
         readonly Dictionary<DbType, TypeHandler> _byDbType;
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
+        readonly Dictionary<Type, TypeHandler> _byEnumTypeAsArray;
 
         readonly TypeHandler _unrecognizedTypeHandler;
 
@@ -35,6 +36,9 @@ namespace Npgsql
         static readonly Dictionary<Type, DbType> TypeToDbType;
         static readonly ConcurrentDictionary<string, TypeHandlerRegistry> RegistryCache = new ConcurrentDictionary<string, TypeHandlerRegistry>();
         static readonly ILog Log = LogManager.GetCurrentClassLogger();
+
+        static readonly Dictionary<Type, EnumInfo> EnumTypeToEnumInfo;
+        static readonly Dictionary<string, EnumInfo> EnumNameToEnumInfo;
 
         #endregion
 
@@ -63,6 +67,7 @@ namespace Npgsql
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
+            _byEnumTypeAsArray = new Dictionary<Type, TypeHandler>();
             _unrecognizedTypeHandler = new UnrecognizedTypeHandler { OID=0 };
 
             // Below we'll be sending in a query to load OIDs from the backend, but parsing those results will depend
@@ -116,6 +121,11 @@ namespace Npgsql
                 }
             }
 
+            foreach (var enumName in EnumNameToEnumInfo.Keys)
+            {
+                inList.AppendFormat("{0}'{1}'", ((inList.Length > 0) ? "," : ""), enumName);
+            }
+
             const string query = @"SELECT typname, pg_type.oid, typtype, typarray, typdelim, rngsubtype " +
                                  @"FROM pg_type LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid) " +
                                  @"WHERE typname in ({0}) OR typtype = 'r' ORDER BY typtype";
@@ -144,6 +154,9 @@ namespace Npgsql
                                 var rangeSubtypeOID = UInt32.Parse(dr.GetString(5));
                                 Contract.Assume(rangeSubtypeOID != 0);
                                 RegisterRangeType(name, oid, arrayOID, textDelimiter, rangeSubtypeOID);
+                                continue;
+                            case 'e':
+                                RegisterEnumType(name, oid, arrayOID);
                                 continue;
                             default:
                                 Log.Error("Unknown type of type encountered, skipping: " + typtype);
@@ -195,7 +208,20 @@ namespace Npgsql
             RegisterArrayType(arrayOID, handler, ',');
         }
 
-        void RegisterArrayType(uint oid, TypeHandler elementHandler, char textDelimiter)
+        void RegisterEnumType(string name, uint oid, uint arrayOID)
+        {
+            var enumInfo = EnumNameToEnumInfo[name];
+            var enumHandlerType = typeof(EnumHandler<>).MakeGenericType(enumInfo.Type);
+            var handler = (TypeHandler)Activator.CreateInstance(enumHandlerType, enumInfo);
+            handler.OID = oid;
+            _oidIndex[oid] = handler;
+            _byType[enumInfo.Type] = handler;
+
+            var arrayHandler = RegisterArrayType(arrayOID, handler, ',');
+            _byEnumTypeAsArray[enumInfo.Type] = arrayHandler;
+        }
+
+        TypeHandler RegisterArrayType(uint oid, TypeHandler elementHandler, char textDelimiter)
         {
             ArrayHandler arrayHandler;
 
@@ -220,6 +246,75 @@ namespace Npgsql
             arrayHandler.OID = oid;
             _oidIndex[oid] = arrayHandler;
             _byNpgsqlDbType.Add(NpgsqlDbType.Array | elementHandler.NpgsqlDbType, arrayHandler);
+            return arrayHandler;
+        }
+
+        internal static void AddEnumType(Type enumType, string typeName)
+        {
+            EnumInfo existingEnumType;
+            EnumInfo existingTypeName;
+            EnumTypeToEnumInfo.TryGetValue(enumType, out existingEnumType);
+            EnumNameToEnumInfo.TryGetValue(typeName, out existingTypeName);
+
+            if (existingEnumType != null && existingEnumType != existingTypeName)
+                throw new ArgumentException("Enum type already registered with another name");
+            if (existingTypeName != null && existingEnumType != existingTypeName)
+                throw new ArgumentException("Enum name is already registered with another enum type");
+
+            var enumToLabel = new Dictionary<Enum, string>();
+            var labelToEnum = new Dictionary<string, Enum>();
+            var fields = enumType.GetFields(BindingFlags.Static | BindingFlags.Public);
+            foreach (var field in fields)
+            {
+                var attribute = (EnumLabelAttribute)field.GetCustomAttributes(typeof(NpgsqlTypes.EnumLabelAttribute)).FirstOrDefault();
+                var enumName = attribute == null ? field.Name : attribute.Label;
+                var enumValue = (Enum)field.GetValue(null);
+                enumToLabel[enumValue] = enumName;
+                labelToEnum[enumName] = enumValue;
+            }
+
+            var enumInfo = new EnumInfo(enumType, typeName, enumToLabel, labelToEnum);
+            EnumTypeToEnumInfo[enumType] = enumInfo;
+            EnumNameToEnumInfo[typeName] = enumInfo;
+            TypeToNpgsqlDbType[enumType] = NpgsqlDbType.Enum;
+        }
+
+        internal class EnumInfo
+        {
+            public Type Type { get; private set; }
+            public string Name { get; private set; }
+            Dictionary<Enum, string> _enumToLabel;
+            Dictionary<string, Enum> _labelToEnum;
+
+            public EnumInfo(Type type, string name, Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum)
+            {
+                Type = type;
+                Name = name;
+                _enumToLabel = enumToLabel;
+                _labelToEnum = labelToEnum;
+            }
+
+            public string this[Enum enumValue]
+            {
+                get
+                {
+                    string value;
+                    if (!_enumToLabel.TryGetValue(enumValue, out value))
+                        return null;
+                    return value;
+                }
+            }
+
+            public Enum this[string stringValue]
+            {
+                get
+                {
+                    Enum value;
+                    if (!_labelToEnum.TryGetValue(stringValue, out value))
+                        return null;
+                    return value;
+                }
+            }
         }
 
         #endregion
@@ -244,13 +339,27 @@ namespace Npgsql
             set { _oidIndex[oid] = value; }
         }
 
-        internal TypeHandler this[NpgsqlDbType npgsqlDbType]
+        internal TypeHandler this[NpgsqlDbType npgsqlDbType, Type enumType = null]
         {
             get
             {
                 TypeHandler handler;
                 var exists = _byNpgsqlDbType.TryGetValue(npgsqlDbType, out handler);
-                Contract.Assume(exists);
+                if (!exists && enumType != null && (npgsqlDbType & ~NpgsqlDbType.Array) == NpgsqlDbType.Enum)
+                {
+                    if ((npgsqlDbType & NpgsqlDbType.Array) == NpgsqlDbType.Array)
+                        exists = _byEnumTypeAsArray.TryGetValue(enumType, out handler);
+                    else
+                        exists = _byType.TryGetValue(enumType, out handler);
+                    if (!exists)
+                    {
+                        throw new NotSupportedException("This enum type is not supported. (Have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
+                    }
+                }
+                if (!exists)
+                {
+                    throw new NotSupportedException("This NpgsqlDbType is not supported in Npgsql: " + npgsqlDbType);
+                }
                 return handler;
             }
         }
@@ -327,6 +436,9 @@ namespace Npgsql
             if (type.IsArray) {
                 return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
+            if (type.IsEnum) {
+                return NpgsqlDbType.Enum;
+            }
             return TypeToNpgsqlDbType[type];
         }
 
@@ -353,6 +465,9 @@ namespace Npgsql
             DbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
             TypeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
             TypeToDbType = new Dictionary<Type, DbType>();
+
+            EnumTypeToEnumInfo = new Dictionary<Type, EnumInfo>();
+            EnumNameToEnumInfo = new Dictionary<string, EnumInfo>();
 
             foreach (var t in Assembly.GetExecutingAssembly().GetTypes().Where(t => t.IsSubclassOf(typeof(TypeHandler))))
             {
