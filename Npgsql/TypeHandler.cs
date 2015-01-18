@@ -38,11 +38,36 @@ namespace Npgsql
         T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
     }
 
+    [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
         int GetLength(object value);
         void PrepareWrite(NpgsqlBuffer buf, object value);
         bool Write(out byte[] directBuf);
+    }
+
+    [ContractClassFor(typeof(IChunkingTypeWriter))]
+    // ReSharper disable once InconsistentNaming
+    class IChunkingTypeWriterContracts : IChunkingTypeWriter
+    {
+        public int GetLength(object value)
+        {
+            Contract.Requires(value != null);
+            return default(int);
+        }
+
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            Contract.Requires(buf != null);
+            Contract.Requires(value != null);
+        }
+
+        public bool Write(out byte[] directBuf)
+        {
+            Contract.Ensures(Contract.Result<bool>() == false || Contract.ValueAtReturn(out directBuf) == null);
+            directBuf = null;
+            return default(bool);
+        }
     }
 
     /// <summary>
@@ -206,12 +231,6 @@ namespace Npgsql
         internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
             return Read<TPsv>(row, fieldDescription, row.ColumnLen);
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(this is ISimpleTypeReader<TPsv>);
         }
     }
 

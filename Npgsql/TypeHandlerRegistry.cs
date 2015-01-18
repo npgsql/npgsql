@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
@@ -170,13 +171,7 @@ namespace Npgsql
                 return;
             }
 
-            // The backend has a corresponding array type for this type.
-            // Use reflection to create a constructed type from the relevant ArrayHandler
-            // generic type definition.
-            var arrayHandler = CreateArrayHandler(handler, textDelimiter);
-             arrayHandler.OID = arrayOID;
-            _oidIndex[arrayOID] = arrayHandler;
-            _byNpgsqlDbType.Add(NpgsqlDbType.Array | handler.NpgsqlDbType, arrayHandler);
+            RegisterArrayType(arrayOID, handler, textDelimiter);
         }
 
         void RegisterRangeType(string name, uint oid, uint arrayOID, char textDelimiter, uint elementOid)
@@ -191,18 +186,16 @@ namespace Npgsql
             var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
             var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, name);
 
+            handler.PgName = "range";
+            handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
             handler.OID = oid;
             _oidIndex[oid] = handler;
-            _byNpgsqlDbType.Add(NpgsqlDbType.Range | elementHandler.NpgsqlDbType, handler);
+            _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
 
-            // Array of ranges
-            var arrayHandler = CreateArrayHandler(handler, ',');
-             arrayHandler.OID = arrayOID;
-            _oidIndex[arrayOID] = arrayHandler;
-            _byNpgsqlDbType.Add(NpgsqlDbType.Range | NpgsqlDbType.Array | elementHandler.NpgsqlDbType, handler);
+            RegisterArrayType(arrayOID, handler, ',');
         }
 
-        static ArrayHandler CreateArrayHandler(TypeHandler elementHandler, char textDelimiter)
+        void RegisterArrayType(uint oid, TypeHandler elementHandler, char textDelimiter)
         {
             ArrayHandler arrayHandler;
 
@@ -224,7 +217,9 @@ namespace Npgsql
             }
 
             arrayHandler.PgName = "array";
-            return arrayHandler;
+            arrayHandler.OID = oid;
+            _oidIndex[oid] = arrayHandler;
+            _byNpgsqlDbType.Add(NpgsqlDbType.Array | elementHandler.NpgsqlDbType, arrayHandler);
         }
 
         #endregion
@@ -294,17 +289,31 @@ namespace Npgsql
         {
             get
             {
-                if (type.IsArray) {
-                    return type == typeof(byte[])
-                        ? this[NpgsqlDbType.Bytea]
-                        : this[NpgsqlDbType.Array | this[type.GetElementType()].NpgsqlDbType];
+                TypeHandler handler;
+                if (_byType.TryGetValue(type, out handler)) {
+                    return handler;
                 }
 
-                TypeHandler handler;
-                if (!_byType.TryGetValue(type, out handler)) {
-                    throw new NotSupportedException("This .NET type is not supported in Npgsql: " + type);
+                if (type.IsArray) {
+                    if (!_byType.TryGetValue(type.GetElementType(), out handler)) {
+                        throw new NotSupportedException("This .NET type is not supported in Npgsql or your PostgreSQL: " + type);
+                    }
+                    return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
                 }
-                return handler;
+
+                if (typeof(IList).IsAssignableFrom(type))
+                {
+                    if (type.IsGenericType)
+                    {
+                        if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
+                            throw new NotSupportedException("This .NET type is not supported in Npgsql or your PostgreSQL: " + type);
+                        }
+                        return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
+                    }
+                    throw new NotSupportedException("IList is a supported parameter, but the NpgsqlDbTypes parameter must be set on the parameter");
+                }
+
+                throw new NotSupportedException("This .NET type is not supported in Npgsql or your PostgreSQL: " + type);
             }
         }
 

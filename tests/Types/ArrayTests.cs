@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -174,25 +175,36 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        // Older tests
-
-        [Test]
-        public void TestMultiDimensionalArray()
+        [Test, Description("Roundtrips a non-generic IList as an array")]
+        // ReSharper disable once InconsistentNaming
+        public void IListNonGeneric()
         {
-            var command = new NpgsqlCommand("select :i", Conn);
-            command.Parameters.AddWithValue(":i", (new decimal[,] { { 0, 1, 2 }, { 3, 4, 5 } }));
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                Assert.AreEqual(2, (dr[0] as Array).Rank);
-                var da = (decimal[,])dr[0];
-                Assert.AreEqual(da.GetUpperBound(0), 1);
-                Assert.AreEqual(da.GetUpperBound(1), 2);
-                decimal cmp = 0m;
-                foreach (decimal el in da)
-                    Assert.AreEqual(el, cmp++);
-            }
+            var expected = new ArrayList(new[] { 1, 2, 3 });
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
+            cmd.Parameters.Add(p);
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected.ToArray()));
+            cmd.Dispose();
         }
+
+        [Test, Description("Roundtrips a generic IList as an array")]
+        // ReSharper disable once InconsistentNaming
+        public void IListGeneric()
+        {
+            var expected = new[] { 1, 2, 3 };
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2", Conn);
+            var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected.ToList() };
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected.ToList() };
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
+            Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
+            cmd.Dispose();
+        }
+
+        // Older tests
 
         [Test]
         public void TestBug1010488ArrayParameterWithNullValue()
@@ -232,34 +244,6 @@ namespace NpgsqlTests.Types
                 cmd.Parameters.Add(parameter);
                 cmd.CommandType = System.Data.CommandType.StoredProcedure;
                 cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
-        public void TestEmptyIEnumerableAsArray()
-        {
-            using (var command = new NpgsqlCommand("SELECT :array", Conn))
-            {
-                var expected = new[] { 1, 2, 3, 4 };
-                command.Parameters.AddWithValue("array", expected.Where(x => false));
-                var res = command.ExecuteScalar() as int[];
-
-                Assert.NotNull(res);
-                Assert.AreEqual(0, res.Length);
-            }
-        }
-
-        [Test]
-        public void TestIEnumerableAsArray()
-        {
-            using (var command = new NpgsqlCommand("SELECT :array", Conn))
-            {
-                var expected = new[] { 1, 2, 3, 4 };
-                command.Parameters.AddWithValue("array", expected.Select(x => x));
-                var res = command.ExecuteScalar() as int[];
-
-                Assert.NotNull(res);
-                CollectionAssert.AreEqual(expected, res);
             }
         }
     }

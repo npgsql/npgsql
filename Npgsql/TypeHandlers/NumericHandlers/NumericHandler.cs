@@ -14,7 +14,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// </remarks>
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal))]
     internal class NumericHandler : TypeHandler<decimal>,
-        ISimpleTypeReader<decimal>,
+        ISimpleTypeReader<decimal>, ISimpleTypeWriter,
         ISimpleTypeReader<byte>, ISimpleTypeReader<short>, ISimpleTypeReader<int>, ISimpleTypeReader<long>,
         ISimpleTypeReader<float>, ISimpleTypeReader<double>,
         ISimpleTypeReader<string>
@@ -59,6 +59,16 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int GetLength(object value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Mono.Security.Protocol.Ntlm;
 using Npgsql.Messages;
@@ -20,9 +21,11 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     internal abstract class ArrayHandler : TypeHandler<Array>
     {
-        Array _array;
+        Array _readValue;
+        IList _writeValue;
         ReadState _readState;
         WriteState _writeState;
+        IEnumerator _enumerator;
         NpgsqlBuffer _buf;
         FieldDescription _fieldDescription;
         int _dimensions;
@@ -97,7 +100,7 @@ namespace Npgsql.TypeHandlers
                     var elementOID = _buf.ReadUInt32();
                     Contract.Assume(elementOID == ElementHandler.OID);
                     _dimLengths = new int[_dimensions];
-                    if (!(_array is TElement[])) {
+                    if (_dimensions > 1) {
                         _indices = new int[_dimensions];
                     }
                     _index = 0;
@@ -119,12 +122,12 @@ namespace Npgsql.TypeHandlers
                         _readState = ReadState.NeedPrepare;
                         return true;
                     }
-                    _array = Array.CreateInstance(typeof(TElement), _dimLengths);
+                    _readValue = Array.CreateInstance(typeof(TElement), _dimLengths);
                     _readState = ReadState.ReadingElements;
                     goto case ReadState.ReadingElements;
 
                 case ReadState.ReadingElements:
-                    var completed = _array is TElement[]
+                    var completed = _readValue is TElement[]
                         ? ReadElementsOneDimensional<TElement>()
                         : ReadElementsMultidimensional<TElement>();
 
@@ -134,8 +137,8 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
 
-                    result = _array;
-                    _array = null;
+                    result = _readValue;
+                    _readValue = null;
                     _buf = null;
                     _fieldDescription = null;
                     _readState = ReadState.NeedPrepare;
@@ -151,7 +154,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         bool ReadElementsOneDimensional<TElement>()
         {
-            var array = (TElement[])_array;
+            var array = (TElement[])_readValue;
 
             for (; _index < array.Length; _index++)
             {
@@ -171,9 +174,28 @@ namespace Npgsql.TypeHandlers
             {
                 TElement element;
                 if (!ReadSingleElement(out element)) { return false; }
-                _array.SetValue(element, _indices);
+                _readValue.SetValue(element, _indices);
                 if (!MoveNextInMultidimensional()) { return true; }
             }
+        }
+
+        bool MoveNextInMultidimensional()
+        {
+            _indices[_dimensions - 1]++;
+            for (var dim = _dimensions - 1; dim >= 0; dim--) {
+                if (_indices[dim] <= _readValue.GetUpperBound(dim)) {
+                    continue;
+                }
+
+                if (dim == 0) {
+                    return false;
+                }
+
+                for (var j = dim; j < _dimensions; j++)
+                    _indices[j] = _readValue.GetLowerBound(j);
+                _indices[dim - 1]++;
+            }
+            return true;
         }
 
         bool ReadSingleElement<TElement>(out TElement element)
@@ -238,8 +260,9 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException("Started reading a value before completing a previous value");
 
             _buf = buf;
-            _array = (Array)value;
-            _dimensions = _array.Rank;
+            var asArray = value as Array;
+            _writeValue = (IList)value;
+            _dimensions = asArray != null ? asArray.Rank : 1;
             _index = 0;
             _wroteElementLen = false;
             _writeState = WriteState.WroteNothing;
@@ -248,6 +271,7 @@ namespace Npgsql.TypeHandlers
         public bool Write<TElement>(out byte[] directBuf)
         {
             directBuf = null;
+            Array asArray;
 
             switch (_writeState)
             {
@@ -265,29 +289,52 @@ namespace Npgsql.TypeHandlers
                     _buf.WriteInt32(_dimensions);
                     _buf.WriteInt32(_hasNulls ? 1 : 0); // Actually not used by backend
                     _buf.WriteInt32((int)ElementHandler.OID);
-                    for (var i = 0; i < _dimensions; i++) {
-                        _buf.WriteInt32(_array.GetLength(i));
-                        _buf.WriteInt32(1); // We set lBound to 1 and silently ignore if the user had set it to something else
+                    asArray = _writeValue as Array;
+                    if (asArray != null)
+                    {
+                        for (var i = 0; i < _dimensions; i++)
+                        {
+                            _buf.WriteInt32(asArray.GetLength(i));
+                            _buf.WriteInt32(1);
+                            // We set lBound to 1 and silently ignore if the user had set it to something else
+                        }
+                    }
+                    else
+                    {
+                        _buf.WriteInt32(_writeValue.Count);
+                        _buf.WriteInt32(1);
+                        _enumerator = _writeValue.GetEnumerator();
                     }
 
-                    if (!(_array is TElement[])) {
-                        _indices = new int[_dimensions];
+                    var asGeneric = _writeValue as IList<TElement>;
+                    _enumerator = asGeneric != null ? asGeneric.GetEnumerator() : _writeValue.GetEnumerator();
+                    if (!_enumerator.MoveNext()) {
+                        goto case WriteState.Cleanup;
                     }
+
                     _writeState = WriteState.WritingElements;
                     goto case WriteState.WritingElements;
 
                 case WriteState.WritingElements:
-                    var completed = _array is TElement[]
-                        ? WriteElementsOneDimensional<TElement>(out directBuf)
-                        : WriteElementsMultidimensional(out directBuf);
-
-                    if (!completed)
+                    var genericEnumerator = _enumerator as IEnumerator<TElement>;
+                    if (genericEnumerator != null)
                     {
-                        return false;
+                        // TODO: Actually call the element writer generically...!
+                        do
+                        {
+                            if (!WriteSingleElement(genericEnumerator.Current, out directBuf)) { return false; }
+                        } while (genericEnumerator.MoveNext());
                     }
+                    else
+                    {
+                        do {
+                            if (!WriteSingleElement(_enumerator.Current, out directBuf)) { return false; }
+                        } while (_enumerator.MoveNext());                       
+                    }
+                    goto case WriteState.Cleanup;
 
-                    // TODO: Go over resources to be freed
-                    _array = null;
+                case WriteState.Cleanup:
+                    _writeValue = null;
                     _buf = null;
                     _writeState = WriteState.NeedPrepare;
                     return true;
@@ -297,31 +344,9 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        bool WriteElementsOneDimensional<TElement>(out byte[] directBuf)
-        {
-            directBuf = null;
-
-            var array = (TElement[])_array;
-            for (; _index < _array.Length; _index++)
-            {
-                var element = array[_index];
-                if (!WriteSingleElement(element, out directBuf)) { return false; }
-            }
-            return true;
-        }
-
-        bool WriteElementsMultidimensional(out byte[] directBuf)
-        {
-            while (true)
-            {
-                var element = _array.GetValue(_indices);
-                if (!WriteSingleElement(element, out directBuf)) { return false; }
-                if (!MoveNextInMultidimensional()) { return true; }
-            }
-        }
-
         bool WriteSingleElement(object element, out byte[] directBuf)
         {
+            // TODO: Need generic version of this...
             directBuf = null;
 
             if (element == null || element is DBNull) {
@@ -363,37 +388,25 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached();
         }
 
-        enum WriteState
-        {
-            NeedPrepare,
-            WroteNothing,
-            WritingElements,
-        }
-
-        #endregion
-
-        #region GetLength
-
         public int GetLength<TElement>(object value)
         {
-            var array = value as Array;
-            if (array == null)
-                throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
+            // Take care of single-dimensional arrays and generic IList<T>
+            var asGenericList = value as IList<TElement>;
+            if (asGenericList != null) {
+                return 12 + (1 * 8) + asGenericList.Sum(e => 4 + GetSingleElementLength(e));
+            }
 
-            _hasNulls = false;
+            // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to do
+            // boxing/unboxing
+            var asNonGenericList = value as IList;
+            if (asNonGenericList != null)
+            {
+                var asMultidimensional = value as Array;
+                var dimensions = asMultidimensional != null ? asMultidimensional.Rank : 1;
+                return 12 + (dimensions * 8) + asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element));
+            }
 
-            var len =
-                4 +            // ndim
-                4 +            // has_nulls
-                4 +            // element_oid
-                array.Rank * 8;  // dim (4) + lBound (4)
-
-            var simpleArray = array as TElement[];
-            len += simpleArray != null
-                ? simpleArray.Sum(element => 4 + GetSingleElementLength(element))
-                : array.Cast<object>().Sum(element => 4 + GetSingleElementLength(element));
-
-            return len;
+            throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
         }
 
         int GetSingleElementLength(object element)
@@ -405,34 +418,15 @@ namespace Npgsql.TypeHandlers
             return asSimpleWriter != null ? asSimpleWriter.GetLength(element) : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
         }
 
-        #endregion
-
-        /// <summary>
-        /// When traversing a multidimensional array, moves to the next element.
-        /// Copied from Array.cs.
-        /// </summary>
-        /// <returns>
-        /// True if successfully moved to the next element, false otherwise.
-        /// </returns>
-        bool MoveNextInMultidimensional()
+        enum WriteState
         {
-            _indices[_dimensions - 1]++;
-            for (var dim = _dimensions - 1; dim >= 0; dim--)
-            {
-                if (_indices[dim] <= _array.GetUpperBound(dim)) {
-                    continue;
-                }
-
-                if (dim == 0) {
-                    return false;
-                }
-
-                for (var j = dim; j < _dimensions; j++)
-                    _indices[j] = _array.GetLowerBound(j);
-                _indices[dim - 1]++;
-            }
-            return true;
+            NeedPrepare,
+            WroteNothing,
+            WritingElements,
+            Cleanup,
         }
+
+        #endregion
     }
 
     /// <remarks>
@@ -485,7 +479,7 @@ namespace Npgsql.TypeHandlers
     }
 
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/arrays.html
+    /// http://www.postgresql.org/docs/9.4/static/arrays.html
     /// </remarks>
     /// <typeparam name="TNormal">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TPsv">The .NET provider-specific type contained as an element within this array</typeparam>
@@ -498,6 +492,16 @@ namespace Npgsql.TypeHandlers
         internal override Type GetElementPsvType(FieldDescription fieldDescription)
         {
             return typeof(TPsv);
+        }
+
+        internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
+        {
+            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
+            Array result;
+            while (!Read<TPsv>(out result)) {
+                row.Buffer.ReadMore();
+            }
+            return result;
         }
 
         public ArrayHandlerWithPsv(TypeHandler elementHandler, char textDelimiter)
