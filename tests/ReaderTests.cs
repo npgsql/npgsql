@@ -500,7 +500,7 @@ namespace NpgsqlTests
                               select * from data;
                               ' language 'sql';");
 
-            var command = new NpgsqlCommand("funcb()", Conn);
+            var command = new NpgsqlCommand("funcb", Conn);
             command.CommandType = CommandType.StoredProcedure;
             command.Prepare();
 
