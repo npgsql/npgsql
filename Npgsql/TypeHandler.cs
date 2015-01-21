@@ -234,6 +234,20 @@ namespace Npgsql
         }
     }
 
+    /// <summary>
+    /// Can be thrown by readers to indicate that interpreting the value failed, but the value was read wholly
+    /// and it is safe to continue reading. Any other exception is assumed to leave the row in an unknown state
+    /// and the connector is therefore set to Broken.
+    /// Note that an inner exception is mandatory, and will get thrown to the user instead of the SafeReadException.
+    /// </summary>
+    internal class SafeReadException : Exception
+    {
+        public SafeReadException(Exception innerException) : base("", innerException)
+        {
+            Contract.Requires(innerException != null);
+        }
+    }
+
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     [SuppressMessage("ReSharper", "LocalizableElement")]
     class TypeMappingAttribute : Attribute
@@ -278,9 +292,9 @@ namespace Npgsql
             : this(pgName, null, null, null) {}
 
         internal string PgName { get; private set; }
-        internal Type[] Types { get; private set; }
-        internal DbType[] DbTypes { get; private set; }
         internal NpgsqlDbType? NpgsqlDbType { get; private set; }
+        internal DbType[] DbTypes { get; private set; }
+        internal Type[] Types { get; private set; }
 
         public override string ToString()
         {

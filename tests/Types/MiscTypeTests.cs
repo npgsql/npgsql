@@ -199,11 +199,7 @@ namespace NpgsqlTests.Types
 
         static void CheckUnrecognizedType()
         {
-            Assert.That(TypeHandlerRegistry.HandlerTypes
-                .SelectMany(t => t.GetCustomAttributes(typeof(TypeMappingAttribute), false))
-                .Cast<TypeMappingAttribute>()
-                .All(m => m.PgName != "regproc"),
-            "Test requires an unrecognized type to work");
+            Assert.That(TypeHandlerRegistry.HandlerTypes.Values.All(x => x.Mapping.PgName != "regproc"), "Test requires an unrecognized type to work");
         }
 
         [Test, Description("Attempts to retrieve an unrecognized type without marking it as unknown, triggering an exception")]

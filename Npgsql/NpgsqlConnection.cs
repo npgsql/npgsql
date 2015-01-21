@@ -30,6 +30,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.Contracts;
 using System.Net.Security;
 using System.Reflection;
 using System.Resources;
@@ -958,6 +959,68 @@ namespace Npgsql
         }
 
         #endregion Backend version and capabilities
+
+        #region Enum registration
+
+        /// <summary>
+        /// Registers an enum type for use with this connection.
+        ///
+        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
+        /// if another label is used in the database, this can be specified for each label with a EnumLabelAttribute.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        ///
+        /// Can only be invoked on an open connection; if the connection is closed the registration is lost.
+        /// </summary>
+        /// <remarks>
+        /// To avoid registering the type for each connection, use the <see cref="RegisterEnumGlobally{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="TEnum">The .NET enum type to be registered</typeparam>
+        public void RegisterEnum<TEnum>(string pgName = null) where TEnum : struct
+        {
+            if (!typeof(TEnum).IsEnum)
+                throw new ArgumentException("An enum type must be provided");
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", "pgName");
+            if (State != ConnectionState.Open)
+                throw new InvalidOperationException("Connection must be open and idle to perform registration");
+            Contract.EndContractBlock();
+
+            Connector.TypeHandlerRegistry.RegisterEnumType<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+        }
+
+        /// <summary>
+        /// Registers an enum type for use with all connections created from now on. Existing connections aren't affected.
+        ///
+        /// Enum labels are mapped by string. The .NET enum labels must correspond exactly to the PostgreSQL labels;
+        /// if another label is used in the database, this can be specified for each label with a EnumLabelAttribute.
+        /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+        /// an exception will be raised.
+        /// </summary>
+        /// <remarks>
+        /// To register the type for a specific connection, use the <see cref="RegisterEnum{T}"/> method.
+        /// </remarks>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding enum type in the database.
+        /// If null, the .NET type's name in lowercase will be used
+        /// </param>
+        /// <typeparam name="TEnum">The .NET enum type to be associated</typeparam>
+        public static void RegisterEnumGlobally<TEnum>(string pgName = null) where TEnum : struct
+        {
+            if (!typeof(TEnum).IsEnum)
+                throw new ArgumentException("An enum type must be provided");
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", "pgName");
+            Contract.EndContractBlock();
+
+            TypeHandlerRegistry.RegisterEnumTypeGlobally<TEnum>(pgName ?? typeof(TEnum).Name.ToLower());
+        }
+
+        #endregion
 
         #region State checks
 

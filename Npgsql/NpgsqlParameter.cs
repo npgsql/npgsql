@@ -524,8 +524,9 @@ namespace Npgsql
                 if (_enumType != null)
                     return _enumType;
 
-                // Try to infer type if NpgsqlDbType has not been set
-                if (!_npgsqlDbType.HasValue && _value != null) {
+                // Try to infer type if NpgsqlDbType is Enum or has not been set
+                if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
+                {
                     var type = _value.GetType();
                     if (type.IsEnum)
                         return type;

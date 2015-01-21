@@ -200,45 +200,57 @@ namespace Npgsql.TypeHandlers
 
         bool ReadSingleElement<TElement>(out TElement element)
         {
-            if (_elementLen == -1)
+            try
             {
-                if (_buf.ReadBytesLeft < 4)
-                {
-                    element = default(TElement);
-                    return false;
-                }
-                _elementLen = _buf.ReadInt32();
                 if (_elementLen == -1)
                 {
-                    // TODO: Nullables
-                    element = default(TElement);
+                    if (_buf.ReadBytesLeft < 4)
+                    {
+                        element = default(TElement);
+                        return false;
+                    }
+                    _elementLen = _buf.ReadInt32();
+                    if (_elementLen == -1)
+                    {
+                        // TODO: Nullables
+                        element = default(TElement);
+                        return true;
+                    }
+                }
+
+                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                if (asSimpleReader != null)
+                {
+                    if (_buf.ReadBytesLeft < _elementLen)
+                    {
+                        element = default(TElement);
+                        return false;
+                    }
+                    element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                    _elementLen = -1;
                     return true;
                 }
-            }
 
-            var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
-            if (asSimpleReader != null)
-            {
-                if (_buf.ReadBytesLeft < _elementLen)
+                var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+                if (asChunkingReader != null)
                 {
-                    element = default(TElement);
-                    return false;
+                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    if (!asChunkingReader.Read(out element))
+                    {
+                        return false;
+                    }
+                    _elementLen = -1;
+                    return true;
                 }
-                element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
-                _elementLen = -1;
-                return true;
-            }
 
-            var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
-            if (asChunkingReader != null)
+                throw PGUtil.ThrowIfReached();
+            }
+            catch (SafeReadException e)
             {
-                asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
-                if (!asChunkingReader.Read(out element)) { return false; }
-                _elementLen = -1;
-                return true;
+                // TODO: Implement safe reading for array: read all values to the end, only then raise the
+                // SafeReadException. For now, translate the safe exception to an unsafe one to break the connector.
+                throw e.InnerException;
             }
-
-            throw PGUtil.ThrowIfReached();
         }
 
         enum ReadState

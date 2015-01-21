@@ -1307,7 +1307,19 @@ namespace Npgsql
             _row.SeekToColumnStart(ordinal);
             Row.CheckNotNull();
             var fieldDescription = _rowDescription[ordinal];
-            return fieldDescription.Handler.Read<T>(_row, fieldDescription, Row.ColumnLen);
+            try
+            {
+                return fieldDescription.Handler.Read<T>(_row, fieldDescription, Row.ColumnLen);
+            }
+            catch (SafeReadException e)
+            {
+                throw e.InnerException;
+            }
+            catch
+            {
+                _connector.State = ConnectorState.Broken;
+                throw;
+            }
         }
 
 #if NET45
