@@ -498,6 +498,12 @@ namespace NpgsqlTests
                 // Test that lhs and rhs of UNION ALL is wrapped in parentheses
                 context.Blogs.Take(3).Concat(context.Blogs.Take(4)).ToArray();
 
+                // Flatten set ops
+                context.Blogs.Concat(context.Blogs).Concat(context.Blogs.Concat(context.Blogs)).ToArray();
+                context.Blogs.Intersect(context.Blogs).Intersect(context.Blogs).ToArray();
+                // But not except
+                context.Blogs.Concat(context.Blogs.Except(context.Blogs)).ToArray();
+
                 // In
                 int[] arr = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40};
                 context.Blogs.Where(b => arr.Contains(b.BlogId)).ToArray();
