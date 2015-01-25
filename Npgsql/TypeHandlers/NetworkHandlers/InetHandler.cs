@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).ToString();
         }
 
-        static internal int DoGetLength(object value)
+        static internal int DoValidateAndGetLength(object value)
         {
             IPAddress ip;
             if (value is NpgsqlInet) {
@@ -72,9 +72,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             }            
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
-            return DoGetLength(value);
+            return DoValidateAndGetLength(value);
         }
 
         internal static void DoWrite(object value, NpgsqlBuffer buf, bool isCidrHandler)

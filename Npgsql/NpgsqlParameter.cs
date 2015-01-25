@@ -586,14 +586,14 @@ namespace Npgsql
                 var asChunkingWriter = Handler as IChunkingTypeWriter;
                 if (asChunkingWriter != null)
                 {
-                    BoundSize = asChunkingWriter.GetLength(Value);
+                    BoundSize = asChunkingWriter.ValidateAndGetLength(Value);
                 }
                 else
                 {
                     var asSimpleWriter = Handler as ISimpleTypeWriter;
                     if (asSimpleWriter != null)
                     {
-                        BoundSize = ((ISimpleTypeWriter)Handler).GetLength(Value);
+                        BoundSize = ((ISimpleTypeWriter)Handler).ValidateAndGetLength(Value);
                     }
                     else throw PGUtil.ThrowIfReached(String.Format("Handler {0} doesn't implement a known writer interface", Handler));
                 }

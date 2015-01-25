@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             // TODO: Cache the length internally across strings?
             return Encoding.UTF8.GetByteCount(value.ToString());

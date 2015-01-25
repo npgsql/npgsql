@@ -31,7 +31,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public int GetLength(object value) { return 16; }
+        public int ValidateAndGetLength(object value) { return 16; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

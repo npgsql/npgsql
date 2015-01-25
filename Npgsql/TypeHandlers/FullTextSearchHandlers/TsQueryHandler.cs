@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             var vec = (NpgsqlTsQuery)value;
 

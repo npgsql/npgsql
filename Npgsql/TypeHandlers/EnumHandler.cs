@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandlers
             return value;
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             if (!(value is TEnum))
                 throw new InvalidCastException(String.Format("Can't write type {0} as enum {1}", value.GetType(), typeof(TEnum)));

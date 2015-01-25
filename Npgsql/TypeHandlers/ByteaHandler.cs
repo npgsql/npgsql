@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers
 
         byte[] _value;
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             return ((byte[])value).Length;
         }

@@ -371,7 +371,7 @@ namespace Npgsql.TypeHandlers
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
             if (asSimpleWriter != null)
             {
-                var elementLen = asSimpleWriter.GetLength(element);
+                var elementLen = asSimpleWriter.ValidateAndGetLength(element);
                 if (_buf.WriteSpaceLeft < 4 + elementLen) { return false; }
                 _buf.WriteInt32(elementLen);
                 asSimpleWriter.Write(element, _buf);
@@ -385,7 +385,7 @@ namespace Npgsql.TypeHandlers
                     if (_buf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _buf.WriteInt32(asChunkedWriter.GetLength(element));
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element));
                     asChunkedWriter.PrepareWrite(_buf, element);
                     _wroteElementLen = true;
                 }
@@ -399,7 +399,7 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached();
         }
 
-        public int GetLength<TElement>(object value)
+        public int ValidateAndGetLength<TElement>(object value)
         {
             // Take care of single-dimensional arrays and generic IList<T>
             var asGenericList = value as IList<TElement>;
@@ -426,7 +426,7 @@ namespace Npgsql.TypeHandlers
                 return 0;
             }
             var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-            return asSimpleWriter != null ? asSimpleWriter.GetLength(element) : ((IChunkingTypeWriter)ElementHandler).GetLength(element);
+            return asSimpleWriter != null ? asSimpleWriter.ValidateAndGetLength(element) : ((IChunkingTypeWriter)ElementHandler).ValidateAndGetLength(element);
         }
 
         enum WriteState
@@ -478,9 +478,9 @@ namespace Npgsql.TypeHandlers
             return base.Read<TElement>(out result);
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
-            return base.GetLength<TElement>(value);
+            return base.ValidateAndGetLength<TElement>(value);
         }
 
         public bool Write(ref byte[] directBuf)

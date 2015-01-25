@@ -61,7 +61,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             throw new NotImplementedException();
         }

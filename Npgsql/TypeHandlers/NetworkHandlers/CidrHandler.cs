@@ -27,9 +27,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
-            return InetHandler.DoGetLength(value);
+            return InetHandler.DoValidateAndGetLength(value);
         }
 
         public void Write(object value, NpgsqlBuffer buf)

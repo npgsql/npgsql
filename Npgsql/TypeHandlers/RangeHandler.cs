@@ -81,7 +81,7 @@ namespace Npgsql.TypeHandlers
              */
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             throw new NotImplementedException("Chunking");
             /*

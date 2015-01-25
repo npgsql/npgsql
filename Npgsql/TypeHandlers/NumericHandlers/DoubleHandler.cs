@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return buf.ReadDouble();
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             return 8;
         }

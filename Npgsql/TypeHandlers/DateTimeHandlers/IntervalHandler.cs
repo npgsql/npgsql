@@ -39,7 +39,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlInterval(month, day, ticks * 10);
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");

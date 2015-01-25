@@ -16,7 +16,7 @@ namespace Npgsql
 
     interface ISimpleTypeWriter
     {
-        int GetLength(object value);
+        int ValidateAndGetLength(object value);
         void Write(object value, NpgsqlBuffer buf);
     }
 
@@ -41,7 +41,7 @@ namespace Npgsql
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
-        int GetLength(object value);
+        int ValidateAndGetLength(object value);
         void PrepareWrite(NpgsqlBuffer buf, object value);
         bool Write(ref byte[] directBuf);
     }
@@ -50,7 +50,7 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             Contract.Requires(value != null);
             return default(int);
