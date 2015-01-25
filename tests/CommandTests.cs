@@ -512,6 +512,41 @@ namespace NpgsqlTests
         #region Multiquery
 
         [Test]
+        public void MultipleQueries()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", Conn);
+            var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+            Assert.That(reader.NextResult(), Is.True);
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+            Assert.That(reader.NextResult(), Is.False);
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test]
+        public void MultipleQueriesWithParameters()
+        {
+            var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Text);
+            cmd.Prepare();
+            p1.Value = 8;
+            p2.Value = "foo";
+            var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+            Assert.That(reader.NextResult(), Is.True);
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetString(0), Is.EqualTo("foo"));
+            Assert.That(reader.NextResult(), Is.False);
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test]
         public void MultipleQueriesFirstResultsetEmpty()
         {
             var command = new NpgsqlCommand("insert into data(field_text) values ('a'); select count(*) from data;", Conn);

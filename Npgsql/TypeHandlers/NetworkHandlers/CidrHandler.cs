@@ -15,25 +15,26 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     internal class CidrHandler : TypeHandler<NpgsqlInet>,
-        ISimpleTypeReader<NpgsqlInet>, ISimpleTypeReader<string>
+        ISimpleTypeReader<NpgsqlInet>, ISimpleTypeWriter, ISimpleTypeReader<string>
     {
         public NpgsqlInet Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            var addressFamily = buf.ReadByte();
-            var mask = buf.ReadByte();
-            var isCidr = buf.ReadByte() == 1;
-            Contract.Assume(isCidr);
-            var numBytes = buf.ReadByte();
-            var bytes = new byte[numBytes];
-            for (var i = 0; i < numBytes; i++) {
-                bytes[i] = buf.ReadByte();
-            }
-            return new NpgsqlInet(new IPAddress(bytes), mask);
+            return InetHandler.DoRead(buf, fieldDescription, len, true);
         }
 
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int GetLength(object value)
+        {
+            return InetHandler.DoGetLength(value);
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            InetHandler.DoWrite(value, buf, true);
         }
     }
 }

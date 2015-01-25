@@ -38,18 +38,6 @@ namespace NpgsqlTests
     {
         public ReaderTests(string backendVersion) : base(backendVersion) { }
 
-/*        [Test]
-        public void TestNew()
-        {
-            NpgsqlCommand command = new NpgsqlCommand("select * from data where field_serial = 4;", Conn);
-
-            command.Prepare();
-
-            NpgsqlDataReaderNew dr = command.ExecuteReaderNew(CommandBehavior.Default);
-
-            while(dr.Read());
-        }*/
-
         [Test]
         public void EmptyResultSet()
         {

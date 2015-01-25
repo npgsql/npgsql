@@ -34,6 +34,7 @@ using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using Npgsql;
@@ -815,14 +816,22 @@ namespace NpgsqlTypes
 
         public NpgsqlInet(IPAddress addr, int mask)
         {
+            if (addr.AddressFamily != AddressFamily.InterNetwork && addr.AddressFamily != AddressFamily.InterNetworkV6)
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "addr");
+            Contract.EndContractBlock();
+
             this.addr = addr;
             this.mask = mask;
         }
 
         public NpgsqlInet(IPAddress addr)
         {
+            if (addr.AddressFamily != AddressFamily.InterNetwork && addr.AddressFamily != AddressFamily.InterNetworkV6)
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "addr");
+            Contract.EndContractBlock();
+
             this.addr = addr;
-            this.mask = 32;
+            this.mask = addr.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
         }
 
         public NpgsqlInet(string addr)
