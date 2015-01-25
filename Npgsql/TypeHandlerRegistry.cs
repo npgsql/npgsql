@@ -435,7 +435,11 @@ namespace Npgsql
 
         internal static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
-            if (type.IsArray) {
+            if (type.IsArray)
+            {
+                if (type == typeof(byte[])) {
+                    return NpgsqlDbType.Bytea;
+                }
                 return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
             if (type.IsEnum) {

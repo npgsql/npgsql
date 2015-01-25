@@ -28,6 +28,8 @@ namespace NpgsqlTests.Types
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Bytea);
             var p2 = new NpgsqlParameter("p2", DbType.Binary);
             var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+            Assert.That(p3.DbType, Is.EqualTo(DbType.Binary));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);

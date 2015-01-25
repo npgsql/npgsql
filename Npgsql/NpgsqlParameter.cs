@@ -252,7 +252,7 @@ namespace Npgsql
 
         #region Public Properties
 
-                /// <summary>
+        /// <summary>
         /// Gets or sets the value of the parameter.
         /// </summary>
         /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.

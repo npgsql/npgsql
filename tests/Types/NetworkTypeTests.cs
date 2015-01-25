@@ -111,6 +111,24 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        // Older tests from here
+
+        [Test]
+        public void TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
+        {
+            // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
+            // for a discussion where an NpgsqlInet type isn't shown in a datagrid
+            // This test tries to check if the type returned is an IPAddress when using
+            // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
+
+            var command = new NpgsqlCommand("select '192.168.10.10'::inet;", Conn);
+            using (var dr = command.ExecuteReader()) {
+                dr.Read();
+                var result = dr.GetValue(0);
+                Assert.AreEqual(typeof(IPAddress), result.GetType());
+            }
+        }
+
         public NetworkTypeTests(string backendVersion) : base(backendVersion) {}
     }
 }
