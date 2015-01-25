@@ -697,8 +697,8 @@ namespace Npgsql
                 var asComplex = msg as ChunkingFrontendMessage;
                 if (asComplex != null)
                 {
-                    byte[] directBuf;
-                    while (!asComplex.Write(Buffer, out directBuf))
+                    byte[] directBuf = null;
+                    while (!asComplex.Write(Buffer, ref directBuf))
                     {
                         Buffer.Flush();
                         // The following is an optimization hack for writing large byte arrays without passing

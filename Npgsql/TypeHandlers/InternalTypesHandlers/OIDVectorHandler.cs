@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             throw new NotImplementedException();
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
             throw new NotImplementedException();
         }

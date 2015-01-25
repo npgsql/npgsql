@@ -88,10 +88,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             _value = (NpgsqlTsVector)value;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
-
             if (_lexemePos == -1)
             {
                 if (_buf.WriteSpaceLeft < 4)

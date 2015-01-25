@@ -280,9 +280,8 @@ namespace Npgsql.TypeHandlers
             _writeState = WriteState.WroteNothing;
         }
 
-        public bool Write<TElement>(out byte[] directBuf)
+        public bool Write<TElement>(ref byte[] directBuf)
         {
-            directBuf = null;
             Array asArray;
 
             switch (_writeState)
@@ -390,7 +389,7 @@ namespace Npgsql.TypeHandlers
                     asChunkedWriter.PrepareWrite(_buf, element);
                     _wroteElementLen = true;
                 }
-                if (!asChunkedWriter.Write(out directBuf)) {
+                if (!asChunkedWriter.Write(ref directBuf)) {
                     return false;
                 }
                 _wroteElementLen = false;
@@ -484,9 +483,9 @@ namespace Npgsql.TypeHandlers
             return base.GetLength<TElement>(value);
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            return base.Write<TElement>(out directBuf);
+            return base.Write<TElement>(ref directBuf);
         }
     }
 

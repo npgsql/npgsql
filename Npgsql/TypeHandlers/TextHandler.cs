@@ -174,9 +174,8 @@ namespace Npgsql.TypeHandlers
             _bytePos = 0;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
             int charsUsed;
             bool completed;
             _buf.WriteStringChunked(_chars, _bytePos, _chars.Length - _bytePos, true, out charsUsed, out completed);

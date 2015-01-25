@@ -92,9 +92,8 @@ namespace Npgsql
             throw new NotImplementedException("Write()");
         }
 
-        internal virtual bool Write(NpgsqlBuffer buf, out byte[] directBuf)
+        internal virtual bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
         {
-            directBuf = null;
             return Write(buf);
         }
     }

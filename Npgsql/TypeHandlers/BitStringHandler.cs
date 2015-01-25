@@ -163,9 +163,8 @@ namespace Npgsql.TypeHandlers
             _value = value;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
             var bitArray = _value as BitArray;
             if (bitArray != null) {
                 return WriteBitArray(bitArray);
@@ -312,16 +311,16 @@ namespace Npgsql.TypeHandlers
             _value = value;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
             if (_value is BitArray[]) {
-                return base.Write<BitArray>(out directBuf);
+                return base.Write<BitArray>(ref directBuf);
             }
             if (_value is bool[]) {
-                return base.Write<bool>(out directBuf);
+                return base.Write<bool>(ref directBuf);
             }
             if (_value is string[]) {
-                return base.Write<string>(out directBuf);
+                return base.Write<string>(ref directBuf);
             }
             throw PGUtil.ThrowIfReached(String.Format("Can't write type {0} as an bitstring array", _value.GetType()));
         }

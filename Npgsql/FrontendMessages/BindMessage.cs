@@ -58,11 +58,10 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        internal override bool Write(NpgsqlBuffer buf, out byte[] directBuf)
+        internal override bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
-            directBuf = null;
 
             switch (_state)
             {
@@ -113,7 +112,7 @@ namespace Npgsql.FrontendMessages
                     goto case State.WroteHeader;
 
                 case State.WroteHeader:
-                    if (!WriteParameters(buf, out directBuf)) { return false; }
+                    if (!WriteParameters(buf, ref directBuf)) { return false; }
                     _state = State.WroteParameters;
                     goto case State.WroteParameters;
 
@@ -141,9 +140,8 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        bool WriteParameters(NpgsqlBuffer buf, out byte[] directBuf)
+        bool WriteParameters(NpgsqlBuffer buf, ref byte[] directBuf)
         {
-            directBuf = null;
             for (; _paramIndex < InputParameters.Count; _paramIndex++)
             {
                 var param = InputParameters[_paramIndex];
@@ -171,7 +169,7 @@ namespace Npgsql.FrontendMessages
                         asChunkingWriter.PrepareWrite(buf, param.Value);
                         _wroteParamLen = true;
                     }
-                    if (!asChunkingWriter.Write(out directBuf)) {
+                    if (!asChunkingWriter.Write(ref directBuf)) {
                         return false;
                     }
                     _wroteParamLen = false;

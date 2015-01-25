@@ -43,7 +43,7 @@ namespace Npgsql
     {
         int GetLength(object value);
         void PrepareWrite(NpgsqlBuffer buf, object value);
-        bool Write(out byte[] directBuf);
+        bool Write(ref byte[] directBuf);
     }
 
     [ContractClassFor(typeof(IChunkingTypeWriter))]
@@ -62,10 +62,9 @@ namespace Npgsql
             Contract.Requires(value != null);
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            Contract.Ensures(Contract.Result<bool>() == false || Contract.ValueAtReturn(out directBuf) == null);
-            directBuf = null;
+            Contract.Ensures(Contract.Result<bool>() == false || directBuf == null);
             return default(bool);
         }
     }

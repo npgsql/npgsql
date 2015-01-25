@@ -88,7 +88,8 @@ namespace Npgsql.TypeHandlers
             _value = (byte[])value;
         }
 
-        public bool Write(out byte[] directBuf)
+        // ReSharper disable once RedundantAssignment
+        public bool Write(ref byte[] directBuf)
         {
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
