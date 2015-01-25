@@ -1111,33 +1111,28 @@ namespace Npgsql.SqlGenerators
 
     internal class CombinedProjectionExpression : VisitedExpression
     {
-        private VisitedExpression _first;
-        private VisitedExpression _second;
+        private List<VisitedExpression> _list;
         private string _setOperator;
 
-        public CombinedProjectionExpression(VisitedExpression first, string setOperator, VisitedExpression second)
+        public CombinedProjectionExpression(DbExpressionKind setOperator, List<VisitedExpression> list)
         {
-            _first = first;
-            _setOperator = setOperator;
-            _second = second;
-        }
-
-        public CombinedProjectionExpression(VisitedExpression first, DbExpressionKind setOperator, VisitedExpression second)
-        {
-            _first = first;
             _setOperator = setOperator == DbExpressionKind.UnionAll ? "UNION ALL" : setOperator == DbExpressionKind.Except ? "EXCEPT" : "INTERSECT";
-            _second = second;
+            _list = list;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            sqlText.Append("(");
-            _first.WriteSql(sqlText);
-            sqlText.Append(") ");
-            sqlText.Append(_setOperator);
-            sqlText.Append(" (");
-            _second.WriteSql(sqlText);
-            sqlText.Append(")");
+            for (var i = 0; i < _list.Count; i++)
+            {
+                if (i != 0)
+                {
+                    sqlText.Append(' ').Append(_setOperator).Append(' ');
+                }
+                sqlText.Append('(');
+                _list[i].WriteSql(sqlText);
+                sqlText.Append(')');
+            }
+
             base.WriteSql(sqlText);
         }
     }
