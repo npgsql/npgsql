@@ -12,6 +12,17 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     internal class TimeHandler : TypeHandlerWithPsv<DateTime, NpgsqlTime>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTime>, ISimpleTypeWriter
     {
+        /// <summary>
+        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
+        /// fields. Npgsql (currently) does not support this mode.
+        /// </summary>
+        readonly bool _integerFormat;
+
+        public TimeHandler(NpgsqlConnector connector)
+        {
+            _integerFormat = connector.BackendParams["integer_datetimes"] == "on";
+        }
+
         public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTime?
@@ -20,6 +31,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         NpgsqlTime ISimpleTypeReader<NpgsqlTime>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
+            if (!_integerFormat) {
+                throw new NotSupportedException("Old floating point representation for timestamps not supported");
+            }
+
             // Postgresql time resolution == 1 microsecond == 10 ticks
             return new NpgsqlTime(buf.ReadInt64() * 10);
         }
