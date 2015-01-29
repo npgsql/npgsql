@@ -29,6 +29,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -84,22 +85,6 @@ namespace Npgsql
         private static readonly string NULL_TERMINATOR_STRING = '\x00'.ToString();
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
-
-        ///<summary>
-        /// This method takes a ProtocolVersion and returns an integer
-        /// version number that the Postgres backend will recognize in a
-        /// startup packet.
-        /// </summary>
-        internal static Int32 ConvertProtocolVersion(ProtocolVersion Ver)
-        {
-            switch (Ver)
-            {
-                case ProtocolVersion.Version3:
-                    return (int) ServerVersionCode.ProtocolVersion3;
-            }
-
-            throw new ArgumentOutOfRangeException();
-        }
 
         /// <summary>
         /// This method takes a version string as returned by SELECT VERSION() and returns
@@ -650,7 +635,6 @@ namespace Npgsql
         /// <summary>
         /// Read a 32-bit integer from the given array in the correct byte order.
         /// </summary>
-        [GenerateAsync]
         public static Int32 ReadInt32(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt32(src, offset));
@@ -681,7 +665,6 @@ namespace Npgsql
         /// <summary>
         /// Read a 16-bit integer from the given array in the correct byte order.
         /// </summary>
-        [GenerateAsync]
         public static Int16 ReadInt16(byte[] src, Int32 offset)
         {
             return IPAddress.NetworkToHostOrder(BitConverter.ToInt16(src, offset));
@@ -769,6 +752,21 @@ namespace Npgsql
             return TaskEx.FromResult(result);
 #endif
         }
+
+        /// <summary>
+        /// Throws an exception with the given string and also invokes a contract failure, allowing the static checker
+        /// to detect scenarios leading up to this error.
+        ///
+        /// See http://blogs.msdn.com/b/francesco/archive/2014/09/12/how-to-use-cccheck-to-prove-no-case-is-forgotten.aspx
+        /// </summary>
+        /// <param name="message">the exception message</param>
+        /// <returns>an exception to be thrown</returns>
+        [ContractVerification(false)]
+        public static Exception ThrowIfReached(string message = null)
+        {
+            Contract.Requires(false);
+            return message == null ? new Exception() : new Exception(message);
+        }
     }
 
     /// <summary>
@@ -780,14 +778,7 @@ namespace Npgsql
         Version3 = 3
     }
 
-    public enum ServerVersionCode
-    {
-        ProtocolVersion2 = 2 << 16, // 131072
-        ProtocolVersion3 = 3 << 16 // 196608
-    }
-
-    internal enum FormatCode :
-        short
+    internal enum FormatCode : short
     {
         Text = 0,
         Binary = 1

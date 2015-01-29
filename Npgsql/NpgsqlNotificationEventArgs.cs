@@ -45,16 +45,13 @@ namespace Npgsql
         /// </summary>
         public readonly string Condition;
 
-        /// <summary>
-        /// Additional Information From Notifiying Process (for future use, currently postgres always sets this to an empty string)
-        /// </summary>
         public readonly string AdditionalInformation;
 
-        internal NpgsqlNotificationEventArgs(Stream stream, bool readAdditional)
+        internal NpgsqlNotificationEventArgs(NpgsqlBuffer buf)
         {
-            PID = stream.ReadInt32();
-            Condition = stream.ReadString();
-            AdditionalInformation = readAdditional ? stream.ReadString() : string.Empty;
+            PID = buf.ReadInt32();
+            Condition = buf.ReadNullTerminatedString();
+            AdditionalInformation = buf.ReadNullTerminatedString();
         }
     }
 }

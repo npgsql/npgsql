@@ -1,0 +1,243 @@
+﻿using Npgsql.Messages;
+using NpgsqlTypes;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+
+namespace Npgsql.TypeHandlers.FullTextSearchHandlers
+{
+    /// <summary>
+    /// http://www.postgresql.org/docs/9.4/static/datatype-textsearch.html
+    /// </summary>
+    [TypeMapping("tsquery", NpgsqlDbType.TsQuery, new DbType[0], new[] {
+        typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty),
+        typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })]
+    internal class TsQueryHandler : TypeHandler<NpgsqlTsQuery>, IChunkingTypeReader<NpgsqlTsQuery>, IChunkingTypeWriter
+    {
+        // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
+        const int MaxSingleTokenBytes = 2050;
+
+        NpgsqlBuffer _buf;
+        Stack<Tuple<NpgsqlTsQuery, int>> _nodes;
+        int _numTokens;
+        int _tokenPos;
+        int _bytesLeft;
+        NpgsqlTsQuery _value;
+
+        Stack<NpgsqlTsQuery> _stack;
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            _buf = buf;
+            _nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
+            _tokenPos = -1;
+            _bytesLeft = len;
+        }
+
+        public bool Read(out NpgsqlTsQuery result)
+        {
+            result = null;
+
+            if (_tokenPos == -1)
+            {
+                if (_buf.ReadBytesLeft < 4)
+                    return false;
+                _numTokens = _buf.ReadInt32();
+                _bytesLeft -= 4;
+                _tokenPos = 0;
+            }
+
+            if (_numTokens == 0)
+            {
+                result = new NpgsqlTsQueryEmpty();
+                _buf = null;
+                _nodes = null;
+                return true;
+            }
+
+            for (; _tokenPos < _numTokens; _tokenPos++)
+            {
+                if (_buf.ReadBytesLeft < Math.Min(_bytesLeft, MaxSingleTokenBytes))
+                    return false;
+
+                int readPos = _buf.ReadPosition;
+
+                bool isOper = _buf.ReadByte() == 2;
+                if (isOper)
+                {
+                    NpgsqlTsQuery.NodeKind operKind = (NpgsqlTsQuery.NodeKind)_buf.ReadByte();
+                    if (operKind == NpgsqlTsQuery.NodeKind.Not)
+                    {
+                        var node = new NpgsqlTsQueryNot(null);
+                        InsertInTree(node);
+                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 0));
+                    }
+                    else
+                    {
+                        NpgsqlTsQuery node = null;
+
+                        if (operKind == NpgsqlTsQuery.NodeKind.And)
+                            node = new NpgsqlTsQueryAnd(null, null);
+                        else if (operKind == NpgsqlTsQuery.NodeKind.Or)
+                            node = new NpgsqlTsQueryOr(null, null);
+                        else
+                            PGUtil.ThrowIfReached();
+
+                        InsertInTree(node);
+
+                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
+                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 1));
+                    }
+                }
+                else
+                {
+                    NpgsqlTsQueryLexeme.Weight weight = (NpgsqlTsQueryLexeme.Weight)_buf.ReadByte();
+                    bool prefix = _buf.ReadByte() != 0;
+                    string str = _buf.ReadNullTerminatedString();
+                    InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix));
+                }
+
+                _bytesLeft -= _buf.ReadPosition - readPos;
+            }
+
+            if (_nodes.Count != 0)
+                PGUtil.ThrowIfReached();
+
+            result = _value;
+            _buf = null;
+            _nodes = null;
+            _value = null;
+            return true;
+        }
+
+        void InsertInTree(NpgsqlTsQuery node)
+        {
+            if (_nodes.Count == 0)
+            {
+                _value = node;
+            }
+            else
+            {
+                var parent = _nodes.Pop();
+                if (parent.Item2 == 0)
+                    ((NpgsqlTsQueryNot)parent.Item1).Child = node;
+                else if (parent.Item2 == 1)
+                    ((NpgsqlTsQueryBinOp)parent.Item1).Left = node;
+                else
+                    ((NpgsqlTsQueryBinOp)parent.Item1).Right = node;
+            }
+        }
+
+        public int ValidateAndGetLength(object value)
+        {
+            var vec = (NpgsqlTsQuery)value;
+
+            if (vec.Kind == NpgsqlTsQuery.NodeKind.Empty)
+                return 4;
+
+            return 4 + GetNodeLength(vec);
+        }
+
+        int GetNodeLength(NpgsqlTsQuery node)
+        {
+            switch (node.Kind)
+            {
+                case NpgsqlTsQuery.NodeKind.Lexeme:
+                    var strLen = Encoding.UTF8.GetByteCount(((NpgsqlTsQueryLexeme)node).Text);
+                    if (strLen > 2046)
+                        throw new InvalidCastException("Lexeme text too long. Must be at most 2046 bytes in UTF8.");
+                    return 4 + strLen;
+                case NpgsqlTsQuery.NodeKind.And:
+                case NpgsqlTsQuery.NodeKind.Or:
+                    return 2 + GetNodeLength(((NpgsqlTsQueryBinOp)node).Left) + GetNodeLength(((NpgsqlTsQueryBinOp)node).Right);
+                case NpgsqlTsQuery.NodeKind.Not:
+                    return 2 + GetNodeLength(((NpgsqlTsQueryNot)node).Child);
+                case NpgsqlTsQuery.NodeKind.Empty:
+                    throw new InvalidOperationException("Empty tsquery nodes must be top-level");
+                default:
+                    throw new InvalidOperationException("Illegal node kind: " + node.Kind);
+            }
+        }
+
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            _buf = buf;
+            _value = (NpgsqlTsQuery)value;
+            _numTokens = GetTokenCount(_value);
+        }
+
+        int GetTokenCount(NpgsqlTsQuery node)
+        {
+            switch (node.Kind)
+            {
+                case NpgsqlTsQuery.NodeKind.Lexeme:
+                    return 1;
+                case NpgsqlTsQuery.NodeKind.And:
+                case NpgsqlTsQuery.NodeKind.Or:
+                    return 1 + GetTokenCount(((NpgsqlTsQueryBinOp)node).Left) + GetTokenCount(((NpgsqlTsQueryBinOp)node).Right);
+                case NpgsqlTsQuery.NodeKind.Not:
+                    return 1 + GetTokenCount(((NpgsqlTsQueryNot)node).Child);
+                case NpgsqlTsQuery.NodeKind.Empty:
+                    return 0;
+            }
+            return -1;
+        }
+
+        public bool Write(ref byte[] directBuf)
+        {
+            if (_stack == null)
+            {
+                if (_buf.WriteSpaceLeft < 4)
+                    return false;
+                _buf.WriteInt32(_numTokens);
+
+                if (_numTokens == 0)
+                {
+                    _buf = null;
+                    _value = null;
+                    return true;
+                }
+                _stack = new Stack<NpgsqlTsQuery>();
+                _stack.Push(_value);
+            }
+
+            while (_stack.Count > 0)
+            {
+                if (_buf.WriteSpaceLeft < 2)
+                    return false;
+
+                if (_stack.Peek().Kind == NpgsqlTsQuery.NodeKind.Lexeme && _buf.WriteSpaceLeft < MaxSingleTokenBytes)
+                    return false;
+
+                var node = _stack.Pop();
+                _buf.WriteByte(node.Kind == NpgsqlTsQuery.NodeKind.Lexeme ? (byte)1 : (byte)2);
+                if (node.Kind != NpgsqlTsQuery.NodeKind.Lexeme)
+                {
+                    _buf.WriteByte((byte)node.Kind);
+                    if (node.Kind == NpgsqlTsQuery.NodeKind.Not)
+                        _stack.Push(((NpgsqlTsQueryNot)node).Child);
+                    else
+                    {
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Left);
+                    }
+                }
+                else
+                {
+                    var lexemeNode = (NpgsqlTsQueryLexeme)node;
+                    _buf.WriteByte((byte)lexemeNode.Weights);
+                    _buf.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
+                    _buf.WriteStringSimple(lexemeNode.Text);
+                    _buf.WriteByte(0);
+                }
+            }
+
+            _buf = null;
+            _value = null;
+            _stack = null;
+            return true;
+        }
+    }
+}

@@ -176,7 +176,7 @@ namespace Npgsql
                 }
 
                 string[] names = null;
-                int[] types = null;
+                uint[] types = null;
                 char[] modes = null;
 
                 using (NpgsqlDataReader rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
@@ -188,15 +188,15 @@ namespace Npgsql
                         if (serverVersion >= new Version("8.1.0"))
                         {
                             if (!rdr.IsDBNull(2))
-                                types = rdr.GetValue(2) as int[];
+                                types = rdr.GetValue(2) as uint[];
                             if (!rdr.IsDBNull(3))
                                 modes = rdr.GetValue(3) as char[];
                         }
                         if (types == null)
                         {
-                            if (rdr.IsDBNull(1) || rdr.GetString(1) == "")
+                            if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
                                 return;  // Parameterless function
-                            types = rdr.GetString(1).Split().Select(int.Parse).ToArray();
+                            types = rdr.GetFieldValue<uint[]>(1);
                         }
                     }
                     else 
@@ -207,10 +207,14 @@ namespace Npgsql
                 for (var i = 0; i < types.Length; i++)
                 {
                     var param = new NpgsqlParameter();
-                    NpgsqlBackendTypeInfo typeInfo = null;
-                    if (!c.Connector.OidToNameMapping.TryGetValue(types[i], out typeInfo))
+
+                    throw new NotImplementedException();
+                    /*
+                    // TODO: Fix enums, composite types
+                    var npgsqlDbType = c.Connector.TypeHandlerRegistry.GetNpgsqlDbTypeFromOid(types[i]);
+                    if (npgsqlDbType == NpgsqlDbType.Unknown)
                         throw new InvalidOperationException(String.Format("Invalid parameter type: {0}", types[i]));
-                    param.NpgsqlDbType = typeInfo.NpgsqlDbType;
+                    param.NpgsqlDbType = npgsqlDbType;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = ":" + names[i];
@@ -243,6 +247,7 @@ namespace Npgsql
                     }
                     
                     command.Parameters.Add(param);
+                     */
                 }
             }
         }
@@ -380,6 +385,7 @@ namespace Npgsql
              * This was causing ADO.Net to try to set a value of different type of Int32.
              * See bug 1010973 for more info.
              */
+#if INVESTIGATE
             if (parameter.SourceColumnNullMapping)
             {
                 parameter.SourceColumn = "";
@@ -387,7 +393,7 @@ namespace Npgsql
             else
 
                 parameter.NpgsqlDbType = NpgsqlTypesHelper.GetNativeTypeInfo((Type)row[SchemaTableColumn.DataType]).NpgsqlDbType;
-
+#endif
         }
 
         /// <summary>

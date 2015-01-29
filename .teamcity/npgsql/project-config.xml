@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="d2b61061-88b8-4371-bd4f-e86a76b4a504" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>Npgsql</name>
+  <parameters>
+    <param name="env.NPGSQL_TEST_DB_8.4" value="Server=localhost;port=5484;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+    <param name="env.NPGSQL_TEST_DB_9.0" value="Server=localhost;port=5490;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+    <param name="env.NPGSQL_TEST_DB_9.1" value="Server=localhost;port=5491;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+    <param name="env.NPGSQL_TEST_DB_9.2" value="Server=localhost;port=5492;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+    <param name="env.NPGSQL_TEST_DB_9.3" value="Server=localhost;port=5493;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+    <param name="env.NPGSQL_TEST_DB_9.4" value="Server=localhost;port=5494;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false" />
+  </parameters>
+  <cleanup>
+    <policy type="days" cleanup-level="ARTIFACTS">
+      <parameters>
+        <param name="keepDays.count" value="30" />
+      </parameters>
+    </policy>
+  </cleanup>
+</project>
+

@@ -31,6 +31,7 @@
 -------------------------------------------------------------------------
 */
 
+#if WHAT_DO_WE_DO_WITH_THIS
 using System;
 using System.Data;
 using System.Text;
@@ -191,3 +192,4 @@ namespace NpgsqlTypes
         }
     }
 }
+#endif

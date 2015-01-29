@@ -417,9 +417,12 @@ namespace NpgsqlTests
                 Assert.AreEqual(val3, oneRow.Select(p => new DateTime(2014, 2, 3, 4, 5, 6, 0)).First());
                 Assert.AreEqual(val3, oneRow.Select(p => val3).First());
 
-                var val4 = new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-                Assert.AreEqual(val4, oneRow.Select(p => new Guid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).First());
+                var val4 = new Guid("1234567890abcdef1122334455667788");
+                Assert.AreEqual(val4, oneRow.Select(p => new Guid("1234567890abcdef1122334455667788")).First());
                 Assert.AreEqual(val4, oneRow.Select(p => val4).First());
+
+                // String
+                Assert.AreEqual(@"a'b\c", oneRow.Select(p => @"a'b\c").First());
             }
         }
 
@@ -494,6 +497,12 @@ namespace NpgsqlTests
 
                 // Test that lhs and rhs of UNION ALL is wrapped in parentheses
                 context.Blogs.Take(3).Concat(context.Blogs.Take(4)).ToArray();
+
+                // Flatten set ops
+                context.Blogs.Concat(context.Blogs).Concat(context.Blogs.Concat(context.Blogs)).ToArray();
+                context.Blogs.Intersect(context.Blogs).Intersect(context.Blogs).ToArray();
+                // But not except
+                context.Blogs.Concat(context.Blogs.Except(context.Blogs)).ToArray();
 
                 // In
                 int[] arr = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40};

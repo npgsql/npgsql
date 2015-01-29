@@ -28,84 +28,73 @@
 // Keep the xml comment warning quiet for this file.
 
 using System;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Npgsql
 {
     /// <summary>
-    /// Marker interface which identifies a class which represents part of
-    /// a response from the server.
+    /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal interface IServerMessage {}
-
-    internal class ReadyForQueryMsg : IServerMessage
+    internal abstract class BackendMessage
     {
-        internal static readonly ReadyForQueryMsg Instance = new ReadyForQueryMsg();
-    }
-
-    internal class CopyInResponseMsg : IServerMessage
-    {
-        internal static readonly CopyInResponseMsg Instance = new CopyInResponseMsg();
-    }
-
-    internal class CopyOutResponseMsg : IServerMessage
-    {
-        internal static readonly CopyOutResponseMsg Instance = new CopyOutResponseMsg();
-    }
-    internal class CopyDataMsg : IServerMessage
-    {
-        internal static readonly CopyDataMsg Instance = new CopyDataMsg();
+        internal abstract BackendMessageCode Code { get; }
     }
 
     /// <summary>
-    /// Represents a completed response message.
+    /// Base class for all classes which represent a message sent to the PostgreSQL backend.
     /// </summary>
-    internal class CompletedResponse : IServerMessage
+    internal abstract class FrontendMessage
     {
-        private readonly int? _rowsAffected;
-        private readonly long? _lastInsertedOID;
-
-        public CompletedResponse(Stream stream)
-        {
-            string[] tokens = stream.ReadString().Split();
-            if (tokens.Length > 1)
-            {
-                int rowsAffected;
-                if (int.TryParse(tokens[tokens.Length - 1], out rowsAffected))
-                    _rowsAffected = rowsAffected;
-                else
-                    _rowsAffected = null;
-
-            }
-            _lastInsertedOID = (tokens.Length > 2 && tokens[0].Trim().ToUpperInvariant() == "INSERT")
-                                   ? long.Parse(tokens[1])
-                                   : (long?)null;
-        }
-
-        public long? LastInsertedOID
-        {
-            get { return _lastInsertedOID; }
-        }
-
-        public int? RowsAffected
-        {
-            get { return _rowsAffected; }
-        }
+        /// <summary>
+        /// Called to prepare a message before writing to the buffer. Maybe through validation exceptions.
+        /// </summary>
+        internal virtual void Prepare() { }
     }
 
-    internal class ParameterDescriptionResponse : IServerMessage
+    /// <summary>
+    /// Represents a simple frontend message which is typically small and fits well within
+    /// the write buffer. The message is first queries for the number of bytes it requires,
+    /// and then writes itself out.
+    /// </summary>
+    internal abstract class SimpleFrontendMessage : FrontendMessage
     {
-        private readonly int[] _typeoids;
+        /// <summary>
+        /// Returns the number of bytes needed to write this message. Can only be called after
+        /// <see cref="FrontendMessage.Prepare"/> has been called.
+        /// </summary>
+        internal abstract int Length { get; }
 
-        public ParameterDescriptionResponse(int[] typeoids)
+        /// <summary>
+        /// Writes the message contents into the buffer. 
+        /// </summary>
+        internal abstract void Write(NpgsqlBuffer buf);
+    }
+
+    /// <summary>
+    /// Represents an arbitrary-length message capable of flushing the buffer internally as it's
+    /// writing itself out.
+    /// </summary>
+    internal abstract class ChunkingFrontendMessage : FrontendMessage
+    {
+        /// <param name="buf">the buffer into which to write the message.</param>
+        /// <param name="directBuf">
+        /// an option buffer that, if returned, will be written to the server directly, bypassing our
+        /// NpgsqlBuffer. This is an optimization hack for bytea.
+        /// </param>
+        /// <returns>
+        /// Whether there was enough space in the buffer to contain the entire message.
+        /// If false, the buffer should be flushed and write should be called again.
+        /// </returns>
+        internal virtual bool Write(NpgsqlBuffer buf)
         {
-            _typeoids = typeoids;
+            throw new NotImplementedException("Write()");
         }
 
-        public int[] TypeOIDs
+        internal virtual bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
         {
-            get { return _typeoids; }
+            return Write(buf);
         }
     }
 
@@ -118,22 +107,7 @@ namespace Npgsql
         Task WriteToStreamAsync(Stream outputStream);
     }
 
-    /// <summary>
-    /// Marker interface which identifies a class which may take possession of a stream for the duration of
-    /// it's lifetime (possibly temporarily giving that possession to another class for part of that time.
-    ///
-    /// It inherits from IDisposable, since any such class must make sure it leaves the stream in a valid state.
-    ///
-    /// The most important such class is that compiler-generated from ProcessBackendResponsesEnum. Of course
-    /// we can't make that inherit from this interface, alas.
-    /// </summary>
-    internal interface IStreamOwner : IServerMessage, IDisposable
-    {
-    }
-
-    #pragma warning disable 1591
-
-    internal enum FrontEndMessageCode : byte
+    internal enum FrontendMessageCode : byte
     {
         StartupPacket = (byte) ' ',
         Termination = (byte) 'X',
@@ -146,13 +120,15 @@ namespace Npgsql
         Bind = (byte) 'B',
         Execute = (byte) 'E',
         Describe = (byte) 'D',
+        DescribePortal = (byte) 'P',
+        DescribeStatement = (byte) 'S',
         Close = (byte) 'C',
         Sync = (byte) 'S',
         PasswordMessage = (byte) 'p',
         FunctionCall = (byte)'F',
     }
 
-    internal enum BackEndMessageCode
+    internal enum BackendMessageCode
     {
         IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
 
@@ -190,19 +166,9 @@ namespace Npgsql
         CloseComplete = '3'
     }
 
-    internal enum AuthenticationRequestType
+    enum DescribeType : byte
     {
-        AuthenticationOk = 0,
-        AuthenticationKerberosV4 = 1,
-        AuthenticationKerberosV5 = 2,
-        AuthenticationClearTextPassword = 3,
-        AuthenticationCryptPassword = 4,
-        AuthenticationMD5Password = 5,
-        AuthenticationSCMCredential = 6,
-        AuthenticationGSS = 7,
-        AuthenticationGSSContinue = 8,
-        AuthenticationSSPI = 9
+        Statement = (byte)'S',
+        Portal = (byte)'P'
     }
-    
-    #pragma warning restore 1591
 }

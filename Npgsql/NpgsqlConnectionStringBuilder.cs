@@ -214,6 +214,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.SslMode, new ValueDescription(typeof(SslMode)));
             valueDescriptions.Add(Keywords.Timeout, new ValueDescription((Int32)15));
             valueDescriptions.Add(Keywords.SearchPath, new ValueDescription(typeof(string)));
+            valueDescriptions.Add(Keywords.BufferSize, new ValueDescription(NpgsqlBuffer.DefaultBufferSize));
             valueDescriptions.Add(Keywords.Pooling, new ValueDescription(true));
             valueDescriptions.Add(Keywords.ConnectionLifeTime, new ValueDescription(typeof(Int32)));
             valueDescriptions.Add(Keywords.MinPoolSize, new ValueDescription((Int32)1));
@@ -636,6 +637,22 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.SearchPath), Keywords.SearchPath, value); }
         }
 
+        private int _bufferSize;
+        /// <summary>
+        /// Gets or sets the buffer size.
+        /// </summary>
+        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
+        [NpgsqlConnectionStringKeyword(Keywords.BufferSize)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_BufferSize")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_BufferSize")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(NpgsqlBuffer.DefaultBufferSize)]
+        public int BufferSize
+        {
+            get { return _bufferSize; }
+            set { SetValue(GetKeyName(Keywords.BufferSize), Keywords.BufferSize, value); }
+        }
+
         private bool _pooling;
         /// <summary>
         /// Gets or sets a value indicating whether connection pooling should be used.
@@ -880,6 +897,8 @@ namespace Npgsql
                     return Keywords.Timeout;
                 case "SEARCHPATH":
                     return Keywords.SearchPath;
+                case "BUFFERSIZE":
+                    return Keywords.BufferSize;
                 case "POOLING":
                     return Keywords.Pooling;
                 case "CONNECTIONLIFETIME":
@@ -938,6 +957,8 @@ namespace Npgsql
                     return "TIMEOUT";
                 case Keywords.SearchPath:
                     return "SEARCHPATH";
+                case Keywords.BufferSize:
+                    return "BUFFERSIZE";
                 case Keywords.Pooling:
                     return "POOLING";
                 case Keywords.ConnectionLifeTime:
@@ -1088,6 +1109,8 @@ namespace Npgsql
                         return this._timeout = ToInt32(value, 0, TIMEOUT_LIMIT, keyword);
                     case Keywords.SearchPath:
                         return this._searchpath = Convert.ToString(value);
+                    case Keywords.BufferSize:
+                        return this._bufferSize = Convert.ToInt32(value);
                     case Keywords.Pooling:
                         return this._pooling = ToBoolean(value);
                     case Keywords.ConnectionLifeTime:
@@ -1193,6 +1216,8 @@ namespace Npgsql
                     return this._timeout;
                 case Keywords.SearchPath:
                     return this._searchpath;
+                case Keywords.BufferSize:
+                    return this._bufferSize;
                 case Keywords.Pooling:
                     return this._pooling;
                 case Keywords.ConnectionLifeTime:
@@ -1291,6 +1316,7 @@ namespace Npgsql
         SslMode,
         Timeout,
         SearchPath,
+        BufferSize,
         // These are for the connection pool
         Pooling,
         ConnectionLifeTime,

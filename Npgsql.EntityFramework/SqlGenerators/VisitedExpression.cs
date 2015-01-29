@@ -15,6 +15,7 @@ using System.Data.Common.CommandTrees;
 #endif
 using NpgsqlTypes;
 using System.Data;
+using System.Globalization;
 
 namespace Npgsql.SqlGenerators
 {
@@ -115,8 +116,7 @@ namespace Npgsql.SqlGenerators
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            NpgsqlNativeTypeInfo typeInfo;
-            System.Globalization.NumberFormatInfo ni = NpgsqlNativeTypeInfo.NumberFormat;
+            var ni = CultureInfo.InvariantCulture.NumberFormat;
             object value = _value;
             switch (_primitiveType)
             {
@@ -219,14 +219,11 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
+                    sqlText.Append('\'').Append((Guid)_value).Append('\'');
+                    sqlText.Append("::uuid");
+                    break;
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
-                    // Escape syntax is needed for strings with escape values.
-                    // We don't check if there are escaped strings for performance reasons.
-                    // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
-                    // NativeToBackendTypeConverterOptions.Default should provide the correct
-                    // formatting rules for any backend >= 8.0.
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append("E'").Append(((string)_value).Replace(@"\", @"\\").Replace("'", @"\'")).Append("'");
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);
@@ -1100,33 +1097,28 @@ namespace Npgsql.SqlGenerators
 
     internal class CombinedProjectionExpression : VisitedExpression
     {
-        private VisitedExpression _first;
-        private VisitedExpression _second;
+        private List<VisitedExpression> _list;
         private string _setOperator;
 
-        public CombinedProjectionExpression(VisitedExpression first, string setOperator, VisitedExpression second)
+        public CombinedProjectionExpression(DbExpressionKind setOperator, List<VisitedExpression> list)
         {
-            _first = first;
-            _setOperator = setOperator;
-            _second = second;
-        }
-
-        public CombinedProjectionExpression(VisitedExpression first, DbExpressionKind setOperator, VisitedExpression second)
-        {
-            _first = first;
             _setOperator = setOperator == DbExpressionKind.UnionAll ? "UNION ALL" : setOperator == DbExpressionKind.Except ? "EXCEPT" : "INTERSECT";
-            _second = second;
+            _list = list;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            sqlText.Append("(");
-            _first.WriteSql(sqlText);
-            sqlText.Append(") ");
-            sqlText.Append(_setOperator);
-            sqlText.Append(" (");
-            _second.WriteSql(sqlText);
-            sqlText.Append(")");
+            for (var i = 0; i < _list.Count; i++)
+            {
+                if (i != 0)
+                {
+                    sqlText.Append(' ').Append(_setOperator).Append(' ');
+                }
+                sqlText.Append('(');
+                _list[i].WriteSql(sqlText);
+                sqlText.Append(')');
+            }
+
             base.WriteSql(sqlText);
         }
     }

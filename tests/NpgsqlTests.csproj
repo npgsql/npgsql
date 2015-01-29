@@ -45,7 +45,8 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <OutputPath>bin\Release-net40\</OutputPath>
@@ -55,7 +56,8 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug-net45|AnyCPU' ">
     <OutputPath>bin\Debug-net45\</OutputPath>
@@ -116,11 +118,7 @@
     </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\EntityFramework.6.1.1\lib\net40\EntityFramework.dll</HintPath>
-    </Reference>
-    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\EntityFramework.6.1.1\lib\net40\EntityFramework.SqlServer.dll</HintPath>
+      <HintPath>..\packages\EntityFramework.6.1.2\lib\net40\EntityFramework.dll</HintPath>
     </Reference>
     <Reference Include="NLog">
       <HintPath>..\packages\NLog.3.1.0.0\lib\net40\NLog.dll</HintPath>
@@ -162,25 +160,31 @@
       <HintPath>..\packages\Microsoft.Bcl.1.1.8\lib\net40\System.Threading.Tasks.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <ItemGroup Condition=" '$(Configuration)' == 'Debug-net45-EF6' Or '$(Configuration)' == 'Release-net45-EF6' ">
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-  </ItemGroup>
   <ItemGroup>
+    <Compile Include="Types\ArrayTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="AsyncTests.cs" />
+    <Compile Include="Types\BitStringTests.cs" />
+    <Compile Include="Types\ByteaTests.cs" />
     <Compile Include="CopyTests.cs" />
+    <Compile Include="Types\DateTimeTests.cs" />
     <Compile Include="EntityFrameworkBasicTests.cs" />
     <Compile Include="EntityFrameworkMigrationTests.cs" />
     <Compile Include="FunctionTests.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="NpgsqlBufferedStreamTests.cs" />
     <Compile Include="SecurityTests.cs" />
+    <Compile Include="Types\EnumTests.cs" />
+    <Compile Include="Types\GeometricTypeTests.cs" />
+    <Compile Include="Types\NetworkTypeTests.cs" />
+    <Compile Include="Types\NumericTypeTests.cs" />
     <Compile Include="TestMetrics.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="CommandTests.cs" />
     <Compile Include="ConnectionTests.cs" />
     <Compile Include="DataAdapterTests.cs" />
-    <Compile Include="DataReaderTests.cs" />
+    <Compile Include="ReaderTests.cs" />
     <Compile Include="ExceptionTests.cs" />
     <Compile Include="SpeedTests.cs" />
     <Compile Include="NpgsqlParameterTests.cs">
@@ -189,6 +193,8 @@
     <Compile Include="PrepareTests.cs" />
     <Compile Include="SystemTransactionsTest.cs" />
     <Compile Include="TestUtil.cs" />
+    <Compile Include="Types\MiscTypeTests.cs" />
+    <Compile Include="Types\TextTests.cs" />
     <Compile Include="TypesTests.cs" />
     <Compile Include="xmlModel\XmlTest.ObjectLayer.cs" />
     <Compile Include="xmlModel\XmlTest.Views.cs" />

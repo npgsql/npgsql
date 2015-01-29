@@ -616,15 +616,64 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void NpgsqlMacAddress()
+        public void TsVector()
         {
-            System.Net.NetworkInformation.PhysicalAddress local =
-                System.Net.NetworkInformation.PhysicalAddress.Parse("012345ABCDEF");
-            var mac = new NpgsqlMacAddress(local);
-            var mac2 = new NpgsqlMacAddress("01:23-45-aB,cD.eF");
+            NpgsqlTsVector vec;
+            
+            vec = NpgsqlTsVector.Parse("a");
+            Assert.AreEqual("'a'", vec.ToString());
 
-            Assert.AreEqual(mac, mac2);
-            Assert.AreEqual(mac.ToString(), mac2.ToString());
+            vec = NpgsqlTsVector.Parse("a ");
+            Assert.AreEqual("'a'", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse("a:1A");
+            Assert.AreEqual("'a':1A", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(@"\abc\def:1a ");
+            Assert.AreEqual("'abcdef':1A", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(@"abc:3A 'abc' abc:4B 'hello''yo' 'meh\'\\':5");
+            Assert.AreEqual(@"'abc':3A,4B 'hello''yo' 'meh''\\':5", vec.ToString());
+
+            vec = NpgsqlTsVector.Parse(" a:12345C  a:24D a:25B b c d 1 2 a:25A,26B,27,28");
+            Assert.AreEqual("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'", vec.ToString());
+        }
+
+        [Test]
+        public void TsQuery()
+        {
+            NpgsqlTsQuery query;
+
+            query = new NpgsqlTsQueryLexeme("a", NpgsqlTsQueryLexeme.Weight.A | NpgsqlTsQueryLexeme.Weight.B);
+            query = new NpgsqlTsQueryOr(query, query);
+            query = new NpgsqlTsQueryOr(query, query);
+
+            var str = query.ToString();
+
+            query = NpgsqlTsQuery.Parse("a & b | c");
+            Assert.AreEqual("'a' & 'b' | 'c'", query.ToString());
+
+            query = NpgsqlTsQuery.Parse("'a''':*ab&d:d&!c");
+            Assert.AreEqual("'a''':*AB & 'd':D & !'c'", query.ToString());
+
+            query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | c | d | e");
+            Assert.AreEqual("( ( 'a' & !( 'c' | 'd' ) & !( !'a' ) & 'b' | 'c' ) | 'd' ) | 'e'", query.ToString());
+            Assert.AreEqual(query.ToString(), NpgsqlTsQuery.Parse(query.ToString()).ToString());
+
+            query = NpgsqlTsQuery.Parse("(((a:*)))");
+            Assert.AreEqual("'a':*", query.ToString());
+
+            query = NpgsqlTsQuery.Parse(@"'a\\b''cde'");
+            Assert.AreEqual(@"a\b'cde", ((NpgsqlTsQueryLexeme)query).Text);
+            Assert.AreEqual(@"'a\\b''cde'", query.ToString());
+
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a b c & &"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("&"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("|"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("!"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("("));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse(")"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("()"));
         }
 
         [Test]
@@ -634,44 +683,6 @@ namespace NpgsqlTests
             p.NpgsqlDbType = NpgsqlDbType.Time;
             p.Value = DateTime.Now;
             Object o = p.Value;
-        }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue()
-        {
-            var b = new BitString(true, 32);
-            Assert.AreEqual("11111111111111111111111111111111", b.ToString());
-        }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue2()
-        {
-            var b = new BitString(true, 6);
-            Assert.AreEqual("111111", b.ToString());
-        }
-
-        [Test]
-        public void Bug1011321WrongBitStringvalue3()
-        {
-            var b = new BitString(true, 32);
-            var b2 = new BitString("11111111111111111111111111111111");
-            Assert.IsTrue(b == b2);
-        }
-
-        [Test]
-        public void BitStringSupport()
-        {
-            const string bitMask = "1101101101101101101101101011011011010110110110";
-            var b = new BitString(bitMask);
-            Assert.AreEqual(bitMask, b.ToString());
-        }
-
-        [Test]
-        public void BitStringSupport2()
-        {
-            const string bitMask = "110110110110110110110110101101101";
-            var b = new BitString(bitMask);
-            Assert.AreEqual(bitMask, b.ToString());
         }
     }
 }
