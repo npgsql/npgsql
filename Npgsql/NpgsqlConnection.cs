@@ -667,6 +667,12 @@ namespace Npgsql
             Connector.Notification -= NotificationDelegate;
             Connector.Notice -= NoticeDelegate;
 
+            Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
+            Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
+            Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
+            Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
+            Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
+
             /*if (SyncNotification)
             {
                 
@@ -678,11 +684,6 @@ namespace Npgsql
             }
             else
             {
-                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.CertificateSelectionCallback -= CertificateSelectionCallbackDelegate;
-                Connector.CertificateValidationCallback -= CertificateValidationCallbackDelegate;
-                Connector.PrivateKeySelectionCallback -= PrivateKeySelectionCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
 
                 if (Connector.Transaction != null)
                 {
