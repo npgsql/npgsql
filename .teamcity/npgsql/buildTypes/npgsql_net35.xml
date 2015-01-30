@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE build-type SYSTEM "../../../project-config.dtd">
-
-<build-type>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="317f8d78-fc0d-45f0-a2ba-887a4259c0d8" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
   <name>.NET 3.5</name>
   <description>Npgsql targetting.NET 3.5</description>
   <settings ref="npgsql_dotnet_build">
