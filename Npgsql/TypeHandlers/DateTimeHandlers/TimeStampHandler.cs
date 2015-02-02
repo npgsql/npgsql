@@ -10,7 +10,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, typeof(NpgsqlTimeStamp))]
     internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStamp>,
-        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeStamp>
+        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeStamp>, ISimpleTypeWriter
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -27,7 +27,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             get
             {
-                return false; // TODO: Implement
+                return true;
             }
         }
 
@@ -43,6 +43,41 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
             }
             return NpgsqlTimeStamp.FromInt64(buf.ReadInt64());
+        }
+               
+        public int ValidateAndGetLength(object value)
+        {
+            return 8;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            NpgsqlTimeStamp timestamp = new NpgsqlTimeStamp();
+
+            if ( value is DateTime )
+            {
+                var dtValue = (DateTime)value;
+                var datePart = new NpgsqlDate(dtValue);
+                var timePart = new NpgsqlTime(dtValue.Hour, dtValue.Minute, dtValue.Second, dtValue.Millisecond * 1000);
+                timestamp = new NpgsqlTimeStamp(datePart, timePart);
+            }
+            else if ( value is string )
+            {
+                timestamp = NpgsqlTimeStamp.Parse((string)value);
+            }
+
+            var uSecsTime = timestamp.Time.Hours * 3600000000L + timestamp.Time.Minutes * 60000000L + timestamp.Time.Seconds * 1000000L + timestamp.Time.Microseconds;
+
+            if ( timestamp >= new NpgsqlTimeStamp(2000, 1, 1, 0, 0, 0) )
+            {
+                var uSecsDate = ( timestamp.Date.DaysSinceEra - 730119 ) * 86400000000L;
+                buf.WriteInt64(uSecsDate + uSecsTime);
+            }
+            else
+            {
+                var uSecsDate = ( 730119 - timestamp.Date.DaysSinceEra ) * 86400000000L;
+                buf.WriteInt64(-( uSecsDate - uSecsTime ));
+            }
         }
     }
 }
