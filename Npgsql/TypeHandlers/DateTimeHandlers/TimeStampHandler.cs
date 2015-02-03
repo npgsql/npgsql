@@ -52,20 +52,19 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            NpgsqlTimeStamp timestamp = new NpgsqlTimeStamp();
-
             if ( value is DateTime )
             {
                 var dtValue = (DateTime)value;
                 var datePart = new NpgsqlDate(dtValue);
                 var timePart = new NpgsqlTime(dtValue.Hour, dtValue.Minute, dtValue.Second, dtValue.Millisecond * 1000);
-                timestamp = new NpgsqlTimeStamp(datePart, timePart);
+                value = new NpgsqlTimeStamp(datePart, timePart);
             }
             else if ( value is string )
             {
-                timestamp = NpgsqlTimeStamp.Parse((string)value);
+                value = NpgsqlTimeStamp.Parse((string)value);
             }
 
+            var timestamp = (NpgsqlTimeStamp)value;
             var uSecsTime = timestamp.Time.Hours * 3600000000L + timestamp.Time.Minutes * 60000000L + timestamp.Time.Seconds * 1000000L + timestamp.Time.Microseconds;
 
             if ( timestamp >= new NpgsqlTimeStamp(2000, 1, 1, 0, 0, 0) )
