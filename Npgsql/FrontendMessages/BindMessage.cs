@@ -179,7 +179,7 @@ namespace Npgsql.FrontendMessages
                 var asSimpleWriter = (ISimpleTypeWriter)handler;
                 if (buf.WriteSpaceLeft < param.BoundSize + 4)
                 {
-                    Contract.Assume(buf.Size < param.BoundSize + 4);
+                    Contract.Assume(buf.Size >= param.BoundSize + 4);
                     return false;
                 }
                 buf.WriteInt32(param.BoundSize);
