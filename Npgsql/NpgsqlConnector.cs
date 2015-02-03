@@ -144,7 +144,6 @@ namespace Npgsql
 
         #region Reusable Server Message Objects
 
-        readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
         readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
@@ -170,7 +169,7 @@ namespace Npgsql
             BackendParams = new Dictionary<string, string>();
             Mediator = new NpgsqlMediator();
             _messagesToSend = new List<FrontendMessage>();
-            _planIndex = 0;
+            _preparedStatementIndex = 0;
             _portalIndex = 0;
             _deferredCommands = new List<string>();
         }
@@ -820,7 +819,9 @@ namespace Npgsql
             switch (code)
             {
                 case BackendMessageCode.RowDescription:
-                    return _rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
+                    // TODO: Recycle
+                    var rowDescriptionMessage = new RowDescriptionMessage();
+                    return rowDescriptionMessage.Load(buf, TypeHandlerRegistry);
                 case BackendMessageCode.DataRow:
                     Contract.Assert(dataRowLoadingMode == DataRowLoadingMode.NonSequential || dataRowLoadingMode == DataRowLoadingMode.Sequential);
                     return dataRowLoadingMode == DataRowLoadingMode.Sequential
@@ -840,6 +841,8 @@ namespace Npgsql
                     return BindCompleteMessage.Instance;
                 case BackendMessageCode.NoData:
                     return NoDataMessage.Instance;
+                case BackendMessageCode.CloseComplete:
+                    return CloseCompletedMessage.Instance;
                 case BackendMessageCode.ParameterStatus:
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
@@ -886,7 +889,6 @@ namespace Npgsql
                     throw new NotImplementedException();
 
                 case BackendMessageCode.PortalSuspended:
-                case BackendMessageCode.CloseComplete:
                 case BackendMessageCode.IO_ERROR:
                     Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
@@ -1294,13 +1296,13 @@ namespace Npgsql
         /// </summary>
         internal void ReleasePlansPortals()
         {
-            if (_planIndex > 0)
+            if (_preparedStatementIndex > 0)
             {
-                for (var i = 1; i <= _planIndex; i++)
+                for (var i = 1; i <= _preparedStatementIndex; i++)
                 {
                     try
                     {
-                        ExecuteBlind(String.Format("DEALLOCATE \"{0}{1}\";", PlanNamePrefix, i));
+                        ExecuteBlind(String.Format("DEALLOCATE \"{0}{1}\";", PreparedStatementNamePrefix, i));
                     }
                     // Ignore any error which may occur when releasing portals as this portal name may not be valid anymore. i.e.: the portal name was used on a prepared query which had errors.
                     catch { }
@@ -1308,7 +1310,7 @@ namespace Npgsql
             }
 
             _portalIndex = 0;
-            _planIndex = 0;
+            _preparedStatementIndex = 0;
         }
 
         #endregion Close
@@ -1617,13 +1619,13 @@ namespace Npgsql
         ///<summary>
         /// Returns next plan index.
         ///</summary>
-        internal String NextPlanName()
+        internal string NextPreparedStatementName()
         {
-            return PlanNamePrefix + (++_planIndex);
+            return PreparedStatementNamePrefix + (++_preparedStatementIndex);
         }
 
-        int _planIndex;
-        const String PlanNamePrefix = "s";
+        int _preparedStatementIndex;
+        const string PreparedStatementNamePrefix = "s";
 
         /// <summary>
         /// This method checks if the connector is still ok.

@@ -15,13 +15,13 @@ namespace Npgsql.FrontendMessages
         /// <summary>
         /// Whether to close a statement or a portal
         /// </summary>
-        internal DescribeType DescribeType { get; set; }
+        internal StatementOrPortal StatementOrPortal { get; set; }
 
         const byte Code = (byte)'C';
 
-        internal CloseMessage(DescribeType type, string name)
+        internal CloseMessage(StatementOrPortal type, string name="")
         {
-            DescribeType = type;
+            StatementOrPortal = type;
             Name = name;
         }
 
@@ -33,13 +33,13 @@ namespace Npgsql.FrontendMessages
 
             buf.WriteByte(Code);
             buf.WriteInt32(Length);
-            buf.WriteByte((byte)DescribeType);
+            buf.WriteByte((byte)StatementOrPortal);
             buf.WriteBytesNullTerminated(Encoding.ASCII.GetBytes(Name));
         }
 
         public override string ToString()
         {
-            return String.Format("[Close {0}={1}]", DescribeType, Name);
+            return String.Format("[Close {0}={1}]", StatementOrPortal, Name);
         }
     }
 }

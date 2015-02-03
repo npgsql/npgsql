@@ -41,6 +41,7 @@ using NpgsqlTypes;
 using System.Resources;
 using System.Threading;
 using System.Reflection;
+using System.Text;
 using NUnit.Framework.Constraints;
 
 namespace NpgsqlTests
@@ -511,28 +512,51 @@ namespace NpgsqlTests
 
         #region Multiquery
 
+        /// <summary>
+        /// Tests various configurations of queries and non-queries within a multiquery
+        /// </summary>
         [Test]
-        public void MultipleQueries()
+        [TestCase(new[] { true         }, TestName = "SingleQuery"   )]
+        [TestCase(new[] { false        }, TestName = "SingleNonQuery")]
+        [TestCase(new[] { true, true   }, TestName = "TwoQueries"    )]
+        [TestCase(new[] { false, false }, TestName = "TwoNonQueries" )]
+        [TestCase(new[] { false, true  }, TestName = "NonQueryQuery" )]
+        [TestCase(new[] { true, false  }, TestName = "QueryNonQuery" )]
+        public void Multiqueries(bool[] queries)
         {
-            var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", Conn);
-            var reader = cmd.ExecuteReader();
-            Assert.That(reader.Read(), Is.True);
-            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
-            Assert.That(reader.NextResult(), Is.True);
-            Assert.That(reader.Read(), Is.True);
-            Assert.That(reader.GetInt32(0), Is.EqualTo(2));
-            Assert.That(reader.NextResult(), Is.False);
-            reader.Close();
-            cmd.Dispose();
+            var sb = new StringBuilder();
+            foreach (var query in queries)
+                sb.Append(query ? "SELECT 1;" : "UPDATE data SET field_text='yo' WHERE 1=0;");
+            var sql = sb.ToString();
+            foreach (var prepare in new[] { false, true })
+            {
+                var cmd = new NpgsqlCommand(sql, Conn);
+                if (prepare)
+                    cmd.Prepare();
+                var reader = cmd.ExecuteReader();
+                var numResultSets = queries.Count(q => q);
+                for (var i = 0; i < numResultSets; i++)
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader[0], Is.EqualTo(1));
+                    Assert.That(reader.NextResult(), Is.EqualTo(i != numResultSets - 1));
+                }
+                reader.Close();
+                cmd.Dispose();
+            }
         }
 
         [Test]
-        public void MultipleQueriesWithParameters()
+        public void MultipleQueriesWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
             var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Text);
-            cmd.Prepare();
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            if (prepare == PrepareOrNot.Prepared) {
+                cmd.Prepare();
+            }
             p1.Value = 8;
             p2.Value = "foo";
             var reader = cmd.ExecuteReader();
@@ -547,11 +571,16 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void MultipleQueriesFirstResultsetEmpty()
+        public void MultipleQueriesSingleRow()
         {
-            var command = new NpgsqlCommand("insert into data(field_text) values ('a'); select count(*) from data;", Conn);
-            var result = command.ExecuteScalar();
-            Assert.AreEqual(1, result);
+            var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", Conn);
+            var reader = cmd.ExecuteReader(CommandBehavior.SingleRow);
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+            Assert.That(reader.Read(), Is.False);
+            Assert.That(reader.NextResult(), Is.False);
+            reader.Close();
+            cmd.Dispose();
         }
 
         #endregion

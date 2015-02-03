@@ -294,6 +294,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
+    <Compile Include="BackendMessages\CloseCompletedMessage.cs" />
     <Compile Include="BackendMessages\NoDataMessage.cs" />
     <Compile Include="BackendMessages\ParameterDescriptionMessage.cs" />
     <Compile Include="BackendMessages\CommandCompleteMessage.cs" />

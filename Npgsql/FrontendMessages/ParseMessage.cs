@@ -30,15 +30,31 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'P';
 
-        internal ParseMessage(string query, string statement="")
+        ParseMessage()
+        {
+            _state = State.WroteNothing;
+            ParameterTypeOIDs = new List<uint>();
+        }
+
+        internal ParseMessage(QueryDetails queryDetails, TypeHandlerRegistry typeHandlerRegistry) : this()
+        {
+            Query = queryDetails.Sql;
+            Statement = queryDetails.PreparedStatementName ?? "";
+            foreach (var inputParam in queryDetails.InputParameters)
+            {
+                inputParam.ResolveHandler(typeHandlerRegistry);
+                ParameterTypeOIDs.Add(inputParam.Handler.OID);
+            }
+
+        }
+
+        internal ParseMessage(string query, string statement="") : this()
         {
             Contract.Requires(query != null);
             Contract.Requires(statement != null);
 
             Query = query;
             Statement = statement;
-            ParameterTypeOIDs = new List<uint>();
-            _state = State.WroteNothing;
         }
 
         internal override bool Write(NpgsqlBuffer buf)

@@ -166,7 +166,7 @@ namespace Npgsql
         CloseComplete = '3'
     }
 
-    enum DescribeType : byte
+    enum StatementOrPortal : byte
     {
         Statement = (byte)'S',
         Portal = (byte)'P'

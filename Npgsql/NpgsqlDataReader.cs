@@ -35,7 +35,21 @@ namespace Npgsql
             private set { _state = value; }
         }
 
+        /// <summary>
+        /// Holds the list of RowDescription messages for each of the resultsets this reader is to process.
+        /// </summary>
+        List<QueryDetails> _queries;
+
+        /// <summary>
+        /// The index of the current query resultset we're processing (within a multiquery)
+        /// </summary>
+        int _queryIndex;
+
+        /// <summary>
+        /// The RowDescription message for the current resultset being processed
+        /// </summary>
         RowDescriptionMessage _rowDescription;
+
         DataRowMessage _row;
         uint? _recordsAffected;
 
@@ -75,7 +89,7 @@ namespace Npgsql
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, RowDescriptionMessage rowDescription = null)
+        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<QueryDetails> queries)
         {
             Command = command;
             _connector = command.Connector;
@@ -95,21 +109,23 @@ namespace Npgsql
                 _rowCache = new RowCache();
             }
             State = ReaderState.InResult;
-            _rowDescription = rowDescription;
+            _connector.CurrentReader = this;
+            _queries = queries;
 
-            /*
-            if (command.IsPrepared) {
-                State = ReaderState.InResult;
-                _rowDescription = rowDescription;
-            } else {
-                State = ReaderState.BetweenResults;
-                NextResultSetInternal();
+            _rowDescription = _queries[0].Description;
+            if (_rowDescription == null)
+            {
+                // The first query has not result set, seek forward to the first query that does (if any)
+                if (!NextResult())
+                {
+                    // No resultsets at all
+                    return;
+                }
             }
-             */
+
             if (Command.Parameters.Any(p => p.IsOutputDirection)) {
                 PopulateOutputParameters();
             }
-            _connector.CurrentReader = this;
         }
 
         #region Read
@@ -171,10 +187,6 @@ namespace Npgsql
 
             switch (msg.Code)
             {
-                case BackendMessageCode.RowDescription:
-                    _rowDescription = (RowDescriptionMessage)msg;
-                    return ReadResult.ReadAgain;
-
                 case BackendMessageCode.DataRow:
                     Contract.Assert(_rowDescription != null);
                     _connector.State = ConnectorState.Fetching;
@@ -199,10 +211,6 @@ namespace Npgsql
                     goto case BackendMessageCode.EmptyQueryResponse;
 
                 case BackendMessageCode.EmptyQueryResponse:
-                    _row = null;
-                    if (!_hasRows.HasValue) {
-                        _hasRows = false;
-                    }
                     State = ReaderState.BetweenResults;
                     return ReadResult.RowNotRead;
 
@@ -211,6 +219,7 @@ namespace Npgsql
                     return ReadResult.RowNotRead;
 
                 case BackendMessageCode.BindComplete:
+                case BackendMessageCode.CloseComplete:
                     return ReadResult.ReadAgain;
 
                 default:
@@ -222,17 +231,17 @@ namespace Npgsql
 
         #region NextResult
 
-        public override bool NextResult()
+        public override sealed bool NextResult()
         {
             Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             try
             {
+                // If we're in the middle of a resultset, consume it
                 switch (State)
                 {
                     case ReaderState.InResult:
-                        if (_row != null)
-                        {
+                        if (_row != null) {
                             _row.Consume();
                             _row = null;
                         }
@@ -256,51 +265,35 @@ namespace Npgsql
                 _hasRows = null;
                 _cachedSchemaTable = null;
 
-                if ((_behavior & CommandBehavior.SingleResult) != 0)
-                {
+                if ((_behavior & CommandBehavior.SingleResult) != 0) {
                     Consume();
                     return false;
                 }
 
-                return NextResultSetInternal();
+                // We are now at the end of the previous result set. Read up to the next result set, if any.
+                for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+                {
+                    _rowDescription = _queries[_queryIndex].Description;
+                    if (_rowDescription != null)
+                    {
+                        State = ReaderState.InResult;
+                        // Found a resultset
+                        return true;
+                    }
+
+                    // Next query has no resultset, read and process its completion message and move on to the next
+                    var completedMsg = SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse);
+                    ProcessMessage(completedMsg);
+                }
+
+                // There are no more queries, we're done. Read to the RFQ.
+                ProcessMessage(SkipUntil(BackendMessageCode.ReadyForQuery));
+                return false;
             }
             catch (NpgsqlException)
             {
                 CleanUpDueToException();
                 throw;
-            }
-
-            return NextResultSetInternal();
-        }
-
-        bool NextResultSetInternal()
-        {
-            Contract.Requires(State == ReaderState.BetweenResults);
-            _rowDescription = null;
-
-            while (true)
-            {
-                var msg = ReadMessage();
-                switch (msg.Code)
-                {
-                    case BackendMessageCode.NoData:
-                        continue;
-                    case BackendMessageCode.EmptyQueryResponse:
-                    case BackendMessageCode.CompletedResponse:
-                        // Another completion in a multi-query, process to get affected records and read again
-                        ProcessMessage(msg);
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        State = ReaderState.Consumed;
-                        return false;
-                    case BackendMessageCode.RowDescription:
-                        _rowDescription = (RowDescriptionMessage)msg;
-                        _hasRows = null;
-                        State = ReaderState.InResult;
-                        return true;
-                    default:
-                        throw new Exception("Unexpected message type received during NextResult: " + msg.Code);
-                }
             }
         }
 
