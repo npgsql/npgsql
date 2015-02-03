@@ -39,7 +39,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Npgsql;
 
-// Keep the xml comment warning quiet for this file.
 #pragma warning disable 1591
 
 namespace NpgsqlTypes
@@ -811,77 +810,71 @@ namespace NpgsqlTypes
     /// </remarks>
     public struct NpgsqlInet : IEquatable<NpgsqlInet>
     {
-        public IPAddress addr;
-        public int mask;
+        public IPAddress Address;
+        public int Netmask;
 
-        public NpgsqlInet(IPAddress addr, int mask)
+        public NpgsqlInet(IPAddress address, int netmask)
         {
-            if (addr.AddressFamily != AddressFamily.InterNetwork && addr.AddressFamily != AddressFamily.InterNetworkV6)
-                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "addr");
+            if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "address");
             Contract.EndContractBlock();
 
-            this.addr = addr;
-            this.mask = mask;
+            Address = address;
+            Netmask = netmask;
         }
 
-        public NpgsqlInet(IPAddress addr)
+        public NpgsqlInet(IPAddress address)
         {
-            if (addr.AddressFamily != AddressFamily.InterNetwork && addr.AddressFamily != AddressFamily.InterNetworkV6)
-                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "addr");
+            if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
+                throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", "address");
             Contract.EndContractBlock();
 
-            this.addr = addr;
-            this.mask = addr.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
+            Address = address;
+            Netmask = address.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
         }
 
         public NpgsqlInet(string addr)
         {
             if (addr.IndexOf('/') > 0)
             {
-                string[] addrbits = addr.Split('/');
-                if (addrbits.GetUpperBound(0) != 1)
-                {
+                var addrbits = addr.Split('/');
+                if (addrbits.GetUpperBound(0) != 1) {
                     throw new FormatException("Invalid number of parts in CIDR specification");
                 }
-                this.addr = IPAddress.Parse(addrbits[0]);
-                this.mask = int.Parse(addrbits[1]);
+                Address = IPAddress.Parse(addrbits[0]);
+                Netmask = int.Parse(addrbits[1]);
             }
             else
             {
-                this.addr = IPAddress.Parse(addr);
-                this.mask = 32;
+                Address = IPAddress.Parse(addr);
+                Netmask = 32;
             }
         }
 
         public override String ToString()
         {
-            if (mask != 32)
-            {
-                return string.Format("{0}/{1}", addr, mask);
+            if (Netmask != 32) {
+                return string.Format("{0}/{1}", Address, Netmask);
             }
-                return addr.ToString();
-
+            return Address.ToString();
         }
 
         public static explicit operator IPAddress(NpgsqlInet x)
         {
-            if (x.mask != 32)
-            {
+            if (x.Netmask != 32) {
                 throw new InvalidCastException("Cannot cast CIDR network to address");
             }
-                return x.addr;
-
+            return x.Address;
         }
 
         public static implicit operator NpgsqlInet(IPAddress ipaddress)
         {
             return new NpgsqlInet(ipaddress);
-
         }
 
         public bool Equals(NpgsqlInet other)
         {
-            return addr.Equals(other.addr) && mask == other.mask;
+            return Address.Equals(other.Address) && Netmask == other.Netmask;
         }
 
         public override bool Equals(object obj)
@@ -891,7 +884,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            return PGUtil.RotateShift(addr.GetHashCode(), mask%32);
+            return PGUtil.RotateShift(Address.GetHashCode(), Netmask%32);
         }
 
         public static bool operator ==(NpgsqlInet x, NpgsqlInet y)
