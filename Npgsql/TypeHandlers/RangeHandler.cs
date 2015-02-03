@@ -81,7 +81,7 @@ namespace Npgsql.TypeHandlers
              */
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             throw new NotImplementedException("Chunking");
             /*
@@ -114,7 +114,7 @@ namespace Npgsql.TypeHandlers
             throw new NotImplementedException();
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
             throw new NotImplementedException();
         }

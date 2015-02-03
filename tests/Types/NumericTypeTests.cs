@@ -31,6 +31,8 @@ namespace NpgsqlTests.Types
             var p3 = new NpgsqlParameter("p3", DbType.Byte);
             var p4 = new NpgsqlParameter { ParameterName = "p4", Value = (short)8 };
             var p5 = new NpgsqlParameter { ParameterName = "p5", Value = (byte)8  };
+            Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
+            Assert.That(p4.DbType, Is.EqualTo(DbType.Int16));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
@@ -65,6 +67,8 @@ namespace NpgsqlTests.Types
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
             var p2 = new NpgsqlParameter("p2", DbType.Int32);
             var p3 = new NpgsqlParameter { ParameterName = "p3", Value = 8 };
+            Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+            Assert.That(p3.DbType, Is.EqualTo(DbType.Int32));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);

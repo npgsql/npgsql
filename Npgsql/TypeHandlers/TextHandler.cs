@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             // TODO: Cache the length internally across strings?
             return Encoding.UTF8.GetByteCount(value.ToString());
@@ -174,9 +174,8 @@ namespace Npgsql.TypeHandlers
             _bytePos = 0;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
             int charsUsed;
             bool completed;
             _buf.WriteStringChunked(_chars, _bytePos, _chars.Length - _bytePos, true, out charsUsed, out completed);

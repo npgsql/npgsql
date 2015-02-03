@@ -39,7 +39,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int GetLength(object value) { return 16; }
+        public int ValidateAndGetLength(object value) { return 16; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {

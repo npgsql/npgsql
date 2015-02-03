@@ -16,7 +16,7 @@ namespace Npgsql
 
     interface ISimpleTypeWriter
     {
-        int GetLength(object value);
+        int ValidateAndGetLength(object value);
         void Write(object value, NpgsqlBuffer buf);
     }
 
@@ -41,16 +41,16 @@ namespace Npgsql
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
-        int GetLength(object value);
+        int ValidateAndGetLength(object value);
         void PrepareWrite(NpgsqlBuffer buf, object value);
-        bool Write(out byte[] directBuf);
+        bool Write(ref byte[] directBuf);
     }
 
     [ContractClassFor(typeof(IChunkingTypeWriter))]
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             Contract.Requires(value != null);
             return default(int);
@@ -62,10 +62,9 @@ namespace Npgsql
             Contract.Requires(value != null);
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            Contract.Ensures(Contract.Result<bool>() == false || Contract.ValueAtReturn(out directBuf) == null);
-            directBuf = null;
+            Contract.Ensures(Contract.Result<bool>() == false || directBuf == null);
             return default(bool);
         }
     }
@@ -281,6 +280,9 @@ namespace Npgsql
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type type=null)
             : this(pgName, npgsqlDbType, new[] { dbType }, type == null ? null : new[] { type }) {}
+
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type[] types)
+            : this(pgName, npgsqlDbType, new DbType[0], types) { }
 
         internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, Type type)
             : this(pgName, npgsqlDbType, new DbType[0], new[] { type }) {}

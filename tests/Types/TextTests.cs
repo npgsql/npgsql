@@ -28,6 +28,8 @@ namespace NpgsqlTests.Types
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
             var p2 = new NpgsqlParameter("p2", DbType.String);
             var p3 = new NpgsqlParameter { ParameterName = "p3", Value = expected };
+            Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
+            Assert.That(p3.DbType, Is.EqualTo(DbType.String));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
@@ -189,6 +191,44 @@ namespace NpgsqlTests.Types
         }
 
         // Older tests from here
+
+        [Test]
+        public void CharParameterValueSupport()
+        {
+            const String query = @"create temp table test ( tc char(1) );
+                                   insert into test values(' ');
+                                   select * from test where tc=:charparam";
+            var command = new NpgsqlCommand(query, Conn);
+            var sqlParam = command.CreateParameter();
+            sqlParam.ParameterName = "charparam";
+
+            // Exception Can't cast System.Char into any valid DbType.
+            sqlParam.Value = ' ';
+            command.Parameters.Add(sqlParam);
+            var res = (String)command.ExecuteScalar();
+
+            Assert.AreEqual(" ", res);
+        }
+
+        [Test]
+        public void TestCharParameterLength()
+        {
+            const string sql = "insert into data(field_char5) values ( :a );";
+            const string aValue = "atest";
+            var command = new NpgsqlCommand(sql, Conn);
+            command.Parameters.Add(new NpgsqlParameter(":a", NpgsqlDbType.Char));
+            command.Parameters[":a"].Value = aValue;
+            command.Parameters[":a"].Size = 5;
+            var rowsAdded = command.ExecuteNonQuery();
+            Assert.AreEqual(rowsAdded, 1);
+
+            var command2 = new NpgsqlCommand("select field_char5 from data where field_serial = (select max(field_serial) from data)", Conn);
+            using (var dr = command2.ExecuteReader()) {
+                dr.Read();
+                String a = dr.GetString(0);
+                Assert.AreEqual(aValue, a);
+            }
+        }
 
         [Test]
         public void GetCharsOld()

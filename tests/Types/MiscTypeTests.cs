@@ -29,6 +29,8 @@ namespace NpgsqlTests.Types
             var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Boolean);
             var p3 = new NpgsqlParameter("p3", DbType.Boolean);
             var p4 = new NpgsqlParameter { ParameterName = "p4", Value = true };
+            Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Boolean));
+            Assert.That(p4.DbType, Is.EqualTo(DbType.Boolean));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
@@ -280,6 +282,56 @@ namespace NpgsqlTests.Types
         #endregion
 
         // Older tests
+
+        [Test]
+        public void Bug1011085()
+        {
+            // Money format is not set in accordance with the system locale format
+            var command = new NpgsqlCommand("select :moneyvalue", Conn);
+            var expectedValue = 8.99m;
+            command.Parameters.Add("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
+            var result = (Decimal)command.ExecuteScalar();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 100m;
+            command.Parameters[0].Value = expectedValue;
+            result = (Decimal)command.ExecuteScalar();
+            Assert.AreEqual(expectedValue, result);
+
+            expectedValue = 72.25m;
+            command.Parameters[0].Value = expectedValue;
+            result = (Decimal)command.ExecuteScalar();
+            Assert.AreEqual(expectedValue, result);
+        }
+
+        [Test]
+        public void TestXmlParameter()
+        {
+            TestXmlParameter_Internal(false);
+        }
+
+        [Test]
+        public void TestXmlParameterPrepared()
+        {
+            TestXmlParameter_Internal(true);
+        }
+
+        private void TestXmlParameter_Internal(bool prepare)
+        {
+            using (var command = new NpgsqlCommand("select @PrecisionXML", Conn)) {
+                var sXML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <strings type=\"array\"> <string> this is a test with ' single quote </string></strings>";
+                var parameter = command.CreateParameter();
+                parameter.DbType = DbType.Xml;  // To make it work we need to use DbType.String; and then CAST it in the sSQL: cast(@PrecisionXML as xml)
+                parameter.ParameterName = "@PrecisionXML";
+                parameter.Value = sXML;
+                command.Parameters.Add(parameter);
+
+                if (prepare)
+                    command.Prepare();
+                command.ExecuteScalar();
+            }
+
+        }
 
         [Test]
         public void TestBoolParameter1()

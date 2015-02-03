@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<build-type xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="317f8d78-fc0d-45f0-a2ba-887a4259c0d8" xsi:noNamespaceSchemaLocation="http://www.jetbrains.com/teamcity/schemas/9.0/project-config.xsd">
+  <name>.NET 3.5</name>
+  <description>Npgsql targetting.NET 3.5</description>
+  <settings ref="npgsql_dotnet_build">
+    <parameters>
+      <param name="system.Configuration" value="Release-net35" />
+    </parameters>
+    <build-runners order="RUNNER_7, RUNNER_2, RUNNER_1" />
+    <vcs-settings />
+    <requirements />
+    <build-triggers />
+    <cleanup />
+  </settings>
+</build-type>
+

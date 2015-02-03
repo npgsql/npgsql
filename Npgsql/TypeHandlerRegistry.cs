@@ -19,6 +19,7 @@ namespace Npgsql
     {
         #region Members
 
+        readonly NpgsqlConnector _connector;
         readonly Dictionary<uint, TypeHandler> _oidIndex;
 
         readonly Dictionary<DbType, TypeHandler> _byDbType;
@@ -52,7 +53,7 @@ namespace Npgsql
 
         static internal void Setup(NpgsqlConnector connector)
         {
-            connector.TypeHandlerRegistry = new TypeHandlerRegistry();
+            connector.TypeHandlerRegistry = new TypeHandlerRegistry(connector);
 
             List<BackendType> types;
             if (!BackendTypeCache.TryGetValue(connector.ConnectionString, out types)) {
@@ -62,8 +63,9 @@ namespace Npgsql
             connector.TypeHandlerRegistry.RegisterTypes(types);
         }
 
-        TypeHandlerRegistry()
+        TypeHandlerRegistry(NpgsqlConnector connector)
         {
+            _connector = connector;
             _oidIndex = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
@@ -159,8 +161,13 @@ namespace Npgsql
             var handlerType = typeAndMapping.HandlerType;
             var mapping = typeAndMapping.Mapping;
 
-            // TODO: Pass the connector to the type handler constructor for optional customizations
-            var handler = (TypeHandler)Activator.CreateInstance(handlerType);
+            // Instantiate the type handler. If it has a constructor that accepts an NpgsqlConnector, use that to allow
+            // the handler to make connector-specific adjustments. Otherwise (the normal case), use the default constructor.
+            var handler = (TypeHandler)(
+                handlerType.GetConstructor(new[] { typeof(NpgsqlConnector) }) != null
+                    ? Activator.CreateInstance(handlerType, _connector)
+                    : Activator.CreateInstance(handlerType)
+            );
 
             handler.OID = backendType.OID;
             _oidIndex[backendType.OID] = handler;
@@ -435,7 +442,11 @@ namespace Npgsql
 
         internal static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
-            if (type.IsArray) {
+            if (type.IsArray)
+            {
+                if (type == typeof(byte[])) {
+                    return NpgsqlDbType.Bytea;
+                }
                 return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
             if (type.IsEnum) {

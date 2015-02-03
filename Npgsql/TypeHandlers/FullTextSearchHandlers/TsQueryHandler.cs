@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             var vec = (NpgsqlTsQuery)value;
 
@@ -185,10 +185,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return -1;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
-
             if (_stack == null)
             {
                 if (_buf.WriteSpaceLeft < 4)

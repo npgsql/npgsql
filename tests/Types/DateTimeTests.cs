@@ -154,6 +154,38 @@ namespace NpgsqlTests.Types
         // Older tests
 
         [Test]
+        public void TestNpgsqlSpecificTypesCLRTypesNpgsqlTimeStamp()
+        {
+            // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
+            // for a discussion where an NpgsqlInet type isn't shown in a datagrid
+            // This test tries to check if the type returned is an IPAddress when using
+            // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
+
+            var command = new NpgsqlCommand("select '2010-01-17 15:45'::timestamp;", Conn);
+            using (var dr = command.ExecuteReader()) {
+                dr.Read();
+                var result = dr.GetValue(0);
+                var result2 = dr.GetProviderSpecificValue(0);
+                Assert.AreEqual(typeof(DateTime), result.GetType());
+                Assert.AreEqual(typeof(NpgsqlTimeStamp), result2.GetType());
+            }
+        }
+
+        [Test]
+        public void SelectInfinityValueDateDataType()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_date) VALUES ('-infinity'::date)");
+            using (var cmd = new NpgsqlCommand(@"SELECT field_date FROM data", Conn))
+            using (var dr = cmd.ExecuteReader()) {
+                dr.Read();
+                // InvalidCastException was unhandled
+                // at Npgsql.ForwardsOnlyDataReader.GetValue(Int32 Index)
+                //  at Npgsql.NpgsqlDataReader.GetDateTime(Int32 i) ..
+                dr.GetDateTime(0);
+            }
+        }
+
+        [Test]
         public void ReturnInfinityDateTimeSupportNpgsqlDbType()
         {
             var command = new NpgsqlCommand("insert into data(field_timestamp) values ('infinity'::timestamp);", Conn);

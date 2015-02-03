@@ -135,7 +135,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        int IChunkingTypeWriter.GetLength(object value)
+        int IChunkingTypeWriter.ValidateAndGetLength(object value)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -163,9 +163,8 @@ namespace Npgsql.TypeHandlers
             _value = value;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
-            directBuf = null;
             var bitArray = _value as BitArray;
             if (bitArray != null) {
                 return WriteBitArray(bitArray);
@@ -312,30 +311,30 @@ namespace Npgsql.TypeHandlers
             _value = value;
         }
 
-        public bool Write(out byte[] directBuf)
+        public bool Write(ref byte[] directBuf)
         {
             if (_value is BitArray[]) {
-                return base.Write<BitArray>(out directBuf);
+                return base.Write<BitArray>(ref directBuf);
             }
             if (_value is bool[]) {
-                return base.Write<bool>(out directBuf);
+                return base.Write<bool>(ref directBuf);
             }
             if (_value is string[]) {
-                return base.Write<string>(out directBuf);
+                return base.Write<string>(ref directBuf);
             }
             throw PGUtil.ThrowIfReached(String.Format("Can't write type {0} as an bitstring array", _value.GetType()));
         }
 
-        public int GetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             if (value is BitArray[]) {
-                return base.GetLength<BitArray>(value);
+                return base.ValidateAndGetLength<BitArray>(value);
             }
             if (value is bool[]) {
-                return base.GetLength<bool>(value);
+                return base.ValidateAndGetLength<bool>(value);
             }
             if (value is string[]) {
-                return base.GetLength<string>(value);
+                return base.ValidateAndGetLength<string>(value);
             }
             throw new InvalidCastException(String.Format("Can't write type {0} as an bitstring array", value.GetType()));
         }

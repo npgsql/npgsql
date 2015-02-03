@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDate((int)year, (int)month, (int)day);
         }
 
-        public int GetLength(object value) { return 4; }
+        public int ValidateAndGetLength(object value) { return 4; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
