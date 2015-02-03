@@ -197,6 +197,23 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
+        public void InsertDateTimeDateOnly()
+        {
+            var dt = new DateTime(2015, 1, 29);
+
+            var command = new NpgsqlCommand("INSERT INTO data (field_timestamp) VALUES (:p0);", Conn);
+            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Timestamp));
+            command.Parameters["p0"].Value = dt;
+            command.Prepare();
+            var numRowsAffected = command.ExecuteNonQuery();
+            Assert.That(numRowsAffected, Is.EqualTo(1));
+
+            command = new NpgsqlCommand("SELECT field_timestamp FROM data;", Conn);
+            var result = command.ExecuteScalar();
+            Assert.That((DateTime)result, Is.EqualTo(dt));
+        }
+
+        [Test]
         public void ReturnMinusInfinityDateTimeSupportNpgsqlDbType()
         {
             var command = new NpgsqlCommand("insert into data(field_timestamp) values ('-infinity'::timestamp);", Conn);
