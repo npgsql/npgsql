@@ -1224,5 +1224,19 @@ namespace NpgsqlTests
             reader.Close();
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/466")]
+        public void TimeoutResetOnRollback()
+        {
+            var conn = new NpgsqlConnection(ConnectionString + ";CommandTimeout=0");
+            conn.Open();
+            ExecuteScalar("SELECT 1", conn);  // Set timeout to 0
+            var tx = conn.BeginTransaction(); // Set timeout to 20
+            ExecuteScalar("SELECT 1", conn);  // Set timeout to 0
+            tx.Rollback();                    // Rollback, backend has timeout 0 but Npgsql thinks it's still 20
+            Assert.That(ExecuteScalar("SHOW statement_timeout", conn), Is.EqualTo("0"));
+            conn.Close();
+        }
     }
 }
