@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers

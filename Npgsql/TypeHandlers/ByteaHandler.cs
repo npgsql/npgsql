@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 

@@ -7,7 +7,7 @@ using System.Text;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     /// <summary>
     /// A RowDescription message sent from the backend.

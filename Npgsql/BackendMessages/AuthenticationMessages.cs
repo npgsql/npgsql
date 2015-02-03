@@ -4,7 +4,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     internal abstract class AuthenticationRequestMessage : BackendMessage
     {

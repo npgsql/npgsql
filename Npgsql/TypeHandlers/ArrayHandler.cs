@@ -8,7 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Mono.Security.Protocol.Ntlm;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers

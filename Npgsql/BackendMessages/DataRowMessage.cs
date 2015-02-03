@@ -7,7 +7,7 @@ using System.Text;
 using Npgsql.Localization;
 using Npgsql.TypeHandlers;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     abstract class DataRowMessage : BackendMessage
     {

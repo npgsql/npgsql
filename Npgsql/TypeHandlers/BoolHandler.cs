@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 

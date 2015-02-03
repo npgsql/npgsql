@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     internal class ParseCompleteMessage : BackendMessage
     {

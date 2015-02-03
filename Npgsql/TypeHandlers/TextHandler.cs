@@ -5,7 +5,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 

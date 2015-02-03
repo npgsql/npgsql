@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     class DataRowNonSequentialMessage : DataRowMessage
     {

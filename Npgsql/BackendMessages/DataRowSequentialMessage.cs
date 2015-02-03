@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Npgsql.Localization;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     class DataRowSequentialMessage : DataRowMessage
     {

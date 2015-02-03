@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using NpgsqlTypes;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {

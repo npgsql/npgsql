@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -23,7 +23,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
 
         public IPAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).addr;
+            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).Address;
         }
 
         static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         {
             IPAddress ip;
             if (value is NpgsqlInet) {
-                ip = ((NpgsqlInet)value).addr;
+                ip = ((NpgsqlInet)value).Address;
             } else {
                 ip = value as IPAddress;
                 if (ip == null) {
@@ -83,8 +83,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             int mask;
             if (value is NpgsqlInet) {
                 var inet = ((NpgsqlInet)value);
-                ip = inet.addr;
-                mask = inet.mask;
+                ip = inet.Address;
+                mask = inet.Netmask;
             } else {
                 ip = value as IPAddress;
                 if (ip == null) {

@@ -39,7 +39,7 @@ using System.Threading;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
 using Npgsql.Localization;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Text;

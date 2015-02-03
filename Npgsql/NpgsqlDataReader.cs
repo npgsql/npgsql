@@ -14,7 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using NpgsqlTypes;

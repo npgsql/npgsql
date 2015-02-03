@@ -39,7 +39,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
 using Npgsql.Localization;
-using Npgsql.Messages;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
 using Npgsql.FrontendMessages;

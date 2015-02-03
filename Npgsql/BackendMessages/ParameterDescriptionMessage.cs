@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Common.Logging;
 
-namespace Npgsql.Messages
+namespace Npgsql.BackendMessages
 {
     internal class ParameterDescriptionMessage : BackendMessage
     {

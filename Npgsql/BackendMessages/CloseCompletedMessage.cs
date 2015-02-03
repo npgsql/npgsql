@@ -1,4 +1,4 @@
-﻿namespace Npgsql.Messages
+﻿namespace Npgsql.BackendMessages
 {
     internal class CloseCompletedMessage : BackendMessage
     {
