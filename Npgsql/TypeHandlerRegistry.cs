@@ -335,24 +335,28 @@ namespace Npgsql
                     return handler;
                 }
 
-                if ((npgsqlDbType & NpgsqlDbType.Enum) != 0)
+                if (npgsqlDbType == NpgsqlDbType.Enum)
                 {
                     if (enumType == null) {
                         throw new InvalidCastException("Either specify EnumType along with NpgsqlDbType.Enum, or leave both empty to infer from Value");
-                    }
-
-                    if ((npgsqlDbType & NpgsqlDbType.Array) != 0)
-                    {
-                        if (_byEnumTypeAsArray != null && _byEnumTypeAsArray.TryGetValue(enumType, out handler)) {
-                            return handler;
-                        }
-                        throw new NotSupportedException("This enum array type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
                     }
 
                     if (!_byType.TryGetValue(enumType, out handler)) {
                         throw new NotSupportedException("This enum type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
                     }
                     return handler;
+                }
+
+                if (npgsqlDbType == (NpgsqlDbType.Enum | NpgsqlDbType.Array))
+                {
+                    if (enumType == null) {
+                        throw new InvalidCastException("Either specify EnumType along with NpgsqlDbType.Enum, or leave both empty to infer from Value");
+                    }
+
+                    if (_byEnumTypeAsArray != null && _byEnumTypeAsArray.TryGetValue(enumType, out handler)) {
+                        return handler;
+                    }
+                    throw new NotSupportedException("This enum array type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
                 }
 
                 throw new NotSupportedException("This NpgsqlDbType is not supported in Npgsql: " + npgsqlDbType);
