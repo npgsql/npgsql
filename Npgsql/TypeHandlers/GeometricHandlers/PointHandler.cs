@@ -31,13 +31,17 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return Read(buf, fieldDescription, len).ToString();
         }
 
-        public int ValidateAndGetLength(object value) { return 16; }
+        public int ValidateAndGetLength(object value)
+        {
+            return 16;
+        }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            var p = value is string ? NpgsqlPoint.Parse((string)value) : (NpgsqlPoint)value;
-            buf.WriteDouble(p.X);
-            buf.WriteDouble(p.Y);
+            var s = value as string;
+            var v = s != null ? NpgsqlPoint.Parse(s) : (NpgsqlPoint)value;
+            buf.WriteDouble(v.X);
+            buf.WriteDouble(v.Y);
         }
     }
 }

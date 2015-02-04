@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    internal class LineHandler : TypeHandler<NpgsqlLine>,
+    internal class LineHandler : TypeHandler<NpgsqlLine>, ISimpleTypeWriter,
         ISimpleTypeReader<NpgsqlLine>,
         ISimpleTypeReader<string>
     {
@@ -29,6 +29,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int ValidateAndGetLength(object value)
+        {
+            return 24;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            var s = value as string;
+            var v = s != null ? NpgsqlLine.Parse(s) : (NpgsqlLine)value;
+            buf.WriteDouble(v.A);
+            buf.WriteDouble(v.B);
+            buf.WriteDouble(v.C);
         }
     }
 }

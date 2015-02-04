@@ -16,41 +16,103 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.4/static/datatype-geometric.html
     /// </remarks>
-    // TODO: Should be chunking
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     internal class PathHandler : TypeHandler<NpgsqlPath>,
-        ISimpleTypeReader<NpgsqlPath>,
-        ISimpleTypeReader<string>
+        IChunkingTypeReader<NpgsqlPath>, IChunkingTypeWriter
     {
-        public NpgsqlPath Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        #region State
+
+        NpgsqlPath _value;
+        NpgsqlBuffer _buf;
+        int _index;
+
+        #endregion
+
+        #region Read
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
-            bool open;
-            var openByte = buf.ReadByte();
-            switch (openByte)
-            {
-                case 1:
-                    open = false;
-                    break;
-                case 0:
-                    open = true;
-                    break;
-                default:
-                    throw new Exception("Error decoding binary geometric path: bad open byte");
-            }
-            buf.Ensure(4);
-            var numPoints = buf.ReadInt32();
-            var result = new NpgsqlPath(open);
-            for (var i = 0; i < numPoints; i++) {
-                if (buf.ReadBytesLeft < sizeof(double) * 2)
-                    buf.Ensure(Math.Min(sizeof(double) * 2 * (numPoints - i), buf.Size & -(sizeof(double) * 2)));
-                result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
-            }
-            return result;
+            _buf = buf;
+            _index = -1;
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public bool Read(out NpgsqlPath result)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            result = default(NpgsqlPath);
+
+            if (_index == -1)
+            {
+                if (_buf.ReadBytesLeft < 5) { return false; }
+
+                bool open;
+                var openByte = _buf.ReadByte();
+                switch (openByte) {
+                    case 1:
+                        open = false;
+                        break;
+                    case 0:
+                        open = true;
+                        break;
+                    default:
+                        throw new Exception("Error decoding binary geometric path: bad open byte");
+                }
+                var numPoints = _buf.ReadInt32();
+                _value = new NpgsqlPath(numPoints, open);
+                _index = 0;
+            }
+
+            for (; _index < _value.Capacity; _index++)
+            {
+                if (_buf.ReadBytesLeft < 16) { return false; }
+                _value.Add(new NpgsqlPoint(_buf.ReadDouble(), _buf.ReadDouble()));
+            }
+            result = _value;
+            _value = default(NpgsqlPath);
+            _buf = null;
+            return true;
         }
+
+        #endregion
+
+        #region Write
+
+        public int ValidateAndGetLength(object value)
+        {
+            if (!(value is NpgsqlPath)) {
+                throw new InvalidCastException("Expected an NpgsqlPath");
+            }
+            return 5 + ((NpgsqlPath)value).Count * 16;
+        }
+
+        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        {
+            _buf = buf;
+            _value = (NpgsqlPath)value;
+            _index = -1;
+        }
+
+        public bool Write(ref byte[] directBuf)
+        {
+            if (_index == -1)
+            {
+                if (_buf.WriteSpaceLeft < 5) { return false; }
+                _buf.WriteByte((byte)(_value.Open ? 0 : 1));
+                _buf.WriteInt32(_value.Count);
+                _index = 0;
+            }
+
+            for (; _index < _value.Count; _index++)
+            {
+                if (_buf.WriteSpaceLeft < 16) { return false; }
+                var p = _value[_index];
+                _buf.WriteDouble(p.X);
+                _buf.WriteDouble(p.Y);
+            }
+            _buf = null;
+            _value = default(NpgsqlPath);
+            return true;
+        }
+
+        #endregion
     }
 }

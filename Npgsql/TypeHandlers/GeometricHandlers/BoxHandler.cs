@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// </remarks>
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
     internal class BoxHandler : TypeHandler<NpgsqlBox>,
-        ISimpleTypeReader<NpgsqlBox>,
+        ISimpleTypeReader<NpgsqlBox>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
         public NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
@@ -32,6 +32,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int ValidateAndGetLength(object value)
+        {
+            return 32;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            var s = value as string;
+            var v = s != null ? NpgsqlBox.Parse(s) : (NpgsqlBox)value;
+            buf.WriteDouble(v.Right);
+            buf.WriteDouble(v.Top);
+            buf.WriteDouble(v.Left);
+            buf.WriteDouble(v.Bottom);
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// </remarks>
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     internal class LineSegmentHandler : TypeHandler<NpgsqlLSeg>,
-        ISimpleTypeReader<NpgsqlLSeg>,
+        ISimpleTypeReader<NpgsqlLSeg>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
         public NpgsqlLSeg Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
@@ -29,6 +29,21 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int ValidateAndGetLength(object value)
+        {
+            return 32;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            var s = value as string;
+            var v = s != null ? NpgsqlLSeg.Parse(s) : (NpgsqlLSeg)value;
+            buf.WriteDouble(v.Start.X);
+            buf.WriteDouble(v.Start.Y);
+            buf.WriteDouble(v.End.X);
+            buf.WriteDouble(v.End.Y);
         }
     }
 }

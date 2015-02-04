@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// </remarks>
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     internal class CircleHandler : TypeHandler<NpgsqlCircle>,
-        ISimpleTypeReader<NpgsqlCircle>,
+        ISimpleTypeReader<NpgsqlCircle>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
         public NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
@@ -29,6 +29,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             return Read(buf, fieldDescription, len).ToString();
+        }
+
+        public int ValidateAndGetLength(object value)
+        {
+            return 24;
+        }
+
+        public void Write(object value, NpgsqlBuffer buf)
+        {
+            var s = value as string;
+            var v = s != null ? NpgsqlCircle.Parse(s) : (NpgsqlCircle)value;
+            buf.WriteDouble(v.X);
+            buf.WriteDouble(v.Y);
+            buf.WriteDouble(v.Radius);
         }
     }
 }

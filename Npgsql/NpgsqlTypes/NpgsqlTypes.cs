@@ -53,25 +53,14 @@ namespace NpgsqlTypes
     {
         static readonly Regex Regex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
 
-        double _x;
-        double _y;
+        public double X { get; set; }
+        public double Y { get; set; }
 
-        public NpgsqlPoint(Double x, Double y)
+        public NpgsqlPoint(double x, double y)
+            : this()
         {
-            _x = x;
-            _y = y;
-        }
-
-        public double X
-        {
-            get { return _x; }
-            set { _x = value; }
-        }
-
-        public double Y
-        {
-            get { return _y; }
-            set { _y = value; }
+            X = x;
+            Y = y;
         }
 
         public bool Equals(NpgsqlPoint other)
@@ -125,32 +114,16 @@ namespace NpgsqlTypes
     {
         static readonly Regex Regex = new Regex(@"\{(-?\d+.?\d*),(-?\d+.?\d*),(-?\d+.?\d*)\}");
 
-
-        double _a, _b, _c;
+        public double A { get; set; }
+        public double B { get; set; }
+        public double C { get; set; }
 
         public NpgsqlLine(double a, double b, double c)
+            : this()
         {
-            _a = a;
-            _b = b;
-            _c = c;
-        }
-
-        public double A
-        {
-            get { return _a; }
-            set { _a = value; }
-        }
-
-        public double B
-        {
-            get { return _b; }
-            set { _b = value; }
-        }
-
-        public double C
-        {
-            get { return _c; }
-            set { _c = value; }
+            A = a;
+            B = b;
+            C = c;
         }
 
         public static NpgsqlLine Parse(string s)
@@ -168,17 +141,17 @@ namespace NpgsqlTypes
 
         public override String ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "{{{0},{1},{2}}}", _a, _b, _c);
+            return String.Format(CultureInfo.InvariantCulture, "{{{0},{1},{2}}}", A, B, C);
         }
 
         public override int GetHashCode()
         {
-            return _a.GetHashCode() * _b.GetHashCode() * _c.GetHashCode();
+            return A.GetHashCode() * B.GetHashCode() * C.GetHashCode();
         }
 
         public bool Equals(NpgsqlLine other)
         {
-            return _a == other._a && _b == other._b && _c == other._c;
+            return A == other.A && B == other.B && C == other.C;
         }
 
         public override bool Equals(object obj)
@@ -204,31 +177,20 @@ namespace NpgsqlTypes
     {
         static readonly Regex Regex = new Regex(@"\[\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)\]");
 
-        NpgsqlPoint _start;
-        NpgsqlPoint _end;
+        public NpgsqlPoint Start { get; set; }
+        public NpgsqlPoint End { get; set; }
 
         public NpgsqlLSeg(NpgsqlPoint start, NpgsqlPoint end)
+            : this()
         {
-            _start = start;
-            _end = end;
+            Start = start;
+            End = end;
         }
 
-        public NpgsqlLSeg(double startx, double starty, double endx, double endy)
+        public NpgsqlLSeg(double startx, double starty, double endx, double endy) : this()
         {
-            _start = new NpgsqlPoint(startx, starty);
-            _end   = new NpgsqlPoint(endx,   endy);
-        }
-
-        public NpgsqlPoint Start
-        {
-            get { return _start; }
-            set { _start = value; }
-        }
-
-        public NpgsqlPoint End
-        {
-            get { return _end; }
-            set { _end = value; }
+            Start = new NpgsqlPoint(startx, starty);
+            End   = new NpgsqlPoint(endx,   endy);
         }
 
         public static NpgsqlLSeg Parse(string s)
@@ -248,19 +210,19 @@ namespace NpgsqlTypes
 
         public override String ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "[{0},{1}]", _start, _end);
+            return String.Format(CultureInfo.InvariantCulture, "[{0},{1}]", Start, End);
         }
 
         public override int GetHashCode()
         {
             return
-                _start.X.GetHashCode() ^ PGUtil.RotateShift(_start.Y.GetHashCode(), sizeof(int) / 4) ^
-                PGUtil.RotateShift(_end.X.GetHashCode(), sizeof(int) / 2) ^ PGUtil.RotateShift(_end.Y.GetHashCode(), sizeof(int) * 3 / 4);
+                Start.X.GetHashCode() ^ PGUtil.RotateShift(Start.Y.GetHashCode(), sizeof(int) / 4) ^
+                PGUtil.RotateShift(End.X.GetHashCode(), sizeof(int) / 2) ^ PGUtil.RotateShift(End.Y.GetHashCode(), sizeof(int) * 3 / 4);
         }
 
         public bool Equals(NpgsqlLSeg other)
         {
-            return _start == other._start && _end == other._end;
+            return Start == other.Start && End == other.End;
         }
 
         public override bool Equals(object obj)
@@ -289,29 +251,17 @@ namespace NpgsqlTypes
     {
         static readonly Regex Regex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
 
-        NpgsqlPoint _upperRight;
-        NpgsqlPoint _lowerLeft;
+        public NpgsqlPoint UpperRight { get; set; }
+        public NpgsqlPoint LowerLeft { get; set; }
 
-        public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft)
+        public NpgsqlBox(NpgsqlPoint upperRight, NpgsqlPoint lowerLeft) : this()
         {
-            _upperRight = upperRight;
-            _lowerLeft = lowerLeft;
+            UpperRight = upperRight;
+            LowerLeft = lowerLeft;
         }
 
         public NpgsqlBox(double top, double right, double bottom, double left)
             : this(new NpgsqlPoint(right, top), new NpgsqlPoint(left, bottom)) { }
-
-        public NpgsqlPoint UpperRight
-        {
-            get { return _upperRight; }
-            set { _upperRight = value; }
-        }
-
-        public NpgsqlPoint LowerLeft
-        {
-            get { return _lowerLeft; }
-            set { _lowerLeft = value; }
-        }
 
         public double Left   { get { return LowerLeft.X;  } }
         public double Right  { get { return UpperRight.X; } }
@@ -347,7 +297,7 @@ namespace NpgsqlTypes
 
         public override string ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "{0},{1}", _upperRight, _lowerLeft);
+            return String.Format(CultureInfo.InvariantCulture, "{0},{1}", UpperRight, LowerLeft);
         }
 
         public static NpgsqlBox Parse(string s)
@@ -375,37 +325,31 @@ namespace NpgsqlTypes
     /// </summary>
     public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
     {
-        bool _open;
         readonly List<NpgsqlPoint> _points;
+        public bool Open { get; set; }
 
-        public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
+        public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open) : this()
         {
             _points = new List<NpgsqlPoint>(points);
-            _open = open;
+            Open = open;
         }
 
         public NpgsqlPath(IEnumerable<NpgsqlPoint> points) : this(points, false) {}
         public NpgsqlPath(params NpgsqlPoint[] points) : this(points, false) {}
 
-        public NpgsqlPath(bool open)
+        public NpgsqlPath(bool open) : this()
         {
             _points = new List<NpgsqlPoint>();
-            _open = open;
+            Open = open;
         }
 
-        public NpgsqlPath(int capacity, bool open)
+        public NpgsqlPath(int capacity, bool open) : this()
         {
             _points = new List<NpgsqlPoint>(capacity);
-            _open = open;
+            Open = open;
         }
 
         public NpgsqlPath(int capacity) : this(capacity, false) {}
-
-        public bool Open
-        {
-            get { return _open; }
-            set { _open = value; }
-        }
 
         public NpgsqlPoint this[int index]
         {
@@ -413,6 +357,7 @@ namespace NpgsqlTypes
             set { _points[index] = value; }
         }
 
+        public int Capacity { get { return _points.Capacity; } }
         public int Count { get { return _points.Count; } }
         public bool IsReadOnly { get { return false; } }
 
@@ -513,7 +458,7 @@ namespace NpgsqlTypes
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.Append(_open ? '[' : '(');
+            sb.Append(Open ? '[' : '(');
             int i;
             for (i = 0; i < _points.Count; i++)
             {
@@ -523,7 +468,7 @@ namespace NpgsqlTypes
                     sb.Append(",");
                 }
             }
-            sb.Append(_open ? ']' : ')');
+            sb.Append(Open ? ']' : ')');
             return sb.ToString();
         }
 
@@ -570,12 +515,18 @@ namespace NpgsqlTypes
 
         public NpgsqlPolygon(params NpgsqlPoint[] points) : this ((IEnumerable<NpgsqlPoint>) points) {}
 
+        public NpgsqlPolygon(int capacity)
+        {
+            _points = new List<NpgsqlPoint>(capacity);
+        }
+
         public NpgsqlPoint this[int index]
         {
             get { return _points[index]; }
             set { _points[index] = value; }
         }
 
+        public int Capacity { get { return _points.Capacity; } }
         public int Count { get { return _points.Count; } }
         public bool IsReadOnly { get { return false; } }
         public int IndexOf(NpgsqlPoint item)
@@ -712,47 +663,32 @@ namespace NpgsqlTypes
     {
         static readonly Regex Regex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
 
-        double _x, _y, _radius;
+        public double X { get; set; }
+        public double Y { get; set; }
+        public double Radius { get; set; }
 
         public NpgsqlCircle(NpgsqlPoint center, double radius)
+            : this()
         {
-            _x = center.X;
-            _y = center.Y;
-            _radius = radius;
+            X = center.X;
+            Y = center.Y;
+            Radius = radius;
         }
 
-        public NpgsqlCircle(double x, double y, double radius)
+        public NpgsqlCircle(double x, double y, double radius) : this()
         {
-            _x = x;
-            _y = y;
-            _radius = radius;
-        }
-
-        public double X
-        {
-            get { return _x; }
-            set { _x = value; }
-        }
-
-        public double Y
-        {
-            get { return _y; }
-            set { _y = value; }
-        }
-
-        public double Radius
-        {
-            get { return _radius; }
-            set { _radius = value; }
+            X = x;
+            Y = y;
+            Radius = radius;
         }
 
         public NpgsqlPoint Center
         {
-            get { return new NpgsqlPoint(_x, _y); }
+            get { return new NpgsqlPoint(X, Y); }
             set
             {
-                _x = value.X;
-                _y = value.Y;
+                X = value.X;
+                Y = value.Y;
             }
         }
 
@@ -782,7 +718,7 @@ namespace NpgsqlTypes
 
         public override String ToString()
         {
-            return string.Format(CultureInfo.InvariantCulture, "<({0},{1}),{2}>", _x, _y, _radius);
+            return string.Format(CultureInfo.InvariantCulture, "<({0},{1}),{2}>", X, Y, Radius);
         }
 
         public static bool operator ==(NpgsqlCircle x, NpgsqlCircle y)
@@ -797,7 +733,7 @@ namespace NpgsqlTypes
 
         public override int GetHashCode()
         {
-            return _x.GetHashCode() * _y.GetHashCode() * _radius.GetHashCode();
+            return X.GetHashCode() * Y.GetHashCode() * Radius.GetHashCode();
         }
     }
 
