@@ -705,6 +705,7 @@ namespace Npgsql
                         if (directBuf != null)
                         {
                             Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                            directBuf = null;
                         }
                     }
                     return;
