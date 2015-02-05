@@ -131,9 +131,7 @@ namespace Npgsql
                     RegisterBaseType(backendType);
                     continue;
                 case BackendTypeType.Range:
-#if REIMPLEMENT_RANGE
-                    RegisterRangeType(handlerType, mapping, backendType);
-#endif
+                    RegisterRangeType(backendType);
                     continue;
                 case BackendTypeType.Enum:
                     TypeHandler handler;
@@ -236,30 +234,30 @@ namespace Npgsql
 
         #region Range
 
-#if REIMPLEMENT_RANGE
-        void RegisterRangeType(Type handlerType, TypeMappingAttribute mapping, BackendTypeInfo backendInfo)
+        void RegisterRangeType(BackendType backendType)
         {
-            Contract.Requires(backendInfo.RangeSubtypeOID != 0);
+            Contract.Requires(backendType.RangeSubtypeOID != 0);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendInfo.RangeSubtypeOID, out elementHandler))
+            if (!_oidIndex.TryGetValue(backendType.RangeSubtypeOID, out elementHandler))
             {
-                Log.ErrorFormat("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendInfo.Name, backendInfo.RangeSubtypeOID);
+                Log.ErrorFormat("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, backendType.RangeSubtypeOID);
                 return;
             }
 
             var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendInfo.Name);
+            var rangeType = typeof(NpgsqlRange<>).MakeGenericType(elementHandler.GetFieldType());
+            var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.Name);
 
-            handler.PgName = "range";
+            handler.PgName = backendType.Name;
             handler.NpgsqlDbType = NpgsqlDbType.Range | elementHandler.NpgsqlDbType;
-            handler.OID = backendInfo.OID;
-            _oidIndex[backendInfo.OID] = handler;
+            handler.OID = backendType.OID;
+            _oidIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
 
-            RegisterArrayType(backendInfo.ArrayOID, handler, backendInfo.ArrayTextDelimiter);
+            RegisterArrayType(backendType.ArrayOID, handler, backendType.ArrayTextDelimiter);
         }
-#endif
+
         #endregion
 
         #region Enum
@@ -389,14 +387,8 @@ namespace Npgsql
                         : this[NpgsqlDbType.Timestamp];
                 }
 
-                return this[value.GetType()];
-            }
-        }
+                var type = value.GetType();
 
-        TypeHandler this[Type type]
-        {
-            get
-            {
                 TypeHandler handler;
                 if (_byType.TryGetValue(type, out handler)) {
                     return handler;
@@ -405,8 +397,7 @@ namespace Npgsql
                 if (type.IsArray)
                 {
                     var elementType = type.GetElementType();
-                    if (elementType.IsEnum)
-                    {
+                    if (elementType.IsEnum) {
                         if (_byEnumTypeAsArray != null && _byEnumTypeAsArray.TryGetValue(elementType, out handler)) {
                             return handler;
                         }
@@ -419,7 +410,7 @@ namespace Npgsql
                     return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
                 }
 
-                if (typeof(IList).IsAssignableFrom(type))
+                if (value is IList)
                 {
                     if (type.IsGenericType)
                     {
@@ -428,11 +419,19 @@ namespace Npgsql
                         }
                         return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
                     }
-                    throw new NotSupportedException("IList is a supported parameter, but the NpgsqlDbTypes parameter must be set on the parameter");
+                    throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
                 }
 
                 if (type.IsEnum) {
                     throw new Exception("Enums must be registered with Npgsql via Connection.RegisterEnumType or RegisterEnumTypeGlobally");
+                }
+
+                if (type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                {
+                    if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
+                        throw new NotSupportedException("This .NET range type is not supported in your PostgreSQL: " + type);
+                    }
+                    return this[NpgsqlDbType.Range | handler.NpgsqlDbType];
                 }
 
                 throw new NotSupportedException("This .NET type is not supported in Npgsql or your PostgreSQL: " + type);
@@ -446,6 +445,11 @@ namespace Npgsql
 
         internal static NpgsqlDbType ToNpgsqlDbType(Type type)
         {
+            NpgsqlDbType npgsqlDbType;
+            if (TypeToNpgsqlDbType.TryGetValue(type, out npgsqlDbType)) {
+                return npgsqlDbType;
+            }
+
             if (type.IsArray)
             {
                 if (type == typeof(byte[])) {
@@ -453,10 +457,16 @@ namespace Npgsql
                 }
                 return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
             }
+
             if (type.IsEnum) {
                 return NpgsqlDbType.Enum;
             }
-            return TypeToNpgsqlDbType[type];
+
+            if (type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)) {
+                return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
+            }
+
+            throw new NotSupportedException("Can't infer NpgsqlDbType for type " + type);
         }
 
         internal static DbType ToDbType(Type type)

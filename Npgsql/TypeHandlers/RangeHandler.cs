@@ -8,151 +8,257 @@ using System.Diagnostics.Contracts;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class RangeHandler<T> : TypeHandler<NpgsqlRange<T>>, IChunkingTypeReader<NpgsqlRange<T>>, IChunkingTypeWriter
+    internal class RangeHandler<TElement> : TypeHandler<NpgsqlRange<TElement>>,
+        IChunkingTypeReader<NpgsqlRange<TElement>>, IChunkingTypeWriter
     {
-        public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
-
-        const int Empty = 1;
-        const int LbInc = 2;
-        const int UbInc = 4;
-        const int LbInf = 8;
-        const int UbInf = 16;
-
-        internal override Type GetFieldType(FieldDescription fieldDescription)
-        {
-            return typeof(NpgsqlRange<T>);
-        }
-
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription)
-        {
-            return typeof(NpgsqlRange<T>); // TODO
-        }
-
-        internal Type GetElementFieldType(FieldDescription fieldDescription)
-        {
-            return typeof(T);
-        }
-        internal Type GetElementPsvType(FieldDescription fieldDescription)
-        {
-            return typeof(T); // TODO
-        }
-
         /// <summary>
         /// The type handler for the element that this range type holds
         /// </summary>
-        internal TypeHandler<T> ElementHandler { get; private set; }
+        public TypeHandler ElementHandler { get; private set; }
 
-        public RangeHandler(TypeHandler<T> elementHandler, string name)
+        public RangeHandler(TypeHandler<TElement> elementHandler, string name)
         {
             ElementHandler = elementHandler;
             PgName = name;
         }
 
-        public NpgsqlRange<T> Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        #region State
+
+        NpgsqlBuffer _buf;
+        NpgsqlRange<TElement> _value;
+        State _state;
+        FieldDescription _fieldDescription;
+        int _elementLen;
+
+        void CleanupState()
         {
-            throw new NotImplementedException();
-            /*
-            Contract.Assert(ElementHandler.SupportsBinaryRead);
-
-            if (IsChunking)
-                buf.Ensure(1);
-
-            byte flags = buf.ReadByte();
-            T e1 = default(T), e2 = default(T);
-            if ((flags & (Empty | LbInf)) == 0) // Is not empty and lower bound is not -inf
-            {
-                if (IsChunking)
-                    buf.Ensure(4);
-                var elementLength = buf.ReadInt32();
-                e1 = ElementHandler.Read(buf, fieldDescription, elementLength);
-            }
-            if ((flags & (Empty | UbInf)) == 0) // Is not empty and upper bound is not inf
-            {
-                if (IsChunking)
-                    buf.Ensure(4);
-                var elementLength = buf.ReadInt32();
-                e2 = ElementHandler.Read(buf, fieldDescription, elementLength);
-            }
-
-            if ((flags & Empty) == 1)
-                return NpgsqlRange<T>.Empty;
-            else
-                return new NpgsqlRange<T>(e1, (flags & LbInc) != 0, (flags & LbInf) != 0, e2, (flags & UbInc) != 0, (flags & UbInf) != 0);
-             */
+            _buf = null;
+            _value = default(NpgsqlRange<TElement>);
+            _fieldDescription = null;
+            _state = State.Done;
         }
+
+        #endregion
+
+        #region Read
+
+        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        {
+            _buf = buf;
+            _state = State.Start;
+            _elementLen = -1;
+        }
+
+        public bool Read(out NpgsqlRange<TElement> result)
+        {
+            var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+
+            switch (_state) {
+            case State.Start:
+                if (_buf.ReadBytesLeft < 1)
+                {
+                    result = default(NpgsqlRange<TElement>);
+                    return false;
+                }
+                var flags = (RangeFlags)_buf.ReadByte();
+
+                _value = new NpgsqlRange<TElement>(flags);
+                if (_value.IsEmpty) {
+                    result = _value;
+                    CleanupState();
+                    return true;
+                }
+
+                if (_value.LowerBoundInfinite) {
+                    goto case State.UpperBound;
+                }
+
+                _state = State.LowerBound;
+                goto case State.LowerBound;
+
+            case State.LowerBound:
+                TElement lowerBound;
+                if (!ReadSingleElement(out lowerBound))
+                {
+                    result = default(NpgsqlRange<TElement>);
+                    return false;
+                }
+                _value.LowerBound = lowerBound;
+                goto case State.UpperBound;
+
+            case State.UpperBound:
+                if (_value.UpperBoundInfinite) {
+                    result = _value;
+                    CleanupState();
+                    return true;
+                }
+
+                TElement upperBound;
+                if (!ReadSingleElement(out upperBound))
+                {
+                    result = default(NpgsqlRange<TElement>);
+                    return false;
+                }
+                _value.UpperBound = upperBound;
+                result = _value;
+                CleanupState();
+                return true;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        bool ReadSingleElement(out TElement element)
+        {
+            try {
+                if (_elementLen == -1) {
+                    if (_buf.ReadBytesLeft < 4) {
+                        element = default(TElement);
+                        return false;
+                    }
+                    _elementLen = _buf.ReadInt32();
+                    Contract.Assume(_elementLen != -1);
+                }
+
+                var asSimpleReader = ElementHandler as ISimpleTypeReader<TElement>;
+                if (asSimpleReader != null) {
+                    if (_buf.ReadBytesLeft < _elementLen) {
+                        element = default(TElement);
+                        return false;
+                    }
+                    element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                    _elementLen = -1;
+                    return true;
+                }
+
+                var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
+                if (asChunkingReader != null) {
+                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    if (!asChunkingReader.Read(out element)) {
+                        return false;
+                    }
+                    _elementLen = -1;
+                    return true;
+                }
+
+                throw PGUtil.ThrowIfReached();
+            } catch (SafeReadException e) {
+                // TODO: Implement safe reading. For now, translate the safe exception to an unsafe one
+                // to break the connector.
+                throw e.InnerException;
+            }
+        }
+
+        #endregion
+
+        #region Write
 
         public int ValidateAndGetLength(object value)
         {
-            throw new NotImplementedException("Chunking");
-            /*
-            var range = (NpgsqlRange<T>)value;
+            var range = (NpgsqlRange<TElement>)value;
+            var totalLen = 1;
 
-            var elementOid = registry.GetElementOidFromRangeOid(oid);
-
-            var sizeArrPos = sizeArr.Count;
-            sizeArr.Add(0);
-
-            int totalLen = 1;
-
-            if (!range.IsEmpty && !range.LowerBoundIsMinusInfinity)
+            if (!range.IsEmpty)
             {
-                totalLen += ElementHandler.BinarySize(registry, elementOid, range.LowerBound, sizeArr);
-            }
-            if (!range.IsEmpty && !range.UpperBoundIsInfinity)
-            {
-                totalLen += ElementHandler.BinarySize(registry, elementOid, range.UpperBound, sizeArr);
-            }
+                var writer = (ITypeWriter) ElementHandler;
+                if (!range.LowerBoundInfinite) {
+                    totalLen += writer.ValidateAndGetLength(range.LowerBound) + 4;
+                }
 
-            sizeArr[sizeArrPos] = totalLen;
+                if (!range.UpperBoundInfinite) {
+                    totalLen += writer.ValidateAndGetLength(range.UpperBound) + 4;
+                }
+            }
 
             return totalLen;
-             */
         }
 
         public void PrepareWrite(NpgsqlBuffer buf, object value)
         {
-            throw new NotImplementedException();
+            _buf = buf;
+            _value = (NpgsqlRange<TElement>)value;
+            _state = State.Start;
         }
 
         public bool Write(ref byte[] directBuf)
         {
-            throw new NotImplementedException();
-        }
-
-        internal void WriteBinary(object value, NpgsqlBuffer buf)
-        {
-            throw new NotImplementedException();
-            /*
-            var range = (NpgsqlRange<T>)value;
-
-            var elementOid = registry.GetElementOidFromRangeOid(oid);
-
-            var totalSize = sizeArr[sizeArrPos++];
-
-            buf.EnsureWrite(CanReadFromSocket ? 4 + 1 : totalSize);
-
-            buf.WriteInt32(totalSize);
-            buf.WriteByte((byte)((range.IsEmpty ? Empty : 0) | (range.LowerBoundIsInclusive ? LbInc : 0) | (range.LowerBoundIsMinusInfinity ? LbInf : 0) | (range.UpperBoundIsInclusive ? UbInc : 0) | (range.UpperBoundIsInfinity ? UbInf : 0)));
-
-            if (!range.IsEmpty && !range.LowerBoundIsMinusInfinity)
+            var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
+            switch (_state)
             {
-                ElementHandler.WriteBinary(registry, elementOid, range.LowerBound, buf, sizeArr, ref sizeArrPos);
+                case State.Start:
+                    if (_buf.WriteSpaceLeft < 1) { return false; }
+                    _buf.WriteByte((byte)_value.Flags);
+
+                    if (_value.IsEmpty)
+                    {
+                        CleanupState();
+                        return true;
+                    }
+
+                    if (_value.LowerBoundInfinite) {
+                        goto case State.BeforeUpperBound;
+                    }
+
+                    if (asChunkingWriter != null) {
+                        asChunkingWriter.PrepareWrite(_buf, _value.LowerBound);
+                    }
+                    _state = State.LowerBound;
+                    goto case State.LowerBound;
+
+                case State.LowerBound:
+                    if (asChunkingWriter == null)
+                    {
+                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
+                        // TODO: Cache length
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.LowerBound);
+                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
+                        _buf.WriteInt32(len);
+                        asSimpleWriter.Write(_value.LowerBound, _buf);
+                    }
+                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
+                    goto case State.BeforeUpperBound;
+
+                case State.BeforeUpperBound:
+                    if (_value.UpperBoundInfinite) {
+                        CleanupState();
+                        return true;
+                    }
+                    if (asChunkingWriter != null) {
+                        asChunkingWriter.PrepareWrite(_buf, _value.UpperBound);
+                    }
+                    _state = State.UpperBound;
+                    goto case State.UpperBound;
+
+                case State.UpperBound:
+                    if (asChunkingWriter == null)
+                    {
+                        var asSimpleWriter = (ISimpleTypeWriter)ElementHandler;
+                        // TODO: Cache length
+                        var len = asSimpleWriter.ValidateAndGetLength(_value.UpperBound);
+                        if (_buf.WriteSpaceLeft < len + 4) { return false; }
+                        _buf.WriteInt32(len);
+                        asSimpleWriter.Write(_value.UpperBound, _buf);
+                    }
+                    else if (!asChunkingWriter.Write(ref directBuf)) { return false; }
+
+                    CleanupState();
+                    return true;
+
+                default:
+                    throw PGUtil.ThrowIfReached();
             }
-            if (!range.IsEmpty && !range.UpperBoundIsInfinity)
-            {
-                ElementHandler.WriteBinary(registry, elementOid, range.UpperBound, buf, sizeArr, ref sizeArrPos);
-            }
-             */
         }
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            throw new NotImplementedException();
-        }
+        #endregion
 
-        public bool Read(out NpgsqlRange<T> result)
+        enum State
         {
-            throw new NotImplementedException();
+            Start,
+            LowerBound,
+            BeforeUpperBound,
+            UpperBound,
+            Done
         }
     }
 }
