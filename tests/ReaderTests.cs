@@ -401,13 +401,26 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void SchemaOnly()
+        public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
-            var cmd = new NpgsqlCommand("SELECT 1 AS some_column", Conn);
+            var cmd = new NpgsqlCommand(
+                "SELECT 1 AS some_column;" +
+                "UPDATE data SET field_text='yo' WHERE 1=0;" +
+                "SELECT 1 AS some_other_column",
+                Conn);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
             var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly);
             Assert.That(reader.Read(), Is.False);
             var t = reader.GetSchemaTable();
             Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
+            Assert.That(reader.NextResult(), Is.True);
+            Assert.That(reader.Read(), Is.False);
+            t = reader.GetSchemaTable();
+            Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
+            Assert.That(reader.NextResult(), Is.False);
+            reader.Close();
+            cmd.Dispose();
         }
 
         [Test]

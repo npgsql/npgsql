@@ -1488,29 +1488,30 @@ namespace Npgsql
             Contract.Assert(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
             Contract.Assert(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
 
-            // TODO: Think about this, fold into below code flow
-            if ((behavior & CommandBehavior.SchemaOnly) != 0 && IsPrepared) {
-                throw new NotSupportedException("Prepared statements can't have behavior SchemaOnly");
-            }
-
             NpgsqlDataReader reader = null;
 
             switch (_prepared)
             {
                 case PrepareStatus.NotPrepared:
-                    AddMessagesNonPrepared(behavior);
+                    if ((behavior & CommandBehavior.SchemaOnly) == 0) {
+                        AddMessagesNonPrepared(behavior);
+                    } else {
+                        AddMessagesNonPreparedSchemaOnly(behavior);                        
+                    }
                     break;
                 case PrepareStatus.NeedsPrepare:
                     Prepare();
                     goto case PrepareStatus.Prepared;
                 case PrepareStatus.Prepared:
+                    if ((behavior & CommandBehavior.SchemaOnly) != 0) {
+                        break;  // We already have the RowDescriptions from the Prepare phase
+                    }
                     AddMessagesPrepared(behavior);
                     break;
                 default:
                     throw PGUtil.ThrowIfReached();
             }
 
-            _connector.AddMessage(SyncMessage.Instance);
             _queryIndex = 0;
 
             // Block the notification thread before writing anything to the wire.
@@ -1520,9 +1521,12 @@ namespace Npgsql
             {
                 State = CommandState.InProgress;
 
-                // TODO: Can this be combined into the message chain?
-                _connector.SetBackendCommandTimeout(CommandTimeout);
-                _connector.SendAllMessages();
+                if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
+                {
+                    // TODO: Can this be combined into the message chain?
+                    _connector.SetBackendCommandTimeout(CommandTimeout);
+                    _connector.SendAllMessages();
+                }
 
                 if (_prepared == PrepareStatus.NotPrepared)
                 {
@@ -1559,8 +1563,25 @@ namespace Npgsql
             }
         }
 
+        void AddMessagesNonPreparedSchemaOnly(CommandBehavior behavior)
+        {
+            Contract.Requires((behavior & CommandBehavior.SchemaOnly) != 0);
+
+            ParseRawQuery();
+
+            foreach (var query in _queries)
+            {
+                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
+                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
+            }
+
+            _connector.AddMessage(SyncMessage.Instance);
+        }
+
         void AddMessagesNonPrepared(CommandBehavior behavior)
         {
+            Contract.Requires((behavior & CommandBehavior.SchemaOnly) == 0);
+
             ParseRawQuery();
 
             var portalNames = _queries.Count > 1
@@ -1597,6 +1618,7 @@ namespace Npgsql
                 _connector.AddMessage(new ExecuteMessage(portalNames[i], (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
                 _connector.AddMessage(new CloseMessage(StatementOrPortal.Portal, portalNames[i]));
             }
+            _connector.AddMessage(SyncMessage.Instance);
         }
 
         void AddMessagesPrepared(CommandBehavior behavior)
@@ -1614,6 +1636,7 @@ namespace Npgsql
                 _connector.AddMessage(bindMessage);
                 _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
             }
+            _connector.AddMessage(SyncMessage.Instance);
         }
 
         bool ProcessMessageForUnprepared(BackendMessage msg, CommandBehavior behavior)
@@ -1631,6 +1654,9 @@ namespace Npgsql
                     var description = (RowDescriptionMessage) msg;
                     FixupRowDescription(description, _queryIndex == 0);
                     _queries[_queryIndex].Description = description;
+                    if ((behavior & CommandBehavior.SchemaOnly) != 0) {
+                        _queryIndex++;
+                    }
                     return false;
                 case BackendMessageCode.NoData:
                     Contract.Assert(_queryIndex < _queries.Count);
@@ -1640,8 +1666,8 @@ namespace Npgsql
                     Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
                     return ++_queryIndex == _queries.Count;
                 case BackendMessageCode.ReadyForQuery:
-                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
-                    throw new NotImplementedException("SchemaOnly");
+                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) != 0);
+                    return true;  // End of a SchemaOnly command
                 default:
                     throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
             }            

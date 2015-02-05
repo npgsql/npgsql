@@ -88,6 +88,7 @@ namespace Npgsql
 
         internal bool IsSequential { get { return (_behavior & CommandBehavior.SequentialAccess) != 0; } }
         internal bool IsCaching { get { return !IsSequential; } }
+        internal bool IsSchemaOnly { get { return (_behavior & CommandBehavior.SchemaOnly) != 0; } }
 
         internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<QueryDetails> queries)
         {
@@ -97,18 +98,12 @@ namespace Npgsql
             _behavior = behavior;
             _recordsAffected = null;
 
-            if ((behavior & CommandBehavior.SchemaOnly) != 0)
-            {
-                State = ReaderState.Consumed;
-                return;
-            }
-
+            State = IsSchemaOnly ? ReaderState.BetweenResults : ReaderState.InResult;
             _connector.State = ConnectorState.Executing;
-            
+
             if (IsCaching) {
                 _rowCache = new RowCache();
             }
-            State = ReaderState.InResult;
             _connector.CurrentReader = this;
             _queries = queries;
 
@@ -151,7 +146,7 @@ namespace Npgsql
 
             try
             {
-                if ((_behavior & CommandBehavior.SchemaOnly) != 0 || ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow))
+                if ((_behavior & CommandBehavior.SingleRow) != 0 && _readOneRow)
                 {
                     // TODO: See optimization proposal in #410
                     Consume();
@@ -233,6 +228,12 @@ namespace Npgsql
 
         public override sealed bool NextResult()
         {
+            return IsSchemaOnly ? NextResultSchemaOnly() : NextResultInternal();
+        }
+
+        bool NextResultInternal()
+        {
+            Contract.Requires(!IsSchemaOnly);
             Contract.Ensures(Command.CommandType != CommandType.StoredProcedure || Contract.Result<bool>() == false);
 
             try
@@ -295,6 +296,27 @@ namespace Npgsql
                 CleanUpDueToException();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Note that in SchemaOnly mode there are no resultsets, and we read nothing from the backend (all
+        /// RowDescriptions have already been processed and are available)
+        /// </summary>
+        bool NextResultSchemaOnly()
+        {
+            Contract.Requires(IsSchemaOnly);
+
+            for (_queryIndex++; _queryIndex < _queries.Count; _queryIndex++)
+            {
+                _rowDescription = _queries[_queryIndex].Description;
+                if (_rowDescription != null)
+                {
+                    // Found a resultset
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         #endregion
@@ -429,6 +451,12 @@ namespace Npgsql
                 case ReaderState.Consumed:
                 case ReaderState.Closed:
                     return;
+            }
+
+            if (IsSchemaOnly)
+            {
+                State = ReaderState.Consumed;
+                return;
             }
 
             if (_row != null)
