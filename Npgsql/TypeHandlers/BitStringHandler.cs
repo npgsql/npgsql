@@ -135,7 +135,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        int IChunkingTypeWriter.ValidateAndGetLength(object value)
+        int ITypeWriter.ValidateAndGetLength(object value)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)

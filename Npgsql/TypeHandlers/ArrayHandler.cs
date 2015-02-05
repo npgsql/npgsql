@@ -425,8 +425,7 @@ namespace Npgsql.TypeHandlers
             if (element == null || element is DBNull) {
                 return 0;
             }
-            var asSimpleWriter = ElementHandler as ISimpleTypeWriter;
-            return asSimpleWriter != null ? asSimpleWriter.ValidateAndGetLength(element) : ((IChunkingTypeWriter)ElementHandler).ValidateAndGetLength(element);
+            return ((ITypeWriter)ElementHandler).ValidateAndGetLength(element);
         }
 
         enum WriteState

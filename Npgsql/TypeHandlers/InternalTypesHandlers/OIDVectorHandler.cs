@@ -25,7 +25,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return res;
         }
 
-        internal int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             return
                 12 + // dims + nulls + element oid
@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             throw new NotImplementedException();
         }
 
-        int IChunkingTypeWriter.ValidateAndGetLength(object value)
+        int ITypeWriter.ValidateAndGetLength(object value)
         {
             return ValidateAndGetLength(value);
         }

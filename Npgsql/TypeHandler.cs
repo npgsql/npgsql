@@ -14,9 +14,13 @@ namespace Npgsql
 
     interface ITypeReader<T> {}
 
-    interface ISimpleTypeWriter
+    interface ITypeWriter
     {
         int ValidateAndGetLength(object value);
+    }
+
+    interface ISimpleTypeWriter : ITypeWriter
+    {
         void Write(object value, NpgsqlBuffer buf);
     }
 
@@ -39,9 +43,8 @@ namespace Npgsql
     }
 
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
-    interface IChunkingTypeWriter
+    interface IChunkingTypeWriter : ITypeWriter
     {
-        int ValidateAndGetLength(object value);
         void PrepareWrite(NpgsqlBuffer buf, object value);
         bool Write(ref byte[] directBuf);
     }

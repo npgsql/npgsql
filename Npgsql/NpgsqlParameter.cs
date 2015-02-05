@@ -581,22 +581,8 @@ namespace Npgsql
             FormatCode = Handler.PreferTextWrite || !Handler.SupportsBinaryWrite
                 ? FormatCode.Text
                 : FormatCode.Binary;
-            if (!IsNull)
-            {
-                var asChunkingWriter = Handler as IChunkingTypeWriter;
-                if (asChunkingWriter != null)
-                {
-                    BoundSize = asChunkingWriter.ValidateAndGetLength(Value);
-                }
-                else
-                {
-                    var asSimpleWriter = Handler as ISimpleTypeWriter;
-                    if (asSimpleWriter != null)
-                    {
-                        BoundSize = ((ISimpleTypeWriter)Handler).ValidateAndGetLength(Value);
-                    }
-                    else throw PGUtil.ThrowIfReached(String.Format("Handler {0} doesn't implement a known writer interface", Handler));
-                }
+            if (!IsNull) {
+                BoundSize = ((ITypeWriter)Handler).ValidateAndGetLength(Value);
             }
             IsBound = true;
         }
