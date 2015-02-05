@@ -289,6 +289,7 @@ namespace Npgsql
 
                 // There are no more queries, we're done. Read to the RFQ.
                 ProcessMessage(SkipUntil(BackendMessageCode.ReadyForQuery));
+                _rowDescription = null;
                 return false;
             }
             catch (NpgsqlException)
@@ -380,6 +381,9 @@ namespace Npgsql
                 if (_hasRows.HasValue) {
                     return _hasRows.Value;
                 }
+                if (_queryIndex >= _queries.Count) {
+                    return false;
+                }
                 while (true)
                 {
                     var msg = _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
@@ -395,8 +399,10 @@ namespace Npgsql
                         case BackendMessageCode.EmptyQueryResponse:
                             _pendingMessage = msg;
                             return false;
+                        case BackendMessageCode.CloseComplete:
+                            return false;
                         default:
-                            throw new ArgumentOutOfRangeException();
+                            throw new ArgumentOutOfRangeException("Got unexpected message type: " + msg.Code);
                     }
                 }
             }

@@ -55,13 +55,13 @@ namespace NpgsqlTests
             var cmd = new NpgsqlCommand("SELECT 1; SELECT 2,3", Conn);
             var reader = cmd.ExecuteReader();
             Assert.That(reader.FieldCount, Is.EqualTo(1));
-            reader.Read();
+            Assert.That(reader.Read(), Is.True);
             Assert.That(reader.FieldCount, Is.EqualTo(1));
-            reader.Read();
+            Assert.That(reader.Read(), Is.False);
             Assert.That(reader.FieldCount, Is.EqualTo(1));
-            reader.NextResult();
+            Assert.That(reader.NextResult(), Is.True);
             Assert.That(reader.FieldCount, Is.EqualTo(2));
-            reader.NextResult();
+            Assert.That(reader.NextResult(), Is.False);
             Assert.That(reader.FieldCount, Is.EqualTo(0));
             reader.Close();
 
@@ -296,20 +296,10 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [ExpectedException(typeof(NpgsqlException))]
-        public void TestNonExistentParameterName()
+        public void NonExistentParameterName()
         {
-            var command = new NpgsqlCommand("select * from data where field_serial = :a or field_serial = :aa", Conn);
-            command.Parameters.Add(new NpgsqlParameter(":b", DbType.Int32, 4, "b"));
-            command.Parameters.Add(new NpgsqlParameter(":aa", DbType.Int32, 4, "aa"));
-
-            command.Parameters[0].Value = 2;
-            command.Parameters[1].Value = 3;
-
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.IsNotNull(dr);
-            }
+            var cmd = new NpgsqlCommand("SELECT * FROM data WHERE field_text=@x", Conn);
+            Assert.That(() => cmd.ExecuteReader(), Throws.Exception);
         }
 
         [Test]
