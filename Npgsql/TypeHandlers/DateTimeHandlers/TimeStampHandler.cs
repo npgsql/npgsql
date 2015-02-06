@@ -61,7 +61,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
             else if ( value is string )
             {
-                value = NpgsqlTimeStamp.Parse((string)value);
+                throw new InvalidOperationException("String DateTimes are not allowed, use DateTime instead.");
             }
 
             var timestamp = (NpgsqlTimeStamp)value;

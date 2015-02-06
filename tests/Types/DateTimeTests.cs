@@ -248,7 +248,7 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void InsertStringDateTimeAfter2000()
+        public void InsertStringDateRaisesException()
         {
             var dt = "2015-1-27 8:45:12";
 
@@ -256,46 +256,7 @@ namespace NpgsqlTests.Types
             command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Timestamp));
             command.Parameters["p0"].Value = dt;
             command.Prepare();
-            var numRowsAffected = command.ExecuteNonQuery();
-            Assert.That(numRowsAffected, Is.EqualTo(1));
-
-            command = new NpgsqlCommand("SELECT field_timestamp FROM data;", Conn);
-            var result = command.ExecuteScalar();
-            Assert.That((DateTime)result, Is.EqualTo(new DateTime(2015, 1, 27, 8, 45, 12)));
-        }
-
-        [Test]
-        public void InsertStringDateTimeBefore2000()
-        {
-            var dt = "1998-4-12 13:26:38";
-
-            var command = new NpgsqlCommand("INSERT INTO data (field_timestamp) VALUES (:p0);", Conn);
-            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Timestamp));
-            command.Parameters["p0"].Value = dt;
-            command.Prepare();
-            var numRowsAffected = command.ExecuteNonQuery();
-            Assert.That(numRowsAffected, Is.EqualTo(1));
-
-            command = new NpgsqlCommand("SELECT field_timestamp FROM data;", Conn);
-            var result = command.ExecuteScalar();
-            Assert.That((DateTime)result, Is.EqualTo(new DateTime(1998, 4, 12, 13, 26, 38)));
-        }
-
-        [Test]
-        public void InsertStringDateOnly()
-        {
-            var dt ="2014-11-8";
-
-            var command = new NpgsqlCommand("INSERT INTO data (field_timestamp) VALUES (:p0);", Conn);
-            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Timestamp));
-            command.Parameters["p0"].Value = dt;
-            command.Prepare();
-            var numRowsAffected = command.ExecuteNonQuery();
-            Assert.That(numRowsAffected, Is.EqualTo(1));
-
-            command = new NpgsqlCommand("SELECT field_timestamp FROM data;", Conn);
-            var result = command.ExecuteScalar();
-            Assert.That((DateTime)result, Is.EqualTo(new DateTime(2014, 11, 8)));
+            Assert.That(() => command.ExecuteNonQuery(), Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]
