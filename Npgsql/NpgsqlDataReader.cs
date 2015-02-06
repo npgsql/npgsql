@@ -1577,7 +1577,7 @@ namespace Npgsql
                 var c = new NpgsqlCommand(getKeys, metadataConn);
                 c.Parameters.Add(new NpgsqlParameter("tableOid", NpgsqlDbType.Integer)).Value = tableOid;
 
-                using (var dr = c.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                using (var dr = c.Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                 {
                     string previousKeyName = null;
                     string possiblyUniqueColumn = null;
@@ -1674,7 +1674,7 @@ namespace Npgsql
             {
                 using (var command = new NpgsqlCommand(sb.ToString(), connection))
                 {
-                    using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                    using (var reader = command.Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
                         var oidLookup = new Dictionary<uint, Table>(oids.Count);
                         while (reader.Read())
@@ -1743,7 +1743,7 @@ namespace Npgsql
             {
                 using (var command = new NpgsqlCommand(sb.ToString(), connection))
                 {
-                    using (var reader = command.GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
+                    using (var reader = command.Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleResult))
                     {
                         var columnLookup = new Dictionary<string, Column>();
                         while (reader.Read())

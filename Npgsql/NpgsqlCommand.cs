@@ -495,13 +495,13 @@ namespace Npgsql
         /// </summary>
         public override void Prepare()
         {
+            Prechecks();
             _log.Debug("Prepare command");
-            CheckConnectionState();
 
             using (_connector.BlockNotifications())
             {
                 DeallocatePreparedStatements();
-                ParseRawQuery();
+                ProcessRawQuery();
 
                 foreach (var query in _queries)
                 {
@@ -515,7 +515,7 @@ namespace Npgsql
 
                 _queryIndex = 0;
 
-                while (_queryIndex < _queries.Count)
+                while (true)
                 {
                     var msg = _connector.ReadSingleMessage();
                     switch (msg.Code)
@@ -531,17 +531,14 @@ namespace Npgsql
                         case BackendMessageCode.NoData:
                             _queries[_queryIndex++].Description = null;
                             continue;
+                        case BackendMessageCode.ReadyForQuery:
+                            Contract.Assume(_queryIndex == _queries.Count);
+                            _prepared = PrepareStatus.Prepared;
+                            return;
                         default:
                             throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
                     }            
                 }
-
-                // We've read all the DescriptionRows, read the terminating RFQ
-                var rfq = _connector.ReadSingleMessage();
-                if (!(rfq is ReadyForQueryMessage)) {
-                    throw new Exception("Unexpected message type received when expecting ReadyForQuery: " + rfq.Code);
-                }
-                _prepared = PrepareStatus.Prepared;
             }
         }
 
@@ -565,258 +562,40 @@ namespace Npgsql
 
         #region Query analysis
 
-#if false
-        bool CheckFunctionNeedsColumnDefinitionList()
+        void ProcessRawQuery()
         {
-            // If and only if a function returns "record" and has no OUT ("o" in proargmodes), INOUT ("b"), or TABLE
-            // ("t") return arguments to characterize the result columns, we must provide a column definition list.
-            // See http://pgfoundry.org/forum/forum.php?thread_id=1075&forum_id=519
-            // We would use our Output and InputOutput parameters to construct that column definition list.  If we have
-            // no such parameters, skip the check: we could only construct "AS ()", which yields a syntax error.
-
-            // Updated after 0.99.3 to support the optional existence of a name qualifying schema and allow for case insensitivity
-            // when the schema or procedure name do not contain a quote.
-            // The hard-coded schema name 'public' was replaced with code that uses schema as a qualifier, only if it is provided.
-
-            String returnRecordQuery;
-
-            var parameterTypes = new StringBuilder("");
-
-            // Process parameters
-
-            var seenDef = false;
-            foreach (NpgsqlParameter p in Parameters)
-            {
-                if (p.IsInputDirection)
-                {
-                    parameterTypes.Append(Connection.Connector.OidToNameMapping[p.TypeInfo.Name].OID.ToString() + " ");
-                }
-
-                if ((p.Direction == ParameterDirection.Output) || (p.Direction == ParameterDirection.InputOutput))
-                {
-                    seenDef = true;
-                }
-            }
-
-            if (!seenDef)
-            {
-                return false;
-            }
-
-            // Process schema name.
-
-            var schemaName = String.Empty;
-            var procedureName = String.Empty;
-
-            var fullName = CommandText.Split('.');
-
-            const string predicate = "prorettype = ( select oid from pg_type where typname = 'record' ) "
-                + "and proargtypes=:proargtypes and proname=:proname "
-                // proargmodes && array['o','b','t']::"char"[] performs just as well, but it requires PostgreSQL 8.2.
-                + "and ('o' = any (proargmodes) OR 'b' = any (proargmodes) OR 't' = any (proargmodes)) is not true";
-            if (fullName.Length == 2)
-            {
-                returnRecordQuery =
-                "select count(*) > 0 from pg_proc p left join pg_namespace n on p.pronamespace = n.oid where " + predicate + " and n.nspname=:nspname";
-
-                schemaName = (fullName[0].IndexOf("\"") != -1) ? fullName[0] : fullName[0].ToLower();
-                procedureName = (fullName[1].IndexOf("\"") != -1) ? fullName[1] : fullName[1].ToLower();
-            }
-            else
-            {
-                // Instead of defaulting don't use the nspname, as an alternative, query pg_proc and pg_namespace to try and determine the nspname.
-                // schemaName = "public"; // This was removed after build 0.99.3 because the assumption that a function is in public is often incorrect.
-                returnRecordQuery = "select count(*) > 0 from pg_proc p where " + predicate;
-
-                procedureName = (CommandText.IndexOf("\"") != -1) ? CommandText : CommandText.ToLower();
-            }
-
-            bool ret;
-
-            using (var c = new NpgsqlCommand(returnRecordQuery, Connection))
-            {
-                c.Parameters.Add(new NpgsqlParameter("proargtypes", NpgsqlDbType.Oidvector));
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Name));
-
-                c.Parameters[0].Value = parameterTypes.ToString();
-                c.Parameters[1].Value = procedureName;
-
-                if (!string.IsNullOrEmpty(schemaName))
-                {
-                    c.Parameters.Add(new NpgsqlParameter("nspname", NpgsqlDbType.Name));
-                    c.Parameters[2].Value = schemaName;
-                }
-
-                ret = (bool)c.ExecuteScalar();
-            }
-
-            return ret;
-        }
-
-        void AddFunctionColumnListSupport(Stream st)
-        {
-            var isFirstOutputOrInputOutput = true;
-
-            st.WriteString(" AS (");
-
-            for (var i = 0; i < Parameters.Count; i++)
-            {
-                var p = Parameters[i];
-
-                switch (p.Direction)
-                {
-                    case ParameterDirection.Output:
-                    case ParameterDirection.InputOutput:
-                        if (isFirstOutputOrInputOutput)
-                        {
-                            isFirstOutputOrInputOutput = false;
-                        }
-                        else
-                        {
-                            st.WriteString(", ");
-                        }
-
-                        st.WriteString(p.CleanName);
-                        st.WriteByte((byte) ASCIIBytes.Space);
-                        st.WriteString(p.TypeInfo.Name);
-
-                        break;
-                }
-            }
-
-            st.WriteByte((byte)ASCIIBytes.ParenRight);
-        }
-
-        /// <summary>
-        /// Process this._commandText, trimming each distinct command and substituting paramater
-        /// tokens.
-        /// </summary>
-        /// <param name="prepare"></param>
-        /// <returns>UTF8 encoded command ready to be sent to the backend.</returns>
-        byte[] GetCommandText(bool prepare)
-        {
-            var commandBuilder = new MemoryStream();
-
-            if (CommandType == CommandType.TableDirect)
-            {
-                foreach (var table in _commandText.Split(';'))
-                {
-                    if (table.Trim().Length == 0)
-                    {
-                        continue;
-                    }
-
-                    commandBuilder
-                        .WriteString("SELECT * FROM ")
-                        .WriteString(table)
-                        .WriteString(";");
-                }
-            }
-            else if (CommandType == CommandType.StoredProcedure)
-            {
-                if (!prepare && !_functionChecksDone)
-                {
-                    _functionNeedsColumnListDefinition = Parameters.Count != 0 && CheckFunctionNeedsColumnDefinitionList();
-
-                    _functionChecksDone = true;
-                }
-
-                commandBuilder.WriteString("SELECT * FROM ");
-
-                if (_commandText.TrimEnd().EndsWith(")"))
-                {
-                    if (!AppendCommandReplacingParameterValues(commandBuilder, _commandText, prepare, false))
-                    {
-                        throw new NotSupportedException("Multiple queries not supported for stored procedures");
+            string query;
+            switch (CommandType) {
+            case CommandType.Text:
+                query = CommandText;
+                break;
+            case CommandType.TableDirect:
+                query = "SELECT * FROM " + CommandText;
+                break;
+            case CommandType.StoredProcedure:
+                var numInput = _parameters.Count(p => p.IsInputDirection);
+                var sb = new StringBuilder();
+                sb.Append("SELECT * FROM ");
+                sb.Append(CommandText);
+                sb.Append('(');
+                for (var i = 1; i <= numInput; i++) {
+                    sb.Append('$');
+                    sb.Append(i);
+                    if (i < numInput) {
+                        sb.Append(',');
                     }
                 }
-                else
-                {
-                    commandBuilder
-                        .WriteString(_commandText)
-                        .WriteByte((byte)ASCIIBytes.ParenLeft);
-
-                    if (prepare)
-                    {
-                        AppendParameterPlaceHolders(commandBuilder);
-                    }
-                    else
-                    {
-                        AppendParameterValues(commandBuilder);
-                    }
-
-                    commandBuilder.WriteByte((byte)ASCIIBytes.ParenRight);
-                }
-
-                if (!prepare && _functionNeedsColumnListDefinition)
-                {
-                    AddFunctionColumnListSupport(commandBuilder);
-                }
-            }
-            else
-            {
-                if (!AppendCommandReplacingParameterValues(commandBuilder, _commandText, prepare, !prepare))
-                {
-                    throw new NotSupportedException("Multiple queries not supported for prepared statements");
-                }
+                sb.Append(')');
+                query = sb.ToString();
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
             }
 
-            commandBuilder.Write(ASCIIByteArrays.Byte_0, 0, 1);
-            return commandBuilder.ToArray();
-        }
-
-        void AppendParameterPlaceHolders(Stream dest)
-        {
-            var first = true;
-
-            for (var i = 0; i < _parameters.Count; i++)
-            {
-                var parameter = _parameters[i];
-
-                if (parameter.IsInputDirection)
-                {
-                    if (first)
-                    {
-                        first = false;
-                    }
-                    else
-                    {
-                        dest.WriteString(", ");
-                    }
-
-                    AppendParameterPlaceHolder(dest, parameter, i + 1);
-                }
+            ParseRawQuery(query);
+            if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
+                throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
             }
-        }
-#endif
-
-        static bool IsParamNameChar(char ch)
-        {
-            if (ch < '.' || ch > 'z')
-            {
-                return false;
-            }
-            return ((byte)ParamNameCharTable.GetValue(ch) != 0);
-        }
-
-        static bool IsLetter(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
-        }
-
-        static bool IsIdentifierStart(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
-        }
-
-        static bool IsDollarTagIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
-        }
-
-        static bool IsIdentifier(char ch)
-        {
-            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
         }
 
         /// <summary>
@@ -827,7 +606,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="src">Raw user-provided query</param>
         /// <returns>The queries contained in the raw text</returns>
-        void ProcessRawQueryText(string src)
+        void ParseRawQuery(string src)
         {
             var standardConformantStrings = _connection == null || _connection.UseConformantStrings;
 
@@ -1216,6 +995,210 @@ namespace Npgsql
             _queries.Add(new QueryDetails(currentSql.ToString(), currentParameters));
         }
 
+        static bool IsParamNameChar(char ch)
+        {
+            if (ch < '.' || ch > 'z') {
+                return false;
+            }
+            return ((byte)ParamNameCharTable.GetValue(ch) != 0);
+        }
+
+        static bool IsLetter(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
+        }
+
+        static bool IsIdentifierStart(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
+        }
+
+        static bool IsDollarTagIdentifier(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
+        }
+
+        static bool IsIdentifier(char ch)
+        {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
+        }
+
+        #endregion
+
+        #region Frontend message creation
+
+        void CreateMessages(CommandBehavior behavior)
+        {
+            switch (_prepared) {
+            case PrepareStatus.NotPrepared:
+                if ((behavior & CommandBehavior.SchemaOnly) == 0) {
+                    CreateMessagesNonPrepared(behavior);
+                } else {
+                    CreateMessagesSchemaOnly(behavior);
+                }
+                break;
+            case PrepareStatus.NeedsPrepare:
+                Prepare();
+                goto case PrepareStatus.Prepared;
+            case PrepareStatus.Prepared:
+                if ((behavior & CommandBehavior.SchemaOnly) != 0) {
+                    break;  // We already have the RowDescriptions from the Prepare phase
+                }
+                CreateMessagesPrepared(behavior);
+                break;
+            default:
+                throw PGUtil.ThrowIfReached();
+            }
+        }
+
+        void CreateMessagesNonPrepared(CommandBehavior behavior)
+        {
+            Contract.Requires((behavior & CommandBehavior.SchemaOnly) == 0);
+
+            ProcessRawQuery();
+
+            var portalNames = _queries.Count > 1
+                ? Enumerable.Range(0, _queries.Count).Select(i => "MQ" + i).ToArray()
+                : null;
+
+            for (var i = 0; i < _queries.Count; i++) {
+                var query = _queries[i];
+                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
+                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
+
+                var bindMessage = new BindMessage(
+                    _connector.TypeHandlerRegistry,
+                    query.InputParameters,
+                    _queries.Count == 1 ? "" : portalNames[i]
+                );
+                if (AllResultTypesAreUnknown) {
+                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
+                } else if (i == 0 && UnknownResultTypeList != null) {
+                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
+                }
+                bindMessage.Prepare();
+                _connector.AddMessage(bindMessage);
+            }
+
+            if (_queries.Count == 1) {
+                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
+            } else
+                for (var i = 0; i < _queries.Count; i++) {
+                    // TODO: Verify SingleRow behavior for multiqueries
+                    _connector.AddMessage(new ExecuteMessage(portalNames[i], (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
+                    _connector.AddMessage(new CloseMessage(StatementOrPortal.Portal, portalNames[i]));
+                }
+            _connector.AddMessage(SyncMessage.Instance);
+        }
+
+        void CreateMessagesPrepared(CommandBehavior behavior)
+        {
+            for (var i = 0; i < _queries.Count; i++) {
+                var query = _queries[i];
+                var bindMessage = new BindMessage(_connector.TypeHandlerRegistry, query.InputParameters, "", query.PreparedStatementName);
+                if (AllResultTypesAreUnknown) {
+                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
+                } else if (i == 0 && UnknownResultTypeList != null) {
+                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
+                }
+                bindMessage.Prepare();
+                _connector.AddMessage(bindMessage);
+                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
+            }
+            _connector.AddMessage(SyncMessage.Instance);
+        }
+
+        void CreateMessagesSchemaOnly(CommandBehavior behavior)
+        {
+            Contract.Requires((behavior & CommandBehavior.SchemaOnly) != 0);
+
+            ProcessRawQuery();
+
+            foreach (var query in _queries) {
+                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
+                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
+            }
+
+            _connector.AddMessage(SyncMessage.Instance);
+        }
+
+        #endregion
+
+        #region Execute
+
+        [GenerateAsync]
+        internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
+        {
+            Prechecks();
+            CreateMessages(behavior);
+
+            NpgsqlDataReader reader = null;
+
+            _queryIndex = 0;
+
+            // Block the notification thread before writing anything to the wire.
+            _notificationBlock = _connector.BlockNotifications();
+            //using (_connector.BlockNotificationThread())
+            try {
+                State = CommandState.InProgress;
+
+                if (!(IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0)) {
+                    // TODO: Can this be combined into the message chain?
+                    _connector.SetBackendCommandTimeout(CommandTimeout);
+                    _connector.SendAllMessages();
+                }
+
+                if (!IsPrepared) {
+                    BackendMessage msg;
+                    do {
+                        msg = _connector.ReadSingleMessage();
+                    } while (!ProcessMessageForUnprepared(msg, behavior));
+                }
+
+                return new NpgsqlDataReader(this, behavior, _queries);
+            } catch (NpgsqlException) {
+                // TODO: Should probably happen inside ReadSingleMessage()
+                _connector.State = ConnectorState.Ready;
+                throw;
+            } finally {
+                if (reader == null && _notificationBlock != null) {
+                    _notificationBlock.Dispose();
+                }
+            }
+        }
+
+        bool ProcessMessageForUnprepared(BackendMessage msg, CommandBehavior behavior)
+        {
+            Contract.Requires(!IsPrepared);
+
+            switch (msg.Code) {
+            case BackendMessageCode.ParseComplete:
+            case BackendMessageCode.ParameterDescription:
+                return false;
+            case BackendMessageCode.RowDescription:
+                Contract.Assert(_queryIndex < _queries.Count);
+                var description = (RowDescriptionMessage)msg;
+                FixupRowDescription(description, _queryIndex == 0);
+                _queries[_queryIndex].Description = description;
+                if ((behavior & CommandBehavior.SchemaOnly) != 0) {
+                    _queryIndex++;
+                }
+                return false;
+            case BackendMessageCode.NoData:
+                Contract.Assert(_queryIndex < _queries.Count);
+                _queries[_queryIndex].Description = null;
+                return false;
+            case BackendMessageCode.BindComplete:
+                Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
+                return ++_queryIndex == _queries.Count;
+            case BackendMessageCode.ReadyForQuery:
+                Contract.Assume((behavior & CommandBehavior.SchemaOnly) != 0);
+                return true;  // End of a SchemaOnly command
+            default:
+                throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
+            }
+        }
+
         #endregion
 
         #region Execute Non Query
@@ -1269,7 +1252,7 @@ namespace Npgsql
         {
             _log.Debug("ExecuteNonQuery");
             NpgsqlDataReader reader;
-            using (reader = GetReader()) {
+            using (reader = Execute()) {
                 while (reader.NextResult()) ;
             }
             return reader.RecordsAffected;
@@ -1285,7 +1268,7 @@ namespace Npgsql
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
-        public override Object ExecuteScalar()
+        public override object ExecuteScalar()
         {
             return ExecuteScalarInternal();
         }
@@ -1329,7 +1312,7 @@ namespace Npgsql
         [GenerateAsync]
         object ExecuteScalarInternal()
         {
-            using (var reader = GetReader(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
+            using (var reader = Execute(CommandBehavior.SequentialAccess | CommandBehavior.SingleRow))
             {
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
             }
@@ -1452,7 +1435,7 @@ namespace Npgsql
             // Close connection if requested even when there is an error.
             try
             {
-                return GetReader(behavior);
+                return Execute(behavior);
             }
             catch (Exception e)
             {
@@ -1462,248 +1445,6 @@ namespace Npgsql
                 }
 
                 throw;
-            }
-        }
-
-        [GenerateAsync]
-        internal NpgsqlDataReader GetReader(CommandBehavior behavior = CommandBehavior.Default)
-        {
-            CheckConnectionState();
-
-            // TODO: Actual checks...
-            Contract.Assert(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
-            Contract.Assert(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
-
-            NpgsqlDataReader reader = null;
-
-            switch (_prepared)
-            {
-                case PrepareStatus.NotPrepared:
-                    if ((behavior & CommandBehavior.SchemaOnly) == 0) {
-                        AddMessagesNonPrepared(behavior);
-                    } else {
-                        AddMessagesNonPreparedSchemaOnly(behavior);                        
-                    }
-                    break;
-                case PrepareStatus.NeedsPrepare:
-                    Prepare();
-                    goto case PrepareStatus.Prepared;
-                case PrepareStatus.Prepared:
-                    if ((behavior & CommandBehavior.SchemaOnly) != 0) {
-                        break;  // We already have the RowDescriptions from the Prepare phase
-                    }
-                    AddMessagesPrepared(behavior);
-                    break;
-                default:
-                    throw PGUtil.ThrowIfReached();
-            }
-
-            _queryIndex = 0;
-
-            // Block the notification thread before writing anything to the wire.
-            _notificationBlock = _connector.BlockNotifications();
-            //using (_connector.BlockNotificationThread())
-            try
-            {
-                State = CommandState.InProgress;
-
-                if (!IsPrepared || (behavior & CommandBehavior.SchemaOnly) == 0)
-                {
-                    // TODO: Can this be combined into the message chain?
-                    _connector.SetBackendCommandTimeout(CommandTimeout);
-                    _connector.SendAllMessages();
-                }
-
-                if (_prepared == PrepareStatus.NotPrepared)
-                {
-                    BackendMessage msg;
-                    do
-                    {
-                        msg = _connector.ReadSingleMessage();
-                    } while (!ProcessMessageForUnprepared(msg, behavior));
-                }
-
-                return new NpgsqlDataReader(this, behavior, _queries);
-            }
-            catch (NpgsqlException)
-            {
-                // TODO: Should probably happen inside ReadSingleMessage()
-                _connector.State = ConnectorState.Ready;
-                throw;
-            }
-            finally
-            {
-                if (reader == null && _notificationBlock != null)
-                {
-                    _notificationBlock.Dispose();
-                }
-            }
-        }
-
-        void ParseRawQuery()
-        {
-            string query;
-            switch (CommandType)
-            {
-                case CommandType.Text:
-                    query = CommandText;
-                    break;
-                case CommandType.TableDirect:
-                    query = "SELECT * FROM " + CommandText;
-                    break;
-                case CommandType.StoredProcedure:
-                    var numInput = _parameters.Count(p => p.IsInputDirection);
-                    var sb = new StringBuilder();
-                    sb.Append("SELECT * FROM ");
-                    sb.Append(CommandText);
-                    sb.Append('(');
-                    for (var i = 1; i <= numInput; i++)
-                    {
-                        sb.Append('$');
-                        sb.Append(i);
-                        if (i < numInput) {
-                            sb.Append(',');
-                        }
-                    }
-                    sb.Append(')');
-                    query = sb.ToString();
-                    break;
-                default:
-                    throw PGUtil.ThrowIfReached();
-            }
-
-            ProcessRawQueryText(query);
-            if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
-                throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
-            }
-        }
-
-        void AddMessagesNonPreparedSchemaOnly(CommandBehavior behavior)
-        {
-            Contract.Requires((behavior & CommandBehavior.SchemaOnly) != 0);
-
-            ParseRawQuery();
-
-            foreach (var query in _queries)
-            {
-                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
-            }
-
-            _connector.AddMessage(SyncMessage.Instance);
-        }
-
-        void AddMessagesNonPrepared(CommandBehavior behavior)
-        {
-            Contract.Requires((behavior & CommandBehavior.SchemaOnly) == 0);
-
-            ParseRawQuery();
-
-            var portalNames = _queries.Count > 1
-                ? Enumerable.Range(0, _queries.Count).Select(i => "MQ" + i).ToArray()
-                : null;
-
-            for (var i = 0; i < _queries.Count; i++)
-            {
-                var query = _queries[i];
-                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
-
-                var bindMessage = new BindMessage(
-                    _connector.TypeHandlerRegistry,
-                    query.InputParameters,
-                    _queries.Count == 1 ? "" : portalNames[i]
-                );
-                if (AllResultTypesAreUnknown) {
-                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
-                } else if (i == 0 && UnknownResultTypeList != null) {
-                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
-                }
-                bindMessage.Prepare();
-                _connector.AddMessage(bindMessage);
-            }
-
-            if (_queries.Count == 1)
-            {
-                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-            }
-            else for (var i = 0; i < _queries.Count; i++)
-            {
-                // TODO: Verify SingleRow behavior for multiqueries
-                _connector.AddMessage(new ExecuteMessage(portalNames[i], (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-                _connector.AddMessage(new CloseMessage(StatementOrPortal.Portal, portalNames[i]));
-            }
-            _connector.AddMessage(SyncMessage.Instance);
-        }
-
-        void AddMessagesPrepared(CommandBehavior behavior)
-        {
-            for (var i = 0; i < _queries.Count; i++)
-            {
-                var query = _queries[i];
-                var bindMessage = new BindMessage(_connector.TypeHandlerRegistry, query.InputParameters, "", query.PreparedStatementName);
-                if (AllResultTypesAreUnknown) {
-                    bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
-                } else if (i == 0 && UnknownResultTypeList != null) {
-                    bindMessage.UnknownResultTypeList = UnknownResultTypeList;
-                }
-                bindMessage.Prepare();
-                _connector.AddMessage(bindMessage);
-                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
-            }
-            _connector.AddMessage(SyncMessage.Instance);
-        }
-
-        bool ProcessMessageForUnprepared(BackendMessage msg, CommandBehavior behavior)
-        {
-            Contract.Requires(!IsPrepared);
-
-            switch (msg.Code)
-            {
-                case BackendMessageCode.ParseComplete:
-                    return false;
-                case BackendMessageCode.ParameterDescription:
-                    return false;
-                case BackendMessageCode.RowDescription:
-                    Contract.Assert(_queryIndex < _queries.Count);
-                    var description = (RowDescriptionMessage) msg;
-                    FixupRowDescription(description, _queryIndex == 0);
-                    _queries[_queryIndex].Description = description;
-                    if ((behavior & CommandBehavior.SchemaOnly) != 0) {
-                        _queryIndex++;
-                    }
-                    return false;
-                case BackendMessageCode.NoData:
-                    Contract.Assert(_queryIndex < _queries.Count);
-                    _queries[_queryIndex].Description = null;
-                    return false;
-                case BackendMessageCode.BindComplete:
-                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) == 0);
-                    return ++_queryIndex == _queries.Count;
-                case BackendMessageCode.ReadyForQuery:
-                    Contract.Assume((behavior & CommandBehavior.SchemaOnly) != 0);
-                    return true;  // End of a SchemaOnly command
-                default:
-                    throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
-            }            
-        }
-
-        /// <summary>
-        /// Fixes up the text/binary flag on result columns.
-        /// Since we send the Describe command right after the Parse and before the Bind, the resulting RowDescription
-        /// will have text format on all result columns. Fix that up.
-        /// </summary>
-        /// <remarks>
-        /// Note that UnknownResultTypeList only applies to the first query, while AllResultTypesAreUnknown applies
-        /// to all of them.
-        /// </remarks>
-        void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
-        {
-            for (var i = 0; i < rowDescription.NumFields; i++) {
-                rowDescription[i].FormatCode =
-                    (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
-                    ? FormatCode.Text
-                    : FormatCode.Binary;
             }
         }
 
@@ -1824,19 +1565,35 @@ namespace Npgsql
 
         #region Misc
 
-        ///<summary>
-        /// This method checks the connection state to see if the connection
-        /// is set or it is open. If one of this conditions is not met, throws
-        /// an InvalidOperationException
-        ///</summary>
-        void CheckConnectionState()
+        /// <summary>
+        /// Fixes up the text/binary flag on result columns.
+        /// Since we send the Describe command right after the Parse and before the Bind, the resulting RowDescription
+        /// will have text format on all result columns. Fix that up.
+        /// </summary>
+        /// <remarks>
+        /// Note that UnknownResultTypeList only applies to the first query, while AllResultTypesAreUnknown applies
+        /// to all of them.
+        /// </remarks>
+        void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
-            if (Connector == null)
-            {
+            for (var i = 0; i < rowDescription.NumFields; i++) {
+                rowDescription[i].FormatCode =
+                    (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                    ? FormatCode.Text
+                    : FormatCode.Binary;
+            }
+        }
+
+        void Prechecks()
+        {
+            if (Connector == null) {
                 throw new InvalidOperationException(L10N.ConnectionNotOpen);
             }
 
             Connector.CheckReadyState();
+
+            Contract.Assume(_connector.Buffer.ReadBytesLeft == 0, "The read buffer should be read completely before sending Parse message");
+            Contract.Assume(_connector.Buffer.WritePosition == 0, "WritePosition should be 0");
         }
 
         internal NpgsqlConnector Connector

@@ -87,7 +87,7 @@ namespace Npgsql
             using (var command = new NpgsqlCommand(query, connector))
             {
                 command.AllResultTypesAreUnknown = true;
-                using (var dr = command.GetReader(CommandBehavior.SequentialAccess))
+                using (var dr = command.Execute(CommandBehavior.SequentialAccess))
                 {
                     while (dr.Read())
                     {
