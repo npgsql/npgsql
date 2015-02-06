@@ -48,6 +48,8 @@ namespace NpgsqlTests
             }
         }
 
+        #region Parameter Derivation
+
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
         public void DeriveParametersVarious()
         {
@@ -113,6 +115,8 @@ namespace NpgsqlTests
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Is.Empty);
         }
+
+        #endregion
 
         [Test]
         public void TestOutParameter2()
@@ -683,6 +687,48 @@ namespace NpgsqlTests
         {
             var command = new NpgsqlCommand("funcb", Conn);
             NpgsqlCommandBuilder.DeriveParameters(command);
+        }
+
+        [Test]
+        public void SingleRowCommandBehaviorSupportFunctioncall()
+        {
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+                              select * from data;
+                              ' language 'sql';");
+            var command = new NpgsqlCommand("funcb", Conn);
+            command.CommandType = CommandType.StoredProcedure;
+
+            using (var dr = command.ExecuteReader(CommandBehavior.SingleRow)) {
+                var i = 0;
+                while (dr.Read())
+                    i++;
+                Assert.AreEqual(1, i);
+            }
+        }
+
+        [Test]
+        public void SingleRowCommandBehaviorSupportFunctioncallPrepare()
+        {
+            //FIXME: Find a way of supporting single row with prepare.
+            // Problem is that prepare plan must already have the limit 1 single row support.
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('X')");
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('Y')");
+            ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION funcB() returns setof data as '
+                              select * from data;
+                              ' language 'sql';");
+
+            var command = new NpgsqlCommand("funcb()", Conn);
+            command.CommandType = CommandType.StoredProcedure;
+            command.Prepare();
+
+            using (var dr = command.ExecuteReader(CommandBehavior.SingleRow)) {
+                var i = 0;
+                while (dr.Read())
+                    i++;
+                Assert.AreEqual(1, i);
+            }
         }
 
         #region Setup / Teardown

@@ -545,20 +545,6 @@ namespace Npgsql
             }
         }
 
-        string RewriteSqlForCommandType()
-        {
-            if (CommandType == CommandType.Text)
-                return CommandText;
-            if (CommandType == CommandType.TableDirect)
-                return "SELECT * FROM " + CommandText;
-
-            Contract.Assert(CommandType == CommandType.StoredProcedure, "Invalid CommandType");
-
-            var numInput = _parameters.Count(p => p.IsInputDirection);
-
-            return "SELECT * FROM " + CommandText + "(" + string.Join(",", Enumerable.Range(1, numInput).Select(i => "$" + i.ToString())) + ")";
-        }
-
         void DeallocatePreparedStatements()
         {
             if (_prepared != PrepareStatus.Prepared) { return; }
@@ -1556,8 +1542,37 @@ namespace Npgsql
 
         void ParseRawQuery()
         {
-            var rewrittenQuery = RewriteSqlForCommandType();
-            ProcessRawQueryText(rewrittenQuery);
+            string query;
+            switch (CommandType)
+            {
+                case CommandType.Text:
+                    query = CommandText;
+                    break;
+                case CommandType.TableDirect:
+                    query = "SELECT * FROM " + CommandText;
+                    break;
+                case CommandType.StoredProcedure:
+                    var numInput = _parameters.Count(p => p.IsInputDirection);
+                    var sb = new StringBuilder();
+                    sb.Append("SELECT * FROM ");
+                    sb.Append(CommandText);
+                    sb.Append('(');
+                    for (var i = 1; i <= numInput; i++)
+                    {
+                        sb.Append('$');
+                        sb.Append(i);
+                        if (i < numInput) {
+                            sb.Append(',');
+                        }
+                    }
+                    sb.Append(')');
+                    query = sb.ToString();
+                    break;
+                default:
+                    throw PGUtil.ThrowIfReached();
+            }
+
+            ProcessRawQueryText(query);
             if (_queries.Count > 1 && _parameters.Any(p => p.IsOutputDirection)) {
                 throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
             }

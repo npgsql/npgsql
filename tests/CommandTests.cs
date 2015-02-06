@@ -571,9 +571,11 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void MultipleQueriesSingleRow()
+        public void MultipleQueriesSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", Conn);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
             var reader = cmd.ExecuteReader(CommandBehavior.SingleRow);
             Assert.That(reader.Read(), Is.True);
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
@@ -1054,19 +1056,13 @@ namespace NpgsqlTests
         [Test]
         public void TableDirect()
         {
-            using (var cmd = Conn.CreateCommand())
-            {
-                cmd.CommandText = "(select 1) as a; (select 1) as b;";
-                cmd.CommandType = CommandType.TableDirect;
-                using (var rdr = cmd.ExecuteReader())
-                {
-                    do
-                    {
-                        rdr.Read();
-                        Assert.AreEqual(rdr.GetInt32(0), 1);
-                    } while (rdr.NextResult());
-                }
-            }
+            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('foo')");
+            var cmd = new NpgsqlCommand("data", Conn) { CommandType = CommandType.TableDirect };
+            var rdr = cmd.ExecuteReader();
+            Assert.That(rdr.Read(), Is.True);
+            Assert.That(rdr["field_text"], Is.EqualTo("foo"));
+            rdr.Close();
+            cmd.Dispose();
         }
 
         [Test]
