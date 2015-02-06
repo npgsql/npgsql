@@ -759,6 +759,7 @@ namespace Npgsql
 
         #region Backend message processing
 
+        [GenerateAsync]
         internal BackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             try
@@ -772,6 +773,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         BackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             NpgsqlError error = null;

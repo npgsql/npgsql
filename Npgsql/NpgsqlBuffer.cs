@@ -82,6 +82,7 @@ namespace Npgsql
 
         #endregion
 
+        [GenerateAsync]
         internal void Ensure(int count)
         {
             Contract.Requires(count <= Size);
@@ -106,6 +107,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         internal void ReadMore()
         {
             Ensure(ReadBytesLeft + 1);
@@ -491,6 +493,7 @@ namespace Npgsql
             }
         }
 
+        [GenerateAsync]
         internal void Skip(long len)
         {
             Contract.Requires(len >= 0);
