@@ -1156,29 +1156,12 @@ namespace Npgsql
             try
             {
                 cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendCancelRequest(BackendProcessId, BackendSecretKey);
+                cancelConnector.SendMessage(new CancelRequestMessage(BackendProcessId, BackendSecretKey));
             }
             finally
             {
                 cancelConnector.Close();
             }
-        }
-
-        void SendCancelRequest(int backendProcessId, int backendSecretKey)
-        {
-            const int len = 16;
-            const int cancelRequestCode = 1234 << 16 | 5678;
-
-            Buffer
-                .EnsureWrite(len)
-                .WriteInt32(len)
-                .WriteInt32(cancelRequestCode)
-                .WriteInt32(backendProcessId)
-                .WriteInt32(backendSecretKey)
-                .Flush();
-            var cancelMessage = new CancelRequestMessage(BackendProcessId, BackendSecretKey);
-            cancelMessage.Write(Buffer);
-            Buffer.Flush();
         }
 
         #endregion Cancel

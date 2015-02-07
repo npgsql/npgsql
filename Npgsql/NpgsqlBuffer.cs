@@ -560,17 +560,6 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        public NpgsqlBuffer EnsureWrite(int bytesToWrite)
-        {
-            Contract.Requires(bytesToWrite <= Size, "Requested write length larger than buffer size");
-            if (bytesToWrite > WriteSpaceLeft)
-            {
-                Flush();
-            }
-            return this;
-        }
-
-        [GenerateAsync]
         public NpgsqlBuffer WriteBytes(byte[] buf)
         {
             Write(buf, 0, buf.Length);
@@ -684,39 +673,6 @@ namespace Npgsql
                 _buf[pos++] = _bitConverterUnion.b7;
             }
             _writePosition = pos;
-
-            return this;
-        }
-
-        [GenerateAsync]
-        public NpgsqlBuffer EnsuredWriteByte(byte b)
-        {
-            if (WriteSpaceLeft == 0) Flush();
-            _buf[_writePosition++] = b;
-
-            return this;
-        }
-
-        [GenerateAsync]
-        public NpgsqlBuffer EnsuredWriteInt32(int i)
-        {
-            if (WriteSpaceLeft < 4) Flush();
-            var pos = _writePosition;
-            _buf[pos++] = (byte)(i >> 24);
-            _buf[pos++] = (byte)(i >> 16);
-            _buf[pos++] = (byte)(i >> 8);
-            _buf[pos++] = (byte)i;
-            _writePosition = pos;
-
-            return this;
-        }
-
-        [GenerateAsync]
-        public NpgsqlBuffer EnsuredWriteInt16(int i)
-        {
-            if (WriteSpaceLeft < 2) Flush();
-            _buf[_writePosition++] = (byte)(i >> 8);
-            _buf[_writePosition++] = (byte)i;
 
             return this;
         }
