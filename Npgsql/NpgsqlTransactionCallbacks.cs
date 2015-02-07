@@ -26,6 +26,7 @@ using System;
 using System.Data;
 using System.Reflection;
 using Common.Logging;
+using Npgsql.FrontendMessages;
 
 namespace Npgsql
 {
@@ -94,7 +95,7 @@ namespace Npgsql
             }
             else
             {
-                connection.Connector.ExecuteBlind(QueryManager.CommitTransaction);
+                connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
             }
         }
 
@@ -120,7 +121,7 @@ namespace Npgsql
             }
             else
             {
-                connection.Connector.ExecuteBlind(QueryManager.RollbackTransaction);
+                connection.Connector.ExecuteBlind(PregeneratedMessage.RollbackTransaction);
             }
         }
 

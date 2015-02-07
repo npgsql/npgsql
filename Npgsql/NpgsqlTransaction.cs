@@ -34,6 +34,7 @@ using System.Resources;
 using System.Text;
 using System.Threading;
 using Common.Logging;
+using Npgsql.FrontendMessages;
 using Npgsql.Localization;
 
 namespace Npgsql
@@ -61,18 +62,18 @@ namespace Npgsql
 
             if (isolation == IsolationLevel.RepeatableRead)
             {
-                conn.Connector.ExecuteBlind(QueryManager.BeginTransRepeatableRead);
+                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransRepeatableRead);
             }
             else if ((isolation == IsolationLevel.Serializable) ||
                 (isolation == IsolationLevel.Snapshot))
             {
-                conn.Connector.ExecuteBlind(QueryManager.BeginTransSerializable);
+                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransSerializable);
             }
             else
             {
                 // Set isolation level default to read committed.
                 _isolation = IsolationLevel.ReadCommitted;
-                conn.Connector.ExecuteBlind(QueryManager.BeginTransReadCommitted);
+                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransReadCommitted);
             }
 
             _conn.Connector.Transaction = this;
@@ -158,7 +159,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            _conn.Connector.ExecuteBlind(QueryManager.CommitTransaction);
+            _conn.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
 
             _conn.Connector.Transaction = null;
             _conn = null;
@@ -178,7 +179,7 @@ namespace Npgsql
 
             Connection.CheckConnectionReady();
 
-            _conn.Connector.ExecuteBlindSuppressTimeout(QueryManager.RollbackTransaction);
+            _conn.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
             _conn.Connector.Transaction = null;
             _conn = null;
         }

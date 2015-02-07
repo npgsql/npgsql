@@ -117,19 +117,5 @@ namespace Npgsql
         internal static readonly byte[] SingleQuote     = { (byte)'\'' };
         internal static readonly byte[] DoubleQuote     = { (byte)'"' };
         internal static readonly byte[] BackSlash = { (byte)'\\' };
-
-        internal static readonly byte[] BindMessageCode         = { (byte)FrontendMessageCode.Bind            };
-        internal static readonly byte[] DescribeMessageCode     = { (byte)FrontendMessageCode.Describe        };
-        internal static readonly byte[] ExecuteMessageCode      = { (byte)FrontendMessageCode.Execute         };
-        internal static readonly byte[] FlushMessageCode        = { (byte)FrontendMessageCode.Flush           };
-        internal static readonly byte[] FunctionCallMessageCode = { (byte)FrontendMessageCode.FunctionCall    };
-        internal static readonly byte[] ParseMessageCode        = { (byte)FrontendMessageCode.Parse           };
-        internal static readonly byte[] PasswordMessageCode     = { (byte)FrontendMessageCode.PasswordMessage };
-        internal static readonly byte[] QueryMessageCode        = { (byte)FrontendMessageCode.Query           };
-        internal static readonly byte[] SyncMessageCode         = { (byte)FrontendMessageCode.Sync            };
-        internal static readonly byte[] TerminationMessageCode  = { (byte)FrontendMessageCode.Termination     };
-
-        internal static readonly byte[] DescribePortalCode      = { (byte)FrontendMessageCode.DescribePortal };
-        internal static readonly byte[] DescribeStatementCode   = { (byte)FrontendMessageCode.DescribeStatement };
     }
 }

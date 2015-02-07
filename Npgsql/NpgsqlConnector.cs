@@ -664,7 +664,7 @@ namespace Npgsql
             {
                 foreach (var msg in _messagesToSend)
                 {
-                    SendMessage(msg);
+                    SendMessage(msg, false);
                 }
                 Buffer.Flush();
             }
@@ -675,7 +675,7 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        void SendMessage(FrontendMessage msg)
+        void SendMessage(FrontendMessage msg, bool flush = true)
         {
             try
             {
@@ -690,28 +690,27 @@ namespace Npgsql
                     }
                     Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
                     asSimple.Write(Buffer);
-                    return;
                 }
-
-                var asComplex = msg as ChunkingFrontendMessage;
-                if (asComplex != null)
+                else
                 {
-                    byte[] directBuf = null;
-                    while (!asComplex.Write(Buffer, ref directBuf))
+                    var asComplex = msg as ChunkingFrontendMessage;
+                    if (asComplex != null)
                     {
-                        Buffer.Flush();
-                        // The following is an optimization hack for writing large byte arrays without passing
-                        // through our buffer
-                        if (directBuf != null)
+                        byte[] directBuf = null;
+                        while (!asComplex.Write(Buffer, ref directBuf))
                         {
-                            Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
-                            directBuf = null;
+                            Buffer.Flush();
+                            // The following is an optimization hack for writing large byte arrays without passing
+                            // through our buffer
+                            if (directBuf != null)
+                            {
+                                Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                                directBuf = null;
+                            }
                         }
-                    }
-                    return;
+                    } else throw PGUtil.ThrowIfReached();
                 }
-
-                throw PGUtil.ThrowIfReached();
+                if (flush) { Buffer.Flush(); }
             }
             catch
             {
@@ -719,43 +718,6 @@ namespace Npgsql
                 throw;
             }
         }
-
-
-        #region Query
-
-        [GenerateAsync]
-        internal void SendQuery(string query)
-        {
-            _log.DebugFormat("Sending query: {0}", query);
-            QueryManager.WriteQuery(Buffer, query);
-            Buffer.Flush();
-            State = ConnectorState.Executing;
-        }
-
-        [GenerateAsync]
-        internal void SendQuery(byte[] query)
-        {
-            _log.Debug(m => m("Sending query: {0}", Encoding.UTF8.GetString(query, 0, query.Length - 1)));
-            QueryManager.WriteQuery(Buffer, query);
-            Buffer.Flush();
-            State = ConnectorState.Executing;
-        }
-
-        /// <summary>
-        /// Sends a raw query message to the backend. The message must already contain the message code,
-        /// length etc. - this methods simply writes it to the wire.
-        /// </summary>
-        /// <param name="rawQuery">a fully-built query message, ready to be sent</param>
-        [GenerateAsync]
-        internal void SendQueryRaw(byte[] rawQuery)
-        {
-            _log.Debug("Sending raw query");
-            Buffer.Write(rawQuery, 0, rawQuery.Length);
-            Buffer.Flush();
-            State = ConnectorState.Executing;
-        }
-
-        #endregion
 
         #region Backend message processing
 
@@ -976,10 +938,13 @@ namespace Npgsql
         /// </summary>
         internal void SendCopyInData(byte[] buf, int off, int len)
         {
+            throw new NotImplementedException();
+            /*
             Buffer.EnsureWrite(5);
             Buffer.WriteByte((byte)FrontendMessageCode.CopyData);
             Buffer.WriteInt32(len + 4);
             Buffer.Write(buf, off, len);
+             */
         }
 
         /// <summary>
@@ -1234,11 +1199,7 @@ namespace Npgsql
                 case ConnectorState.Ready:
                     try
                     {
-                        Buffer
-                            .EnsureWrite(5)
-                            .WriteByte((byte)FrontendMessageCode.Termination)
-                            .WriteInt32(4)
-                            .Flush();
+                        SendMessage(TerminateMessage.Instance);
                     }
                     catch { }
                     break;
@@ -1284,14 +1245,14 @@ namespace Npgsql
 
         internal void ReleaseWithDiscard()
         {
-            ExecuteBlind(QueryManager.DiscardAll);
+            ExecuteBlind(PregeneratedMessage.DiscardAll);
 
             // The initial connection parameters will be restored via IsValid() when get connector from pool later 
         }
 
         internal void ReleaseRegisteredListen()
         {
-            ExecuteBlind(QueryManager.UnlistenAll);
+            ExecuteBlind(PregeneratedMessage.UnlistenAll);
         }
 
         /// <summary>
@@ -1476,19 +1437,21 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
-                SendQuery(query);
+                SendMessage(new QueryMessage(query));
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
 
         [GenerateAsync]
-        internal void ExecuteBlind(byte[] query)
+        internal void ExecuteBlind(SimpleFrontendMessage message)
         {
+            Contract.Assume(!_messagesToSend.Any());
+
             using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
-                SendQueryRaw(query);
+                SendMessage(message);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1499,19 +1462,19 @@ namespace Npgsql
         {
             using (BlockNotifications())
             {
-                SendQuery(query);
+                SendMessage(new QueryMessage(query));
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
         }
 
         [GenerateAsync]
-        internal void ExecuteBlindSuppressTimeout(byte[] query)
+        internal void ExecuteBlindSuppressTimeout(PregeneratedMessage message)
         {
             // Block the notification thread before writing anything to the wire.
             using (BlockNotifications())
             {
-                SendQueryRaw(query);
+                SendMessage(message);
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1530,31 +1493,31 @@ namespace Npgsql
             switch (timeout)
             {
                 case 10:
-                    SendQueryRaw(QueryManager.SetStmtTimeout10Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout10Sec);
                     break;
 
                 case 20:
-                    SendQueryRaw(QueryManager.SetStmtTimeout20Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout20Sec);
                     break;
 
                 case 30:
-                    SendQueryRaw(QueryManager.SetStmtTimeout30Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout30Sec);
                     break;
 
                 case 60:
-                    SendQueryRaw(QueryManager.SetStmtTimeout60Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout60Sec);
                     break;
 
                 case 90:
-                    SendQueryRaw(QueryManager.SetStmtTimeout90Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout90Sec);
                     break;
 
                 case 120:
-                    SendQueryRaw(QueryManager.SetStmtTimeout120Sec);
+                    SendMessage(PregeneratedMessage.SetStmtTimeout120Sec);
                     break;
 
                 default:
-                    SendQuery(string.Format("SET statement_timeout = {0}", timeout * 1000));
+                    SendMessage(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
                     break;
 
             }

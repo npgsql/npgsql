@@ -14,7 +14,7 @@ namespace Npgsql
 {
     internal partial class NpgsqlBuffer
     {
-        internal Stream Underlying { get; private set; }
+        internal Stream Underlying { get; set; }
         internal int Size { get; private set; }
         internal Encoding TextEncoding { get; private set; }
 
@@ -68,16 +68,6 @@ namespace Npgsql
             _textEncoder = TextEncoding.GetEncoder();
             _tempCharBuf = new char[1024];
             _workspace = new byte[8];
-        }
-
-        /// <summary>
-        /// A total hack for reading elements of text-encoded arrays
-        /// </summary>
-        internal NpgsqlBuffer(string content, Encoding textEncoding)
-        {
-            TextEncoding = textEncoding;
-            _buf = TextEncoding.GetBytes(content);
-            Size = _filledBytes = _buf.Length;
         }
 
         #endregion
@@ -513,54 +503,6 @@ namespace Npgsql
 
             ReadPosition += (int)len;
         }
-
-        #region Utilities
-
-        /// <summary>
-        /// Decodes a byte in bytea hex format. Each byte contains a single ASCII hex digit.
-        /// </summary>
-        static byte DecodeHex(byte a)
-        {
-            switch (a)
-            {
-                case (byte)'0':
-                    return 0x0;
-                case (byte)'1':
-                    return 0x1;
-                case (byte)'2':
-                    return 0x2;
-                case (byte)'3':
-                    return 0x3;
-                case (byte)'4':
-                    return 0x4;
-                case (byte)'5':
-                    return 0x5;
-                case (byte)'6':
-                    return 0x6;
-                case (byte)'7':
-                    return 0x7;
-                case (byte)'8':
-                    return 0x8;
-                case (byte)'9':
-                    return 0x9;
-                case (byte)'a':
-                    return 0xa;
-                case (byte)'b':
-                    return 0xb;
-                case (byte)'c':
-                    return 0xc;
-                case (byte)'d':
-                    return 0xd;
-                case (byte)'e':
-                    return 0xe;
-                case (byte)'f':
-                    return 0xf;
-                default:
-                    throw new ArgumentOutOfRangeException("Invalid hex byte");
-            }
-        }
-
-        #endregion
 
         public void WriteBytesSimple(byte[] buf, int offset, int count)
         {

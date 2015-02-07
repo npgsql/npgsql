@@ -107,27 +107,6 @@ namespace Npgsql
         Task WriteToStreamAsync(Stream outputStream);
     }
 
-    internal enum FrontendMessageCode : byte
-    {
-        StartupPacket = (byte) ' ',
-        Termination = (byte) 'X',
-        CopyFail = (byte) 'f',
-        CopyData = (byte) 'd',
-        CopyDone = (byte) 'c',
-        Flush = (byte) 'H',
-        Query = (byte) 'Q',
-        Parse = (byte) 'P',
-        Bind = (byte) 'B',
-        Execute = (byte) 'E',
-        Describe = (byte) 'D',
-        DescribePortal = (byte) 'P',
-        DescribeStatement = (byte) 'S',
-        Close = (byte) 'C',
-        Sync = (byte) 'S',
-        PasswordMessage = (byte) 'p',
-        FunctionCall = (byte)'F',
-    }
-
     internal enum BackendMessageCode
     {
         IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.

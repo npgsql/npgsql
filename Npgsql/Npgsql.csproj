@@ -311,7 +311,10 @@
     <Compile Include="FrontendMessages\DescribeMessage.cs" />
     <Compile Include="FrontendMessages\CloseMessage.cs" />
     <Compile Include="FrontendMessages\BindMessage.cs" />
+    <Compile Include="FrontendMessages\TerminateMessage.cs" />
+    <Compile Include="FrontendMessages\QueryMessage.cs" />
     <Compile Include="FrontendMessages\PasswordMessage.cs" />
+    <Compile Include="FrontendMessages\PregeneratedMessage.cs" />
     <Compile Include="FrontendMessages\SyncMessage.cs" />
     <Compile Include="FrontendMessages\FlushMessage.cs" />
     <Compile Include="FrontendMessages\StartupMessage.cs" />
@@ -404,7 +407,6 @@
       <DependentUpon>PGUtil.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
-    <Compile Include="QueryManager.cs" />
     <Compile Include="SSPIHandler.cs" />
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
