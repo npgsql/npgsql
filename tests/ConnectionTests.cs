@@ -498,5 +498,23 @@ namespace NpgsqlTests
             DataTable metaDataCollections = Conn.GetSchema(System.Data.Common.DbMetaDataCollectionNames.ReservedWords);
             Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
         }
+
+        [Test]
+        public void AmazonRedshiftConnectionStringSupport()
+        {
+            NpgsqlConnectionStringBuilder sb = new NpgsqlConnectionStringBuilder(ConnectionString + ";AmazonRedshift=true");
+
+            Assert.IsTrue(sb.AmazonRedshift, "AmazonRedshift connection string parameter should be true");
+
+            var sb2 = sb.Clone();
+
+            Assert.IsTrue(sb2.AmazonRedshift);
+
+
+
+
+        }
+
+
     }
 }
