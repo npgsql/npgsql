@@ -57,7 +57,11 @@ namespace Npgsql
             parameters.Add("DateStyle", "ISO");
             parameters.Add("client_encoding", "UTF8");
             parameters.Add("extra_float_digits", "2");
-            parameters.Add("lc_monetary", "C");
+
+            if (!settings.AmazonRedshift)
+            {
+                parameters.Add("lc_monetary", "C");
+            }
 
             if (! string.IsNullOrEmpty(settings.ApplicationName))
             {
