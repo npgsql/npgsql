@@ -271,7 +271,22 @@ namespace Npgsql
             sql.Append("ALTER TABLE ");
             AppendTableName(addColumnOperation.Table, sql);
             sql.Append(" ADD ");
-            AppendColumn(addColumnOperation.Column, sql);
+
+            var column = addColumnOperation.Column;
+            AppendColumn(column, sql);
+
+            if (column.IsNullable != null
+                && !column.IsNullable.Value
+                && (column.DefaultValue == null)
+                && (string.IsNullOrWhiteSpace(column.DefaultValueSql))
+                && !column.IsIdentity
+                && (column.StoreType == null ||
+                (column.StoreType.IndexOf("rowversion", StringComparison.OrdinalIgnoreCase) == -1)))
+            {
+                sql.Append(" DEFAULT ");
+                AppendValue(column.ClrDefaultValue, sql);
+            }
+
             AddStatment(sql);
         }
 
@@ -557,14 +572,6 @@ namespace Npgsql
                         //TODO: Add support for setting "SERIAL"
                         break;
                 }
-            }
-            else if (column.IsNullable != null
-                && !column.IsNullable.Value
-                && (column.StoreType == null ||
-                (column.StoreType.IndexOf("rowversion", StringComparison.OrdinalIgnoreCase) == -1)))
-            {
-                sql.Append(" DEFAULT ");
-                AppendValue(column.ClrDefaultValue, sql);
             }
         }
 
