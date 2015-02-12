@@ -36,7 +36,7 @@ namespace Npgsql.FrontendMessages
                              string portal="", string statement="")
         {
             Contract.Requires(typeHandlerRegistry != null);
-            Contract.Requires(inputParameters != null);
+            Contract.Requires(inputParameters != null && inputParameters.All(p => p.IsInputDirection));
             Contract.Requires(portal != null);
             Contract.Requires(statement != null);
 
@@ -47,15 +47,6 @@ namespace Npgsql.FrontendMessages
             _state = State.WroteNothing;
             _paramIndex = 0;
             _wroteParamLen = false;
-        }
-
-        internal override void Prepare()
-        {
-            Contract.Requires(InputParameters.All(p => p.IsInputDirection));
-            foreach (var inParam in InputParameters)
-            {
-                inParam.Bind(_typeHandlerRegistry);
-            }
         }
 
         internal override bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
@@ -77,17 +68,17 @@ namespace Npgsql.FrontendMessages
                         2 * formatCodeListLength + // List of format codes
                         2;                         // Number of parameters
 
-                    if (buf.WriteSpaceLeft < headerLength) {
-                        if (buf.Size < headerLength) {
-                            throw new Exception("Buffer too small for Bind header");
-                        }
+                    if (buf.WriteSpaceLeft < headerLength)
+                    {
+                        Contract.Assume(buf.Size >= headerLength, "Buffer too small for Bind header");
                         return false;
                     }
 
+                    foreach (var p in InputParameters) { p.RewindLengthCache(); }
                     var messageLength = headerLength +
-                        4 * InputParameters.Count +                       // Parameter lengths
-                        InputParameters.Select(p => p.BoundSize).Sum() +  // Parameter values
-                        2 +                                               // Number of result format codes
+                        4 * InputParameters.Count +                                     // Parameter lengths
+                        InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
+                        2 +                                                             // Number of result format codes
                         2 * (UnknownResultTypeList == null ? 1 : UnknownResultTypeList.Length);  // Result format codes
 
                     buf.WriteByte(Code);
@@ -108,6 +99,7 @@ namespace Npgsql.FrontendMessages
                     }
 
                     buf.WriteInt16(InputParameters.Count);
+
                     _state = State.WroteHeader;
                     goto case State.WroteHeader;
 
@@ -154,10 +146,9 @@ namespace Npgsql.FrontendMessages
                 }
 
                 var handler = param.Handler;
-                if (param.FormatCode == FormatCode.Text)
-                {
-                    throw new NotImplementedException();
-                }
+
+                param.RewindLengthCache();
+                var len = param.ValidateAndGetLength();
 
                 var asChunkingWriter = handler as IChunkingTypeWriter;
                 if (asChunkingWriter != null)
@@ -165,8 +156,8 @@ namespace Npgsql.FrontendMessages
                     if (!_wroteParamLen)
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
-                        buf.WriteInt32(param.BoundSize);
-                        asChunkingWriter.PrepareWrite(buf, param.Value);
+                        buf.WriteInt32(len);
+                        asChunkingWriter.PrepareWrite(param.Value, buf, param.LengthCache);
                         _wroteParamLen = true;
                     }
                     if (!asChunkingWriter.Write(ref directBuf)) {
@@ -177,12 +168,12 @@ namespace Npgsql.FrontendMessages
                 }
 
                 var asSimpleWriter = (ISimpleTypeWriter)handler;
-                if (buf.WriteSpaceLeft < param.BoundSize + 4)
+                if (buf.WriteSpaceLeft < len + 4)
                 {
-                    Contract.Assume(buf.Size >= param.BoundSize + 4);
+                    Contract.Assume(buf.Size >= len + 4);
                     return false;
                 }
-                buf.WriteInt32(param.BoundSize);
+                buf.WriteInt32(len);
                 asSimpleWriter.Write(param.Value, buf);                    
             }
             return true;

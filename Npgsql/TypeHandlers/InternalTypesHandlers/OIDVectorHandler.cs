@@ -25,7 +25,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return res;
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
             return
                 12 + // dims + nulls + element oid
@@ -33,7 +33,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
                 8 * ((uint[])value).Length;
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             throw new NotImplementedException();
         }
@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             throw new NotImplementedException();
         }
 
-        int ITypeWriter.ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value)
         {
             return ValidateAndGetLength(value);
         }

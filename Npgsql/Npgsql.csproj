@@ -319,6 +319,7 @@
     <Compile Include="FrontendMessages\FlushMessage.cs" />
     <Compile Include="FrontendMessages\StartupMessage.cs" />
     <Compile Include="FrontendMessages\ParseMessage.cs" />
+    <Compile Include="LengthCache.cs" />
     <Compile Include="NpgsqlBuffer.cs" />
     <Compile Include="NpgsqlBuffer.Async.cs">
       <DependentUpon>NpgsqlBuffer.cs</DependentUpon>

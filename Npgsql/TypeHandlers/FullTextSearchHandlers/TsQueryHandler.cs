@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
             var vec = (NpgsqlTsQuery)value;
 
@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             _buf = buf;
             _value = (NpgsqlTsQuery)value;

@@ -63,14 +63,11 @@ namespace Npgsql
         object _value;
         object _npgsqlValue;
         NpgsqlParameterCollection _collection;
+        internal LengthCache LengthCache { get; private set; }
 
         internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
         internal FormatCode FormatCode { get; private set; }
-        /// <summary>
-        /// The number of bytes the bound value of this parameter requires
-        /// </summary>
-        internal int BoundSize { get; private set; }
         internal uint TypeOID { get; private set; }
 
         #region Constructors
@@ -572,19 +569,45 @@ namespace Npgsql
 
         internal void Bind(TypeHandlerRegistry registry)
         {
-            // TODO: Make sure we do full validation here, no binding exception can occur after this method
-            // returns successfully
-
             ResolveHandler(registry);
 
             Contract.Assert(Handler != null);
             FormatCode = Handler.PreferTextWrite || !Handler.SupportsBinaryWrite
                 ? FormatCode.Text
                 : FormatCode.Binary;
-            if (!IsNull) {
-                BoundSize = ((ITypeWriter)Handler).ValidateAndGetLength(Value);
-            }
+
             IsBound = true;
+        }
+
+        internal int ValidateAndGetLength()
+        {
+            if (IsNull) {
+                return -1;
+            }
+
+            // No length caching for simple types
+            var asSimpleWriter = Handler as ISimpleTypeWriter;
+            if (asSimpleWriter != null) {
+                return asSimpleWriter.ValidateAndGetLength(Value);
+            }
+
+            var asChunkingWriter = Handler as IChunkingTypeWriter;
+            Contract.Assert(asChunkingWriter != null);
+
+            var lengthCache = LengthCache;
+            var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache);
+            LengthCache = lengthCache;
+            return len;
+        }
+
+        internal void ClearLengthCache()
+        {
+            if (LengthCache != null) { LengthCache.Clear(); }
+        }
+
+        internal void RewindLengthCache()
+        {
+            if (LengthCache != null) { LengthCache.Rewind(); }
         }
 
         void ClearBind()
@@ -601,7 +624,7 @@ namespace Npgsql
             //type_info = NpgsqlTypesHelper.GetNativeTypeInfo(typeof(String));
             _dbType = null;
             _npgsqlDbType = null;
-            this.Value = Value;
+            Value = Value;
             ClearBind();
         }
 

@@ -63,7 +63,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
             if (!(value is NpgsqlPolygon)) {
                 throw new InvalidCastException("Expected an NpgsqlPolygon");
@@ -71,7 +71,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 4 + ((NpgsqlPolygon)value).Count * 16;
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             _buf = buf;
             _value = (NpgsqlPolygon)value;

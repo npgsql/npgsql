@@ -25,6 +25,7 @@ namespace Npgsql.TypeHandlers
         #region State
 
         NpgsqlBuffer _buf;
+        LengthCache _lengthCache;
         NpgsqlRange<TElement> _value;
         State _state;
         FieldDescription _fieldDescription;
@@ -33,6 +34,7 @@ namespace Npgsql.TypeHandlers
         void CleanupState()
         {
             _buf = null;
+            _lengthCache = default(LengthCache);
             _value = default(NpgsqlRange<TElement>);
             _fieldDescription = null;
             _state = State.Done;
@@ -154,29 +156,34 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
 
             if (!range.IsEmpty)
             {
-                var writer = (ITypeWriter) ElementHandler;
+                var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
                 if (!range.LowerBoundInfinite) {
-                    totalLen += writer.ValidateAndGetLength(range.LowerBound) + 4;
+                    totalLen += 4 + (asChunkingWriter != null
+                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache)
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound));
                 }
 
                 if (!range.UpperBoundInfinite) {
-                    totalLen += writer.ValidateAndGetLength(range.UpperBound) + 4;
+                    totalLen += 4 + (asChunkingWriter != null
+                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache)
+                        : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound));
                 }
             }
 
             return totalLen;
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             _buf = buf;
+            _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
             _state = State.Start;
         }
@@ -201,7 +208,7 @@ namespace Npgsql.TypeHandlers
                     }
 
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_buf, _value.LowerBound);
+                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache);
                     }
                     _state = State.LowerBound;
                     goto case State.LowerBound;
@@ -225,7 +232,7 @@ namespace Npgsql.TypeHandlers
                         return true;
                     }
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_buf, _value.UpperBound);
+                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache);
                     }
                     _state = State.UpperBound;
                     goto case State.UpperBound;

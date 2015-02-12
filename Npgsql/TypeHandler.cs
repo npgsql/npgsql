@@ -10,17 +10,13 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql
 {
-    interface ITypeHandler {}
-
     interface ITypeReader<T> {}
 
-    interface ITypeWriter
+    #region Simple type handler
+
+    interface ISimpleTypeWriter
     {
         int ValidateAndGetLength(object value);
-    }
-
-    interface ISimpleTypeWriter : ITypeWriter
-    {
         void Write(object value, NpgsqlBuffer buf);
     }
 
@@ -42,10 +38,15 @@ namespace Npgsql
         T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
     }
 
+    #endregion
+
+    #region Chunking type handler
+
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
-    interface IChunkingTypeWriter : ITypeWriter
+    interface IChunkingTypeWriter
     {
-        void PrepareWrite(NpgsqlBuffer buf, object value);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache);
+        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache);
         bool Write(ref byte[] directBuf);
     }
 
@@ -53,13 +54,13 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
             Contract.Requires(value != null);
             return default(int);
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             Contract.Requires(buf != null);
             Contract.Requires(value != null);
@@ -101,23 +102,9 @@ namespace Npgsql
         }
     }
 
-    /*
-    // ReSharper disable once InconsistentNaming
-    [ContractClassFor(typeof(ISimpleTypeReader<>))]
-    class ITypeHandlerContract<T> : ISimpleTypeReader<T>
-    {
-        public T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            Contract.Requires(SupportsBinaryRead || fieldDescription.IsTextFormat);
-            Contract.Requires(buf.ReadBytesLeft >= len || IsChunking);
-            return default(T);
-        }
+    #endregion
 
-        public bool IsChunking { get { return default(bool); } }
-        public bool SupportsBinaryRead { get { return default(bool); } }
-    }*/
-
-    internal abstract class TypeHandler : ITypeHandler
+    internal abstract class TypeHandler
     {
         internal string PgName { get; set; }
         internal uint OID { get; set; }

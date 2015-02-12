@@ -161,13 +161,15 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
         {
-            // TODO: Cache the length internally across strings?
-            return Encoding.UTF8.GetByteCount(value.ToString());
+            if (lengthCache == null) { lengthCache = new LengthCache(1); }
+            return lengthCache.IsPopulated
+                ? lengthCache.Get()
+                : lengthCache.Set(Encoding.UTF8.GetByteCount(value.ToString()));
         }
 
-        public void PrepareWrite(NpgsqlBuffer buf, object value)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
         {
             _buf = buf;
             _chars = ((string)value).ToCharArray();

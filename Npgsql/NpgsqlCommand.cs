@@ -1130,6 +1130,13 @@ namespace Npgsql
         internal NpgsqlDataReader Execute(CommandBehavior behavior = CommandBehavior.Default)
         {
             Prechecks();
+
+            foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
+                p.Bind(_connector.TypeHandlerRegistry);
+                p.ClearLengthCache();
+                p.ValidateAndGetLength();
+            }
+
             CreateMessages(behavior);
 
             NpgsqlDataReader reader = null;
