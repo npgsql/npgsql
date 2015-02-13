@@ -193,7 +193,32 @@ namespace NpgsqlTests.Types
         [Test]
         public void Numeric()
         {
-            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
+            var cmd = new NpgsqlCommand("SELECT '-1234567.890123'::numeric", Conn);
+            var result = cmd.ExecuteScalar();
+            Assert.AreEqual(-1234567.890123M, result);
+
+            cmd = new NpgsqlCommand("SELECT '" + string.Join("", Enumerable.Range(0, 131072).Select(i => "1")) + "." + string.Join("", Enumerable.Range(0, 16383).Select(i => "1")) + "'::numeric::text", Conn);
+            using (var rdr = cmd.ExecuteReader())
+            {
+                rdr.Read();
+            }
+
+
+            var decimals = new decimal[] { 0, 1, -1, 2, -2, decimal.MaxValue, decimal.MinValue, 9999, 10000, -0.0001M, 0.00001M, 0.00000000111143243221M, 4372894738294782934.5832947839247M, 7483927483400000000000M };
+
+            cmd = new NpgsqlCommand("SELECT " + string.Join(", ", Enumerable.Range(0, decimals.Length).Select(i => "@p" + i.ToString())), Conn);
+            for (var i = 0; i < decimals.Length; i++)
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p" + i, NpgsqlDbType.Numeric) { Value = decimals[i] });
+            }
+            using (var rdr = cmd.ExecuteReader())
+            {
+                rdr.Read();
+                for (var i = 0; i < decimals.Length; i++)
+                    Assert.AreEqual(decimals[i], rdr.GetValue(i));
+            }
+            
+            cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", Conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Numeric);
             var p2 = new NpgsqlParameter("p2", DbType.Decimal);
             var p3 = new NpgsqlParameter("p3", DbType.VarNumeric);
