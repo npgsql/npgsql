@@ -195,7 +195,6 @@ namespace Npgsql
         internal bool Enlist { get { return _settings.Enlist; } }
         public bool UseExtendedTypes { get { return _settings.UseExtendedTypes; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
-        internal bool AlwaysPrepare { get { return _settings.AlwaysPrepare; } }
         internal Version CompatVersion { get { return _settings.Compatible; } }
 
         #endregion Configuration settings

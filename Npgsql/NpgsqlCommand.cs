@@ -68,7 +68,6 @@ namespace Npgsql
         List<QueryDetails> _queries;
 
         int _queryIndex;
-        PrepareStatus _prepared = PrepareStatus.NotPrepared;
 
         // locals about function support so we don`t need to check it everytime a function is called.
         bool _functionChecksDone;
@@ -266,7 +265,7 @@ namespace Npgsql
                 if (_connection != null)
                 {
                     _connector = _connection.Connector;
-                    _prepared = _connector != null && _connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
+                    IsPrepared = false;
                 }
             }
         }
@@ -308,22 +307,7 @@ namespace Npgsql
         /// <summary>
         /// Returns whether this query will execute as a prepared (compiled) query.
         /// </summary>
-        public bool IsPrepared
-        {
-            get
-            {
-                switch (_prepared)
-                {
-                    case PrepareStatus.NotPrepared:
-                        return false;
-                    case PrepareStatus.NeedsPrepare:
-                    case PrepareStatus.Prepared:
-                        return true;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-        }
+        public bool IsPrepared { get; private set; }
 
         #endregion Public properties
 
@@ -399,14 +383,14 @@ namespace Npgsql
             {
                 case ConnectionState.Broken:
                 case ConnectionState.Closed:
-                    _prepared = PrepareStatus.NotPrepared;
+                    IsPrepared = false;
                     break;
                 case ConnectionState.Open:
                     switch (stateChangeEventArgs.OriginalState)
                     {
                         case ConnectionState.Closed:
                         case ConnectionState.Broken:
-                            _prepared = _connector != null && _connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
+                            IsPrepared = false;
                             break;
                     }
                     break;
@@ -533,7 +517,7 @@ namespace Npgsql
                             continue;
                         case BackendMessageCode.ReadyForQuery:
                             Contract.Assume(_queryIndex == _queries.Count);
-                            _prepared = PrepareStatus.Prepared;
+                            IsPrepared = true;
                             return;
                         default:
                             throw new ArgumentOutOfRangeException("Unexpected message of type " + msg.Code);
@@ -544,7 +528,7 @@ namespace Npgsql
 
         void DeallocatePreparedStatements()
         {
-            if (_prepared != PrepareStatus.Prepared) { return; }
+            if (!IsPrepared) { return; }
 
             // TODO: Reimplement this with protocol Close commands rather than DEALLOCATE SQL
             var sb = new StringBuilder();
@@ -555,7 +539,7 @@ namespace Npgsql
                 sb.Append(';');
             }
             _connector.ExecuteBlind(sb.ToString());
-            _prepared = PrepareStatus.NeedsPrepare;
+            IsPrepared = false;
         }
 
         #endregion Prepare
@@ -1029,25 +1013,20 @@ namespace Npgsql
 
         void CreateMessages(CommandBehavior behavior)
         {
-            switch (_prepared) {
-            case PrepareStatus.NotPrepared:
+            if (IsPrepared)
+            {
+                // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase
+                if ((behavior & CommandBehavior.SchemaOnly) == 0) {
+                    CreateMessagesPrepared(behavior);
+                }
+            }
+            else
+            {
                 if ((behavior & CommandBehavior.SchemaOnly) == 0) {
                     CreateMessagesNonPrepared(behavior);
                 } else {
                     CreateMessagesSchemaOnly(behavior);
                 }
-                break;
-            case PrepareStatus.NeedsPrepare:
-                Prepare();
-                goto case PrepareStatus.Prepared;
-            case PrepareStatus.Prepared:
-                if ((behavior & CommandBehavior.SchemaOnly) != 0) {
-                    break;  // We already have the RowDescriptions from the Prepare phase
-                }
-                CreateMessagesPrepared(behavior);
-                break;
-            default:
-                throw PGUtil.ThrowIfReached();
             }
         }
 
@@ -1551,7 +1530,7 @@ namespace Npgsql
                 // etc.).
 
                 // TODO: Total duplication with DeallocatePreparedStatements
-                if (_prepared == PrepareStatus.Prepared)
+                if (IsPrepared)
                 {
                     var sb = new StringBuilder();
                     foreach (var query in _queries) {
@@ -1648,13 +1627,6 @@ namespace Npgsql
                 clone.Parameters.Add(parameter.Clone());
             }
             return clone;
-        }
-
-        enum PrepareStatus
-        {
-            NotPrepared,
-            NeedsPrepare,
-            Prepared
         }
 
         #endregion Misc
