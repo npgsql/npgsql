@@ -45,6 +45,12 @@ namespace Npgsql
             return Lengths[Position++];
         }
 
+        internal int GetLast()
+        {
+            Contract.Requires(IsPopulated);
+            return Lengths[Position-1];
+        }
+
         internal void Rewind()
         {
             Position = 0;

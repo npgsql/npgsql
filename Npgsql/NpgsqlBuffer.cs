@@ -292,26 +292,6 @@ namespace Npgsql
             return result;
         }
 
-        internal void ReadStringChunked(int maxByteCount, char[] chars, int charIndex,
-                                        out int bytesUsed, out int charsUsed, out bool completed)
-        {
-            try
-            {
-                var byteCount = Math.Min(maxByteCount, ReadBytesLeft);
-                _textDecoder.Convert(_buf, ReadPosition, byteCount, chars, charIndex, chars.Length - charIndex, false,
-                                     out bytesUsed, out charsUsed, out completed);
-                ReadPosition += bytesUsed;
-                if (completed) {
-                    _textDecoder.Reset();                    
-                }
-            }
-            catch
-            {
-                _textDecoder.Reset();
-                throw;
-            }
-        }
-        
         /// <summary>
         /// Note that unlike the primitive readers, this reader can read any length, looping internally
         /// and reading directly from the underlying stream
@@ -379,12 +359,11 @@ namespace Npgsql
             return result;
         }
 
-        internal int ReadBytesSimple(byte[] output, int outputOffset, int len)
+        internal void ReadBytesSimple(byte[] output, int outputOffset, int len)
         {
             Contract.Requires(len <= ReadBytesLeft);
             Array.Copy(_buf, ReadPosition, output, outputOffset, len);
             ReadPosition += len;
-            return len;
         }
 
         /// <summary>
@@ -680,8 +659,13 @@ namespace Npgsql
         internal void WriteStringSimple(string s)
         {
             Contract.Requires(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
-
             WritePosition += TextEncoding.GetBytes(s, 0, s.Length, _buf, WritePosition);
+        }
+
+        internal void WriteCharsSimple(char[] chars)
+        {
+            Contract.Requires(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
+            WritePosition += TextEncoding.GetBytes(chars, 0, chars.Length, _buf, WritePosition);
         }
 
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,

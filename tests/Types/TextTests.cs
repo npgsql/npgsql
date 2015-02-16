@@ -51,15 +51,17 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
-        public void ReadLong([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public void Long([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             var builder = new StringBuilder("ABCDEééé", Conn.BufferSize);
             builder.Append('X', Conn.BufferSize);
             var expected = builder.ToString();
-            ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", expected));
+            var cmd = new NpgsqlCommand(@"INSERT INTO data (field_text) VALUES (@p)", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", expected));
+            cmd.ExecuteNonQuery();
 
             const string queryText = @"SELECT field_text, 'foo', field_text, field_text, field_text, field_text FROM data";
-            var cmd = new NpgsqlCommand(queryText, Conn);
+            cmd = new NpgsqlCommand(queryText, Conn);
             var reader = cmd.ExecuteReader(behavior);
             reader.Read();
 
