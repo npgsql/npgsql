@@ -673,6 +673,7 @@ namespace Npgsql
             }
         }
 
+
         [GenerateAsync]
         void SendMessage(FrontendMessage msg, bool flush = true)
         {
@@ -1229,7 +1230,7 @@ namespace Npgsql
         {
             ExecuteBlind(PregeneratedMessage.DiscardAll);
 
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later
         }
 
         internal void ReleaseRegisteredListen()
@@ -1574,6 +1575,19 @@ namespace Npgsql
 
         int _preparedStatementIndex;
         const string PreparedStatementNamePrefix = "s";
+
+        /// <summary>
+        /// Reset connector state.
+        /// Restore initial connection parameters resetted by "Discard ALL"
+        /// </summary>
+
+        internal void Reset()
+        {
+            if ( String.IsNullOrWhiteSpace(_initQueries) ) { return; }
+
+            ExecuteOrDefer(_initQueries);
+
+        }
 
         /// <summary>
         /// This method checks if the connector is still ok.
