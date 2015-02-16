@@ -445,6 +445,16 @@ namespace NpgsqlTests
             da.Update(ds);
             Assert.That(ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
+
+        [Test]
+        public void CommandBuilderQuoting()
+        {
+            var cb = new NpgsqlCommandBuilder();
+            const string orig = "some\"column";
+            var quoted = cb.QuoteIdentifier(orig);
+            Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
+            Assert.That(cb.UnquoteIdentifier(quoted), Is.EqualTo(orig));
+        }
     }
     /*
     [TestFixture]
