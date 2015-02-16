@@ -76,6 +76,7 @@ namespace Npgsql
         public override string QuotePrefix
         {
             get { return base.QuotePrefix; }
+            // TODO: Why should it be possible to remove the QuotePrefix?
             set
             {
                 if (String.IsNullOrEmpty(value))
@@ -101,6 +102,7 @@ namespace Npgsql
         public override string QuoteSuffix
         {
             get { return base.QuoteSuffix; }
+            // TODO: Why should it be possible to remove the QuoteSuffix?
             set
             {
                 if (String.IsNullOrEmpty(value))
@@ -479,7 +481,7 @@ namespace Npgsql
                 throw new ArgumentNullException("unquotedIdentifier", "Unquoted identifier parameter cannot be null");
             }
 
-            return String.Format("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
+            return String.Format("{0}{1}{2}", QuotePrefix, unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix), QuoteSuffix);
         }
 
         /// <summary>
@@ -502,7 +504,7 @@ namespace Npgsql
                 throw new ArgumentNullException("quotedIdentifier", "Quoted identifier parameter cannot be null");
             }
 
-            string unquotedIdentifier = quotedIdentifier.Trim();
+            var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
             if (unquotedIdentifier.StartsWith(this.QuotePrefix))
 
