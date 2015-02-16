@@ -17,9 +17,6 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     internal class UnrecognizedTypeHandler : TextHandler
     {
-        public override bool SupportsBinaryRead { get { return false; } }
-        public override bool SupportsBinaryWrite { get { return false; } }
-
         internal override void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             if (fieldDescription.IsBinaryFormat) {

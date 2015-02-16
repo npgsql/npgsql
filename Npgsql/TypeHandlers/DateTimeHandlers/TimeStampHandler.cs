@@ -23,14 +23,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = connector.BackendParams["integer_datetimes"] == "on";
         }
 
-        public override bool SupportsBinaryWrite
-        {
-            get
-            {
-                return false; // TODO: Implement
-            }
-        }
-
         public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?

@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers
         IChunkingTypeWriter,
         IChunkingTypeReader<string>, IChunkingTypeReader<char[]>
     {
-        //public override bool PreferTextWrite { get { return true; } }
+        public override bool PreferTextWrite { get { return true; } }
 
         #region State
 

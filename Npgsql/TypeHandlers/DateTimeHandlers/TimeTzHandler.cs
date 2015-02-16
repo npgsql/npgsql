@@ -11,14 +11,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     internal class TimeTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeTZ>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeTZ>
     {
-        public override bool SupportsBinaryWrite
-        {
-            get
-            {
-                return false; // TODO: Implement
-            }
-        }
-
         public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeTZ?

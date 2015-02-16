@@ -112,11 +112,6 @@ namespace Npgsql
         internal abstract Type GetFieldType(FieldDescription fieldDescription=null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription=null);
 
-        /// <summary>
-        /// Whether this type handler supports reading the binary Postgresql representation for its type.
-        /// </summary>
-        public virtual bool SupportsBinaryRead { get { return true; } }
-
         internal abstract object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription);
 
         internal virtual object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
@@ -125,7 +120,6 @@ namespace Npgsql
         }
 
         public virtual bool PreferTextWrite { get { return false; } }
-        public virtual bool SupportsBinaryWrite { get { return true; } }
 
         internal T Read<T>(DataRowMessage row, FieldDescription fieldDescription, int len)
         {

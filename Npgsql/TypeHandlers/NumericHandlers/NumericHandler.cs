@@ -37,8 +37,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             10000000000000000000000000000M
         };
 
-        public override bool SupportsBinaryWrite { get { return true; } }
-
         public decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
             var numGroups = (ushort)buf.ReadInt16();

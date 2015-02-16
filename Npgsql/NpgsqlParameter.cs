@@ -572,9 +572,7 @@ namespace Npgsql
             ResolveHandler(registry);
 
             Contract.Assert(Handler != null);
-            FormatCode = Handler.PreferTextWrite || !Handler.SupportsBinaryWrite
-                ? FormatCode.Text
-                : FormatCode.Binary;
+            FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
 
             IsBound = true;
         }

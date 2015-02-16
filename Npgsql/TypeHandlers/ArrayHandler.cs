@@ -40,9 +40,6 @@ namespace Npgsql.TypeHandlers
         bool _hasNulls;
         bool _wroteElementLen;
 
-        public override bool SupportsBinaryRead { get { return ElementHandler.SupportsBinaryRead; } }
-        public override bool SupportsBinaryWrite { get { return ElementHandler.SupportsBinaryWrite; } }
-
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
             return typeof (Array);
