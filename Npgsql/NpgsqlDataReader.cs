@@ -921,7 +921,6 @@ namespace Npgsql
             }
 
             var row = Row;
-            row.CheckNotStreaming();
             row.SeekToColumn(ordinal);
             row.CheckNotNull();
             return handler.GetBytes(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
@@ -948,20 +947,9 @@ namespace Npgsql
             }
 
             var row = Row;
-            row.CheckNotStreaming();
             row.SeekToColumnStart(ordinal);
             row.CheckNotNull();
-
-            row.IsStreaming = true;
-            try
-            {
-                return handler.GetStream(row, fieldDescription);
-            }
-            catch
-            {
-                row.IsStreaming = false;
-                throw;
-            }
+            return row.GetStream();
         }
 
         #endregion
@@ -991,7 +979,6 @@ namespace Npgsql
             }
 
             var row = Row;
-            row.CheckNotStreaming();
             row.SeekToColumn(ordinal);
             row.CheckNotNull();
             return handler.GetChars(row, (int)dataOffset, buffer, bufferOffset, length, fieldDescription);
@@ -1019,20 +1006,10 @@ namespace Npgsql
             }
 
             var row = Row;
-            row.CheckNotStreaming();
             row.SeekToColumnStart(ordinal);
             row.CheckNotNull();
 
-            row.IsStreaming = true;
-            try
-            {
-                return new StreamReader(new ByteaStream(row));
-            }
-            catch
-            {
-                row.IsStreaming = false;
-                throw;
-            }
+            return new StreamReader(row.GetStream());
         }
 
         #endregion

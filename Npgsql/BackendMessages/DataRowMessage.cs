@@ -11,6 +11,8 @@ namespace Npgsql.BackendMessages
 {
     abstract class DataRowMessage : BackendMessage
     {
+        internal override BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
+
         protected internal NpgsqlBuffer Buffer { get; protected set; }
 
         /// <summary>
@@ -31,33 +33,12 @@ namespace Npgsql.BackendMessages
         internal int PosInColumn;
 
         /// <summary>
-        /// For streaming types (e.g. bytea, text), holds the current "decoded" position within the column.
-        /// For text, this is the character index. For text-encoded bytea, this holds the decoded position
-        /// (i.e. the 3rd decoded (content) byte in a hex text-encoded bytea will occupy the 7th and 8th
-        /// actual bytes).
-        /// </summary>
-        internal int DecodedPosInColumn;
-
-        /// <summary>
         /// For streaming types (e.g. bytea), holds the byte length of the column.
         /// Does not include the length prefix.
         /// </summary>
         internal int ColumnLen;
 
         internal bool IsColumnNull { get { return ColumnLen == -1; } }
-        /// <summary>
-        /// For streaming types (e.g. bytea, text), holds the decoded length of the column.
-        /// </summary>
-        internal int DecodedColumnLen;
-
-        internal ByteaFormat CurrentByteaTextFormat;
-
-        /// <summary>
-        /// Indicates whether a stream is currently open on a column. No read may occur until the stream is closed.
-        /// </summary>
-        internal bool IsStreaming;
-
-        internal override BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
 
         internal abstract DataRowMessage Load(NpgsqlBuffer buf);
 
@@ -67,6 +48,12 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal abstract void SeekToColumn(int column);
         internal abstract void SeekInColumn(int posInColumn);
+
+        /// <summary>
+        /// Returns a stream for the current column.
+        /// </summary>
+        internal abstract Stream GetStream();
+
         /// <summary>
         /// Consumes the current row, allowing the reader to read in the next one.
         /// </summary>
@@ -74,7 +61,6 @@ namespace Npgsql.BackendMessages
 
         internal void SeekToColumnStart(int column)
         {
-            CheckNotStreaming();
             SeekToColumn(column);
             if (PosInColumn != 0) {
                 SeekInColumn(0);
@@ -88,14 +74,6 @@ namespace Npgsql.BackendMessages
             if (column < 0 || column >= NumColumns)
             {
                 throw new IndexOutOfRangeException("Column index out of range");
-            }
-        }
-
-        internal void CheckNotStreaming()
-        {
-            if (IsStreaming)
-            {
-                throw new InvalidOperationException("Column streaming is in progress, close the Stream or TextReader first.");
             }
         }
 

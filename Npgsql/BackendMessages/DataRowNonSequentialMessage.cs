@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,11 @@ namespace Npgsql.BackendMessages
     {
         List<int> _columnOffsets;
         int _endOffset;
+        /// <summary>
+        /// List of all streams that have been opened on this row, and need to be disposed of when the row
+        /// is consumed.
+        /// </summary>
+        List<IDisposable> _streams;
 
         internal override DataRowMessage Load(NpgsqlBuffer buf)
         {
@@ -17,7 +23,7 @@ namespace Npgsql.BackendMessages
             Buffer = buf;
             Column = -1;
             ColumnLen = -1;
-            PosInColumn = DecodedPosInColumn = 0;
+            PosInColumn = 0;
             // TODO: Recycle message objects rather than recreating for each row
             _columnOffsets = new List<int>(NumColumns);
             for (var i = 0; i < NumColumns; i++)
@@ -42,7 +48,7 @@ namespace Npgsql.BackendMessages
                 Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
                 Column = column;
                 ColumnLen = Buffer.ReadInt32();
-                PosInColumn = DecodedPosInColumn = 0;
+                PosInColumn = 0;
             }
         }
 
@@ -56,9 +62,27 @@ namespace Npgsql.BackendMessages
             PosInColumn = posInColumn;
         }
 
+        internal override Stream GetStream()
+        {
+            Contract.Requires(PosInColumn == 0);
+            var s = Buffer.GetMemoryStream(ColumnLen);
+            if (_streams == null) {
+                _streams = new List<IDisposable>();
+            }
+            _streams.Add(s);
+            return s;
+        }
+
         internal override void Consume()
         {
             Buffer.Seek(_endOffset, SeekOrigin.Begin);
+            if (_streams != null)
+            {
+                foreach (var stream in _streams) {
+                    stream.Dispose();
+                }
+                _streams.Clear();
+            }
         }
     }
 }

@@ -131,8 +131,8 @@ namespace Npgsql
             var asSimpleReader = this as ISimpleTypeReader<T>;
             if (asSimpleReader != null)
             {
-                var buf = row.Buffer.EnsureOrAllocateTemp(len);
-                result = asSimpleReader.Read(buf, fieldDescription, row.ColumnLen);
+                row.Buffer.Ensure(len);
+                result = asSimpleReader.Read(row.Buffer, fieldDescription, len);
             }
             else
             {

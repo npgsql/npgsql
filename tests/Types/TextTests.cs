@@ -145,10 +145,19 @@ namespace NpgsqlTests.Types
             textReader.Read(actual, 0, 2);
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
-            Assert.That(() => reader.GetString(1), Throws.Exception.TypeOf<InvalidOperationException>(), "Access row while streaming");
+            if (behavior == CommandBehavior.Default) {
+                var textReader2 = reader.GetTextReader(0);
+                var actual2 = new char[2];
+                textReader2.Read(actual2, 0, 2);
+                Assert.That(actual2[0], Is.EqualTo(expected[0]));
+                Assert.That(actual2[1], Is.EqualTo(expected[1]));
+            } else {
+                Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential text reader twice on same column");
+            }
             textReader.Read(actual, 2, 1);
             Assert.That(actual[2], Is.EqualTo(expected[2]));
             textReader.Close();
+
             if (IsSequential(behavior))
                 Assert.That(() => reader.GetChars(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
@@ -157,6 +166,35 @@ namespace NpgsqlTests.Types
                 Assert.That(actual[4], Is.EqualTo(expected[0]));
             }
             Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test, Description("In sequential mode, checks that moving to the next column disposes a currently open text reader")]
+        public void TextReaderDisposeOnSequentialColumn()
+        {
+            var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", Conn);
+            var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            reader.Read();
+            var textReader = reader.GetTextReader(0);
+            // ReSharper disable once UnusedVariable
+            var v = reader.GetValue(1);
+            Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test, Description("In non-sequential mode, checks that moving to the next row disposes all currently open text readers")]
+        public void TextReaderDisposeOnNonSequentialRow()
+        {
+            var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", Conn);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var tr1 = reader.GetTextReader(0);
+            var tr2 = reader.GetTextReader(0);
+            reader.Read();
+            Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => tr2.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
             reader.Close();
             cmd.Dispose();
         }

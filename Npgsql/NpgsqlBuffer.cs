@@ -677,77 +677,9 @@ namespace Npgsql
             WritePosition += bytesUsed;
         }
 
-        [GenerateAsync]
-        public NpgsqlBuffer WriteString(string s, int byteLen)
+        internal MemoryStream GetMemoryStream(int len)
         {
-            Contract.Assume(TextEncoding == Encoding.UTF8, "WriteString assumes UTF8-encoding");
-
-            int charPos = 0;
-
-            for (; ; )
-            {
-                if (byteLen <= WriteSpaceLeft)
-                {
-                    _writePosition += TextEncoding.GetBytes(s, charPos, s.Length - charPos, _buf, _writePosition);
-                    return this;
-                }
-
-                int numCharsCanBeWritten = Math.Max(WriteSpaceLeft / 3, WriteSpaceLeft - (byteLen - (s.Length - charPos)));
-                if (numCharsCanBeWritten >= 20) // Don't do this if the buffer is almost full
-                {
-                    char lastChar = s[charPos + numCharsCanBeWritten - 1];
-                    if (lastChar >= 0xD800 && lastChar <= 0xDBFF)
-                    {
-                        --numCharsCanBeWritten; // Don't use high/lead surrogate pair as last char in block
-                    }
-                    int wrote = TextEncoding.GetBytes(s, charPos, numCharsCanBeWritten, _buf, _writePosition);
-                    _writePosition += wrote;
-                    byteLen -= wrote;
-                    charPos += numCharsCanBeWritten;
-                }
-                else
-                {
-                    Underlying.Write(_buf, 0, _writePosition);
-                    _writePosition = 0;
-                }
-            }
-        }
-
-        // Exactly the same code as WriteString
-        [GenerateAsync]
-        public NpgsqlBuffer WriteCharArray(char[] s, int byteLen)
-        {
-            Contract.Assume(TextEncoding == Encoding.UTF8, "WriteString assumes UTF8-encoding");
-
-            int charPos = 0;
-
-            for (; ; )
-            {
-                if (byteLen <= WriteSpaceLeft)
-                {
-                    _writePosition += TextEncoding.GetBytes(s, charPos, s.Length - charPos, _buf, _writePosition);
-                    return this;
-                }
-
-                int numCharsCanBeWritten = Math.Max(WriteSpaceLeft / 3, WriteSpaceLeft - (byteLen - (s.Length - charPos)));
-                if (numCharsCanBeWritten >= 20) // Don't do this if the buffer is almost full
-                {
-                    char lastChar = s[charPos + numCharsCanBeWritten - 1];
-                    if (lastChar >= 0xD800 && lastChar <= 0xDBFF)
-                    {
-                        --numCharsCanBeWritten; // Don't use high/lead surrogate pair as last char in block
-                    }
-                    int wrote = TextEncoding.GetBytes(s, charPos, numCharsCanBeWritten, _buf, _writePosition);
-                    _writePosition += wrote;
-                    byteLen -= wrote;
-                    charPos += numCharsCanBeWritten;
-                }
-                else
-                {
-                    Underlying.Write(_buf, 0, _writePosition);
-                    _writePosition = 0;
-                }
-            }
+            return new MemoryStream(_buf, ReadPosition, len, false, false);
         }
 
         [StructLayout(LayoutKind.Explicit, Size = 8)]

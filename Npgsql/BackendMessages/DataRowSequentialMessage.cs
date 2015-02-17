@@ -1,13 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Npgsql.Localization;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
     class DataRowSequentialMessage : DataRowMessage
     {
+        /// <summary>
+        /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
+        /// </summary>
+        IDisposable _stream;
+
         internal override DataRowMessage Load(NpgsqlBuffer buf)
         {
             buf.Ensure(sizeof(short));
@@ -15,7 +23,7 @@ namespace Npgsql.BackendMessages
             Buffer = buf;
             Column = -1;
             ColumnLen = -1;
-            PosInColumn = DecodedPosInColumn = 0;
+            PosInColumn = 0;
             return this;
         }
 
@@ -44,6 +52,13 @@ namespace Npgsql.BackendMessages
                 Buffer.Skip(remainingInColumn);
             }
 
+            // Shut down any streaming going on on the colun
+            if (_stream != null)
+            {
+                _stream.Dispose();
+                _stream = null;
+            }
+
             // Skip over unwanted fields
             for (; Column < column - 1; Column++)
             {
@@ -57,7 +72,7 @@ namespace Npgsql.BackendMessages
 
             Buffer.Ensure(4);
             ColumnLen = Buffer.ReadInt32();
-            PosInColumn = DecodedPosInColumn = 0;
+            PosInColumn = 0;
             Column = column;
         }
 
@@ -77,6 +92,17 @@ namespace Npgsql.BackendMessages
                 Buffer.Skip(posInColumn - PosInColumn);
                 PosInColumn = posInColumn;
             }
+        }
+
+        internal override Stream GetStream()
+        {
+            Contract.Requires(PosInColumn == 0);
+            if (_stream != null) {
+                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");                
+            }
+            var stream = new SequentialByteaStream(this);
+            _stream = stream;
+            return stream;
         }
 
         internal override void Consume()

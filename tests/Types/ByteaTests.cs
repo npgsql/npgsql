@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web.Caching;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace NpgsqlTests.Types
 {
@@ -49,6 +51,22 @@ namespace NpgsqlTests.Types
         }
 
         [Test]
+        public void RoundtripLarge()
+        {
+            var expected = new byte[Conn.BufferSize + 100];
+            for (int i = 0; i < expected.Length; i++)
+                expected[i] = 8;
+            var cmd = new NpgsqlCommand("SELECT @p::BYTEA", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
+            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test]
         public void Read([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             // TODO: This is too small to actually test any interesting sequential behavior
@@ -73,35 +91,6 @@ namespace NpgsqlTests.Types
             Assert.That(reader[2], Is.EqualTo(expected));
             Assert.That(reader.GetValue(3), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<byte[]>(4), Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void Write()
-        {
-            var expected = new byte[] { 0x80, 0x81 };
-            var cmd = new NpgsqlCommand("SELECT @p::BYTEA::TEXT", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetString(0), Is.EqualTo("\\x8081"));
-            reader.Close();
-            cmd.Dispose();            
-        }
-
-        [Test]
-        public void WriteLarge()
-        {
-            var expected = new byte[Conn.BufferSize + 100];
-            for (int i = 0; i < expected.Length; i++)
-                expected[i] = 8;
-            var cmd = new NpgsqlCommand("SELECT @p::BYTEA", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
-            Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
-            reader.Close();
-            cmd.Dispose();            
         }
 
         [Test]
@@ -164,14 +153,27 @@ namespace NpgsqlTests.Types
             reader.Read();
 
             var stream = reader.GetStream(0);
+            Assert.That(stream.CanSeek, Is.EqualTo(behavior == CommandBehavior.Default));
             Assert.That(stream.Length, Is.EqualTo(expected.Length));
             stream.Read(actual, 0, 2);
             Assert.That(actual[0], Is.EqualTo(expected[0]));
             Assert.That(actual[1], Is.EqualTo(expected[1]));
-            Assert.That(() => reader.GetString(1), Throws.Exception.TypeOf<InvalidOperationException>(), "Access row while streaming");
+            if (behavior == CommandBehavior.Default)
+            {
+                var stream2 = reader.GetStream(0);
+                var actual2 = new byte[2];
+                stream2.Read(actual2, 0, 2);
+                Assert.That(actual2[0], Is.EqualTo(expected[0]));
+                Assert.That(actual2[1], Is.EqualTo(expected[1]));
+            }
+            else
+            {
+                Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
+            }
             stream.Read(actual, 2, 1);
             Assert.That(actual[2], Is.EqualTo(expected[2]));
             stream.Close();
+
             if (IsSequential(behavior))
                 Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
             else
@@ -212,6 +214,39 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test, Description("In sequential mode, checks that moving to the next column disposes a currently open stream")]
+        public void StreamDisposeOnSequentialColumn()
+        {
+            var data = new byte[] { 1, 2, 3 };
+            var cmd = new NpgsqlCommand(@"SELECT @p, @p", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", data));
+            var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            reader.Read();
+            var stream = reader.GetStream(0);
+            // ReSharper disable once UnusedVariable
+            var v = reader.GetValue(1);
+            Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            reader.Close();
+            cmd.Dispose();
+        }
+
+        [Test, Description("In non-sequential mode, checks that moving to the next row disposes all currently open streams")]
+        public void StreamDisposeOnNonSequentialRow()
+        {
+            var data = new byte[] { 1, 2, 3 };
+            var cmd = new NpgsqlCommand(@"SELECT @p", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", data));
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            var s1 = reader.GetStream(0);
+            var s2 = reader.GetStream(0);
+            reader.Read();
+            Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => s2.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            reader.Close();
+            cmd.Dispose();
+        }
+
         // Older tests from here
 
         [Test]
@@ -231,8 +266,6 @@ namespace NpgsqlTests.Types
             }
         }
 
-        // Older tests
-
         [Test]
         public void Prepared()
         {
@@ -250,31 +283,6 @@ namespace NpgsqlTests.Types
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
             }
-        }
-
-        [Test]
-        public void Large()
-        {
-            var buff = new byte[100000];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            var result = (Byte[])command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
-        }
-
-        [Test]
-        public void LargeWithPrepare()
-        {
-            var buff = new byte[100000];
-            new Random().NextBytes(buff);
-            var command = new NpgsqlCommand("select :val", Conn);
-            command.Parameters.Add("val", NpgsqlDbType.Bytea);
-            command.Parameters["val"].Value = buff;
-            command.Prepare();
-            var result = (Byte[])command.ExecuteScalar();
-            Assert.AreEqual(buff, result);
         }
 
         [Test]

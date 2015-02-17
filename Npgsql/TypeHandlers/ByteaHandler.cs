@@ -67,12 +67,6 @@ namespace Npgsql.TypeHandlers
             return len;
         }
 
-        internal Stream GetStream(DataRowMessage row, FieldDescription fieldDescription)
-        {
-            Contract.Requires(row.PosInColumn == 0);
-            return new ByteaStream(row);
-        }
-
         #region Write
 
         byte[] _value;
@@ -117,43 +111,59 @@ namespace Npgsql.TypeHandlers
 
     #region Stream
 
-    class ByteaStream : Stream
+    class SequentialByteaStream : Stream
     {
-        protected readonly DataRowMessage Row;
+        readonly DataRowMessage _row;
+        bool _disposed;
 
-        internal ByteaStream(DataRowMessage row)
+        internal SequentialByteaStream(DataRowMessage row)
         {
-            Row = row;
+            _row = row;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            count = Math.Min(count, Row.ColumnLen - Row.PosInColumn);
-            var read = Row.Buffer.ReadBytes(buffer, offset, count, false);
-            Row.PosInColumn += read;
-            Row.DecodedPosInColumn += read;
+            CheckDisposed();
+            count = Math.Min(count, _row.ColumnLen - _row.PosInColumn);
+            var read = _row.Buffer.ReadBytes(buffer, offset, count, false);
+            _row.PosInColumn += read;
             return read;
-        }
-
-        public override void Close()
-        {
-            Row.IsStreaming = false;
         }
 
         public override long Length
         {
-            get { return Row.DecodedColumnLen; }
+            get
+            {
+                CheckDisposed();
+                return _row.ColumnLen;
+            }
         }
 
         public override long Position
         {
-            get { return Row.DecodedPosInColumn; }
+            get
+            {
+                CheckDisposed();
+                return _row.PosInColumn;
+            }
             set { throw new NotSupportedException(); }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            _disposed = true;
         }
 
         public override bool CanRead { get { return true; } }
         public override bool CanSeek { get { return false; } }
         public override bool CanWrite { get { return false; } }
+
+        void CheckDisposed()
+        {
+            if (_disposed) {
+                throw new ObjectDisposedException(null);
+            }
+        }
 
         #region Not Supported
 
@@ -181,24 +191,4 @@ namespace Npgsql.TypeHandlers
     }
 
     #endregion
-
-    /// <summary>
-    /// Indicates which bytea format is being used.
-    /// http://www.postgresql.org/docs/current/static/datatype-binary.html
-    /// </summary>
-    enum ByteaFormat
-    {
-        /// <summary>
-        /// Binary format
-        /// </summary>
-        Binary,
-        /// <summary>
-        /// The newer text hex format (the default since Postgresql 9.0)
-        /// </summary>
-        Hex,
-        /// <summary>
-        /// The traditional text escape format
-        /// </summary>
-        Escape
-    }
 }
