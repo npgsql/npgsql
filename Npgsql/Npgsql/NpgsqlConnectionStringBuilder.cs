@@ -233,7 +233,6 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
             valueDescriptions.Add(Keywords.ApplicationName, new ValueDescription(typeof(string)));
             valueDescriptions.Add(Keywords.AlwaysPrepare, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.AmazonRedshift, new ValueDescription(typeof(bool)));
         }
 
         public NpgsqlConnectionStringBuilder()
@@ -866,17 +865,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.AlwaysPrepare), Keywords.AlwaysPrepare, value); }
         }
 
-        private bool _amazon_redshift;
-        /// <summary>
-        /// Gets or sets a value indicating whether to be compatible with AmazonRedshift.
-        /// Currently this means Npgsql won't use lc_monetary setting.
-        /// </summary>
-        public bool AmazonRedshift 
-        {
-            get { return _amazon_redshift; }
-            set { SetValue(GetKeyName(Keywords.AmazonRedshift), Keywords.AmazonRedshift, value); }
-        }
-
         #endregion
         #region DeprecatedProperties
 
@@ -974,8 +962,6 @@ namespace Npgsql
                     return Keywords.ApplicationName;
                 case "ALWAYSPREPARE":
                     return Keywords.AlwaysPrepare;
-                case "AMAZONREDSHIFT":
-                    return Keywords.AmazonRedshift;
                 default:
                     throw new ArgumentException(resman.GetString("Exception_WrongKeyVal"), key);
             }
@@ -1039,8 +1025,6 @@ namespace Npgsql
                     return "APPLICATIONNAME";
                 case Keywords.AlwaysPrepare:
                     return "ALWAYSPREPARE";
-                case Keywords.AmazonRedshift:
-                    return "AMAZONREDSHIFT";
                 default:
                     return keyword.ToString().ToUpperInvariant();
             }
@@ -1210,8 +1194,6 @@ namespace Npgsql
                         return this._application_name = Convert.ToString(value);
                     case Keywords.AlwaysPrepare:
                         return this._always_prepare = Convert.ToBoolean(value);
-                    case Keywords.AmazonRedshift:
-                        return this._amazon_redshift = Convert.ToBoolean(value);
                 }
             }
             catch (InvalidCastException exception)
@@ -1231,7 +1213,6 @@ namespace Npgsql
                     case Keywords.SSL:
                     case Keywords.Pooling:
                     case Keywords.SyncNotification:
-                    case Keywords.AmazonRedshift:
                         exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
                         break;
 #pragma warning disable 618
@@ -1317,8 +1298,6 @@ namespace Npgsql
                     return this._application_name;
                 case Keywords.AlwaysPrepare:
                     return this._always_prepare;
-                case Keywords.AmazonRedshift:
-                    return this._amazon_redshift;
                 default:
                     return null;
 
@@ -1412,7 +1391,6 @@ namespace Npgsql
         ApplicationName,
         AlwaysPrepare,
         IncludeRealm,
-        AmazonRedshift,
     }
 
     public enum SslMode
