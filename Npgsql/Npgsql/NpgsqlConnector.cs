@@ -828,6 +828,21 @@ namespace Npgsql
                 sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
             }
 
+
+            // Workaround to check if we are connected to AmazonRedshift server.
+            // If so, we can't set the lc_monetary parameter.
+            // See https://github.com/npgsql/npgsql/issues/163 for more information
+
+            using (NpgsqlCommand command = new NpgsqlCommand("select version();", this))
+            {
+                var versionString = (string)command.ExecuteScalar();
+
+                if (!versionString.ToLowerInvariant().Contains("redshift"))
+                    sbInitQueries.WriteLine("SET lc_monetary='C'");
+
+            }
+
+
             initQueries = sbInitQueries.ToString();
 
             NpgsqlCommand.ExecuteBlind(this, initQueries);
