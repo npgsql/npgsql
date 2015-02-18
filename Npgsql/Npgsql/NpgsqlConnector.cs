@@ -138,6 +138,8 @@ namespace Npgsql
 
         private Boolean _supportsSslRenegotiationLimit = false;
 
+        private Boolean _supportsLcMonetary = false;
+
         private Boolean _isInitialized;
 
         private readonly Boolean _pooled;
@@ -706,6 +708,11 @@ namespace Npgsql
             get { return _supportsDiscard; }
         }
 
+        internal Boolean SupportsLcMonetary
+        {
+            get { return _supportsLcMonetary; }
+        }
+
         /// <summary>
         /// Options that control certain aspects of native to backend conversions that depend
         /// on backend version and status.
@@ -735,6 +742,7 @@ namespace Npgsql
                      (ServerVersion >= new Version(8, 1, 20) && ServerVersion < new Version(8, 2, 0)) ||
                      (ServerVersion >= new Version(8, 0, 24) && ServerVersion < new Version(8, 1, 0)) ||
                      (ServerVersion >= new Version(7, 4, 28) && ServerVersion < new Version(8, 0, 0)) );
+            this._supportsLcMonetary = (ServerVersion >= new Version(8, 1, 0));
 
             // Per the PG documentation, E string literal prefix support appeared in PG version 8.1.
             // Note that it is possible that support for this prefix will vanish in some future version
@@ -826,6 +834,11 @@ namespace Npgsql
             if (SupportsSslRenegotiationLimit)
             {
                 sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
+            }
+
+            if (SupportsLcMonetary)
+            {
+                sbInitQueries.WriteLine("SET lc_monetary='C';");
             }
 
             initQueries = sbInitQueries.ToString();
