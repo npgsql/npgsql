@@ -192,6 +192,18 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/488")]
+        public void NullCharacter()
+        {
+            var cmd = new NpgsqlCommand("SELECT * FROM data WHERE field_text = :p1", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p1", "string with \0\0\0 null \0bytes"));
+            Assert.That(() => cmd.ExecuteReader(),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                .With.Property("Code").EqualTo("22021")
+            );
+        }
+
         // Older tests from here
 
         [Test]
