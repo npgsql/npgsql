@@ -105,14 +105,6 @@ namespace Npgsql
             return (val << shift) | (val >> (sizeof (int) - shift));
         }
 
-        internal static byte[] NullTerminateArray(byte[] input)
-        {
-            byte[] output = new byte[input.Length + 1];
-            input.CopyTo(output, 0);
-
-            return output;
-        }
-
         /// <summary>
         /// Creates a Task&lt;TResult&gt; that's completed successfully with the specified result.
         /// </summary>

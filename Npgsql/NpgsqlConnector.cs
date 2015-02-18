@@ -185,7 +185,7 @@ namespace Npgsql
         internal int Port { get { return _settings.Port; } }
         internal string Database { get { return _settings.ContainsKey(Keywords.Database) ? _settings.Database : _settings.UserName; } }
         internal string UserName { get { return _settings.UserName; } }
-        internal byte[] Password { get { return _settings.PasswordAsByteArray; } }
+        internal string Password { get { return _settings.Password; } }
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
@@ -555,61 +555,19 @@ namespace Npgsql
 
         void ProcessAuthenticationMessage(AuthenticationRequestMessage msg)
         {
-            byte[] password;
+            PasswordMessage passwordMessage;
+
             switch (msg.AuthRequestType)
             {
                 case AuthenticationRequestType.AuthenticationOk:
                     return;
 
                 case AuthenticationRequestType.AuthenticationCleartextPassword:
-                    password = PGUtil.NullTerminateArray(Password);
+                    passwordMessage = PasswordMessage.CreateClearText(Password);
                     break;
 
                 case AuthenticationRequestType.AuthenticationMD5Password:
-                    // Now do the "MD5-Thing"
-                    // for this the Password has to be:
-                    // 1. md5-hashed with the username as salt
-                    // 2. md5-hashed again with the salt we get from the backend
-
-                    var md5 = MD5.Create();
-
-                    // 1.
-                    var passwd = Password;
-                    var saltUserName = BackendEncoding.UTF8Encoding.GetBytes(UserName);
-
-                    var cryptBuf = new byte[passwd.Length + saltUserName.Length];
-
-                    passwd.CopyTo(cryptBuf, 0);
-                    saltUserName.CopyTo(cryptBuf, passwd.Length);
-
-                    var sb = new StringBuilder();
-                    var hashResult = md5.ComputeHash(cryptBuf);
-                    foreach (byte b in hashResult)
-                    {
-                        sb.Append(b.ToString("x2"));
-                    }
-
-                    var prehash = sb.ToString();
-
-                    var prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
-                    cryptBuf = new byte[prehashbytes.Length + 4];
-
-                    var salt = ((AuthenticationMD5PasswordMessage)msg).Salt;
-                    Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
-                    // Send the PasswordPacket.
-
-                    // 2.
-                    prehashbytes.CopyTo(cryptBuf, 0);
-
-                    sb = new StringBuilder("md5");
-                    // This is needed as the backend expects md5 result starts with "md5"
-                    hashResult = md5.ComputeHash(cryptBuf);
-                    foreach (var b in hashResult)
-                    {
-                        sb.Append(b.ToString("x2"));
-                    }
-
-                    password = PGUtil.NullTerminateArray(BackendEncoding.UTF8Encoding.GetBytes(sb.ToString()));
+                    passwordMessage = PasswordMessage.CreateMD5(Password, UserName, ((AuthenticationMD5PasswordMessage)msg).Salt);
                     break;
 
                 case AuthenticationRequestType.AuthenticationGSS:
@@ -618,7 +576,7 @@ namespace Npgsql
                     }
                     // For GSSAPI we have to use the supplied hostname
                     SSPI = new SSPIHandler(Host, "POSTGRES", true);
-                    password = SSPI.Continue(null);
+                    passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 
                 case AuthenticationRequestType.AuthenticationSSPI:
@@ -628,14 +586,14 @@ namespace Npgsql
                     // For SSPI we have to get the IP-Address (hostname doesn't work)
                     var ipAddressString = ((IPEndPoint)Socket.RemoteEndPoint).Address.ToString();
                     SSPI = new SSPIHandler(ipAddressString, "POSTGRES", false);
-                    password = SSPI.Continue(null);
+                    passwordMessage = new PasswordMessage(SSPI.Continue(null));
                     break;
 
                 case AuthenticationRequestType.AuthenticationGSSContinue:
                     var passwdRead = SSPI.Continue(((AuthenticationGSSContinueMessage)msg).AuthenticationData);
                     if (passwdRead.Length != 0)
                     {
-                        password = passwdRead;
+                        passwordMessage = new PasswordMessage(passwdRead);
                         break;
                     }
                     return;
@@ -643,7 +601,6 @@ namespace Npgsql
                 default:
                     throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, msg.AuthRequestType));
             }
-            var passwordMessage = new PasswordMessage(password);
             passwordMessage.Prepare();
             passwordMessage.Write(Buffer);
             Buffer.Flush();

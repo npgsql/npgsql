@@ -427,14 +427,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Password.
-        /// </summary>
-        internal byte[] Password
-        {
-            get { return _settings.PasswordAsByteArray; }
-        }
-
-        /// <summary>
         /// Determine if connection pooling will be used for this connection.
         /// </summary>
         internal bool Pooling

@@ -232,13 +232,11 @@ namespace Npgsql
 
         public NpgsqlConnectionStringBuilder()
         {
-            _password = new PasswordBytes();
             this.Clear();
         }
 
         public NpgsqlConnectionStringBuilder(string connectionString)
         {
-            _password = new PasswordBytes();
             this.originalConnectionString = connectionString;
             base.ConnectionString = connectionString;
             CheckValues();
@@ -541,24 +539,7 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.UserName), Keywords.UserName, value); }
         }
 
-        private PasswordBytes _password;
-        /// <summary>
-        /// Gets or sets the login password as a UTF8 encoded byte array.
-        /// </summary>
-        [Browsable(false)]
-        public byte[] PasswordAsByteArray
-        {
-            get { return _password.PasswordAsByteArray; }
-            set
-            {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("PasswordAsByteArray");
-                }
-
-                _password.PasswordAsByteArray = value;
-            }
-        }
+        private string _password;
         /// <summary>
         /// Sets the login password as a string.
         /// </summary>
@@ -572,7 +553,7 @@ namespace Npgsql
         [PasswordPropertyText(true)]
         public string Password
         {
-            get { return String.Empty; }
+            get { return _password; }
             set { SetValue(GetKeyName(Keywords.Password), Keywords.Password, value); }
         }
 
@@ -1084,8 +1065,7 @@ namespace Npgsql
                     case Keywords.UserName:
                         return this._username = Convert.ToString(value);
                     case Keywords.Password:
-                        this._password.Password = value as string;
-                        return value as string;
+                        return this._password = value as string;
                     case Keywords.SSL:
                         return this._ssl = ToBoolean(value);
                     case Keywords.SslMode:
@@ -1190,7 +1170,7 @@ namespace Npgsql
                 case Keywords.UserName:
                     return this._username;
                 case Keywords.Password:
-                    return this._password.Password;
+                    return this._password;
                 case Keywords.SSL:
                     return this._ssl;
                 case Keywords.SslMode:
@@ -1245,43 +1225,6 @@ namespace Npgsql
                 {
                     SetValue(GetKeyName(kvp.Key), kvp.Key, kvp.Value.ExplicitDefault);
                 }
-            }
-        }
-
-        // Store a password as a byte[].  On update, first wipe the old password value.
-        private class PasswordBytes
-        {
-            private byte[] password = new byte[0];
-
-            private void Wipe()
-            {
-                for (int i = 0 ; i < password.Length ; i++)
-                {
-                    password[i] = 0;
-                }
-            }
-
-            internal byte[] PasswordAsByteArray
-            {
-                set
-                {
-                    Wipe();
-                    password = new byte[value.Length];
-                    value.CopyTo(password, 0);
-                }
-
-                get { return password; }
-            }
-
-            internal string Password
-            {
-                set
-                {
-                    Wipe();
-                    password = BackendEncoding.UTF8Encoding.GetBytes(value);
-                }
-
-                get { return BackendEncoding.UTF8Encoding.GetString(password); }
             }
         }
     }
