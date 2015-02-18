@@ -415,18 +415,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Use extended types.
-        /// </summary>
-        public bool UseExtendedTypes
-        {
-            get
-            {
-                bool ext = _settings.UseExtendedTypes;
-                return ext;
-            }
-        }
-
-        /// <summary>
         /// Determine if connection pooling will be used for this connection.
         /// </summary>
         internal bool Pooling

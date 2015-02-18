@@ -889,24 +889,6 @@ namespace Npgsql.Localization {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to UseExtendedTypes.
-        /// </summary>
-        internal static string UseExtendedTypes {
-            get {
-                return ResourceManager.GetString("UseExtendedTypes", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to UseExtendedTypes.
-        /// </summary>
-        internal static string UseExtendedTypesDescription {
-            get {
-                return ResourceManager.GetString("UseExtendedTypesDescription", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Username.
         /// </summary>
         internal static string UserName {

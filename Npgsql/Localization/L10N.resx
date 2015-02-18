@@ -330,12 +330,6 @@
   <data name="PreloadReader" xml:space="preserve">
     <value>PreloadReader</value>
   </data>
-  <data name="UseExtendedTypesDescription" xml:space="preserve">
-    <value>UseExtendedTypes</value>
-  </data>
-  <data name="UseExtendedTypes" xml:space="preserve">
-    <value>UseExtendedTypes</value>
-  </data>
   <data name="IntegratedSecurityDescription" xml:space="preserve">
     <value>IntegratedSecurity</value>
   </data>

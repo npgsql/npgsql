@@ -193,7 +193,6 @@ namespace Npgsql
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
-        public bool UseExtendedTypes { get { return _settings.UseExtendedTypes; } }
         internal bool IntegratedSecurity { get { return _settings.IntegratedSecurity; } }
         internal Version CompatVersion { get { return _settings.Compatible; } }
 

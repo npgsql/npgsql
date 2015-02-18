@@ -223,7 +223,6 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription(NpgsqlCommand.DefaultTimeout));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
-            valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IntegratedSecurity, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.IncludeRealm, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.Compatible, new ValueDescription(THIS_VERSION));
@@ -752,20 +751,6 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.Enlist), Keywords.Enlist, value); }
         }
 
-        private bool _useExtendedTypes;
-        [NpgsqlConnectionStringCategory("DataCategory_Advanced")]
-        [NpgsqlConnectionStringKeyword(Keywords.UseExtendedTypes)]
-        [NpgsqlConnectionStringAcceptableKeyword("USE EXTENDED TYPES")]
-        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_UseExtendedTypes")]
-        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_UseExtendedTypes")]
-        [RefreshProperties(RefreshProperties.All)]
-        [DefaultValue(true)]
-        public bool UseExtendedTypes
-        {
-            get { return _useExtendedTypes; }
-            set { SetValue(GetKeyName(Keywords.UseExtendedTypes), Keywords.UseExtendedTypes, value); }
-        }
-
         private bool _integrated_security;
         [NpgsqlConnectionStringCategory("DataCategory_Security")]
         [NpgsqlConnectionStringKeyword(Keywords.IntegratedSecurity)]
@@ -1091,12 +1076,13 @@ namespace Npgsql
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
                     case Keywords.PreloadReader:
-                        var b = ToBoolean(value);
-                        if (b)
-                            throw new NotSupportedException("Support for the preload reader has been removed in Npgsql 3.0. Please see https://github.com/npgsql/Npgsql/wiki/Preload-Removal");
+                        if (ToBoolean(value))
+                            throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/PreloadReader-Removal");
                         return false;
                     case Keywords.UseExtendedTypes:
-                        return this._useExtendedTypes = ToBoolean(value);
+                        if (ToBoolean(value))
+                            throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see https://github.com/npgsql/Npgsql/wiki/UseExtendedTypes-Removal");
+                        return false;
                     case Keywords.IntegratedSecurity:
                         bool iS = ToIntegratedSecurity(value);
                         if (iS == true)
@@ -1195,8 +1181,6 @@ namespace Npgsql
                     return this._command_timeout;
                 case Keywords.Enlist:
                     return this._enlist;
-                case Keywords.UseExtendedTypes:
-                    return this._useExtendedTypes;
                 case Keywords.IntegratedSecurity:
                     return this._integrated_security;
                 case Keywords.IncludeRealm:
@@ -1206,8 +1190,7 @@ namespace Npgsql
                 case Keywords.ApplicationName:
                     return this._application_name;
                 default:
-                    return null;
-
+                    throw new Exception("Unknown keyword: " + keyword);
             }
         }
 
@@ -1251,12 +1234,14 @@ namespace Npgsql
         CommandTimeout,
         // These are for the resource manager
         Enlist,
-        PreloadReader,
-        UseExtendedTypes,
         IntegratedSecurity,
         Compatible,
         ApplicationName,
         IncludeRealm,
+
+        // No longer supported, throw an exception
+        PreloadReader,
+        UseExtendedTypes,
     }
 
     public enum SslMode
