@@ -19,10 +19,11 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'D';
 
-        internal DescribeMessage(StatementOrPortal type, string name="")
+        internal DescribeMessage Populate(StatementOrPortal type, string name = "")
         {
             StatementOrPortal = type;
             Name = name;
+            return this;
         }
 
         internal override int Length { get { return 1 + 4 + 1 + Name.Length; } }

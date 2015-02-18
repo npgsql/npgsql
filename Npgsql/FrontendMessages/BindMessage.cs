@@ -32,7 +32,7 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'B';
 
-        internal BindMessage(TypeHandlerRegistry typeHandlerRegistry, List<NpgsqlParameter> inputParameters,
+        internal BindMessage Populate(TypeHandlerRegistry typeHandlerRegistry, List<NpgsqlParameter> inputParameters,
                              string portal="", string statement="")
         {
             Contract.Requires(typeHandlerRegistry != null);
@@ -40,6 +40,8 @@ namespace Npgsql.FrontendMessages
             Contract.Requires(portal != null);
             Contract.Requires(statement != null);
 
+            AllResultTypesAreUnknown = false;
+            UnknownResultTypeList = null;
             _typeHandlerRegistry = typeHandlerRegistry;
             Portal = portal;
             Statement = statement;
@@ -47,6 +49,7 @@ namespace Npgsql.FrontendMessages
             _state = State.WroteNothing;
             _paramIndex = 0;
             _wroteParamLen = false;
+            return this;
         }
 
         internal override bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
@@ -190,15 +193,6 @@ namespace Npgsql.FrontendMessages
             WroteHeader,
             WroteParameters,
             Done
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Portal != null);
-            Contract.Invariant(Statement != null);
-            Contract.Invariant(InputParameters != null);
-            Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
         }
     }
 }

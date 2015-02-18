@@ -134,16 +134,21 @@ namespace Npgsql
 
         internal SSPIHandler SSPI { get; set; }
 
-        List<NpgsqlError> _pendingErrors = new List<NpgsqlError>();
-
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         SemaphoreSlim _notificationSemaphore;
         byte[] _emptyBuffer = new byte[0];
         int _notificationBlockRecursionDepth;
 
-        #region Reusable Server Message Objects
+        #region Reusable Message Objects
 
+        // Frontend. Note that these are only used for single-query commands.
+        internal readonly ParseMessage    ParseMessage    = new ParseMessage();
+        internal readonly BindMessage     BindMessage     = new BindMessage();
+        internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
+        internal readonly ExecuteMessage  ExecuteMessage  = new ExecuteMessage();
+
+        // Backend
         readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
         readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();

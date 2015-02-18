@@ -30,31 +30,22 @@ namespace Npgsql.FrontendMessages
 
         const byte Code = (byte)'P';
 
-        ParseMessage()
+        internal ParseMessage()
         {
-            _state = State.WroteNothing;
             ParameterTypeOIDs = new List<uint>();
         }
 
-        internal ParseMessage(QueryDetails queryDetails, TypeHandlerRegistry typeHandlerRegistry) : this()
+        internal ParseMessage Populate(QueryDetails queryDetails, TypeHandlerRegistry typeHandlerRegistry)
         {
+            _state = State.WroteNothing;
+            ParameterTypeOIDs.Clear();
             Query = queryDetails.Sql;
             Statement = queryDetails.PreparedStatementName ?? "";
-            foreach (var inputParam in queryDetails.InputParameters)
-            {
+            foreach (var inputParam in queryDetails.InputParameters) {
                 inputParam.ResolveHandler(typeHandlerRegistry);
                 ParameterTypeOIDs.Add(inputParam.Handler.OID);
             }
-
-        }
-
-        internal ParseMessage(string query, string statement="") : this()
-        {
-            Contract.Requires(query != null);
-            Contract.Requires(statement != null);
-
-            Query = query;
-            Statement = statement;
+            return this;
         }
 
         internal override bool Write(NpgsqlBuffer buf)
@@ -138,14 +129,6 @@ namespace Npgsql.FrontendMessages
         public override string ToString()
         {
             return String.Format("[Parse(Statement={0},NumParams={1}]", Statement, ParameterTypeOIDs.Count);
-        }
-
-        [ContractInvariantMethod]
-        void ObjectInvariants()
-        {
-            Contract.Invariant(Statement != null);
-            Contract.Invariant(Query != null);
-            Contract.Invariant(ParameterTypeOIDs != null);
         }
 
         private enum State

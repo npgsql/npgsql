@@ -487,11 +487,25 @@ namespace Npgsql
                 DeallocatePreparedStatements();
                 ProcessRawQuery();
 
-                foreach (var query in _queries)
+                for (var i = 0; i < _queries.Count; i++)
                 {
+                    var query = _queries[i];
+                    ParseMessage parseMessage;
+                    DescribeMessage describeMessage;
+                    if (i == 0)
+                    {
+                        parseMessage = _connector.ParseMessage;
+                        describeMessage = _connector.DescribeMessage;
+                    }
+                    else
+                    {
+                        parseMessage = new ParseMessage();
+                        describeMessage = new DescribeMessage();
+                    }
+
                     query.PreparedStatementName = _connector.NextPreparedStatementName();
-                    _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
-                    _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement, query.PreparedStatementName));
+                    _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
+                    _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement, query.PreparedStatementName));
                 }
 
                 _connector.AddMessage(SyncMessage.Instance);
@@ -1040,12 +1054,30 @@ namespace Npgsql
                 ? Enumerable.Range(0, _queries.Count).Select(i => "MQ" + i).ToArray()
                 : null;
 
-            for (var i = 0; i < _queries.Count; i++) {
+            for (var i = 0; i < _queries.Count; i++)
+            {
                 var query = _queries[i];
-                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
 
-                var bindMessage = new BindMessage(
+                ParseMessage parseMessage;
+                DescribeMessage describeMessage;
+                BindMessage bindMessage;
+                if (i == 0)
+                {
+                    parseMessage = _connector.ParseMessage;
+                    describeMessage = _connector.DescribeMessage;
+                    bindMessage = _connector.BindMessage;
+                }
+                else
+                {
+                    parseMessage = new ParseMessage();
+                    describeMessage = new DescribeMessage();
+                    bindMessage = new BindMessage();
+                }
+
+                _connector.AddMessage(parseMessage.Populate(query, _connector.TypeHandlerRegistry));
+                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement));
+
+                bindMessage.Populate(
                     _connector.TypeHandlerRegistry,
                     query.InputParameters,
                     _queries.Count == 1 ? "" : portalNames[i]
@@ -1060,7 +1092,7 @@ namespace Npgsql
             }
 
             if (_queries.Count == 1) {
-                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
+                _connector.AddMessage(_connector.ExecuteMessage.Populate("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
             } else
                 for (var i = 0; i < _queries.Count; i++) {
                     // TODO: Verify SingleRow behavior for multiqueries
@@ -1072,9 +1104,23 @@ namespace Npgsql
 
         void CreateMessagesPrepared(CommandBehavior behavior)
         {
-            for (var i = 0; i < _queries.Count; i++) {
+            for (var i = 0; i < _queries.Count; i++)
+            {
+                BindMessage bindMessage;
+                ExecuteMessage executeMessage;
+                if (i == 0)
+                {
+                    bindMessage = _connector.BindMessage;
+                    executeMessage = _connector.ExecuteMessage;
+                }
+                else
+                {
+                    bindMessage = new BindMessage();
+                    executeMessage = new ExecuteMessage();
+                }
+
                 var query = _queries[i];
-                var bindMessage = new BindMessage(_connector.TypeHandlerRegistry, query.InputParameters, "", query.PreparedStatementName);
+                bindMessage.Populate(_connector.TypeHandlerRegistry, query.InputParameters, "", query.PreparedStatementName);
                 if (AllResultTypesAreUnknown) {
                     bindMessage.AllResultTypesAreUnknown = AllResultTypesAreUnknown;
                 } else if (i == 0 && UnknownResultTypeList != null) {
@@ -1082,7 +1128,7 @@ namespace Npgsql
                 }
                 bindMessage.Prepare();
                 _connector.AddMessage(bindMessage);
-                _connector.AddMessage(new ExecuteMessage("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
+                _connector.AddMessage(executeMessage.Populate("", (behavior & CommandBehavior.SingleRow) != 0 ? 1 : 0));
             }
             _connector.AddMessage(SyncMessage.Instance);
         }
@@ -1093,9 +1139,20 @@ namespace Npgsql
 
             ProcessRawQuery();
 
-            foreach (var query in _queries) {
-                _connector.AddMessage(new ParseMessage(query, _connector.TypeHandlerRegistry));
-                _connector.AddMessage(new DescribeMessage(StatementOrPortal.Statement));
+            for (var i = 0; i < _queries.Count; i++)
+            {
+                ParseMessage parseMessage;
+                DescribeMessage describeMessage;
+                if (i == 0) {
+                    parseMessage = _connector.ParseMessage;
+                    describeMessage = _connector.DescribeMessage;
+                } else {
+                    parseMessage = new ParseMessage();
+                    describeMessage = new DescribeMessage();
+                }
+
+                _connector.AddMessage(parseMessage.Populate(_queries[i], _connector.TypeHandlerRegistry));
+                _connector.AddMessage(describeMessage.Populate(StatementOrPortal.Statement));
             }
 
             _connector.AddMessage(SyncMessage.Instance);
