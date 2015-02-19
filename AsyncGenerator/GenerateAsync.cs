@@ -45,6 +45,7 @@ namespace AsyncGenerator
 
         public override bool Execute()
         {
+
             var files = InputFiles.Select(f => new SourceFile {
                 Name = f.ItemSpec,
                 SyntaxTree = SyntaxFactory.ParseSyntaxTree(File.ReadAllText(f.ItemSpec))
@@ -111,9 +112,9 @@ namespace AsyncGenerator
                     };
 
                     var attr = methodSymbol.GetAttributes().Single(a => a.AttributeClass.Name == "GenerateAsync");
-                    if (attr.ConstructorArguments[0].Value != null)
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value != null)
                         methodInfo.Transformed = (string)attr.ConstructorArguments[0].Value;
-                    if (((bool) attr.ConstructorArguments[1].Value))
+                    if (attr.ConstructorArguments.Length > 1 && ((bool) attr.ConstructorArguments[1].Value))
                         methodInfo.WithOverride = true;
                     methods.Add(methodInfo);
                 }
