@@ -247,6 +247,15 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]
+        public void Truncate()
+        {
+            byte[] data = { 1, 2, 3, 4 , 5, 6 };
+            var cmd = new NpgsqlCommand("SELECT @p", Conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", data) { Size = 4 });
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+        }
+
         // Older tests from here
 
         [Test]

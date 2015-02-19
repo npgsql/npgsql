@@ -135,7 +135,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -155,7 +155,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             _buf = buf;
             _pos = -1;
@@ -163,7 +163,7 @@ namespace Npgsql.TypeHandlers
             _value = value;
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             var bitArray = _value as BitArray;
             if (bitArray != null) {
@@ -305,13 +305,13 @@ namespace Npgsql.TypeHandlers
                 : Read<BitArray>(out result);
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
-            base.PrepareWrite(value, buf, lengthCache);
+            base.PrepareWrite(value, buf, truncateSize, lengthCache);
             _value = value;
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             if (_value is BitArray[]) {
                 return base.Write<BitArray>(ref directBuf);
@@ -325,7 +325,7 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached(String.Format("Can't write type {0} as an bitstring array", _value.GetType()));
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             if (value is BitArray[]) {
                 return base.ValidateAndGetLength<BitArray>(value, ref lengthCache);

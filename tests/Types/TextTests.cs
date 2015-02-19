@@ -230,6 +230,21 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test, Description("Tests that strings are truncated when the NpgsqlParameter's Size is set")]
+        public void Truncate()
+        {
+            const string data = "SomeText";
+            var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn);
+            var p = new NpgsqlParameter("p", data) { Size = 4 };
+            cmd.Parameters.Add(p);
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data.Substring(0, 4)));
+
+            // NpgsqlParameter.Size needs to persist when value is changed
+            const string data2 = "AnotherValue";
+            p.Value = data2;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2.Substring(0, 4)));
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/488")]
         public void NullCharacter()

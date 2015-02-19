@@ -656,16 +656,16 @@ namespace Npgsql
             return this;
         }
 
-        internal void WriteStringSimple(string s)
+        internal void WriteStringSimple(string s, int len=0)
         {
             Contract.Requires(TextEncoding.GetByteCount(s) <= WriteSpaceLeft);
-            WritePosition += TextEncoding.GetBytes(s, 0, s.Length, _buf, WritePosition);
+            WritePosition += TextEncoding.GetBytes(s, 0, len == 0 ? s.Length : len, _buf, WritePosition);
         }
 
-        internal void WriteCharsSimple(char[] chars)
+        internal void WriteCharsSimple(char[] chars, int len=0)
         {
             Contract.Requires(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
-            WritePosition += TextEncoding.GetBytes(chars, 0, chars.Length, _buf, WritePosition);
+            WritePosition += TextEncoding.GetBytes(chars, 0, len == 0 ? chars.Length : len, _buf, WritePosition);
         }
 
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,

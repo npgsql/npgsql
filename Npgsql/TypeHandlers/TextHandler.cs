@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers
         string _str;
         char[] _chars;
         byte[] _tempBuf;
-        int _byteLen, _bytePos, _charPos;
+        int _byteLen, _charLen, _bytePos, _charPos;
         NpgsqlBuffer _buf;
 
         #endregion
@@ -180,41 +180,56 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             if (lengthCache == null) { lengthCache = new LengthCache(1); }
             if (lengthCache.IsPopulated) { return lengthCache.Get(); }
 
             var asString = value as string;
-            if (asString != null) {
-                return lengthCache.Set(Encoding.UTF8.GetByteCount(asString));
+            if (asString != null)
+            {
+                return lengthCache.Set(truncateSize == 0
+                  ? Encoding.UTF8.GetByteCount(asString)
+                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, truncateSize)
+                );
             }
 
             var asCharArray = value as char[];
             if (asCharArray != null)
             {
-                return lengthCache.Set(Encoding.UTF8.GetByteCount(asCharArray));                
+                return lengthCache.Set(truncateSize == 0
+                  ? Encoding.UTF8.GetByteCount(asCharArray)
+                  : Encoding.UTF8.GetByteCount(asCharArray, 0, truncateSize)
+                );
             }
 
             throw new InvalidCastException("Can't write type as text: " + value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             _buf = buf;
             _charPos = -1;
             _byteLen = lengthCache.GetLast();
 
             _str = value as string;
-            if (_str != null) { return; }
+            if (_str != null)
+            {
+                _charLen = truncateSize == 0 ? _str.Length : truncateSize;
+                return;
+            }
 
             _chars = value as char[];
-            if (_chars != null) { return; }
+            if (_chars != null)
+            {
+                _charLen = truncateSize == 0 ? _chars.Length : truncateSize;
+                return;
+            }
 
             throw PGUtil.ThrowIfReached();
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             if (_charPos == -1)
             {
@@ -223,14 +238,14 @@ namespace Npgsql.TypeHandlers
                     // Can simply write the string to the buffer
                     if (_str != null)
                     {
-                        _buf.WriteStringSimple(_str);
+                        _buf.WriteStringSimple(_str, _charLen);
                         _str = null;
                     }
                     else
                     {
                         Contract.Assert(_chars != null);
-                        _buf.WriteCharsSimple(_chars);
-                        _str = null;                        
+                        _buf.WriteCharsSimple(_chars, _charLen);
+                        _str = null;
                     }
                     _buf = null;
                     return true;
@@ -248,8 +263,8 @@ namespace Npgsql.TypeHandlers
                 // For strings, allocate a temporary byte buffer to hold the entire string and write it directly.
                 if (_str != null)
                 {
-                    directBuf = new byte[_byteLen];
-                    _buf.TextEncoding.GetBytes(_str, 0, _str.Length, directBuf, 0);
+                    directBuf.Buffer = new byte[_byteLen];
+                    _buf.TextEncoding.GetBytes(_str, 0, _charLen, directBuf.Buffer, 0);
                     return false;
                 }
                 Contract.Assert(_chars != null);

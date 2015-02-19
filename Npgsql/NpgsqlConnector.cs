@@ -686,17 +686,18 @@ namespace Npgsql
                 var asComplex = msg as ChunkingFrontendMessage;
                 if (asComplex != null)
                 {
-                    byte[] directBuf = null;
+                    var directBuf = new DirectBuffer();
                     while (!asComplex.Write(Buffer, ref directBuf))
                     {
                         Buffer.Flush();
 
                         // The following is an optimization hack for writing large byte arrays without passing
                         // through our buffer
-                        if (directBuf != null)
+                        if (directBuf.Buffer != null)
                         {
-                            Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
-                            directBuf = null;
+                            Buffer.Underlying.Write(directBuf.Buffer, 0, directBuf.Size == 0 ? directBuf.Buffer.Length : directBuf.Size);
+                            directBuf.Buffer = null;
+                            directBuf.Size = 0;
                         }
                     }
                     return;

@@ -70,38 +70,39 @@ namespace Npgsql.TypeHandlers
         #region Write
 
         byte[] _value;
+        int _size;
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
-            return ((byte[])value).Length;
+            return truncateSize == 0 ? ((byte[])value).Length : truncateSize;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             _buf = buf;
             _value = (byte[])value;
+            _size = truncateSize == 0 ? _value.Length : truncateSize;
         }
 
         // ReSharper disable once RedundantAssignment
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             // If the entire array fits in our buffer, copy it as usual.
             // Otherwise, switch to direct write from the user-provided buffer
-            if (_value.Length <= _buf.WriteSpaceLeft)
+            if (_size <= _buf.WriteSpaceLeft)
             {
-                _buf.WriteBytesSimple(_value, 0, _value.Length);
-                directBuf = null;
+                _buf.WriteBytesSimple(_value, 0, _size);
                 return true;
             }
 
             if (!_returnedBuffer)
             {
-                directBuf = _value;
+                directBuf.Buffer = _value;
+                directBuf.Size = _size;
                 _returnedBuffer = true;
                 return false;
             }
 
-            directBuf = null;
             _returnedBuffer = false;
             return true;
         }

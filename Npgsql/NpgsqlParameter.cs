@@ -593,7 +593,7 @@ namespace Npgsql
             Contract.Assert(asChunkingWriter != null);
 
             var lengthCache = LengthCache;
-            var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache);
+            var len = asChunkingWriter.ValidateAndGetLength(Value, _size, ref lengthCache);
             LengthCache = lengthCache;
             return len;
         }

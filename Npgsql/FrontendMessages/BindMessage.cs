@@ -52,7 +52,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf, ref byte[] directBuf)
+        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
             Contract.Requires(Portal != null && Portal.All(c => c < 128));
@@ -135,7 +135,7 @@ namespace Npgsql.FrontendMessages
             }
         }
 
-        bool WriteParameters(NpgsqlBuffer buf, ref byte[] directBuf)
+        bool WriteParameters(NpgsqlBuffer buf, ref DirectBuffer directBuf)
         {
             for (; _paramIndex < InputParameters.Count; _paramIndex++)
             {
@@ -160,7 +160,7 @@ namespace Npgsql.FrontendMessages
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt32(len);
-                        asChunkingWriter.PrepareWrite(param.Value, buf, param.LengthCache);
+                        asChunkingWriter.PrepareWrite(param.Value, buf, param.Size, param.LengthCache);
                         _wroteParamLen = true;
                     }
                     if (!asChunkingWriter.Write(ref directBuf)) {

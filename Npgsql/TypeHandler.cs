@@ -45,30 +45,38 @@ namespace Npgsql
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
-        int ValidateAndGetLength(object value, ref LengthCache lengthCache);
-        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache);
-        bool Write(ref byte[] directBuf);
+        /// <param name="truncateSize">
+        /// The truncate size given by the user via <see cref="NpgsqlParameter.Size"/>.
+        /// 0 means not set (i.e. the full value length should be used)
+        /// </param>
+        int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache);
+        /// <param name="truncateSize">
+        /// The truncate size given by the user via <see cref="NpgsqlParameter.Size"/>.
+        /// 0 means not set (i.e. the full value length should be used)
+        /// </param>
+        void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache);
+        bool Write(ref DirectBuffer directBuf);
     }
 
     [ContractClassFor(typeof(IChunkingTypeWriter))]
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             Contract.Requires(value != null);
             return default(int);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             Contract.Requires(buf != null);
             Contract.Requires(value != null);
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
-            Contract.Ensures(Contract.Result<bool>() == false || directBuf == null);
+            Contract.Ensures(Contract.Result<bool>() == false || directBuf.Buffer == null);
             return default(bool);
         }
     }
@@ -215,6 +223,12 @@ namespace Npgsql
         {
             return Read<TPsv>(row, fieldDescription, row.ColumnLen);
         }
+    }
+
+    struct DirectBuffer
+    {
+        public byte[] Buffer;
+        public int Size;
     }
 
     /// <summary>

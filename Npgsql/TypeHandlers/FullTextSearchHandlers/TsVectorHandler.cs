@@ -74,7 +74,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return true;
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             // TODO: Implement length cache
             var vec = (NpgsqlTsVector)value;
@@ -82,14 +82,14 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             _lexemePos = -1;
             _buf = buf;
             _value = (NpgsqlTsVector)value;
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             if (_lexemePos == -1)
             {

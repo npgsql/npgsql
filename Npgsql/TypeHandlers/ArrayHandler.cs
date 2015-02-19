@@ -263,7 +263,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public virtual void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public virtual void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
@@ -279,7 +279,7 @@ namespace Npgsql.TypeHandlers
             _writeState = WriteState.WroteNothing;
         }
 
-        public bool Write<TElement>(ref byte[] directBuf)
+        public bool Write<TElement>(ref DirectBuffer directBuf)
         {
             Array asArray;
 
@@ -332,13 +332,13 @@ namespace Npgsql.TypeHandlers
                         // TODO: Actually call the element writer generically...!
                         do
                         {
-                            if (!WriteSingleElement(genericEnumerator.Current, out directBuf)) { return false; }
+                            if (!WriteSingleElement(genericEnumerator.Current, ref directBuf)) { return false; }
                         } while (genericEnumerator.MoveNext());
                     }
                     else
                     {
                         do {
-                            if (!WriteSingleElement(_enumerator.Current, out directBuf)) { return false; }
+                            if (!WriteSingleElement(_enumerator.Current, ref directBuf)) { return false; }
                         } while (_enumerator.MoveNext());                       
                     }
                     goto case WriteState.Cleanup;
@@ -355,11 +355,9 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        bool WriteSingleElement(object element, out byte[] directBuf)
+        bool WriteSingleElement(object element, ref DirectBuffer directBuf)
         {
             // TODO: Need generic version of this...
-            directBuf = null;
-
             if (element == null || element is DBNull) {
                 if (_buf.WriteSpaceLeft < 4) {
                     return false;
@@ -386,9 +384,9 @@ namespace Npgsql.TypeHandlers
                         return false;
                     }
                     var lengthCache = _lengthCache;
-                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref lengthCache));
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, 0, ref lengthCache));
                     Contract.Assume(lengthCache == _lengthCache);
-                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache);
+                    asChunkedWriter.PrepareWrite(element, _buf, 0, _lengthCache);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf)) {
@@ -453,7 +451,7 @@ namespace Npgsql.TypeHandlers
             }
             var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             return asChunkingWriter != null
-                ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache)
+                ? asChunkingWriter.ValidateAndGetLength(element, 0, ref lengthCache)
                 : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element);
         }
 
@@ -506,12 +504,12 @@ namespace Npgsql.TypeHandlers
             return Read<TElement>(out result);
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             return ValidateAndGetLength<TElement>(value, ref lengthCache);
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             return Write<TElement>(ref directBuf);
         }

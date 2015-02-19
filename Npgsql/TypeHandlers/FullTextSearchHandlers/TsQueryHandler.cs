@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
         {
             var vec = (NpgsqlTsQuery)value;
 
@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
         {
             _buf = buf;
             _value = (NpgsqlTsQuery)value;
@@ -185,7 +185,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return -1;
         }
 
-        public bool Write(ref byte[] directBuf)
+        public bool Write(ref DirectBuffer directBuf)
         {
             if (_stack == null)
             {
