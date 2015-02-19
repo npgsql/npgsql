@@ -9,18 +9,11 @@ namespace Npgsql.BackendMessages
     {
         internal override BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
 
-        internal TransactionStatusIndicator TransactionStatusIndicator { get; private set; }
+        internal TransactionStatus TransactionStatusIndicator { get; private set; }
 
         internal ReadyForQueryMessage Load(NpgsqlBuffer buf) {
-            TransactionStatusIndicator = (TransactionStatusIndicator)buf.ReadByte();
+            TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
             return this;
         }
-    }
-
-    internal enum TransactionStatusIndicator
-    {
-        Idle                     = 'I',
-        InTransactionBlock       = 'B',
-        InFailedTransactionBlock = 'E'
     }
 }

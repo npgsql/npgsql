@@ -164,6 +164,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TransactionTests.cs" />
     <Compile Include="Types\ArrayTests.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="AsyncTests.cs" />

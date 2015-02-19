@@ -513,11 +513,14 @@ namespace Npgsql
 
                 _queryIndex = 0;
 
+                _connector.ReadPrependedMessageResponses();
+
                 while (true)
                 {
                     var msg = _connector.ReadSingleMessage();
                     switch (msg.Code)
                     {
+                        case BackendMessageCode.CompletedResponse:  // prepended messages, e.g. begin transaction
                         case BackendMessageCode.ParseComplete:
                         case BackendMessageCode.ParameterDescription:
                             continue;
@@ -1029,10 +1032,13 @@ namespace Npgsql
         {
             if (IsPrepared)
             {
-                // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase
-                if ((behavior & CommandBehavior.SchemaOnly) == 0) {
-                    CreateMessagesPrepared(behavior);
+                if ((behavior & CommandBehavior.SchemaOnly) != 0)
+                {
+                    // For prepared SchemaOnly queries, we already have the RowDescriptions from the Prepare phase.
+                    // No need to send anything
+                    return;
                 }
+                CreateMessagesPrepared(behavior);
             }
             else
             {
@@ -1186,9 +1192,10 @@ namespace Npgsql
                 State = CommandState.InProgress;
 
                 if (!(IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0)) {
-                    // TODO: Can this be combined into the message chain?
-                    _connector.SetBackendCommandTimeout(CommandTimeout);
+                    //_connector.SetBackendCommandTimeout(CommandTimeout);
                     _connector.SendAllMessages();
+
+                    _connector.ReadPrependedMessageResponses();
                 }
 
                 if (!IsPrepared) {
@@ -1215,6 +1222,7 @@ namespace Npgsql
             Contract.Requires(!IsPrepared);
 
             switch (msg.Code) {
+            case BackendMessageCode.CompletedResponse:  // e.g. begin transaction
             case BackendMessageCode.ParseComplete:
             case BackendMessageCode.ParameterDescription:
                 return false;

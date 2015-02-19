@@ -29,6 +29,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.Contracts;
 using System.Reflection;
 using System.Resources;
 using System.Text;
@@ -44,39 +45,39 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlTransaction : DbTransaction
     {
-        private NpgsqlConnection _conn = null;
-        private readonly IsolationLevel _isolation = IsolationLevel.ReadCommitted;
-        private bool _disposed = false;
+        readonly IsolationLevel _isolationLevel;
+        bool _disposed;
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         internal NpgsqlTransaction(NpgsqlConnection conn)
-            : this(conn, IsolationLevel.ReadCommitted)
+            : this(conn, IsolationLevel.ReadCommitted) {}
+
+        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
         {
-        }
+            Connection = conn;
+            _isolationLevel = isolationLevel;
+            Connector.Transaction = this;
 
-        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolation)
-        {
-            _conn = conn;
-            _isolation = isolation;
-
-            if (isolation == IsolationLevel.RepeatableRead)
-            {
-                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransRepeatableRead);
+            switch (isolationLevel) {
+                case IsolationLevel.RepeatableRead:
+                    Connector.PrependMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    break;
+                case IsolationLevel.Serializable:
+                case IsolationLevel.Snapshot:
+                    Connector.PrependMessage(PregeneratedMessage.BeginTransSerializable);
+                    break;
+                case IsolationLevel.ReadUncommitted:
+                    // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
+                    // send as if.
+                    Connector.PrependMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    break;
+                case IsolationLevel.ReadCommitted:
+                    Connector.PrependMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    break;
+                default:
+                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
             }
-            else if ((isolation == IsolationLevel.Serializable) ||
-                (isolation == IsolationLevel.Snapshot))
-            {
-                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransSerializable);
-            }
-            else
-            {
-                // Set isolation level default to read committed.
-                _isolation = IsolationLevel.ReadCommitted;
-                conn.Connector.ExecuteBlind(PregeneratedMessage.BeginTransReadCommitted);
-            }
-
-            _conn.Connector.Transaction = this;
         }
 
         /// <summary>
@@ -86,10 +87,9 @@ namespace Npgsql
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection">NpgsqlConnection</see>
         /// object associated with the transaction.</value>
-        public new NpgsqlConnection Connection
-        {
-            get { return _conn; }
-        }
+        public new NpgsqlConnection Connection { get; internal set; }
+
+        NpgsqlConnector Connector { get { return Connection.Connector; } }
 
         /// <summary>
         /// DB connection.
@@ -108,12 +108,12 @@ namespace Npgsql
         {
             get
             {
-                if (_conn == null)
+                if (Connection == null)
                 {
                     throw new InvalidOperationException(L10N.NoTransaction);
                 }
 
-                return _isolation;
+                return _isolationLevel;
             }
         }
 
@@ -123,27 +123,17 @@ namespace Npgsql
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && this._conn != null)
-            {
-                if (_conn.Connector.Transaction != null)
-                {
-                    if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                    {
-                        // can't count on Rollback working if the thread has been aborted
-                        // need to copy since Cancel will set it to null
-                        NpgsqlConnection conn = _conn;
-                        Cancel();
-                        // must close connection since transaction hasn't been rolled back
-                        conn.Close();
-                    }
-                    else
-                    {
-                        this.Rollback();
-                    }
-                }
+            if (_disposed) { return; }
 
-                this._disposed = true;
+            if (disposing && Connection != null)
+            {
+                if (Connection.Connector.Transaction != null)
+                {
+                    Rollback();
+                }
             }
+
+            _disposed = true;
             base.Dispose(disposing);
         }
 
@@ -155,14 +145,11 @@ namespace Npgsql
             _log.Debug("Commit transaction");
             CheckDisposed();
 
-            if (_conn == null) {
+            if (Connection == null) {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
-            _conn.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
-
-            _conn.Connector.Transaction = null;
-            _conn = null;
+            Connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
         }
 
         /// <summary>
@@ -173,15 +160,13 @@ namespace Npgsql
             _log.Debug("Rollback transaction");
             CheckDisposed();
 
-            if (_conn == null) {
+            if (Connection == null) {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             Connection.CheckConnectionReady();
 
-            _conn.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
-            _conn.Connector.Transaction = null;
-            _conn = null;
+            Connection.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
         }
 
         /// <summary>
@@ -191,14 +176,14 @@ namespace Npgsql
         {
             CheckDisposed();
 
-            if (_conn == null)
+            if (Connection == null)
             {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             Connection.CheckConnectionReady();
 
-            if (!_conn.Connector.SupportsSavepoint)
+            if (!Connection.Connector.SupportsSavepoint)
             {
                 throw new InvalidOperationException(L10N.SavePointNotSupported);
             }
@@ -208,7 +193,7 @@ namespace Npgsql
                 throw new InvalidOperationException(L10N.SavePointWithSemicolon);
             }
 
-            _conn.Connector.ExecuteBlindSuppressTimeout(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
+            Connection.Connector.ExecuteBlindSuppressTimeout(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
         }
 
         /// <summary>
@@ -218,14 +203,14 @@ namespace Npgsql
         {
             CheckDisposed();
 
-            if (_conn == null)
+            if (Connection == null)
             {
                 throw new InvalidOperationException(L10N.NoTransaction);
             }
 
             Connection.CheckConnectionReady();
 
-            if (!_conn.Connector.SupportsSavepoint)
+            if (!Connection.Connector.SupportsSavepoint)
             {
                 throw new InvalidOperationException(L10N.SavePointNotSupported);
             }
@@ -236,23 +221,7 @@ namespace Npgsql
 
             }
 
-            _conn.Connector.ExecuteBlind(string.Format("SAVEPOINT {0}", savePointName));
-
-        }
-
-        /// <summary>
-        /// Cancel the transaction without telling the backend about it.  This is
-        /// used to make the transaction go away when closing a connection.
-        /// </summary>
-        internal void Cancel()
-        {
-            CheckDisposed();
-
-            if (_conn != null)
-            {
-                _conn.Connector.Transaction = null;
-                _conn = null;
-            }
+            Connection.Connector.ExecuteBlind(string.Format("SAVEPOINT {0}", savePointName));
         }
 
         internal bool Disposed
@@ -265,6 +234,12 @@ namespace Npgsql
             if (_disposed) {
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
             }
+        }
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(Connection == null || Connection.Connector.Transaction == this);
         }
     }
 }

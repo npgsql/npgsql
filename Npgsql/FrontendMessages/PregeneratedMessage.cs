@@ -50,19 +50,20 @@ namespace Npgsql.FrontendMessages
         {
             _tempBuf = new NpgsqlBuffer(new MemoryStream(), NpgsqlBuffer.MinimumBufferSize, Encoding.ASCII);
 
-            BeginTransRepeatableRead = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
-            BeginTransSerializable   = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
-            BeginTransReadCommitted  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
-            CommitTransaction        = BuildQuery("COMMIT");
-            RollbackTransaction      = BuildQuery("ROLLBACK");
-            DiscardAll               = BuildQuery("DISCARD ALL");
-            UnlistenAll              = BuildQuery("UNLISTEN *");
-            SetStmtTimeout10Sec      = BuildQuery("SET statement_timeout = 10000");
-            SetStmtTimeout20Sec      = BuildQuery("SET statement_timeout = 20000");
-            SetStmtTimeout30Sec      = BuildQuery("SET statement_timeout = 30000");
-            SetStmtTimeout60Sec      = BuildQuery("SET statement_timeout = 60000");
-            SetStmtTimeout90Sec      = BuildQuery("SET statement_timeout = 90000");
-            SetStmtTimeout120Sec     = BuildQuery("SET statement_timeout = 120000");
+            BeginTransRepeatableRead  = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;");
+            BeginTransSerializable    = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;");
+            BeginTransReadCommitted   = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ COMMITTED;");
+            BeginTransReadUncommitted = BuildQuery("BEGIN; SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
+            CommitTransaction         = BuildQuery("COMMIT");
+            RollbackTransaction       = BuildQuery("ROLLBACK");
+            DiscardAll                = BuildQuery("DISCARD ALL");
+            UnlistenAll               = BuildQuery("UNLISTEN *");
+            SetStmtTimeout10Sec       = BuildQuery("SET statement_timeout = 10000");
+            SetStmtTimeout20Sec       = BuildQuery("SET statement_timeout = 20000");
+            SetStmtTimeout30Sec       = BuildQuery("SET statement_timeout = 30000");
+            SetStmtTimeout60Sec       = BuildQuery("SET statement_timeout = 60000");
+            SetStmtTimeout90Sec       = BuildQuery("SET statement_timeout = 90000");
+            SetStmtTimeout120Sec      = BuildQuery("SET statement_timeout = 120000");
 
             _tempBuf = null;
         }
@@ -83,6 +84,7 @@ namespace Npgsql.FrontendMessages
         internal static readonly PregeneratedMessage BeginTransRepeatableRead;
         internal static readonly PregeneratedMessage BeginTransSerializable;
         internal static readonly PregeneratedMessage BeginTransReadCommitted;
+        internal static readonly PregeneratedMessage BeginTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage DiscardAll;

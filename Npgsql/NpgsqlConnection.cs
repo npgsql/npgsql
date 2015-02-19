@@ -576,12 +576,16 @@ namespace Npgsql
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
         {
-            _log.Debug("Beginning transaction with isolation level " + level);
-            CheckConnectionReady();
+            if (level == IsolationLevel.Chaos || level == IsolationLevel.Unspecified)
+                throw new NotSupportedException("Unsupported IsolationLevel: " + level);
+            Contract.EndContractBlock();
 
             if (Connector.Transaction != null) {
                 throw new InvalidOperationException(L10N.NoNestedTransactions);
             }
+
+            _log.Debug("Beginning transaction with isolation level " + level);
+            CheckConnectionReady();
 
             return new NpgsqlTransaction(this, level);
         }
@@ -666,7 +670,7 @@ namespace Npgsql
 
                 if (Connector.Transaction != null)
                 {
-                    Connector.Transaction.Cancel();
+                    Connector.ClearTransaction();
                 }
 
                 Connector.Close();

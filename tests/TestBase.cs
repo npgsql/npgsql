@@ -100,7 +100,7 @@ namespace NpgsqlTests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        private const string DEFAULT_CONNECTION_STRING = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
+        private const string DEFAULT_CONNECTION_STRING = "Server=mammoth;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;syncnotification=false";
 
         /// <summary>
         /// Indicates whether the database schema has already been created in this unit test session.
@@ -287,36 +287,40 @@ namespace NpgsqlTests
 
         #region Utilities for use by tests
 
-        protected int ExecuteNonQuery(string sql, NpgsqlConnection conn=null)
+        protected int ExecuteNonQuery(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)
                 conn = Conn;
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
                 return cmd.ExecuteNonQuery();
         }
 
-        protected object ExecuteScalar(string sql, NpgsqlConnection conn = null)
+        protected object ExecuteScalar(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)
                 conn = Conn;
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
                 return cmd.ExecuteScalar();
         }
 
 #if NET45
-        protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null)
+        protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)
                 conn = Conn;
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
                 return await cmd.ExecuteNonQueryAsync();
         }
 
-        protected async Task<object> ExecuteScalarAsync(string sql, NpgsqlConnection conn = null)
+        protected async Task<object> ExecuteScalarAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)
                 conn = Conn;
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            using (cmd)
                 return await cmd.ExecuteScalarAsync();
         }
 

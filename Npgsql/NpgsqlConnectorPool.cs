@@ -419,7 +419,7 @@ namespace Npgsql
             {
                 if (Connector.Transaction != null)
                 {
-                    Connector.Transaction.Cancel();
+                    Connector.ClearTransaction();
                 }
 
                 Connector.Close();

@@ -63,7 +63,7 @@ namespace Npgsql
                     _rm.Enlist(_callbacks, TransactionInterop.GetTransmitterPropagationToken(tx));
                     // enlisted in distributed transaction
                     // disconnect and cleanup local transaction
-                    _npgsqlTx.Cancel();
+                    _connection.Connector.ClearTransaction();
                     _npgsqlTx.Dispose();
                     _npgsqlTx = null;
                 }
@@ -88,7 +88,7 @@ namespace Npgsql
                 {
                     // cancel the NpgsqlTransaction since this will
                     // be handled by a two phase commit.
-                    _npgsqlTx.Cancel();
+                    _connection.Connector.ClearTransaction();
                     _npgsqlTx.Dispose();
                     _npgsqlTx = null;
                     _connection.PromotableLocalTransactionEnded();
@@ -183,7 +183,7 @@ namespace Npgsql
             {
                 // cancel the NpgsqlTransaction since this will
                 // be handled by a two phase commit.
-                _npgsqlTx.Cancel();
+                _connection.Connector.ClearTransaction();
                 _npgsqlTx.Dispose();
                 _npgsqlTx = null;
                 _connection.PromotableLocalTransactionEnded();

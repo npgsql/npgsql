@@ -77,8 +77,6 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlBuffer Buffer { get; private set; }
 
-        byte[] _crappyBuf = new byte[8192];
-
         /// <summary>
         /// The connection mediator.
         /// </summary>
@@ -99,14 +97,17 @@ namespace Npgsql
         /// </summary>
         internal int BackendProcessId { get; set; }
 
-        /// <summary>
-        /// Report if the connection is in a transaction.
-        /// </summary>
-        internal NpgsqlTransaction Transaction { get; set; }
-
         internal bool Pooled { get; private set; }
 
         internal TypeHandlerRegistry TypeHandlerRegistry { get; set; }
+
+        TransactionStatus _txStatus;
+        NpgsqlTransaction _tx;
+
+        /// <summary>
+        /// The number of messages that were prepended to the current message chain.
+        /// </summary>
+        byte _prependedMessages;
 
         /// <summary>
         /// A chain of messages to be sent to the backend.
@@ -169,6 +170,7 @@ namespace Npgsql
         public NpgsqlConnector(NpgsqlConnectionStringBuilder connectionString, bool pooled)
         {
             State = ConnectorState.Closed;
+            _txStatus = TransactionStatus.Idle;
             _settings = connectionString;
             Pooled = pooled;
             BackendParams = new Dictionary<string, string>();
@@ -224,13 +226,18 @@ namespace Npgsql
                 {
                     case ConnectorState.Ready:
                         ExecuteDeferredCommands();
-                        goto case ConnectorState.Closed;
+                        if (CurrentReader != null) {
+                            CurrentReader.Command.State = CommandState.Idle;
+                            CurrentReader = null;
+                        }
+                        break;
                     case ConnectorState.Closed:
                     case ConnectorState.Broken:
                         if (CurrentReader != null) {
                             CurrentReader.Command.State = CommandState.Idle;
                             CurrentReader = null;
                         }
+                        ClearTransaction();
                         break;
                     case ConnectorState.Connecting:
                     case ConnectorState.Executing:
@@ -612,8 +619,19 @@ namespace Npgsql
 
         #endregion
 
+        #region Frontend message processing
+
         internal void AddMessage(FrontendMessage msg)
         {
+            _messagesToSend.Add(msg);
+        }
+
+        /// <summary>
+        /// Prepends a message to be sent at the beginning of the next message chain.
+        /// </summary>
+        internal void PrependMessage(FrontendMessage msg)
+        {
+            _prependedMessages++;
             _messagesToSend.Add(msg);
         }
 
@@ -624,7 +642,7 @@ namespace Npgsql
             {
                 foreach (var msg in _messagesToSend)
                 {
-                    SendMessage(msg, false);
+                    SendMessage(msg);
                 }
                 Buffer.Flush();
             }
@@ -634,8 +652,20 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Sends a single frontend message, used for simple messages such as rollback, etc.
+        /// Note that additional prepend messages may be previously enqueued, and will be sent along
+        /// with this message.
+        /// </summary>
+        /// <param name="msg"></param>
+        void SendSingleMessage(FrontendMessage msg)
+        {
+            AddMessage(msg);
+            SendAllMessages();
+        }
+
         [GenerateAsync]
-        void SendMessage(FrontendMessage msg, bool flush = true)
+        void SendMessage(FrontendMessage msg)
         {
             try
             {
@@ -650,27 +680,29 @@ namespace Npgsql
                     }
                     Contract.Assume(Buffer.WriteSpaceLeft >= asSimple.Length);
                     asSimple.Write(Buffer);
+                    return;
                 }
-                else
+
+                var asComplex = msg as ChunkingFrontendMessage;
+                if (asComplex != null)
                 {
-                    var asComplex = msg as ChunkingFrontendMessage;
-                    if (asComplex != null)
+                    byte[] directBuf = null;
+                    while (!asComplex.Write(Buffer, ref directBuf))
                     {
-                        byte[] directBuf = null;
-                        while (!asComplex.Write(Buffer, ref directBuf))
+                        Buffer.Flush();
+
+                        // The following is an optimization hack for writing large byte arrays without passing
+                        // through our buffer
+                        if (directBuf != null)
                         {
-                            Buffer.Flush();
-                            // The following is an optimization hack for writing large byte arrays without passing
-                            // through our buffer
-                            if (directBuf != null)
-                            {
-                                Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
-                                directBuf = null;
-                            }
+                            Buffer.Underlying.Write(directBuf, 0, directBuf.Length);
+                            directBuf = null;
                         }
-                    } else throw PGUtil.ThrowIfReached();
+                    }
+                    return;
                 }
-                if (flush) { Buffer.Flush(); }
+
+                throw PGUtil.ThrowIfReached();
             }
             catch
             {
@@ -678,6 +710,8 @@ namespace Npgsql
                 throw;
             }
         }
+
+        #endregion
 
         #region Backend message processing
 
@@ -687,6 +721,10 @@ namespace Npgsql
             try
             {
                 return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
+            }
+            catch (NpgsqlException)
+            {
+                throw;
             }
             catch
             {
@@ -755,7 +793,9 @@ namespace Npgsql
                 case BackendMessageCode.CompletedResponse:
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
-                    return _readyForQueryMessage.Load(buf);
+                    var rfq = _readyForQueryMessage.Load(buf);
+                    TransactionStatus = rfq.TransactionStatusIndicator;
+                    return rfq;
                 case BackendMessageCode.EmptyQueryResponse:
                     return EmptyQueryMessage.Instance;
                 case BackendMessageCode.ParseComplete:
@@ -846,7 +886,75 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Processes the response from any messages that were prepended to the message chain.
+        /// These messages are currently assumed to be simple queries with no result sets.
+        /// </summary>
+        [GenerateAsync]
+        internal void ReadPrependedMessageResponses()
+        {
+            for (; _prependedMessages > 0; _prependedMessages--)
+            {
+                SkipUntil(BackendMessageCode.ReadyForQuery);
+            }
+        }
+
         #endregion Backend message processing
+
+        #region Transactions
+
+        /// <summary>
+        /// The current transaction status for this connector.
+        /// </summary>
+        internal TransactionStatus TransactionStatus
+        {
+            get { return _txStatus; }
+            private set
+            {
+                if (value == _txStatus) { return; }
+
+                switch (value) {
+                    case TransactionStatus.Idle:
+                        ClearTransaction();
+                        break;
+                    case TransactionStatus.InTransactionBlock:
+                    case TransactionStatus.InFailedTransactionBlock:
+                        break;
+                    case TransactionStatus.Pending:
+                        throw new Exception("Invalid TransactionStatus (should be frontend-only)");
+                    default:
+                        throw PGUtil.ThrowIfReached();
+                }
+                _txStatus = value;
+            }
+        }
+
+        /// <summary>
+        /// The transaction currently in progress, if any.
+        /// Note that this doesn't mean a transaction request has actually been sent to the backend - for
+        /// efficiency we defer sending the request to the first query after BeginTransaction is called.
+        /// See <see cref="TransactionStatus"/> for the actual backend transaction status.
+        /// </summary>
+        internal NpgsqlTransaction Transaction
+        {
+            get { return _tx; }
+            set
+            {
+                Contract.Requires(TransactionStatus == TransactionStatus.Idle);
+                _tx = value;
+                _txStatus = TransactionStatus.Pending;
+            }
+        }
+
+        internal void ClearTransaction()
+        {
+            if (_txStatus == TransactionStatus.Idle) { return; }
+            _tx.Connection = null;
+            _tx = null;
+            _txStatus = TransactionStatus.Idle;
+        }
+
+        #endregion
 
         #region Copy In / Out
 
@@ -1116,7 +1224,7 @@ namespace Npgsql
             try
             {
                 cancelConnector.RawOpen(cancelConnector.ConnectionTimeout*1000);
-                cancelConnector.SendMessage(new CancelRequestMessage(BackendProcessId, BackendSecretKey));
+                cancelConnector.SendSingleMessage(new CancelRequestMessage(BackendProcessId, BackendSecretKey));
             }
             finally
             {
@@ -1142,7 +1250,7 @@ namespace Npgsql
                 case ConnectorState.Ready:
                     try
                     {
-                        SendMessage(TerminateMessage.Instance);
+                        SendSingleMessage(TerminateMessage.Instance);
                     }
                     catch { }
                     break;
@@ -1380,7 +1488,8 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
-                SendMessage(new QueryMessage(query));
+                SendSingleMessage(new QueryMessage(query));
+                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1389,12 +1498,11 @@ namespace Npgsql
         [GenerateAsync]
         internal void ExecuteBlind(SimpleFrontendMessage message)
         {
-            Contract.Assume(!_messagesToSend.Any());
-
             using (BlockNotifications())
             {
                 SetBackendCommandTimeout(20);
-                SendMessage(message);
+                SendSingleMessage(message);
+                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1405,7 +1513,8 @@ namespace Npgsql
         {
             using (BlockNotifications())
             {
-                SendMessage(new QueryMessage(query));
+                SendSingleMessage(new QueryMessage(query));
+                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1417,7 +1526,8 @@ namespace Npgsql
             // Block the notification thread before writing anything to the wire.
             using (BlockNotifications())
             {
-                SendMessage(message);
+                SendSingleMessage(message);
+                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1436,34 +1546,35 @@ namespace Npgsql
             switch (timeout)
             {
                 case 10:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout10Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout10Sec);
                     break;
 
                 case 20:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout20Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout20Sec);
                     break;
 
                 case 30:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout30Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout30Sec);
                     break;
 
                 case 60:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout60Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout60Sec);
                     break;
 
                 case 90:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout90Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout90Sec);
                     break;
 
                 case 120:
-                    SendMessage(PregeneratedMessage.SetStmtTimeout120Sec);
+                    SendSingleMessage(PregeneratedMessage.SetStmtTimeout120Sec);
                     break;
 
                 default:
-                    SendMessage(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
+                    SendSingleMessage(new QueryMessage(string.Format("SET statement_timeout = {0}", timeout * 1000)));
                     break;
 
             }
+            ReadPrependedMessageResponses();
             SkipUntil(BackendMessageCode.ReadyForQuery);
             State = ConnectorState.Ready;
         }
@@ -1655,6 +1766,17 @@ namespace Npgsql
 
         #endregion Misc
 
+        #region Invariants
+
+        [ContractInvariantMethod]
+        void ObjectInvariants()
+        {
+            Contract.Invariant(TransactionStatus == TransactionStatus.Idle || Transaction != null);
+            Contract.Invariant(TransactionStatus != TransactionStatus.Idle || Transaction == null);
+            Contract.Invariant(Transaction == null || Transaction.Connection.Connector == this);
+        }
+
+        #endregion
     }
 
     /// <summary>
@@ -1695,6 +1817,31 @@ namespace Npgsql
         /// The connector is engaged in a COPY OUT operation.
         /// </summary>
         CopyOut,
+    }
+
+    internal enum TransactionStatus : byte
+    {
+        /// <summary>
+        /// Currently not in a transaction block
+        /// </summary>
+        Idle = (byte)'I',
+
+        /// <summary>
+        /// Currently in a transaction block
+        /// </summary>
+        InTransactionBlock = (byte)'T',
+
+        /// <summary>
+        /// Currently in a failed transaction block (queries will be rejected until block is ended)
+        /// </summary>
+        InFailedTransactionBlock = (byte)'E',
+
+        /// <summary>
+        /// A new transaction has been requested but not yet transmitted to the backend. It will be transmitted
+        /// prepended to the next query.
+        /// This is a client-side state option only, and is never transmitted from the backend.
+        /// </summary>
+        Pending = Byte.MaxValue,
     }
 
     /// <summary>
