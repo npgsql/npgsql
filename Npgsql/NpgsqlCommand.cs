@@ -694,11 +694,11 @@ namespace Npgsql
                         // Parameter hasn't been seen before in this query
                         NpgsqlParameter parameter;
                         if (!_parameters.TryGetValue(paramName, out parameter)) {
-                            throw new Exception(String.Format("Parameter {0} referenced in SQL but not found in parameter list", paramName));
+                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but not found in parameter list", paramName));
                         }
 
                         if (!parameter.IsInputDirection) {
-                            throw new Exception(String.Format("Parameter {0} referenced in SQL but is an out-only parameter", paramName));
+                            throw new Exception(String.Format("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName));
                         }
 
                         currentParameters.Add(parameter);

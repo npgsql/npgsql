@@ -149,32 +149,52 @@ namespace NpgsqlTests.Types
 
         [Test]
         [MinPgVersion(9, 2, 0, "JSON data type not yet introduced")]
-        public void InsertJsonValueDataType()
+        public void Json()
         {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_json) VALUES (:param)", Conn))
+            const string expected = @"{ ""Key"" : ""Value"" }";
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn))
             {
-                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Json;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
+                var reader = cmd.ExecuteReader();
+                reader.Read();
+                Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+                reader.Close();
             }
         }
 
         [Test]
         [MinPgVersion(9, 4, 0, "JSONB data type not yet introduced")]
-        public void InsertJsonbValueDataType()
+        public void Jsonb()
         {
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_jsonb) VALUES (:param)", Conn))
-            {
-                cmd.Parameters.AddWithValue("param", @"{ ""Key"" : ""Value"" }");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Jsonb;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+            const string expected = @"{""Key"": ""Value""}";
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, expected);
+                var reader = cmd.ExecuteReader();
+                reader.Read();
+                Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+                reader.Close();
             }
         }
 
         [Test]
         [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
-        public void InsertHstoreValueDataType()
+        public void Hstore()
         {
+            CreateSchema("hstore");
+            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
+            const string expected = @"""a"" => 3, ""b"" => 4";
+            using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Hstore, expected);
+                var reader = cmd.ExecuteReader();
+                reader.Read();
+                Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+                reader.Close();
+            }
+
+            /*
             CreateSchema("hstore");
             ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
             ExecuteNonQuery(@"ALTER TABLE data DROP COLUMN IF EXISTS field_hstore");
@@ -194,7 +214,7 @@ namespace NpgsqlTests.Types
                 cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
                 cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
                 Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
-            }
+            }*/
         }
 
         #region Unrecognized types

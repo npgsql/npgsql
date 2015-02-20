@@ -128,6 +128,20 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
+        [Test]
+        public void Validation()
+        {
+            var cmd = new NpgsqlCommand("SELECT @p1::BIT VARYING", Conn);
+            var p = new NpgsqlParameter("p1", NpgsqlDbType.Bit);
+            cmd.Parameters.Add(p);
+            cmd.Prepare();
+            p.Value = "001q0";
+            Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<FormatException>());
+
+            // Make sure the connection state is OK
+            Assert.That(ExecuteScalar("SELECT 8"), Is.EqualTo(8));
+        }
+
         // Older tests from here
 
         [Test]

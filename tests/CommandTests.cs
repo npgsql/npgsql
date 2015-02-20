@@ -90,20 +90,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void ParameterValidation()
-        {
-            var cmd = new NpgsqlCommand("SELECT @p1::BIT VARYING", Conn);
-            var p = new NpgsqlParameter("p1", NpgsqlDbType.Bit);
-            cmd.Parameters.Add(p);
-            cmd.Prepare();
-            p.Value = "001q0";
-            Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<FormatException>());
-
-            // Make sure the connection state is OK
-            Assert.That(ExecuteScalar("SELECT 8"), Is.EqualTo(8));
-        }
-
-        [Test]
         public void EmptyQuery()
         {
             var command = new NpgsqlCommand(";", Conn);
@@ -137,14 +123,14 @@ namespace NpgsqlTests
             }
         }
 
-        [Test]
-        public void DisposeCommandInMiddleOfRead()
+        [Test, Description("Disposing a command with an open reader does not close the reader. This is the SqlClient behavior.")]
+        public void DisposeCommandDoesNotCloseReader()
         {
             var cmd = new NpgsqlCommand("SELECT 1, 2", Conn);
             cmd.ExecuteReader();
             cmd.Dispose();
             cmd = new NpgsqlCommand("SELECT 3", Conn);
-            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(3));
+            Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         #region Cursors
@@ -222,18 +208,6 @@ namespace NpgsqlTests
             }
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data WHERE field_text = 'test'"), Is.EqualTo(1));
             Assert.That(ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0), "Prepared statements are being leaked");
-        }
-
-        [Test]
-        public void PreparedStatementInsertNullValue()
-        {
-            var command = new NpgsqlCommand("insert into data(field_int4) values (:p0);", Conn);
-            command.Parameters.Add(new NpgsqlParameter("p0", NpgsqlDbType.Integer));
-            command.Parameters["p0"].Value = DBNull.Value;
-            command.Prepare();
-
-            var dr = command.ExecuteReader();
-            Assert.IsNotNull(dr);
         }
 
         [Test]
@@ -567,31 +541,14 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void Bugs_240_and_296()
+        public void ParseStringWithSpecialChars()
         {
-            // Query from bug #240 (modified):
-            // Original: @"INSERT INTO TestTable (StringColumn, ByteaColumn) VALUES ('b''la', @SomeValue)"
-            Excecute_Bugs_240_and_296_query(@"SELECT 'b''la', @p");
-            //              Query processing breaks here ^
-
-            // Query from bug #296 (line breaks removed):
-            Excecute_Bugs_240_and_296_query(@"SELECT 1 WHERE ''= 'type(''m.response'')#''O''%' AND :p");
-            //                              Query processing breaks here ^
-
-            // Simplified query used to find the root cause of the bug:
-            Excecute_Bugs_240_and_296_query(@"SELECT '''a' || :p");
-            //             Query processing breaks here ^
-        }
-
-        private void Excecute_Bugs_240_and_296_query(string query)
-        {
-            using (var cmd = Conn.CreateCommand()) {
-                cmd.CommandText = query;
-
-                cmd.Parameters.AddWithValue("p", DBNull.Value);
-
-                // syntax error at or near ":"
-                cmd.ExecuteReader().Dispose();
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT 'b''la'";
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo("b'la"));
+                cmd.CommandText = "SELECT 'type(''m.response'')#''O''%'";
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo("type('m.response')#'O'%"));
             }
         }
 
@@ -744,26 +701,6 @@ namespace NpgsqlTests
         }
 
         [Test]
-        public void PreparedStatementWithParametersWithSize()
-        {
-            using (var cmd = new NpgsqlCommand("select :p0, :p1;", Conn))
-            {
-                var parameter = new NpgsqlParameter("p0", NpgsqlDbType.Varchar);
-                parameter.Value = "test";
-                parameter.Size = 10;
-                cmd.Parameters.Add(parameter);
-
-                parameter = new NpgsqlParameter("p1", NpgsqlDbType.Varchar);
-                parameter.Value = "test";
-                parameter.Size = 10;
-                cmd.Parameters.Add(parameter);
-
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        [Test]
         public void CommandTimeoutReset()
         {
             var cmd = new NpgsqlCommand();
@@ -907,7 +844,7 @@ namespace NpgsqlTests
                 cmd.Parameters.AddWithValue("str", "string");
                 cmd.Parameters.AddWithValue("int", 123);
                 cmd.Parameters.AddWithValue("text", "tt");
-                cmd.Parameters.AddWithValue("null", DBNull.Value);
+                cmd.Parameters.AddWithValue("null", NpgsqlDbType.Text, DBNull.Value);
 
                 // syntax error at or near ":"
                 var rdr = cmd.ExecuteReader();

@@ -252,8 +252,18 @@ namespace NpgsqlTests.Types
         {
             byte[] data = { 1, 2, 3, 4 , 5, 6 };
             var cmd = new NpgsqlCommand("SELECT @p", Conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", data) { Size = 4 });
+            var p = new NpgsqlParameter("p", data) { Size = 4 };
+            cmd.Parameters.Add(p);
             Assert.That(cmd.ExecuteScalar(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+
+            // NpgsqlParameter.Size needs to persist when value is changed
+            byte[] data2 = { 11, 12, 13, 14, 15, 16 };
+            p.Value = data2;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(new byte[] { 11, 12, 13, 14} ));
+
+            // NpgsqlParameter.Size larger than the value size should mean the value size
+            p.Size = data2.Length + 10;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
         }
 
         // Older tests from here

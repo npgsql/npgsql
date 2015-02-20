@@ -565,13 +565,13 @@ namespace Npgsql
             {
                 Handler = registry[_dbType.Value];
             }
-            else if (_value != null)
+            else if (!IsNull)
             {
                 Handler = registry[_value];
             }
             else
             {
-                Handler = registry[NpgsqlDbType.Text];
+                Handler = registry.UnrecognizedTypeHandler;
             }
         }
 
@@ -588,7 +588,7 @@ namespace Npgsql
         internal int ValidateAndGetLength()
         {
             if (IsNull) {
-                return -1;
+                return 0;
             }
 
             // No length caching for simple types

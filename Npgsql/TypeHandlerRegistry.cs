@@ -19,13 +19,14 @@ namespace Npgsql
     {
         #region Members
 
+        internal TypeHandler UnrecognizedTypeHandler { get; private set; }
+
         readonly NpgsqlConnector _connector;
         readonly Dictionary<uint, TypeHandler> _oidIndex;
 
         readonly Dictionary<DbType, TypeHandler> _byDbType;
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
-        readonly TypeHandler _unrecognizedTypeHandler;
         Dictionary<Type, TypeHandler> _byEnumTypeAsArray;
         List<BackendType> _backendTypes;
 
@@ -70,7 +71,7 @@ namespace Npgsql
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
             _byType = new Dictionary<Type, TypeHandler>();
-            _unrecognizedTypeHandler = new UnrecognizedTypeHandler { OID=0 };
+            UnrecognizedTypeHandler = new UnrecognizedTypeHandler();
         }
 
         static List<BackendType> LoadBackendTypes(NpgsqlConnector connector)
@@ -317,7 +318,7 @@ namespace Npgsql
             {
                 TypeHandler result;
                 if (!_oidIndex.TryGetValue(oid, out result)) {
-                    result = _unrecognizedTypeHandler;
+                    result = UnrecognizedTypeHandler;
                 }
                 return result;
             }
@@ -357,7 +358,7 @@ namespace Npgsql
                     throw new NotSupportedException("This enum array type is not supported (have you registered it in Npsql and set the EnumType property of NpgsqlParameter?)");
                 }
 
-                throw new NotSupportedException("This NpgsqlDbType is not supported in Npgsql: " + npgsqlDbType);
+                throw new NotImplementedException("This NpgsqlDbType hasn't been implemented yet in Npgsql: " + npgsqlDbType);
             }
         }
 
@@ -377,8 +378,7 @@ namespace Npgsql
         {
             get
             {
-                if (value == null || value is DBNull)
-                    return _unrecognizedTypeHandler;
+                Contract.Requires(value != null && !(value is DBNull));
 
                 if (value is DateTime)
                 {
@@ -483,7 +483,7 @@ namespace Npgsql
 
         #endregion
 
-        #region Type Discovery
+        #region Type Handler Discovery
 
         static TypeHandlerRegistry()
         {

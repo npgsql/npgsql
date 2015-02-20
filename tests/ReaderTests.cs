@@ -702,18 +702,20 @@ namespace NpgsqlTests
         [Test]
         public void Null()
         {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES (NULL)");
-
-            using (var command = new NpgsqlCommand("SELECT field_text FROM data", Conn))
-            using (var reader = command.ExecuteReader())
+            using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", Conn))
             {
-                reader.Read();
+                cmd.Parameters.Add(new NpgsqlParameter("p", DbType.String) { Value = DBNull.Value });
 
-                Assert.That(reader.IsDBNull(0), Is.True);
-                Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
-                Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(DBNull.Value));
-                Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                    Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
+                    Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(DBNull.Value));
+                    Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
+                }
             }
         }
 

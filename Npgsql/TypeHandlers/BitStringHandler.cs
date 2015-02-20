@@ -148,7 +148,7 @@ namespace Npgsql.TypeHandlers
             if (asString != null)
             {
                 if (asString.Any(c => c != '0' && c != '1'))
-                    throw new InvalidCastException("Cannot interpret as ASCII BitString: " + asString);
+                    throw new FormatException("Cannot interpret as ASCII BitString: " + asString);
                 return 4 + (asString.Length + 7)/8;
             }
 

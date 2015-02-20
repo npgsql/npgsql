@@ -11,11 +11,15 @@ using System.Data;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("text",    NpgsqlDbType.Text, new[] { DbType.String, DbType.StringFixedLength }, new[] { typeof(string), typeof(char[]) })]
+    [TypeMapping("text",    NpgsqlDbType.Text,
+      new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
+      new[] { typeof(string), typeof(char[]) }
+    )]
     [TypeMapping("varchar", NpgsqlDbType.Varchar)]
     [TypeMapping("bpchar",  NpgsqlDbType.Char, typeof(char))]
     [TypeMapping("name",    NpgsqlDbType.Name)]
     [TypeMapping("xml",     NpgsqlDbType.Xml, DbType.Xml)]
+    [TypeMapping("json",    NpgsqlDbType.Json)]
     [TypeMapping("unknown")]
     internal class TextHandler : TypeHandler<string>,
         IChunkingTypeWriter,
@@ -190,7 +194,7 @@ namespace Npgsql.TypeHandlers
             var asString = value as string;
             if (asString != null)
             {
-                return parameter.LengthCache.Set(parameter.Size == 0
+                return parameter.LengthCache.Set(parameter.Size == 0 || parameter.Size >= asString.Length
                   ? Encoding.UTF8.GetByteCount(asString)
                   : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
                 );
@@ -199,7 +203,7 @@ namespace Npgsql.TypeHandlers
             var asCharArray = value as char[];
             if (asCharArray != null)
             {
-                return parameter.LengthCache.Set(parameter.Size == 0
+                return parameter.LengthCache.Set(parameter.Size == 0 || parameter.Size >= asCharArray.Length
                   ? Encoding.UTF8.GetByteCount(asCharArray)
                   : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size)
                 );
@@ -217,14 +221,14 @@ namespace Npgsql.TypeHandlers
             _str = value as string;
             if (_str != null)
             {
-                _charLen = parameter.Size == 0 ? _str.Length : parameter.Size;
+                _charLen = parameter.Size == 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
             }
 
             _chars = value as char[];
             if (_chars != null)
             {
-                _charLen = parameter.Size == 0 ? _chars.Length : parameter.Size;
+                _charLen = parameter.Size == 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
             }
 

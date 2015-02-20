@@ -215,21 +215,6 @@ namespace NpgsqlTests.Types
             cmd.Dispose();
         }
 
-        [Test, Description("Tests some types which are aliased to strings")]
-        [TestCase("varchar")]
-        [TestCase("name")]
-        public void AliasedTypes(string typename)
-        {
-            const string expected = "some_text";
-            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'::{1}", expected, typename), Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetString(0), Is.EqualTo(expected));
-            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
-            reader.Dispose();
-            cmd.Dispose();
-        }
-
         [Test, Description("Tests that strings are truncated when the NpgsqlParameter's Size is set")]
         public void Truncate()
         {
@@ -243,6 +228,10 @@ namespace NpgsqlTests.Types
             const string data2 = "AnotherValue";
             p.Value = data2;
             Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2.Substring(0, 4)));
+
+            // NpgsqlParameter.Size larger than the value size should mean the value size
+            p.Size = data2.Length + 10;
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
         }
 
         [Test]
@@ -255,6 +244,34 @@ namespace NpgsqlTests.Types
                 Throws.Exception.TypeOf<NpgsqlException>()
                 .With.Property("Code").EqualTo("22021")
             );
+        }
+
+        [Test, Description("Tests some types which are aliased to strings")]
+        [TestCase("varchar")]
+        [TestCase("name")]
+        public void AliasedPgTypes(string typename)
+        {
+            const string expected = "some_text";
+            var cmd = new NpgsqlCommand(String.Format("SELECT '{0}'::{1}", expected, typename), Conn);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetString(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<char[]>(0), Is.EqualTo(expected.ToCharArray()));
+            reader.Dispose();
+            cmd.Dispose();
+        }
+
+
+        [Test]
+        [TestCase(DbType.AnsiString)]
+        [TestCase(DbType.AnsiStringFixedLength)]
+        public void AliasedDbTypes(DbType dbType)
+        {
+            using (var command = new NpgsqlCommand("SELECT @p", Conn))
+            {
+                command.Parameters.Add(new NpgsqlParameter("p", dbType) { Value = "SomeString" });
+                Assert.That(command.ExecuteScalar(), Is.EqualTo("SomeString"));
+            }
         }
 
         // Older tests from here
@@ -361,25 +378,6 @@ namespace NpgsqlTests.Types
                         Assert.AreEqual(testArr2[i], arr2[i]);
                     }
                 }
-            }
-        }
-
-        [Test]
-        public void AnsiStringSupport()
-        {
-            using (var command = new NpgsqlCommand("INSERT INTO data(field_text) VALUES (:a)", Conn))
-            {
-                command.Parameters.Add(new NpgsqlParameter("a", DbType.AnsiString));
-                command.Parameters[0].Value = "TesteAnsiString";
-                var rowsAdded = command.ExecuteNonQuery();
-                Assert.AreEqual(1, rowsAdded);
-
-                command.CommandText = String.Format("SELECT COUNT(*) FROM data WHERE field_text = '{0}'",
-                                                    command.Parameters[0].Value);
-                command.Parameters.Clear();
-                var result = command.ExecuteScalar();
-                // The missed cast is needed as Server7.2 returns Int32 and Server7.3+ returns Int64
-                Assert.AreEqual(1, result);
             }
         }
     }
