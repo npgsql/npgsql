@@ -160,7 +160,7 @@ namespace Npgsql.FrontendMessages
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt32(len);
-                        asChunkingWriter.PrepareWrite(param.Value, buf, param.Size, param.LengthCache);
+                        asChunkingWriter.PrepareWrite(param.Value, buf, param);
                         _wroteParamLen = true;
                     }
                     if (!asChunkingWriter.Write(ref directBuf)) {

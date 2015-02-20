@@ -72,16 +72,16 @@ namespace Npgsql.TypeHandlers
         byte[] _value;
         int _size;
 
-        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            return truncateSize == 0 ? ((byte[])value).Length : truncateSize;
+            return parameter.Size == 0 ? ((byte[])value).Length : parameter.Size;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             _buf = buf;
             _value = (byte[])value;
-            _size = truncateSize == 0 ? _value.Length : truncateSize;
+            _size = parameter.Size == 0 ? _value.Length : parameter.Size;
         }
 
         // ReSharper disable once RedundantAssignment

@@ -45,16 +45,22 @@ namespace Npgsql
     [ContractClass(typeof(IChunkingTypeWriterContracts))]
     interface IChunkingTypeWriter
     {
-        /// <param name="truncateSize">
-        /// The truncate size given by the user via <see cref="NpgsqlParameter.Size"/>.
-        /// 0 means not set (i.e. the full value length should be used)
+        /// <param name="value">the value to be examined</param>
+        /// <param name="parameter">
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for the
+        /// length cache and for settings which impact how to send the parameter, e.g.
+        /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache);
-        /// <param name="truncateSize">
-        /// The truncate size given by the user via <see cref="NpgsqlParameter.Size"/>.
-        /// 0 means not set (i.e. the full value length should be used)
+        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
+
+        /// <param name="value">the value to be written</param>
+        /// <param name="buf"></param>
+        /// <param name="parameter">
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for the
+        /// length cache and for settings which impact how to send the parameter, e.g.
+        /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache);
+        void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
         bool Write(ref DirectBuffer directBuf);
     }
 
@@ -62,13 +68,13 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             Contract.Requires(value != null);
             return default(int);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             Contract.Requires(buf != null);
             Contract.Requires(value != null);

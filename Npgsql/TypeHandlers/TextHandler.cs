@@ -180,49 +180,51 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
-            if (lengthCache == null) { lengthCache = new LengthCache(1); }
-            if (lengthCache.IsPopulated) { return lengthCache.Get(); }
+            var lengthCache = parameter.GetOrCreateLengthCache(1);
+            if (lengthCache.IsPopulated) {
+                return parameter.LengthCache.Get();
+            }
 
             var asString = value as string;
             if (asString != null)
             {
-                return lengthCache.Set(truncateSize == 0
+                return parameter.LengthCache.Set(parameter.Size == 0
                   ? Encoding.UTF8.GetByteCount(asString)
-                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, truncateSize)
+                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
                 );
             }
 
             var asCharArray = value as char[];
             if (asCharArray != null)
             {
-                return lengthCache.Set(truncateSize == 0
+                return parameter.LengthCache.Set(parameter.Size == 0
                   ? Encoding.UTF8.GetByteCount(asCharArray)
-                  : Encoding.UTF8.GetByteCount(asCharArray, 0, truncateSize)
+                  : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size)
                 );
             }
 
             throw new InvalidCastException("Can't write type as text: " + value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             _buf = buf;
             _charPos = -1;
-            _byteLen = lengthCache.GetLast();
+            _byteLen = parameter.LengthCache.GetLast();
 
             _str = value as string;
             if (_str != null)
             {
-                _charLen = truncateSize == 0 ? _str.Length : truncateSize;
+                _charLen = parameter.Size == 0 ? _str.Length : parameter.Size;
                 return;
             }
 
             _chars = value as char[];
             if (_chars != null)
             {
-                _charLen = truncateSize == 0 ? _chars.Length : truncateSize;
+                _charLen = parameter.Size == 0 ? _chars.Length : parameter.Size;
                 return;
             }
 

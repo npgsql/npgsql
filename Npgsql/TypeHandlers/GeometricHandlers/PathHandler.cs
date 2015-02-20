@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, int truncateSize, ref LengthCache lengthCache)
+        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
         {
             if (!(value is NpgsqlPath)) {
                 throw new InvalidCastException("Expected an NpgsqlPath");
@@ -84,7 +84,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             return 5 + ((NpgsqlPath)value).Count * 16;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, int truncateSize, LengthCache lengthCache)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
         {
             _buf = buf;
             _value = (NpgsqlPath)value;

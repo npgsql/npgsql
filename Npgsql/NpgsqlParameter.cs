@@ -63,7 +63,15 @@ namespace Npgsql
         object _value;
         object _npgsqlValue;
         NpgsqlParameterCollection _collection;
-        internal LengthCache LengthCache { get; private set; }
+        internal LengthCache LengthCache { get;  private set; }
+
+        internal LengthCache GetOrCreateLengthCache(int capacity=0)
+        {
+            if (LengthCache == null) {
+                LengthCache = capacity == 0 ? new LengthCache() : new LengthCache(capacity);
+            }
+            return LengthCache;
+        }
 
         internal bool IsBound { get; private set; }
         internal TypeHandler Handler { get; private set; }
@@ -591,11 +599,7 @@ namespace Npgsql
 
             var asChunkingWriter = Handler as IChunkingTypeWriter;
             Contract.Assert(asChunkingWriter != null);
-
-            var lengthCache = LengthCache;
-            var len = asChunkingWriter.ValidateAndGetLength(Value, _size, ref lengthCache);
-            LengthCache = lengthCache;
-            return len;
+            return asChunkingWriter.ValidateAndGetLength(Value, this);
         }
 
         internal void ClearLengthCache()
