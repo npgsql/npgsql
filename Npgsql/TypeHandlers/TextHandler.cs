@@ -191,22 +191,27 @@ namespace Npgsql.TypeHandlers
                 return parameter.LengthCache.Get();
             }
 
+            return parameter.LengthCache.Set(DoValidateAndGetLength(value, parameter));
+        }
+
+        /// <summary>
+        /// Validates and calculates the length, but does not consult the length cache or stores
+        /// in it. Used by other type handlers which delegate to TextHandler.
+        /// </summary>
+        internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter)
+        {
             var asString = value as string;
-            if (asString != null)
-            {
-                return parameter.LengthCache.Set(parameter.Size == 0 || parameter.Size >= asString.Length
+            if (asString != null) {
+                return parameter.Size == 0 || parameter.Size >= asString.Length
                   ? Encoding.UTF8.GetByteCount(asString)
-                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size)
-                );
+                  : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
             }
 
             var asCharArray = value as char[];
-            if (asCharArray != null)
-            {
-                return parameter.LengthCache.Set(parameter.Size == 0 || parameter.Size >= asCharArray.Length
+            if (asCharArray != null) {
+                return parameter.Size == 0 || parameter.Size >= asCharArray.Length
                   ? Encoding.UTF8.GetByteCount(asCharArray)
-                  : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size)
-                );
+                  : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size);
             }
 
             throw new InvalidCastException("Can't write type as text: " + value.GetType());
