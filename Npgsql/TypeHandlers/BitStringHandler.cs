@@ -289,8 +289,8 @@ namespace Npgsql.TypeHandlers
             return GetElementFieldType(fieldDescription);
         }
 
-        public BitStringArrayHandler(BitStringHandler elementHandler, char textDelimiter)
-            : base(elementHandler, textDelimiter) {}
+        public BitStringArrayHandler(BitStringHandler elementHandler)
+            : base(elementHandler) {}
 
         public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {

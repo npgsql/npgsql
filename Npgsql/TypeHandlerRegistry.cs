@@ -78,7 +78,7 @@ namespace Npgsql
         {
             // Select all basic, range and enum types along with their array type's OID and text delimiter
             // For range types, select also the subtype they contain
-            const string query = @"SELECT typname, pg_type.oid, typtype, typarray, typdelim, rngsubtype " +
+            const string query = @"SELECT typname, pg_type.oid, typtype, typarray, rngsubtype " +
                                  @"FROM pg_type " +
                                  @"LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid) " +
                                  @"WHERE typtype IN ('b', 'r', 'e') " +
@@ -98,9 +98,8 @@ namespace Npgsql
                         Contract.Assume(oid != 0);
                         var type = (BackendTypeType) dr.GetString(2)[0];
                         var arrayOID = Convert.ToUInt32(dr[3]);
-                        var textDelimiter = dr.GetString(4)[0];
                         var rangeSubtypeOID = type == BackendTypeType.Range
-                          ? UInt32.Parse(dr.GetString(5))
+                          ? UInt32.Parse(dr.GetString(4))
                           : 0;
 
                         types.Add(new BackendType
@@ -109,7 +108,6 @@ namespace Npgsql
                             OID = oid,
                             Type = type,
                             ArrayOID = arrayOID,
-                            ArrayTextDelimiter = textDelimiter,
                             RangeSubtypeOID = rangeSubtypeOID,
                         });
                     }
@@ -199,7 +197,7 @@ namespace Npgsql
             }
 
             if (backendType.ArrayOID != 0) {
-                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler, backendType.ArrayTextDelimiter);
+                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler);
                 _byNpgsqlDbType.Add(NpgsqlDbType.Array | handler.NpgsqlDbType, arrayHandler);
             }
         }
@@ -208,20 +206,20 @@ namespace Npgsql
 
         #region Array
 
-        TypeHandler RegisterArrayType(uint oid, TypeHandler elementHandler, char textDelimiter)
+        TypeHandler RegisterArrayType(uint oid, TypeHandler elementHandler)
         {
             ArrayHandler arrayHandler;
 
             var asBitStringHandler = elementHandler as BitStringHandler;
             if (asBitStringHandler != null) {
                 // BitString requires a special array handler which returns bool or BitArray
-                arrayHandler = new BitStringArrayHandler(asBitStringHandler, textDelimiter);
+                arrayHandler = new BitStringArrayHandler(asBitStringHandler);
             } else if (elementHandler is ITypeHandlerWithPsv) {
                 var arrayHandlerType = typeof(ArrayHandlerWithPsv<,>).MakeGenericType(elementHandler.GetFieldType(), elementHandler.GetProviderSpecificFieldType());
-                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler, textDelimiter);
+                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             } else {
                 var arrayHandlerType = typeof(ArrayHandler<>).MakeGenericType(elementHandler.GetFieldType());
-                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler, textDelimiter);
+                arrayHandler = (ArrayHandler)Activator.CreateInstance(arrayHandlerType, elementHandler);
             }
 
             arrayHandler.PgName = "array";
@@ -256,7 +254,7 @@ namespace Npgsql
             _oidIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
 
-            RegisterArrayType(backendType.ArrayOID, handler, backendType.ArrayTextDelimiter);
+            RegisterArrayType(backendType.ArrayOID, handler);
         }
 
         #endregion
@@ -293,7 +291,7 @@ namespace Npgsql
 
             if (backendType.ArrayOID != 0)
             {
-                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler, backendType.ArrayTextDelimiter);
+                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler);
                 if (_byEnumTypeAsArray == null) {
                     _byEnumTypeAsArray = new Dictionary<Type, TypeHandler>();
                 }
@@ -545,7 +543,6 @@ namespace Npgsql
         internal uint OID;
         internal BackendTypeType Type;
         internal uint ArrayOID;
-        internal char ArrayTextDelimiter;
         internal uint RangeSubtypeOID;
     }
 

@@ -58,15 +58,9 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         internal TypeHandler ElementHandler { get; private set; }
 
-        /// <summary>
-        /// The delimiter character for this array.
-        /// </summary>
-        internal char TextDelimiter { get; private set; }
-
-        protected ArrayHandler(TypeHandler elementHandler, char textDelimiter)
+        protected ArrayHandler(TypeHandler elementHandler)
         {
             ElementHandler = elementHandler;
-            TextDelimiter = textDelimiter;
         }
 
         #region Read
@@ -482,8 +476,8 @@ namespace Npgsql.TypeHandlers
             return typeof(TElement);
         }
 
-        public ArrayHandler(TypeHandler elementHandler, char textDelimiter)
-            : base(elementHandler, textDelimiter) { }
+        public ArrayHandler(TypeHandler elementHandler)
+            : base(elementHandler) { }
 
         public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
         {
@@ -532,7 +526,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        public ArrayHandlerWithPsv(TypeHandler elementHandler, char textDelimiter)
-            : base(elementHandler, textDelimiter) {}
+        public ArrayHandlerWithPsv(TypeHandler elementHandler)
+            : base(elementHandler) {}
     }
 }
