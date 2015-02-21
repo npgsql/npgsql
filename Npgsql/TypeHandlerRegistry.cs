@@ -19,11 +19,10 @@ namespace Npgsql
     {
         #region Members
 
+        internal NpgsqlConnector Connector { get; private set; }
         internal TypeHandler UnrecognizedTypeHandler { get; private set; }
 
-        readonly NpgsqlConnector _connector;
         readonly Dictionary<uint, TypeHandler> _oidIndex;
-
         readonly Dictionary<DbType, TypeHandler> _byDbType;
         readonly Dictionary<NpgsqlDbType, TypeHandler> _byNpgsqlDbType;
         readonly Dictionary<Type, TypeHandler> _byType;
@@ -66,7 +65,7 @@ namespace Npgsql
 
         TypeHandlerRegistry(NpgsqlConnector connector)
         {
-            _connector = connector;
+            Connector = connector;
             _oidIndex = new Dictionary<uint, TypeHandler>();
             _byDbType = new Dictionary<DbType, TypeHandler>();
             _byNpgsqlDbType = new Dictionary<NpgsqlDbType, TypeHandler>();
@@ -161,8 +160,8 @@ namespace Npgsql
             // Instantiate the type handler. If it has a constructor that accepts an NpgsqlConnector, use that to allow
             // the handler to make connector-specific adjustments. Otherwise (the normal case), use the default constructor.
             var handler = (TypeHandler)(
-                handlerType.GetConstructor(new[] { typeof(NpgsqlConnector) }) != null
-                    ? Activator.CreateInstance(handlerType, _connector)
+                handlerType.GetConstructor(new[] { typeof(TypeHandlerRegistry) }) != null
+                    ? Activator.CreateInstance(handlerType, this)
                     : Activator.CreateInstance(handlerType)
             );
 

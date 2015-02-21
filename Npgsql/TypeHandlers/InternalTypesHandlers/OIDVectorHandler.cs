@@ -3,82 +3,32 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Common.Logging;
 using Npgsql.BackendMessages;
+using Npgsql.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
+    /// <summary>
+    /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
+    /// be 0 (we send 1 for regular arrays).
+    /// </summary>
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    internal class OIDVectorHandler : TypeHandler<uint[]>, IChunkingTypeReader<uint[]>, IChunkingTypeWriter
+    internal class OIDVectorHandler : ArrayHandler<uint>
     {
-        public uint[] Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        static readonly ILog _log = LogManager.GetCurrentClassLogger();
+
+        public OIDVectorHandler(TypeHandlerRegistry registry) : base(new UInt32Handler())
         {
-            throw new NotImplementedException();
-            buf.Skip(12); // skip number of dims + has nulls flag + element oid
-            var length = buf.ReadInt32();
-            buf.Skip(4); // skip lower bound
-            var res = new uint[length];
-            for (var i = 0; i < length; i++)
+            // TODO: We assume here that the oid type comes before oidvector
+            var oidHandler = registry[NpgsqlDbType.Oid];
+            if (oidHandler == registry.UnrecognizedTypeHandler)
             {
-                buf.Skip(4); // skip length
-                res[i] = buf.ReadUInt32();
+                _log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
+                return;
             }
-            return res;
-        }
-
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
-        {
-            return
-                12 + // dims + nulls + element oid
-                4 + 4 + // length + lower bound
-                8 * ((uint[])value).Length;
-        }
-
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool Write(ref DirectBuffer directBuf)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal void WriteBinary(object value, NpgsqlBuffer buf)
-        {
-            throw new NotImplementedException();
-            /*
-            var arr = (uint[])value;
-            buf.EnsureWrite(24);
-            buf.WriteInt32(20 + arr.Length * 8);
-            buf.WriteInt32(1);
-            buf.WriteInt32(0);
-            buf.WriteInt32((int)registry.GetOidFromNpgsqlDbType(NpgsqlDbType.Oid));
-            buf.WriteInt32(arr.Length);
-            buf.WriteInt32(0); // oidvector has lower bound = 0
-
-            foreach (var elem in arr)
-            {
-                if (buf.WriteSpaceLeft < 8)
-                    buf.EnsureWrite(8);
-                buf.WriteInt32(4);
-                buf.WriteInt32((int)elem);
-            }
-             */
-        }
-
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool Read(out uint[] result)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int ValidateAndGetLength(object value)
-        {
-            return ValidateAndGetLength(value);
+            LowerBound = 0;
+            ElementHandler.OID = oidHandler.OID;
         }
     }
 }

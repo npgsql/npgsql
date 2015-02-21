@@ -18,9 +18,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _integerFormat;
 
-        public TimeStampHandler(NpgsqlConnector connector)
+        public TimeStampHandler(TypeHandlerRegistry registry)
         {
-            _integerFormat = connector.BackendParams["integer_datetimes"] == "on";
+            _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
         }
 
         public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)

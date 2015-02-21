@@ -21,6 +21,14 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     internal abstract class ArrayHandler : TypeHandler<Array>
     {
+        /// <summary>
+        /// The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but
+        /// is 0 for OIDVector.
+        /// </summary>
+        protected int LowerBound { get; set; }
+
+        #region State
+
         Array _readValue;
         IList _writeValue;
         ReadState _readState;
@@ -39,6 +47,8 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         bool _hasNulls;
         bool _wroteElementLen;
+
+        #endregion
 
         internal override Type GetFieldType(FieldDescription fieldDescription)
         {
@@ -60,6 +70,7 @@ namespace Npgsql.TypeHandlers
 
         protected ArrayHandler(TypeHandler elementHandler)
         {
+            LowerBound = 1;
             ElementHandler = elementHandler;
         }
 
@@ -297,14 +308,13 @@ namespace Npgsql.TypeHandlers
                         for (var i = 0; i < _dimensions; i++)
                         {
                             _buf.WriteInt32(asArray.GetLength(i));
-                            _buf.WriteInt32(1);
-                            // We set lBound to 1 and silently ignore if the user had set it to something else
+                            _buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
                         }
                     }
                     else
                     {
                         _buf.WriteInt32(_writeValue.Count);
-                        _buf.WriteInt32(1);
+                        _buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
                         _enumerator = _writeValue.GetEnumerator();
                     }
 
