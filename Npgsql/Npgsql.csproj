@@ -347,6 +347,7 @@
     <Compile Include="TypeHandlers\GeometricHandlers\PathHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\LineSegmentHandler.cs" />
     <Compile Include="TypeHandlers\GeometricHandlers\PointHandler.cs" />
+    <Compile Include="TypeHandlers\HstoreHandler.cs" />
     <Compile Include="TypeHandlers\InternalTypesHandlers\OIDVectorHandler.cs" />
     <Compile Include="TypeHandlers\JsonbHandler.cs" />
     <Compile Include="TypeHandlers\NetworkHandlers\CidrHandler.cs" />

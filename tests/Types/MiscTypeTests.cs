@@ -182,39 +182,23 @@ namespace NpgsqlTests.Types
         [MinPgVersion(9, 1, 0, "HSTORE data type not yet introduced")]
         public void Hstore()
         {
-            CreateSchema("hstore");
-            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
-            const string expected = @"""a"" => 3, ""b"" => 4";
+            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
+
+            var expected = new Dictionary<string, string> {
+              {"a", "3"},
+              {"b", null},
+              {"cd", "hello"}
+            };
+
             using (var cmd = new NpgsqlCommand("SELECT @p", Conn)) {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Hstore, expected);
                 var reader = cmd.ExecuteReader();
                 reader.Read();
-                Assert.That(reader.GetString(0), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(IDictionary<string, string>)));
+                Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                Assert.That(reader.GetString(0), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
                 reader.Close();
             }
-
-            /*
-            CreateSchema("hstore");
-            ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
-            ExecuteNonQuery(@"ALTER TABLE data DROP COLUMN IF EXISTS field_hstore");
-            try
-            {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
-            }
-            catch (NpgsqlException e)
-            {
-                if (e.Code == "42704")
-                    TestUtil.Inconclusive("HSTORE does not seem to be installed at the backend");
-            }
-
-            ExecuteNonQuery(@"SET search_path = public, hstore");
-            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_hstore) VALUES (:param)", Conn))
-            {
-                cmd.Parameters.AddWithValue("param", @"""a"" => 3, ""b"" => 4");
-                cmd.Parameters[0].NpgsqlDbType = NpgsqlDbType.Hstore;
-                Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
-            }*/
         }
 
         #region Unrecognized types

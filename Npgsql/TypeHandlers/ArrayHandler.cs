@@ -409,8 +409,7 @@ namespace Npgsql.TypeHandlers
                 var pos = lengthCache.Position;
                 lengthCache.Set(0);
                 var len = 12 + (1 * 8) + asGenericList.Sum(e => 4 + GetSingleElementLength(e, parameter));
-                lengthCache.Lengths[pos] = len;
-                return len;
+                return lengthCache.Lengths[pos] = len;
             }
 
             // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to do
