@@ -41,6 +41,21 @@ namespace Npgsql
     internal class NpgsqlConnectorPool
     {
         /// <summary>
+        /// Maintains information for the pool about a connector
+        /// </summary>
+        private class PooledConnector
+        {
+            public NpgsqlConnector Connector { get; private set; }
+            public DateTime ExpirationDateTime { get; set; }
+
+            public PooledConnector(NpgsqlConnector connector, DateTime expirationDateTime)
+            {
+                Connector = connector;
+                ExpirationDateTime = expirationDateTime;
+            }
+        }
+
+        /// <summary>
         /// A queue with an extra Int32 for keeping track of busy connections.
         /// </summary>
         private class ConnectorQueue
@@ -48,16 +63,70 @@ namespace Npgsql
             /// <summary>
             /// Connections available to the end user
             /// </summary>
-            public Queue<NpgsqlConnector> Available = new Queue<NpgsqlConnector>();
+            public LinkedList<PooledConnector> Available = new LinkedList<PooledConnector>();
 
             /// <summary>
             /// Connections currently in use
             /// </summary>
-            public Dictionary<NpgsqlConnector, object> Busy = new Dictionary<NpgsqlConnector, object>();
+            public Dictionary<NpgsqlConnector, PooledConnector> Busy = new Dictionary<NpgsqlConnector, PooledConnector>();
 
-            public Int32 ConnectionLifeTime;
+            public Int32 ConnectionLifeTime { get; private set; }
             public Int32 InactiveTime = 0;
             public Int32 MinPoolSize;
+
+            public delegate void CleanupInactiveConnectorsHandler(ConnectorQueue queue);
+            public event CleanupInactiveConnectorsHandler CleanupInactiveConnectorsTick;
+
+            /// <value>Timer for tracking unused connections in pools.</value>
+            // I used System.Timers.Timer because of bad experience with System.Threading.Timer
+            // on Windows - it's going mad sometimes and don't respect interval was set.
+            private Timer Timer;
+            private object timerLock = new object();
+
+            public ConnectorQueue(Int32 connectionLifeTime)
+            {
+                ConnectionLifeTime = connectionLifeTime;
+
+                // If the connection life time of this connection is not set
+                // there is no need to periodically close connections.
+                if (connectionLifeTime > 0)
+                {
+                    Timer = new Timer(connectionLifeTime * 1000);
+                    Timer.AutoReset = false;
+                    Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
+                    Timer.Start();
+                }
+            }
+
+            public void TimerElapsedHandler(object sender, ElapsedEventArgs e)
+            {
+                if (CleanupInactiveConnectorsTick != null)
+                {
+                    CleanupInactiveConnectorsTick(this);
+                }
+            }
+
+            public void StartTimer()
+            {
+                if (Timer != null)
+                {
+                    lock (timerLock)
+                    {
+                        Timer.Start();
+                    }
+                }
+            }
+
+            public void StopTimer()
+            {
+                if (Timer != null)
+                {
+                    lock (timerLock)
+                    {
+                        Timer.Stop();
+                    }
+                }
+            }
         }
 
         /// <value>Unique static instance of the connector pool
@@ -69,82 +138,73 @@ namespace Npgsql
         public NpgsqlConnectorPool()
         {
             PooledConnectors = new Dictionary<string, ConnectorQueue>();
-
-            Timer = new Timer(1000);
-            Timer.AutoReset = false;
-            Timer.Elapsed += new ElapsedEventHandler(TimerElapsedHandler);
         }
 
-        private void StartTimer()
+        private void TimerElapsedHandler(ConnectorQueue queue)
         {
-            lock (locker)
-            {
-                Timer.Start();
-            }
-        }
+            if (queue == null) return;
 
-        private void TimerElapsedHandler(object sender, ElapsedEventArgs e)
-        {
-            NpgsqlConnector Connector;
-            var activeConnectionsExist = false;
-
-            lock (locker)
+            try
             {
-                try
+                // Determine if we need to process this queue at all.  If not a lock can be skipped.
+                if (queue.Available.Count > 0 && queue.Available.Count + queue.Busy.Count > queue.MinPoolSize)
                 {
-                    foreach (ConnectorQueue Queue in PooledConnectors.Values)
+                    lock (queue)
                     {
-                        lock (Queue)
+                        // Check again after getting the lock.
+                        if (queue.Available.Count > 0 && queue.Available.Count + queue.Busy.Count > queue.MinPoolSize)
                         {
-                            if (Queue.Available.Count > 0)
+                            // Determine the maximum number of connectors that could be closed.
+                            Int32 diff = queue.Available.Count + queue.Busy.Count - queue.MinPoolSize;
+
+                            // Only close at most half of the closable connectors at a time.
+                            Int32 toBeClosed = (diff + 1) / 2;
+                            toBeClosed = Math.Min(toBeClosed, queue.Available.Count);
+
+                            // Start from the end of the list because that's where the old connectors should be
+                            // if there are any.
+                            LinkedListNode<PooledConnector> currentNode = queue.Available.Last;
+                            LinkedListNode<PooledConnector> previousNode = null;
+                            Int32 closedConnectors = 0;
+
+                            while (toBeClosed > closedConnectors)
                             {
-                                if (Queue.Available.Count + Queue.Busy.Count > Queue.MinPoolSize)
+                                // Get a reference to the previous node now because it will be gone
+                                // After the current node is removed from the list.
+                                previousNode = currentNode.Previous;
+
+                                if (currentNode.Value.ExpirationDateTime <= DateTime.Now)
                                 {
-                                    if (Queue.InactiveTime >= Queue.ConnectionLifeTime)
-                                    {
-                                        Int32 diff = Queue.Available.Count + Queue.Busy.Count - Queue.MinPoolSize;
-                                        Int32 toBeClosed = (diff + 1) / 2;
-                                        toBeClosed = Math.Min(toBeClosed, Queue.Available.Count);
+                                    // Remove the connector from the available pool.
+                                    queue.Available.Remove(currentNode);
 
-                                        if (diff < 2)
-                                        {
-                                            diff = 2;
-                                        }
+                                    currentNode.Value.Connector.Close();
 
-                                        Queue.InactiveTime -= Queue.ConnectionLifeTime / (int)(Math.Log(diff) / Math.Log(2));
+                                    // Keep track of how many have been closed so that
+                                    // too many aren't closed in one tick.
+                                    closedConnectors++;
+                                }
 
-                                        for (Int32 i = 0; i < toBeClosed; ++i)
-                                        {
-                                            Connector = Queue.Available.Dequeue();
-                                            Connector.Close();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Queue.InactiveTime++;
-                                    }
+                                // Keep processing if there are more nodes.
+                                if (previousNode != null)
+                                {
+                                    currentNode = previousNode;
                                 }
                                 else
                                 {
-                                    Queue.InactiveTime = 0;
+                                    break;
                                 }
-                                if (Queue.Available.Count > 0 || Queue.Busy.Count > 0)
-                                    activeConnectionsExist = true;
-                            }
-                            else
-                            {
-                                Queue.InactiveTime = 0;
-                            }
+                            }                            
                         }
                     }
                 }
-                finally
-                {
-                    if (activeConnectionsExist)
-                        Timer.Start();
-                    else
-                        Timer.Stop();
-                }
+            }
+            finally
+            {
+                if (queue.Available.Count > 0 || queue.Busy.Count > 0)
+                    queue.StartTimer();
+                else
+                    queue.StopTimer();
             }
         }
 
@@ -154,10 +214,6 @@ namespace Npgsql
         /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
         private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
 
-        /// <value>Timer for tracking unused connections in pools.</value>
-        // I used System.Timers.Timer because of bad experience with System.Threading.Timer
-        // on Windows - it's going mad sometimes and don't respect interval was set.
-        private Timer Timer;
 
         /// <summary>
         /// Searches the pooled connector lists for a matching connector object or creates a new one.
@@ -202,8 +258,6 @@ namespace Npgsql
                     throw new Exception("Connection pool exceeds maximum size.");
                 }
             }
-
-            StartTimer();
 
             return Connector;
         }
@@ -284,25 +338,28 @@ namespace Npgsql
                     // Try to find a queue.
                     if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
                     {
-
-                        Queue = new ConnectorQueue();
-                        Queue.ConnectionLifeTime = Connection.ConnectionLifeTime;
+                        Queue = new ConnectorQueue(Connection.ConnectionLifeTime);
                         Queue.MinPoolSize = Connection.MinPoolSize;
+                        Queue.CleanupInactiveConnectorsTick += TimerElapsedHandler;
                         PooledConnectors[Connection.ConnectionString] = Queue;
                     }
                 }
 
                 // Now we can simply lock on the pool itself.
-                lock (Queue)
+                if (Queue.Available.Count > 0)
                 {
-                    if (Queue.Available.Count > 0)
+                    lock (Queue)
                     {
-                        // Found a queue with connectors.  Grab the top one.
+                        if (Queue.Available.Count > 0)
+                        {
+                            // Found a queue with connectors.  Grab the top one.
 
-                        // Check if the connector is still valid.
-
-                        Connector = Queue.Available.Dequeue();
-                        Queue.Busy.Add(Connector, null);
+                            // Check if the connector is still valid.
+                            PooledConnector pooledConnector = Queue.Available.First.Value;
+                            Connector = pooledConnector.Connector;
+                            Queue.Available.RemoveFirst();
+                            Queue.Busy.Add(pooledConnector.Connector, pooledConnector);
+                        }
                     }
                 }
 
@@ -310,12 +367,16 @@ namespace Npgsql
 
             if (Connector != null) return Connector;
 
-            lock (Queue)
+
+            if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
             {
-                if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
+                lock (Queue)
                 {
-                    Connector = new NpgsqlConnector(Connection);
-                    Queue.Busy.Add(Connector, null);
+                    if (Queue.Available.Count + Queue.Busy.Count < Connection.MaxPoolSize)
+                    {
+                        Connector = new NpgsqlConnector(Connection);
+                        Queue.Busy.Add(Connector, new PooledConnector(Connector, DateTime.Now.AddSeconds(Queue.ConnectionLifeTime)));
+                    }
                 }
             }
 
@@ -347,29 +408,32 @@ namespace Npgsql
                 // Meet the MinPoolSize requirement if needed.
                 if (Connection.MinPoolSize > 1)
                 {
-
-                    lock (Queue)
+                    if (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
                     {
-
-                        while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                        lock (Queue)
                         {
-                            NpgsqlConnector Spare = new NpgsqlConnector(Connection);
+                            while (Queue.Available.Count + Queue.Busy.Count < Connection.MinPoolSize)
+                            {
+                                NpgsqlConnector Spare = new NpgsqlConnector(Connection);
 
-                            Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
-                            Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
-                            Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
-                            Spare.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
+                                Spare.ProvideClientCertificatesCallback += Connection.ProvideClientCertificatesCallbackDelegate;
+                                Spare.CertificateSelectionCallback += Connection.CertificateSelectionCallbackDelegate;
+                                Spare.CertificateValidationCallback += Connection.CertificateValidationCallbackDelegate;
+                                Spare.PrivateKeySelectionCallback += Connection.PrivateKeySelectionCallbackDelegate;
+                                Spare.ValidateRemoteCertificateCallback += Connection.ValidateRemoteCertificateCallbackDelegate;
 
-                            Spare.Open();
+                                Spare.Open();
 
-                            Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-                            Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-                            Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-                            Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
-                            Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
+                                Spare.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
+                                Spare.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
+                                Spare.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
+                                Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
+                                Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
-                            Queue.Available.Enqueue(Spare);
+                                Queue.Available.AddLast(new PooledConnector(Spare, DateTime.Now.AddSeconds(Connection.ConnectionLifeTime)));
+                            }
+
+                            Queue.StartTimer();
                         }
                     }
                 }
@@ -473,8 +537,18 @@ namespace Npgsql
             if (inQueue)
                 lock (queue)
                 {
-                    queue.Busy.Remove(Connector);
-                    queue.Available.Enqueue(Connector);
+                    PooledConnector pooledConnector = null;
+                    if (queue.Busy.TryGetValue(Connector, out pooledConnector))
+                    {
+                        queue.Busy.Remove(Connector);
+
+                        // Set the new expiration time of the connection and add it the front
+                        // of the available pool.
+                        pooledConnector.ExpirationDateTime = DateTime.Now.AddSeconds(queue.ConnectionLifeTime);
+                        queue.Available.AddFirst(pooledConnector);
+
+                        queue.StartTimer();
+                    }
                 }
             else
                 lock (queue)
@@ -495,7 +569,8 @@ namespace Npgsql
             {
                 while (Queue.Available.Count > 0)
                 {
-                    NpgsqlConnector connector = Queue.Available.Dequeue();
+                    NpgsqlConnector connector = Queue.Available.First.Value.Connector;
+                    Queue.Available.RemoveFirst();
 
                     try
                     {
