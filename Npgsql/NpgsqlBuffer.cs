@@ -306,13 +306,12 @@ namespace Npgsql
                 return result;
             }
 
-            // Worst case: our buffer isn't big enough. For now, pessimistically allocate a char buffer
-            // that will hold the maximum number of characters for the column length
-            // TODO: Optimize
-            var pessimisticNumChars = TextEncoding.GetMaxCharCount(byteCount);
-            var pessimisticOutput = new char[pessimisticNumChars];
-            var actualNumChars = PopulateCharArray(pessimisticOutput, byteCount);
-            return new string(pessimisticOutput, 0, actualNumChars);
+            // Worst case: our buffer isn't big enough. For now, allocate a byte buffer
+            // that will hold the bytes of the string.
+            // TODO: Optimize, for example use a buffer pool
+            var byteArr = new byte[byteCount];
+            ReadBytes(byteArr, 0, byteCount, true);
+            return TextEncoding.GetString(byteArr);
         }
 
         int PopulateCharArray(char[] output, int byteCount)
