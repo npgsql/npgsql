@@ -77,10 +77,16 @@ namespace Npgsql
         {
             // Select all basic, range and enum types along with their array type's OID and text delimiter
             // For range types, select also the subtype they contain
-            const string query = @"SELECT typname, pg_type.oid, typtype, typarray, rngsubtype " +
+            string query = connector.SupportsRangeTypes ?
+                                 @"SELECT typname, pg_type.oid, typtype, typarray, rngsubtype " +
                                  @"FROM pg_type " +
                                  @"LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid) " +
                                  @"WHERE typtype IN ('b', 'r', 'e') " +
+                                 @"ORDER BY typtype"
+                                 :
+                                 @"SELECT typname, pg_type.oid, typtype, typarray " +
+                                 @"FROM pg_type " +
+                                 @"WHERE typtype IN ('b', 'e') " +
                                  @"ORDER BY typtype";
 
             var types = new List<BackendType>();

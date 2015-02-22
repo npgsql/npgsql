@@ -1445,6 +1445,7 @@ namespace Npgsql
         internal bool SupportsDiscard { get; private set; }
         internal bool SupportsEStringPrefix { get; private set; }
         internal bool SupportsHexByteFormat { get; private set; }
+        internal bool SupportsRangeTypes { get; private set; }
         internal bool UseConformantStrings { get; private set; }
 
         /// <summary>
@@ -1473,6 +1474,9 @@ namespace Npgsql
 
             // Per the PG documentation, hex string encoding format support appeared in PG version 9.0.
             SupportsHexByteFormat = (ServerVersion >= new Version(9, 0, 0));
+
+            // Range data types
+            SupportsRangeTypes = (ServerVersion >= new Version(9, 2, 0));
         }
 
         #endregion Supported features
