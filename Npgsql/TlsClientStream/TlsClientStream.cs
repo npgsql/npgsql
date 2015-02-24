@@ -1,5 +1,8 @@
-﻿using System;
+﻿#undef CHECK_ARGUMENTS
+
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -182,7 +185,7 @@ namespace TlsClientStream
                 Utils.WriteUInt64(_buf, cipherStartPos - 5 - 8, _readConnState.ReadSeqNum);
 
                 var hmac = _readConnState.ReadMac.ComputeHash(_buf, cipherStartPos - 5 - 8, 8 + 5 + plaintextLen);
-                
+
                 if (!Utils.ArraysEqual(hmac, 0, _buf, cipherStartPos + plaintextLen, hmac.Length))
                     SendAlertFatal(AlertDescription.BadRecordMac);
 
@@ -234,14 +237,14 @@ namespace TlsClientStream
                 Utils.WriteUInt16(_buf, startPos + 3, (ushort)len);
 
                 Utils.WriteUInt64(_tempBuf8, 0, _connState.WriteSeqNum++);
-                
+
                 _connState.WriteMac.Initialize();
                 _connState.WriteMac.TransformBlock(_tempBuf8, 0, 8, _tempBuf8, 0);
                 _connState.WriteMac.TransformBlock(_buf, startPos, 5, _buf, startPos);
                 _connState.WriteMac.TransformBlock(_buf, startPos + 5 + _connState.IvBuf.Length, len, _buf, startPos + 5 + _connState.IvBuf.Length);
                 _connState.WriteMac.TransformFinalBlock(_buf, 0, 0);
                 var mac = _connState.WriteMac.Hash;
-                
+
                 Buffer.BlockCopy(mac, 0, _buf, startPos + 5 + _connState.IvBuf.Length + len, mac.Length);
                 Utils.ClearArray(mac);
 
@@ -349,7 +352,7 @@ namespace TlsClientStream
                 UpdateHandshakeHash(buf, 0, buf.Length);
                 HandshakeType msgType = (HandshakeType)buf[pos++];
                 int msgLen = Utils.ReadUInt24(buf, ref pos);
-                
+
                 switch (msgType)
                 {
                     case HandshakeType.ServerHello:
@@ -695,7 +698,7 @@ namespace TlsClientStream
                 _buf[offset++] = 1; // Length
                 _buf[offset++] = 0; // Uncompressed
             }
-            
+
 
             Utils.WriteUInt16(_buf, extensionLengthOffset, (ushort)(offset - (extensionLengthOffset + 2)));
 
@@ -1076,7 +1079,7 @@ namespace TlsClientStream
             var gBig = new BigInteger(_handshakeData.G);
             var pBig = new BigInteger(_handshakeData.P);
             var xcBig = new BigInteger(Xc);
-            
+
             var ycBig = BigInteger.ModPow(gBig, xcBig, pBig);
             byte[] Yctmp = ycBig.ToByteArray();
             byte[] Yc;
@@ -1132,7 +1135,7 @@ namespace TlsClientStream
             byte[] preMasterSecret;
             EllipticCurve.Affine publicPoint;
             curve.Ecdh(Qax, Qay, _rng, out preMasterSecret, out publicPoint);
-            
+
             SetMasterSecret(preMasterSecret);
             _buf[offset++] = (byte)(1 + 2 * curve.curveByteLen); // Point length
             _buf[offset++] = 4; // Uncompressed
@@ -1207,7 +1210,7 @@ namespace TlsClientStream
             _handshakeData.SupportedSignatureAlgorithms = supportedSignatureAlgorithms;
             _handshakeData.CertificateAuthorities = certificateAuthorities;
         }
-        
+
         HandshakeType SendClientCertificate(ref int offset)
         {
             X509Chain selected = null;
@@ -1263,7 +1266,7 @@ namespace TlsClientStream
 
             var keyDsa = key as DSACryptoServiceProvider;
             var keyRsa = key as RSACryptoServiceProvider;
-            
+
             byte[] signature = null, hash = null;
 
             if (keyDsa != null)
@@ -1317,7 +1320,7 @@ namespace TlsClientStream
 
                 _handshakeData.CertificateVerifyHash_SHA1.TransformFinalBlock(_buf, 0, 0);
                 hash = _handshakeData.CertificateVerifyHash_SHA1.Hash;
-                
+
                 signature = keyRsa.SignHash(hash, Utils.HashNameToOID["SHA1"]);
 
                 _buf[offset++] = (byte)TLSHashAlgorithm.SHA1;
@@ -1342,7 +1345,7 @@ namespace TlsClientStream
         void SendChangeCipherSpec(ref int offset, int ivLen)
         {
             _buf[offset++] = (byte)ContentType.ChangeCipherSpec;
-            
+
             // Version: TLS 1.2
             _buf[offset++] = 3;
             _buf[offset++] = 3;
@@ -1472,7 +1475,7 @@ namespace TlsClientStream
                     // We read 0 bytes to find out. If end of stream, it will just return 0, otherwise an exception will be thrown, as we want.
                     // TODO: what to do with _closed? (_eof is true)
                     _baseStream.Read(_buf, 0, 0);
-                    
+
                     _baseStream.Close();
                     break;
                 default:
@@ -1496,6 +1499,13 @@ namespace TlsClientStream
                 throw new IOException("Cannot write data until everything buffered has been read");
             }
             _readStart = _readEnd = 0;
+        }
+        void CheckNotClosed()
+        {
+            if (_closed)
+            {
+                throw new ObjectDisposedException("Stream is closed");
+            }
         }
 
         void EnqueueReadData(bool allowApplicationData)
@@ -1522,7 +1532,7 @@ namespace TlsClientStream
 
         public void PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback)
         {
-            if (_connState.CipherSuite != null || _pendingConnState != null)
+            if (_connState.CipherSuite != null || _pendingConnState != null || _closed)
                 throw new InvalidOperationException("Already performed initial handshake");
 
             _hostName = hostName;
@@ -1548,7 +1558,7 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw;
+                throw new IOException(e.Description.ToString(), e);
             }
         }
 
@@ -1558,6 +1568,17 @@ namespace TlsClientStream
 
         public override void Write(byte[] buffer, int offset, int len)
         {
+#if CHECK_ARGUMENTS
+            if (buffer == null)
+                throw new ArgumentNullException("buffer");
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+            if (len < 0 || len > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("len");
+            Contract.EndContractBlock();
+#endif
+
+            CheckNotClosed();
             if (_connState.CipherSuite == null)
             {
                 throw new InvalidOperationException("Must perform initial handshake before writing application data");
@@ -1591,12 +1612,13 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw;
+                throw new IOException(e.Description.ToString(), e);
             }
         }
 
         public override void Flush()
         {
+            CheckNotClosed();
             if (_writePos > 5 + _connState.IvLen)
             {
                 try
@@ -1612,13 +1634,24 @@ namespace TlsClientStream
                 catch (ClientAlertException e)
                 {
                     WriteAlertFatal(e.Description);
-                    throw;
+                    throw new IOException(e.Description.ToString(), e);
                 }
             }
         }
 
         public override int Read(byte[] buffer, int offset, int len)
         {
+#if CHECK_ARGUMENTS
+            if (buffer == null)
+                throw new ArgumentNullException("buffer");
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+            if (len < 0 || len > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("len");
+            Contract.EndContractBlock();
+#endif
+
+            CheckNotClosed();
             try
             {
                 for (; ; )
@@ -1758,7 +1791,7 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw;
+                throw new IOException(e.Description.ToString(), e);
             }
         }
 
@@ -1811,11 +1844,11 @@ namespace TlsClientStream
         }
         public override bool CanRead
         {
-            get { return _connState.IsAuthenticated && _baseStream.CanRead; }
+            get { return !_closed && _connState.IsAuthenticated && _baseStream.CanRead; }
         }
         public override bool CanWrite
         {
-            get { return _connState.IsAuthenticated && _baseStream.CanWrite; }
+            get { return !_closed && _connState.IsAuthenticated && _baseStream.CanWrite; }
         }
         public override void SetLength(long value)
         {
@@ -1830,6 +1863,8 @@ namespace TlsClientStream
 
         public bool HasBufferedReadData()
         {
+            if (_closed)
+                return false;
             if (_lenBufferedReadData > 0)
                 return true;
             if (_decryptedReadPos < _decryptedReadEnd)
