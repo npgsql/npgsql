@@ -264,12 +264,10 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Transactions" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Xml" />
-    <Reference Include="Mono.Security">
-      <HintPath>..\lib\Mono.Security\4.0\Mono.Security.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Release-net40' Or '$(Configuration)' == 'Debug-net40'">
     <Reference Include="Microsoft.Threading.Tasks">
@@ -338,6 +336,17 @@
     <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
+    <Compile Include="TlsClientStream\CipherSuiteInfo.cs" />
+    <Compile Include="TlsClientStream\ClientAlertException.cs" />
+    <Compile Include="TlsClientStream\ConnectionState.cs" />
+    <Compile Include="TlsClientStream\EllipticCurve.cs" />
+    <Compile Include="TlsClientStream\Enums.cs" />
+    <Compile Include="TlsClientStream\GaloisCounterMode.cs" />
+    <Compile Include="TlsClientStream\HandshakeData.cs" />
+    <Compile Include="TlsClientStream\HandshakeMessagesBuffer.cs" />
+    <Compile Include="TlsClientStream\ServerAlertException.cs" />
+    <Compile Include="TlsClientStream\TlsClientStream.cs" />
+    <Compile Include="TlsClientStream\Utils.cs" />
     <Compile Include="TypeHandlers\BitStringHandler.cs" />
     <Compile Include="TypeHandlers\EnumHandler.cs" />
     <Compile Include="TypeHandlers\FullTextSearchHandlers\TsQueryHandler.cs" />

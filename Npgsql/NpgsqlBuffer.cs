@@ -543,6 +543,7 @@ namespace Npgsql
             {
                 Contract.Assert(ReadBytesLeft == 0, "There cannot be read bytes buffered while a write operation is going on.");
                 Underlying.Write(_buf, 0, _writePosition);
+                Underlying.Flush();
                 TotalBytesFlushed += _writePosition;
                 _writePosition = 0;
             }

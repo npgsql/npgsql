@@ -37,14 +37,12 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Common.Logging;
-using Mono.Security.Protocol.Tls;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Text;
 using System.Text.RegularExpressions;
 using Npgsql.FrontendMessages;
-using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 
 namespace Npgsql
 {
@@ -190,7 +188,7 @@ namespace Npgsql
         /// <summary>
         /// Return Connection String.
         /// </summary>
-        internal static bool UseSslStream = true;
+        internal static bool UseSslStream = false;
         internal string ConnectionString { get { return _settings.ConnectionString; } }
         internal string Host { get { return _settings.Host; } }
         internal int Port { get { return _settings.Port; } }
@@ -200,7 +198,6 @@ namespace Npgsql
         internal bool SSL { get { return _settings.SSL; } }
         internal SslMode SslMode { get { return _settings.SslMode; } }
         internal int BufferSize { get { return _settings.BufferSize; } }
-        internal bool UseMonoSsl { get { return ValidateRemoteCertificateCallback == null; } }
         internal int ConnectionTimeout { get { return _settings.Timeout; } }
         internal int DefaultCommandTimeout { get { return _settings.CommandTimeout; } }
         internal bool Enlist { get { return _settings.Enlist; } }
@@ -411,7 +408,7 @@ namespace Npgsql
 
             _initQueries = sbInitQueries.ToString();
 
-            ExecuteBlind(_initQueries);
+            //ExecuteBlind(_initQueries);
 
             TypeHandlerRegistry.Setup(this);
 
@@ -515,16 +512,10 @@ namespace Npgsql
                     //trigger the callback to fetch some certificates
                     DefaultProvideClientCertificatesCallback(clientCertificates);
 
-                    //if (context.UseMonoSsl)
                     if (!UseSslStream)
                     {
-                        var sslStreamPriv = new SslClientStream(baseStream, Host, true, SecurityProtocolType.Default, clientCertificates)
-                        {
-                            ClientCertSelectionDelegate = DefaultCertificateSelectionCallback,
-                            ServerCertValidationDelegate = DefaultCertificateValidationCallback,
-                            PrivateKeyCertSelectionDelegate = DefaultPrivateKeySelectionCallback
-                        };
-
+                        var sslStreamPriv = new TlsClientStream.TlsClientStream(baseStream);
+                        sslStreamPriv.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback);
                         sslStream = sslStreamPriv;
                         IsSecure = true;
                     }
@@ -541,7 +532,7 @@ namespace Npgsql
             Socket = socket;
             BaseStream = baseStream;
             //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
-            Stream = BaseStream;
+            Stream = sslStream ?? BaseStream;
             Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
             _log.DebugFormat("Connected to {0}:{1 }", Host, Port);
         }
@@ -1069,36 +1060,6 @@ namespace Npgsql
         #region SSL
 
         /// <summary>
-        /// Default SSL CertificateSelectionCallback implementation.
-        /// </summary>
-        internal X509Certificate DefaultCertificateSelectionCallback(X509CertificateCollection clientCertificates,
-                                                                     X509Certificate serverCertificate, string targetHost,
-                                                                     X509CertificateCollection serverRequestedCertificates)
-        {
-            return CertificateSelectionCallback != null
-                ? CertificateSelectionCallback(clientCertificates, serverCertificate, targetHost, serverRequestedCertificates)
-                : null;
-        }
-
-        /// <summary>
-        /// Default SSL CertificateValidationCallback implementation.
-        /// </summary>
-        internal bool DefaultCertificateValidationCallback(X509Certificate certificate, int[] certificateErrors)
-        {
-            return CertificateValidationCallback == null || CertificateValidationCallback(certificate, certificateErrors);
-        }
-
-        /// <summary>
-        /// Default SSL PrivateKeySelectionCallback implementation.
-        /// </summary>
-        internal AsymmetricAlgorithm DefaultPrivateKeySelectionCallback(X509Certificate certificate, string targetHost)
-        {
-            return PrivateKeySelectionCallback != null
-                ? PrivateKeySelectionCallback(certificate, targetHost)
-                : null;
-        }
-
-        /// <summary>
         /// Default SSL ProvideClientCertificatesCallback implementation.
         /// </summary>
         internal void DefaultProvideClientCertificatesCallback(X509CertificateCollection certificates)
@@ -1125,21 +1086,6 @@ namespace Npgsql
         /// Called to provide client certificates for SSL handshake.
         /// </summary>
         internal event ProvideClientCertificatesCallback ProvideClientCertificatesCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateSelectionCallback delegate.
-        /// </summary>
-        internal event CertificateSelectionCallback CertificateSelectionCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.CertificateValidationCallback delegate.
-        /// </summary>
-        internal event CertificateValidationCallback CertificateValidationCallback;
-
-        /// <summary>
-        /// Mono.Security.Protocol.Tls.PrivateKeySelectionCallback delegate.
-        /// </summary>
-        internal event PrivateKeySelectionCallback PrivateKeySelectionCallback;
 
         /// <summary>
         /// Called to validate server's certificate during SSL handshake
@@ -1284,7 +1230,7 @@ namespace Npgsql
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {
-                        while (_connector.Buffer.ReadBytesLeft > 0)
+                        while (_connector.Buffer.ReadBytesLeft > 0 || _connector.IsSecure && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData())
                         {
                             var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
@@ -1337,7 +1283,7 @@ namespace Npgsql
                 semaphore.WaitAsync().ContinueWith(t => {
                     try
                     {
-                        while (BaseStream.DataAvailable || Buffer.ReadBytesLeft > 0)
+                        while (BaseStream.DataAvailable || IsSecure && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData() || Buffer.ReadBytesLeft > 0)
                         {
                             var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
