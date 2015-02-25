@@ -30,7 +30,7 @@ namespace TlsClientStream
         public bool SecureRenegotiation { get; set; }
         public byte[] ClientVerifyData { get; set; }
         public byte[] ServerVerifyData { get; set; }
-        public int IvLen { get { return CipherSuite.AesMode == AesMode.CBC ? 16 : 8; } }
+        public int IvLen { get { return CipherSuite == null ? 0 : CipherSuite.AesMode == AesMode.CBC ? 16 : 8; } }
 
         public bool IsAuthenticated { get { return ReadAes != null; } }
 
