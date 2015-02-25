@@ -46,6 +46,8 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     internal static class PGUtil
     {
+        internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
+
         /// <summary>
         /// This method takes a version string as returned by SELECT VERSION() and returns
         /// a valid version string ("7.2.2" for example).
@@ -57,7 +59,7 @@ namespace Npgsql
             Int32 Start = 0, End = 0;
 
             // find the first digit and assume this is the start of the version number
-            for (; Start < VersionString.Length && !char.IsDigit(VersionString[Start]); Start++)
+            for (; Start < VersionString.Length && !Char.IsDigit(VersionString[Start]); Start++)
             {
                 ;
             }
@@ -65,7 +67,7 @@ namespace Npgsql
             End = Start;
 
             // read until hitting whitespace, which should terminate the version number
-            for (; End < VersionString.Length && !char.IsWhiteSpace(VersionString[End]); End++)
+            for (; End < VersionString.Length && !Char.IsWhiteSpace(VersionString[End]); End++)
             {
                 ;
             }
@@ -79,7 +81,7 @@ namespace Npgsql
             for (int idx = 0; idx != VersionString.Length; ++idx)
             {
                 char c = VersionString[idx];
-                if (!char.IsDigit(c) && c != '.')
+                if (!Char.IsDigit(c) && c != '.')
                 {
                     VersionString = VersionString.Substring(0, idx);
                     break;

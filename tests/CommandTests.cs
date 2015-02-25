@@ -950,6 +950,14 @@ namespace NpgsqlTests
         #endregion
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/503")]
+        public void InvalidUTF8()
+        {
+            const string badString = "SELECT 'abc\uD801\uD802d'";
+            Assert.That(() => ExecuteScalar(badString), Throws.Exception.TypeOf<EncoderFallbackException>());
+        }
+
+        [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/393")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/299")]
         public void DisposePreparedAfterCommandClose()

@@ -540,7 +540,7 @@ namespace Npgsql
             BaseStream = baseStream;
             //Stream = new BufferedStream(sslStream ?? baseStream, 8192);
             Stream = BaseStream;
-            Buffer = new NpgsqlBuffer(Stream, BufferSize, Encoding.UTF8);
+            Buffer = new NpgsqlBuffer(Stream, BufferSize, PGUtil.UTF8Encoding);
             _log.DebugFormat("Connected to {0}:{1 }", Host, Port);
         }
 

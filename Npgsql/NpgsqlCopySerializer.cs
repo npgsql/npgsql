@@ -148,7 +148,7 @@ namespace Npgsql
             {
                 if (_delimiterBytes == null)
                 {
-                    _delimiterBytes = BackendEncoding.UTF8Encoding.GetBytes(_delimiter);
+                    _delimiterBytes = PGUtil.UTF8Encoding.GetBytes(_delimiter);
                 }
                 return _delimiterBytes;
             }
@@ -179,7 +179,7 @@ namespace Npgsql
             {
                 if (_separatorBytes == null)
                 {
-                    _separatorBytes = BackendEncoding.UTF8Encoding.GetBytes(_separator);
+                    _separatorBytes = PGUtil.UTF8Encoding.GetBytes(_separator);
                 }
                 return _separatorBytes;
             }
@@ -210,7 +210,7 @@ namespace Npgsql
             {
                 if (_escapeBytes == null)
                 {
-                    _escapeBytes = BackendEncoding.UTF8Encoding.GetBytes(_escape);
+                    _escapeBytes = PGUtil.UTF8Encoding.GetBytes(_escape);
                 }
                 return _escapeBytes;
             }
@@ -241,7 +241,7 @@ namespace Npgsql
             {
                 if (_nullBytes == null)
                 {
-                    _nullBytes = BackendEncoding.UTF8Encoding.GetBytes(_null);
+                    _nullBytes = PGUtil.UTF8Encoding.GetBytes(_null);
                 }
                 return _nullBytes;
             }
@@ -550,9 +550,9 @@ namespace Npgsql
 //                    MakeRoomForBytes(encodedLength);
 //                    _sendBufferAt += BackendEncoding.UTF8Encoding.GetBytes(fieldValue, bufferedUpto, escapeAt, _sendBuffer, _sendBufferAt);
 //                    bufferedUpto = escapeAt;
-                    int encodedLength = BackendEncoding.UTF8Encoding.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
+                    int encodedLength = PGUtil.UTF8Encoding.GetByteCount(fieldValue.ToCharArray(bufferedUpto, escapeAt - bufferedUpto));
                     MakeRoomForBytes(encodedLength);
-                    _sendBufferAt += BackendEncoding.UTF8Encoding.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
+                    _sendBufferAt += PGUtil.UTF8Encoding.GetBytes(fieldValue, bufferedUpto, escapeAt - bufferedUpto, _sendBuffer, _sendBufferAt);
                     bufferedUpto = escapeAt;
                 }
 
