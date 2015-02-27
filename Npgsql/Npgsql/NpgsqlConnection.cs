@@ -1260,5 +1260,41 @@ namespace Npgsql
             }
         }
 #endif
+        public static void AddOnNewConnectorAction(Action<NpgsqlConnection> del)
+        {
+            NpgsqlConnectorPool.OnNewConnector = del;
+
+        }
+
+        public static void AddOnNewConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
+        {
+            NpgsqlConnectorPool.OnNewConnectorStackTrace = del;
+
+        }
+
+        public static void AddOnReleaseConnectorAction(Action<NpgsqlConnection> del)
+        {
+            NpgsqlConnectorPool.OnReleaseConnector = del;
+
+        }
+
+        public static void AddOnReleaseConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
+        {
+            NpgsqlConnectorPool.OnReleaseConnectorStackTrace = del;
+
+        }
+
+        public static void AddOnCloseConnectorAction(Action<NpgsqlConnection> del)
+        {
+            NpgsqlConnectorPool.OnCloseConnector = del;
+
+        }
+
+        public static void AddOnCloseConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
+        {
+            NpgsqlConnectorPool.OnCloseConnectorStackTrace = del;
+
+        }
+
     }
 }

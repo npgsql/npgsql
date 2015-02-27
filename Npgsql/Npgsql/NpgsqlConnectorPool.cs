@@ -40,6 +40,15 @@ namespace Npgsql
     /// </summary>
     internal class NpgsqlConnectorPool
     {
+
+        public static Action<NpgsqlConnection> OnNewConnector;
+        public static Action<NpgsqlConnection> OnReleaseConnector;
+        public static Action<NpgsqlConnection> OnCloseConnector;
+
+        public static Action<System.Diagnostics.StackTrace> OnNewConnectorStackTrace;
+        public static Action<System.Diagnostics.StackTrace> OnReleaseConnectorStackTrace;
+        public static Action<System.Diagnostics.StackTrace> OnCloseConnectorStackTrace;
+
         /// <summary>
         /// A queue with an extra Int32 for keeping track of busy connections.
         /// </summary>
@@ -117,6 +126,13 @@ namespace Npgsql
                                         {
                                             Connector = Queue.Available.Dequeue();
                                             Connector.Close();
+                                            if (OnCloseConnector!= null) {
+                                                OnCloseConnector(null);
+                                            }
+                                            if (OnCloseConnectorStackTrace!= null) {
+                                                OnCloseConnectorStackTrace(new System.Diagnostics.StackTrace(true));
+                                            }
+
                                         }
                                     }
                                     else
@@ -365,6 +381,14 @@ namespace Npgsql
                 {
                     Connector = new NpgsqlConnector(Connection);
                     Queue.Busy.Add(Connector, null);
+
+                    if (OnNewConnector != null) {
+                        OnNewConnector(Connection);
+                    }
+                    if (OnNewConnectorStackTrace != null) {
+                        OnNewConnectorStackTrace(new System.Diagnostics.StackTrace(true));
+                    }
+
                 }
             }
 
@@ -537,6 +561,13 @@ namespace Npgsql
                 {
                     queue.Busy.Remove(Connector);
                     queue.Available.Enqueue(Connector);
+                    if (OnReleaseConnector != null) {
+                        OnReleaseConnector(Connection);
+                    }
+
+                    if (OnReleaseConnectorStackTrace != null) {
+                        OnReleaseConnectorStackTrace(new System.Diagnostics.StackTrace(true));
+                    }
                 }
             else
                 lock (queue)
