@@ -427,8 +427,14 @@ namespace Npgsql
                         : this[NpgsqlDbType.Timestamp];
                 }
 
-                var type = value.GetType();
+                return this[value.GetType()];
+            }
+        }
 
+        internal TypeHandler this[Type type]
+        {
+            get
+            {
                 TypeHandler handler;
                 if (_byType.TryGetValue(type, out handler)) {
                     return handler;
@@ -450,7 +456,7 @@ namespace Npgsql
                     return this[NpgsqlDbType.Array | handler.NpgsqlDbType];
                 }
 
-                if (value is IList)
+                if (typeof(IList).IsAssignableFrom(type))
                 {
                     if (type.IsGenericType)
                     {
@@ -466,7 +472,7 @@ namespace Npgsql
                     throw new Exception("Enums must be registered with Npgsql via Connection.RegisterEnumType or RegisterEnumTypeGlobally");
                 }
 
-                if (type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
                     if (!_byType.TryGetValue(type.GetGenericArguments()[0], out handler)) {
                         throw new NotSupportedException("This .NET range type is not supported in your PostgreSQL: " + type);

@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             10000000000000000000000000000M
         };
 
-        public decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var numGroups = (ushort)buf.ReadInt16();
             var weightFirstGroup = buf.ReadInt16(); // 10000^weight
@@ -76,39 +76,39 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return sign == 0x4000 ? -result : result;
         }
 
-        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (byte)Read(buf, fieldDescription, len);
+            return (byte)Read(buf, len, fieldDescription);
         }
 
-        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (short)Read(buf, fieldDescription, len);
+            return (short)Read(buf, len, fieldDescription);
         }
 
-        int ISimpleTypeReader<int>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        int ISimpleTypeReader<int>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (int)Read(buf, fieldDescription, len);
+            return (int)Read(buf, len, fieldDescription);
         }
 
-        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (long)Read(buf, fieldDescription, len);
+            return (long)Read(buf, len, fieldDescription);
         }
 
-        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (float)Read(buf, fieldDescription, len);
+            return (float)Read(buf, len, fieldDescription);
         }
 
-        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (double)Read(buf, fieldDescription, len);
+            return (double)Read(buf, len, fieldDescription);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         void GetNumericHeader(decimal num, out int numGroups, out int weight, out int fractionDigits)

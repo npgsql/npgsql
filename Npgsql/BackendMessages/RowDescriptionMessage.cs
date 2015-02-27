@@ -15,7 +15,7 @@ namespace Npgsql.BackendMessages
     /// <remarks>
     /// See http://www.postgresql.org/docs/9.4/static/protocol-message-formats.html
     /// </remarks>
-    internal sealed class RowDescriptionMessage : BackendMessage
+    internal sealed class RowDescriptionMessage : IBackendMessage
     {
         readonly List<FieldDescription> _fields;
         readonly Dictionary<string, int> _nameIndex;
@@ -94,7 +94,7 @@ namespace Npgsql.BackendMessages
                    _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
         }
 
-        internal override BackendMessageCode Code { get { return BackendMessageCode.RowDescription; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.RowDescription; } }
 
         #region Kana comparers
 

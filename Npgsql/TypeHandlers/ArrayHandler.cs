@@ -34,6 +34,7 @@ namespace Npgsql.TypeHandlers
         IEnumerator _enumerator;
         NpgsqlBuffer _buf;
         NpgsqlParameter _parameter;
+        LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         int _dimensions;
         int[] _dimLengths, _indices;
@@ -227,7 +228,7 @@ namespace Npgsql.TypeHandlers
                         element = default(TElement);
                         return false;
                     }
-                    element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                    element = asSimpleReader.Read(_buf, _elementLen, _fieldDescription);
                     _elementLen = -1;
                     return true;
                 }
@@ -235,7 +236,7 @@ namespace Npgsql.TypeHandlers
                 var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
                 if (asChunkingReader != null)
                 {
-                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
                     if (!asChunkingReader.Read(out element))
                     {
                         return false;
@@ -266,7 +267,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public virtual void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public virtual void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             Contract.Assert(_readState == ReadState.NeedPrepare);
             if (_writeState != WriteState.NeedPrepare)  // Checks against recursion and bugs
@@ -274,6 +275,7 @@ namespace Npgsql.TypeHandlers
 
             _buf = buf;
             _parameter = parameter;
+            _lengthCache = lengthCache;
             var asArray = value as Array;
             _writeValue = (IList)value;
             _dimensions = asArray != null ? asArray.Rank : 1;
@@ -383,8 +385,8 @@ namespace Npgsql.TypeHandlers
                     if (_buf.WriteSpaceLeft < 4) {
                         return false;
                     }
-                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, _parameter));
-                    asChunkedWriter.PrepareWrite(element, _buf, _parameter);
+                    _buf.WriteInt32(asChunkedWriter.ValidateAndGetLength(element, ref _lengthCache, _parameter));
+                    asChunkedWriter.PrepareWrite(element, _buf, _lengthCache, _parameter);
                     _wroteElementLen = true;
                 }
                 if (!asChunkedWriter.Write(ref directBuf)) {
@@ -397,20 +399,24 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached();
         }
 
-        public int ValidateAndGetLength<TElement>(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength<TElement>(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // Take care of single-dimensional arrays and generic IList<T>
             var asGenericList = value as IList<TElement>;
             if (asGenericList != null)
             {
-                var lengthCache = parameter.GetOrCreateLengthCache();
+                if (lengthCache == null) {
+                    lengthCache = new LengthCache(1);
+                }
                 if (lengthCache.IsPopulated) {
-                    return parameter.LengthCache.Get();
+                    return lengthCache.Get();
                 }
                 // Leave empty slot for the entire array length, and go ahead an populate the element slots
                 var pos = lengthCache.Position;
                 lengthCache.Set(0);
-                var len = 12 + (1 * 8) + asGenericList.Sum(e => 4 + GetSingleElementLength(e, parameter));
+                var lengthCache2 = lengthCache;
+                var len = 12 + (1 * 8) + asGenericList.Sum(e => 4 + GetSingleElementLength(e, ref lengthCache2, parameter));
+                lengthCache = lengthCache2;
                 return lengthCache.Lengths[pos] = len;
             }
 
@@ -419,9 +425,11 @@ namespace Npgsql.TypeHandlers
             var asNonGenericList = value as IList;
             if (asNonGenericList != null)
             {
-                var lengthCache = parameter.GetOrCreateLengthCache();
+                if (lengthCache == null) {
+                    lengthCache = new LengthCache(1);
+                }
                 if (lengthCache.IsPopulated) {
-                    return parameter.LengthCache.Get();
+                    return lengthCache.Get();
                 }
                 var asMultidimensional = value as Array;
                 var dimensions = asMultidimensional != null ? asMultidimensional.Rank : 1;
@@ -429,7 +437,9 @@ namespace Npgsql.TypeHandlers
                 // Leave empty slot for the entire array length, and go ahead an populate the element slots
                 var pos = lengthCache.Position;
                 lengthCache.Set(0);
-                var len = 12 + (dimensions * 8) + asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element, parameter));
+                var lengthCache2 = lengthCache;
+                var len = 12 + (dimensions * 8) + asNonGenericList.Cast<object>().Sum(element => 4 + GetSingleElementLength(element, ref lengthCache2, parameter));
+                lengthCache = lengthCache2;
                 lengthCache.Lengths[pos] = len;
                 return len;
             }
@@ -437,14 +447,14 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException(String.Format("Can't write type {0} as an array", value.GetType()));
         }
 
-        int GetSingleElementLength(object element, NpgsqlParameter parameter)
+        int GetSingleElementLength(object element, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (element == null || element is DBNull) {
                 return 0;
             }
             var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
             return asChunkingWriter != null
-                ? asChunkingWriter.ValidateAndGetLength(element, parameter)
+                ? asChunkingWriter.ValidateAndGetLength(element, ref lengthCache, parameter)
                 : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(element);
         }
 
@@ -487,7 +497,7 @@ namespace Npgsql.TypeHandlers
         public ArrayHandler(TypeHandler elementHandler)
             : base(elementHandler) { }
 
-        public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public new void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             base.PrepareRead(buf, fieldDescription, len);
         }
@@ -497,9 +507,9 @@ namespace Npgsql.TypeHandlers
             return Read<TElement>(out result);
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            return ValidateAndGetLength<TElement>(value, parameter);
+            return ValidateAndGetLength<TElement>(value, ref lengthCache, parameter);
         }
 
         public bool Write(ref DirectBuffer directBuf)
@@ -526,7 +536,7 @@ namespace Npgsql.TypeHandlers
 
         internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            PrepareRead(row.Buffer, fieldDescription, row.ColumnLen);
+            PrepareRead(row.Buffer, row.ColumnLen, fieldDescription);
             Array result;
             while (!Read<TPsv>(out result)) {
                 row.Buffer.ReadMore();

@@ -14,6 +14,7 @@ namespace Npgsql.TypeHandlers
     {
         NpgsqlBuffer _buf;
         NpgsqlParameter _parameter;
+        LengthCache _lengthCache;
         FieldDescription _fieldDescription;
         IDictionary<string, string> _value;
         IEnumerator<KeyValuePair<string, string>> _enumerator;
@@ -33,11 +34,13 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            var lengthCache = parameter.GetOrCreateLengthCache(1);
+            if (lengthCache == null) {
+                lengthCache = new LengthCache(1);
+            }
             if (lengthCache.IsPopulated) {
-                return parameter.LengthCache.Get();
+                return lengthCache.Get();
             }
 
             var asDict = value as IDictionary<string, string>;
@@ -66,9 +69,10 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("Can't write type as hstore: " + value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
+            _lengthCache = lengthCache;
             _parameter = parameter;
             _state = State.Count;
 
@@ -100,9 +104,9 @@ namespace Npgsql.TypeHandlers
                 case State.KeyLen:
                     _state = State.KeyLen;
                     if (_buf.WriteSpaceLeft < 4) { return false; }
-                    var keyLen = _parameter.LengthCache.Get();
+                    var keyLen = _lengthCache.Get();
                     _buf.WriteInt32(keyLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Key, _buf, _parameter);
+                    _textHandler.PrepareWrite(_enumerator.Current.Key, _buf, _lengthCache, _parameter);
                     goto case State.KeyData;
 
                 case State.KeyData:
@@ -122,9 +126,9 @@ namespace Npgsql.TypeHandlers
                         }
                         goto case State.KeyLen;
                     }
-                    var valueLen = _parameter.LengthCache.Get();
+                    var valueLen = _lengthCache.Get();
                     _buf.WriteInt32(valueLen);
-                    _textHandler.PrepareWrite(_enumerator.Current.Value, _buf, _parameter);
+                    _textHandler.PrepareWrite(_enumerator.Current.Value, _buf, _lengthCache, _parameter);
                     goto case State.ValueData;
 
                 case State.ValueData:
@@ -146,16 +150,16 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        void IChunkingTypeReader<IDictionary<string, string>>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        void IChunkingTypeReader<IDictionary<string, string>>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _fieldDescription = fieldDescription;
             _state = State.Count;
         }
 
-        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            ((IChunkingTypeReader<IDictionary<string, string>>)this).PrepareRead(buf, fieldDescription, len);
+            ((IChunkingTypeReader<IDictionary<string, string>>)this).PrepareRead(buf, len, fieldDescription);
         }
 
         public bool Read(out IDictionary<string, string> result)

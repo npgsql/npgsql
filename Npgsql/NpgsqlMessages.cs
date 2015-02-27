@@ -37,9 +37,9 @@ namespace Npgsql
     /// <summary>
     /// Base class for all classes which represent a message sent by the PostgreSQL backend.
     /// </summary>
-    internal abstract class BackendMessage
+    internal interface IBackendMessage
     {
-        internal abstract BackendMessageCode Code { get; }
+        BackendMessageCode Code { get; }
     }
 
     /// <summary>
@@ -87,62 +87,38 @@ namespace Npgsql
         /// Whether there was enough space in the buffer to contain the entire message.
         /// If false, the buffer should be flushed and write should be called again.
         /// </returns>
-        internal virtual bool Write(NpgsqlBuffer buf)
-        {
-            throw new NotImplementedException("Write()");
-        }
-
-        internal virtual bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
-        {
-            return Write(buf);
-        }
-    }
-
-    /// <summary>
-    /// For classes representing messages sent from the client to the server.
-    /// </summary>
-    internal interface IClientMessage
-    {
-        void WriteToStream(Stream outputStream);
-        Task WriteToStreamAsync(Stream outputStream);
+        internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
     }
 
     internal enum BackendMessageCode
     {
         IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
 
+        AuthenticationRequest = 'R',
+        BackendKeyData = 'K',
+        BindComplete = '2',
+        CloseComplete = '3',
+        CompletedResponse = 'C',
         CopyData = 'd',
         CopyDone = 'c',
-        DataRow = 'D',
-
-        BackendKeyData = 'K',
-        CancelRequest = 'F',
-        CompletedResponse = 'C',
-        CopyDataRows = ' ',
+        CopyBothResponse = 'W',
         CopyInResponse = 'G',
         CopyOutResponse = 'H',
+        DataRow = 'D',
         EmptyQueryResponse = 'I',
         ErrorResponse = 'E',
         FunctionCall = 'F',
         FunctionCallResponse = 'V',
-
-        AuthenticationRequest = 'R',
-
+        NoData = 'n',
         NoticeResponse = 'N',
         NotificationResponse = 'A',
+        ParameterDescription = 't',
         ParameterStatus = 'S',
+        ParseComplete = '1',
         PasswordPacket = ' ',
+        PortalSuspended = 's',
         ReadyForQuery = 'Z',
         RowDescription = 'T',
-        SSLRequest = ' ',
-
-        // extended query backend messages
-        ParseComplete = '1',
-        BindComplete = '2',
-        PortalSuspended = 's',
-        ParameterDescription = 't',
-        NoData = 'n',
-        CloseComplete = '3'
     }
 
     enum StatementOrPortal : byte

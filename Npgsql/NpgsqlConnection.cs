@@ -31,6 +31,8 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
+using System.IO;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -38,6 +40,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Transactions;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
+using Npgsql.BackendMessages;
+using Npgsql.FrontendMessages;
 using Npgsql.Localization;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -486,12 +490,10 @@ namespace Npgsql
                         return ConnectionState.Open | ConnectionState.Fetching;
                     case ConnectorState.Broken:
                         return ConnectionState.Broken;
-                    case ConnectorState.CopyIn:
+                    case ConnectorState.Copy:
                         return ConnectionState.Open | ConnectionState.Fetching;
-                    case ConnectorState.CopyOut:
-                        return ConnectionState.Closed | ConnectionState.Fetching;
                     default:
-                        throw new ArgumentOutOfRangeException("Connector.State", "Unknown connector state: " + Connector.State);
+                        throw PGUtil.ThrowIfReached("Unknown connector state: " + Connector.State);
                 }
             }
         }
@@ -964,6 +966,133 @@ namespace Npgsql
         }
 
         #endregion Backend version and capabilities
+
+        #region Copy
+
+        /// <summary>
+        /// Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table.
+        /// </summary>
+        /// <param name="copyFromCommand">A COPY FROM STDIN SQL command</param>
+        /// <returns>A <see cref="NpgsqlBinaryImporter"/> which can be used to write rows and columns</returns>
+        /// <remarks>
+        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// </remarks>
+        public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
+        {
+            if (copyFromCommand == null)
+                throw new ArgumentNullException("copyFromCommand");
+            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+                throw new ArgumentException("Must contain a COPY FROM STDIN command!", "copyFromCommand");
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Connector.CheckReadyState();
+
+            return new NpgsqlBinaryImporter(Connector, copyFromCommand);
+        }
+
+        /// <summary>
+        /// Begins a binary COPY TO STDIN operation, a high-performance data export mechanism from a PostgreSQL table.
+        /// </summary>
+        /// <param name="copyToCommand">A COPY TO STDIN SQL command</param>
+        /// <returns>A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns</returns>
+        /// <remarks>
+        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// </remarks>
+        public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
+        {
+            if (copyToCommand == null)
+                throw new ArgumentNullException("copyToCommand");
+            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+                throw new ArgumentException("Must contain a COPY TO STDIN command!", "copyToCommand");
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Connector.CheckReadyState();
+
+            return new NpgsqlBinaryExporter(Connector, copyToCommand);
+        }
+
+        /// <summary>
+        /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
+        /// It is the user's responsibility to send the textual input according to the format specified
+        /// in <paramref name="copyFromCommand"/>.
+        /// </summary>
+        /// <param name="copyFromCommand">A COPY FROM STDIN SQL command</param>
+        /// <returns>
+        /// A TextWriter that can be used to send textual data.</returns>
+        /// <remarks>
+        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// </remarks>
+        public TextWriter BeginTextImport(string copyFromCommand)
+        {
+            if (copyFromCommand == null)
+                throw new ArgumentNullException("copyFromCommand");
+            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+                throw new ArgumentException("Must contain a COPY IN command!", "copyFromCommand");
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Connector.CheckReadyState();
+
+            return new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(Connector, copyFromCommand));
+        }
+
+        /// <summary>
+        /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
+        /// It is the user's responsibility to parse the textual input according to the format specified
+        /// in <paramref name="copyToCommand"/>.
+        /// </summary>
+        /// <param name="copyToCommand">A COPY TO STDIN SQL command</param>
+        /// <returns>
+        /// A TextReader that can be used to read textual data.</returns>
+        /// <remarks>
+        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// </remarks>
+        public TextReader BeginTextExport(string copyToCommand)
+        {
+            if (copyToCommand == null)
+                throw new ArgumentNullException("copyToCommand");
+            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+                throw new ArgumentException("Must contain a COPY OUT command!", "copyToCommand");
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Connector.CheckReadyState();
+
+            return new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(Connector, copyToCommand));
+        }
+
+        /// <summary>
+        /// Begins a raw binary COPY operation (TO or FROM), a high-performance data export/import mechanism to a PostgreSQL table.
+        /// Note that unlike the other COPY API methods, <see cref="BeginRawBinaryCopy"/> doesn't implement any encoding/decoding
+        /// and is unsuitable for structured import/export operation. It is useful mainly for exporting a table as an opaque
+        /// blob, for the purpose of importing it back later.
+        /// </summary>
+        /// <param name="copyCommand">A COPY FROM STDIN or COPY TO STDIN SQL command</param>
+        /// <returns>A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data.</returns>
+        /// <remarks>
+        /// See http://www.postgresql.org/docs/9.4/static/sql-copy.html.
+        /// </remarks>
+        public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
+        {
+            if (copyCommand == null)
+                throw new ArgumentNullException("copyCommand");
+            if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
+                throw new ArgumentException("Must contain a COPY IN command!", "copyCommand");
+            Contract.EndContractBlock();
+
+            CheckConnectionOpen();
+            Connector.CheckReadyState();
+
+            var stream = new NpgsqlRawCopyStream(Connector, copyCommand);
+            if (!stream.IsBinary) {
+                throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", "copyCommand");
+            }
+            return stream;
+        }
+
+        #endregion
 
         #region Enum registration
 

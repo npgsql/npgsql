@@ -12,13 +12,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     internal class TimeStampTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStampTZ>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeStampTZ>
     {
-        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            return (DateTime)((ISimpleTypeReader<NpgsqlTimeStampTZ>)this).Read(buf, fieldDescription, len);
+            return (DateTime)((ISimpleTypeReader<NpgsqlTimeStampTZ>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlTimeStampTZ ISimpleTypeReader<NpgsqlTimeStampTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlTimeStampTZ ISimpleTypeReader<NpgsqlTimeStampTZ>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // The Int64 contains just the time in UTC, no time zone information
             var ts = NpgsqlTimeStamp.FromInt64(buf.ReadInt64());

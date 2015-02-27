@@ -26,6 +26,7 @@ namespace Npgsql.TypeHandlers
 
         NpgsqlBuffer _buf;
         NpgsqlParameter _parameter;
+        LengthCache _lengthCache;
         NpgsqlRange<TElement> _value;
         State _state;
         FieldDescription _fieldDescription;
@@ -44,7 +45,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _state = State.Start;
@@ -129,14 +130,14 @@ namespace Npgsql.TypeHandlers
                         element = default(TElement);
                         return false;
                     }
-                    element = asSimpleReader.Read(_buf, _fieldDescription, _elementLen);
+                    element = asSimpleReader.Read(_buf, _elementLen, _fieldDescription);
                     _elementLen = -1;
                     return true;
                 }
 
                 var asChunkingReader = ElementHandler as IChunkingTypeReader<TElement>;
                 if (asChunkingReader != null) {
-                    asChunkingReader.PrepareRead(_buf, _fieldDescription, _elementLen);
+                    asChunkingReader.PrepareRead(_buf, _elementLen, _fieldDescription);
                     if (!asChunkingReader.Read(out element)) {
                         return false;
                     }
@@ -156,7 +157,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
             var range = (NpgsqlRange<TElement>)value;
             var totalLen = 1;
@@ -166,13 +167,13 @@ namespace Npgsql.TypeHandlers
                 var asChunkingWriter = ElementHandler as IChunkingTypeWriter;
                 if (!range.LowerBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, parameter)
+                        ? asChunkingWriter.ValidateAndGetLength(range.LowerBound, ref lengthCache, parameter)
                         : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.LowerBound));
                 }
 
                 if (!range.UpperBoundInfinite) {
                     totalLen += 4 + (asChunkingWriter != null
-                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, parameter)
+                        ? asChunkingWriter.ValidateAndGetLength(range.UpperBound, ref lengthCache, parameter)
                         : ((ISimpleTypeWriter)ElementHandler).ValidateAndGetLength(range.UpperBound));
                 }
             }
@@ -180,10 +181,11 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
             _buf = buf;
             _parameter = parameter;
+            _lengthCache = lengthCache;
             _value = (NpgsqlRange<TElement>)value;
             _state = State.Start;
         }
@@ -208,7 +210,7 @@ namespace Npgsql.TypeHandlers
                     }
 
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.LowerBound, _buf, _lengthCache, _parameter);
                     }
                     _state = State.LowerBound;
                     goto case State.LowerBound;
@@ -232,7 +234,7 @@ namespace Npgsql.TypeHandlers
                         return true;
                     }
                     if (asChunkingWriter != null) {
-                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _parameter);
+                        asChunkingWriter.PrepareWrite(_value.UpperBound, _buf, _lengthCache, _parameter);
                     }
                     _state = State.UpperBound;
                     goto case State.UpperBound;

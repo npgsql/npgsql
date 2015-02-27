@@ -21,14 +21,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         ISimpleTypeReader<NpgsqlPoint>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        public NpgsqlPoint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlPoint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         public int ValidateAndGetLength(object value)

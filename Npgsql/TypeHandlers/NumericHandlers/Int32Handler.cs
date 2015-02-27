@@ -19,44 +19,44 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ISimpleTypeReader<float>, ISimpleTypeReader<double>, ISimpleTypeReader<decimal>,
         ISimpleTypeReader<string>
     {
-        public int Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt32();
         }
 
-        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        byte ISimpleTypeReader<byte>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (byte)Read(buf, fieldDescription, len);
+            return (byte)Read(buf, len, fieldDescription);
         }
 
-        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        short ISimpleTypeReader<short>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (short)Read(buf, fieldDescription, len);
+            return (short)Read(buf, len, fieldDescription);
         }
 
-        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        long ISimpleTypeReader<long>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read(buf, len, fieldDescription);
         }
 
-        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        float ISimpleTypeReader<float>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read(buf, len, fieldDescription);
         }
 
-        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read(buf, len, fieldDescription);
         }
 
-        decimal ISimpleTypeReader<decimal>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        decimal ISimpleTypeReader<decimal>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read(buf, len, fieldDescription);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         public int ValidateAndGetLength(object value) { return 4; }

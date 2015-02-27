@@ -37,20 +37,22 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            var lengthCache = parameter.GetOrCreateLengthCache(1);
+            if (lengthCache == null) {
+                lengthCache = new LengthCache(1);
+            }
             if (lengthCache.IsPopulated) {
-                return parameter.LengthCache.Get();
+                return lengthCache.Get();
             }
 
             // Add one byte for the prepended version number
-            return parameter.LengthCache.Set(_textHandler.DoValidateAndGetLength(value, parameter)+1);
+            return lengthCache.Set(_textHandler.DoValidateAndGetLength(value, parameter)+1);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter)
         {
-            _textHandler.PrepareWrite(value, buf, parameter);
+            _textHandler.PrepareWrite(value, buf, lengthCache, parameter);
             _buf = buf;
             _handledVersion = false;
         }
@@ -72,7 +74,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Subtract one byte for the version number
             _textHandler.PrepareRead(buf, fieldDescription, len-1);

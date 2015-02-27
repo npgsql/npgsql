@@ -5,9 +5,9 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class NoDataMessage : BackendMessage
+    internal class NoDataMessage : IBackendMessage
     {
-        internal override BackendMessageCode Code { get { return BackendMessageCode.NoData; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.NoData; } }
         internal static readonly NoDataMessage Instance = new NoDataMessage();
         NoDataMessage() { }
     }

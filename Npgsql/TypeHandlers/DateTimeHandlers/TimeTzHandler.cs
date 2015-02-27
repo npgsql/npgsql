@@ -11,13 +11,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     internal class TimeTzHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeTZ>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeTZ>
     {
-        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeTZ?
-            return (DateTime)((ISimpleTypeReader<NpgsqlTimeTZ>)this).Read(buf, fieldDescription, len);
+            return (DateTime)((ISimpleTypeReader<NpgsqlTimeTZ>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlTimeTZ ISimpleTypeReader<NpgsqlTimeTZ>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlTimeTZ ISimpleTypeReader<NpgsqlTimeTZ>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // Adjusting from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             return new NpgsqlTimeTZ(buf.ReadInt64() * 10, new NpgsqlTimeZone(0, 0, -buf.ReadInt32()));

@@ -44,8 +44,8 @@ namespace Npgsql.TypeHandlers
         internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
             var result = fieldDescription.TypeModifier == 1
-                ? (object)((ISimpleTypeReader<bool>) this).Read(row.Buffer, fieldDescription, row.ColumnLen)
-                : Read<BitArray>(row, fieldDescription, row.ColumnLen);
+                ? (object)((ISimpleTypeReader<bool>) this).Read(row.Buffer, row.ColumnLen, fieldDescription)
+                : Read<BitArray>(row, row.ColumnLen, fieldDescription);
 
             row.PosInColumn += row.ColumnLen;
             return result;
@@ -58,9 +58,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        bool ISimpleTypeReader<bool>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        bool ISimpleTypeReader<bool>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            if (fieldDescription.TypeModifier != 1) {
+            if (fieldDescription != null && fieldDescription.TypeModifier != 1) {
                 throw new InvalidCastException(String.Format("Can't convert a BIT({0}) type to bool, only BIT(1)", fieldDescription.TypeModifier));
             }
 
@@ -70,7 +70,7 @@ namespace Npgsql.TypeHandlers
             return (b & 128) != 0;
         }
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _pos = -1;
@@ -134,7 +134,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             var asBitArray = value as BitArray;
             if (asBitArray != null)
@@ -154,7 +154,7 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("Expected BitArray, bool or string");
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _pos = -1;
@@ -291,7 +291,7 @@ namespace Npgsql.TypeHandlers
         public BitStringArrayHandler(BitStringHandler elementHandler)
             : base(elementHandler) {}
 
-        public new void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public new void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             base.PrepareRead(buf, fieldDescription, len);
             _fieldDescription = fieldDescription;
@@ -304,9 +304,9 @@ namespace Npgsql.TypeHandlers
                 : Read<BitArray>(out result);
         }
 
-        public override void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public override void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
-            base.PrepareWrite(value, buf, parameter);
+            base.PrepareWrite(value, buf, lengthCache, parameter);
             _value = value;
         }
 
@@ -324,16 +324,16 @@ namespace Npgsql.TypeHandlers
             throw PGUtil.ThrowIfReached(String.Format("Can't write type {0} as an bitstring array", _value.GetType()));
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             if (value is BitArray[]) {
-                return base.ValidateAndGetLength<BitArray>(value, parameter);
+                return base.ValidateAndGetLength<BitArray>(value, ref lengthCache, parameter);
             }
             if (value is bool[]) {
-                return base.ValidateAndGetLength<bool>(value, parameter);
+                return base.ValidateAndGetLength<bool>(value, ref lengthCache, parameter);
             }
             if (value is string[]) {
-                return base.ValidateAndGetLength<string>(value, parameter);
+                return base.ValidateAndGetLength<string>(value, ref lengthCache, parameter);
             }
             throw new InvalidCastException(String.Format("Can't write type {0} as an bitstring array", value.GetType()));
         }

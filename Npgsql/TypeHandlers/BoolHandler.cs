@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers
         const byte T = (byte)'T';
         const byte t = (byte)'t';
 
-        public bool Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public bool Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadByte() != 0;
         }

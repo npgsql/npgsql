@@ -21,14 +21,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         ISimpleTypeReader<NpgsqlCircle>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        public NpgsqlCircle Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlCircle Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         public int ValidateAndGetLength(object value)

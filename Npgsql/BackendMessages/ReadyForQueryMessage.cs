@@ -5,9 +5,9 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class ReadyForQueryMessage : BackendMessage
+    internal class ReadyForQueryMessage : IBackendMessage
     {
-        internal override BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.ReadyForQuery; } }
 
         internal TransactionStatus TransactionStatusIndicator { get; private set; }
 

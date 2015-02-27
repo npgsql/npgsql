@@ -5,9 +5,9 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal class EmptyQueryMessage : BackendMessage
+    internal class EmptyQueryMessage : IBackendMessage
     {
-        internal override BackendMessageCode Code { get { return BackendMessageCode.EmptyQueryResponse; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.EmptyQueryResponse; } }
         internal static readonly EmptyQueryMessage Instance = new EmptyQueryMessage();
         EmptyQueryMessage() { }
     }

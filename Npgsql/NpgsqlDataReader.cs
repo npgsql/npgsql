@@ -67,7 +67,7 @@ namespace Npgsql
         /// If HasRows was called before any rows were read, it was forced to read messages. A pending
         /// message may be stored here for processing in the next Read() or NextResult().
         /// </summary>
-        BackendMessage _pendingMessage;
+        IBackendMessage _pendingMessage;
 
         /// <summary>
         /// If <see cref="GetSchemaTable"/> has been called, its results are cached here.
@@ -176,7 +176,7 @@ namespace Npgsql
             }
         }
 
-        ReadResult ProcessMessage(BackendMessage msg)
+        ReadResult ProcessMessage(IBackendMessage msg)
         {
             Contract.Requires(msg != null);
 
@@ -322,7 +322,7 @@ namespace Npgsql
 
         #endregion
 
-        BackendMessage ReadMessage()
+        IBackendMessage ReadMessage()
         {
             if (_pendingMessage != null) {
                 var msg = _pendingMessage;
@@ -332,7 +332,7 @@ namespace Npgsql
             return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        BackendMessage SkipUntil(params BackendMessageCode[] stopAt)
+        IBackendMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
             if (_pendingMessage != null)
             {
@@ -1313,7 +1313,7 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             try
             {
-                return fieldDescription.Handler.Read<T>(_row, fieldDescription, Row.ColumnLen);
+                return fieldDescription.Handler.Read<T>(_row, Row.ColumnLen, fieldDescription);
             }
             catch (SafeReadException e)
             {

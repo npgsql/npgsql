@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         Stack<NpgsqlTsQuery> _stack;
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             var vec = (NpgsqlTsQuery)value;
 
@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _value = (NpgsqlTsQuery)value;

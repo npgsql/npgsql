@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers
     internal class MoneyHandler : TypeHandler<decimal>,
         ISimpleTypeReader<decimal>, ISimpleTypeWriter
     {
-        public decimal Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public decimal Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadInt64() / 100m;
         }

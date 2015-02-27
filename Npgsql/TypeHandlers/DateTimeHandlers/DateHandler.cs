@@ -15,16 +15,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 
-        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            return (System.DateTime) ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, fieldDescription, len);
+            return (System.DateTime) ((ISimpleTypeReader<NpgsqlDate>) this).Read(buf, len, fieldDescription);
         }
 
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        NpgsqlDate ISimpleTypeReader<NpgsqlDate>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlDate ISimpleTypeReader<NpgsqlDate>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var binDate = buf.ReadInt32();
 

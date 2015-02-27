@@ -26,7 +26,7 @@ namespace Npgsql.TypeHandlers
         int _pos;
         NpgsqlBuffer _buf;
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _bytes = new byte[len];
             _pos = 0;
@@ -72,17 +72,21 @@ namespace Npgsql.TypeHandlers
         byte[] _value;
         int _size;
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             var bytea = (byte[])value;
-            return parameter.Size == 0 || parameter.Size >= bytea.Length ? bytea.Length : parameter.Size;
+            return parameter == null || parameter.Size == 0 || parameter.Size >= bytea.Length
+                ? bytea.Length
+                : parameter.Size;
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _value = (byte[])value;
-            _size = parameter.Size == 0 || parameter.Size >= _value.Length ? _value.Length : parameter.Size;
+            _size = parameter == null || parameter.Size == 0 || parameter.Size >= _value.Length
+                ? _value.Length
+                : parameter.Size;
         }
 
         // ReSharper disable once RedundantAssignment

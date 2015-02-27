@@ -16,7 +16,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     internal class DoubleHandler : TypeHandler<double>,
         ISimpleTypeReader<double>, ISimpleTypeWriter
     {
-        public double Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public double Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadDouble();
         }

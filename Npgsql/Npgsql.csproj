@@ -293,6 +293,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BackendMessages\CopyMessages.cs" />
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
     <Compile Include="BackendMessages\CloseCompletedMessage.cs" />
     <Compile Include="BackendMessages\NoDataMessage.cs" />
@@ -306,6 +307,10 @@
     <Compile Include="BackendMessages\ParseCompleteMessage.cs" />
     <Compile Include="BackendMessages\RowDescriptionMessage.cs" />
     <Compile Include="BackendMessages\DataRowSequentialMessage.cs" />
+    <Compile Include="FrontendMessages\CopyFailMessage.cs" />
+    <Compile Include="NpgsqlBinaryExporter.cs" />
+    <Compile Include="NpgsqlBinaryImporter.cs" />
+    <Compile Include="NpgsqlRawCopyStream.cs" />
     <Compile Include="FrontendMessages\CancelRequestMessage.cs" />
     <Compile Include="FrontendMessages\ExecuteMessage.cs" />
     <Compile Include="FrontendMessages\DescribeMessage.cs" />
@@ -325,7 +330,6 @@
       <DependentUpon>NpgsqlBuffer.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
-    <Compile Include="NpgsqlTextWriter.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlInterval.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTime.cs" />
@@ -388,18 +392,11 @@
       <Generator>AsyncGenerator</Generator>
     </Compile>
     <Compile Include="NpgsqlConnectorPool.cs" />
-    <Compile Include="NpgsqlCopyFormat.cs" />
-    <Compile Include="NpgsqlCopyIn.cs" />
-    <Compile Include="NpgsqlCopyInStream.cs" />
-    <Compile Include="NpgsqlCopyOut.cs" />
-    <Compile Include="NpgsqlCopyOutStream.cs" />
-    <Compile Include="NpgsqlCopySerializer.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
     <Compile Include="NpgsqlError.cs" />
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
-    <Compile Include="NpgsqlMediator.cs" />
     <Compile Include="NpgsqlMessages.cs" />
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />

@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         ISimpleTypeReader<PhysicalAddress>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        public PhysicalAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public PhysicalAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Assume(len == 6);
             return new PhysicalAddress(new[] {
@@ -31,9 +31,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             });
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         PhysicalAddress GetValue(object value)

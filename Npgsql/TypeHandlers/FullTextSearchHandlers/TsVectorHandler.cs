@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         int _bytesLeft;
         NpgsqlTsVector _value;
 
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             _buf = buf;
             _lexemes = new List<NpgsqlTsVector.Lexeme>();
@@ -74,7 +74,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return true;
         }
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             // TODO: Implement length cache
             var vec = (NpgsqlTsVector)value;
@@ -82,7 +82,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _lexemePos = -1;
             _buf = buf;

@@ -134,6 +134,7 @@ namespace Npgsql
 
         internal void Clear()
         {
+            WritePosition = 0;
             ReadPosition = 0;
             _filledBytes = 0;
         }
@@ -289,6 +290,17 @@ namespace Npgsql
             var result = TextEncoding.GetChars(_buf, ReadPosition, len);
             ReadPosition += len;
             return result;
+        }
+
+        internal void ReadStringChunked(char[] chars, int charIndex, int charCount, int byteCount,
+                                        bool flush, out int charsUsed, out bool completed)
+        {
+            Contract.Requires(byteCount <= ReadBytesLeft);
+
+            int bytesUsed;
+            _textDecoder.Convert(_buf, ReadPosition, byteCount, chars, charIndex, charCount,
+                                 flush, out bytesUsed, out charsUsed, out completed);
+            ReadPosition += bytesUsed;
         }
 
         /// <summary>
@@ -479,6 +491,11 @@ namespace Npgsql
             }
 
             ReadPosition += (int)len;
+        }
+
+        public void WriteBytesSimple(byte[] buf)
+        {
+            WriteBytesSimple(buf, 0, buf.Length);
         }
 
         public void WriteBytesSimple(byte[] buf, int offset, int count)

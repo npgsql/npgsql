@@ -23,12 +23,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
         }
 
-        public TimeSpan Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public TimeSpan Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (TimeSpan)((ISimpleTypeReader<NpgsqlInterval>)this).Read(buf, fieldDescription, len);
+            return (TimeSpan)((ISimpleTypeReader<NpgsqlInterval>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlInterval ISimpleTypeReader<NpgsqlInterval>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlInterval ISimpleTypeReader<NpgsqlInterval>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");

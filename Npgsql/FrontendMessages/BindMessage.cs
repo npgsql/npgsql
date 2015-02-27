@@ -77,7 +77,7 @@ namespace Npgsql.FrontendMessages
                         return false;
                     }
 
-                    foreach (var p in InputParameters) { p.RewindLengthCache(); }
+                    foreach (var c in InputParameters.Select(p => p.LengthCache).Where(c => c != null)) { c.Rewind(); }
                     var messageLength = headerLength +
                         4 * InputParameters.Count +                                     // Parameter lengths
                         InputParameters.Select(p => p.ValidateAndGetLength()).Sum() +   // Parameter values
@@ -150,7 +150,9 @@ namespace Npgsql.FrontendMessages
 
                 var handler = param.Handler;
 
-                param.RewindLengthCache();
+                if (param.LengthCache != null) {
+                    param.LengthCache.Rewind();
+                }
                 var len = param.ValidateAndGetLength();
 
                 var asChunkingWriter = handler as IChunkingTypeWriter;
@@ -160,7 +162,7 @@ namespace Npgsql.FrontendMessages
                     {
                         if (buf.WriteSpaceLeft < 4) { return false; }
                         buf.WriteInt32(len);
-                        asChunkingWriter.PrepareWrite(param.Value, buf, param);
+                        asChunkingWriter.PrepareWrite(param.Value, buf, param.LengthCache, param);
                         _wroteParamLen = true;
                     }
                     if (!asChunkingWriter.Write(ref directBuf)) {

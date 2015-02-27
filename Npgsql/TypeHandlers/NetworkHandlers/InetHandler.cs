@@ -21,9 +21,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
 
-        public IPAddress Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public IPAddress Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).Address;
+            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
         }
 
         static internal NpgsqlInet DoRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len, bool isCidrHandler)
@@ -40,14 +40,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(new IPAddress(bytes), mask);            
         }
 
-        NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlInet ISimpleTypeReader<NpgsqlInet>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return DoRead(buf, fieldDescription, len, false);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, fieldDescription, len).ToString();
+            return ((ISimpleTypeReader<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
         }
 
         static internal int DoValidateAndGetLength(object value)

@@ -21,6 +21,9 @@ namespace Npgsql.FrontendMessages
 
         internal QueryMessage(string query)
         {
+            Contract.Requires(query != null && query.All(c => c < 128), "Not ASCII");
+            Contract.Requires(PGUtil.UTF8Encoding.GetByteCount(query) + 5 < NpgsqlBuffer.MinimumBufferSize, "Too long");
+
             Query = query;
         }
 

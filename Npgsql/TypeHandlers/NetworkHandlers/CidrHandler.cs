@@ -17,14 +17,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     internal class CidrHandler : TypeHandler<NpgsqlInet>,
         ISimpleTypeReader<NpgsqlInet>, ISimpleTypeWriter, ISimpleTypeReader<string>
     {
-        public NpgsqlInet Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlInet Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return InetHandler.DoRead(buf, fieldDescription, len, true);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         public int ValidateAndGetLength(object value)

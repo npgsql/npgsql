@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers
     internal class InternalCharHandler : TypeHandler<char>,
         ISimpleTypeReader<char>, ISimpleTypeWriter
     {
-        public char Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public char Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadString(1)[0];
         }

@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     internal class UInt32Handler : TypeHandler<uint>,
         ISimpleTypeReader<uint>, ISimpleTypeWriter
     {
-        public uint Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public uint Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return (uint)buf.ReadInt32();
         }

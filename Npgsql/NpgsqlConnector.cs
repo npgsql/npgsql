@@ -79,11 +79,6 @@ namespace Npgsql
         internal NpgsqlBuffer Buffer { get; private set; }
 
         /// <summary>
-        /// The connection mediator.
-        /// </summary>
-        internal NpgsqlMediator Mediator { get; private set; }
-
-        /// <summary>
         /// Version of backend server this connector is connected to.
         /// </summary>
         internal Version ServerVersion { get; set; }
@@ -162,6 +157,11 @@ namespace Npgsql
         readonly DataRowSequentialMessage    _dataRowSequentialMessage    = new DataRowSequentialMessage();
         readonly DataRowNonSequentialMessage _dataRowNonSequentialMessage = new DataRowNonSequentialMessage();
 
+        // Since COPY is rarely used, allocate these lazily
+        CopyInResponseMessage  _copyInResponseMessage;
+        CopyOutResponseMessage _copyOutResponseMessage;
+        CopyDataMessage        _copyDataMessage;
+
         #endregion
 
         public NpgsqlConnector(NpgsqlConnection connection)
@@ -180,7 +180,6 @@ namespace Npgsql
             _settings = connectionString;
             Pooled = pooled;
             BackendParams = new Dictionary<string, string>();
-            Mediator = new NpgsqlMediator();
             _messagesToSend = new List<FrontendMessage>();
             _preparedStatementIndex = 0;
             _portalIndex = 0;
@@ -248,8 +247,7 @@ namespace Npgsql
                     case ConnectorState.Connecting:
                     case ConnectorState.Executing:
                     case ConnectorState.Fetching:
-                    case ConnectorState.CopyIn:
-                    case ConnectorState.CopyOut:
+                    case ConnectorState.Copy:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException("value");
@@ -269,8 +267,7 @@ namespace Npgsql
                     case ConnectorState.Ready:
                     case ConnectorState.Executing:
                     case ConnectorState.Fetching:
-                    case ConnectorState.CopyIn:
-                    case ConnectorState.CopyOut:
+                    case ConnectorState.Copy:
                         return true;
                     case ConnectorState.Closed:
                     case ConnectorState.Connecting:
@@ -293,8 +290,7 @@ namespace Npgsql
                 {
                     case ConnectorState.Executing:
                     case ConnectorState.Fetching:
-                    case ConnectorState.CopyIn:
-                    case ConnectorState.CopyOut:
+                    case ConnectorState.Copy:
                         return true;
                     case ConnectorState.Ready:
                     case ConnectorState.Closed:
@@ -320,8 +316,7 @@ namespace Npgsql
                 case ConnectorState.Executing:
                 case ConnectorState.Fetching:
                     throw new InvalidOperationException("There is already an open DataReader associated with this Connection which must be closed first.");
-                case ConnectorState.CopyIn:
-                case ConnectorState.CopyOut:
+                case ConnectorState.Copy:
                     throw new InvalidOperationException("A COPY operation is in progress and must complete first.");
                 default:
                     throw new ArgumentOutOfRangeException("Connector.State", "Unknown state: " + State);
@@ -666,7 +661,7 @@ namespace Npgsql
         /// with this message.
         /// </summary>
         /// <param name="msg"></param>
-        void SendSingleMessage(FrontendMessage msg)
+        internal void SendSingleMessage(FrontendMessage msg)
         {
             AddMessage(msg);
             SendAllMessages();
@@ -725,10 +720,26 @@ namespace Npgsql
         #region Backend message processing
 
         [GenerateAsync]
-        internal BackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        internal IBackendMessage ReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             try
             {
+                // First read the responses of any prepended messages
+                while (_prependedMessages > 0)
+                {
+                    var msg = DoReadSingleMessage(DataRowLoadingMode.Skip);
+                    switch (msg.Code)
+                    {
+                    case BackendMessageCode.CompletedResponse:
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
+                        _prependedMessages--;
+                        break;
+                    default:
+                        throw new Exception(String.Format("Unexpected message received when processing prepended command: " + msg.Code));
+                    }
+                }
+
                 return DoReadSingleMessage(dataRowLoadingMode, ignoreNotifications);
             }
             catch (NpgsqlException)
@@ -743,7 +754,7 @@ namespace Npgsql
         }
 
         [GenerateAsync]
-        BackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
+        IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
             NpgsqlError error = null;
 
@@ -756,7 +767,8 @@ namespace Npgsql
                 Contract.Assume(Enum.IsDefined(typeof(BackendMessageCode), messageCode), "Unknown message code: " + messageCode);
                 var len = Buffer.ReadInt32() - 4;  // Transmitted length includes itself
 
-                if (messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential)
+                if ((messageCode == BackendMessageCode.DataRow || messageCode == BackendMessageCode.CopyData) &&
+                    dataRowLoadingMode != DataRowLoadingMode.NonSequential)
                 {
                     if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                     {
@@ -786,14 +798,19 @@ namespace Npgsql
                     // The exception is during the startup/authentication phase, where the server closes
                     // the connection after an ErrorResponse
                     error = new NpgsqlError(buf);
+
                     if (State == ConnectorState.Connecting) {
+                        State = ConnectorState.Closed;
                         throw new NpgsqlException(error);
                     }
+
+                    // TODO: Should technically be done once we receive the RFQ, need to refactor this a little
+                    State = ConnectorState.Ready;
                 }
             }
         }
 
-        BackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
+        IBackendMessage ParseServerMessage(NpgsqlBuffer buf, BackendMessageCode code, int len, DataRowLoadingMode dataRowLoadingMode)
         {
             switch (code)
             {
@@ -861,13 +878,26 @@ namespace Npgsql
                     BackendSecretKey = buf.ReadInt32();
                     return null;
 
-                case BackendMessageCode.CopyData:
-                case BackendMessageCode.CopyDone:
-                case BackendMessageCode.CancelRequest:
-                case BackendMessageCode.CopyDataRows:
                 case BackendMessageCode.CopyInResponse:
+                    if (_copyInResponseMessage == null) {
+                        _copyInResponseMessage = new CopyInResponseMessage();
+                    }
+                    return _copyInResponseMessage.Load(Buffer);
+
                 case BackendMessageCode.CopyOutResponse:
-                    throw new NotImplementedException();
+                    if (_copyOutResponseMessage == null) {
+                        _copyOutResponseMessage = new CopyOutResponseMessage();
+                    }
+                    return _copyOutResponseMessage.Load(Buffer);
+
+                case BackendMessageCode.CopyData:
+                    if (_copyDataMessage == null) {
+                        _copyDataMessage = new CopyDataMessage();
+                    }
+                    return _copyDataMessage.Load(len);
+
+                case BackendMessageCode.CopyDone:
+                    return CopyDoneMessage.Instance;
 
                 case BackendMessageCode.PortalSuspended:
                 case BackendMessageCode.IO_ERROR:
@@ -888,7 +918,7 @@ namespace Npgsql
         /// been seen. Note that when this method is called, the buffer position must be properly set at
         /// the start of the next message.
         /// </summary>
-        internal BackendMessage SkipUntil(params BackendMessageCode[] stopAt)
+        internal IBackendMessage SkipUntil(params BackendMessageCode[] stopAt)
         {
             Contract.Requires(!stopAt.Any(c => c == BackendMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
 
@@ -903,16 +933,21 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Processes the response from any messages that were prepended to the message chain.
-        /// These messages are currently assumed to be simple queries with no result sets.
+        /// Reads a single message, expecting it to be of type <typeparamref name="T"/>.
+        /// Any other message causes an exception to be raised and the connector to be broken.
+        /// Asynchronous messages (e.g. Notice) are treated and ignored. ErrorResponses raise an
+        /// exception but do not cause the connector to break.
         /// </summary>
-        [GenerateAsync]
-        internal void ReadPrependedMessageResponses()
+        internal T ReadExpecting<T>() where T : class, IBackendMessage
         {
-            for (; _prependedMessages > 0; _prependedMessages--)
+            var msg = ReadSingleMessage();
+            var asExpected = msg as T;
+            if (asExpected == null)
             {
-                SkipUntil(BackendMessageCode.ReadyForQuery);
+                State = ConnectorState.Broken;
+                throw new Exception(String.Format("Unexpected message received when expecting {0}: {1}", typeof(T), msg.Code));
             }
+            return asExpected;
         }
 
         #endregion Backend message processing
@@ -971,138 +1006,6 @@ namespace Npgsql
         }
 
         #endregion
-
-        #region Copy In / Out
-
-        internal NpgsqlCopyFormat CopyFormat { get; private set; }
-
-        // TODO: Currently unused
-        NpgsqlCopyFormat ReadCopyHeader()
-        {
-            var copyFormat = (byte)Buffer.ReadByte();
-            var numCopyFields = Buffer.ReadInt16();
-            var copyFieldFormats = new short[numCopyFields];
-            for (short i = 0; i < numCopyFields; i++)
-            {
-                copyFieldFormats[i] = Buffer.ReadInt16();
-            }
-            return new NpgsqlCopyFormat(copyFormat, copyFieldFormats);
-        }
-
-        /// <summary>
-        /// Called from NpgsqlState.ProcessBackendResponses upon CopyInResponse.
-        /// If CopyStream is already set, it is used to read data to push to server, after which the copy is completed.
-        /// Otherwise CopyStream is set to a writable NpgsqlCopyInStream that calls SendCopyData each time it is written to.
-        /// </summary>
-        internal void StartCopyIn(NpgsqlCopyFormat copyFormat)
-        {
-            CopyFormat = copyFormat;
-            var userFeed = Mediator.CopyStream;
-            if (userFeed == null)
-            {
-                Mediator.CopyStream = new NpgsqlCopyInStream(this);
-            }
-            else
-            {
-                // copy all of user feed to server at once
-                var bufsiz = Mediator.CopyBufferSize;
-                var buf = new byte[bufsiz];
-                int len;
-                while ((len = userFeed.Read(buf, 0, bufsiz)) > 0)
-                {
-                    SendCopyInData(buf, 0, len);
-                }
-                SendCopyInDone();
-            }
-        }
-
-        /// <summary>
-        /// Sends given packet to server as a CopyData message.
-        /// Does not check for notifications! Use another thread for that.
-        /// </summary>
-        internal void SendCopyInData(byte[] buf, int off, int len)
-        {
-            throw new NotImplementedException();
-            /*
-            Buffer.EnsureWrite(5);
-            Buffer.WriteByte((byte)FrontendMessageCode.CopyData);
-            Buffer.WriteInt32(len + 4);
-            Buffer.Write(buf, off, len);
-             */
-        }
-
-        /// <summary>
-        /// Sends CopyDone message to server. Handles responses, ie. may throw an exception.
-        /// </summary>
-        internal void SendCopyInDone()
-        {
-            throw new NotImplementedException();
-            /*
-            Buffer.WriteByte((byte)FrontEndMessageCode.CopyDone);
-            Buffer.WriteInt32(4); // message without data
-            ConsumeAll();
-             */
-        }
-
-        /// <summary>
-        /// Sends CopyFail message to server. Handles responses, ie. should always throw an exception:
-        /// in CopyIn state the server responds to CopyFail with an error response;
-        /// outside of a CopyIn state the server responds to CopyFail with an error response;
-        /// without network connection or whatever, there's going to eventually be a failure, timeout or user intervention.
-        /// </summary>
-        internal void SendCopyInFail(String message)
-        {
-            throw new NotImplementedException();
-            /*
-            Buffer.WriteByte((byte)FrontEndMessageCode.CopyFail);
-            var buf = BackendEncoding.UTF8Encoding.GetBytes((message ?? string.Empty) + '\x00');
-            Buffer.WriteInt32(4 + buf.Length);
-            Buffer.Write(buf, 0, buf.Length);
-            ConsumeAll();
-             */
-        }
-
-        /// <summary>
-        /// Called from NpgsqlState.ProcessBackendResponses upon CopyOutResponse.
-        /// If CopyStream is already set, it is used to write data received from server, after which the copy ends.
-        /// Otherwise CopyStream is set to a readable NpgsqlCopyOutStream that receives data from server.
-        /// </summary>
-        internal void StartCopyOut(NpgsqlCopyFormat copyFormat)
-        {
-            throw new NotImplementedException();
-            /*
-            CopyFormat = copyFormat;
-            var userFeed = Mediator.CopyStream;
-            if (userFeed == null)
-            {
-                Mediator.CopyStream = new NpgsqlCopyOutStream(this);
-            }
-            else
-            {
-                byte[] buf;
-                while ((buf = GetCopyOutData()) != null)
-                {
-                    userFeed.Write(buf, 0, buf.Length);
-                }
-                userFeed.Close();
-            }
-             */
-        }
-
-        /// <summary>
-        /// Called from NpgsqlOutStream.Read to read copy data from server.
-        /// </summary>
-        internal byte[] GetCopyOutData()
-        {
-            throw new NotImplementedException();
-            /*
-            // polling in COPY would take seconds on Windows
-            ConsumeAll();
-            return Mediator.ReceivedCopyData;
-             */
-        }
-
-        #endregion Copy In / Out
 
         #region Notifications
 
@@ -1522,7 +1425,6 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendSingleMessage(new QueryMessage(query));
-                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1535,7 +1437,6 @@ namespace Npgsql
             {
                 SetBackendCommandTimeout(20);
                 SendSingleMessage(message);
-                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1547,7 +1448,6 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SendSingleMessage(new QueryMessage(query));
-                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1560,7 +1460,6 @@ namespace Npgsql
             using (BlockNotifications())
             {
                 SendSingleMessage(message);
-                ReadPrependedMessageResponses();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 State = ConnectorState.Ready;
             }
@@ -1607,7 +1506,6 @@ namespace Npgsql
                     break;
 
             }
-            ReadPrependedMessageResponses();
             SkipUntil(BackendMessageCode.ReadyForQuery);
             State = ConnectorState.Ready;
         }
@@ -1651,11 +1549,13 @@ namespace Npgsql
         [GenerateAsync]
         internal void SetBackendCommandTimeout(int timeout)
         {
+            /*
             if (Mediator.BackendCommandTimeout == -1 || Mediator.BackendCommandTimeout != timeout)
             {
                 ExecuteSetStatementTimeoutBlind(timeout);
                 Mediator.BackendCommandTimeout = timeout;
             }
+             */
         }
 
         ///<summary>
@@ -1843,13 +1743,9 @@ namespace Npgsql
         /// </summary>
         Broken,
         /// <summary>
-        /// The connector is engaged in a COPY IN operation.
+        /// The connector is engaged in a COPY operation.
         /// </summary>
-        CopyIn,
-        /// <summary>
-        /// The connector is engaged in a COPY OUT operation.
-        /// </summary>
-        CopyOut,
+        Copy,
     }
 
     internal enum TransactionStatus : byte

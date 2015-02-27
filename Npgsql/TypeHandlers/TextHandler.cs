@@ -46,12 +46,12 @@ namespace Npgsql.TypeHandlers
             _bytePos = -1;
         }
 
-        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        void IChunkingTypeReader<string>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             PrepareRead(buf, fieldDescription, len);
         }
 
-        void IChunkingTypeReader<char[]>.PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        void IChunkingTypeReader<char[]>.PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             PrepareRead(buf, fieldDescription, len);
         }
@@ -184,32 +184,34 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
         {
-            var lengthCache = parameter.GetOrCreateLengthCache(1);
+            if (lengthCache == null) {
+                lengthCache = new LengthCache(1);
+            }
             if (lengthCache.IsPopulated) {
-                return parameter.LengthCache.Get();
+                return lengthCache.Get();
             }
 
-            return parameter.LengthCache.Set(DoValidateAndGetLength(value, parameter));
+            return lengthCache.Set(DoValidateAndGetLength(value, parameter));
         }
 
         /// <summary>
         /// Validates and calculates the length, but does not consult the length cache or stores
         /// in it. Used by other type handlers which delegate to TextHandler.
         /// </summary>
-        internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter)
+        internal int DoValidateAndGetLength(object value, NpgsqlParameter parameter = null)
         {
             var asString = value as string;
             if (asString != null) {
-                return parameter.Size == 0 || parameter.Size >= asString.Length
+                return parameter == null || parameter.Size == 0 || parameter.Size >= asString.Length
                   ? Encoding.UTF8.GetByteCount(asString)
                   : Encoding.UTF8.GetByteCount(asString.ToCharArray(), 0, parameter.Size);
             }
 
             var asCharArray = value as char[];
             if (asCharArray != null) {
-                return parameter.Size == 0 || parameter.Size >= asCharArray.Length
+                return parameter == null || parameter.Size == 0 || parameter.Size >= asCharArray.Length
                   ? Encoding.UTF8.GetByteCount(asCharArray)
                   : Encoding.UTF8.GetByteCount(asCharArray, 0, parameter.Size);
             }
@@ -217,23 +219,23 @@ namespace Npgsql.TypeHandlers
             throw new InvalidCastException("Can't write type as text: " + value.GetType());
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             _buf = buf;
             _charPos = -1;
-            _byteLen = parameter.LengthCache.GetLast();
+            _byteLen = lengthCache.GetLast();
 
             _str = value as string;
             if (_str != null)
             {
-                _charLen = parameter.Size == 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
+                _charLen = parameter == null ||parameter.Size == 0 || parameter.Size >= _str.Length ? _str.Length : parameter.Size;
                 return;
             }
 
             _chars = value as char[];
             if (_chars != null)
             {
-                _charLen = parameter.Size == 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
+                _charLen = parameter == null || parameter.Size == 0 || parameter.Size >= _chars.Length ? _chars.Length : parameter.Size;
                 return;
             }
 

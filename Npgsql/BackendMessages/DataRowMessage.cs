@@ -9,9 +9,9 @@ using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
 {
-    abstract class DataRowMessage : BackendMessage
+    abstract class DataRowMessage : IBackendMessage
     {
-        internal override BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.DataRow; } }
 
         protected internal NpgsqlBuffer Buffer { get; protected set; }
 

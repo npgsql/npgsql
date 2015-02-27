@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers
         ISimpleTypeReader<Guid>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        public Guid Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public Guid Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.Ensure(16);
             var a = buf.ReadInt32();
@@ -32,9 +32,9 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         #region Write

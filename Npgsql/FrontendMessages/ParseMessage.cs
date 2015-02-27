@@ -48,7 +48,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override bool Write(NpgsqlBuffer buf)
+        internal override bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf)
         {
             Contract.Requires(Statement != null && Statement.All(c => c < 128));
 

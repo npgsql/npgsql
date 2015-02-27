@@ -17,14 +17,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         ISimpleTypeReader<float>, ISimpleTypeWriter,
         ISimpleTypeReader<double>
     {
-        public float Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public float Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return buf.ReadSingle();
         }
 
-        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        double ISimpleTypeReader<double>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len);
+            return Read(buf, len, fieldDescription);
         }
 
         public int ValidateAndGetLength(object value) { return 4; }

@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         ISimpleTypeReader<NpgsqlBox>, ISimpleTypeWriter,
         ISimpleTypeReader<string>
     {
-        public NpgsqlBox Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public NpgsqlBox Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             return new NpgsqlBox(
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
@@ -29,9 +29,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             );
         }
 
-        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        string ISimpleTypeReader<string>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return Read(buf, fieldDescription, len).ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
 
         public int ValidateAndGetLength(object value)

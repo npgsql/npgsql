@@ -6,7 +6,7 @@ using Common.Logging;
 
 namespace Npgsql.BackendMessages
 {
-    internal class CommandCompleteMessage : BackendMessage
+    internal class CommandCompleteMessage : IBackendMessage
     {
         internal uint? LastInsertedOID { get; private set; }
         internal uint? RowsAffected { get; private set; }
@@ -41,6 +41,6 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        internal override BackendMessageCode Code { get { return BackendMessageCode.CompletedResponse; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.CompletedResponse; } }
     }
 }

@@ -32,10 +32,10 @@ namespace Npgsql
         /// The entire data required to read the value is expected to be in the buffer.
         /// </summary>
         /// <param name="buf"></param>
-        /// <param name="fieldDescription"></param>
         /// <param name="len"></param>
+        /// <param name="fieldDescription"></param>
         /// <returns></returns>
-        T Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        T Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null);
     }
 
     #endregion
@@ -46,21 +46,22 @@ namespace Npgsql
     interface IChunkingTypeWriter
     {
         /// <param name="value">the value to be examined</param>
+        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
         /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for the
-        /// length cache and for settings which impact how to send the parameter, e.g.
-        /// <see cref="NpgsqlParameter.Size"/>.
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
+        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// </param>
-        int ValidateAndGetLength(object value, NpgsqlParameter parameter);
+        int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null);
 
         /// <param name="value">the value to be written</param>
         /// <param name="buf"></param>
+        /// <param name="lengthCache">a cache in which to store length(s) of values to be written</param>
         /// <param name="parameter">
-        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for the
-        /// length cache and for settings which impact how to send the parameter, e.g.
+        /// the <see cref="NpgsqlParameter"/> containing <paramref name="value"/>. Consulted for settings
+        /// which impact how to send the parameter, e.g. <see cref="NpgsqlParameter.Size"/>. Can be null.
         /// <see cref="NpgsqlParameter.Size"/>.
         /// </param>
-        void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter);
+        void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null);
         bool Write(ref DirectBuffer directBuf);
     }
 
@@ -68,13 +69,13 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeWriterContracts : IChunkingTypeWriter
     {
-        public int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             Contract.Requires(value != null);
             return default(int);
         }
 
-        public void PrepareWrite(object value, NpgsqlBuffer buf, NpgsqlParameter parameter)
+        public void PrepareWrite(object value, NpgsqlBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter=null)
         {
             Contract.Requires(buf != null);
             Contract.Requires(value != null);
@@ -94,7 +95,7 @@ namespace Npgsql
     // ReSharper disable once TypeParameterCanBeVariant
     interface IChunkingTypeReader<T> : ITypeReader<T>
     {
-        void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len);
+        void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null);
         bool Read(out T result);
     }
 
@@ -102,10 +103,9 @@ namespace Npgsql
     // ReSharper disable once InconsistentNaming
     class IChunkingTypeReaderContracts<T> : IChunkingTypeReader<T>
     {
-        public void PrepareRead(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public void PrepareRead(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             Contract.Requires(buf != null);
-            Contract.Requires(fieldDescription != null);
         }
 
         public bool Read(out T result)
@@ -135,18 +135,25 @@ namespace Npgsql
 
         public virtual bool PreferTextWrite { get { return false; } }
 
-        internal T Read<T>(DataRowMessage row, FieldDescription fieldDescription, int len)
+        internal T Read<T>(DataRowMessage row, int len, FieldDescription fieldDescription = null)
         {
             Contract.Requires(row.PosInColumn == 0);
             Contract.Ensures(row.PosInColumn == row.ColumnLen);
 
+            var result = Read<T>(row.Buffer, len, fieldDescription);
+            row.PosInColumn += row.ColumnLen;
+            return result;
+        }
+
+        internal T Read<T>(NpgsqlBuffer buf, int len, FieldDescription fieldDescription=null)
+        {
             T result;
 
             var asSimpleReader = this as ISimpleTypeReader<T>;
             if (asSimpleReader != null)
             {
-                row.Buffer.Ensure(len);
-                result = asSimpleReader.Read(row.Buffer, fieldDescription, len);
+                buf.Ensure(len);
+                result = asSimpleReader.Read(buf, len, fieldDescription);
             }
             else
             {
@@ -155,13 +162,12 @@ namespace Npgsql
                     throw new InvalidCastException(String.Format("Can't cast database type {0} to {1}", fieldDescription.Handler.PgName, typeof(T).Name));
                 }
 
-                asChunkingReader.PrepareRead(row.Buffer, fieldDescription, len);
+                asChunkingReader.PrepareRead(buf, len, fieldDescription);
                 while (!asChunkingReader.Read(out result)) {
-                    row.Buffer.ReadMore();
+                    buf.ReadMore();
                 }
             }
 
-            row.PosInColumn += row.ColumnLen;
             return result;
         }
 
@@ -191,12 +197,12 @@ namespace Npgsql
 
         internal override object ReadValueAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read<T>(row, fieldDescription, row.ColumnLen);
+            return Read<T>(row, row.ColumnLen, fieldDescription);
         }
 
         internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read<T>(row, fieldDescription, row.ColumnLen);
+            return Read<T>(row, row.ColumnLen, fieldDescription);
         }
 
         [ContractInvariantMethod]
@@ -227,7 +233,7 @@ namespace Npgsql
 
         internal override object ReadPsvAsObject(DataRowMessage row, FieldDescription fieldDescription)
         {
-            return Read<TPsv>(row, fieldDescription, row.ColumnLen);
+            return Read<TPsv>(row, row.ColumnLen, fieldDescription);
         }
     }
 

@@ -6,9 +6,9 @@ using System.Text;
 
 namespace Npgsql.BackendMessages
 {
-    internal abstract class AuthenticationRequestMessage : BackendMessage
+    internal abstract class AuthenticationRequestMessage : IBackendMessage
     {
-        internal override BackendMessageCode Code { get { return BackendMessageCode.AuthenticationRequest; } }
+        public BackendMessageCode Code { get { return BackendMessageCode.AuthenticationRequest; } }
         internal abstract AuthenticationRequestType AuthRequestType { get; }
     }
 

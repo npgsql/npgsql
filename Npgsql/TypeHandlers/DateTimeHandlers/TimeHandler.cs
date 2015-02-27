@@ -23,13 +23,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
         }
 
-        public DateTime Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTime?
-            return (DateTime)((ISimpleTypeReader<NpgsqlTime>)this).Read(buf, fieldDescription, len);
+            return (DateTime)((ISimpleTypeReader<NpgsqlTime>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlTime ISimpleTypeReader<NpgsqlTime>.Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        NpgsqlTime ISimpleTypeReader<NpgsqlTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");

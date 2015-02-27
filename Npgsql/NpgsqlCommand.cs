@@ -513,8 +513,6 @@ namespace Npgsql
 
                 _queryIndex = 0;
 
-                _connector.ReadPrependedMessageResponses();
-
                 while (true)
                 {
                     var msg = _connector.ReadSingleMessage();
@@ -1175,7 +1173,9 @@ namespace Npgsql
 
             foreach (NpgsqlParameter p in Parameters.Where(p => p.IsInputDirection)) {
                 p.Bind(_connector.TypeHandlerRegistry);
-                p.ClearLengthCache();
+                if (p.LengthCache != null) {
+                    p.LengthCache.Clear();
+                }
                 p.ValidateAndGetLength();
             }
 
@@ -1194,12 +1194,10 @@ namespace Npgsql
                 if (!(IsPrepared && (behavior & CommandBehavior.SchemaOnly) != 0)) {
                     //_connector.SetBackendCommandTimeout(CommandTimeout);
                     _connector.SendAllMessages();
-
-                    _connector.ReadPrependedMessageResponses();
                 }
 
                 if (!IsPrepared) {
-                    BackendMessage msg;
+                    IBackendMessage msg;
                     do {
                         msg = _connector.ReadSingleMessage();
                     } while (!ProcessMessageForUnprepared(msg, behavior));
@@ -1219,7 +1217,7 @@ namespace Npgsql
             }
         }
 
-        bool ProcessMessageForUnprepared(BackendMessage msg, CommandBehavior behavior)
+        bool ProcessMessageForUnprepared(IBackendMessage msg, CommandBehavior behavior)
         {
             Contract.Requires(!IsPrepared);
 

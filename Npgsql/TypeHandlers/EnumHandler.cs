@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public TEnum Read(NpgsqlBuffer buf, FieldDescription fieldDescription, int len)
+        public TEnum Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             var str = buf.ReadStringSimple(len);
             TEnum value;
