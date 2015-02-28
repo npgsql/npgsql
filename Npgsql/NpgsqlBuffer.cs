@@ -51,7 +51,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlBuffer(Stream underlying)
-            : this(underlying, DefaultBufferSize, Encoding.UTF8) {}
+            : this(underlying, DefaultBufferSize, PGUtil.UTF8Encoding) {}
 
         internal NpgsqlBuffer(Stream underlying, int size, Encoding textEncoding)
         {

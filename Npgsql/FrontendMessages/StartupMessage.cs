@@ -46,8 +46,8 @@ namespace Npgsql.FrontendMessages
             }
 
             // TODO: Is this really UTF8 or can be ASCII?
-            _parameters = parameters.ToDictionary(kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Key),
-                                                  kv => BackendEncoding.UTF8Encoding.GetBytes(kv.Value));
+            _parameters = parameters.ToDictionary(kv => PGUtil.UTF8Encoding.GetBytes(kv.Key),
+                                                  kv => PGUtil.UTF8Encoding.GetBytes(kv.Value));
             _length = 4 + // len
                       4 + // protocol version
                       _parameters.Select(kv => kv.Key.Length + kv.Value.Length + 2).Sum() +

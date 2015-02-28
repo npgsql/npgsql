@@ -1638,7 +1638,7 @@ namespace Npgsql
         void Prechecks()
         {
             if (Connector == null) {
-                throw new InvalidOperationException(L10N.ConnectionNotOpen);
+                throw new InvalidOperationException("Connection property has not been initialized.");
             }
 
             Connector.CheckReadyState();

@@ -370,7 +370,6 @@
     <Compile Include="CachedValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
-    <Compile Include="BackendEncoding.cs" />
     <Compile Include="ASCIIBytes.cs" />
     <Compile Include="HashAlgorithm.cs" />
     <Compile Include="MD5.cs" />

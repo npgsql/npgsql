@@ -55,8 +55,8 @@ namespace Npgsql.FrontendMessages
             switch (_state)
             {
                 case State.WroteNothing:
-                    _statementNameBytes = BackendEncoding.UTF8Encoding.GetBytes(Statement);
-                    _queryLen = BackendEncoding.UTF8Encoding.GetByteCount(Query);
+                    _statementNameBytes = PGUtil.UTF8Encoding.GetBytes(Statement);
+                    _queryLen = PGUtil.UTF8Encoding.GetByteCount(Query);
                     if (buf.WriteSpaceLeft < 4 + _statementNameBytes.Length + 1) {
                         return false;
                     }

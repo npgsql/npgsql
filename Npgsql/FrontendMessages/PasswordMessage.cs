@@ -30,8 +30,8 @@ namespace Npgsql.FrontendMessages
             var md5 = MD5.Create();
 
             // First phase
-            var passwordBytes = BackendEncoding.UTF8Encoding.GetBytes(password);
-            var usernameBytes = BackendEncoding.UTF8Encoding.GetBytes(username);
+            var passwordBytes = PGUtil.UTF8Encoding.GetBytes(password);
+            var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
             var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
             passwordBytes.CopyTo(cryptBuf, 0);
             usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
@@ -44,7 +44,7 @@ namespace Npgsql.FrontendMessages
 
             var prehash = sb.ToString();
 
-            var prehashbytes = BackendEncoding.UTF8Encoding.GetBytes(prehash);
+            var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
             cryptBuf = new byte[prehashbytes.Length + 4];
 
             Array.Copy(serverSalt, 0, cryptBuf, prehashbytes.Length, 4);
