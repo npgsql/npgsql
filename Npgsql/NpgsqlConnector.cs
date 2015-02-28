@@ -773,7 +773,14 @@ namespace Npgsql
                 }
                 else if (messageCode == BackendMessageCode.ErrorResponse)
                 {
+                    // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                    // and throw it as an exception when the ReadyForQuery is received (next)
+                    // The exception is during the startup/authentication phase, where the server closes
+                    // the connection after an ErrorResponse
                     error = new NpgsqlError(buf);
+                    if (State == ConnectorState.Connecting) {
+                        throw new NpgsqlException(error);
+                    }
                 }
             }
         }

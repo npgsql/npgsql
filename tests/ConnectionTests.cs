@@ -31,6 +31,7 @@ using System.Resources;
 using Npgsql.Localization;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
 namespace NpgsqlTests
@@ -193,6 +194,17 @@ namespace NpgsqlTests
         {
             var conn = new NpgsqlConnection("Server=127.0.0.1;User Id=npgsql_tests;Pooling:false");
             conn.Open();
+        }
+
+        [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
+        public void AuthenticationFailure()
+        {
+            var badConnString = Regex.Replace(ConnectionString, @"Password=\w+", "Password=bad_password");
+            var conn = new NpgsqlConnection(badConnString);
+            Assert.That(() => conn.Open(),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                .With.Property("Code").EqualTo("28P01")
+            );
         }
 
         [Test]
