@@ -1260,40 +1260,49 @@ namespace Npgsql
             }
         }
 #endif
-        public static void AddOnNewConnectorAction(Action<NpgsqlConnection> del)
+
+
+        public static class Events
         {
-            NpgsqlConnectorPool.OnNewConnector = del;
 
-        }
 
-        public static void AddOnNewConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
-        {
-            NpgsqlConnectorPool.OnNewConnectorStackTrace = del;
+            public static Action<NpgsqlConnection> OnNewConnectorAction
+            {
+                set { NpgsqlConnectorPool.OnNewConnector = value; }
 
-        }
+            }
 
-        public static void AddOnReleaseConnectorAction(Action<NpgsqlConnection> del)
-        {
-            NpgsqlConnectorPool.OnReleaseConnector = del;
+            public static Action<NpgsqlConnection> OnReleaseConnectorAction
+            {
+                set { NpgsqlConnectorPool.OnReleaseConnector = value;}
 
-        }
+            }
 
-        public static void AddOnReleaseConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
-        {
-            NpgsqlConnectorPool.OnReleaseConnectorStackTrace = del;
+            public static Action<NpgsqlConnection> OnCloseConnectorAction
+            {
+                set { NpgsqlConnectorPool.OnCloseConnector = value;}
 
-        }
+            }
 
-        public static void AddOnCloseConnectorAction(Action<NpgsqlConnection> del)
-        {
-            NpgsqlConnectorPool.OnCloseConnector = del;
+            public static int GetAvailableConnectorsValue(NpgsqlConnection c)
+            {
+                return NpgsqlConnectorPool.ConnectorPoolMgr.GetAvailableConnectorsValue(c.ConnectionString);
+            }
 
-        }
+            public static int GetBusyConnectorsValue(NpgsqlConnection c)
+            {
+                return NpgsqlConnectorPool.ConnectorPoolMgr.GetBusyConnectorsValue(c.ConnectionString);
+            }
 
-        public static void AddOnCloseConnectorActionStackTrace(Action<System.Diagnostics.StackTrace> del)
-        {
-            NpgsqlConnectorPool.OnCloseConnectorStackTrace = del;
+            public static int GetAvailableConnectorsValue(String connectionString)
+            {
+                return NpgsqlConnectorPool.ConnectorPoolMgr.GetAvailableConnectorsValue(connectionString);
+            }
 
+            public static int GetBusyConnectorsValue(String connectionString)
+            {
+                return NpgsqlConnectorPool.ConnectorPoolMgr.GetBusyConnectorsValue(connectionString);
+            }
         }
 
     }

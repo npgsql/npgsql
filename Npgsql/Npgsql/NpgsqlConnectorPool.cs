@@ -45,9 +45,33 @@ namespace Npgsql
         public static Action<NpgsqlConnection> OnReleaseConnector;
         public static Action<NpgsqlConnection> OnCloseConnector;
 
-        public static Action<System.Diagnostics.StackTrace> OnNewConnectorStackTrace;
-        public static Action<System.Diagnostics.StackTrace> OnReleaseConnectorStackTrace;
-        public static Action<System.Diagnostics.StackTrace> OnCloseConnectorStackTrace;
+        public int GetAvailableConnectorsValue(String connectionString)
+        {
+            ConnectorQueue queue = null;
+            lock (locker)
+            {
+
+                PooledConnectors.TryGetValue(connectionString, out queue);
+
+                return queue.Available.Count;
+            }
+
+        }
+
+
+        public int GetBusyConnectorsValue(String connectionString)
+        {
+            ConnectorQueue queue = null;
+            lock (locker)
+            {
+
+                PooledConnectors.TryGetValue(connectionString, out queue);
+
+                return queue.Busy.Count;
+            }
+
+        }
+
 
         /// <summary>
         /// A queue with an extra Int32 for keeping track of busy connections.
@@ -128,9 +152,6 @@ namespace Npgsql
                                             Connector.Close();
                                             if (OnCloseConnector!= null) {
                                                 OnCloseConnector(null);
-                                            }
-                                            if (OnCloseConnectorStackTrace!= null) {
-                                                OnCloseConnectorStackTrace(new System.Diagnostics.StackTrace(true));
                                             }
 
                                         }
@@ -385,9 +406,6 @@ namespace Npgsql
                     if (OnNewConnector != null) {
                         OnNewConnector(Connection);
                     }
-                    if (OnNewConnectorStackTrace != null) {
-                        OnNewConnectorStackTrace(new System.Diagnostics.StackTrace(true));
-                    }
 
                 }
             }
@@ -565,9 +583,6 @@ namespace Npgsql
                         OnReleaseConnector(Connection);
                     }
 
-                    if (OnReleaseConnectorStackTrace != null) {
-                        OnReleaseConnectorStackTrace(new System.Diagnostics.StackTrace(true));
-                    }
                 }
             else
                 lock (queue)
