@@ -5,6 +5,13 @@ using System.Text;
 
 namespace TlsClientStream
 {
+    internal enum TlsVersion : ushort
+    {
+        TLSv1_0 = 0x0301,
+        TLSv1_1 = 0x0302,
+        TLSv1_2 = 0x0303
+    }
+
     internal enum AlertLevel : byte
     {
         Warning = 1,
@@ -115,7 +122,9 @@ namespace TlsClientStream
         SHA1 = 2,
         SHA256 = 4,
         SHA384 = 5,
-        SHA512 = 6
+        SHA512 = 6,
+
+        MD5SHA1 = 255 // Not defined by any spec
     }
 
     internal enum SignatureAlgorithm : byte
@@ -137,7 +146,10 @@ namespace TlsClientStream
         RSASign = 1,
         DSSSign = 2,
         RSAFixedDH = 3,
-        DSSFixedDH = 4
+        DSSFixedDH = 4,
+        ECDSASign = 64,
+        RSAFixedECDH = 65,
+        ECDSAFixedECDH = 66
     }
 
     internal enum KeyExchange : byte
@@ -155,7 +167,8 @@ namespace TlsClientStream
     internal enum PRFAlgorithm : byte
     {
         TLSPrfSHA256,
-        TLSPrfSHA384
+        TLSPrfSHA384,
+        TLSPrfMD5SHA1
     }
 
     internal enum AesMode : byte

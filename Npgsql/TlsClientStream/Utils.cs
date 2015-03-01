@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -162,6 +163,43 @@ namespace TlsClientStream
             return retTruncated;
         }
 
+        public static byte[] PRF(PRFAlgorithm prfAlgorithm, byte[] key, string label, byte[] seed, int bytesNeeded)
+        {
+            switch (prfAlgorithm)
+            {
+                case PRFAlgorithm.TLSPrfSHA256:
+                    using (var hmac = new HMACSHA256(key))
+                        return PRF(hmac, label, seed, bytesNeeded);
+                case PRFAlgorithm.TLSPrfSHA384:
+                    using (var hmac = new HMACSHA384(key))
+                        return PRF(hmac, label, seed, bytesNeeded);
+                case PRFAlgorithm.TLSPrfMD5SHA1:
+                    var halfKeyLen = (key.Length + 1) / 2;
+                    var key1 = new byte[halfKeyLen];
+                    var key2 = new byte[halfKeyLen];
+                    Buffer.BlockCopy(key, 0, key1, 0, halfKeyLen);
+                    Buffer.BlockCopy(key, key.Length - halfKeyLen, key2, 0, halfKeyLen);
+                    using (var hmac1 = new HMACMD5(key1))
+                    {
+                        using (var hmac2 = new HMACSHA1(key2))
+                        {
+                            var prf1 = PRF(hmac1, label, seed, bytesNeeded);
+                            var prf2 = PRF(hmac2, label, seed, bytesNeeded);
+                            for (var i = 0; i < bytesNeeded; i++)
+                            {
+                                prf1[i] ^= prf2[i];
+                            }
+                            ClearArray(key1);
+                            ClearArray(key2);
+                            ClearArray(prf2);
+                            return prf1;
+                        }
+                    }
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
         public static int GetASNLength(byte[] buf, ref int offset)
         {
             if ((buf[offset] & 0x80) == 0)
@@ -281,6 +319,32 @@ namespace TlsClientStream
             Buffer.BlockCopy(signature, offset, decodedSignature, integerLength * 2 - len2, len2);
 
             return decodedSignature;
+        }
+
+        public static BigInteger BigIntegerFromBigEndian(byte[] arr, int offset, int len)
+        {
+            var littleEndian = new byte[len + 1];
+            for (var i = 0; i < len; i++)
+            {
+                littleEndian[len - 1 - i] = arr[offset + i];
+            }
+            return new BigInteger(littleEndian);
+        }
+
+        public static byte[] BigEndianFromBigInteger(BigInteger bi)
+        {
+            var littleEndian = bi.ToByteArray();
+            var bigEndian = new byte[littleEndian[littleEndian.Length - 1] == 0 ? littleEndian.Length - 1 : littleEndian.Length];
+            for (var i = 0; i < bigEndian.Length; i++)
+            {
+                bigEndian[i] = littleEndian[bigEndian.Length - 1 - i];
+            }
+            return bigEndian;
+        }
+
+        public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
+        {
+            hashAlg.TransformBlock(buf, offset, len, null, 0);
         }
     }
 }

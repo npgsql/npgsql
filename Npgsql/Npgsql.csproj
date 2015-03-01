@@ -344,6 +344,8 @@
     <Compile Include="TlsClientStream\GaloisCounterMode.cs" />
     <Compile Include="TlsClientStream\HandshakeData.cs" />
     <Compile Include="TlsClientStream\HandshakeMessagesBuffer.cs" />
+    <Compile Include="TlsClientStream\MD5SHA1.cs" />
+    <Compile Include="TlsClientStream\RsaPKCS1.cs" />
     <Compile Include="TlsClientStream\ServerAlertException.cs" />
     <Compile Include="TlsClientStream\TlsClientStream.cs" />
     <Compile Include="TlsClientStream\Utils.cs" />

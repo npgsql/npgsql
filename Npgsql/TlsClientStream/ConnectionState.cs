@@ -8,6 +8,7 @@ namespace TlsClientStream
 {
     internal class ConnectionState : IDisposable
     {
+        public TlsVersion TlsVersion { get; set; }
         public CipherSuiteInfo CipherSuite { get; set; }
         public AesCryptoServiceProvider ReadAes { get; set; }
         public AesCryptoServiceProvider WriteAes { get; set; }
@@ -18,19 +19,20 @@ namespace TlsClientStream
         public ICryptoTransform WriteAesECB { get; set; }
         public ulong[] ReadGCMTable { get; set; }
         public ulong[] WriteGCMTable { get; set; }
-        public uint ReadSalt { get; set; }
-        public uint WriteSalt { get; set; }
         public int MacLen { get { return CipherSuite.MACLen / 8; } }
         public byte[] MasterSecret { get; set; }
         public byte[] ClientRandom { get; set; }
         public byte[] ServerRandom { get; set; }
         public ulong ReadSeqNum { get; set; }
         public ulong WriteSeqNum { get; set; }
-        public byte[] IvBuf { get; set; }
+        public byte[] ReadIv { get; set; }
+        public byte[] WriteIv { get; set; }
         public bool SecureRenegotiation { get; set; }
         public byte[] ClientVerifyData { get; set; }
         public byte[] ServerVerifyData { get; set; }
-        public int IvLen { get { return CipherSuite == null ? 0 : CipherSuite.AesMode == AesMode.CBC ? 16 : 8; } }
+        public int IvLen { get { return CipherSuite == null ? 0 : CipherSuite.AesMode == AesMode.GCM ? 8 : TlsVersion != TlsVersion.TLSv1_0 ? 16 : 0; } }
+
+        public PRFAlgorithm PRFAlgorithm { get { return TlsVersion == TlsVersion.TLSv1_2 ? CipherSuite.PRFAlgorithm : PRFAlgorithm.TLSPrfMD5SHA1; } }
 
         public bool IsAuthenticated { get { return ReadAes != null; } }
 
@@ -48,8 +50,10 @@ namespace TlsClientStream
                 ReadMac.Clear();
             if (WriteMac != null)
                 WriteMac.Clear();
-            if (IvBuf != null)
-                Utils.ClearArray(IvBuf);
+            if (ReadIv != null)
+                Utils.ClearArray(ReadIv);
+            if (WriteIv != null)
+                Utils.ClearArray(WriteIv);
             if (ReadGCMTable != null)
                 Utils.ClearArray(ReadGCMTable);
             if (WriteGCMTable != null)
@@ -64,8 +68,6 @@ namespace TlsClientStream
                 Utils.ClearArray(ClientVerifyData);
             if (ServerVerifyData != null)
                 Utils.ClearArray(ServerVerifyData);
-            ReadSalt = 0;
-            WriteSalt = 0;
         }
     }
 }
