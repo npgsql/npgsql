@@ -109,6 +109,7 @@ namespace Npgsql
             }
 
             context.Stream = null;
+            context.BaseStream = null;
             ChangeState(context, NpgsqlClosedState.Instance);
         }
     }
