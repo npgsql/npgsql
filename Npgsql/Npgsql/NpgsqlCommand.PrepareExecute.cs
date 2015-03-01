@@ -247,12 +247,12 @@ namespace Npgsql
 
                 m_Connector.SetBackendCommandTimeout(CommandTimeout);
 
-                if (prepared == PrepareStatus.NeedsPrepare)
+                if (PrepareStatus == PrepareStatus.NeedsPrepare)
                 {
                     PrepareInternal();
                 }
 
-                if (prepared == PrepareStatus.NotPrepared)
+                if (PrepareStatus == PrepareStatus.NotPrepared)
                 {
                     NpgsqlQuery query;
                     byte[] commandText = GetCommandText();
@@ -263,7 +263,7 @@ namespace Npgsql
                     m_Connector.Query(query);
 
                     // Tell to mediator what command is being sent.
-                    if (prepared == PrepareStatus.NotPrepared)
+                    if (PrepareStatus == PrepareStatus.NotPrepared)
                     {
                         m_Connector.Mediator.SetSqlSent(commandText, NpgsqlMediator.SQLSentType.Simple);
                     }
@@ -423,13 +423,13 @@ namespace Npgsql
 
         private void UnPrepare()
         {
-            if (prepared == PrepareStatus.Prepared)
+            if (PrepareStatus == PrepareStatus.Prepared)
             {
                 ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
                 bind = null;
                 execute = null;
                 currentRowDescription = null;
-                prepared = PrepareStatus.NeedsPrepare;
+                PrepareStatus = PrepareStatus.NeedsPrepare;
             }
 
             preparedCommandText = null;
@@ -525,7 +525,7 @@ namespace Npgsql
             bind = new NpgsqlBind(portalName, planName, new Int16[Parameters.Count], null, resultFormatCodes);
             execute = new NpgsqlExecute(portalName, 0);
 
-            prepared = PrepareStatus.Prepared;
+            PrepareStatus = PrepareStatus.Prepared;
         }
     }
 }
