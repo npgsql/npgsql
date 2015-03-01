@@ -138,6 +138,13 @@ namespace Npgsql
         private bool _postponingClose;
         private bool _postponingDispose;
 
+        /// <summary>
+        /// A counter that gets incremented every time the connection is (re-)opened.
+        /// This allows us to identify an "instance" of connection, which is useful since
+        /// some resources are released when a connection is closed (e.g. prepared statements).
+        /// </summary>
+        internal int OpenCounter { get; private set; }
+
         // Strong-typed ConnectionString values
         private NpgsqlConnectionStringBuilder settings;
 
@@ -664,8 +671,8 @@ namespace Npgsql
                 Promotable.Enlist(Transaction.Current);
             }
 
+            OpenCounter++;
             this.OnStateChange (new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-
         }
 
         /// <summary>

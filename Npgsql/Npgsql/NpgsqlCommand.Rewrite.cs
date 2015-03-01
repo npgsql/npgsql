@@ -77,7 +77,7 @@ namespace Npgsql
         {
             NpgsqlEventLog.LogMethodEnter(LogLevel.Debug, CLASSNAME, "GetCommandText");
 
-            byte[] ret = string.IsNullOrEmpty(planName) ? GetCommandText(false) : GetExecuteCommandText();
+            byte[] ret = IsPrepared ? GetExecuteCommandText() : GetCommandText(false);
 
             return ret;
         }

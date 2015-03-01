@@ -54,13 +54,6 @@ namespace Npgsql
 
     public sealed partial class NpgsqlCommand : DbCommand, ICloneable
     {
-        private enum PrepareStatus
-        {
-            NotPrepared,
-            NeedsPrepare,
-            Prepared
-        }
-
         // Logging related values
         private static readonly String CLASSNAME = MethodBase.GetCurrentMethod().DeclaringType.Name;
         private static readonly ResourceManager resman = new ResourceManager(MethodBase.GetCurrentMethod().DeclaringType);
@@ -76,7 +69,14 @@ namespace Npgsql
         private String planName;
         private Boolean designTimeVisible;
 
-        private PrepareStatus prepared = PrepareStatus.NotPrepared;
+        private PrepareStatus _prepareStatus = PrepareStatus.NotPrepared;
+        /// <summary>
+        /// For prepared commands, captures the connection's <see cref="NpgsqlConnection.OpenCounter"/>
+        /// at the time the command was prepared. This allows us to know whether the connection was
+        /// closed since the command was prepared.
+        /// </summary>
+        private int _prepareConnectionOpenId;
+
         private byte[] preparedCommandText = null;
         private NpgsqlBind bind = null;
         private NpgsqlExecute execute = null;
@@ -314,19 +314,10 @@ namespace Npgsql
                     throw new InvalidOperationException(resman.GetString("Exception_SetConnectionInTransaction"));
                 }
 
-                if (connection != null) {
-                    connection.StateChange -= OnConnectionStateChange;
-                }
+                PrepareStatus = m_Connector != null && m_Connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
                 this.connection = value;
-                if (connection != null) {
-                    connection.StateChange += OnConnectionStateChange;
-                }
                 Transaction = null;
-                if (this.connection != null)
-                {
-                    m_Connector = this.connection.Connector;
-                    prepared = m_Connector != null && m_Connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
-                }
+                m_Connector = connection == null ? null : connection.Connector;
 
                 SetCommandTimeout();
 
@@ -344,32 +335,6 @@ namespace Npgsql
                 }
 
                 return m_Connector;
-            }
-        }
-
-        void OnConnectionStateChange(object sender, StateChangeEventArgs stateChangeEventArgs)
-        {
-            switch (stateChangeEventArgs.CurrentState)
-            {
-                case ConnectionState.Broken:
-                case ConnectionState.Closed:
-                    prepared = PrepareStatus.NotPrepared;
-                    break;
-                case ConnectionState.Open:
-                    switch (stateChangeEventArgs.OriginalState)
-                    {
-                        case ConnectionState.Closed:
-                        case ConnectionState.Broken:
-                            prepared = m_Connector != null && m_Connector.AlwaysPrepare ? PrepareStatus.NeedsPrepare : PrepareStatus.NotPrepared;
-                            break;
-                    }
-                    break;
-                case ConnectionState.Connecting:
-                case ConnectionState.Executing:
-                case ConnectionState.Fetching:
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -494,7 +459,7 @@ namespace Npgsql
         {
             get
             {
-                switch (prepared)
+                switch (PrepareStatus)
                 {
                     case PrepareStatus.NotPrepared:
                         return false;
@@ -503,6 +468,34 @@ namespace Npgsql
                         return true;
                     default:
                         throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        PrepareStatus PrepareStatus
+        {
+            get
+            {
+                switch (_prepareStatus)
+                {
+                    case PrepareStatus.NotPrepared:
+                    case PrepareStatus.NeedsPrepare:
+                        return _prepareStatus;
+
+                    case PrepareStatus.Prepared:
+                        if (connection == null || connection.Connector == null || Connection.State != ConnectionState.Open || _prepareConnectionOpenId != connection.OpenCounter) {
+                            _prepareStatus = PrepareStatus.NotPrepared;
+                        }
+                        return _prepareStatus;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            set
+            {
+                _prepareStatus = value;
+                if (_prepareStatus == PrepareStatus.Prepared) {
+                    _prepareConnectionOpenId = connection.OpenCounter;
                 }
             }
         }
@@ -604,7 +597,7 @@ namespace Npgsql
                 // We can implement a queue-based solution that will perform cleanup during the next possible
                 // window, but this isn't trivial (should not occur in transactions because of possible exceptions,
                 // etc.).
-                if (prepared == PrepareStatus.Prepared)
+                if (PrepareStatus == PrepareStatus.Prepared)
                     ExecuteBlind(m_Connector, "DEALLOCATE " + planName);
             }
             Transaction = null;
@@ -642,5 +635,12 @@ namespace Npgsql
             get { return designTimeVisible; }
             set { designTimeVisible = value; }
         }
+    }
+
+    enum PrepareStatus
+    {
+        NotPrepared,
+        NeedsPrepare,
+        Prepared
     }
 }
