@@ -1277,6 +1277,7 @@ namespace Npgsql
             catch { }
 
             Stream = null;
+            BaseStream = null;
             Buffer = null;
             BackendParams.Clear();
             ServerVersion = null;
