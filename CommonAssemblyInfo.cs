@@ -15,8 +15,8 @@ using System.Resources;
 [assembly: AssemblyProductAttribute("Npgsql")]
 [assembly: AssemblyCopyrightAttribute("Copyright © 2002 - 2014 Npgsql Development Team")]
 [assembly: AssemblyTrademarkAttribute("")]
-[assembly: AssemblyVersionAttribute("2.2.4.3")]
-[assembly: AssemblyFileVersionAttribute("2.2.4.3")]
-[assembly: AssemblyInformationalVersionAttribute("2.2.4.3")]
+[assembly: AssemblyVersionAttribute("2.2.5")]
+[assembly: AssemblyFileVersionAttribute("2.2.5")]
+[assembly: AssemblyInformationalVersionAttribute("2.2.5")]
 [assembly: NeutralResourcesLanguageAttribute("en", UltimateResourceFallbackLocation.MainAssembly)]
 
