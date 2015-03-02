@@ -989,6 +989,7 @@ namespace NpgsqlTests
                     c.Close();
                     c.Open();
                     Assert.That(cmd.IsPrepared, Is.False);
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1)); // Execute unprepared
                     cmd.Prepare();
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }

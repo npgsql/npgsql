@@ -76,6 +76,13 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlConnector Connector { get; private set; }
 
+        /// <summary>
+        /// A counter that gets incremented every time the connection is (re-)opened.
+        /// This allows us to identify an "instance" of connection, which is useful since
+        /// some resources are released when a connection is closed (e.g. prepared statements).
+        /// </summary>
+        internal int OpenCounter { get; private set; }
+
         NpgsqlPromotableSinglePhaseNotification _promotable;
 
         // A cached copy of the result of `settings.ConnectionString`
@@ -191,6 +198,7 @@ namespace Npgsql
                 Promotable.Enlist(Transaction.Current);
             }
 
+            OpenCounter++;
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
         }
 

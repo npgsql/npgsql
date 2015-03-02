@@ -80,6 +80,19 @@ namespace Npgsql
 
         FormatCode[] _resultFormatCodes;
 
+        /// <summary>
+        /// Indicates whether this command has been prepared.
+        /// Never access this field directly, use <see cref="IsPrepared"/> instead.
+        /// </summary>
+        bool _isPrepared;
+
+        /// <summary>
+        /// For prepared commands, captures the connection's <see cref="NpgsqlConnection.OpenCounter"/>
+        /// at the time the command was prepared. This allows us to know whether the connection was
+        /// closed since the command was prepared.
+        /// </summary>
+        int _prepareConnectionOpenId;
+
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         internal NpgsqlConnector.NotificationBlock _notificationBlock;
@@ -254,19 +267,10 @@ namespace Npgsql
                     throw new InvalidOperationException(L10N.SetConnectionInTransaction);
                 }
 
-                if (_connection != null) {
-                    _connection.StateChange -= OnConnectionStateChange;
-                }
+                IsPrepared = false;
                 _connection = value;
-                if (_connection != null) {
-                    _connection.StateChange += OnConnectionStateChange;
-                }
                 Transaction = null;
-                if (_connection != null)
-                {
-                    _connector = _connection.Connector;
-                    IsPrepared = false;
-                }
+                _connector = _connection == null ? null : _connection.Connector;
             }
         }
 
@@ -307,7 +311,29 @@ namespace Npgsql
         /// <summary>
         /// Returns whether this query will execute as a prepared (compiled) query.
         /// </summary>
-        public bool IsPrepared { get; private set; }
+        public bool IsPrepared
+        {
+            get
+            {
+                if (_isPrepared)
+                {
+                    Contract.Assert(Connection != null);
+                    if (Connection.State != ConnectionState.Open || _prepareConnectionOpenId != Connection.OpenCounter) {
+                        _isPrepared = false;
+                    }
+                }
+                return _isPrepared;
+            }
+
+            private set
+            {
+                Contract.Requires(!value || Connection != null);
+                _isPrepared = value;
+                if (value) {
+                    _prepareConnectionOpenId = Connection.OpenCounter;
+                }
+            }
+        }
 
         #endregion Public properties
 
@@ -374,32 +400,6 @@ namespace Npgsql
                 if (newState == _state)
                     return;
                 Interlocked.Exchange(ref _state, newState);
-            }
-        }
-
-        void OnConnectionStateChange(object sender, StateChangeEventArgs stateChangeEventArgs)
-        {
-            switch (stateChangeEventArgs.CurrentState)
-            {
-                case ConnectionState.Broken:
-                case ConnectionState.Closed:
-                    IsPrepared = false;
-                    break;
-                case ConnectionState.Open:
-                    switch (stateChangeEventArgs.OriginalState)
-                    {
-                        case ConnectionState.Closed:
-                        case ConnectionState.Broken:
-                            IsPrepared = false;
-                            break;
-                    }
-                    break;
-                case ConnectionState.Connecting:
-                case ConnectionState.Executing:
-                case ConnectionState.Fetching:
-                    return;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -1702,6 +1702,7 @@ namespace Npgsql
         void ObjectInvariants()
         {
             Contract.Invariant(!(AllResultTypesAreUnknown && UnknownResultTypeList != null));
+            Contract.Invariant(Connection != null || !IsPrepared);
         }
 
         #endregion
