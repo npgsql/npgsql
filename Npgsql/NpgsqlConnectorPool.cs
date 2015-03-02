@@ -146,14 +146,12 @@ namespace Npgsql
         /// <value>Map of index to unused pooled connectors, avaliable to the
         /// next RequestConnector() call.</value>
         /// <remarks>This hashmap will be indexed by connection string.
-        /// This key will hold a list of queues of pooled connectors available to be used.
-        /// The sorted dictionary provides a very fast lookup and should be more performant
-        /// since there are many more reads than writes to dictionary.</remarks>
-        private readonly SortedDictionary<string, ConnectorQueue> PooledConnectors;
+        /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
+        private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
 
         public NpgsqlConnectorPool()
         {
-            PooledConnectors = new SortedDictionary<string, ConnectorQueue>();
+            PooledConnectors = new Dictionary<string, ConnectorQueue>();
         }
 
         private void TimerElapsedHandler(ConnectorQueue queue)
