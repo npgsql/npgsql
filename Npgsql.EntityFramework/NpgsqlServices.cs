@@ -157,7 +157,7 @@ namespace Npgsql
         {
             var connectionBuilder = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
             {
-                Database = "postgres"
+                Database = "template1"
             };
 
             using (var masterConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
