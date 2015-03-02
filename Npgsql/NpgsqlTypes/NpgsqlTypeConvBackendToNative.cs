@@ -325,10 +325,10 @@ namespace NpgsqlTypes
     /// </summary>
     internal abstract class ExtendedBackendToNativeTypeConverter
     {
-        private static readonly Regex pointRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-        private static readonly Regex boxlsegRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-        private static readonly Regex pathpolygonRegex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-        private static readonly Regex circleRegex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
+        private static readonly Regex pointRegex = new Regex(@"\(([^,()]+),([^,()]+)\)");
+        private static readonly Regex boxlsegRegex = new Regex(@"\(([^,()]+),([^,()]+)\),\(([^,()]+),([^,()]+)\)");
+        private static readonly Regex pathpolygonRegex = new Regex(@"\(([^,()]+),([^,()]+)\)");
+        private static readonly Regex circleRegex = new Regex(@"<\(([^,()]+),([^,()]+)\),([^,()>]+)>");
 
         /// <summary>
         /// Convert a postgresql point to a System.NpgsqlPoint.
