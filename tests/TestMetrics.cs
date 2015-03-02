@@ -13,10 +13,17 @@ namespace NpgsqlTests
         private static Process process = Process.GetCurrentProcess();
 
         private bool running;
+
+        int _iterations;
         /// <summary>
         /// The number of iterations accumulated.
         /// </summary>
-        public int Iterations { get; private set; }
+        public int Iterations
+        {
+            get { return _iterations; }
+            private set { _iterations = value; }
+        }
+
         private TimeSpan systemCPUTime;
         private TimeSpan userCPUTime;
         private Stopwatch stopwatch;
@@ -52,7 +59,8 @@ namespace NpgsqlTests
         /// </summary>
         public void IncrementIterations()
         {
-            Iterations++;
+            // Thread safe incrementing.
+            System.Threading.Interlocked.Increment(ref _iterations);
         }
 
         /// <summary>
@@ -60,7 +68,7 @@ namespace NpgsqlTests
         /// </summary>
         public void Stop()
         {
-            if (! running)
+            if (!running)
             {
                 return;
             }

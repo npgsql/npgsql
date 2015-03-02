@@ -89,8 +89,9 @@ namespace NpgsqlTests
                 while (!metrics.TimesUp)
                 {
                     using (var cmd = new NpgsqlCommand("SELECT field_int4 FROM data", Conn))
-                    using (var reader = cmd.ExecuteReader()) {
-                        while (reader.Read()) {}
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) { }
                     }
                     metrics.IncrementIterations();
                 }
@@ -137,7 +138,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         dataParameter.Value = "yo";
                         command.ExecuteScalar();
@@ -166,7 +167,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         command.Prepare();
 
@@ -186,7 +187,7 @@ namespace NpgsqlTests
                 command.CommandText = "SELECT :data";
 
                 byte[] data = new byte[100000];
-                for (int i = 0  ; i < data.Length ; i++)
+                for (int i = 0; i < data.Length; i++)
                 {
                     data[i] = (byte)(i % 255);
                 }
@@ -201,7 +202,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         var data2 = (byte[])command.ExecuteScalar();
                         metrics.IncrementIterations();
@@ -218,7 +219,7 @@ namespace NpgsqlTests
                 command.CommandType = CommandType.Text;
                 command.CommandText = "SELECT :data1, :data2, :data3, :data4, :data5, :data6, :data7, :data8, :data9, :data10";
 
-                for (int i = 0 ; i < 10 ; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     NpgsqlParameter dataParameter = command.CreateParameter();
                     dataParameter.Direction = ParameterDirection.Input;
@@ -232,7 +233,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         using (IDataReader r = command.ExecuteReader())
                         {
@@ -255,7 +256,7 @@ namespace NpgsqlTests
 
                 Int64[] data = new Int64[1000];
 
-                for (int i = 0 ; i < 1000 ; i++)
+                for (int i = 0; i < 1000; i++)
                 {
                     data[i] = (Int64)i + 0xFFFFFFFFFFFFFFF;
                 }
@@ -271,7 +272,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         command.ExecuteScalar();
                         metrics.IncrementIterations();
@@ -290,7 +291,7 @@ namespace NpgsqlTests
 
                 string[] data = new string[1000];
 
-                for (int i = 0 ; i < 1000 ; i++)
+                for (int i = 0; i < 1000; i++)
                 {
                     data[i] = string.Format("A string with the number {0}, a ', a \", and a \\.", i);
                 }
@@ -306,7 +307,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         try
                         {
@@ -339,7 +340,7 @@ namespace NpgsqlTests
                 command.CommandText = "SELECT :data";
 
                 byte[] bytes = new byte[50000];
-                for (int i = 0  ; i < bytes.Length ; i++)
+                for (int i = 0; i < bytes.Length; i++)
                 {
                     bytes[i] = (byte)(i % 255);
                 }
@@ -356,7 +357,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         try
                         {
@@ -390,7 +391,7 @@ namespace NpgsqlTests
 
                 decimal[] data = new decimal[1000];
 
-                for (int i = 0 ; i < 1000 ; i++)
+                for (int i = 0; i < 1000; i++)
                 {
                     data[i] = i;
                 }
@@ -406,7 +407,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         command.ExecuteScalar();
                         metrics.IncrementIterations();
@@ -425,7 +426,7 @@ namespace NpgsqlTests
 
                 decimal[] data = new decimal[1000];
 
-                for (int i = 0 ; i < 1000 ; i++)
+                for (int i = 0; i < 1000; i++)
                 {
                     data[i] = i;
                 }
@@ -441,7 +442,7 @@ namespace NpgsqlTests
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         command.ExecuteScalar();
                         metrics.IncrementIterations();
@@ -471,6 +472,66 @@ namespace NpgsqlTests
             }
         }
 
+        [Test, Description("connect and disconnect with pool using many threads to request connections.")]
+        [TestCase(2), TestCase(4), TestCase(16), TestCase(32)]
+        public void ConnectWithPoolFromManyThreads(int threads)
+        {
+            NpgsqlConnectionStringBuilder csb = new NpgsqlConnectionStringBuilder(Conn.ConnectionString);
+            String conStr = csb.ConnectionString;
+            System.Threading.Thread[] workerThreads = new System.Threading.Thread[threads];
+
+            int createdThreads = 0;
+            while (createdThreads < threads)
+            {
+                var p = new System.Threading.ParameterizedThreadStart(OpenCloseConnection);
+                var t = new System.Threading.Thread(p);
+                workerThreads[createdThreads++] = t;
+            }
+            
+            using (var metrics = TestMetrics.Start(TestRunTime, true))
+            {
+                var param = new OpenCloseConnectionParams() { Metrics = metrics, ConnectionString = conStr };
+
+                foreach (System.Threading.Thread thread in workerThreads)
+                {
+                    thread.Start(param);
+                }
+
+                while (!metrics.TimesUp)
+                {
+                    System.Threading.Thread.Sleep(1000);
+                }            
+            }
+            
+            foreach (System.Threading.Thread thread in workerThreads)
+            {
+                if (thread.ThreadState == System.Threading.ThreadState.Running)
+                {
+                    thread.Abort();
+                    thread.Join();
+                }
+            }
+
+            // Output the maximum number of connections that were created in the pool during the test.  The larger
+            // the pool the more threads that could not find an available connection at the requested time.
+            Console.WriteLine("Total connections in pool: " + NpgsqlConnectorPool.TotalConnectionsInPool(conStr));
+        }
+
+        internal class OpenCloseConnectionParams { public TestMetrics Metrics; public string ConnectionString; }
+
+        private void OpenCloseConnection(object state) //String conStr, TestMetrics metrics)
+        {
+            OpenCloseConnectionParams param = (OpenCloseConnectionParams)state;
+
+            while (!param.Metrics.TimesUp)
+            {
+                var con = new NpgsqlConnection(param.ConnectionString);
+                con.Open();
+                con.Dispose();
+                param.Metrics.IncrementIterations();
+            }
+        }
+
         [Test, Description("Many parameter substitution test")]
         public void ParameterizedPrepareManyFields()
         {
@@ -484,14 +545,14 @@ namespace NpgsqlTests
 
                 command.CommandText = sql.ToString();
 
-                for (int i = 0 ; i < 20 ; i++)
+                for (int i = 0; i < 20; i++)
                 {
                     command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
                 }
 
                 using (var metrics = TestMetrics.Start(TestRunTime, true))
                 {
-                    while (! metrics.TimesUp)
+                    while (!metrics.TimesUp)
                     {
                         command.Prepare();
                         metrics.IncrementIterations();
@@ -501,13 +562,13 @@ namespace NpgsqlTests
         }
 
         [Test]
-        [TestCase(1,    true)]
-        [TestCase(10,   true)]
-        [TestCase(100,  true)]
+        [TestCase(1, true)]
+        [TestCase(10, true)]
+        [TestCase(100, true)]
         [TestCase(1000, true)]
-        [TestCase(1,    false)]
-        [TestCase(10,   false)]
-        [TestCase(100,  false)]
+        [TestCase(1, false)]
+        [TestCase(10, false)]
+        [TestCase(100, false)]
         [TestCase(1000, false)]
         private void PerformanceWithNParameters(int n, bool differentCase)
         {

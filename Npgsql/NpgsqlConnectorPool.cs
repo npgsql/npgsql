@@ -58,12 +58,13 @@ namespace Npgsql
         /// <summary>
         /// A queue with an extra Int32 for keeping track of busy connections.
         /// </summary>
+        //[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "The parent class will clean up the timer.")]
         private class ConnectorQueue
         {
             /// <summary>
             /// Connections available to the end user
             /// </summary>
-            public LinkedList<PooledConnector> Available = new LinkedList<PooledConnector>();
+            public List<PooledConnector> Available = new List<PooledConnector>(20);
 
             /// <summary>
             /// Connections currently in use
@@ -127,17 +128,32 @@ namespace Npgsql
                     }
                 }
             }
+
+            public void CleanUpTimer()
+            {
+                lock (timerLock)
+                {
+                    Timer.Dispose();
+                }
+            }
         }
 
-        /// <value>Unique static instance of the connector pool
-        /// mamager.</value>
+        /// <value>Unique static instance of the connector pool manager.</value>
         internal static NpgsqlConnectorPool ConnectorPoolMgr = new NpgsqlConnectorPool();
 
         private object locker = new object();
 
+        /// <value>Map of index to unused pooled connectors, avaliable to the
+        /// next RequestConnector() call.</value>
+        /// <remarks>This hashmap will be indexed by connection string.
+        /// This key will hold a list of queues of pooled connectors available to be used.
+        /// The sorted dictionary provides a very fast lookup and should be more performant
+        /// since there are many more reads than writes to dictionary.</remarks>
+        private readonly SortedDictionary<string, ConnectorQueue> PooledConnectors;
+
         public NpgsqlConnectorPool()
         {
-            PooledConnectors = new Dictionary<string, ConnectorQueue>();
+            PooledConnectors = new SortedDictionary<string, ConnectorQueue>();
         }
 
         private void TimerElapsedHandler(ConnectorQueue queue)
@@ -157,44 +173,49 @@ namespace Npgsql
                             // Determine the maximum number of connectors that could be closed.
                             Int32 diff = queue.Available.Count + queue.Busy.Count - queue.MinPoolSize;
 
-                            // Only close at most half of the closable connectors at a time.
+                            // Only close at most half of the closable connectors per execution.
                             Int32 toBeClosed = (diff + 1) / 2;
                             toBeClosed = Math.Min(toBeClosed, queue.Available.Count);
 
-                            // Start from the end of the list because that's where the old connectors should be
-                            // if there are any.
-                            LinkedListNode<PooledConnector> currentNode = queue.Available.Last;
-                            LinkedListNode<PooledConnector> previousNode = null;
                             Int32 closedConnectors = 0;
 
-                            while (toBeClosed > closedConnectors)
+                            // Populate a new list of unexpired connectors.  By not using the RemoveAt method, which is O(Count - Index),
+                            // on the current available list multiple array walks are prevented.
+                            List<PooledConnector> newAvailableList = new List<PooledConnector>(queue.Available.Capacity);
+
+                            // Start from the beginning because that is where all the stale connectors should be.
+                            foreach (PooledConnector pooledConnector in queue.Available)
                             {
-                                // Get a reference to the previous node now because it will be gone
-                                // After the current node is removed from the list.
-                                previousNode = currentNode.Previous;
-
-                                if (currentNode.Value.ExpirationDateTime <= DateTime.Now)
+                                if (toBeClosed > closedConnectors && pooledConnector.ExpirationDateTime <= DateTime.Now)
                                 {
-                                    // Remove the connector from the available pool.
-                                    queue.Available.Remove(currentNode);
-
-                                    currentNode.Value.Connector.Close();
+                                    pooledConnector.Connector.Close();
 
                                     // Keep track of how many have been closed so that
                                     // too many aren't closed in one tick.
                                     closedConnectors++;
                                 }
-
-                                // Keep processing if there are more nodes.
-                                if (previousNode != null)
-                                {
-                                    currentNode = previousNode;
-                                }
                                 else
                                 {
-                                    break;
+                                    // The connection is ok so added it to the new list.
+                                    newAvailableList.Add(pooledConnector);
                                 }
-                            }                            
+                            }
+
+                            // Only replace the current available list if it was modified.
+                            if (closedConnectors > 0)
+                            {
+                                // Remove all references to connectors in the list that is going to be derefernced
+                                // so that closed connectors can be garabage collected sooner.
+                                queue.Available.Clear();
+
+                                // Set the Available list to the new list that does not contain stale connectors.
+                                queue.Available = newAvailableList;
+                            }
+                            else
+                            {
+                                // Clear our temporary list to ensure there are no straggling references to connectors.
+                                newAvailableList.Clear();
+                            }
                         }
                     }
                 }
@@ -207,13 +228,6 @@ namespace Npgsql
                     queue.StopTimer();
             }
         }
-
-        /// <value>Map of index to unused pooled connectors, avaliable to the
-        /// next RequestConnector() call.</value>
-        /// <remarks>This hashmap will be indexed by connection string.
-        /// This key will hold a list of queues of pooled connectors available to be used.</remarks>
-        private readonly Dictionary<string, ConnectorQueue> PooledConnectors;
-
 
         /// <summary>
         /// Searches the pooled connector lists for a matching connector object or creates a new one.
@@ -334,7 +348,6 @@ namespace Npgsql
 
                 lock (locker)
                 {
-
                     // Try to find a queue.
                     if (!PooledConnectors.TryGetValue(Connection.ConnectionString, out Queue))
                     {
@@ -355,9 +368,9 @@ namespace Npgsql
                             // Found a queue with connectors.  Grab the top one.
 
                             // Check if the connector is still valid.
-                            PooledConnector pooledConnector = Queue.Available.First.Value;
+                            PooledConnector pooledConnector = Queue.Available[Queue.Available.Count - 1];
                             Connector = pooledConnector.Connector;
-                            Queue.Available.RemoveFirst();
+                            Queue.Available.RemoveAt(Queue.Available.Count - 1);
                             Queue.Busy.Add(pooledConnector.Connector, pooledConnector);
                         }
                     }
@@ -430,7 +443,7 @@ namespace Npgsql
                                 Spare.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
                                 Spare.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
 
-                                Queue.Available.AddLast(new PooledConnector(Spare, DateTime.Now.AddSeconds(Connection.ConnectionLifeTime)));
+                                Queue.Available.Add(new PooledConnector(Spare, DateTime.Now.AddSeconds(Connection.ConnectionLifeTime)));
                             }
 
                             Queue.StartTimer();
@@ -545,7 +558,7 @@ namespace Npgsql
                         // Set the new expiration time of the connection and add it the front
                         // of the available pool.
                         pooledConnector.ExpirationDateTime = DateTime.Now.AddSeconds(queue.ConnectionLifeTime);
-                        queue.Available.AddFirst(pooledConnector);
+                        queue.Available.Add(pooledConnector);
 
                         queue.StartTimer();
                     }
@@ -567,23 +580,26 @@ namespace Npgsql
 
             lock (Queue)
             {
+                //Clear the busy list first so that the current connections don't get re-added to the available list.
+                Queue.Busy.Clear();
+
                 while (Queue.Available.Count > 0)
                 {
-                    NpgsqlConnector connector = Queue.Available.First.Value.Connector;
-                    Queue.Available.RemoveFirst();
+                    // Process the list from the end to prevent it from being reshuffled after every remove call.
+                    NpgsqlConnector connector = Queue.Available[Queue.Available.Count - 1].Connector;
+                    Queue.Available.RemoveAt(Queue.Available.Count - 1);
 
                     try
                     {
                         connector.Close();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Maybe we should log something here to say we got an exception while closing connector?
+                        System.Diagnostics.Debug.WriteLine(ex);
                     }
                 }
 
-                //Clear the busy list so that the current connections don't get re-added to the queue
-                Queue.Busy.Clear();
+                Queue.CleanUpTimer();
             }
         }
 
@@ -598,6 +614,8 @@ namespace Npgsql
                 {
                     ClearQueue(queue);
 
+                    queue.CleanupInactiveConnectorsTick -= TimerElapsedHandler;
+
                     PooledConnectors.Remove(Connection.ConnectionString);
                 }
             }
@@ -611,8 +629,102 @@ namespace Npgsql
                 {
                     ClearQueue(Queue);
                 }
+
                 PooledConnectors.Clear();
             }
+        }
+
+        /// <summary>
+        /// Gets the number of unique pools (unique connection strings) currently in the pool.
+        /// </summary>
+        /// <returns></returns>
+        public static int ConnectionPoolCount
+        {
+            get { return ConnectorPoolMgr.PooledConnectors.Count; }
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently open in the pool identified by the <paramref name="connectionString"/>.
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <returns>The number of connections currently open.</returns>
+        public static int TotalConnectionsInPool(string connectionString)
+        {
+            ConnectorQueue queue = null;
+            if (ConnectorPoolMgr.PooledConnectors.TryGetValue(connectionString, out queue))
+            {
+                return queue.Available.Count + queue.Busy.Count;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently open in the pool identified by the <paramref name="connection"/>.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <returns>The number of connections currently open.</returns>
+        public static int TotalConnectionsInPool(NpgsqlConnection connection)
+        {
+            return TotalConnectionsInPool(connection.ConnectionString);
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently idle in the pool identified by the <paramref name="connectionString"/>.
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <returns>The number of connections currently idle.</returns>
+        public static int AvailableConnectionsInPool(string connectionString)
+        {
+            ConnectorQueue queue = null;
+            if (ConnectorPoolMgr.PooledConnectors.TryGetValue(connectionString, out queue))
+            {
+                return queue.Available.Count;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently idle in the pool identified by the <paramref name="connection"/>.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <returns>The number of connections currently idle.</returns>
+        public static int AvailableConnectionsInPool(NpgsqlConnection connection)
+        {
+            return AvailableConnectionsInPool(connection.ConnectionString);
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently executing a command in the pool identified by the <paramref name="connectionString"/>.
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <returns>The number of connections currently executing a command.</returns>
+        public static int BusyConnectionsInPool(string connectionString)
+        {
+            ConnectorQueue queue = null;
+            if (ConnectorPoolMgr.PooledConnectors.TryGetValue(connectionString, out queue))
+            {
+                return queue.Busy.Count;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Gets the number of connections currently executing a command in the pool identified by the <paramref name="connection"/>.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <returns>The number of connections currently executing a command.</returns>
+        public static int BusyConnectionsInPool(NpgsqlConnection connection)
+        {
+            return BusyConnectionsInPool(connection.ConnectionString);
         }
     }
 }
