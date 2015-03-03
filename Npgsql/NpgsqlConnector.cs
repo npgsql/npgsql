@@ -1377,17 +1377,10 @@ namespace Npgsql
         [GenerateAsync]
         internal NotificationBlock BlockNotifications()
         {
-            if (_notificationSemaphore != null)
-            {
-                var n = new NotificationBlock(this);
-                if (++_notificationBlockRecursionDepth == 1)
-                    _notificationSemaphore.Wait();
-                return n;
-            }
-            else
-            {
-                return null;
-            }
+            var n = new NotificationBlock(this);
+            if (++_notificationBlockRecursionDepth == 1 && _notificationSemaphore != null)
+                _notificationSemaphore.Wait();
+            return n;
         }
 
         internal void AddNotificationListener()

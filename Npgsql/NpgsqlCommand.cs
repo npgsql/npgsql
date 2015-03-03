@@ -1205,7 +1205,9 @@ namespace Npgsql
                     } while (!ProcessMessageForUnprepared(msg, behavior));
                 }
 
-                return new NpgsqlDataReader(this, behavior, _queries);
+                reader = new NpgsqlDataReader(this, behavior, _queries);
+
+                return reader;
             } catch (NpgsqlException) {
                 // TODO: Should probably happen inside ReadSingleMessage()
                 _connector.State = ConnectorState.Ready;
