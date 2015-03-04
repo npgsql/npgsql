@@ -134,6 +134,27 @@ namespace NpgsqlTests
             DistributedTransactionRollback();
         }
 
+        [Test, Description("Makes sure that when a timeout occurs, the transaction is rolled backed")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/495")]
+        public void RollbackOnTimeout()
+        {
+            Assert.That(() =>
+            {
+                using (var scope = new TransactionScope(TransactionScopeOption.Required, new TimeSpan(0, 0, 1)))
+                {
+                    using (var conn = new NpgsqlConnection(ConnectionString + ";enlist=true"))
+                    {
+                        conn.Open();
+                        var cmd = new NpgsqlCommand(@"INSERT INTO data (field_text) VALUES ('HELLO')", conn);
+                        cmd.ExecuteNonQuery(); // the update operation is expected to rollback
+                        System.Threading.Thread.Sleep(2000);
+                    }
+                    scope.Complete();
+                }
+            }, Throws.Exception.TypeOf<TransactionAbortedException>());
+            Assert.That(ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        }
+
         [Test, Description("Not sure what this test is supposed to check...")]
         public void FunctionTestTimestamptzParameterSupport()
         {
