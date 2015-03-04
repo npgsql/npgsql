@@ -1639,9 +1639,10 @@ namespace Npgsql
 
         void Prechecks()
         {
-            if (Connector == null) {
+            if (State == CommandState.Disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+            if (Connector == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            }
 
             Connector.CheckReadyState();
 

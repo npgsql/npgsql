@@ -123,6 +123,17 @@ namespace NpgsqlTests
             }
         }
 
+        [Test, Description("Makes sure a command is unusable after it is disposed")]
+        public void Dispose()
+        {
+            var cmd = new NpgsqlCommand("SELECT 1", Conn);
+            cmd.Dispose();
+            Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<ObjectDisposedException>());
+        }
+
         [Test, Description("Disposing a command with an open reader does not close the reader. This is the SqlClient behavior.")]
         public void DisposeCommandDoesNotCloseReader()
         {
