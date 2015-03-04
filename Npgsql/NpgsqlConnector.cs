@@ -405,7 +405,10 @@ namespace Npgsql
 
             // Some connection parameters for protocol 3 had been sent in the startup packet.
             // The rest will be setted here.
-            sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
+
+            // Set ssl_renegotiation_limit only on secured connections and running under mono.
+            // See https://github.com/npgsql/npgsql/pull/453 for more info.
+            if (IsSecure && (Type.GetType("Mono.Runtime") != null)) { sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;"); }
 
             _initQueries = sbInitQueries.ToString();
 
@@ -651,6 +654,7 @@ namespace Npgsql
                 _messagesToSend.Clear();
             }
         }
+
 
         /// <summary>
         /// Sends a single frontend message, used for simple messages such as rollback, etc.
@@ -1307,7 +1311,7 @@ namespace Npgsql
         {
             ExecuteBlind(PregeneratedMessage.DiscardAll);
 
-            // The initial connection parameters will be restored via IsValid() when get connector from pool later 
+            // The initial connection parameters will be restored via IsValid() when get connector from pool later
         }
 
         internal void ReleaseRegisteredListen()
