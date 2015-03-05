@@ -13,6 +13,7 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using Npgsql.SqlGenerators;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -23,6 +24,8 @@ namespace Npgsql
 #endif
     {
         private static readonly NpgsqlServices _instance = new NpgsqlServices();
+
+        NativeToBackendTypeConverterOptions _convertOptions;
 
 #if ENTITIES6
         public NpgsqlServices()
@@ -91,6 +94,8 @@ namespace Npgsql
                 throw new ArgumentException();
             }
 
+            sqlGenerator.ConverterOptions = _convertOptions;
+
             sqlGenerator.BuildCommand(command);
         }
 
@@ -102,6 +107,7 @@ namespace Npgsql
             UsingPostgresDBConnection((NpgsqlConnection)connection, conn =>
             {
                 serverVersion = conn.ServerVersion;
+                _convertOptions = conn.Connector.NativeToBackendTypeConverterOptions;
             });
             return serverVersion;
         }
