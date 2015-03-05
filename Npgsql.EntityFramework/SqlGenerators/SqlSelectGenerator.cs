@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
 using System.Data.Entity.Core.Common.CommandTrees;
+using NpgsqlTypes;
 #else
 using System.Data.Common.CommandTrees;
+using NpgsqlTypes;
 #endif
 
 namespace Npgsql.SqlGenerators
@@ -12,10 +14,13 @@ namespace Npgsql.SqlGenerators
     internal class SqlSelectGenerator : SqlBaseGenerator
     {
         private DbQueryCommandTree _commandTree;
+        
 
-        public SqlSelectGenerator(DbQueryCommandTree commandTree)
+        public SqlSelectGenerator(DbQueryCommandTree commandTree, NativeToBackendTypeConverterOptions options)
+            :base (options)
         {
             _commandTree = commandTree;
+            
         }
 
         protected SqlSelectGenerator()

@@ -13,6 +13,7 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using Npgsql.SqlGenerators;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -39,10 +40,10 @@ namespace Npgsql
 
         protected override DbCommandDefinition CreateDbCommandDefinition(DbProviderManifest providerManifest, DbCommandTree commandTree)
         {
-            return CreateCommandDefinition(CreateDbCommand(commandTree));
+            return CreateCommandDefinition(CreateDbCommand(commandTree, ((NpgsqlProviderManifest)providerManifest).ConverterOptions));
         }
 
-        internal DbCommand CreateDbCommand(DbCommandTree commandTree)
+        internal DbCommand CreateDbCommand(DbCommandTree commandTree, NativeToBackendTypeConverterOptions options)
         {
             if (commandTree == null)
                 throw new ArgumentNullException("commandTree");
@@ -56,12 +57,12 @@ namespace Npgsql
                 command.Parameters.Add(dbParameter);
             }
 
-            TranslateCommandTree(commandTree, command);
+            TranslateCommandTree(commandTree, command, options);
 
             return command;
         }
 
-        private void TranslateCommandTree(DbCommandTree commandTree, DbCommand command)
+        private void TranslateCommandTree(DbCommandTree commandTree, DbCommand command, NativeToBackendTypeConverterOptions options)
         {
             SqlBaseGenerator sqlGenerator = null;
 
@@ -71,19 +72,19 @@ namespace Npgsql
             DbDeleteCommandTree delete;
             if ((select = commandTree as DbQueryCommandTree) != null)
             {
-                sqlGenerator = new SqlSelectGenerator(select);
+                sqlGenerator = new SqlSelectGenerator(select, options);
             }
             else if ((insert = commandTree as DbInsertCommandTree) != null)
             {
-                sqlGenerator = new SqlInsertGenerator(insert);
+                sqlGenerator = new SqlInsertGenerator(insert, options);
             }
             else if ((update = commandTree as DbUpdateCommandTree) != null)
             {
-                sqlGenerator = new SqlUpdateGenerator(update);
+                sqlGenerator = new SqlUpdateGenerator(update, options);
             }
             else if ((delete = commandTree as DbDeleteCommandTree) != null)
             {
-                sqlGenerator = new SqlDeleteGenerator(delete);
+                sqlGenerator = new SqlDeleteGenerator(delete, options);
             }
             else
             {
