@@ -368,7 +368,7 @@ namespace NpgsqlTests
         {
             var command = new NpgsqlCommand("select * from data;", Conn);
             var dr = command.ExecuteReader();
-            while (dr.Read()) {}
+            while (dr.Read()) { }
             Object o = dr[0];
             Assert.IsNotNull(o);
         }
@@ -477,29 +477,80 @@ namespace NpgsqlTests
         [Test]
         public void PrimaryKeyFieldsMetadataSupport()
         {
-            var command = new NpgsqlCommand("SELECT * FROM data", Conn);
-            using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
+            ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
+            ExecuteNonQuery(@"CREATE TABLE DATA2 (
+                                field_pk1                      INT2 NOT NULL,
+                                field_pk2                      INT2 NOT NULL,
+                                field_serial                   SERIAL,
+                                CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
+                                ) WITH OIDS");
+
+            using (var command = new NpgsqlCommand("SELECT * FROM DATA2", Conn))
             {
-                dr.Read();
-                var metadata = dr.GetSchemaTable();
-                var keyfound = false;
-
-                foreach (DataRow r in metadata.Rows)
+                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
-                    if ((Boolean) r["IsKey"])
-                    {
-                        Assert.AreEqual("field_pk", r["ColumnName"]);
-                        keyfound = true;
-                    }
+                    dr.Read();
+                    var metadata = dr.GetSchemaTable();
+                    int keyCount = 0;
 
+                    foreach (DataRow r in metadata.Rows)
+                    {
+                        if ((Boolean)r["IsKey"])
+                        {
+                            switch (keyCount)
+                            {
+                                case 0:
+                                    Assert.AreEqual("field_pk1", r["ColumnName"]);
+                                    break;
+                                case 1:
+                                    Assert.AreEqual("field_pk2", r["ColumnName"]);
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            keyCount++;
+                        }
+
+                    }
+                    if (keyCount == 0)
+                        Assert.Fail("No primary key found!");
+                    else if (keyCount != 2)
+                        Assert.Fail(string.Format("Expected 2 primary keys but {0} were found.", keyCount));
                 }
-                if (!keyfound)
-                    Assert.Fail("No primary key found!");
+            }
+
+            ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
+        }
+
+        [Test]
+        public void PrimaryKeyFieldMetadataSupport()
+        {
+            using (var command = new NpgsqlCommand("SELECT * FROM data", Conn))
+            {
+                using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
+                {
+                    dr.Read();
+                    var metadata = dr.GetSchemaTable();
+                    var keyfound = false;
+
+                    foreach (DataRow r in metadata.Rows)
+                    {
+                        if ((Boolean)r["IsKey"])
+                        {
+                            Assert.AreEqual("field_pk", r["ColumnName"]);
+                            keyfound = true;
+                        }
+
+                    }
+                    if (!keyfound)
+                        Assert.Fail("No primary key found!");
+                }
             }
         }
 
         [Test]
-        public void IsIdentityMetadataSupport()
+        public void IsAutoIncrementMetadataSupport()
         {
             var command = new NpgsqlCommand("SELECT * FROM data", Conn);
 
@@ -509,10 +560,43 @@ namespace NpgsqlTests
 
                 foreach (DataRow r in metadata.Rows)
                 {
-                    if (((string)r["ColumnName"]) == "field_serial")
+                    switch ((string)r["ColumnName"])
                     {
-                        Assert.IsTrue((bool) r["IsAutoIncrement"]);
-                        return;
+                        case "field_serial":
+                        case "field_bigserial":
+                        case "field_smallserial":
+                            Assert.IsTrue((bool)r["IsAutoIncrement"]);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void IsReadOnlyMetadataSupport()
+        {
+            ExecuteNonQuery("CREATE OR REPLACE VIEW DataView (field_pk, field_int2) AS select field_pk, field_int2 + field_int2 as field_int2 from data");
+
+            var command = new NpgsqlCommand("SELECT * FROM DataView", Conn);
+
+            using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
+            {
+                var metadata = dr.GetSchemaTable();
+
+                foreach (DataRow r in metadata.Rows)
+                {
+                    switch ((string)r["ColumnName"])
+                    {
+                        case "field_pk":
+                            Assert.IsFalse((bool)r["IsReadonly"]);
+                            break;
+                        case "field_int2":
+                            Assert.IsTrue((bool)r["IsReadonly"]);
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -726,9 +810,9 @@ namespace NpgsqlTests
             using (var dr = command.ExecuteReader())
             {
                 Assert.That(dr.HasRows, Is.True);
-                Assert.That(dr.Read(),  Is.True);
+                Assert.That(dr.Read(), Is.True);
                 Assert.That(dr.HasRows, Is.True);
-                Assert.That(dr.Read(),  Is.False);
+                Assert.That(dr.Read(), Is.False);
                 dr.NextResult();
                 Assert.That(dr.HasRows, Is.False);
             }

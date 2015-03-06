@@ -200,6 +200,8 @@ namespace NpgsqlTests
             ExecuteNonQuery(@"CREATE TABLE data (
                                 field_pk                      SERIAL PRIMARY KEY,
                                 field_serial                  SERIAL,
+                                field_bigserial               BIGSERIAL,
+                                field_smallserial             SMALLSERIAL,
                                 field_text                    TEXT,
                                 field_char5                   CHAR(5),
                                 field_varchar5                VARCHAR(5),
