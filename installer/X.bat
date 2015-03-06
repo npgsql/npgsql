@@ -1,0 +1,1 @@
+msiexec /x "{772a9e26-9ab8-4011-bce6-d95b19d22b57}" /l*vx uninst.log

@@ -26,6 +26,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4CF4C8
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "installer", "installer\installer.csproj", "{9583D8F8-22CB-4F0D-9088-616BE4906F66}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9D13B739-62B1-4190-B386-7A9547304EB3} = {9D13B739-62B1-4190-B386-7A9547304EB3}
+		{249C6185-C3B5-4D28-A508-ABD975702A0B} = {249C6185-C3B5-4D28-A508-ABD975702A0B}
+		{3EC85CBA-5B79-11E3-8104-0022198AB089} = {3EC85CBA-5B79-11E3-8104-0022198AB089}
+		{100998C4-5B85-11E3-911C-0022198AB089} = {100998C4-5B85-11E3-911C-0022198AB089}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug-net40|Any CPU = Debug-net40|Any CPU
@@ -226,6 +234,15 @@ Global
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net45-EF6|AnyCPU.Build.0 = Release-net45|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net45-EF6|Mixed Platforms.ActiveCfg = Release-net45|Any CPU
 		{249C6185-C3B5-4D28-A508-ABD975702A0B}.Release-net45-EF6|Mixed Platforms.Build.0 = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Debug-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Debug-net45|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Debug-net45-EF6|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net40|AnyCPU.ActiveCfg = Release-net40|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net40|AnyCPU.Build.0 = Release-net40|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net45|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net45|AnyCPU.Build.0 = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net45-EF6|AnyCPU.ActiveCfg = Release-net45|Any CPU
+		{9583D8F8-22CB-4F0D-9088-616BE4906F66}.Release-net45-EF6|AnyCPU.Build.0 = Release-net45|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

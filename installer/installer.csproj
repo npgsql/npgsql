@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Referenced:
+    https://github.com/mono/opentk/blob/master/Installers/Nsis/Build.Installer.Nsis.csproj
+    -->
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{9583D8F8-22CB-4F0D-9088-616BE4906F66}</ProjectGuid>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' ">
+    <OutputPath>bin\Release-net45</OutputPath>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
+    <OutputPath>bin\Release-net40</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Setup_Npgsql.nsi" />
+  </ItemGroup>
+  <Target Name="Build">
+    <!-- Call internal MSBuild to prepare NpgsqlDdexProvider binaries. -->
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2010.csproj" Properties="Configuration=Release-net40" Targets="Build" />
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2012.csproj" Properties="Configuration=Release-net45" Targets="Build" Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' " />
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2013.csproj" Properties="Configuration=Release-net45" Targets="Build" Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' " />
+    <!-- Detect assembly version -->
+    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\Release-net45\Npgsql.dll" Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' ">
+      <Output TaskParameter="Assemblies" ItemName="Npgsql" />
+    </GetAssemblyIdentity>
+    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\Release-net40\Npgsql.dll" Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
+      <Output TaskParameter="Assemblies" ItemName="Npgsql" />
+    </GetAssemblyIdentity>
+    <!-- Modify "Value" attirbute to publish your own version -->
+    <CreateProperty Value="%(Npgsql.Version)" Condition=" '$(SetupVersion)' == '' ">
+      <Output TaskParameter="Value" PropertyName="SetupVersion" />
+    </CreateProperty>
+    <!-- The MakeDir task creates a folder that is named by the OutputPath property, provided that no folder by that name currently exists. -->
+    <MakeDir Directories="$(OutputPath)" Condition="!Exists('$(OutputPath)')" />
+    <!-- Build full(NET45,DDEX2013,DDEX2012) setup. for Vs2012/Vs2013 -->
+    <Exec Command="&quot;C:\Program Files (x86)\NSIS\makensis.exe&quot; /DNET45 /DDDEX2013 /DDDEX2012 /DCOMMON_LOGGING /DOutFile=$(OutputPath)\installer.exe /DVER=$(SetupVersion) Setup_Npgsql.nsi" Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' " />
+    <!-- Build partial(NET40,DDEX2010) setup. for Vs2010 -->
+    <Exec Command="&quot;C:\Program Files (x86)\NSIS\makensis.exe&quot; /DNET40 /DDDEX2010            /DCOMMON_LOGGING /DOutFile=$(OutputPath)\installer.exe /DVER=$(SetupVersion) Setup_Npgsql.nsi" Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' " />
+    <!-- Copy installer.exe to Setup_Npgsql_x.y.z.w.exe -->
+    <Copy SourceFiles="$(OutputPath)\installer.exe" DestinationFiles="$(OutputPath)\Setup_Npgsql-$(SetupVersion).exe" />
+  </Target>
+  <Target Name="Clean">
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2010.csproj" Properties="Configuration=Release-net40" Targets="Clean" />
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2012.csproj" Properties="Configuration=Release-net45" Targets="Clean" />
+    <MSBuild Projects="..\NpgsqlDdexProvider\NpgsqlDdexProvider2013.csproj" Properties="Configuration=Release-net45" Targets="Clean" />
+    <CreateItem Include="$(OutputPath)\installer.exe">
+      <Output TaskParameter="Include" ItemName="FilesToDelete" />
+    </CreateItem>
+    <Delete Files="@(FilesToDelete)" />
+  </Target>
+  <Target Name="Rebuild">
+    <CallTarget Targets="Clean" />
+    <CallTarget Targets="Build" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
