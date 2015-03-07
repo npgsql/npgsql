@@ -155,7 +155,7 @@ namespace NpgsqlTests.Types
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         [Test]
@@ -170,7 +170,7 @@ namespace NpgsqlTests.Types
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         // TODO: Bring this test back

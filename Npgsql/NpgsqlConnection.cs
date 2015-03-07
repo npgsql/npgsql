@@ -894,6 +894,20 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Whether the backend is an AWS Redshift instance
+        /// </summary>
+        [Browsable(false)]
+        public bool IsRedshift
+        {
+            get
+            {
+                CheckConnectionOpen();
+                return Connector.IsRedshift;
+            }
+        }
+
+
+        /// <summary>
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>

@@ -459,7 +459,7 @@ namespace NpgsqlTests
 
             Assert.AreEqual(rowsAdded, 1);
 
-            var command2 = new NpgsqlCommand("select field_char5 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_char5 from data", Conn);
             var a = (String) command2.ExecuteScalar();
             Assert.AreEqual(aValue, a);
         }

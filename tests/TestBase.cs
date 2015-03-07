@@ -34,6 +34,7 @@ using Common.Logging.Configuration;
 using Common.Logging.NLog;
 using NLog.Config;
 using NLog.Targets;
+using System.Text;
 using Npgsql;
 
 using NpgsqlTypes;
@@ -196,10 +197,33 @@ namespace NpgsqlTests
         {
             Console.WriteLine("Creating test database schema");
 
-            ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
-            ExecuteNonQuery(@"CREATE TABLE data (
-                                field_pk                      SERIAL PRIMARY KEY,
-                                field_serial                  SERIAL,
+            var sb = new StringBuilder();
+
+            if (Conn.PostgreSqlVersion >= new Version(8, 2, 0))
+            {
+                sb.Append("DROP TABLE IF EXISTS DATA CASCADE;");
+            }
+            else
+            {
+                try
+                {
+                    ExecuteNonQuery("DROP TABLE DATA CASCADE");
+                }
+                catch (NpgsqlException e)
+                {
+                    if (! e.Message.ToLower().Contains("\"data\" does not exist"))
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            var pkType = Conn.IsRedshift
+                ? "INTEGER IDENTITY (1,1)"
+                : "SERIAL PRIMARY KEY";
+
+            sb.AppendFormat(@"CREATE TABLE data (
+                                field_pk                      {0},
                                 field_text                    TEXT,
                                 field_char5                   CHAR(5),
                                 field_varchar5                VARCHAR(5),
@@ -210,33 +234,40 @@ namespace NpgsqlTests
                                 field_float4                  FLOAT4,
                                 field_float8                  FLOAT8,
                                 field_bool                    BOOL,
-                                field_bit                     BIT,
                                 field_date                    DATE,
-                                field_time                    TIME,
-                                field_timetz                  TIME WITH TIME ZONE,
-                                field_timestamp               TIMESTAMP,
-                                field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
-                                field_interval                INTERVAL,
-                                field_bytea                   BYTEA,
-                                field_inet                    INET,
-                                field_point                   POINT,
-                                field_box                     BOX,
-                                field_lseg                    LSEG,
-                                field_path                    PATH,
-                                field_polygon                 POLYGON,
-                                field_circle                  CIRCLE
-                                ) WITH OIDS");
+                                field_timestamp               TIMESTAMP", pkType);
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 2))
+            if (!Conn.IsRedshift)
             {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
+                sb.Append(",").AppendLine();
+                sb.Append(@"field_serial                  SERIAL,
+                            field_bit                     BIT,
+                            field_time                    TIME,
+                            field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
+                            field_bytea                   BYTEA,
+                            field_inet                    INET,
+                            field_point                   POINT,
+                            field_box                     BOX,
+                            field_lseg                    LSEG,
+                            field_path                    PATH,
+                            field_polygon                 POLYGON,
+                            field_circle                  CIRCLE
+                ");
+
+                if (Conn.PostgreSqlVersion >= new Version(9, 2)) {
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_json JSON");
+                }
+
+                if (Conn.PostgreSqlVersion >= new Version(9, 4)) {
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_jsonb JSONB");
+                }
             }
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 4))
-            {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_jsonb JSONB");
-            }
+            sb.Append(") WITH OIDS;");  // Complete the CREATE TABLE command
 
+            ExecuteNonQuery(sb.ToString());
             _schemaCreated = true;
         }
 

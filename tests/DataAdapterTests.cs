@@ -139,7 +139,7 @@ namespace NpgsqlTests
             da.Update(ds);
 
             //## change id from 1 to 2
-            cmd.CommandText = "update tabled set field_float4 = 0.8 where id = (select max(field_serial) from tabled)";
+            cmd.CommandText = "update tabled set field_float4 = 0.8";
             cmd.ExecuteNonQuery();
 
             //## change value to newvalue
@@ -310,7 +310,7 @@ namespace NpgsqlTests
             command.ExecuteNonQuery();
 
             var ds = new DataSet();
-            var da = new NpgsqlDataAdapter("select * from tableb where field_serial = (select max(field_serial) from tableb)", Conn);
+            var da = new NpgsqlDataAdapter("select * from tableb", Conn);
             var cb = new NpgsqlCommandBuilder(da);
             Assert.IsNotNull(cb);
 
@@ -328,7 +328,7 @@ namespace NpgsqlTests
             ds.Merge(ds2);
             ds.AcceptChanges();
 
-            using (var dr2 = new NpgsqlCommand("select * from tableb where field_serial = (select max(field_serial) from tableb)", Conn).ExecuteReader())
+            using (var dr2 = new NpgsqlCommand("select * from tableb", Conn).ExecuteReader())
             {
                 dr2.Read();
                 Assert.AreEqual(4, dr2["field_int2"]);

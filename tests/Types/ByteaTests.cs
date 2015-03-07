@@ -314,7 +314,7 @@ namespace NpgsqlTests.Types
             cmd.Parameters[0].Value = toStore;
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
             var result = (Byte[])cmd.ExecuteScalar();
             Assert.AreEqual(toStore, result);
         }
@@ -329,7 +329,7 @@ namespace NpgsqlTests.Types
             cmd.Parameters[0].Value = toStore;
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
             var result = (Byte[])cmd.ExecuteScalar();
 
             Assert.AreEqual(toStore, result);
@@ -346,7 +346,7 @@ namespace NpgsqlTests.Types
             cmd.Prepare();
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
 
             cmd.Prepare();
             var result = (Byte[])cmd.ExecuteScalar();
@@ -365,7 +365,7 @@ namespace NpgsqlTests.Types
             cmd.Prepare();
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
 
             cmd.Prepare();
             var result = (Byte[])cmd.ExecuteScalar();

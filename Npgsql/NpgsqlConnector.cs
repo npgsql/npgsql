@@ -43,6 +43,7 @@ using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using System.Text;
+using System.Text.RegularExpressions;
 using Npgsql.FrontendMessages;
 using SecurityProtocolType = Mono.Security.Protocol.Tls.SecurityProtocolType;
 
@@ -127,6 +128,11 @@ namespace Npgsql
         /// actual DEALLOCATE message must be deferred.
         /// </summary>
         List<string> _deferredCommands;
+
+        /// <summary>
+        /// Whether the backend is an AWS Redshift instance
+        /// </summary>
+        bool? _isRedshift;
 
         // For IsValid test
         readonly RNGCryptoServiceProvider _rng = new RNGCryptoServiceProvider();
@@ -1480,6 +1486,25 @@ namespace Npgsql
 
             // Range data types
             SupportsRangeTypes = (ServerVersion >= new Version(9, 2, 0));
+        }
+
+        /// <summary>
+        /// Whether the backend is an AWS Redshift instance
+        /// </summary>
+        internal bool IsRedshift
+        {
+            get
+            {
+                if (!_isRedshift.HasValue)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT version()", this))
+                    {
+                        var versionStr = (string)cmd.ExecuteScalar();
+                        _isRedshift = versionStr.ToLower().Contains("redshift");
+                    }
+                }
+                return _isRedshift.Value;
+            }
         }
 
         #endregion Supported features
