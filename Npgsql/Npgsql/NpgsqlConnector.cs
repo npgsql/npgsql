@@ -39,6 +39,7 @@ using System.Threading;
 using Mono.Security.Protocol.Tls;
 using NpgsqlTypes;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Npgsql
 {
@@ -118,6 +119,11 @@ namespace Npgsql
         private readonly NpgsqlMediator _mediator;
 
         private Version _serverVersion;
+
+        /// <summary>
+        /// Whether the backend is an AWS Redshift instance
+        /// </summary>
+        private bool? _isRedshift;
 
         // Values for possible CancelRequest messages.
         private NpgsqlBackEndKeyData _backend_keydata;
@@ -587,6 +593,23 @@ namespace Npgsql
         {
             get { return _serverVersion; }
             set { _serverVersion = value; }
+        }
+
+        /// <summary>
+        /// Whether the backend is an AWS Redshift instance
+        /// </summary>
+        internal bool IsRedshift
+        {
+            get
+            {
+                if (!_isRedshift.HasValue) {
+                    using (var cmd = new NpgsqlCommand("SELECT version()", this)) {
+                        var versionStr = (string)cmd.ExecuteScalar();
+                        _isRedshift = versionStr.ToLower().Contains("redshift");
+                    }
+                }
+                return _isRedshift.Value;
+            }
         }
 
         /// <summary>

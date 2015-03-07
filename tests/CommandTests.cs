@@ -177,7 +177,7 @@ namespace NpgsqlTests
             Object result = command.ExecuteNonQuery();
             Assert.AreEqual(1, result);
 
-            var command2 = new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("SELECT field_text FROM data", Conn);
             result = command2.ExecuteScalar();
             Assert.AreEqual("test", result);
             //reader.FieldCount
@@ -193,7 +193,7 @@ namespace NpgsqlTests
             Object result = command.ExecuteNonQuery();
             Assert.AreEqual(1, result);
 
-            var command2 = new NpgsqlCommand( "select field_int4 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_int4 from data", Conn);
             result = command2.ExecuteScalar();
             Assert.AreEqual(5, result);
             //reader.FieldCount
@@ -209,7 +209,7 @@ namespace NpgsqlTests
             Object result = command.ExecuteNonQuery();
             Assert.AreEqual(1, result);
 
-            var command2 = new NpgsqlCommand("select field_int4 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_int4 from data", Conn);
             result = command2.ExecuteScalar();
             Assert.AreEqual(5, result);
             //reader.FieldCount
@@ -448,7 +448,7 @@ namespace NpgsqlTests
             var dr = command.ExecuteReader();
             Assert.IsNotNull(dr);
 
-            var result = (String)new NpgsqlCommand("select field_text from data where field_serial = (select max(field_serial) from data);", Conn).ExecuteScalar();
+            var result = (String)new NpgsqlCommand("select field_text from data", Conn).ExecuteScalar();
             Assert.AreEqual(@"{\rtf1\ansi\ansicpg1252\uc1 \deff0\deflang1033\deflangfe1033{", result);
         }
 
@@ -926,7 +926,7 @@ namespace NpgsqlTests
             cmd.Parameters[0].Value = toStore;
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
             var result = (Byte[]) cmd.ExecuteScalar();
             Assert.AreEqual(toStore, result);
         }
@@ -941,7 +941,7 @@ namespace NpgsqlTests
             cmd.Parameters[0].Value = toStore;
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
             var result = (Byte[]) cmd.ExecuteScalar();
 
             Assert.AreEqual(toStore, result);
@@ -958,7 +958,7 @@ namespace NpgsqlTests
             cmd.Prepare();
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
 
             cmd.Prepare();
             var result = (Byte[]) cmd.ExecuteScalar();
@@ -977,7 +977,7 @@ namespace NpgsqlTests
             cmd.Prepare();
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
 
             cmd.Prepare();
             var result = (Byte[]) cmd.ExecuteScalar();
@@ -1556,7 +1556,7 @@ namespace NpgsqlTests
         [Test]
         public void TestParameterReplace()
         {
-            const string sql = @"select * from data where field_serial = :a";
+            const string sql = @"select * from data where field_int4 = :a";
             var command = new NpgsqlCommand(sql, Conn);
             command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
             command.Parameters[0].Value = 2;
@@ -1566,7 +1566,7 @@ namespace NpgsqlTests
         [Test]
         public void TestParameterReplace2()
         {
-            const string sql = @"select * from data where field_serial = :a+1";
+            const string sql = @"select * from data where field_int4 = :a+1";
             var command = new NpgsqlCommand(sql, Conn);
             command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
             command.Parameters[0].Value = 1;
@@ -1587,7 +1587,7 @@ namespace NpgsqlTests
             var rowsAdded = command.ExecuteNonQuery();
             Assert.AreEqual(rowsAdded, 1);
 
-            var command2 = new NpgsqlCommand("select field_text, field_int4 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_text, field_int4 from data", Conn);
             using (var dr = command2.ExecuteReader())
             {
                 dr.Read();
@@ -1809,7 +1809,7 @@ namespace NpgsqlTests
             cmd.Parameters.Add(param);
             cmd.ExecuteNonQuery();
 
-            cmd = new NpgsqlCommand("select field_bytea from data where field_serial = (select max(field_serial) from data)", Conn);
+            cmd = new NpgsqlCommand("select field_bytea from data", Conn);
             var result = cmd.ExecuteScalar();
             Assert.AreEqual(DBNull.Value, result);
         }
@@ -1826,7 +1826,7 @@ namespace NpgsqlTests
             var rowsAdded = command.ExecuteNonQuery();
             Assert.AreEqual(rowsAdded, 1);
 
-            var command2 = new NpgsqlCommand("select field_char5 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_char5 from data", Conn);
             using (var dr = command2.ExecuteReader())
             {
                 dr.Read();
@@ -2043,7 +2043,7 @@ namespace NpgsqlTests
 
             Assert.AreEqual(rowsAdded, 1);
 
-            var command2 = new NpgsqlCommand("select field_char5 from data where field_serial = (select max(field_serial) from data)", Conn);
+            var command2 = new NpgsqlCommand("select field_char5 from data", Conn);
             var a = (String) command2.ExecuteScalar();
             Assert.AreEqual(aValue, a);
         }
@@ -2109,7 +2109,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand("insert into data(field_timestamp) values ('infinity'::timestamp);", Conn);
             command.ExecuteNonQuery();
 
-            command = new NpgsqlCommand("select field_timestamp from data where field_serial = (select max(field_serial) from data);", Conn);
+            command = new NpgsqlCommand("select field_timestamp from data", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(DateTime.MaxValue, result);
         }
@@ -2120,7 +2120,7 @@ namespace NpgsqlTests
             var command = new NpgsqlCommand("insert into data(field_timestamp) values ('-infinity'::timestamp);", Conn);
             command.ExecuteNonQuery();
 
-            command = new NpgsqlCommand("select field_timestamp from data where field_serial = (select max(field_serial) from data);", Conn);
+            command = new NpgsqlCommand("select field_timestamp from data", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(DateTime.MinValue, result);
         }
@@ -2154,7 +2154,7 @@ namespace NpgsqlTests
             command.Parameters.Add(p);
             command.ExecuteNonQuery();
 
-            command = new NpgsqlCommand("SELECT field_inet FROM data WHERE field_serial = (SELECT(field_serial) FROM data)", Conn);
+            command = new NpgsqlCommand("SELECT field_inet FROM data", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual((IPAddress) new NpgsqlInet("127.0.0.1"), (IPAddress) result);
         }
@@ -2168,7 +2168,7 @@ namespace NpgsqlTests
             command.Parameters.Add(p);
             command.ExecuteNonQuery();
 
-            command = new NpgsqlCommand("select field_inet from data where field_serial = (select max(field_serial) from data);", Conn);
+            command = new NpgsqlCommand("select field_inet from data", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(IPAddress.Parse("127.0.0.1"), result);
         }
@@ -2185,7 +2185,7 @@ namespace NpgsqlTests
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         [Test]
@@ -2199,7 +2199,7 @@ namespace NpgsqlTests
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         [Test]
@@ -2213,7 +2213,7 @@ namespace NpgsqlTests
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data);"));
+            Assert.IsTrue((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         [Test]
@@ -2227,7 +2227,7 @@ namespace NpgsqlTests
                 command.ExecuteNonQuery();
             }
 
-            Assert.IsFalse((bool)ExecuteScalar("SELECT field_bit FROM data WHERE field_serial = (SELECT MAX(field_serial) FROM data)"));
+            Assert.IsFalse((bool)ExecuteScalar("SELECT field_bit FROM data"));
         }
 
         //[Test]
@@ -2239,7 +2239,7 @@ namespace NpgsqlTests
             command.Parameters.Add(p);
             command.ExecuteNonQuery();
 
-            command = new NpgsqlCommand("select field_inet from data where field_serial = (select max(field_serial) from data);", Conn);
+            command = new NpgsqlCommand("select field_inet from data", Conn);
             var result = command.ExecuteScalar();
             Assert.AreEqual(new NpgsqlInet("127.0.0.1"), result);
         }

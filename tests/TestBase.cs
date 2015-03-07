@@ -27,6 +27,7 @@ using System.Linq;
 using System.Configuration;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using Npgsql;
 
 using NpgsqlTypes;
@@ -189,9 +190,11 @@ namespace NpgsqlTests
         {
             Console.WriteLine("Creating test database schema");
 
+            var sb = new StringBuilder();
+
             if (Conn.PostgreSqlVersion >= new Version(8, 2, 0))
             {
-                ExecuteNonQuery("DROP TABLE IF EXISTS DATA CASCADE");
+                sb.Append("DROP TABLE IF EXISTS DATA CASCADE;");
             }
             else
             {
@@ -207,9 +210,19 @@ namespace NpgsqlTests
                     }
                 }
             }
-            ExecuteNonQuery(@"CREATE TABLE data (
-                                field_pk                      SERIAL PRIMARY KEY,
-                                field_serial                  SERIAL,
+
+            if (Conn.PostgreSqlVersion >= new Version(9, 1))
+            {
+                CreateSchema("hstore");
+                sb.Append(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore;");
+            }
+
+            var pkType = Conn.IsRedshift
+                ? "INTEGER IDENTITY (1,1)"
+                : "SERIAL PRIMARY KEY";
+
+            sb.AppendFormat(@"CREATE TABLE data (
+                                field_pk                      {0},
                                 field_text                    TEXT,
                                 field_char5                   CHAR(5),
                                 field_varchar5                VARCHAR(5),
@@ -220,38 +233,45 @@ namespace NpgsqlTests
                                 field_float4                  FLOAT4,
                                 field_float8                  FLOAT8,
                                 field_bool                    BOOL,
-                                field_bit                     BIT,
                                 field_date                    DATE,
-                                field_time                    TIME,
-                                field_timestamp               TIMESTAMP,
-                                field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
-                                field_bytea                   BYTEA,
-                                field_inet                    INET,
-                                field_point                   POINT,
-                                field_box                     BOX,
-                                field_lseg                    LSEG,
-                                field_path                    PATH,
-                                field_polygon                 POLYGON,
-                                field_circle                  CIRCLE
-                                ) WITH OIDS");
+                                field_timestamp               TIMESTAMP", pkType);
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 1))
+            if (!Conn.IsRedshift)
             {
-                CreateSchema("hstore");
-                ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA hstore");
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_hstore hstore.HSTORE");
+                sb.Append(",").AppendLine();
+                sb.Append(@"field_serial                  SERIAL,
+                            field_bit                     BIT,
+                            field_time                    TIME,
+                            field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
+                            field_bytea                   BYTEA,
+                            field_inet                    INET,
+                            field_point                   POINT,
+                            field_box                     BOX,
+                            field_lseg                    LSEG,
+                            field_path                    PATH,
+                            field_polygon                 POLYGON,
+                            field_circle                  CIRCLE
+                ");
+
+                if (Conn.PostgreSqlVersion >= new Version(9, 1)) {
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_hstore hstore.HSTORE");
+                }
+
+                if (Conn.PostgreSqlVersion >= new Version(9, 2)) {
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_json JSON");
+                }
+
+                if (Conn.PostgreSqlVersion >= new Version(9, 4)) {
+                    sb.Append(",").AppendLine();
+                    sb.Append(@"field_jsonb JSONB");
+                }
             }
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 2))
-            {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_json JSON");
-            }
+            sb.Append(") WITH OIDS;");  // Complete the CREATE TABLE command
 
-            if (Conn.PostgreSqlVersion >= new Version(9, 4))
-            {
-                ExecuteNonQuery(@"ALTER TABLE data ADD COLUMN field_jsonb JSONB");
-            }
-
+            ExecuteNonQuery(sb.ToString());
             _schemaCreated = true;
         }
 
