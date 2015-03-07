@@ -9,7 +9,9 @@ using System.Text;
 
 namespace Npgsql.TypeHandlers
 {
-    internal class EnumHandler<TEnum> : TypeHandler<TEnum>, ISimpleTypeReader<TEnum>, ISimpleTypeWriter
+    internal interface IEnumHandler { }
+    internal class EnumHandler<TEnum> : TypeHandler<TEnum>, IEnumHandler,
+        ISimpleTypeReader<TEnum>, ISimpleTypeWriter
         where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;

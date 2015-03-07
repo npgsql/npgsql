@@ -75,46 +75,78 @@ namespace Npgsql
 
         static List<BackendType> LoadBackendTypes(NpgsqlConnector connector)
         {
-            // Select all basic, range and enum types along with their array type's OID and text delimiter
-            // For range types, select also the subtype they contain
-            string query = connector.SupportsRangeTypes ?
-                                 @"SELECT typname, pg_type.oid, typtype, typarray, rngsubtype " +
-                                 @"FROM pg_type " +
-                                 @"LEFT OUTER JOIN pg_range ON (pg_type.oid = pg_range.rngtypid) " +
-                                 @"WHERE typtype IN ('b', 'r', 'e') " +
-                                 @"ORDER BY typtype"
-                                 :
-                                 @"SELECT typname, pg_type.oid, typtype, typarray " +
-                                 @"FROM pg_type " +
-                                 @"WHERE typtype IN ('b', 'e') " +
-                                 @"ORDER BY typtype";
+            var byOID = new Dictionary<uint, BackendType>();
+
+            // Select all types (base, array which is also base, enum, range). Note that arrays are distinguished
+            // from primitive types through them having typelem != 0 and typlen == -1.
+            // Order by primitives first, container later.
+            // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
+            // types).
+            var query =
+                @"SELECT a.typname, a.oid, a.typtype, a.typlen, CASE " +
+                (connector.SupportsRangeTypes ? @"WHEN a.typtype='r' THEN rngsubtype " : "") +
+                @"WHEN a.typlen = -1 THEN a.typelem ELSE 0 END AS ord " +
+                @"FROM pg_type AS a " +
+                @"LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem) " +
+                (connector.SupportsRangeTypes ? @"LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "") +
+                @"WHERE a.typtype IN ('b', 'r', 'e') AND (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e'))" +
+                @"ORDER BY ord";
 
             var types = new List<BackendType>();
             using (var command = new NpgsqlCommand(query, connector))
             {
                 command.AllResultTypesAreUnknown = true;
-                using (var dr = command.Execute(CommandBehavior.SequentialAccess))
+                using (var dr = command.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
                     while (dr.Read())
                     {
-                        var name = dr.GetString(0);
-                        Contract.Assume(name != null);
-                        var oid = Convert.ToUInt32(dr[1]);
-                        Contract.Assume(oid != 0);
-                        var type = (BackendTypeType) dr.GetString(2)[0];
-                        var arrayOID = Convert.ToUInt32(dr[3]);
-                        var rangeSubtypeOID = type == BackendTypeType.Range
-                          ? UInt32.Parse(dr.GetString(4))
-                          : 0;
-
-                        types.Add(new BackendType
+                        var backendType = new BackendType
                         {
-                            Name = name,
-                            OID = oid,
-                            Type = type,
-                            ArrayOID = arrayOID,
-                            RangeSubtypeOID = rangeSubtypeOID,
-                        });
+                            Name = dr.GetString(0),
+                            OID = Convert.ToUInt32(dr[1])
+                        };
+
+                        Contract.Assume(backendType.Name != null);
+                        Contract.Assume(backendType.OID != 0);
+
+                        uint elementOID;
+                        var typeChar = dr.GetString(2)[0];
+                        switch (typeChar)
+                        {
+                        case 'b':
+                            // We can't use pg_type.typarray to identify array types because that appeared only in PG 8.3.
+                            // But "True" arrays have typelem != 0 and typlen == -1
+                            var typeLen = Convert.ToInt16(dr[3]);
+                            elementOID = Convert.ToUInt32(dr[4]);
+                            if (elementOID != 0 && typeLen == -1)
+                            {
+                                backendType.Type = BackendTypeType.Array;
+                                if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
+                                    Log.ErrorFormat("Array type '{0}' refers to unknown element with OID {1}, skipping", backendType.Name, elementOID);
+                                    continue;
+                                }
+                                backendType.Element.Array = backendType;
+                            } else {
+                                backendType.Type = BackendTypeType.Base;
+                            }
+                            break;
+                        case 'e':
+                            backendType.Type = BackendTypeType.Enum;
+                            break;
+                        case 'r':
+                            backendType.Type = BackendTypeType.Range;
+                            elementOID = Convert.ToUInt32(dr[4]);
+                            if (!byOID.TryGetValue(elementOID, out backendType.Element)) {
+                                Log.ErrorFormat("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, elementOID);
+                                continue;
+                            }
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(String.Format("Unknown typtype for type '{0}' in pg_type: {1}", backendType.Name, typeChar));
+                        }
+
+                        types.Add(backendType);
+                        byOID[backendType.OID] = backendType;
                     }
                 }
             }
@@ -133,6 +165,9 @@ namespace Npgsql
                 switch (backendType.Type) {
                 case BackendTypeType.Base:
                     RegisterBaseType(backendType);
+                    continue;
+                case BackendTypeType.Array:
+                    RegisterArrayType(backendType);
                     continue;
                 case BackendTypeType.Range:
                     RegisterRangeType(backendType);
@@ -200,19 +235,22 @@ namespace Npgsql
                                         type, _byType[type].GetType().Name, handlerType.Name));
                 _byType[type] = handler;
             }
-
-            if (backendType.ArrayOID != 0) {
-                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler);
-                _byNpgsqlDbType.Add(NpgsqlDbType.Array | handler.NpgsqlDbType, arrayHandler);
-            }
         }
 
         #endregion
 
         #region Array
 
-        TypeHandler RegisterArrayType(uint oid, TypeHandler elementHandler)
+        void RegisterArrayType(BackendType backendType)
         {
+            Contract.Requires(backendType.Element != null);
+
+            TypeHandler elementHandler;
+            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler)) {
+                // Array type referring to an unhandled element type
+                return;
+            }
+
             ArrayHandler arrayHandler;
 
             var asBitStringHandler = elementHandler as BitStringHandler;
@@ -228,10 +266,19 @@ namespace Npgsql
             }
 
             arrayHandler.PgName = "array";
-            arrayHandler.OID = oid;
-            _oidIndex[oid] = arrayHandler;
+            arrayHandler.OID = backendType.OID;
+            _oidIndex[backendType.OID] = arrayHandler;
+            _byNpgsqlDbType[NpgsqlDbType.Array | elementHandler.NpgsqlDbType] = arrayHandler;
 
-            return arrayHandler;
+            if (elementHandler is IEnumHandler)
+            {
+                if (_byEnumTypeAsArray == null) {
+                    _byEnumTypeAsArray = new Dictionary<Type, TypeHandler>();
+                }
+                var enumType = elementHandler.GetType().GetGenericArguments()[0];
+                Contract.Assert(enumType.IsEnum);
+                _byEnumTypeAsArray[enumType] = arrayHandler;
+            }
         }
 
         #endregion
@@ -240,17 +287,16 @@ namespace Npgsql
 
         void RegisterRangeType(BackendType backendType)
         {
-            Contract.Requires(backendType.RangeSubtypeOID != 0);
+            Contract.Requires(backendType.Element != null);
 
             TypeHandler elementHandler;
-            if (!_oidIndex.TryGetValue(backendType.RangeSubtypeOID, out elementHandler))
+            if (!_oidIndex.TryGetValue(backendType.Element.OID, out elementHandler))
             {
-                Log.ErrorFormat("Range type '{0}' refers to unknown subtype with OID {1}, skipping", backendType.Name, backendType.RangeSubtypeOID);
+                // Range type referring to an unhandled element type
                 return;
             }
 
             var rangeHandlerType = typeof(RangeHandler<>).MakeGenericType(elementHandler.GetFieldType());
-            var rangeType = typeof(NpgsqlRange<>).MakeGenericType(elementHandler.GetFieldType());
             var handler = (TypeHandler)Activator.CreateInstance(rangeHandlerType, elementHandler, backendType.Name);
 
             handler.PgName = backendType.Name;
@@ -258,8 +304,6 @@ namespace Npgsql
             handler.OID = backendType.OID;
             _oidIndex[backendType.OID] = handler;
             _byNpgsqlDbType.Add(handler.NpgsqlDbType, handler);
-
-            RegisterArrayType(backendType.ArrayOID, handler);
         }
 
         #endregion
@@ -294,15 +338,8 @@ namespace Npgsql
             _oidIndex[backendType.OID] = handler;
             _byType[handler.GetFieldType()] = handler;
 
-            if (backendType.ArrayOID != 0)
-            {
-                var arrayHandler = RegisterArrayType(backendType.ArrayOID, handler);
-                if (_byEnumTypeAsArray == null) {
-                    _byEnumTypeAsArray = new Dictionary<Type, TypeHandler>();
-                }
-                var enumType = handler.GetType().GetGenericArguments()[0];
-                Contract.Assert(enumType.IsEnum);
-                _byEnumTypeAsArray[enumType] = arrayHandler;
+            if (backendType.Array != null) {
+                RegisterArrayType(backendType.Array);
             }
         }
 
@@ -547,8 +584,8 @@ namespace Npgsql
         internal string Name;
         internal uint OID;
         internal BackendTypeType Type;
-        internal uint ArrayOID;
-        internal uint RangeSubtypeOID;
+        internal BackendType Element;
+        internal BackendType Array;
     }
 
     struct TypeAndMapping
@@ -563,8 +600,10 @@ namespace Npgsql
     /// </summary>
     enum BackendTypeType
     {
-        Base = 'b',
-        Range = 'r',
-        Enum = 'e'
+        Base,
+        Array,
+        Range,
+        Enum,
+        Pseudo
     }
 }
