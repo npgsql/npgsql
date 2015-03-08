@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data.Common;
 #if ENTITIES6
 using System.Data.Entity.Core.Common.CommandTrees;
+using NpgsqlTypes;
 #else
 using System.Data.Common.CommandTrees;
+using NpgsqlTypes;
 #endif
 
 namespace Npgsql.SqlGenerators
@@ -14,7 +16,8 @@ namespace Npgsql.SqlGenerators
         private DbInsertCommandTree _commandTree;
         private string _tableName;
 
-        public SqlInsertGenerator(DbInsertCommandTree commandTree)
+        public SqlInsertGenerator(DbInsertCommandTree commandTree, NativeToBackendTypeConverterOptions options)
+            :base ( options )
         {
             _commandTree = commandTree;
         }

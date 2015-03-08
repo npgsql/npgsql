@@ -209,6 +209,7 @@ namespace NpgsqlTests
 			DateTime createdOnDate = new DateTime(2014, 05, 08);
 			using (var context = new BloggingContext(ConnectionStringEF))
 			{
+                context.Database.Log = Console.Out.WriteLine;
 				var blog = new Blog()
 				{
 					Name = "Special Characters Test"

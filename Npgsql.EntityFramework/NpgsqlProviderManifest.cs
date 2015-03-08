@@ -10,15 +10,26 @@ using System.Data.Metadata.Edm;
 #endif
 using System.Xml;
 using System.Data;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
+
+        static NativeToBackendTypeConverterOptions _redshiftConverterOptions = new NativeToBackendTypeConverterOptions(false, false, false, null);
+
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
+
+            if (serverVersion == "8.0.2")
+                ConverterOptions = _redshiftConverterOptions;
+            else
+                ConverterOptions = NativeToBackendTypeConverterOptions.Default;
         }
+
+        public NativeToBackendTypeConverterOptions ConverterOptions { get; private set; }
 
         protected override XmlReader GetDbInformation(string informationType)
         {
