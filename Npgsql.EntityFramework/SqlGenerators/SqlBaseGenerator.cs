@@ -9,6 +9,7 @@ using System.Data.Common.CommandTrees;
 using System.Data.Metadata.Edm;
 #endif
 using System.Linq;
+using NpgsqlTypes;
 
 namespace Npgsql.SqlGenerators
 {
@@ -36,6 +37,8 @@ namespace Npgsql.SqlGenerators
         protected SqlBaseGenerator()
         {
         }
+
+        public NativeToBackendTypeConverterOptions ConverterOptions { get; set; }
 
         private void EnterExpression(PendingProjectsNode n)
         {
@@ -740,7 +743,7 @@ namespace Npgsql.SqlGenerators
             // may require some formatting depending on the type
             //throw new NotImplementedException();
             // TODO: this is just for testing
-            return new ConstantExpression(expression.Value, expression.ResultType);
+            return new ConstantExpression(expression.Value, expression.ResultType, ConverterOptions);
         }
 
         public override VisitedExpression Visit(DbComparisonExpression expression)

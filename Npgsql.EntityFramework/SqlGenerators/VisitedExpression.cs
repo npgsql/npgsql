@@ -98,8 +98,9 @@ namespace Npgsql.SqlGenerators
     {
         private PrimitiveTypeKind _primitiveType;
         private object _value;
+        private NativeToBackendTypeConverterOptions _converterOptions;
 
-        public ConstantExpression(object value, TypeUsage edmType)
+        public ConstantExpression(object value, TypeUsage edmType, NativeToBackendTypeConverterOptions converterOptions)
         {
             if (edmType == null)
                 throw new ArgumentNullException("edmType");
@@ -107,6 +108,7 @@ namespace Npgsql.SqlGenerators
                 throw new ArgumentException("Require primitive EdmType", "edmType");
             _primitiveType = ((PrimitiveType)edmType.EdmType).PrimitiveTypeKind;
             _value = value;
+            _converterOptions = converterOptions;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
@@ -222,7 +224,7 @@ namespace Npgsql.SqlGenerators
                     // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
                     // NativeToBackendTypeConverterOptions.Default should provide the correct
                     // formatting rules for any backend >= 8.0.
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false, _converterOptions)));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);
