@@ -1,7 +1,10 @@
-﻿using System;
+#if !ENTITIES7
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
-#if ENTITIES6
+#if ENTITIES7
+using Microsoft.Data.Entity;
+#elif ENTITIES6
 using System.Data.Entity.Core.Common.CommandTrees;
 #else
 using System.Data.Common.CommandTrees;
@@ -51,3 +54,4 @@ namespace Npgsql.SqlGenerators
         }
     }
 }
+#endif

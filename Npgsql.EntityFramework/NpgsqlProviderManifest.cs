@@ -1,7 +1,9 @@
-﻿using System;
+#if !ENTITIES7
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data.Common;
+
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Metadata.Edm;
@@ -337,3 +339,4 @@ namespace Npgsql
 #endif
     }
 }
+#endif

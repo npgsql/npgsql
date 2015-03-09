@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Mapping xmlns:cs="urn:schemas-microsoft-com:windows:storage:mapping:CS" Space="C-S" xmlns="urn:schemas-microsoft-com:windows:storage:mapping:CS">
   <cs:EntityContainerMapping StorageEntityContainer="NpgsqlSchema" CdmEntityContainer="SchemaInformation">
     <cs:EntitySetMapping Name="Tables" StoreEntitySet="PgTables" TypeName="Store.Table">

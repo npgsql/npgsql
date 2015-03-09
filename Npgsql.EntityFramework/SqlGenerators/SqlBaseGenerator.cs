@@ -1,7 +1,11 @@
-﻿using System;
+#if !ENTITIES7
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
-#if ENTITIES6
+
+#if ENTITIES7
+using Microsoft.Data.Entity;
+#elif ENTITIES6
 using System.Data.Entity.Core.Common.CommandTrees;
 using System.Data.Entity.Core.Metadata.Edm;
 #else
@@ -1287,3 +1291,4 @@ namespace Npgsql.SqlGenerators
 #endif
     }
 }
+#endif

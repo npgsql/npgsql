@@ -1,4 +1,5 @@
-﻿// NpgsqlMigrationSqlGenerator.cs
+#if !ENTITIES7
+// NpgsqlMigrationSqlGenerator.cs
 //
 // Author:
 //    David Karlaš (david.karlas@gmail.com)
@@ -24,10 +25,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data.Entity.Migrations.Model;
-using System.Data.Entity.Migrations.Sql;
 using System.Globalization;
 using System.Text;
+
+using System.Data.Entity.Migrations.Model;
+using System.Data.Entity.Migrations.Sql;
 using System.Data.Entity.Core.Metadata.Edm;
 using System.Data.Entity.Spatial;
 
@@ -842,3 +844,4 @@ namespace Npgsql
         #endregion
     }
 }
+#endif

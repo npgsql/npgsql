@@ -1,7 +1,12 @@
-﻿using System;
+#if !ENTITIES7
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Xml;
+#if ENTITIES7
+using Microsoft.Data.Entity;
+using Microsoft.Data.Entity.Migrations;
+using Microsoft.Data.Entity.Infrastructure;
 #if ENTITIES6
 using System.Data.Entity.Core.Common;
 using System.Data.Entity.Core.Common.CommandTrees;
@@ -168,3 +173,5 @@ namespace Npgsql
         }
     }
 }
+#endif
+#endif

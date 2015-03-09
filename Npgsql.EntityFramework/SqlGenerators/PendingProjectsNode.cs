@@ -1,4 +1,5 @@
-﻿using System;
+#if !ENTITIES7
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -48,3 +49,4 @@ namespace Npgsql.SqlGenerators
         public NameAndInputExpression Last { get { return Selects[Selects.Count - 1]; } }
     }
 }
+#endif
