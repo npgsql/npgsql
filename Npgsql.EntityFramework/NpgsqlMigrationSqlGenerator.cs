@@ -115,6 +115,10 @@ namespace Npgsql
                 {
                     Convert(migrationOperation as CreateIndexOperation);
                 }
+                else if (migrationOperation is RenameIndexOperation)
+                {
+                    Convert(migrationOperation as RenameIndexOperation);
+                }
                 else if (migrationOperation is DropColumnOperation)
                 {
                     Convert(migrationOperation as DropColumnOperation);
@@ -452,6 +456,28 @@ namespace Npgsql
             }
             sql.Remove(sql.Length - 1, 1);
             sql.Append(")");
+            AddStatment(sql);
+        }
+
+        private void Convert(RenameIndexOperation renameIndexOperation)
+        {
+            StringBuilder sql = new StringBuilder();
+
+            if (serverVersion.Major > 9 || (serverVersion.Major == 9 && serverVersion.Minor >= 2))
+            {
+                sql.Append("ALTER INDEX IF EXISTS ");
+            }
+            else
+            {
+                sql.Append("ALTER INDEX ");
+            }
+
+            sql.Append(GetSchemaNameFromFullTableName(renameIndexOperation.Table));
+            sql.Append(".\"");
+            sql.Append(renameIndexOperation.Name);
+            sql.Append("\" RENAME TO \"");
+            sql.Append(renameIndexOperation.NewName);
+            sql.Append('"');
             AddStatment(sql);
         }
 
