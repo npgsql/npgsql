@@ -135,6 +135,7 @@
     <Compile Include="SqlGenerators\PendingProjectsNode.cs" />
     <Compile Include="SqlGenerators\SqlBaseGenerator.cs" />
     <Compile Include="SqlGenerators\SqlDeleteGenerator.cs" />
+    <Compile Include="SqlGenerators\SqlFunctionGenerator.cs" />
     <Compile Include="SqlGenerators\SqlInsertGenerator.cs" />
     <Compile Include="SqlGenerators\SqlSelectGenerator.cs" />
     <Compile Include="SqlGenerators\SqlUpdateGenerator.cs" />

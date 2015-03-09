@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="npgsql_tests" Alias="Self" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+  <EntityContainer Name="npgsql_testsEntities">
+    <EntitySet Name="Posts" EntityType="npgsql_tests.Posts" />
+    <EntitySet Name="Blogs" EntityType="npgsql_tests.Blogs" />
+    <AssociationSet Name="FK_Posts_Blogs_BlogId" Association="npgsql_tests.FK_Posts_Blogs_BlogId">
+      <End Role="Blogs" EntitySet="Blogs" />
+      <End Role="Posts" EntitySet="Posts" />
+    </AssociationSet>
+    <FunctionImport Name="pass_thru_int" ReturnType="Collection(Int32)">
+      <Parameter Name="p" Mode="In" Type="Int32" />
+    </FunctionImport>
+    <FunctionImport Name="pass_thru_str" ReturnType="Collection(String)">
+      <Parameter Name="p" Mode="In" Type="String" />
+    </FunctionImport>
+  </EntityContainer>
+  <EntityType Name="Posts">
+    <Key>
+      <PropertyRef Name="PostId" />
+    </Key>
+    <Property Name="PostId" Type="Int32" Nullable="false" p3:StoreGeneratedPattern="Identity" xmlns:p3="http://schemas.microsoft.com/ado/2009/02/edm/annotation" />
+    <Property Name="Title" Type="String" />
+    <Property Name="Content" Type="String" />
+    <Property Name="Rating" Type="Int16" Nullable="false" />
+    <Property Name="BlogId" Type="Int32" Nullable="false" />
+    <NavigationProperty Name="Blogs" Relationship="npgsql_tests.FK_Posts_Blogs_BlogId" FromRole="Posts" ToRole="Blogs" />
+  </EntityType>
+  <EntityType Name="Blogs">
+    <Key>
+      <PropertyRef Name="BlogId" />
+    </Key>
+    <Property Name="BlogId" Type="Int32" Nullable="false" p3:StoreGeneratedPattern="Identity" xmlns:p3="http://schemas.microsoft.com/ado/2009/02/edm/annotation" />
+    <Property Name="Name" Type="String" />
+    <Property Name="IntComputedValue" Type="Int32" Nullable="false"/>
+    <NavigationProperty Name="Posts" Relationship="npgsql_tests.FK_Posts_Blogs_BlogId" FromRole="Blogs" ToRole="Posts" />
+  </EntityType>
+  <Association Name="FK_Posts_Blogs_BlogId">
+    <End Role="Blogs" Type="npgsql_tests.Blogs" Multiplicity="1" />
+    <End Role="Posts" Type="npgsql_tests.Posts" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Blogs">
+        <PropertyRef Name="BlogId" />
+      </Principal>
+      <Dependent Role="Posts">
+        <PropertyRef Name="BlogId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+</Schema>
