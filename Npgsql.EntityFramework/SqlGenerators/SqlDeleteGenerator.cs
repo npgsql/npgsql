@@ -14,7 +14,8 @@ namespace Npgsql.SqlGenerators
         private DbDeleteCommandTree _commandTree;
         private string _tableName;
 
-        public SqlDeleteGenerator(DbDeleteCommandTree commandTree)
+        public SqlDeleteGenerator(DbDeleteCommandTree commandTree, NpgsqlProviderManifest providerManifest)
+            : base(providerManifest)
         {
             _commandTree = commandTree;
         }

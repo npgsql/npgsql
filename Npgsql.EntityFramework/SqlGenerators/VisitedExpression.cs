@@ -96,22 +96,24 @@ namespace Npgsql.SqlGenerators
 
     internal class ConstantExpression : VisitedExpression
     {
+        private NpgsqlProviderManifest _providerManifest;
         private PrimitiveTypeKind _primitiveType;
         private object _value;
 
-        public ConstantExpression(object value, TypeUsage edmType)
+        public ConstantExpression(object value, TypeUsage edmType, NpgsqlProviderManifest providerManifest)
         {
             if (edmType == null)
                 throw new ArgumentNullException("edmType");
             if (edmType.EdmType == null || edmType.EdmType.BuiltInTypeKind != BuiltInTypeKind.PrimitiveType)
                 throw new ArgumentException("Require primitive EdmType", "edmType");
+
+            _providerManifest = providerManifest;
             _primitiveType = ((PrimitiveType)edmType.EdmType).PrimitiveTypeKind;
             _value = value;
         }
 
         internal override void WriteSql(StringBuilder sqlText)
         {
-            NpgsqlNativeTypeInfo typeInfo;
             System.Globalization.NumberFormatInfo ni = NpgsqlNativeTypeInfo.NumberFormat;
             object value = _value;
             switch (_primitiveType)
@@ -215,14 +217,11 @@ namespace Npgsql.SqlGenerators
                     sqlText.Append(((bool)_value) ? "TRUE" : "FALSE");
                     break;
                 case PrimitiveTypeKind.Guid:
+                    sqlText.Append('\'').Append((Guid)_value).Append('\'');
+                    sqlText.Append("::uuid");
+                    break;
                 case PrimitiveTypeKind.String:
-                    NpgsqlTypesHelper.TryGetNativeTypeInfo(GetDbType(_primitiveType), out typeInfo);
-                    // Escape syntax is needed for strings with escape values.
-                    // We don't check if there are escaped strings for performance reasons.
-                    // Check https://github.com/franciscojunior/Npgsql2/pull/10 for more info.
-                    // NativeToBackendTypeConverterOptions.Default should provide the correct
-                    // formatting rules for any backend >= 8.0.
-                    sqlText.Append(BackendEncoding.UTF8Encoding.GetString(typeInfo.ConvertToBackend(_value, false)));
+                    sqlText.Append(_providerManifest.GetSqlStringLiteral(_value.ToString()));
                     break;
                 case PrimitiveTypeKind.Time:
                     sqlText.AppendFormat(ni, "INTERVAL '{0}'", (NpgsqlInterval)(TimeSpan)_value);

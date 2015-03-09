@@ -13,14 +13,10 @@ namespace Npgsql.SqlGenerators
     {
         private DbQueryCommandTree _commandTree;
 
-        public SqlSelectGenerator(DbQueryCommandTree commandTree)
+        public SqlSelectGenerator(DbQueryCommandTree commandTree, NpgsqlProviderManifest providerManifest)
+            : base(providerManifest)
         {
             _commandTree = commandTree;
-        }
-
-        protected SqlSelectGenerator()
-        {
-            // used only for other generators such as returning
         }
 
         public override VisitedExpression Visit(DbPropertyExpression expression)

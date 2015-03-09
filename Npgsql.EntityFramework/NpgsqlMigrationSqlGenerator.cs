@@ -158,7 +158,7 @@ namespace Npgsql
         {
             foreach (var command in historyOperation.CommandTrees)
             {
-                AddStatment(NpgsqlServices.Instance.CreateDbCommand(command).CommandText);
+                AddStatment(NpgsqlServices.Instance.CreateDbCommand(command, (NpgsqlProviderManifest)NpgsqlServices.Instance.GetProviderManifest(serverVersion.ToString())).CommandText);
             }
         }
 

@@ -14,7 +14,8 @@ namespace Npgsql.SqlGenerators
         private DbUpdateCommandTree _commandTree;
         private string _tableName;
 
-        public SqlUpdateGenerator(DbUpdateCommandTree commandTree)
+        public SqlUpdateGenerator(DbUpdateCommandTree commandTree, NpgsqlProviderManifest providerManifest)
+            : base(providerManifest)
         {
             _commandTree = commandTree;
         }

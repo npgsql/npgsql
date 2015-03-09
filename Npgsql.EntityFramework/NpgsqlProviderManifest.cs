@@ -15,9 +15,13 @@ namespace Npgsql
 {
     internal class NpgsqlProviderManifest : DbXmlEnabledProviderManifest
     {
+        private Version _serverVersion;
+
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
+            if (string.IsNullOrEmpty(serverVersion) || !Version.TryParse(serverVersion, out _serverVersion))
+                _serverVersion = new Version(9, 4, 1); // Some default version
         }
 
         protected override XmlReader GetDbInformation(string informationType)
@@ -297,5 +301,19 @@ namespace Npgsql
             return true;
         }
 #endif
+
+        public string GetSqlStringLiteral(string str)
+        {
+            if (_serverVersion >= new Version(8, 1, 0))
+            {
+                // E-syntax is supported, so use it
+                return "E'" + str.Replace(@"\", @"\\").Replace(@"'", @"\'") + "'";
+            }
+            else
+            {
+                // Versions < 8.1 did never use "standard conforming strings"
+                return "'" + str.Replace(@"\", @"\\").Replace(@"'", @"\'") + "'";
+            }
+        }
     }
 }

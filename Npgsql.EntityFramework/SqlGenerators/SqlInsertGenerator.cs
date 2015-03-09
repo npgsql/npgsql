@@ -14,7 +14,8 @@ namespace Npgsql.SqlGenerators
         private DbInsertCommandTree _commandTree;
         private string _tableName;
 
-        public SqlInsertGenerator(DbInsertCommandTree commandTree)
+        public SqlInsertGenerator(DbInsertCommandTree commandTree, NpgsqlProviderManifest providerManifest)
+            : base(providerManifest)
         {
             _commandTree = commandTree;
         }

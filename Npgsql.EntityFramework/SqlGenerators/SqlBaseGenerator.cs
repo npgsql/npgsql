@@ -14,7 +14,7 @@ namespace Npgsql.SqlGenerators
 {
     internal abstract class SqlBaseGenerator : DbExpressionVisitor<VisitedExpression>
     {
-
+        protected NpgsqlProviderManifest _providerManifest;
         protected Dictionary<string, PendingProjectsNode> _refToNode = new Dictionary<string, PendingProjectsNode>();
         protected HashSet<InputExpression> _currentExpressions = new HashSet<InputExpression>();
         protected uint _aliasCounter = 0;
@@ -33,8 +33,9 @@ namespace Npgsql.SqlGenerators
             {"VarP","var_pop"},
         };
 
-        protected SqlBaseGenerator()
+        protected SqlBaseGenerator(NpgsqlProviderManifest providerManifest)
         {
+            _providerManifest = providerManifest;
         }
 
         private void EnterExpression(PendingProjectsNode n)
@@ -740,7 +741,7 @@ namespace Npgsql.SqlGenerators
             // may require some formatting depending on the type
             //throw new NotImplementedException();
             // TODO: this is just for testing
-            return new ConstantExpression(expression.Value, expression.ResultType);
+            return new ConstantExpression(expression.Value, expression.ResultType, _providerManifest);
         }
 
         public override VisitedExpression Visit(DbComparisonExpression expression)
