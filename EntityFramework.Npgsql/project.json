@@ -1,0 +1,10 @@
+﻿{
+    "version": "1.0.0-*",
+    "dependencies": {
+        "EntityFramework.Relational": "7.0.0-beta4-12290", 
+        "Npgsql": "1.0.0-*"
+    },
+    "frameworks": {
+        "aspnet50": { }
+    }
+}
