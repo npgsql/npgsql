@@ -20,8 +20,11 @@ namespace Npgsql
         public NpgsqlProviderManifest(string serverVersion)
             : base(CreateXmlReaderForResource("Npgsql.NpgsqlProviderManifest.Manifest.xml"))
         {
-            if (string.IsNullOrEmpty(serverVersion) || !Version.TryParse(serverVersion, out _serverVersion))
+            try {
+	        _serverVersion = new Version(serverVersion);
+            } catch {
                 _serverVersion = new Version(9, 4, 1); // Some default version
+            }
         }
 
         protected override XmlReader GetDbInformation(string informationType)
