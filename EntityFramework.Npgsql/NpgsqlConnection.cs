@@ -19,7 +19,7 @@ namespace EntityFramework.Npgsql.Extensions
         {
         }
 
-        public NpgsqlEntityFrameworkConnection([NotNull] DbContextService<IDbContextOptions> options, [NotNull] ILoggerFactory loggerFactory)
+        public NpgsqlEntityFrameworkConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
             : base(options, loggerFactory)
         {
         }
@@ -40,7 +40,7 @@ namespace EntityFramework.Npgsql.Extensions
             var options = new DbContextOptions();
             options.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlEntityFrameworkConnection(new DbContextService<IDbContextOptions>(() => options), LoggerFactory);
+            return new NpgsqlEntityFrameworkConnection(options, LoggerFactory);
         }
     }
 }

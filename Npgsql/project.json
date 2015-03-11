@@ -6,7 +6,7 @@
         "Mono.Security": "3.2.3.0"
     },
     "frameworks": {
-        "aspnet50": {
+        "net451": {
             "dependencies": {
             },
             "frameworkAssemblies": {

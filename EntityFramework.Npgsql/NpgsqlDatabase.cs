@@ -10,7 +10,7 @@ namespace EntityFramework.Npgsql.Extensions
 	public class NpgsqlDatabase : RelationalDatabase
     {
         public NpgsqlDatabase(
-            [NotNull] DbContextService<DbContext> context,
+            [NotNull] DbContext context,
             [NotNull] NpgsqlDataStoreCreator dataStoreCreator,
             [NotNull] NpgsqlEntityFrameworkConnection connection,
             [NotNull] Migrator migrator,

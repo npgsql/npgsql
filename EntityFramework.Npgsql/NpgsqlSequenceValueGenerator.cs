@@ -12,9 +12,11 @@ namespace EntityFramework.Npgsql.Extensions
 	public class NpgsqlSequenceValueGenerator<TValue> : HiLoValueGenerator<TValue>
     {
 		private readonly SqlStatementExecutor _executor;
+		private readonly NpgsqlEntityFrameworkConnection _connection;
 
 		public NpgsqlSequenceValueGenerator(
 			[NotNull] SqlStatementExecutor executor,
+			[NotNull] NpgsqlEntityFrameworkConnection connection,
 			[NotNull] string sequenceName,
 			int blockSize)
             : base(blockSize)
@@ -25,20 +27,19 @@ namespace EntityFramework.Npgsql.Extensions
 			SequenceName = sequenceName;
 
 			_executor = executor;
+			_connection = connection;
 		}
 
 		public virtual string SequenceName { get; }
 
-		protected override long GetNewHighValue(DbContextService<DataStoreServices> dataStoreServices)
+		protected override long GetNewLowValue()
 		{
-			Check.NotNull(dataStoreServices, nameof(dataStoreServices));
-
-			var commandInfo = PrepareCommand((RelationalConnection)dataStoreServices.Service.Connection);
+			var commandInfo = PrepareCommand(_connection);
 			var nextValue = _executor.ExecuteScalar(commandInfo.Item1, commandInfo.Item1.DbTransaction, commandInfo.Item2);
 
 			return (long)Convert.ChangeType(nextValue, typeof(long), CultureInfo.InvariantCulture);
 		}
-
+		
 		private Tuple<RelationalConnection, string> PrepareCommand(RelationalConnection connection)
 		{
 			// TODO: Parameterize query and/or delimit identifier without using SqlServerMigrationOperationSqlGenerator
@@ -48,5 +49,7 @@ namespace EntityFramework.Npgsql.Extensions
 
 			return Tuple.Create(connection, sql);
 		}
+		
+		public override bool GeneratesTemporaryValues => false;
 	}
 }

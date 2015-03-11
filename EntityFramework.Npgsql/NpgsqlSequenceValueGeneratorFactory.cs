@@ -89,7 +89,7 @@ namespace EntityFramework.Npgsql.Extensions
 				nameof(NpgsqlSequenceValueGeneratorFactory), property.Name, property.EntityType.SimpleName));
 		}
 
-		public override int GetPoolSize(IProperty property)
+		public virtual int GetPoolSize(IProperty property)
 		{
 			Check.NotNull(property, nameof(property));
 
@@ -98,7 +98,7 @@ namespace EntityFramework.Npgsql.Extensions
 			return 5;
 		}
 
-		public override string GetCacheKey(IProperty property)
+		public virtual string GetCacheKey(IProperty property)
 		{
 			Check.NotNull(property, nameof(property));
 

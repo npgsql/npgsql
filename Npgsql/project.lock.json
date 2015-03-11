@@ -1,0 +1,146 @@
+{
+  "locked": false,
+  "version": 1,
+  "projectFileDependencyGroups": {
+    "": [
+      "System.Data.Common >= 4.0.0-beta-22616",
+      "Common.Logging >= 3.0.0",
+      "Mono.Security >= 3.2.3.0"
+    ],
+    ".NETFramework,Version=v4.5.1": [
+      "framework/System.Transactions >= 4.0.0.0",
+      "framework/System.DirectoryServices >= 4.0.0.0",
+      "framework/System.Data >= 4.0.0.0",
+      "framework/System.Xml >= 4.0.0.0"
+    ]
+  },
+  "libraries": {
+    "Common.Logging/3.0.0": {
+      "sha": "nduF2UGeo8Spgt87QI/nlfkn9sd2kA0eXc7pUutfyGeDb9cG8vlOpTasOwY7CxG2Ws9oq+Qlp+TPJF/x3CYzdQ==",
+      "dependencySets": {
+        "*": {
+          "Common.Logging.Core": "3.0.0"
+        }
+      },
+      "contents": {
+        "Common.Logging.3.0.0.nupkg": {},
+        "Common.Logging.3.0.0.nupkg.sha512": {},
+        "Common.Logging.nuspec": {},
+        "lib/net35/Common.Logging.dll": {},
+        "lib/net35/Common.Logging.pdb": {},
+        "lib/net35/Common.Logging.xml": {},
+        "lib/net40/Common.Logging.dll": {},
+        "lib/net40/Common.Logging.pdb": {},
+        "lib/net40/Common.Logging.xml": {}
+      }
+    },
+    "Common.Logging.Core/3.0.0": {
+      "sha": "aXRqKJ84uLMmwz9/MlYTzrFGPPpo5FlNhBzzC9AT4lmtIO11XcnlwzFmvdevwuUXWMiSS8i9GGEbk2dYtroVXw==",
+      "contents": {
+        "Common.Logging.Core.3.0.0.nupkg": {},
+        "Common.Logging.Core.3.0.0.nupkg.sha512": {},
+        "Common.Logging.Core.nuspec": {},
+        "lib/net35/Common.Logging.Core.dll": {},
+        "lib/net35/Common.Logging.Core.pdb": {},
+        "lib/net35/Common.Logging.Core.xml": {},
+        "lib/net40/Common.Logging.Core.dll": {},
+        "lib/net40/Common.Logging.Core.pdb": {},
+        "lib/net40/Common.Logging.Core.xml": {},
+        "lib/portable-win+net40+sl40+wp7/Common.Logging.Core.XML": {},
+        "lib/portable-win+net40+sl40+wp7/Common.Logging.Core.dll": {},
+        "lib/portable-win+net40+sl40+wp7/Common.Logging.Core.pdb": {}
+      }
+    },
+    "Mono.Security/3.2.3.0": {
+      "sha": "v0a1XmfXbooEGIQcH9GbzyDivIc15en65cMK6e3YbWDiFhjgFSTkQxAc+8W099pwYjHp+FQbNvQx/RebgxaJTw==",
+      "contents": {
+        "Mono.Security.3.2.3.0.nupkg": {},
+        "Mono.Security.3.2.3.0.nupkg.sha512": {},
+        "Mono.Security.nuspec": {},
+        "lib/net40/Mono.Security.dll": {},
+        "lib/net45/Mono.Security.dll": {}
+      }
+    },
+    "System.Data.Common/4.0.0-beta-22616": {
+      "sha": "Grk1pelHnA2g11hwbNUQNL5OzYBxcKUM4jjF1qjqp9+gSY7MIxJuvooqJK2+D6IAlRidCe9h0QO3aGAydhP5cw==",
+      "dependencySets": {
+        "*": {
+          "System.IO": "4.0.0-beta-22616",
+          "System.Runtime": "4.0.0-beta-22616",
+          "System.Threading.Tasks": "4.0.0-beta-22616"
+        }
+      },
+      "contents": {
+        "License.rtf": {},
+        "System.Data.Common.4.0.0-beta-22616.nupkg": {},
+        "System.Data.Common.4.0.0-beta-22616.nupkg.sha512": {},
+        "System.Data.Common.nuspec": {},
+        "lib/aspnetcore50/System.Data.Common.dll": {},
+        "lib/contract/System.Data.Common.dll": {},
+        "lib/net45/System.Data.Common.dll": {},
+        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.Data.Common.dll": {}
+      }
+    },
+    "System.IO/4.0.10-beta-22231": {
+      "sha": "EdJrv2X/XGww0Pa7n62EgTzMowbok2QvFhv9aNnraN06baluqhA//bZ1P15O/8BtSq51jzYqW9vXrTU/Kiz95A==",
+      "dependencySets": {
+        "*": {
+          "System.Runtime": "4.0.0-beta-22231",
+          "System.Text.Encoding": "4.0.0-beta-22231",
+          "System.Threading.Tasks": "4.0.0-beta-22231"
+        }
+      },
+      "contents": {
+        "License.rtf": {},
+        "System.IO.4.0.10-beta-22231.nupkg": {},
+        "System.IO.4.0.10-beta-22231.nupkg.sha512": {},
+        "System.IO.nuspec": {},
+        "lib/aspnetcore50/System.IO.dll": {},
+        "lib/contract/System.IO.dll": {}
+      }
+    },
+    "System.Runtime/4.0.20-beta-22231": {
+      "sha": "8CFWYP0ldITYQqgfMR6Wn7yjpOzrVzwkfDWHd3PtppILgmvo6rjuJd+KfZTCdacbf1WUbWsp1yuJcTpDYI3RUw==",
+      "contents": {
+        "License.rtf": {},
+        "System.Runtime.4.0.20-beta-22231.nupkg": {},
+        "System.Runtime.4.0.20-beta-22231.nupkg.sha512": {},
+        "System.Runtime.nuspec": {},
+        "lib/aspnetcore50/System.Runtime.dll": {},
+        "lib/contract/System.Runtime.dll": {}
+      }
+    },
+    "System.Text.Encoding/4.0.10-beta-22231": {
+      "sha": "qHdaFAtqeplZ4VHyxmkJDs38UN3rP9OzayYd3I7sGQD4GRFtnpJF0NGWIUMVqd229z4GrsaVVPvNNwd0mgbr+w==",
+      "dependencySets": {
+        "*": {
+          "System.Runtime": "4.0.0-beta-22231"
+        }
+      },
+      "contents": {
+        "License.rtf": {},
+        "System.Text.Encoding.4.0.10-beta-22231.nupkg": {},
+        "System.Text.Encoding.4.0.10-beta-22231.nupkg.sha512": {},
+        "System.Text.Encoding.nuspec": {},
+        "lib/aspnetcore50/System.Text.Encoding.dll": {},
+        "lib/contract/System.Text.Encoding.dll": {}
+      }
+    },
+    "System.Threading.Tasks/4.0.10-beta-22231": {
+      "sha": "lPHfw+jq9ENtRDTRgY9gCpiiphQzIi5Oh/Wg/2Jf6xJN+FH+oWWcCozaKvRT8Ovt5iNraDLbGBLoUoQvGTTXog==",
+      "dependencySets": {
+        "*": {
+          "System.Runtime": "4.0.0-beta-22231"
+        }
+      },
+      "contents": {
+        "License.rtf": {},
+        "System.Threading.Tasks.4.0.10-beta-22231.nupkg": {},
+        "System.Threading.Tasks.4.0.10-beta-22231.nupkg.sha512": {},
+        "System.Threading.Tasks.nuspec": {},
+        "lib/aspnetcore50/System.Threading.Tasks.dll": {},
+        "lib/contract/System.Threading.Tasks.dll": {}
+      }
+    }
+  }
+}

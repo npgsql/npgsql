@@ -8,16 +8,16 @@ using Microsoft.Data.Entity.Relational.Migrations.Infrastructure;
 using Microsoft.Data.Entity.Relational.Migrations.Sql;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
-using Microsoft.Data.Entity.ValueGeneration.Internal;
+using Microsoft.Data.Entity.ValueGeneration;
 
 namespace EntityFramework.Npgsql.Extensions
 {
-	public class NpgsqlDataStoreServices : RelationalDataStoreServices
+	public class NpgsqlDataStoreServices : IRelationalDataStoreServices
     {
 		private readonly NpgsqlDataStore _store;
 		private readonly NpgsqlDataStoreCreator _creator;
 		private readonly NpgsqlEntityFrameworkConnection _connection;
-		private readonly NpgsqlValueGeneratorCache _valueGeneratorCache;
+		private readonly NpgsqlValueGeneratorSelector _valueGeneratorSelector;
 		private readonly NpgsqlDatabase _database;
 		private readonly NpgsqlModelBuilderFactory _modelBuilderFactory;
 		private readonly NpgsqlModelSource _modelSource;
@@ -26,7 +26,7 @@ namespace EntityFramework.Npgsql.Extensions
 			[NotNull] NpgsqlDataStore store,
 			[NotNull] NpgsqlDataStoreCreator creator,
 			[NotNull] NpgsqlEntityFrameworkConnection connection,
-			[NotNull] NpgsqlValueGeneratorCache valueGeneratorCache,
+			[NotNull] NpgsqlValueGeneratorSelector valueGeneratorSelector,
 			[NotNull] NpgsqlDatabase database,
 			[NotNull] NpgsqlModelBuilderFactory modelBuilderFactory,
 			[NotNull] NpgsqlModelDiffer modelDiffer,
@@ -37,7 +37,7 @@ namespace EntityFramework.Npgsql.Extensions
 			Check.NotNull(store, "store");
 			Check.NotNull(creator, "creator");
 			Check.NotNull(connection, "connection");
-			Check.NotNull(valueGeneratorCache, "valueGeneratorCache");
+			Check.NotNull(valueGeneratorSelector, "valueGeneratorSelector");
 			Check.NotNull(database, "database");
 			Check.NotNull(modelBuilderFactory, "modelBuilderFactory");
 			Check.NotNull(modelDiffer, nameof(modelDiffer));
@@ -57,22 +57,23 @@ namespace EntityFramework.Npgsql.Extensions
 			_modelSource = modelSource;
 		}
 
-		public override DataStore Store => _store;
+		public virtual IDataStore Store => _store;
 
-		public override DataStoreCreator Creator => _creator;
+		public virtual IDataStoreCreator Creator => _creator;
 
-		public override DataStoreConnection Connection => _connection;
-
-		public override ValueGeneratorCache ValueGeneratorCache => _valueGeneratorCache;
+		public virtual IRelationalConnection RelationalConnection => _connection;
+		public virtual IDataStoreConnection Connection => _connection;
+		
+		public virtual IValueGeneratorSelector ValueGeneratorSelector => _valueGeneratorSelector;
 
 		public override Database Database => _database;
 
-		public override ModelBuilderFactory ModelBuilderFactory => _modelBuilderFactory;
+		public virtual IModelBuilderFactory ModelBuilderFactory => _modelBuilderFactory;
 
-		public override ModelDiffer ModelDiffer { get; }
-		public override IHistoryRepository HistoryRepository { get; }
-		public override MigrationSqlGenerator MigrationSqlGenerator { get; }
+		public virtual IModelDiffer ModelDiffer { get; }
+		public virtual IHistoryRepository HistoryRepository { get; }
+		public virtual IMigrationSqlGenerator MigrationSqlGenerator { get; }
 
-		public override ModelSource ModelSource => _modelSource;
+		public virtual IModelSource ModelSource => _modelSource;
 	}
 }

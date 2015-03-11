@@ -24,7 +24,7 @@ namespace EntityFramework.Npgsql.Extensions
 
         public NpgsqlDataStore(
             [NotNull] StateManager stateManager,
-            [NotNull] DbContextService<IModel> model,
+            [NotNull] IModel model,
             [NotNull] EntityKeyFactorySource entityKeyFactorySource,
             [NotNull] EntityMaterializerSource entityMaterializerSource,
             [NotNull] ClrCollectionAccessorSource collectionAccessorSource,
@@ -32,14 +32,14 @@ namespace EntityFramework.Npgsql.Extensions
             [NotNull] NpgsqlEntityFrameworkConnection connection,
             [NotNull] NpgsqlCommandBatchPreparer batchPreparer,
             [NotNull] NpgsqlBatchExecutor batchExecutor,
-            [NotNull] DbContextService<IDbContextOptions> options,
+            [NotNull] IDbContextOptions options,
             [NotNull] ILoggerFactory loggerFactory)
             : base(stateManager, model, entityKeyFactorySource, entityMaterializerSource,
                 collectionAccessorSource, propertySetterSource, connection, batchPreparer, batchExecutor, options, loggerFactory)
         {
         }
 
-        protected override RelationalValueReaderFactory ValueReaderFactory
+        protected RelationalValueReaderFactory ValueReaderFactory
         {
             get { return new RelationalObjectArrayValueReaderFactory(); }
         }
