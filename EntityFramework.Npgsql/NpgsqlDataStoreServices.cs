@@ -9,6 +9,7 @@ using Microsoft.Data.Entity.Relational.Migrations.Sql;
 using Microsoft.Data.Entity.Storage;
 using Microsoft.Data.Entity.Utilities;
 using Microsoft.Data.Entity.ValueGeneration;
+using Microsoft.Data.Entity.Query;
 
 namespace EntityFramework.Npgsql.Extensions
 {
@@ -48,7 +49,7 @@ namespace EntityFramework.Npgsql.Extensions
 			_store = store;
 			_creator = creator;
 			_connection = connection;
-			_valueGeneratorCache = valueGeneratorCache;
+			_valueGeneratorSelector = valueGeneratorSelector;
 			_database = database;
 			_modelBuilderFactory = modelBuilderFactory;
 			ModelDiffer = modelDiffer;
@@ -66,13 +67,16 @@ namespace EntityFramework.Npgsql.Extensions
 		
 		public virtual IValueGeneratorSelector ValueGeneratorSelector => _valueGeneratorSelector;
 
-		public override Database Database => _database;
+		public virtual Database Database => _database;
 
 		public virtual IModelBuilderFactory ModelBuilderFactory => _modelBuilderFactory;
 
 		public virtual IModelDiffer ModelDiffer { get; }
 		public virtual IHistoryRepository HistoryRepository { get; }
 		public virtual IMigrationSqlGenerator MigrationSqlGenerator { get; }
+		
+		public virtual IQueryContextFactory QueryContextFactory { get; }
+		public virtual IDatabaseFactory DatabaseFactory { get; }
 
 		public virtual IModelSource ModelSource => _modelSource;
 	}

@@ -9,23 +9,22 @@ namespace EntityFramework.Npgsql.Extensions
 	public class NpgsqlValueGeneratorSelector : ValueGeneratorSelector
     {
         private readonly NpgsqlSequenceValueGeneratorFactory _sequenceFactory;
-        private readonly SimpleValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory;
+        private readonly ValueGeneratorFactory<SequentialGuidValueGenerator> _sequentialGuidFactory;
+        private readonly NpgsqlEntityFrameworkConnection _connection;
 
         public NpgsqlValueGeneratorSelector(
-            [NotNull] SimpleValueGeneratorFactory<GuidValueGenerator> guidFactory,
-            [NotNull] SimpleValueGeneratorFactory<TemporaryIntegerValueGenerator> integerFactory,
-            [NotNull] SimpleValueGeneratorFactory<TemporaryStringValueGenerator> stringFactory,
-            [NotNull] SimpleValueGeneratorFactory<TemporaryBinaryValueGenerator> binaryFactory,
             [NotNull] NpgsqlSequenceValueGeneratorFactory sequenceFactory,
-            [NotNull] SimpleValueGeneratorFactory<SequentialGuidValueGenerator> sequentialGuidFactory
+            [NotNull] ValueGeneratorFactory<SequentialGuidValueGenerator> sequentialGuidFactory,
+            [NotNull] NpgsqlEntityFrameworkConnection connection
             )
-            : base(guidFactory, integerFactory, stringFactory, binaryFactory)
         {
             Check.NotNull(sequenceFactory, "sequenceFactory");
             Check.NotNull(sequentialGuidFactory, "sequentialGuidFactory");
+            Check.NotNull(connection, "connection");
 
             _sequenceFactory = sequenceFactory;
             _sequentialGuidFactory = sequentialGuidFactory;
+            _connection = connection;
         }
 
         public override ValueGenerator Select(IProperty property)
@@ -38,15 +37,15 @@ namespace EntityFramework.Npgsql.Extensions
             if (property.PropertyType.IsInteger()
                 && strategy == NpgsqlValueGenerationStrategy.Sequence)
             {
-                return _sequenceFactory;
+                return _sequenceFactory.Create(property, _connection);
             }
 
             if (property.PropertyType == typeof(Guid))
             {
-                return _sequentialGuidFactory;
+                return _sequentialGuidFactory.Create(property);
             }
 
-            return base.Select(property);
+            return null;
         }
     }
 }

@@ -15,11 +15,10 @@ namespace EntityFramework.Npgsql.Extensions
             Check.NotNull(builder, "builder");
 
 			((IAccessor<IServiceCollection>)builder.AddRelational()).Service
-                .AddScoped<DataStoreSource, NpgsqlDataStoreSource>()
+                .AddScoped<DataStoreSource<NpgsqlDataStoreServices, NpgsqlOptionsExtension>, NpgsqlDataStoreSource>()
 			    .TryAdd(new ServiceCollection()
 					.AddSingleton<NpgsqlModelBuilderFactory>()
 					.AddSingleton<NpgsqlValueGeneratorCache>()
-					.AddSingleton<NpgsqlValueGeneratorFactorySelector>()
 					.AddSingleton<NpgsqlSequenceValueGeneratorFactory>()
 					.AddSingleton<NpgsqlSqlGenerator>()
 					.AddSingleton<SqlStatementExecutor>()

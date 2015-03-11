@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Text;
 using EntityFramework.Npgsql.Extensions;
 using JetBrains.Annotations;
 using Microsoft.Data.Entity;
@@ -21,7 +22,7 @@ namespace EntityFramework.Npgsql.Migrations
         public NpgsqlHistoryRepository(
             [NotNull] NpgsqlEntityFrameworkConnection connection,
             [NotNull] NpgsqlDataStoreCreator creator,
-            [NotNull] DbContextService<DbContext> context)
+            [NotNull] DbContext context)
         {
             Check.NotNull(connection, nameof(connection));
             Check.NotNull(creator, nameof(creator));
@@ -29,7 +30,7 @@ namespace EntityFramework.Npgsql.Migrations
 
             _connection = connection;
             _creator = creator;
-            _contextType = context.Service.GetType();
+            _contextType = context.GetType();
         }
 
         public virtual bool Exists()
@@ -127,5 +128,45 @@ WHERE [MigrationId] = '" + migrationId + "' AND [ContextKey] = '" + _contextType
 VALUES ('" + row.MigrationId + "', '" + _contextType.FullName + "', '" + row.ProductVersion + "')",
                 suppressTransaction: false);
         }
+        
+        public virtual string Create(bool ifNotExists)
+        {
+            if(!ifNotExists || (ifNotExists && !Exists()))
+            {
+            	return ((SqlOperation)GetCreateOperation()).Sql;
+            }
+            
+            return string.Empty;
+        }
+        
+        public virtual string BeginIfNotExists(string migrationId)
+        {
+            Check.NotEmpty(migrationId, nameof(migrationId));
+
+            // TODO: Escape
+            return new StringBuilder()
+                .Append("IF NOT EXISTS(SELECT * FROM [dbo].[__MigrationHistory] WHERE [MigrationId] = '")
+                    .Append(migrationId).Append("' AND [ContextKey] = '").Append(_contextType.FullName).AppendLine("')")
+                .Append("BEGIN")
+                .ToString();
+        }
+        
+        public virtual string BeginIfExists(string migrationId)
+        {
+            Check.NotEmpty(migrationId, nameof(migrationId));
+
+            // TODO: Escape
+            return new StringBuilder()
+                .Append("IF EXISTS(SELECT * FROM [dbo].[__MigrationHistory] WHERE [MigrationId] = '")
+                    .Append(migrationId).Append("' AND [ContextKey] = '").Append(_contextType.FullName).AppendLine("')")
+                .Append("BEGIN")
+                .ToString();
+        }
+
+        public virtual string EndIf()
+        {
+            return "END";
+        }
+
     }
 }

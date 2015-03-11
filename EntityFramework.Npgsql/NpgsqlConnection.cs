@@ -10,18 +10,12 @@ namespace EntityFramework.Npgsql.Extensions
 {
     public class NpgsqlEntityFrameworkConnection : RelationalConnection
     {
-        /// <summary>
-        ///     This constructor is intended only for use when creating test doubles that will override members
-        ///     with mocked or faked behavior. Use of this constructor for other purposes may result in unexpected
-        ///     behavior including but not limited to throwing <see cref="NullReferenceException" />.
-        /// </summary>
-        protected NpgsqlEntityFrameworkConnection()
-        {
-        }
-
+    	private readonly ILoggerFactory _loggerFactory;
+    	
         public NpgsqlEntityFrameworkConnection([NotNull] IDbContextOptions options, [NotNull] ILoggerFactory loggerFactory)
             : base(options, loggerFactory)
         {
+        	_loggerFactory = loggerFactory;
         }
 
         protected override DbConnection CreateDbConnection()
@@ -40,7 +34,7 @@ namespace EntityFramework.Npgsql.Extensions
             var options = new DbContextOptions();
             options.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlEntityFrameworkConnection(options, LoggerFactory);
+            return new NpgsqlEntityFrameworkConnection(options, _loggerFactory);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace EntityFramework.Npgsql.Extensions
 
         public NpgsqlBatchExecutor(
             [NotNull] NpgsqlTypeMapper typeMapper,
-            [NotNull] DbContextService<DbContext> context,
+            [NotNull] DbContext context,
             [NotNull] ILoggerFactory loggerFactory)
             : base(typeMapper, context, loggerFactory)
         {

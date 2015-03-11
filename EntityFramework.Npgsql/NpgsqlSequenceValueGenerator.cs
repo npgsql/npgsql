@@ -13,24 +13,32 @@ namespace EntityFramework.Npgsql.Extensions
     {
 		private readonly SqlStatementExecutor _executor;
 		private readonly NpgsqlEntityFrameworkConnection _connection;
-
+		private readonly string _sequenceName;
+		
 		public NpgsqlSequenceValueGenerator(
 			[NotNull] SqlStatementExecutor executor,
 			[NotNull] NpgsqlEntityFrameworkConnection connection,
 			[NotNull] string sequenceName,
-			int blockSize)
-            : base(blockSize)
+			[NotNull] HiLoValueGeneratorState generatorState)
+            : base(generatorState)
         {
 			Check.NotNull(executor, nameof(executor));
 			Check.NotEmpty(sequenceName, nameof(sequenceName));
 
-			SequenceName = sequenceName;
+			_sequenceName = sequenceName;
 
 			_executor = executor;
 			_connection = connection;
+			_sequenceName = sequenceName;
 		}
 
-		public virtual string SequenceName { get; }
+		public virtual string SequenceName
+		{
+			get
+			{
+				return _sequenceName;
+			}
+		}
 
 		protected override long GetNewLowValue()
 		{
@@ -45,7 +53,7 @@ namespace EntityFramework.Npgsql.Extensions
 			// TODO: Parameterize query and/or delimit identifier without using SqlServerMigrationOperationSqlGenerator
 			var sql = string.Format(
 				CultureInfo.InvariantCulture,
-				"SELECT NEXT VALUE FOR {0}", SequenceName);
+				"SELECT NEXT VALUE FOR {0}", _sequenceName);
 
 			return Tuple.Create(connection, sql);
 		}

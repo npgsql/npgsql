@@ -7,7 +7,7 @@ using Microsoft.Data.Entity.ValueGeneration;
 
 namespace EntityFramework.Npgsql.Extensions
 {
-    public class NpgsqlSequenceValueGeneratorFactory : ValueGeneratorFactory
+    public class NpgsqlSequenceValueGeneratorFactory
     {
 		private readonly SqlStatementExecutor _executor;
 
@@ -41,48 +41,48 @@ namespace EntityFramework.Npgsql.Extensions
 			return ( sequence.Schema == null ? "" : ( sequence.Schema + "." ) ) + sequence.Name;
 		}
 
-		public override ValueGenerator Create(IProperty property)
+		public virtual ValueGenerator Create(IProperty property, NpgsqlEntityFrameworkConnection connection)
 		{
 			Check.NotNull(property, nameof(property));
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(long) )
 			{
-				return new NpgsqlSequenceValueGenerator<long>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<long>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(int) )
 			{
-				return new NpgsqlSequenceValueGenerator<int>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<int>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(short) )
 			{
-				return new NpgsqlSequenceValueGenerator<short>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<short>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(byte) )
 			{
-				return new NpgsqlSequenceValueGenerator<byte>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<byte>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(ulong) )
 			{
-				return new NpgsqlSequenceValueGenerator<ulong>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<ulong>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(uint) )
 			{
-				return new NpgsqlSequenceValueGenerator<uint>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<uint>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(ushort) )
 			{
-				return new NpgsqlSequenceValueGenerator<ushort>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<ushort>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			if ( property.PropertyType.UnwrapNullableType() == typeof(sbyte) )
 			{
-				return new NpgsqlSequenceValueGenerator<sbyte>(_executor, GetSequenceName(property), GetBlockSize(property));
+				return new NpgsqlSequenceValueGenerator<sbyte>(_executor, connection, GetSequenceName(property), new HiLoValueGeneratorState(GetBlockSize(property), GetPoolSize(property)));
 			}
 
 			throw new ArgumentException(Microsoft.Data.Entity.Internal.Strings.InvalidValueGeneratorFactoryProperty(
