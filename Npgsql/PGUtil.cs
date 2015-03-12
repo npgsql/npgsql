@@ -122,7 +122,7 @@ namespace Npgsql
 #endif
         internal static Task<TResult> TaskFromResult<TResult>(TResult result)
         {
-#if NET45 || NET451 || ASPNET50 || ASPNETCORE50
+#if NET45 || NET451 || DNX451 || DNXCORE50
             return Task.FromResult(result);
 #else
             return TaskEx.FromResult(result);
