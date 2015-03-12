@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace NpgsqlTests
+namespace Npgsql.EntityFramework.Tests
 {
     [TestFixture]
     public class EntityFrameworkBasicTests : TestBase
