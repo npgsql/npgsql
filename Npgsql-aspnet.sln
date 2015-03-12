@@ -14,6 +14,10 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql", "Npgsql\Npgsql.kpr
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.EntityFramework7", "Npgsql.EntityFramework7\Npgsql.EntityFramework7.kproj", "{8FD04E24-CDDF-41CA-940D-2021BD62FB87}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{802E669C-6885-4E60-9CFB-8CFB47EAF16A}"
+EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Npgsql.Tests", "tests\Npgsql.Tests\Npgsql.Tests.kproj", "{E9C258D7-0D8E-4E6A-9857-5C6438591755}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +32,10 @@ Global
 		{8FD04E24-CDDF-41CA-940D-2021BD62FB87}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8FD04E24-CDDF-41CA-940D-2021BD62FB87}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8FD04E24-CDDF-41CA-940D-2021BD62FB87}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -35,5 +43,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{9D13B739-62B1-4190-B386-7A9547304EB3} = {8A657AC5-150F-4F55-8D9E-4F1A56D62D60}
 		{8FD04E24-CDDF-41CA-940D-2021BD62FB87} = {8A657AC5-150F-4F55-8D9E-4F1A56D62D60}
+		{E9C258D7-0D8E-4E6A-9857-5C6438591755} = {802E669C-6885-4E60-9CFB-8CFB47EAF16A}
 	EndGlobalSection
 EndGlobal

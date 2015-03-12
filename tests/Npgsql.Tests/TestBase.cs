@@ -336,7 +336,7 @@ namespace Npgsql.Tests
                 return cmd.ExecuteScalar();
         }
 
-#if NET45
+#if NET45 || NET451
         protected async Task<int> ExecuteNonQueryAsync(string sql, NpgsqlConnection conn = null, NpgsqlTransaction tx = null)
         {
             if (conn == null)
@@ -354,12 +354,12 @@ namespace Npgsql.Tests
             using (cmd)
                 return await cmd.ExecuteScalarAsync();
         }
+#endif
 
         protected static bool IsSequential(CommandBehavior behavior)
         {
             return (behavior & CommandBehavior.SequentialAccess) != 0;
         }
-#endif
 
         #endregion
     }
