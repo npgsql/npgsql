@@ -33,7 +33,6 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Net.Security;
 using System.Reflection;
-using System.Resources;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Transactions;

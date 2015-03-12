@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Runtime.InteropServices;

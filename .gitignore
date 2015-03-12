@@ -5,8 +5,10 @@
 *.sln.docstates
 *.userprefs
 /*.nupkg
+*.lock.json
 [Bb]in/
 [Bb]uild/
 [Oo]bj/
 [Oo]bj/
 packages/*/
+artifacts/

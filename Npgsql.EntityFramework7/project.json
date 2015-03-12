@@ -1,8 +1,8 @@
 ﻿{
-    "version": "1.0.0-*",
+    "version": "3.0.0-alpha-*",
     "dependencies": {
         "EntityFramework.Relational": "7.0.0-*", 
-        "Npgsql": "1.0.0-*"
+        "Npgsql": "3.0.0-alpha-*"
     },
     "frameworks": {
         "net451": {
