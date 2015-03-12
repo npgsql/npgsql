@@ -1,26 +1,23 @@
 ﻿using JetBrains.Annotations;
+using Microsoft.Data.Entity;
 using Microsoft.Data.Entity.Infrastructure;
 using Microsoft.Data.Entity.Storage;
-using Microsoft.Data.Entity.Internal;
+using Microsoft.Data.Entity.Utilities;
 using System;
+using Microsoft.Framework.DependencyInjection;
 
 namespace EntityFramework.Npgsql.Extensions
 {
-    public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStoreServices, NpgsqlOptionsExtension>
+    public class NpgsqlDataStoreSource : DataStoreSource<NpgsqlDataStore,NpgsqlDataStoreServices, NpgsqlOptionsExtension>
     {
-        public NpgsqlDataStoreSource([NotNull] DbContextServices services, [NotNull] IDbContextOptions options)
-            : base(services, options)
-        {
-        }
-
         public override string Name
         {
             get { return typeof(NpgsqlDataStore).Name; }
         }
 
-        public override void AutoConfigure()
+        public override void AutoConfigure(DbContextOptionsBuilder optionsBuilder)
         {
-            ContextOptions.UseNpgsql();
+            optionsBuilder.UseNpgsql();
         }
     }
 }

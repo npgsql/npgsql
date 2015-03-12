@@ -31,10 +31,10 @@ namespace EntityFramework.Npgsql.Extensions
             //builder.InitialCatalog = "master";
 
             // TODO use clone connection method once implimented see #1406
-            var options = new DbContextOptions();
+            var options = new DbContextOptionsBuilder();
             options.UseNpgsql(builder.ConnectionString).CommandTimeout(CommandTimeout);
 
-            return new NpgsqlEntityFrameworkConnection(options, _loggerFactory);
+            return new NpgsqlEntityFrameworkConnection(options.Options, _loggerFactory);
         }
     }
 }
