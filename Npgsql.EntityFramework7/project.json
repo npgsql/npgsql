@@ -1,0 +1,15 @@
+﻿{
+    "version": "3.0.0-alpha-*",
+    "dependencies": {
+        "EntityFramework.Relational": "7.0.0-*", 
+        "Npgsql": "3.0.0-alpha-*"
+    },
+    "frameworks": {
+        "net451": {
+        	"frameworkAssemblies": {
+        		"System": "4.0.0.0",
+        		"System.Runtime": "4.0.0.0"
+        	}
+        }
+    }
+}

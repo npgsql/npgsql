@@ -8,7 +8,6 @@ using System.Text;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
-using System.Runtime.Remoting.Messaging;
 
 namespace Npgsql.TypeHandlers
 {

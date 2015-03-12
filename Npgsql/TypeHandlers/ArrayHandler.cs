@@ -1,5 +1,4 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -7,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Mono.Security.Protocol.Ntlm;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 

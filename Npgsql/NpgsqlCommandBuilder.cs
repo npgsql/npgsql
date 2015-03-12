@@ -29,7 +29,6 @@ using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Resources;
 using Npgsql.Localization;
 using NpgsqlTypes;
 
