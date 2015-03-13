@@ -1609,15 +1609,7 @@ namespace TlsClientStream
 
         void ResetWritePos()
         {
-            if (_connState.TlsVersion != TlsVersion.TLSv1_0)
-            {
-                _writePos = 5 + _connState.IvLen;
-            }
-            else
-            {
-                // To avoid the BEAST attack, we add an empty application data record
-                _writePos = 5 + (_connState.MacLen + _connState.BlockLen) / _connState.BlockLen * _connState.BlockLen + 5;
-            }
+            _writePos = _connState.WriteStartPos;
         }
 
         void CheckCanWrite()
@@ -1748,7 +1740,7 @@ namespace TlsClientStream
         public override void Flush()
         {
             CheckNotClosed();
-            if (_writePos > 5 + _connState.IvLen)
+            if (_writePos > _connState.WriteStartPos)
             {
                 try
                 {

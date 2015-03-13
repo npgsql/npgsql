@@ -36,6 +36,22 @@ namespace TlsClientStream
 
         public bool IsAuthenticated { get { return ReadAes != null; } }
 
+        public int WriteStartPos
+        {
+            get
+            {
+                if (TlsVersion != TlsVersion.TLSv1_0)
+                {
+                    return 5 + IvLen;
+                }
+                else
+                {
+                    // To avoid the BEAST attack, we add an empty application data record
+                    return 5 + (MacLen + BlockLen) / BlockLen * BlockLen + 5;
+                }
+            }
+        }
+
         public void Dispose()
         {
             if (ReadAesECB != null)
