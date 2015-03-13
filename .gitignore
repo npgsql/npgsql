@@ -11,3 +11,5 @@
 [Oo]bj/
 packages/*/
 artifacts/
+# Roslyn cache directories
+*.ide/
