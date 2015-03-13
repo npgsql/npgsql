@@ -332,11 +332,11 @@ namespace Npgsql
             return _connector.ReadSingleMessage(IsSequential ? DataRowLoadingMode.Sequential : DataRowLoadingMode.NonSequential);
         }
 
-        IBackendMessage SkipUntil(params BackendMessageCode[] stopAt)
+        IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             if (_pendingMessage != null)
             {
-                if (stopAt.Contains(_pendingMessage.Code))
+                if (_pendingMessage.Code == stopAt)
                 {
                     var msg = _pendingMessage;
                     _pendingMessage = null;
@@ -345,6 +345,19 @@ namespace Npgsql
                 _pendingMessage = null;
             }
             return _connector.SkipUntil(stopAt);
+        }
+
+        IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
+        {
+            if (_pendingMessage != null) {
+                if (_pendingMessage.Code == stopAt1 || _pendingMessage.Code == stopAt2) {
+                    var msg = _pendingMessage;
+                    _pendingMessage = null;
+                    return msg;
+                }
+                _pendingMessage = null;
+            }
+            return _connector.SkipUntil(stopAt1, stopAt2);
         }
 
         /// <summary>

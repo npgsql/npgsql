@@ -913,19 +913,36 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Reads backend messages and discards them, stopping only after a message of the given types has
-        /// been seen. Note that when this method is called, the buffer position must be properly set at
-        /// the start of the next message.
+        /// Reads backend messages and discards them, stopping only after a message of the given type has
+        /// been seen.
         /// </summary>
-        internal IBackendMessage SkipUntil(params BackendMessageCode[] stopAt)
+        internal IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
-            Contract.Requires(!stopAt.Any(c => c == BackendMessageCode.DataRow), "Shouldn't be used for rows, doesn't know about sequential");
+            Contract.Requires(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true)
             {
                 var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
                 Contract.Assert(!(msg is DataRowMessage));
-                if (stopAt.Contains(msg.Code)) {
+                if (msg.Code == stopAt) {
+                    return msg;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads backend messages and discards them, stopping only after a message of the given types has
+        /// been seen.
+        /// </summary>
+        internal IBackendMessage SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2)
+        {
+            Contract.Requires(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+            Contract.Requires(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
+
+            while (true) {
+                var msg = ReadSingleMessage(DataRowLoadingMode.Skip);
+                Contract.Assert(!(msg is DataRowMessage));
+                if (msg.Code == stopAt1 || msg.Code == stopAt2) {
                     return msg;
                 }
             }
