@@ -590,7 +590,7 @@ namespace Npgsql
             Contract.EndContractBlock();
 
             if (Connector.Transaction != null) {
-                throw new InvalidOperationException(L10N.NoNestedTransactions);
+                throw new NotSupportedException(L10N.NoNestedTransactions);
             }
 
             _log.Debug("Beginning transaction with isolation level " + level);

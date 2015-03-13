@@ -148,15 +148,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void NestedTransaction()
         {
-            using (Conn.BeginTransaction())
-            {
-                using (Conn.BeginTransaction())
-                {
-                }
-            }
+            Conn.BeginTransaction();
+            Assert.That(() => Conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
         }
 
         [Test]
