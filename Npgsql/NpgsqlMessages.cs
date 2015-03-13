@@ -90,35 +90,33 @@ namespace Npgsql
         internal abstract bool Write(NpgsqlBuffer buf, ref DirectBuffer directBuf);
     }
 
-    internal enum BackendMessageCode
+    internal enum BackendMessageCode : byte
     {
-        IO_ERROR = -1, // Connection broken. Mono returns -1 instead of throwing an exception as ms.net does.
-
-        AuthenticationRequest = 'R',
-        BackendKeyData = 'K',
-        BindComplete = '2',
-        CloseComplete = '3',
-        CompletedResponse = 'C',
-        CopyData = 'd',
-        CopyDone = 'c',
-        CopyBothResponse = 'W',
-        CopyInResponse = 'G',
-        CopyOutResponse = 'H',
-        DataRow = 'D',
-        EmptyQueryResponse = 'I',
-        ErrorResponse = 'E',
-        FunctionCall = 'F',
-        FunctionCallResponse = 'V',
-        NoData = 'n',
-        NoticeResponse = 'N',
-        NotificationResponse = 'A',
-        ParameterDescription = 't',
-        ParameterStatus = 'S',
-        ParseComplete = '1',
-        PasswordPacket = ' ',
-        PortalSuspended = 's',
-        ReadyForQuery = 'Z',
-        RowDescription = 'T',
+        AuthenticationRequest = (byte)'R',
+        BackendKeyData        = (byte)'K',
+        BindComplete          = (byte)'2',
+        CloseComplete         = (byte)'3',
+        CompletedResponse     = (byte)'C',
+        CopyData              = (byte)'d',
+        CopyDone              = (byte)'c',
+        CopyBothResponse      = (byte)'W',
+        CopyInResponse        = (byte)'G',
+        CopyOutResponse       = (byte)'H',
+        DataRow               = (byte)'D',
+        EmptyQueryResponse    = (byte)'I',
+        ErrorResponse         = (byte)'E',
+        FunctionCall          = (byte)'F',
+        FunctionCallResponse  = (byte)'V',
+        NoData                = (byte)'n',
+        NoticeResponse        = (byte)'N',
+        NotificationResponse  = (byte)'A',
+        ParameterDescription  = (byte)'t',
+        ParameterStatus       = (byte)'S',
+        ParseComplete         = (byte)'1',
+        PasswordPacket        = (byte)' ',
+        PortalSuspended       = (byte)'s',
+        ReadyForQuery         = (byte)'Z',
+        RowDescription        = (byte)'T',
     }
 
     enum StatementOrPortal : byte

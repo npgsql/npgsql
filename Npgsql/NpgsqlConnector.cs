@@ -900,7 +900,6 @@ namespace Npgsql
                     return CopyDoneMessage.Instance;
 
                 case BackendMessageCode.PortalSuspended:
-                case BackendMessageCode.IO_ERROR:
                     Debug.Fail("Unimplemented message: " + code);
                     throw new NotImplementedException("Unimplemented message: " + code);
                 case BackendMessageCode.ErrorResponse:
