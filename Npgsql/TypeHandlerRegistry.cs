@@ -508,7 +508,7 @@ namespace Npgsql
                 return NpgsqlDbType.Enum;
             }
 
-            if (type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)) {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)) {
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
             }
 

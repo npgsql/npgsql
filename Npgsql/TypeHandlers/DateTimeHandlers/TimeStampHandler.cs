@@ -8,7 +8,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, typeof(NpgsqlTimeStamp))]
+    [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new [] { typeof(NpgsqlTimeStamp), typeof(DateTime) })]
     internal class TimeStampHandler : TypeHandlerWithPsv<DateTime, NpgsqlTimeStamp>,
         ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTimeStamp>, ISimpleTypeWriter
     {
@@ -44,30 +44,38 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            if ( value is DateTime )
+            NpgsqlTimeStamp ts;
+            if (value is NpgsqlTimeStamp) {
+                ts = (NpgsqlTimeStamp)value;
+            }
+            else if (value is DateTime)
             {
                 var dtValue = (DateTime)value;
                 var datePart = new NpgsqlDate(dtValue);
                 var timePart = new NpgsqlTime(dtValue.Hour, dtValue.Minute, dtValue.Second, dtValue.Millisecond * 1000);
-                value = new NpgsqlTimeStamp(datePart, timePart);
+                ts = new NpgsqlTimeStamp(datePart, timePart);
             }
-            else if ( value is string )
+            else if (value is string)
             {
+                // TODO: Decide what to do with this
                 throw new InvalidOperationException("String DateTimes are not allowed, use DateTime instead.");
             }
-
-            var timestamp = (NpgsqlTimeStamp)value;
-            var uSecsTime = timestamp.Time.Hours * 3600000000L + timestamp.Time.Minutes * 60000000L + timestamp.Time.Seconds * 1000000L + timestamp.Time.Microseconds;
-
-            if ( timestamp >= new NpgsqlTimeStamp(2000, 1, 1, 0, 0, 0) )
+            else
             {
-                var uSecsDate = ( timestamp.Date.DaysSinceEra - 730119 ) * 86400000000L;
+                throw new InvalidCastException();
+            }
+
+            var uSecsTime = ts.Time.Hours * 3600000000L + ts.Time.Minutes * 60000000L + ts.Time.Seconds * 1000000L + ts.Time.Microseconds;
+
+            if (ts >= new NpgsqlTimeStamp(2000, 1, 1, 0, 0, 0))
+            {
+                var uSecsDate = (ts.Date.DaysSinceEra - 730119) * 86400000000L;
                 buf.WriteInt64(uSecsDate + uSecsTime);
             }
             else
             {
-                var uSecsDate = ( 730119 - timestamp.Date.DaysSinceEra ) * 86400000000L;
-                buf.WriteInt64(-( uSecsDate - uSecsTime ));
+                var uSecsDate = (730119 - ts.Date.DaysSinceEra) * 86400000000L;
+                buf.WriteInt64(-(uSecsDate - uSecsTime));
             }
         }
     }

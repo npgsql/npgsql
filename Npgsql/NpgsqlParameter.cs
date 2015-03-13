@@ -590,7 +590,7 @@ namespace Npgsql
             }
 
             var asChunkingWriter = Handler as IChunkingTypeWriter;
-            Contract.Assert(asChunkingWriter != null);
+            Contract.Assert(asChunkingWriter != null, String.Format("Handler {0} doesn't implement either ISimpleTypeWriter or IChunkingTypeWriter", Handler.GetType().Name));
             var lengthCache = LengthCache;
             var len = asChunkingWriter.ValidateAndGetLength(Value, ref lengthCache, this);
             LengthCache = lengthCache;

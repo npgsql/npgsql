@@ -103,14 +103,31 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Timestamp()
         {
-            // TODO: Decide on the DateTime kind (#346)
             var expectedNpgsqlTimeStamp = new NpgsqlTimeStamp(new NpgsqlDate(2002, 2, 2), new NpgsqlTime(9, 0, 23.345));
-            var expectedDateTime = new DateTime(expectedNpgsqlTimeStamp.Ticks, DateTimeKind.Utc);
-            using (var cmd = new NpgsqlCommand("SELECT '2002-02-02 09:00:23.345'::TIMESTAMP", Conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
+            var expectedDateTime = new DateTime(expectedNpgsqlTimeStamp.Ticks, DateTimeKind.Unspecified);
 
+            var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", Conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
+            var p2 = new NpgsqlParameter("p2", DbType.DateTime);
+            var p3 = new NpgsqlParameter("p3", DbType.DateTime2);
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expectedNpgsqlTimeStamp };
+            var p5 = new NpgsqlParameter { ParameterName = "p5", Value = expectedDateTime };
+            Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
+            Assert.That(p4.DbType, Is.EqualTo(DbType.DateTime));
+            Assert.That(p5.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
+            Assert.That(p5.DbType, Is.EqualTo(DbType.DateTime));
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
+            cmd.Parameters.Add(p5);
+            cmd.Prepare();
+            p1.Value = p2.Value = p3.Value = expectedNpgsqlTimeStamp;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
                 // Regular type (DateTime)
                 Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime)));
                 Assert.That(reader.GetDateTime(0), Is.EqualTo(expectedDateTime));
@@ -124,6 +141,9 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlTimeStamp));
                 Assert.That(reader.GetFieldValue<NpgsqlTimeStamp>(0), Is.EqualTo(expectedNpgsqlTimeStamp));
             }
+
+            reader.Dispose();
+            cmd.Dispose();
         }
 
         [Test]
