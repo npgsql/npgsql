@@ -697,11 +697,6 @@ namespace TlsClientStream
                     offset += Utils.WriteUInt16(_buf, offset, (ushort)byteLen);
                     offset += byteLen;
                 }
-                else
-                {
-                    // If the user provided an IP address as hostname, we will not validate the host name later when checking the server certificate
-                    _hostName = null;
-                }
             }
 
             if (HighestTlsVersionSupported == TlsVersion.TLSv1_2)
