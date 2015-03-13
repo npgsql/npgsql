@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -53,6 +54,7 @@ namespace TlsClientStream
         string _hostName = null;
         X509CertificateCollection _clientCertificates;
         System.Net.Security.RemoteCertificateValidationCallback _remoteCertificationValidationCallback;
+        bool _checkCertificateRevocation;
 
         bool _waitingForChangeCipherSpec;
         bool _waitingForFinished;
@@ -695,6 +697,11 @@ namespace TlsClientStream
                     offset += Utils.WriteUInt16(_buf, offset, (ushort)byteLen);
                     offset += byteLen;
                 }
+                else
+                {
+                    // If the user provided an IP address as hostname, we will not validate the host name later when checking the server certificate
+                    _hostName = null;
+                }
             }
 
             if (HighestTlsVersionSupported == TlsVersion.TLSv1_2)
@@ -903,6 +910,7 @@ namespace TlsClientStream
         {
             _handshakeData.CertList = new List<X509Certificate2>();
             _handshakeData.CertChain = new X509Chain();
+            _handshakeData.CertChain.ChainPolicy.RevocationMode = _checkCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck;
             var errors = System.Net.Security.SslPolicyErrors.None;
 
             var totalLen = Utils.ReadUInt24(buf, ref pos);
@@ -917,26 +925,38 @@ namespace TlsClientStream
                 Buffer.BlockCopy(buf, pos, certBytes, 0, certLen);
                 pos += certLen;
 
-                // TODO: catch error in this constructor
-                var cert = new X509Certificate2(certBytes);
-                if (_handshakeData.CertList.Count != 0)
-                    _handshakeData.CertChain.ChainPolicy.ExtraStore.Add(cert);
-                _handshakeData.CertList.Add(cert);
+                try
+                {
+                    var cert = new X509Certificate2(certBytes);
+                    if (_handshakeData.CertList.Count != 0)
+                        _handshakeData.CertChain.ChainPolicy.ExtraStore.Add(cert);
+                    _handshakeData.CertList.Add(cert);
+                }
+                catch (CryptographicException e)
+                {
+                    SendAlertFatal(AlertDescription.BadCertificate, e.Message);
+                }
             }
 
-            // TODO: remove after Build works with mono
-            //return;
+            if (_handshakeData.CertList.Count == 0)
+            {
+                SendAlertFatal(AlertDescription.CertificateUnknown, "No certificate was provided by the server");
+            }
 
             // Validate certificate
             _handshakeData.CertChain.Build(_handshakeData.CertList[0]);
+            var hostnameError = false;
             if (!string.IsNullOrEmpty(_hostName))
             {
-                var ok = Utils.HostnameInCertificate(_handshakeData.CertList[0], _hostName);
-                if (!ok)
+                hostnameError = !Utils.HostnameInCertificate(_handshakeData.CertList[0], _hostName);
+                if (hostnameError)
                     errors |= System.Net.Security.SslPolicyErrors.RemoteCertificateNameMismatch;
             }
-            if (_handshakeData.CertChain.ChainStatus != null && _handshakeData.CertChain.ChainStatus.Length > 0)
+            var hasChainStatus = _handshakeData.CertChain.ChainStatus != null;
+            if (hasChainStatus && _handshakeData.CertChain.ChainStatus.Length > 0)
+            {
                 errors |= System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors;
+            }
 
             bool success = _remoteCertificationValidationCallback != null
                 ? _remoteCertificationValidationCallback(this, _handshakeData.CertList[0], _handshakeData.CertChain, errors)
@@ -944,14 +964,19 @@ namespace TlsClientStream
 
             if (!success)
             {
-                if (_handshakeData.CertChain.ChainStatus.Any(s => (s.Status & X509ChainStatusFlags.NotTimeValid) != 0))
+                if (hasChainStatus && _handshakeData.CertChain.ChainStatus.Any(s => (s.Status & X509ChainStatusFlags.NotTimeValid) != 0))
                     SendAlertFatal(AlertDescription.CertificateExpired);
                 else if (_handshakeData.CertChain.ChainStatus.Any(s => (s.Status & X509ChainStatusFlags.Revoked) != 0))
                     SendAlertFatal(AlertDescription.CertificateRevoked);
-                else if (!_handshakeData.CertChain.ChainStatus.All(s => (s.Status & ~X509ChainStatusFlags.RevocationStatusUnknown) == 0))
+                else
                 {
-                    //throw new Exception(string.Join(", ", _handshakeData.CertChain.ChainStatus.Select(s => s.StatusInformation)));
-                    SendAlertFatal(AlertDescription.CertificateUnknown);
+                    var errorMsg = "Server certificate was not accepted.";
+                    if ((errors & System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors) != 0)
+                        errorMsg += " Chain status: " + string.Join(", ", _handshakeData.CertChain.ChainStatus.Select(s => s.StatusInformation)) + ".";
+                    if (hostnameError)
+                        errorMsg += " The specified hostname was not present in the certificate.";
+
+                    SendAlertFatal(AlertDescription.CertificateUnknown, errorMsg);
                 }
             }
         }
@@ -1602,7 +1627,7 @@ namespace TlsClientStream
 
         void CheckCanWrite()
         {
-            if (_readStart != _readEnd)
+            if (_readStart != _readEnd || _decryptedReadPos != _decryptedReadEnd)
             {
                 throw new IOException("Cannot write data until everything buffered has been read");
             }
@@ -1638,7 +1663,7 @@ namespace TlsClientStream
             SendAlertFatal(AlertDescription.UnexpectedMessage);
         }
 
-        public void PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback)
+        public void PerformInitialHandshake(string hostName, X509CertificateCollection clientCertificates, System.Net.Security.RemoteCertificateValidationCallback remoteCertificateValidationCallback, bool checkCertificateRevocation)
         {
             if (_connState.CipherSuite != null || _pendingConnState != null || _closed)
                 throw new InvalidOperationException("Already performed initial handshake");
@@ -1646,6 +1671,7 @@ namespace TlsClientStream
             _hostName = hostName;
             _clientCertificates = clientCertificates;
             _remoteCertificationValidationCallback = remoteCertificateValidationCallback;
+            _checkCertificateRevocation = checkCertificateRevocation;
 
             try
             {
@@ -1666,7 +1692,7 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw new IOException(e.Description.ToString(), e);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -1720,7 +1746,7 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw new IOException(e.Description.ToString(), e);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -1754,7 +1780,7 @@ namespace TlsClientStream
                 catch (ClientAlertException e)
                 {
                     WriteAlertFatal(e.Description);
-                    throw new IOException(e.Description.ToString(), e);
+                    throw new IOException(e.ToString(), e);
                 }
             }
         }
@@ -1771,7 +1797,12 @@ namespace TlsClientStream
             Contract.EndContractBlock();
 #endif
 
-            CheckNotClosed();
+            return ReadInternal(buffer, offset, len, false, false);
+        }
+
+        int ReadInternal(byte[] buffer, int offset, int len, bool onlyProcessHandshake, bool readNewDataIfAvailable)
+        {
+            Flush();
             try
             {
                 for (; ; )
@@ -1834,33 +1865,54 @@ namespace TlsClientStream
                             }
                         }
                     }
-                    if (_bufferedReadData != null)
-                    {
-                        var buf = _bufferedReadData.Peek();
-                        var toRead = Math.Min(buf.Length - _posBufferedReadData, len);
-                        Buffer.BlockCopy(buf, _posBufferedReadData, buffer, offset, toRead);
-                        _posBufferedReadData += toRead;
-                        _lenBufferedReadData -= toRead;
-                        if (_posBufferedReadData == buf.Length)
-                        {
-                            _bufferedReadData.Dequeue();
-                            _posBufferedReadData = 0;
-                            if (_bufferedReadData.Count == 0)
-                            {
-                                _bufferedReadData = null;
-                            }
-                        }
-                        return toRead;
-                    }
-                    if (_decryptedReadPos < _decryptedReadEnd)
-                    {
-                        var toRead = Math.Min(_decryptedReadEnd - _decryptedReadPos, len);
-                        Buffer.BlockCopy(_buf, _decryptedReadPos, buffer, offset, toRead);
-                        _decryptedReadPos += toRead;
-                        return toRead;
-                    }
                     if (_eof)
+                    {
                         return 0;
+                    }
+                    if (onlyProcessHandshake)
+                    {
+                        // No data is available in our buffer and we're not waiting for the handshake to complete
+                        if (_readStart == _readEnd && _decryptedReadPos == _decryptedReadEnd && !(_pendingConnState != null || _waitingForChangeCipherSpec || _waitingForFinished))
+                        {
+                            if (!readNewDataIfAvailable || !((NetworkStream)_baseStream).DataAvailable)
+                                return 0;
+                            // Else there is data available in the NetworkStream and we want to look at it. The record will be read and processed further down.
+                        }
+
+                        // There is application data available in our buffer
+                        if (_bufferedReadData != null || _decryptedReadPos < _decryptedReadEnd)
+                        {
+                            return 1;
+                        }
+                    }
+                    else
+                    {
+                        if (_bufferedReadData != null)
+                        {
+                            var buf = _bufferedReadData.Peek();
+                            var toRead = Math.Min(buf.Length - _posBufferedReadData, len);
+                            Buffer.BlockCopy(buf, _posBufferedReadData, buffer, offset, toRead);
+                            _posBufferedReadData += toRead;
+                            _lenBufferedReadData -= toRead;
+                            if (_posBufferedReadData == buf.Length)
+                            {
+                                _bufferedReadData.Dequeue();
+                                _posBufferedReadData = 0;
+                                if (_bufferedReadData.Count == 0)
+                                {
+                                    _bufferedReadData = null;
+                                }
+                            }
+                            return toRead;
+                        }
+                        if (_decryptedReadPos < _decryptedReadEnd)
+                        {
+                            var toRead = Math.Min(_decryptedReadEnd - _decryptedReadPos, len);
+                            Buffer.BlockCopy(_buf, _decryptedReadPos, buffer, offset, toRead);
+                            _decryptedReadPos += toRead;
+                            return toRead;
+                        }
+                    }
                     if (!ReadRecord())
                     {
                         _eof = true;
@@ -1911,7 +1963,7 @@ namespace TlsClientStream
             catch (ClientAlertException e)
             {
                 WriteAlertFatal(e.Description);
-                throw new IOException(e.Description.ToString(), e);
+                throw new IOException(e.ToString(), e);
             }
         }
 
@@ -1985,7 +2037,15 @@ namespace TlsClientStream
 
         #endregion
 
-        public bool HasBufferedReadData()
+        /// <summary>
+        /// This method checks whether there are at least 1 byte that can be read in the buffer.
+        /// If not, but there are renegotiation messages in the buffer, these are first processed.
+        /// This method should be called between each Read and Write to make sure the buffer is empty before writing.
+        /// Only when this method returns false it is safe to call Write.
+        /// </summary>
+        /// <param name="checkNetworkStream">Whether we should also look in the underlying NetworkStream</param>
+        /// <returns>Whether there is available application data</returns>
+        public bool HasBufferedReadData(bool checkNetworkStream)
         {
             if (_closed)
                 return false;
@@ -1993,23 +2053,25 @@ namespace TlsClientStream
                 return true;
             if (_decryptedReadPos < _decryptedReadEnd)
                 return true;
-            if (_readStart == _readEnd)
+            if (_readStart == _readEnd && !checkNetworkStream)
                 return false;
 
-            // Otherwise there are buffered unprocessed packets. We check if any of them is application data.
+            // Otherwise there may be buffered unprocessed packets. We check if any of them is application data.
             int pos = _readStart;
-            for (; ; )
+            while (pos < _readEnd)
             {
                 if ((ContentType)_buf[pos] == ContentType.ApplicationData)
                     return true;
                 if (pos + 5 >= _readEnd)
-                    return false;
+                    break;
                 pos += 3;
                 int recordLen = Utils.ReadUInt16(_buf, ref pos);
                 pos += recordLen;
-                if (pos >= _readEnd)
-                    return false;
             }
+
+            // If none of them were application data, they should be handshake messages/change cipher suite.
+            // Process potential renegotiation, but stop when application data is received, or the buffer(s) becomes empty.
+            return ReadInternal(null, 0, 0, true, checkNetworkStream) == 1;
         }
     }
 }

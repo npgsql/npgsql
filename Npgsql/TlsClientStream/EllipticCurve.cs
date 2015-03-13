@@ -55,7 +55,7 @@ namespace TlsClientStream
                 }
             },
             new BigInt() {
-                _bits = new uint[] { 
+                _bits = new uint[] {
                     0x90ea0e5f, 0x7a431d7c, 0x1d7e819d, 0x0a60b1ce, 0xb5f0b8c0, 0xe9da3113,
                     0x289a147c, 0xf8f41dbd, 0x9292dc29, 0x5d9e98bf, 0x96262c6f, 0x3617de4a
                 }
@@ -82,13 +82,13 @@ namespace TlsClientStream
                 0xff, 0x01
             }),
             new BigInt() {
-                _bits = new uint[] { 
+                _bits = new uint[] {
                     0xc2e5bd66, 0xf97e7e31, 0x856a429b, 0x3348b3c1, 0xa2ffa8de, 0xfe1dc127, 0xefe75928, 0xa14b5e77,
                     0x6b4d3dba, 0xf828af60, 0x053fb521, 0x9c648139, 0x2395b442, 0x9e3ecb66, 0x0404e9cd, 0x858e06b7, 0x000000c6
                 }
             },
             new BigInt() {
-                _bits = new uint[] { 
+                _bits = new uint[] {
                     0x9fd16650, 0x88be9476, 0xa272c240, 0x353c7086, 0x3fad0761, 0xc550b901, 0x5ef42640, 0x97ee7299,
                     0x273e662c, 0x17afbd17, 0x579b4468, 0x98f54449, 0x2c7d1bd9, 0x5c8a5fb4, 0x9a3bc004, 0x39296a78, 0x00000118
                 },
@@ -275,7 +275,7 @@ namespace TlsClientStream
 
             public static bool operator >=(BigInt a, BigInt o) {
                 Contract.Assert(a.Length == o.Length + 1 || a.Length == o.Length);
-                
+
                 if (a.Length == o.Length + 1 && a._bits[a.Length - 1] != 0)
                     return true;
 
@@ -1077,7 +1077,7 @@ namespace TlsClientStream
             var mul = curve.EcTwinMult(new BigInt(u1, (curve.curveByteLen + 3) / 4), new Projective() { x = curve.xg, y = curve.yg, z = new BigInt(1, (curve.curveByteLen + 3) / 4) },
                 new BigInt(u2, (curve.curveByteLen + 3) / 4), new Projective() { x = Qax, y = Qay, z = new BigInt(1, (curve.curveByteLen + 3) / 4) });
             var res = curve.EcAffinify(mul).x.ExportToBigInteger();
-            
+
             if (res >= curve.q)
                 res -= curve.q;
 

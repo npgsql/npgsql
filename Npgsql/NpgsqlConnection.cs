@@ -663,8 +663,6 @@ namespace Npgsql
             }
             else
             {
-                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
-                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
 
                 if (Connector.Transaction != null)
                 {
@@ -672,6 +670,9 @@ namespace Npgsql
                 }
 
                 Connector.Close();
+
+                Connector.ProvideClientCertificatesCallback -= ProvideClientCertificatesCallbackDelegate;
+                Connector.ValidateRemoteCertificateCallback -= ValidateRemoteCertificateCallbackDelegate;
             }
 
             Connector = null;
@@ -785,7 +786,10 @@ namespace Npgsql
         /// </summary>
         internal bool DefaultValidateRemoteCertificateCallback(X509Certificate cert, X509Chain chain, SslPolicyErrors errors)
         {
-            return ValidateRemoteCertificateCallback == null || ValidateRemoteCertificateCallback(cert, chain, errors);
+            if (ValidateRemoteCertificateCallback != null)
+                return ValidateRemoteCertificateCallback(cert, chain, errors);
+            else
+                return errors == SslPolicyErrors.None;
         }
 
         #endregion SSL

@@ -398,17 +398,13 @@ namespace Npgsql
 
             ProcessServerVersion();
 
-            var sbInitQueries = new StringWriter();
-
             // Some connection parameters for protocol 3 had been sent in the startup packet.
             // The rest will be setted here.
-            if (SupportsSslRenegotiationLimit) {
-                sbInitQueries.WriteLine("SET ssl_renegotiation_limit=0;");
+            if (SupportsSslRenegotiationLimit && IsSecure)
+            {
+                _initQueries = "SET ssl_renegotiation_limit=0;";
+                ExecuteBlind(_initQueries);
             }
-
-            _initQueries = sbInitQueries.ToString();
-
-            //ExecuteBlind(_initQueries);
 
             TypeHandlerRegistry.Setup(this);
 
@@ -515,7 +511,7 @@ namespace Npgsql
                     if (!UseSslStream)
                     {
                         var sslStreamPriv = new TlsClientStream.TlsClientStream(baseStream);
-                        sslStreamPriv.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback);
+                        sslStreamPriv.PerformInitialHandshake(Host, clientCertificates, DefaultValidateRemoteCertificateCallback, false);
                         sslStream = sslStreamPriv;
                         IsSecure = true;
                     }
@@ -1230,7 +1226,7 @@ namespace Npgsql
                 {
                     if (--_connector._notificationBlockRecursionDepth == 0)
                     {
-                        while (_connector.Buffer.ReadBytesLeft > 0 || _connector.IsSecure && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData())
+                        while (_connector.Buffer.ReadBytesLeft > 0 || _connector.Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)_connector.Stream).HasBufferedReadData(false))
                         {
                             var msg = _connector.ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)
@@ -1283,7 +1279,7 @@ namespace Npgsql
                 semaphore.WaitAsync().ContinueWith(t => {
                     try
                     {
-                        while (BaseStream.DataAvailable || IsSecure && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData() || Buffer.ReadBytesLeft > 0)
+                        while (Buffer.ReadBytesLeft > 0 || Stream is TlsClientStream.TlsClientStream && ((TlsClientStream.TlsClientStream)Stream).HasBufferedReadData(true) || !IsSecure && BaseStream.DataAvailable)
                         {
                             var msg = ReadSingleMessage(DataRowLoadingMode.NonSequential, false);
                             if (msg != null)

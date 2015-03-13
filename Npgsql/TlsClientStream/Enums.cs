@@ -25,6 +25,7 @@ namespace TlsClientStream
         BadRecordMac = 20,
         RecordOverflow = 22,
         HandshakeFailure = 40,
+        BadCertificate = 42,
         CertificateRevoked = 44,
         CertificateExpired = 45,
         CertificateUnknown = 46,
