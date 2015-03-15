@@ -487,11 +487,7 @@ namespace Npgsql.Tests
 
             NpgsqlConnection c = new NpgsqlConnection();
             c.Dispose();
-
             Assert.AreEqual(ConnectionState.Closed, c.State);
-
-
-
         }
 
         [Test]
@@ -500,6 +496,31 @@ namespace Npgsql.Tests
             // Test for issue #165 on github.
             NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
             builder.ApplicationName = "test";
+        }
+
+        [Test, Description("Makes sure notices are probably received and emitted as events")]
+        public void Notice()
+        {
+            ExecuteNonQuery(@"
+                 CREATE OR REPLACE FUNCTION emit_notice() RETURNS VOID AS
+                    'BEGIN RAISE NOTICE ''testnotice''; END;'
+                 LANGUAGE 'plpgsql';
+            ");
+
+            NpgsqlNotice notice = null;
+            NoticeEventHandler action = (sender, args) => notice = args.Notice;
+            Conn.Notice += action;
+            try
+            {
+                ExecuteNonQuery("SELECT emit_notice()");
+                Assert.That(notice, Is.Not.Null, "No notice was emitted");
+                Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
+                Assert.That(notice.Severity, Is.EqualTo(ErrorSeverity.Notice));
+            }
+            finally
+            {
+                Conn.Notice -= action;
+            }
         }
 
         #region GetSchema

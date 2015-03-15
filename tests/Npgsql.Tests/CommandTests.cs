@@ -454,7 +454,6 @@ namespace Npgsql.Tests
             }
             catch (NpgsqlException e)
             {
-                Console.WriteLine(e.ErrorSql);
             }
 
             Assert.AreEqual(rowsAdded, 1);

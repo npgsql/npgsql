@@ -296,6 +296,7 @@
     <Compile Include="BackendMessages\CopyMessages.cs" />
     <Compile Include="BackendMessages\DataRowNonSequentialMessage.cs" />
     <Compile Include="BackendMessages\CloseCompletedMessage.cs" />
+    <Compile Include="BackendMessages\ErrorOrNoticeMessage.cs" />
     <Compile Include="BackendMessages\NoDataMessage.cs" />
     <Compile Include="BackendMessages\ParameterDescriptionMessage.cs" />
     <Compile Include="BackendMessages\CommandCompleteMessage.cs" />
@@ -310,6 +311,7 @@
     <Compile Include="FrontendMessages\CopyFailMessage.cs" />
     <Compile Include="NpgsqlBinaryExporter.cs" />
     <Compile Include="NpgsqlBinaryImporter.cs" />
+    <Compile Include="NpgsqlNotice.cs" />
     <Compile Include="NpgsqlRawCopyStream.cs" />
     <Compile Include="FrontendMessages\CancelRequestMessage.cs" />
     <Compile Include="FrontendMessages\ExecuteMessage.cs" />
@@ -394,10 +396,9 @@
     <Compile Include="NpgsqlConnectorPool.cs" />
     <Compile Include="NpgsqlDataAdapter.cs" />
     <Compile Include="NpgsqlDataReader.cs" />
-    <Compile Include="NpgsqlError.cs" />
     <Compile Include="NpgsqlException.cs" />
     <Compile Include="NpgsqlFactory.cs" />
-    <Compile Include="NpgsqlMessages.cs" />
+    <Compile Include="Common.cs" />
     <Compile Include="NpgsqlNotificationEventArgs.cs" />
     <Compile Include="NpgsqlParameter.cs" />
     <Compile Include="NpgsqlParameterCollection.cs" />

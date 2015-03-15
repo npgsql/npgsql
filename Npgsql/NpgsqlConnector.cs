@@ -139,7 +139,7 @@ namespace Npgsql
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
         SemaphoreSlim _notificationSemaphore;
-        byte[] _emptyBuffer = new byte[0];
+        static readonly byte[] EmptyBuffer = new byte[0];
         int _notificationBlockRecursionDepth;
 
         #region Reusable Message Objects
@@ -756,7 +756,7 @@ namespace Npgsql
         [GenerateAsync]
         IBackendMessage DoReadSingleMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, bool ignoreNotifications = true)
         {
-            NpgsqlError error = null;
+            NpgsqlException error = null;
 
             while (true)
             {
@@ -787,24 +787,23 @@ namespace Npgsql
                     if (error != null)
                     {
                         Contract.Assert(messageCode == BackendMessageCode.ReadyForQuery, "Expected ReadyForQuery after ErrorResponse");
-                        throw new NpgsqlException(error);
+                        throw error;
                     }
                     return msg;
                 }
                 else if (messageCode == BackendMessageCode.ErrorResponse)
                 {
                     // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                    // and throw it as an exception when the ReadyForQuery is received (next)
-                    // The exception is during the startup/authentication phase, where the server closes
-                    // the connection after an ErrorResponse
-                    error = new NpgsqlError(buf);
+                    // and throw it as an exception when the ReadyForQuery is received (next).
+                    error = new NpgsqlException(buf);
 
                     if (State == ConnectorState.Connecting) {
+                        // During the startup/authentication phase, an ErrorResponse isn't followed by
+                        // an RFQ. Instead, the server closes the connection immediately
                         State = ConnectorState.Closed;
-                        throw new NpgsqlException(error);
+                        throw error;
                     }
 
-                    // TODO: Should technically be done once we receive the RFQ, need to refactor this a little
                     State = ConnectorState.Ready;
                 }
             }
@@ -845,8 +844,7 @@ namespace Npgsql
                     HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    // TODO: Recycle
-                    FireNotice(new NpgsqlError(buf));
+                    FireNotice(new NpgsqlNotice(buf));
                     return null;
                 case BackendMessageCode.NotificationResponse:
                     FireNotification(new NpgsqlNotificationEventArgs(buf));
@@ -1035,31 +1033,35 @@ namespace Npgsql
         /// </summary>
         internal event NotificationEventHandler Notification;
 
-        internal void FireNotice(NpgsqlError e)
+        internal void FireNotice(NpgsqlNotice e)
         {
-            if (Notice != null)
+            var notice = Notice;
+            if (notice != null)
             {
                 try
                 {
-                    Notice(this, new NpgsqlNoticeEventArgs(e));
+                    notice(this, new NpgsqlNoticeEventArgs(e));
                 }
                 catch
                 {
-                } //Eat exceptions from user code.
+                    // Ignore all exceptions bubbling up from the user's event handler
+                }
             }
         }
 
         internal void FireNotification(NpgsqlNotificationEventArgs e)
         {
-            if (Notification != null)
+            var notification = Notification;
+            if (notification != null)
             {
                 try
                 {
-                    Notification(this, e);
+                    notification(this, e);
                 }
                 catch
                 {
-                } //Eat exceptions from user code.
+                    // Ignore all exceptions bubbling up from the user's event handler
+                }
             }
         }
 
@@ -1313,7 +1315,7 @@ namespace Npgsql
         internal void AddNotificationListener()
         {
             _notificationSemaphore = new SemaphoreSlim(1);
-            var task = BaseStream.ReadAsync(_emptyBuffer, 0, 0);
+            var task = BaseStream.ReadAsync(EmptyBuffer, 0, 0);
             task.ContinueWith(NotificationHandler);
         }
 
@@ -1353,7 +1355,7 @@ namespace Npgsql
                         semaphore.Release();
                         try
                         {
-                            BaseStream.ReadAsync(_emptyBuffer, 0, 0).ContinueWith(NotificationHandler);
+                            BaseStream.ReadAsync(EmptyBuffer, 0, 0).ContinueWith(NotificationHandler);
                         }
                         catch { }
                     }

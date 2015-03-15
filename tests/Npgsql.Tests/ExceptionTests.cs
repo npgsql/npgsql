@@ -29,6 +29,7 @@ using Npgsql;
 using NpgsqlTypes;
 
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
@@ -41,15 +42,11 @@ namespace Npgsql.Tests
         public void ProblemSqlInsideException()
         {
             const string sql = "selec 1 as test";
-            try
-            {
-                var command = new NpgsqlCommand(sql, Conn);
-                command.ExecuteReader();
-            }
-            catch (NpgsqlException ex)
-            {
-                Assert.AreEqual(sql, ex.ErrorSql);
-            }
+            Assert.That(
+                () => ExecuteScalar(sql),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                  .With.Property("ErrorSql").EqualTo(sql)
+            );
         }
 
         [Test]
@@ -79,11 +76,11 @@ namespace Npgsql.Tests
             }
             catch (NpgsqlException ex)
             {
-                Assert.AreEqual("", ex.ColumnName); // Should not be populated for unique violations.
-                Assert.AreEqual("uniqueviolation", ex.TableName);
-                Assert.AreEqual("public", ex.SchemaName);
-                Assert.AreEqual("uniqueviolation_pkey", ex.ConstraintName);
-                Assert.AreEqual("", ex.DataTypeName); // Should not be populated for unique violations.
+                Assert.That(ex.ColumnName, Is.Null, "ColumnName should not be populated for unique violations");
+                Assert.That(ex.TableName, Is.EqualTo("uniqueviolation"));
+                Assert.That(ex.SchemaName, Is.EqualTo("public"));
+                Assert.That(ex.ConstraintName, Is.EqualTo("uniqueviolation_pkey"));
+                Assert.That(ex.DataTypeName, Is.Null, "DataTypeName should not be populated for unique violations");
             }
         }
 
