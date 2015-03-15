@@ -7,6 +7,7 @@ using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.ComponentModel.DataAnnotations.Schema;
+using Npgsql.Tests;
 
 namespace Npgsql.EntityFramework.Tests
 {
