@@ -65,7 +65,7 @@
           <param name="nunit_environment" value="v4.0" />
           <param name="nunit_include" value="tests/bin/%system.Configuration%/*Tests.dll" />
           <param name="nunit_platform" value="MSIL" />
-          <param name="nunit_version" value="NUnit-2.6.3" />
+          <param name="nunit_version" value="NUnit-2.6.4" />
           <param name="teamcity.step.mode" value="default" />
         </parameters>
       </runner>
