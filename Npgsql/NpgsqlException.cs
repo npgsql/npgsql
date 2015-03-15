@@ -27,8 +27,12 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics.Contracts;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using Common.Logging;
 using Npgsql.BackendMessages;
@@ -47,6 +51,7 @@ namespace Npgsql
     public sealed class NpgsqlException : DbException
     {
         readonly ErrorOrNoticeMessage _msg;
+        Dictionary<string, object> _data;
 
         #region Message Fields
 
@@ -179,6 +184,22 @@ namespace Npgsql
         public override string Message
         {
             get { return Code + ": " + MessageText; }
+        }
+
+        public override IDictionary Data
+        {
+            get
+            {
+                return _data ?? (_data = (
+                    from p in typeof (ErrorOrNoticeMessage).GetProperties(BindingFlags.DeclaredOnly | BindingFlags.NonPublic | BindingFlags.Instance)
+                    let k = p.Name
+                    let v = p.GetValue(_msg)
+                    where p.GetValue(_msg) != null
+                    where (k != "Position" && k != "InternalPosition") || ((int)v) != 0
+                    select new {Key = k, Value = v}
+                    ).ToDictionary(kv => kv.Key, kv => kv.Value)
+                );
+            }
         }
 
         [ContractInvariantMethod]

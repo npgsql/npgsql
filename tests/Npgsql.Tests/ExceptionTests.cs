@@ -38,6 +38,37 @@ namespace Npgsql.Tests
     {
         public ExceptionTests(string backendVersion) : base(backendVersion) { }
 
+        [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
+        public void Basic()
+        {
+            ExecuteNonQuery(@"
+                 CREATE OR REPLACE FUNCTION emit_exception() RETURNS VOID AS
+                    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                 LANGUAGE 'plpgsql';
+            ");
+
+            NpgsqlException ex = null;
+            try
+            {
+                ExecuteNonQuery("SELECT emit_exception()");
+                Assert.Fail("No exception was thrown");
+            }
+            catch (NpgsqlException e)
+            {
+                ex = e;
+            }
+
+            Assert.That(ex.MessageText, Is.EqualTo("testexception"));
+            Assert.That(ex.Severity, Is.EqualTo(ErrorSeverity.Error));
+            Assert.That(ex.Code, Is.EqualTo("12345"));
+            Assert.That(ex.Position, Is.EqualTo(0));
+
+            var data = ex.Data;
+            Assert.That(data["Severity"], Is.EqualTo(ErrorSeverity.Error));
+            Assert.That(data["Code"], Is.EqualTo("12345"));
+            Assert.That(data.Contains("Position"), Is.False);
+        }
+
         [Test]
         public void ProblemSqlInsideException()
         {
