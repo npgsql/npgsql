@@ -760,7 +760,7 @@ namespace Npgsql
         private void AppendValue(DateTime value, StringBuilder sql)
         {
             sql.Append("'");
-            sql.Append(((NpgsqlTypes.NpgsqlTimeStamp)value).ToString());
+            sql.Append(((NpgsqlTypes.NpgsqlDateTime)value).ToString());
             sql.Append("'");
         }
 
@@ -788,7 +788,7 @@ namespace Npgsql
         private void AppendValue(TimeSpan value, StringBuilder sql)
         {
             sql.Append("'");
-            sql.Append(new NpgsqlTypes.NpgsqlInterval(value).ToString());
+            sql.Append(new NpgsqlTypes.NpgsqlTimeSpan(value).ToString());
             sql.Append("'");
         }
 

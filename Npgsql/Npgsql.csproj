@@ -332,13 +332,9 @@
       <DependentUpon>NpgsqlBuffer.cs</DependentUpon>
       <Generator>AsyncGenerator</Generator>
     </Compile>
-    <Compile Include="NpgsqlTypes\NpgsqlInterval.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlTimeSpan.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlRange.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTime.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTimeStamp.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTimeStampTZ.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTimeTZ.cs" />
-    <Compile Include="NpgsqlTypes\NpgsqlTimeZone.cs" />
+    <Compile Include="NpgsqlTypes\NpgsqlDateTime.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsQuery.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTsVector.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlUserTypes.cs" />
@@ -361,7 +357,6 @@
     <Compile Include="TypeHandlers\NetworkHandlers\InetHandler.cs" />
     <Compile Include="TypeHandlers\InternalCharHandler.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDate.cs" />
-    <Compile Include="NpgsqlTypes\ExpectedTypeConverter.cs" />
     <Compile Include="NpgsqlTypes\FastPath.cs" />
     <Compile Include="NpgsqlTypes\FastPathArg.cs" />
     <Compile Include="NpgsqlTypes\LargeObject.cs" />

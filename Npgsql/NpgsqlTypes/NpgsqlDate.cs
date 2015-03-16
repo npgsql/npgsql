@@ -1,8 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Text;
-using Npgsql;
+#pragma warning disable 1591
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
@@ -11,14 +12,15 @@ namespace NpgsqlTypes
     public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,
                                IComparer
     {
-        private static readonly int[] CommonYearDays = new int[] {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
-        private static readonly int[] LeapYearDays = new int[] {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
-        private static readonly int[] CommonYearMaxes = new int[] {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-        private static readonly int[] LeapYearMaxes = new int[] {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-        public const int MaxYear = 5874897;
-        public const int MinYear = -4714;
-        public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
-        public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
+        //Number of days since January 1st CE (January 1st EV). 1 Jan 1 CE = 0, 2 Jan 1 CE = 1, 31 Dec 1 BCE = -1, etc.
+        readonly int _daysSinceEra;
+
+        #region Constants
+
+        static readonly int[] CommonYearDays = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
+        static readonly int[] LeapYearDays = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
+        static readonly int[] CommonYearMaxes = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        static readonly int[] LeapYearMaxes = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
         /// <summary>
         /// Represents the date 1970-01-01
@@ -30,110 +32,28 @@ namespace NpgsqlTypes
         /// </summary>
         public static readonly NpgsqlDate Era = new NpgsqlDate(0);
 
-        public static NpgsqlDate Now
-        {
-            get { return new NpgsqlDate(DateTime.Now); }
-        }
+        public const int MaxYear = 5874897;
+        public const int MinYear = -4714;
+        public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
+        public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
 
-        public static NpgsqlDate Today
-        {
-            get { return Now; }
-        }
+        const int DaysInYear = 365; //Common years
+        const int DaysIn4Years = 4 * DaysInYear + 1; //Leap year every 4 years.
+        const int DaysInCentury = 25 * DaysIn4Years - 1; //Except no leap year every 100.
+        const int DaysIn4Centuries = 4 * DaysInCentury + 1; //Except leap year every 400.
 
-        public static NpgsqlDate Yesterday
-        {
-            get { return Now.AddDays(-1); }
-        }
+        #endregion
 
-        public static NpgsqlDate Tomorrow
-        {
-            get { return Now.AddDays(1); }
-        }
-
-        public static NpgsqlDate Parse(string str)
-        {
-
-            if (str == null)
-            {
-                throw new ArgumentNullException("str");
-            }
-
-            // Handle -infinity and infinity special values.
-
-            if (str == "-infinity")
-                return new NpgsqlDate(DateTime.MinValue);
-
-            if (str == "infinity")
-                return new NpgsqlDate(DateTime.MaxValue);
-
-            str = str.Trim();
-            try
-            {
-                int idx = str.IndexOf('-');
-                if (idx == -1)
-                {
-                    throw new FormatException();
-                }
-                int year = int.Parse(str.Substring(0, idx));
-                int idxLast = idx + 1;
-                if ((idx = str.IndexOf('-', idxLast)) == -1)
-                {
-                    throw new FormatException();
-                }
-                int month = int.Parse(str.Substring(idxLast, idx - idxLast));
-                idxLast = idx + 1;
-                if ((idx = str.IndexOf(' ', idxLast)) == -1)
-                {
-                    idx = str.Length;
-                }
-                int day = int.Parse(str.Substring(idxLast, idx - idxLast));
-                if (str.Contains("BC"))
-                {
-                    year = -year;
-                }
-                return new NpgsqlDate(year, month, day);
-            }
-            catch (OverflowException)
-            {
-                throw;
-            }
-            catch (Exception)
-            {
-                throw new FormatException();
-            }
-        }
-
-        public static bool TryParse(string str, out NpgsqlDate date)
-        {
-            try
-            {
-                date = Parse(str);
-                return true;
-            }
-            catch
-            {
-                date = Era;
-                return false;
-            }
-        }
-
-        //Number of days since January 1st CE (January 1st EV). 1 Jan 1 CE = 0, 2 Jan 1 CE = 1, 31 Dec 1 BCE = -1, etc.
-        private readonly int _daysSinceEra;
+        #region Constructors
 
         public NpgsqlDate(int days)
         {
             _daysSinceEra = days;
         }
 
-        public NpgsqlDate(DateTime dateTime)
-            : this((int) (dateTime.Ticks/TimeSpan.TicksPerDay))
-        {
-        }
+        public NpgsqlDate(DateTime dateTime) : this((int) (dateTime.Ticks/TimeSpan.TicksPerDay)) {}
 
-        public NpgsqlDate(NpgsqlDate copyFrom)
-            : this(copyFrom._daysSinceEra)
-        {
-        }
+        public NpgsqlDate(NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
 
         public NpgsqlDate(int year, int month, int day)
         {
@@ -146,27 +66,82 @@ namespace NpgsqlTypes
             _daysSinceEra = DaysForYears(year) + (IsLeap(year) ? LeapYearDays : CommonYearDays)[month - 1] + day - 1;
         }
 
-        private const int DaysInYear = 365; //Common years
-        private const int DaysIn4Years = 4*DaysInYear + 1; //Leap year every 4 years.
-        private const int DaysInCentury = 25*DaysIn4Years - 1; //Except no leap year every 100.
-        private const int DaysIn4Centuries = 4*DaysInCentury + 1; //Except leap year every 400.
+        #endregion
 
-        private static int DaysForYears(int years)
+        #region String Conversions
+
+        public override string ToString()
         {
-            //Number of years after 1CE (0 for 1CE, -1 for 1BCE, 1 for 2CE).
-            int calcYear = years < 1 ? years : years - 1;
-
-            return calcYear/400*DaysIn4Centuries //Blocks of 400 years with their leap and common years
-                   + calcYear%400/100*DaysInCentury //Remaining blocks of 100 years with their leap and common years
-                   + calcYear%100/4*DaysIn4Years //Remaining blocks of 4 years with their leap and common years
-                   + calcYear%4*DaysInYear //Remaining years, all common
-                   + (calcYear < 0 ? -1 : 0); //And 1BCE is leap.
+            //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
+            return
+                new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
+                    Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
         }
 
-        public int DayOfYear
+        public static NpgsqlDate Parse(string str)
         {
-            get { return _daysSinceEra - DaysForYears(Year) + 1; }
+
+            if (str == null) {
+                throw new ArgumentNullException("str");
+            }
+
+            // Handle -infinity and infinity special values.
+
+            if (str == "-infinity")
+                return new NpgsqlDate(DateTime.MinValue);
+
+            if (str == "infinity")
+                return new NpgsqlDate(DateTime.MaxValue);
+
+            str = str.Trim();
+            try {
+                int idx = str.IndexOf('-');
+                if (idx == -1) {
+                    throw new FormatException();
+                }
+                int year = int.Parse(str.Substring(0, idx));
+                int idxLast = idx + 1;
+                if ((idx = str.IndexOf('-', idxLast)) == -1) {
+                    throw new FormatException();
+                }
+                int month = int.Parse(str.Substring(idxLast, idx - idxLast));
+                idxLast = idx + 1;
+                if ((idx = str.IndexOf(' ', idxLast)) == -1) {
+                    idx = str.Length;
+                }
+                int day = int.Parse(str.Substring(idxLast, idx - idxLast));
+                if (str.Contains("BC")) {
+                    year = -year;
+                }
+                return new NpgsqlDate(year, month, day);
+            } catch (OverflowException) {
+                throw;
+            } catch (Exception) {
+                throw new FormatException();
+            }
         }
+
+        public static bool TryParse(string str, out NpgsqlDate date)
+        {
+            try {
+                date = Parse(str);
+                return true;
+            } catch {
+                date = Era;
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Public Properties
+
+        public static NpgsqlDate Now { get { return new NpgsqlDate(DateTime.Now); } }
+        public static NpgsqlDate Today { get { return Now; } }
+        public static NpgsqlDate Yesterday { get { return Now.AddDays(-1); } }
+        public static NpgsqlDate Tomorrow { get { return Now.AddDays(1); } }
+
+        public int DayOfYear { get { return _daysSinceEra - DaysForYears(Year) + 1; } }
 
         public int Year
         {
@@ -202,22 +177,29 @@ namespace NpgsqlTypes
             get { return DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1]; }
         }
 
-        public DayOfWeek DayOfWeek
+        public DayOfWeek DayOfWeek { get { return (DayOfWeek) ((_daysSinceEra + 1)%7); } }
+
+        internal int DaysSinceEra { get { return _daysSinceEra; } }
+
+        public bool IsLeapYear { get { return IsLeap(Year); } }
+
+        #endregion
+
+        #region Internals
+
+        static int DaysForYears(int years)
         {
-            get { return (DayOfWeek) ((_daysSinceEra + 1)%7); }
+            //Number of years after 1CE (0 for 1CE, -1 for 1BCE, 1 for 2CE).
+            int calcYear = years < 1 ? years : years - 1;
+
+            return calcYear / 400 * DaysIn4Centuries //Blocks of 400 years with their leap and common years
+                   + calcYear % 400 / 100 * DaysInCentury //Remaining blocks of 100 years with their leap and common years
+                   + calcYear % 100 / 4 * DaysIn4Years //Remaining blocks of 4 years with their leap and common years
+                   + calcYear % 4 * DaysInYear //Remaining years, all common
+                   + (calcYear < 0 ? -1 : 0); //And 1BCE is leap.
         }
 
-        internal int DaysSinceEra
-        {
-            get { return _daysSinceEra; }
-        }
-
-        public bool IsLeapYear
-        {
-            get { return IsLeap(Year); }
-        }
-
-        private static bool IsLeap(int year)
+        static bool IsLeap(int year)
         {
             //Every 4 years is a leap year
             //Except every 100 years isn't a leap year.
@@ -229,11 +211,17 @@ namespace NpgsqlTypes
             return (year%4 == 0) && ((year%100 != 0) || (year%400 == 0));
         }
 
+        #endregion
+
+        #region Arithmetic
+
+        [Pure]
         public NpgsqlDate AddDays(int days)
         {
             return new NpgsqlDate(_daysSinceEra + days);
         }
 
+        [Pure]
         public NpgsqlDate AddYears(int years)
         {
             int newYear = Year + years;
@@ -248,6 +236,7 @@ namespace NpgsqlTypes
             return new NpgsqlDate(newYear, Month, Day);
         }
 
+        [Pure]
         public NpgsqlDate AddMonths(int months)
         {
             int newYear = Year;
@@ -269,15 +258,21 @@ namespace NpgsqlTypes
 
         }
 
-        public NpgsqlDate Add(NpgsqlInterval interval)
+        [Pure]
+        public NpgsqlDate Add(NpgsqlTimeSpan interval)
         {
             return AddMonths(interval.Months).AddDays(interval.Days);
         }
 
-        internal NpgsqlDate Add(NpgsqlInterval interval, int carriedOverflow)
+        [Pure]
+        internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
         {
             return AddMonths(interval.Months).AddDays(interval.Days + carriedOverflow);
         }
+
+        #endregion
+
+        #region Comparison
 
         public int Compare(NpgsqlDate x, NpgsqlDate y)
         {
@@ -308,7 +303,7 @@ namespace NpgsqlTypes
 
         public override bool Equals(object obj)
         {
-            return obj != null && obj is NpgsqlDate && Equals((NpgsqlDate) obj);
+            return obj is NpgsqlDate && Equals((NpgsqlDate) obj);
         }
 
         public int CompareTo(NpgsqlDate other)
@@ -334,13 +329,9 @@ namespace NpgsqlTypes
             return _daysSinceEra;
         }
 
-        public override string ToString()
-        {
-            //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
-            return
-                new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
-                    Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
-        }
+        #endregion
+
+        #region Operators
 
         public static bool operator ==(NpgsqlDate x, NpgsqlDate y)
         {
@@ -376,7 +367,7 @@ namespace NpgsqlTypes
         {
             try
             {
-                return new DateTime(date._daysSinceEra*NpgsqlInterval.TicksPerDay);
+                return new DateTime(date._daysSinceEra*NpgsqlTimeSpan.TicksPerDay);
             }
             catch
             {
@@ -386,28 +377,29 @@ namespace NpgsqlTypes
 
         public static explicit operator NpgsqlDate(DateTime date)
         {
-            return new NpgsqlDate((int) (date.Ticks/NpgsqlInterval.TicksPerDay));
+            return new NpgsqlDate((int) (date.Ticks/NpgsqlTimeSpan.TicksPerDay));
         }
 
-        public static NpgsqlDate operator +(NpgsqlDate date, NpgsqlInterval interval)
+        public static NpgsqlDate operator +(NpgsqlDate date, NpgsqlTimeSpan interval)
         {
             return date.Add(interval);
         }
 
-        public static NpgsqlDate operator +(NpgsqlInterval interval, NpgsqlDate date)
+        public static NpgsqlDate operator +(NpgsqlTimeSpan interval, NpgsqlDate date)
         {
             return date.Add(interval);
         }
 
-        public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlInterval interval)
+        public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
         {
             return date.Add(-interval);
         }
 
-        public static NpgsqlInterval operator -(NpgsqlDate dateX, NpgsqlDate dateY)
+        public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {
-            return new NpgsqlInterval(0, dateX._daysSinceEra - dateY._daysSinceEra, 0);
+            return new NpgsqlTimeSpan(0, dateX._daysSinceEra - dateY._daysSinceEra, 0);
         }
-    }
 
+        #endregion
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
@@ -6,11 +7,10 @@ using System.Data;
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
+    /// http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("time", NpgsqlDbType.Time, DbType.Time)]
-    internal class TimeHandler : TypeHandlerWithPsv<DateTime, NpgsqlTime>,
-        ISimpleTypeReader<DateTime>, ISimpleTypeReader<NpgsqlTime>, ISimpleTypeWriter
+    internal class TimeHandler : TypeHandler<TimeSpan>, ISimpleTypeReader<TimeSpan>, ISimpleTypeWriter
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -23,40 +23,25 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             _integerFormat = registry.Connector.BackendParams["integer_datetimes"] == "on";
         }
 
-        public DateTime Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTime?
-            return (DateTime)((ISimpleTypeReader<NpgsqlTime>)this).Read(buf, len, fieldDescription);
-        }
-
-        NpgsqlTime ISimpleTypeReader<NpgsqlTime>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        TimeSpan ISimpleTypeReader<TimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
             }
 
-            // Postgresql time resolution == 1 microsecond == 10 ticks
-            return new NpgsqlTime(buf.ReadInt64() * 10);
+            // PostgreSQL time resolution == 1 microsecond == 10 ticks
+            return new TimeSpan(buf.ReadInt64() * 10);
         }
 
         public int ValidateAndGetLength(object value) { return 8; }
 
         public void Write(object value, NpgsqlBuffer buf)
         {
-            NpgsqlTime time;
-            if (value is DateTime)
-            {
-                time = new NpgsqlTime(((DateTime)value).TimeOfDay);
+            if (!(value is TimeSpan)) {
+                throw new InvalidCastException();
             }
-            else if (value is TimeSpan)
-            {
-                time = new NpgsqlTime((TimeSpan)value);
-            }
-            else
-            {
-                time = (NpgsqlTime)value;
-            }
-            buf.WriteInt64(time.Ticks / 10); // TODO: round?
+
+            buf.WriteInt64(((TimeSpan)value).Ticks / 10);
         }
     }
 }

@@ -9,8 +9,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// http://www.postgresql.org/docs/9.3/static/datatype-datetime.html
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, typeof(TimeSpan))]
-    internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlInterval>,
-        ISimpleTypeReader<TimeSpan>, ISimpleTypeReader<NpgsqlInterval>, ISimpleTypeWriter
+    internal class IntervalHandler : TypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>,
+        ISimpleTypeReader<TimeSpan>, ISimpleTypeReader<NpgsqlTimeSpan>, ISimpleTypeWriter
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
@@ -25,10 +25,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         public TimeSpan Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
-            return (TimeSpan)((ISimpleTypeReader<NpgsqlInterval>)this).Read(buf, len, fieldDescription);
+            return (TimeSpan)((ISimpleTypeReader<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
         }
 
-        NpgsqlInterval ISimpleTypeReader<NpgsqlInterval>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        NpgsqlTimeSpan ISimpleTypeReader<NpgsqlTimeSpan>.Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
         {
             if (!_integerFormat) {
                 throw new NotSupportedException("Old floating point representation for timestamps not supported");
@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var ticks = buf.ReadInt64();
             var day = buf.ReadInt32();
             var month = buf.ReadInt32();
-            return new NpgsqlInterval(month, day, ticks * 10);
+            return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
         public int ValidateAndGetLength(object value)
@@ -51,8 +51,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public void Write(object value, NpgsqlBuffer buf)
         {
             var interval = (value is TimeSpan)
-                ? ((NpgsqlInterval)(TimeSpan)value)
-                : ((NpgsqlInterval)value);
+                ? ((NpgsqlTimeSpan)(TimeSpan)value)
+                : ((NpgsqlTimeSpan)value);
 
             buf.WriteInt64(interval.Ticks / 10); // TODO: round?
             buf.WriteInt32(interval.Days);

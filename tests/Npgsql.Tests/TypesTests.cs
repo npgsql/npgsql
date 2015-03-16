@@ -42,90 +42,90 @@ namespace Npgsql.Tests
         public void NpgsqlIntervalParse()
         {
             string input;
-            NpgsqlInterval test;
+            NpgsqlTimeSpan test;
 
             input = "1 day";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(1).Ticks, test.TotalTicks, input);
 
             input = "2 days";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(2).Ticks, test.TotalTicks, input);
 
             input = "2 days 3:04:05";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(2, 3, 4, 5).Ticks, test.TotalTicks, input);
 
             input = "-2 days";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(-2).Ticks, test.TotalTicks, input);
 
             input = "-2 days -3:04:05";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(-2, -3, -4, -5).Ticks, test.TotalTicks, input);
 
             input = "-2 days -0:01:02";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(-2, 0, -1, -2).Ticks, test.TotalTicks, input);
 
             input = "2 days -12:00";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(2, -12, 0, 0).Ticks, test.TotalTicks, input);
 
             input = "1 mon";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30).Ticks, test.TotalTicks, input);
 
             input = "2 mons";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(60).Ticks, test.TotalTicks, input);
 
             input = "1 mon -1 day";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(29).Ticks, test.TotalTicks, input);
 
             input = "1 mon -2 days";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(28).Ticks, test.TotalTicks, input);
 
             input = "-1 mon -2 days -3:04:05";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(-32, -3, -4, -5).Ticks, test.TotalTicks, input);
 
             input = "1 year";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*12).Ticks, test.TotalTicks, input);
 
             input = "2 years";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*24).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 mon";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*11).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 mons";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*10).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 day";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*12 - 1).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 days";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*12 - 2).Ticks, test.TotalTicks, input);
 
             input = "1 year -1 mon -1 day";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*11 - 1).Ticks, test.TotalTicks, input);
 
             input = "1 year -2 mons -2 days";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(TimeSpan.FromDays(30*10 - 2).Ticks, test.TotalTicks, input);
 
             input = "1 day 2:3:4.005";
-            test = NpgsqlInterval.Parse(input);
+            test = NpgsqlTimeSpan.Parse(input);
             Assert.AreEqual(new TimeSpan(1, 2, 3, 4, 5).Ticks, test.TotalTicks, input);
 
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
@@ -135,7 +135,7 @@ namespace Npgsql.Tests
             {
                 System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
                 input = "1 day 2:3:4.005";
-                test = NpgsqlInterval.Parse(input);
+                test = NpgsqlTimeSpan.Parse(input);
                 Assert.AreEqual(new TimeSpan(1, 2, 3, 4, 5).Ticks, test.TotalTicks, input);
             }
             finally
@@ -147,9 +147,9 @@ namespace Npgsql.Tests
         [Test]
         public void NpgsqlIntervalConstructors()
         {
-            NpgsqlInterval test;
+            NpgsqlTimeSpan test;
 
-            test = new NpgsqlInterval();
+            test = new NpgsqlTimeSpan();
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(0, test.Days, "Days");
             Assert.AreEqual(0, test.Hours, "Hours");
@@ -158,7 +158,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(0, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(1234567890);
+            test = new NpgsqlTimeSpan(1234567890);
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(0, test.Days, "Days");
             Assert.AreEqual(0, test.Hours, "Hours");
@@ -167,7 +167,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(456, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(456789, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval();
+            test = new NpgsqlTimeSpan(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval();
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(1, test.Days, "Days");
             Assert.AreEqual(2, test.Hours, "Hours");
@@ -176,7 +176,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(5, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(5000, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(3, 2, 1234567890);
+            test = new NpgsqlTimeSpan(3, 2, 1234567890);
             Assert.AreEqual(3, test.Months, "Months");
             Assert.AreEqual(2, test.Days, "Days");
             Assert.AreEqual(0, test.Hours, "Hours");
@@ -185,7 +185,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(456, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(456789, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(1, 2, 3, 4);
+            test = new NpgsqlTimeSpan(1, 2, 3, 4);
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(1, test.Days, "Days");
             Assert.AreEqual(2, test.Hours, "Hours");
@@ -194,7 +194,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(0, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(0, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(1, 2, 3, 4, 5);
+            test = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
             Assert.AreEqual(0, test.Months, "Months");
             Assert.AreEqual(1, test.Days, "Days");
             Assert.AreEqual(2, test.Hours, "Hours");
@@ -203,7 +203,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(5, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(5000, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(1, 2, 3, 4, 5, 6);
+            test = new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6);
             Assert.AreEqual(1, test.Months, "Months");
             Assert.AreEqual(2, test.Days, "Days");
             Assert.AreEqual(3, test.Hours, "Hours");
@@ -212,7 +212,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(6, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(6000, test.Microseconds, "Microseconds");
 
-            test = new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7);
+            test = new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7);
             Assert.AreEqual(14, test.Months, "Months");
             Assert.AreEqual(3, test.Days, "Days");
             Assert.AreEqual(4, test.Hours, "Hours");
@@ -225,30 +225,30 @@ namespace Npgsql.Tests
         [Test]
         public void NpgsqlIntervalToString()
         {
-            Assert.AreEqual("00:00:00", new NpgsqlInterval().ToString());
+            Assert.AreEqual("00:00:00", new NpgsqlTimeSpan().ToString());
 
-            Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567890).ToString());
+            Assert.AreEqual("00:02:03.456789", new NpgsqlTimeSpan(1234567890).ToString());
 
-            Assert.AreEqual("00:02:03.456789", new NpgsqlInterval(1234567891).ToString());
+            Assert.AreEqual("00:02:03.456789", new NpgsqlTimeSpan(1234567891).ToString());
 
             Assert.AreEqual("1 day 02:03:04.005",
-                            new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
+                            new NpgsqlTimeSpan(new TimeSpan(1, 2, 3, 4, 5)).JustifyInterval().ToString());
 
-            Assert.AreEqual("3 mons 2 days 00:02:03.456789", new NpgsqlInterval(3, 2, 1234567890).ToString());
+            Assert.AreEqual("3 mons 2 days 00:02:03.456789", new NpgsqlTimeSpan(3, 2, 1234567890).ToString());
 
-            Assert.AreEqual("1 day 02:03:04", new NpgsqlInterval(1, 2, 3, 4).ToString());
+            Assert.AreEqual("1 day 02:03:04", new NpgsqlTimeSpan(1, 2, 3, 4).ToString());
 
-            Assert.AreEqual("1 day 02:03:04.005", new NpgsqlInterval(1, 2, 3, 4, 5).ToString());
+            Assert.AreEqual("1 day 02:03:04.005", new NpgsqlTimeSpan(1, 2, 3, 4, 5).ToString());
 
-            Assert.AreEqual("1 mon 2 days 03:04:05.006", new NpgsqlInterval(1, 2, 3, 4, 5, 6).ToString());
+            Assert.AreEqual("1 mon 2 days 03:04:05.006", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6).ToString());
 
-            Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
+            Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7).ToString());
 
-            Assert.AreEqual(new NpgsqlInterval(0, 2, 3, 4, 5).ToString(), new NpgsqlInterval(new TimeSpan(0, 2, 3, 4, 5)).ToString());
+            Assert.AreEqual(new NpgsqlTimeSpan(0, 2, 3, 4, 5).ToString(), new NpgsqlTimeSpan(new TimeSpan(0, 2, 3, 4, 5)).ToString());
             
-            Assert.AreEqual(new NpgsqlInterval(1, 2, 3, 4, 5).ToString(), new NpgsqlInterval(new TimeSpan(1, 2, 3, 4, 5)).ToString());
+            Assert.AreEqual(new NpgsqlTimeSpan(1, 2, 3, 4, 5).ToString(), new NpgsqlTimeSpan(new TimeSpan(1, 2, 3, 4, 5)).ToString());
             const long moreThanAMonthInTicks = TimeSpan.TicksPerDay*40;
-            Assert.AreEqual(new NpgsqlInterval(moreThanAMonthInTicks).ToString(), new NpgsqlInterval(new TimeSpan(moreThanAMonthInTicks)).ToString());
+            Assert.AreEqual(new NpgsqlTimeSpan(moreThanAMonthInTicks).ToString(), new NpgsqlTimeSpan(new TimeSpan(moreThanAMonthInTicks)).ToString());
             
             var oldCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
             var testCulture = new System.Globalization.CultureInfo("fr-FR");
@@ -256,7 +256,7 @@ namespace Npgsql.Tests
             try
             {
                 System.Threading.Thread.CurrentThread.CurrentCulture = testCulture;
-                Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlInterval(1, 2, 3, 4, 5, 6, 7).ToString());
+                Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7).ToString());
             }
             finally
             {
@@ -267,6 +267,8 @@ namespace Npgsql.Tests
         [Test]
         public void NpgsqlTimeConstructors()
         {
+            throw new NotImplementedException();
+            /*
             NpgsqlTime test;
 
             test = new NpgsqlTime();
@@ -331,11 +333,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(53, test.Seconds, "Seconds");
             Assert.AreEqual(123, test.Milliseconds, "Milliseconds");
             Assert.AreEqual(123456, test.Microseconds, "Microseconds");
+             */
         }
 
         [Test]
         public void NpgsqlTimeToString()
         {
+            throw new NotImplementedException();
+#if REWRITE
             Assert.AreEqual("11:45:55.003", new NpgsqlTime(11, 45, 55.003m).ToString());
 
             Assert.AreEqual("00:02:03.456789", new NpgsqlTime(1234567890).ToString());
@@ -354,6 +359,7 @@ namespace Npgsql.Tests
             {
                 System.Threading.Thread.CurrentThread.CurrentCulture = oldCulture;
             }
+#endif
         }
 
         [Test]
@@ -476,7 +482,7 @@ namespace Npgsql.Tests
             NpgsqlDate date;
 
             // add a day to the empty constructor
-            date = new NpgsqlDate() + new NpgsqlInterval(0, 1, 0);
+            date = new NpgsqlDate() + new NpgsqlTimeSpan(0, 1, 0);
             Assert.AreEqual(2, date.Day);
             Assert.AreEqual(DayOfWeek.Tuesday, date.DayOfWeek);
             Assert.AreEqual(2, date.DayOfYear);
@@ -485,7 +491,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(1, date.Year);
 
             // add a day the same value as the empty constructor
-            date = new NpgsqlDate(1, 1, 1) + new NpgsqlInterval(0, 1, 0);
+            date = new NpgsqlDate(1, 1, 1) + new NpgsqlTimeSpan(0, 1, 0);
             Assert.AreEqual(2, date.Day);
             Assert.AreEqual(DayOfWeek.Tuesday, date.DayOfWeek);
             Assert.AreEqual(2, date.DayOfYear);
@@ -494,7 +500,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(1, date.Year);
 
             var diff = new NpgsqlDate(1, 1, 1) - new NpgsqlDate(-1, 12, 31);
-            Assert.AreEqual(new NpgsqlInterval(0, 1, 0), diff);
+            Assert.AreEqual(new NpgsqlTimeSpan(0, 1, 0), diff);
 
             // Test of the addMonths method (positive values added)
             var dateForTestMonths = new NpgsqlDate(2008, 1, 1);
@@ -519,69 +525,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NpgsqlTimeZoneParse()
-        {
-            string input;
-            NpgsqlTimeZone test;
-
-            input = "+2";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(2, test.Hours);
-            Assert.AreEqual(0, test.Minutes);
-            Assert.AreEqual(0, test.Seconds);
-
-            input = "-2";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(-2, test.Hours);
-            Assert.AreEqual(0, test.Minutes);
-            Assert.AreEqual(0, test.Seconds);
-
-            input = "+3:45";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(3, test.Hours);
-            Assert.AreEqual(45, test.Minutes);
-            Assert.AreEqual(0, test.Seconds);
-
-            input = "-3:45";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(-3, test.Hours);
-            Assert.AreEqual(-45, test.Minutes);
-            Assert.AreEqual(0, test.Seconds);
-
-            input = "+4:30:01";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(4, test.Hours);
-            Assert.AreEqual(30, test.Minutes);
-            Assert.AreEqual(1, test.Seconds);
-
-            input = "-4:30:01";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(-4, test.Hours);
-            Assert.AreEqual(-30, test.Minutes);
-            Assert.AreEqual(-1, test.Seconds);
-
-            input = "+4:30:10";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(4, test.Hours);
-            Assert.AreEqual(30, test.Minutes);
-            Assert.AreEqual(10, test.Seconds);
-
-            input = "-4:30:10";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(-4, test.Hours);
-            Assert.AreEqual(-30, test.Minutes);
-            Assert.AreEqual(-10, test.Seconds);
-
-            input = "-13";
-            test = NpgsqlTimeZone.Parse(input);
-            Assert.AreEqual(-13, test.Hours);
-            Assert.AreEqual(0, test.Minutes);
-            Assert.AreEqual(0, test.Seconds);
-        }
-
-        [Test]
         public void NpgsqlTimeTzConvert()
         {
+            throw new NotImplementedException();
+            /*
             var timetz = new NpgsqlTimeTZ(13, 3, 45.001, new NpgsqlTimeZone(-5, 0));
 
             Assert.AreEqual(13, timetz.Hours);
@@ -612,7 +559,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(3, timetz.LocalTime.Minutes);
             Assert.AreEqual(45, timetz.LocalTime.Seconds);
             Assert.AreEqual(1, timetz.LocalTime.Milliseconds);
-
+            */
         }
 
         [Test]

@@ -777,52 +777,6 @@ namespace Npgsql
             return ReadColumn<NpgsqlDate>(ordinal);
         }
 
-        // TODO: Probably get rid of this, we can use TimeSpan or DateTime, see https://github.com/npgsql/npgsql/issues/347
-        public NpgsqlTime GetTime(int ordinal)
-        {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
-            Contract.EndContractBlock();
-            #endregion
-
-            return ReadColumnWithoutCache<NpgsqlTime>(ordinal);
-        }
-
-        // TODO: Replace with DateTimeOffset?
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlTimeTZ"/>,
-        /// Npgsql's provider-specific type for dates.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL has a "time with time zone" type, which combines a time of day with a time zone.
-        /// Since .NET contains no analog type, the PostgreSQL value can be fetched as <see cref="NpgsqlTimeTZ"/>.
-        /// The standard ADO.NET <see cref="GetProviderSpecificValue"/> method will also return this
-        /// type, but has the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/9.4/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        // ReSharper disable once InconsistentNaming
-        public NpgsqlTimeTZ GetTimeTZ(int ordinal)
-        {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
-            Contract.EndContractBlock();
-            #endregion
-
-            return ReadColumn<NpgsqlTimeTZ>(ordinal);
-        }
-
-        #endregion
-
-        #region Provider-specific type getters
-
         /// <summary>
         /// Gets the value of the specified column as a TimeSpan,
         /// </summary>
@@ -848,7 +802,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlInterval"/>,
+        /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
         /// Npgsql's provider-specific type for time spans.
         /// </summary>
         /// <remarks>
@@ -862,7 +816,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlInterval GetInterval(int ordinal)
+        public NpgsqlTimeSpan GetInterval(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
@@ -872,11 +826,11 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            return ReadColumn<NpgsqlInterval>(ordinal);
+            return ReadColumn<NpgsqlTimeSpan>(ordinal);
         }
 
         /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlTimeStamp"/>,
+        /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
         /// Npgsql's provider-specific type for date/time timestamps. Note that this type covers
         /// both PostgreSQL's "timestamp with time zone" and "timestamp without time zone" types,
         /// which differ only in how they are converted upon input/output.
@@ -890,7 +844,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlTimeStamp GetTimeStamp(int ordinal)
+        public NpgsqlDateTime GetTimeStamp(int ordinal)
         {
             #region Contracts
             if (!IsOnRow)
@@ -900,21 +854,7 @@ namespace Npgsql
             Contract.EndContractBlock();
             #endregion
 
-            return ReadColumn<NpgsqlTimeStamp>(ordinal);
-        }
-
-        // TODO: Remove, not needed
-        public NpgsqlTimeStampTZ GetTimeStampTZ(int ordinal)
-        {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException("Column must be between 0 and " + (FieldCount - 1));
-            Contract.EndContractBlock();
-            #endregion
-
-            return ReadColumnWithoutCache<NpgsqlTimeStampTZ>(ordinal);
+            return ReadColumn<NpgsqlDateTime>(ordinal);
         }
 
         #endregion

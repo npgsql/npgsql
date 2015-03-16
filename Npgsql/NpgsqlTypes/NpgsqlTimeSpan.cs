@@ -3,12 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Npgsql;
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
     /// <summary>
     /// Represents the PostgreSQL interval datatype.
+    /// </summary>
     /// <remarks>PostgreSQL differs from .NET in how it's interval type doesn't assume 24 hours in a day
     /// (to deal with 23- and 25-hour days caused by daylight savings adjustments) and has a concept
     /// of months that doesn't exist in .NET's <see cref="TimeSpan"/> class. (Neither datatype
@@ -22,18 +24,17 @@ namespace NpgsqlTypes
     /// probably arent! Just use <see cref="TimeSpan"/> and do not use this class directly &#x263a;</para>
     /// <para>To avoid forcing unnecessary provider-specific concerns on users who need not be concerned
     /// with them a call to <see cref="System.Data.IDataRecord.GetValue(int)"/> on a field containing an
-    /// <see cref="NpgsqlInterval"/> value will return a <see cref="TimeSpan"/> rather than an
-    /// <see cref="NpgsqlInterval"/>. If you need the extra functionality of <see cref="NpgsqlInterval"/>
+    /// <see cref="NpgsqlTimeSpan"/> value will return a <see cref="TimeSpan"/> rather than an
+    /// <see cref="NpgsqlTimeSpan"/>. If you need the extra functionality of <see cref="NpgsqlTimeSpan"/>
     /// then use <see cref="NpgsqlDataReader.GetInterval(Int32)"/>.</para>
     /// </remarks>
     /// <seealso cref="Ticks"/>
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
-    /// </summary>
     [Serializable]
-    public struct NpgsqlInterval : IComparable, IComparer, IEquatable<NpgsqlInterval>, IComparable<NpgsqlInterval>,
-                                   IComparer<NpgsqlInterval>
+    public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
+                                   IComparer<NpgsqlTimeSpan>
     {
         #region Constants
 
@@ -90,19 +91,19 @@ namespace NpgsqlTypes
         public const int MonthsPerYear = 12;
 
         /// <summary>
-        /// Represents the maximum <see cref="NpgsqlInterval"/>. This field is read-only.
+        /// Represents the maximum <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlInterval MaxValue = new NpgsqlInterval(long.MaxValue);
+        public static readonly NpgsqlTimeSpan MaxValue = new NpgsqlTimeSpan(long.MaxValue);
 
         /// <summary>
-        /// Represents the minimum <see cref="NpgsqlInterval"/>. This field is read-only.
+        /// Represents the minimum <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlInterval MinValue = new NpgsqlInterval(long.MinValue);
+        public static readonly NpgsqlTimeSpan MinValue = new NpgsqlTimeSpan(long.MinValue);
 
         /// <summary>
-        /// Represents the zero <see cref="NpgsqlInterval"/>. This field is read-only.
+        /// Represents the zero <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlInterval Zero = new NpgsqlInterval(0);
+        public static readonly NpgsqlTimeSpan Zero = new NpgsqlTimeSpan(0);
 
         #endregion
 
@@ -113,31 +114,31 @@ namespace NpgsqlTypes
         #region Constructors
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of ticks.
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of ticks.
         /// </summary>
         /// <param name="ticks">A time period expressed in 100ns units.</param>
-        public NpgsqlInterval(long ticks)
+        public NpgsqlTimeSpan(long ticks)
             : this(new TimeSpan(ticks))
         {
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to hold the same time as a <see cref="TimeSpan"/>
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to hold the same time as a <see cref="TimeSpan"/>
         /// </summary>
         /// <param name="timespan">A time period expressed in a <see cref="TimeSpan"/></param>
-        public NpgsqlInterval(TimeSpan timespan)
+        public NpgsqlTimeSpan(TimeSpan timespan)
             : this(0, timespan.Days, timespan.Ticks - (TicksPerDay * timespan.Days))
         {
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of months, days
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of months, days
         /// &amp; ticks.
         /// </summary>
         /// <param name="months">Number of months.</param>
         /// <param name="days">Number of days.</param>
         /// <param name="ticks">Number of 100ns units.</param>
-        public NpgsqlInterval(int months, int days, long ticks)
+        public NpgsqlTimeSpan(int months, int days, long ticks)
         {
             _months = months;
             _days = days;
@@ -145,20 +146,20 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of
         /// days, hours, minutes &amp; seconds.
         /// </summary>
         /// <param name="days">Number of days.</param>
         /// <param name="hours">Number of hours.</param>
         /// <param name="minutes">Number of minutes.</param>
         /// <param name="seconds">Number of seconds.</param>
-        public NpgsqlInterval(int days, int hours, int minutes, int seconds)
+        public NpgsqlTimeSpan(int days, int hours, int minutes, int seconds)
             : this(0, days, new TimeSpan(hours, minutes, seconds).Ticks)
         {
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of
         /// days, hours, minutes, seconds &amp; milliseconds.
         /// </summary>
         /// <param name="days">Number of days.</param>
@@ -166,13 +167,13 @@ namespace NpgsqlTypes
         /// <param name="minutes">Number of minutes.</param>
         /// <param name="seconds">Number of seconds.</param>
         /// <param name="milliseconds">Number of milliseconds.</param>
-        public NpgsqlInterval(int days, int hours, int minutes, int seconds, int milliseconds)
+        public NpgsqlTimeSpan(int days, int hours, int minutes, int seconds, int milliseconds)
             : this(0, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
         {
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of
         /// months, days, hours, minutes, seconds &amp; milliseconds.
         /// </summary>
         /// <param name="months">Number of months.</param>
@@ -181,13 +182,13 @@ namespace NpgsqlTypes
         /// <param name="minutes">Number of minutes.</param>
         /// <param name="seconds">Number of seconds.</param>
         /// <param name="milliseconds">Number of milliseconds.</param>
-        public NpgsqlInterval(int months, int days, int hours, int minutes, int seconds, int milliseconds)
+        public NpgsqlTimeSpan(int months, int days, int hours, int minutes, int seconds, int milliseconds)
             : this(months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
         {
         }
 
         /// <summary>
-        /// Initializes a new <see cref="NpgsqlInterval"/> to the specified number of
+        /// Initializes a new <see cref="NpgsqlTimeSpan"/> to the specified number of
         /// years, months, days, hours, minutes, seconds &amp; milliseconds.
         /// <para>Years are calculated exactly equivalent to 12 months.</para>
         /// </summary>
@@ -198,7 +199,7 @@ namespace NpgsqlTypes
         /// <param name="minutes">Number of minutes.</param>
         /// <param name="seconds">Number of seconds.</param>
         /// <param name="milliseconds">Number of milliseconds.</param>
-        public NpgsqlInterval(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds)
+        public NpgsqlTimeSpan(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds)
             : this(years * 12 + months, days, new TimeSpan(0, hours, minutes, seconds, milliseconds).Ticks)
         {
         }
@@ -209,7 +210,7 @@ namespace NpgsqlTypes
 
         /// <summary>
         /// The total number of ticks(100ns units) contained. This is the resolution of the
-        /// <see cref="NpgsqlInterval"/>  type. This ignores the number of days and
+        /// <see cref="NpgsqlTimeSpan"/>  type. This ignores the number of days and
         /// months held. If you want them included use <see cref="UnjustifyInterval()"/> first.
         /// <remarks>The resolution of the PostgreSQL
         /// interval type is by default 1&#xb5;s = 1,000 ns. It may be smaller as follows:
@@ -246,7 +247,7 @@ namespace NpgsqlTypes
         /// <para>As such, if the 100-nanosecond resolution is significant to an application, a PostgreSQL interval will
         /// not suffice for those purposes.</para>
         /// <para>In more frequent cases though, the resolution of the interval suffices.
-        /// <see cref="NpgsqlInterval"/> will always suffice to handle the resolution of any interval value, and upon
+        /// <see cref="NpgsqlTimeSpan"/> will always suffice to handle the resolution of any interval value, and upon
         /// writing to the database, will be rounded to the resolution used.</para>
         /// </remarks>
         /// <returns>The number of ticks in the instance.</returns>
@@ -413,81 +414,81 @@ namespace NpgsqlTypes
         #region Create From Part
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of ticks.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of ticks.
         /// </summary>
         /// <param name="ticks">The number of ticks (100ns units) in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of ticks.</returns>
-        public static NpgsqlInterval FromTicks(long ticks)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of ticks.</returns>
+        public static NpgsqlTimeSpan FromTicks(long ticks)
         {
-            return new NpgsqlInterval(ticks).Canonicalize();
+            return new NpgsqlTimeSpan(ticks).Canonicalize();
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of microseconds.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of microseconds.
         /// </summary>
         /// <param name="micro">The number of microseconds in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of microseconds.</returns>
-        public static NpgsqlInterval FromMicroseconds(double micro)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of microseconds.</returns>
+        public static NpgsqlTimeSpan FromMicroseconds(double micro)
         {
             return FromTicks((long)(micro * TicksPerMicrosecond));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of milliseconds.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of milliseconds.
         /// </summary>
         /// <param name="milli">The number of milliseconds in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of milliseconds.</returns>
-        public static NpgsqlInterval FromMilliseconds(double milli)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of milliseconds.</returns>
+        public static NpgsqlTimeSpan FromMilliseconds(double milli)
         {
             return FromTicks((long)(milli * TicksPerMillsecond));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of seconds.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of seconds.
         /// </summary>
         /// <param name="seconds">The number of seconds in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of seconds.</returns>
-        public static NpgsqlInterval FromSeconds(double seconds)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of seconds.</returns>
+        public static NpgsqlTimeSpan FromSeconds(double seconds)
         {
             return FromTicks((long)(seconds * TicksPerSecond));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of minutes.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of minutes.
         /// </summary>
         /// <param name="minutes">The number of minutes in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of minutes.</returns>
-        public static NpgsqlInterval FromMinutes(double minutes)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of minutes.</returns>
+        public static NpgsqlTimeSpan FromMinutes(double minutes)
         {
             return FromTicks((long)(minutes * TicksPerMinute));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of hours.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of hours.
         /// </summary>
         /// <param name="hours">The number of hours in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of hours.</returns>
-        public static NpgsqlInterval FromHours(double hours)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of hours.</returns>
+        public static NpgsqlTimeSpan FromHours(double hours)
         {
             return FromTicks((long)(hours * TicksPerHour));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of days.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of days.
         /// </summary>
         /// <param name="days">The number of days in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of days.</returns>
-        public static NpgsqlInterval FromDays(double days)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of days.</returns>
+        public static NpgsqlTimeSpan FromDays(double days)
         {
             return FromTicks((long)(days * TicksPerDay));
         }
 
         /// <summary>
-        /// Creates an <see cref="NpgsqlInterval"/> from a number of months.
+        /// Creates an <see cref="NpgsqlTimeSpan"/> from a number of months.
         /// </summary>
         /// <param name="months">The number of months in the interval.</param>
-        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlInterval"/> with the given number of months.</returns>
-        public static NpgsqlInterval FromMonths(double months)
+        /// <returns>A <see cref="Canonicalize()"/>d <see cref="NpgsqlTimeSpan"/> with the given number of months.</returns>
+        public static NpgsqlTimeSpan FromMonths(double months)
         {
             return FromTicks((long)(months * TicksPerMonth));
         }
@@ -499,38 +500,38 @@ namespace NpgsqlTypes
         /// <summary>
         /// Adds another interval to this instance and returns the result.
         /// </summary>
-        /// <param name="interval">An <see cref="NpgsqlInterval"/> to add to this instance.</param>
-        /// <returns>An <see cref="NpgsqlInterval"></see> whose values are the sums of the two instances.</returns>
-        public NpgsqlInterval Add(NpgsqlInterval interval)
+        /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to add to this instance.</param>
+        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the sums of the two instances.</returns>
+        public NpgsqlTimeSpan Add(NpgsqlTimeSpan interval)
         {
-            return new NpgsqlInterval(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
+            return new NpgsqlTimeSpan(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
         }
 
         /// <summary>
         /// Subtracts another interval from this instance and returns the result.
         /// </summary>
-        /// <param name="interval">An <see cref="NpgsqlInterval"/> to subtract from this instance.</param>
-        /// <returns>An <see cref="NpgsqlInterval"></see> whose values are the differences of the two instances.</returns>
-        public NpgsqlInterval Subtract(NpgsqlInterval interval)
+        /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to subtract from this instance.</param>
+        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the differences of the two instances.</returns>
+        public NpgsqlTimeSpan Subtract(NpgsqlTimeSpan interval)
         {
-            return new NpgsqlInterval(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
+            return new NpgsqlTimeSpan(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
         }
 
         /// <summary>
-        /// Returns an <see cref="NpgsqlInterval"/> whose value is the negated value of this instance.
+        /// Returns an <see cref="NpgsqlTimeSpan"/> whose value is the negated value of this instance.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> whose value is the negated value of this instance.</returns>
-        public NpgsqlInterval Negate()
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose value is the negated value of this instance.</returns>
+        public NpgsqlTimeSpan Negate()
         {
-            return new NpgsqlInterval(-Months, -Days, -Ticks);
+            return new NpgsqlTimeSpan(-Months, -Days, -Ticks);
         }
 
         /// <summary>
         /// This absolute value of this instance. In the case of some, but not all, components being negative,
         /// the rules used for justification are used to determine if the instance is positive or negative.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> whose value is the absolute value of this instance.</returns>
-        public NpgsqlInterval Duration()
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose value is the absolute value of this instance.</returns>
+        public NpgsqlTimeSpan Duration()
         {
             return UnjustifyInterval().Ticks < 0 ? Negate() : this;
         }
@@ -542,48 +543,48 @@ namespace NpgsqlTypes
         /// <summary>
         /// Equivalent to PostgreSQL's justify_days function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any hours outside of the range [-23, 23]
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any hours outside of the range [-23, 23]
         /// converted into days.</returns>
-        public NpgsqlInterval JustifyDays()
+        public NpgsqlTimeSpan JustifyDays()
         {
-            return new NpgsqlInterval(Months, Days + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
+            return new NpgsqlTimeSpan(Months, Days + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
         }
 
         /// <summary>
         /// Opposite to PostgreSQL's justify_days function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any days converted to multiples of &#xB1;24hours.</returns>
-        public NpgsqlInterval UnjustifyDays()
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any days converted to multiples of &#xB1;24hours.</returns>
+        public NpgsqlTimeSpan UnjustifyDays()
         {
-            return new NpgsqlInterval(Months, 0, Ticks + Days * TicksPerDay);
+            return new NpgsqlTimeSpan(Months, 0, Ticks + Days * TicksPerDay);
         }
 
         /// <summary>
         /// Equivalent to PostgreSQL's justify_months function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any days outside of the range [-30, 30]
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any days outside of the range [-30, 30]
         /// converted into months.</returns>
-        public NpgsqlInterval JustifyMonths()
+        public NpgsqlTimeSpan JustifyMonths()
         {
-            return new NpgsqlInterval(Months + Days / DaysPerMonth, Days % DaysPerMonth, Ticks);
+            return new NpgsqlTimeSpan(Months + Days / DaysPerMonth, Days % DaysPerMonth, Ticks);
         }
 
         /// <summary>
         /// Opposite to PostgreSQL's justify_months function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any months converted to multiples of &#xB1;30days.</returns>
-        public NpgsqlInterval UnjustifyMonths()
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any months converted to multiples of &#xB1;30days.</returns>
+        public NpgsqlTimeSpan UnjustifyMonths()
         {
-            return new NpgsqlInterval(0, Days + Months * DaysPerMonth, Ticks);
+            return new NpgsqlTimeSpan(0, Days + Months * DaysPerMonth, Ticks);
         }
 
         /// <summary>
         /// Equivalent to PostgreSQL's justify_interval function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one,
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one,
         /// but with any months converted to multiples of &#xB1;30days
         /// and then with any days converted to multiples of &#xB1;24hours</returns>
-        public NpgsqlInterval JustifyInterval()
+        public NpgsqlTimeSpan JustifyInterval()
         {
             return JustifyMonths().JustifyDays();
         }
@@ -591,17 +592,17 @@ namespace NpgsqlTypes
         /// <summary>
         /// Opposite to PostgreSQL's justify_interval function.
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with any months converted to multiples of &#xB1;30days and then any days converted to multiples of &#xB1;24hours;</returns>
-        public NpgsqlInterval UnjustifyInterval()
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any months converted to multiples of &#xB1;30days and then any days converted to multiples of &#xB1;24hours;</returns>
+        public NpgsqlTimeSpan UnjustifyInterval()
         {
-            return new NpgsqlInterval(Ticks + Days * TicksPerDay + Months * DaysPerMonth * TicksPerDay);
+            return new NpgsqlTimeSpan(Ticks + Days * TicksPerDay + Months * DaysPerMonth * TicksPerDay);
         }
 
         /// <summary>
         /// Produces a canonical NpgslInterval with 0 months and hours in the range of [-23, 23].
         /// <remarks>
         /// <para>
-        /// While the fact that for many purposes, two different <see cref="NpgsqlInterval"/> instances could be considered
+        /// While the fact that for many purposes, two different <see cref="NpgsqlTimeSpan"/> instances could be considered
         /// equivalent (e.g. one with 2days, 3hours and one with 1day 27hours) there are different possible canonical forms.
         /// </para><para>
         /// E.g. we could move all excess hours into days and all excess days into months and have the most readable form,
@@ -612,15 +613,15 @@ namespace NpgsqlTypes
         /// PostgreSQL functions, particularly with age() and the results of subtracting one date, time or timestamp from
         /// another.
         /// </para>
-        /// <para>Note that the results of casting a <see cref="TimeSpan"/> to <see cref="NpgsqlInterval"/> is
+        /// <para>Note that the results of casting a <see cref="TimeSpan"/> to <see cref="NpgsqlTimeSpan"/> is
         /// canonicalised.</para>
         /// </remarks>
         /// </summary>
-        /// <returns>An <see cref="NpgsqlInterval"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with months converted to multiples of &#xB1;30days and with any hours outside of the range [-23, 23]
         /// converted into days.</returns>
-        public NpgsqlInterval Canonicalize()
+        public NpgsqlTimeSpan Canonicalize()
         {
-            return new NpgsqlInterval(0, Days + Months * DaysPerMonth + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
+            return new NpgsqlTimeSpan(0, Days + Months * DaysPerMonth + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
         }
 
         #endregion
@@ -628,21 +629,21 @@ namespace NpgsqlTypes
         #region Casts
 
         /// <summary>
-        /// Implicit cast of a <see cref="TimeSpan"/> to an <see cref="NpgsqlInterval"/>
+        /// Implicit cast of a <see cref="TimeSpan"/> to an <see cref="NpgsqlTimeSpan"/>
         /// </summary>
         /// <param name="timespan">A <see cref="TimeSpan"/></param>
-        /// <returns>An eqivalent, canonical, <see cref="NpgsqlInterval"/>.</returns>
-        public static implicit operator NpgsqlInterval(TimeSpan timespan)
+        /// <returns>An eqivalent, canonical, <see cref="NpgsqlTimeSpan"/>.</returns>
+        public static implicit operator NpgsqlTimeSpan(TimeSpan timespan)
         {
-            return new NpgsqlInterval(timespan).Canonicalize();
+            return new NpgsqlTimeSpan(timespan).Canonicalize();
         }
 
         /// <summary>
-        /// Implicit cast of an <see cref="NpgsqlInterval"/> to a <see cref="TimeSpan"/>.
+        /// Explicit cast of an <see cref="NpgsqlTimeSpan"/> to a <see cref="TimeSpan"/>.
         /// </summary>
-        /// <param name="interval">A <see cref="NpgsqlInterval"/>.</param>
+        /// <param name="interval">A <see cref="NpgsqlTimeSpan"/>.</param>
         /// <returns>An equivalent <see cref="TimeSpan"/>.</returns>
-        public static explicit operator TimeSpan(NpgsqlInterval interval)
+        public static explicit operator TimeSpan(NpgsqlTimeSpan interval)
         {
             return new TimeSpan(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
         }
@@ -652,47 +653,44 @@ namespace NpgsqlTypes
         #region Comparison
 
         /// <summary>
-        /// Returns true if another <see cref="NpgsqlInterval"/> is exactly the same as this instance.
+        /// Returns true if another <see cref="NpgsqlTimeSpan"/> is exactly the same as this instance.
         /// </summary>
-        /// <param name="other">An <see cref="NpgsqlInterval"/> for comparison.</param>
-        /// <returns>true if the two <see cref="NpgsqlInterval"/> instances are exactly the same,
+        /// <param name="other">An <see cref="NpgsqlTimeSpan"/> for comparison.</param>
+        /// <returns>true if the two <see cref="NpgsqlTimeSpan"/> instances are exactly the same,
         /// false otherwise.</returns>
-        public bool Equals(NpgsqlInterval other)
+        public bool Equals(NpgsqlTimeSpan other)
         {
             return Ticks == other.Ticks && Days == other.Days && Months == other.Months;
         }
 
         /// <summary>
-        /// Returns true if another object is an <see cref="NpgsqlInterval"/>, that is exactly the same as
+        /// Returns true if another object is an <see cref="NpgsqlTimeSpan"/>, that is exactly the same as
         /// this instance
         /// </summary>
         /// <param name="obj">An <see cref="Object"/> for comparison.</param>
-        /// <returns>true if the argument is an <see cref="NpgsqlInterval"/> and is exactly the same
+        /// <returns>true if the argument is an <see cref="NpgsqlTimeSpan"/> and is exactly the same
         /// as this one, false otherwise.</returns>
         public override bool Equals(object obj)
         {
-            if (obj == null) {
-                return false;
-            }
-            if (obj is NpgsqlInterval) {
-                return Equals((NpgsqlInterval)obj);
+            if (obj is NpgsqlTimeSpan) {
+                return Equals((NpgsqlTimeSpan)obj);
             }
             return false;
         }
 
         /// <summary>
-        /// Compares two <see cref="NpgsqlInterval"/> instances.
+        /// Compares two <see cref="NpgsqlTimeSpan"/> instances.
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/>.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/>.</param>
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/>.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/>.</param>
         /// <returns>0 if the two are equal or equivalent. A value greater than zero if x is greater than y,
         /// a value less than zero if x is less than y.</returns>
-        public static int Compare(NpgsqlInterval x, NpgsqlInterval y)
+        public static int Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.CompareTo(y);
         }
 
-        int IComparer<NpgsqlInterval>.Compare(NpgsqlInterval x, NpgsqlInterval y)
+        int IComparer<NpgsqlTimeSpan>.Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.CompareTo(y);
         }
@@ -724,11 +722,11 @@ namespace NpgsqlTypes
         /// <summary>
         /// Compares this instance with another/
         /// </summary>
-        /// <param name="other">An <see cref="NpgsqlInterval"/> to compare this with.</param>
+        /// <param name="other">An <see cref="NpgsqlTimeSpan"/> to compare this with.</param>
         /// <returns>0 if the instances are equal or equivalent. A value less than zero if
         /// this instance is less than the argument. A value greater than zero if this instance
         /// is greater than the instance.</returns>
-        public int CompareTo(NpgsqlInterval other)
+        public int CompareTo(NpgsqlTimeSpan other)
         {
             return UnjustifyInterval().Ticks.CompareTo(other.UnjustifyInterval().Ticks);
         }
@@ -737,19 +735,19 @@ namespace NpgsqlTypes
         /// Compares this instance with another/
         /// </summary>
         /// <param name="other">An object to compare this with.</param>
-        /// <returns>0 if the argument is an <see cref="NpgsqlInterval"/> and the instances are equal or equivalent.
-        /// A value less than zero if the argument is an <see cref="NpgsqlInterval"/> and
+        /// <returns>0 if the argument is an <see cref="NpgsqlTimeSpan"/> and the instances are equal or equivalent.
+        /// A value less than zero if the argument is an <see cref="NpgsqlTimeSpan"/> and
         /// this instance is less than the argument.
-        /// A value greater than zero if the argument is an <see cref="NpgsqlInterval"/> and this instance
+        /// A value greater than zero if the argument is an <see cref="NpgsqlTimeSpan"/> and this instance
         /// is greater than the instance.</returns>
         /// A value greater than zero if the argument is null.
-        /// <exception cref="ArgumentException">The argument is not an <see cref="NpgsqlInterval"/>.</exception>
+        /// <exception cref="ArgumentException">The argument is not an <see cref="NpgsqlTimeSpan"/>.</exception>
         public int CompareTo(object other)
         {
             if (other == null) {
                 return 1;
-            } else if (other is NpgsqlInterval) {
-                return CompareTo((NpgsqlInterval)other);
+            } else if (other is NpgsqlTimeSpan) {
+                return CompareTo((NpgsqlTimeSpan)other);
             } else {
                 throw new ArgumentException();
             }
@@ -757,18 +755,18 @@ namespace NpgsqlTypes
 
         #endregion
 
-        #region To And From Strings
+        #region String Conversions
 
         /// <summary>
-        /// Parses a <see cref="String"/> and returns a <see cref="NpgsqlInterval"/> instance.
+        /// Parses a <see cref="String"/> and returns a <see cref="NpgsqlTimeSpan"/> instance.
         /// Designed to use the formats generally returned by PostgreSQL.
         /// </summary>
         /// <param name="str">The <see cref="String"/> to parse.</param>
-        /// <returns>An <see cref="NpgsqlInterval"/> represented by the argument.</returns>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> represented by the argument.</returns>
         /// <exception cref="ArgumentNullException">The string was null.</exception>
         /// <exception cref="OverflowException">A value obtained from parsing the string exceeded the values allowed for the relevant component.</exception>
-        /// <exception cref="FormatException">The string was not in a format that could be parsed to produce an <see cref="NpgsqlInterval"/>.</exception>
-        public static NpgsqlInterval Parse(string str)
+        /// <exception cref="FormatException">The string was not in a format that could be parsed to produce an <see cref="NpgsqlTimeSpan"/>.</exception>
+        public static NpgsqlTimeSpan Parse(string str)
         {
             if (str == null) {
                 throw new ArgumentNullException("str");
@@ -820,7 +818,7 @@ namespace NpgsqlTypes
                     }
                 }
                 long ticks = hours * TicksPerHour + minutes * TicksPerMinute + (long)(seconds * TicksPerSecond);
-                return new NpgsqlInterval(years * MonthsPerYear + months, days, ticks);
+                return new NpgsqlTimeSpan(years * MonthsPerYear + months, days, ticks);
             } catch (OverflowException) {
                 throw;
             } catch (Exception) {
@@ -837,12 +835,12 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Attempt to parse a <see cref="String"/> to produce an <see cref="NpgsqlInterval"/>.
+        /// Attempt to parse a <see cref="String"/> to produce an <see cref="NpgsqlTimeSpan"/>.
         /// </summary>
         /// <param name="str">The <see cref="String"/> to parse.</param>
-        /// <param name="result">(out) The <see cref="NpgsqlInterval"/> produced, or <see cref="Zero"/> if the parsing failed.</param>
+        /// <param name="result">(out) The <see cref="NpgsqlTimeSpan"/> produced, or <see cref="Zero"/> if the parsing failed.</param>
         /// <returns>true if the parsing succeeded, false otherwise.</returns>
-        public static bool TryParse(string str, out NpgsqlInterval result)
+        public static bool TryParse(string str, out NpgsqlTimeSpan result)
         {
             try {
                 result = Parse(str);
@@ -854,10 +852,10 @@ namespace NpgsqlTypes
         }
 
         /// <summary>
-        /// Create a <see cref="String"/> representation of the <see cref="NpgsqlInterval"/> instance.
+        /// Create a <see cref="String"/> representation of the <see cref="NpgsqlTimeSpan"/> instance.
         /// The format returned is of the form:
         /// [M mon[s]] [d day[s]] [HH:mm:ss[.f[f[f[f[f[f[f[f[f]]]]]]]]]]
-        /// A zero <see cref="NpgsqlInterval"/> is represented as 00:00:00
+        /// A zero <see cref="NpgsqlTimeSpan"/> is represented as 00:00:00
         /// <remarks>
         /// Ticks are 100ns, Postgress resolution is only to 1&#xb5;s at most. Hence we lose 1 or more decimal
         /// precision in storing values in the database. Despite this, this method will output that extra
@@ -900,89 +898,89 @@ namespace NpgsqlTypes
         #region Common Operators
 
         /// <summary>
-        /// Adds two <see cref="NpgsqlInterval"/> together.
+        /// Adds two <see cref="NpgsqlTimeSpan"/> together.
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to add.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to add.</param>
-        /// <returns>An <see cref="NpgsqlInterval"/> whose values are the sum of the arguments.</returns>
-        public static NpgsqlInterval operator +(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to add.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to add.</param>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the sum of the arguments.</returns>
+        public static NpgsqlTimeSpan operator +(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.Add(y);
         }
 
         /// <summary>
-        /// Subtracts one <see cref="NpgsqlInterval"/> from another.
+        /// Subtracts one <see cref="NpgsqlTimeSpan"/> from another.
         /// </summary>
-        /// <param name="x">The <see cref="NpgsqlInterval"/> to subtract the other from.</param>
-        /// <param name="y">The <see cref="NpgsqlInterval"/> to subtract from the other.</param>
-        /// <returns>An <see cref="NpgsqlInterval"/> whose values are the difference of the arguments</returns>
-        public static NpgsqlInterval operator -(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The <see cref="NpgsqlTimeSpan"/> to subtract the other from.</param>
+        /// <param name="y">The <see cref="NpgsqlTimeSpan"/> to subtract from the other.</param>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the difference of the arguments</returns>
+        public static NpgsqlTimeSpan operator -(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.Subtract(y);
         }
 
         /// <summary>
-        /// Returns true if two <see cref="NpgsqlInterval"/> are exactly the same.
+        /// Returns true if two <see cref="NpgsqlTimeSpan"/> are exactly the same.
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
         /// <returns>true if the two arguments are exactly the same, false otherwise.</returns>
-        public static bool operator ==(NpgsqlInterval x, NpgsqlInterval y)
+        public static bool operator ==(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.Equals(y);
         }
 
         /// <summary>
-        /// Returns false if two <see cref="NpgsqlInterval"/> are exactly the same.
+        /// Returns false if two <see cref="NpgsqlTimeSpan"/> are exactly the same.
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
         /// <returns>false if the two arguments are exactly the same, true otherwise.</returns>
-        public static bool operator !=(NpgsqlInterval x, NpgsqlInterval y)
+        public static bool operator !=(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return !(x == y);
         }
 
         /// <summary>
-        /// Compares two <see cref="NpgsqlInterval"/> instances to see if the first is less than the second
+        /// Compares two <see cref="NpgsqlTimeSpan"/> instances to see if the first is less than the second
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <returns>true if the first <see cref="NpgsqlInterval"/> is less than second, false otherwise.</returns>
-        public static bool operator <(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <returns>true if the first <see cref="NpgsqlTimeSpan"/> is less than second, false otherwise.</returns>
+        public static bool operator <(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.UnjustifyInterval().Ticks < y.UnjustifyInterval().Ticks;
         }
 
         /// <summary>
-        /// Compares two <see cref="NpgsqlInterval"/> instances to see if the first is less than or equivalent to the second
+        /// Compares two <see cref="NpgsqlTimeSpan"/> instances to see if the first is less than or equivalent to the second
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <returns>true if the first <see cref="NpgsqlInterval"/> is less than or equivalent to second, false otherwise.</returns>
-        public static bool operator <=(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <returns>true if the first <see cref="NpgsqlTimeSpan"/> is less than or equivalent to second, false otherwise.</returns>
+        public static bool operator <=(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return x.UnjustifyInterval().Ticks <= y.UnjustifyInterval().Ticks;
         }
 
         /// <summary>
-        /// Compares two <see cref="NpgsqlInterval"/> instances to see if the first is greater than the second
+        /// Compares two <see cref="NpgsqlTimeSpan"/> instances to see if the first is greater than the second
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <returns>true if the first <see cref="NpgsqlInterval"/> is greater than second, false otherwise.</returns>
-        public static bool operator >(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <returns>true if the first <see cref="NpgsqlTimeSpan"/> is greater than second, false otherwise.</returns>
+        public static bool operator >(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return !(x <= y);
         }
 
         /// <summary>
-        /// Compares two <see cref="NpgsqlInterval"/> instances to see if the first is greater than or equivalent the second
+        /// Compares two <see cref="NpgsqlTimeSpan"/> instances to see if the first is greater than or equivalent the second
         /// </summary>
-        /// <param name="x">The first <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <param name="y">The second <see cref="NpgsqlInterval"/> to compare.</param>
-        /// <returns>true if the first <see cref="NpgsqlInterval"/> is greater than or equivalent to the second, false otherwise.</returns>
-        public static bool operator >=(NpgsqlInterval x, NpgsqlInterval y)
+        /// <param name="x">The first <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <param name="y">The second <see cref="NpgsqlTimeSpan"/> to compare.</param>
+        /// <returns>true if the first <see cref="NpgsqlTimeSpan"/> is greater than or equivalent to the second, false otherwise.</returns>
+        public static bool operator >=(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
         {
             return !(x < y);
         }
@@ -990,19 +988,19 @@ namespace NpgsqlTypes
         /// <summary>
         /// Returns the instance.
         /// </summary>
-        /// <param name="x">An <see cref="NpgsqlInterval"/>.</param>
+        /// <param name="x">An <see cref="NpgsqlTimeSpan"/>.</param>
         /// <returns>The argument.</returns>
-        public static NpgsqlInterval operator +(NpgsqlInterval x)
+        public static NpgsqlTimeSpan operator +(NpgsqlTimeSpan x)
         {
             return x;
         }
 
         /// <summary>
-        /// Negates an <see cref="NpgsqlInterval"/> instance.
+        /// Negates an <see cref="NpgsqlTimeSpan"/> instance.
         /// </summary>
-        /// <param name="x">An <see cref="NpgsqlInterval"/>.</param>
+        /// <param name="x">An <see cref="NpgsqlTimeSpan"/>.</param>
         /// <returns>The negation of the argument.</returns>
-        public static NpgsqlInterval operator -(NpgsqlInterval x)
+        public static NpgsqlTimeSpan operator -(NpgsqlTimeSpan x)
         {
             return x.Negate();
         }

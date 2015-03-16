@@ -428,6 +428,12 @@ namespace Npgsql
                         : this[NpgsqlDbType.Timestamp];
                 }
 
+                if (value is NpgsqlDateTime) {
+                    return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
+                        ? this[NpgsqlDbType.TimestampTZ]
+                        : this[NpgsqlDbType.Timestamp];
+                }
+
                 return this[value.GetType()];
             }
         }
@@ -568,7 +574,7 @@ namespace Npgsql
                     foreach (var type in m.Types)
                     {
                         TypeToNpgsqlDbType[type] = npgsqlDbType;
-                        TypeToDbType[type] = m.DbTypes.FirstOrDefault();
+                        TypeToDbType[type] = m.DbTypes.Any() ? m.DbTypes.First() : DbType.Object;
                     }
                 }
             }
