@@ -31,7 +31,6 @@ using System.Resources;
 using Npgsql.Localization;
 using NUnit.Framework;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
@@ -87,7 +86,8 @@ namespace Npgsql.Tests
                     {
                         while (true)
                         {
-                            if (exitFlag) {
+                            if (exitFlag)
+                            {
                                 Assert.Fail("Connection did not reach the Executing state");
                             }
                             if (conn.Connector.State == ConnectorState.Executing)
@@ -148,10 +148,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [ExpectedException(typeof(InvalidOperationException))]
         public void NestedTransaction()
         {
-            Conn.BeginTransaction();
-            Assert.That(() => Conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+            using (Conn.BeginTransaction())
+            {
+                using (Conn.BeginTransaction())
+                {
+                }
+            }
         }
 
         [Test]
@@ -165,7 +170,8 @@ namespace Npgsql.Tests
         [ExpectedException(typeof(SocketException))]
         public void ConnectionRefused()
         {
-            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j")) {
+            using (var conn = new NpgsqlConnection("Server=127.0.0.1;Port=44444;User Id=npgsql_tets;Password=j"))
+            {
                 conn.Open();
             }
         }
@@ -191,27 +197,31 @@ namespace Npgsql.Tests
             conn.Open();
         }
 
-        [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
-        public void AuthenticationFailure()
-        {
-            var badConnString = Regex.Replace(ConnectionString, @"Password=\w+", "Password=bad_password");
-            var conn = new NpgsqlConnection(badConnString);
-            Assert.That(() => conn.Open(),
-                Throws.Exception.TypeOf<NpgsqlException>()
-                .With.Property("Code").EqualTo("28P01")
-            );
-        }
-
         [Test]
         public void ConnectionMinPoolSize()
         {
-            var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=30;MaxPoolSize=30");
-            conn.Open();
-            conn.Close();
+            using (var conn = new NpgsqlConnection(ConnectionString + ";MinPoolSize=30;MaxPoolSize=30"))
+            {
+                conn.Open();
 
-            conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=30;MinPoolSize=30");
-            conn.Open();
-            conn.Close();
+                Assert.AreEqual(30, NpgsqlConnectorPool.TotalConnectionsInPool(conn));
+                Assert.AreEqual(29, NpgsqlConnectorPool.AvailableConnectionsInPool(conn));
+                Assert.AreEqual(1, NpgsqlConnectorPool.BusyConnectionsInPool(conn));
+            }
+
+
+            using (var conn = new NpgsqlConnection(ConnectionString + ";MaxPoolSize=30;MinPoolSize=30"))
+            {
+                conn.Open();
+
+                Assert.AreEqual(30, NpgsqlConnectorPool.TotalConnectionsInPool(conn));
+                Assert.AreEqual(29, NpgsqlConnectorPool.AvailableConnectionsInPool(conn));
+                Assert.AreEqual(1, NpgsqlConnectorPool.BusyConnectionsInPool(conn));
+            }
+
+            // Verify that two connection pools were created due to the connection strings having
+            // params in a different order.
+            Assert.AreEqual(2, NpgsqlConnectorPool.ConnectionPoolCount);
         }
 
         [Test]
@@ -267,30 +277,44 @@ namespace Npgsql.Tests
         [Test]
         public void UseAllConnectionsInPool()
         {
+            string parsedConnectionString = null;
+            using (var connection = new NpgsqlConnection(ConnectionString))
+            {
+                parsedConnectionString = connection.ConnectionString;
+            }
+
             // As this method uses a lot of connections, clear all connections from all pools before starting.
             // This is needed in order to not reach the max connections allowed and start to raise errors.
-
             NpgsqlConnection.ClearAllPools();
+
+            // Verify that pools actually cleared.
+            Assert.AreEqual(0, NpgsqlConnectorPool.ConnectionPoolCount);
             try
             {
+
                 var openedConnections = new List<NpgsqlConnection>();
                 // repeat test to exersize pool
                 for (var i = 0; i < 10; ++i)
                 {
                     try
                     {
-                        // 18 since base class opens two and the default pool size is 20
-                        for (var j = 0; j < 18; ++j)
+                        for (var j = 0; j < 20; ++j)
                         {
                             var connection = new NpgsqlConnection(ConnectionString);
                             connection.Open();
                             openedConnections.Add(connection);
                         }
+
+                        // Verify that there are 20 busy connections.
+                        Assert.AreEqual(20, NpgsqlConnectorPool.BusyConnectionsInPool(parsedConnectionString));
                     }
                     finally
                     {
                         openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
                         openedConnections.Clear();
+
+                        // Verify that there are 20 available connections.
+                        Assert.AreEqual(20, NpgsqlConnectorPool.AvailableConnectionsInPool(parsedConnectionString));
                     }
                 }
             }
@@ -318,6 +342,50 @@ namespace Npgsql.Tests
             finally
             {
                 openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+                NpgsqlConnection.ClearAllPools();
+            }
+        }
+
+        [Test]
+        public void VerifyConnectionPoolPeriodicallyCleansUpStaleConnectors()
+        {
+            string parsedConnectionString = null;
+            using (var connection = new NpgsqlConnection(ConnectionString + ";ConnectionLifetime=2"))
+            {
+                parsedConnectionString = connection.ConnectionString;
+            }
+
+            var openedConnections = new List<NpgsqlConnection>();
+            try
+            {
+                // exceed default pool size of 20
+                for (var i = 0; i < 10; ++i)
+                {
+                    // Set the connection lifetime to 2 seconds.
+                    var connection = new NpgsqlConnection(ConnectionString + ";ConnectionLifetime=2");
+                    connection.Open();
+                    openedConnections.Add(connection);
+                }
+
+                // Sleep the thread for 2.5 seconds so that the cleanup cycle has had a chance to run.
+                System.Threading.Thread.Sleep(2500);
+
+                // All connections should still be in the pool since they are all busy.
+                Assert.AreEqual(10, NpgsqlConnectorPool.TotalConnectionsInPool(parsedConnectionString));
+            }
+            finally
+            {
+                openedConnections.ForEach(delegate(NpgsqlConnection con) { con.Dispose(); });
+
+                // All connections should still be in the pool since they were all just returned to the available pool.
+                Assert.AreEqual(10, NpgsqlConnectorPool.TotalConnectionsInPool(parsedConnectionString));
+
+                // Sleep the thread for 5 seconds so that the cleanup cycle has had a chance to run a few times.
+                System.Threading.Thread.Sleep(5000);
+
+                // At least one connection should have been removed from the pool during the clean up cycle.
+                Assert.IsTrue(10 > NpgsqlConnectorPool.TotalConnectionsInPool(parsedConnectionString));
+
                 NpgsqlConnection.ClearAllPools();
             }
         }
@@ -487,7 +555,11 @@ namespace Npgsql.Tests
 
             NpgsqlConnection c = new NpgsqlConnection();
             c.Dispose();
+
             Assert.AreEqual(ConnectionState.Closed, c.State);
+
+
+
         }
 
         [Test]
@@ -496,31 +568,6 @@ namespace Npgsql.Tests
             // Test for issue #165 on github.
             NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
             builder.ApplicationName = "test";
-        }
-
-        [Test, Description("Makes sure notices are probably received and emitted as events")]
-        public void Notice()
-        {
-            ExecuteNonQuery(@"
-                 CREATE OR REPLACE FUNCTION emit_notice() RETURNS VOID AS
-                    'BEGIN RAISE NOTICE ''testnotice''; END;'
-                 LANGUAGE 'plpgsql';
-            ");
-
-            NpgsqlNotice notice = null;
-            NoticeEventHandler action = (sender, args) => notice = args.Notice;
-            Conn.Notice += action;
-            try
-            {
-                ExecuteNonQuery("SELECT emit_notice()");
-                Assert.That(notice, Is.Not.Null, "No notice was emitted");
-                Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
-                Assert.That(notice.Severity, Is.EqualTo(ErrorSeverity.Notice));
-            }
-            finally
-            {
-                Conn.Notice -= action;
-            }
         }
 
         #region GetSchema
@@ -584,7 +631,8 @@ namespace Npgsql.Tests
         [ExpectedException(typeof(NotSupportedException))]
         public void PreloadReaderNotSupported()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString + ";PRELOADREADER=true")) {
+            using (var conn = new NpgsqlConnection(ConnectionString + ";PRELOADREADER=true"))
+            {
                 conn.Open();
             }
         }
