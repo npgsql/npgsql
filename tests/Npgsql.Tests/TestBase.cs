@@ -211,7 +211,7 @@ namespace Npgsql.Tests
                 }
                 catch (NpgsqlException e)
                 {
-                    if (! e.Message.ToLower().Contains("\"data\" does not exist"))
+                    if (!e.Message.ToLower().Contains("\"data\" does not exist"))
                     {
                         throw;
                     }
@@ -241,6 +241,8 @@ namespace Npgsql.Tests
             {
                 sb.Append(",").AppendLine();
                 sb.Append(@"field_serial                  SERIAL,
+                            field_bigserial               BIGSERIAL,
+                            field_smallserial             SMALLSERIAL,
                             field_bit                     BIT,
                             field_time                    TIME,
                             field_timestamp_with_timezone TIMESTAMP WITH TIME ZONE,
