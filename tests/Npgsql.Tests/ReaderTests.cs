@@ -26,6 +26,7 @@ using System.Data;
 using System.Web.UI.WebControls;
 
 using Npgsql;
+using Npgsql.BackendMessages;
 using NpgsqlTypes;
 
 using NUnit.Framework;
@@ -760,5 +761,81 @@ namespace Npgsql.Tests
             reader.Close();
             command.Dispose();
         }
+
+#if DEBUG
+        [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
+        [Timeout(5000)]
+        public void SafeReadException()
+        {
+            // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
+            var registry = Conn.Connector.TypeHandlerRegistry;
+            var intHandler = registry[typeof(int)];
+            registry.OIDIndex[intHandler.OID] = new SafeExceptionGeneratingHandler();
+            try
+            {
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", Conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
+                    Assert.That(reader.GetString(1), Is.EqualTo("hello"));
+                }
+            }
+            finally
+            {
+                registry.OIDIndex[intHandler.OID] = intHandler;
+            }
+        }
+
+        [Test, Description("Tests that when a type handler generates an exception that isn't a SafeReadException, the connection is properly broken")]
+        [Timeout(5000)]
+        public void NonSafeReadException()
+        {
+            // Temporarily reroute integer to go to a type handler which generates some exception
+            var registry = Conn.Connector.TypeHandlerRegistry;
+            var intHandler = registry[typeof(int)];
+            registry.OIDIndex[intHandler.OID] = new NonSafeExceptionGeneratingHandler();
+            try {
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", Conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess)) {
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
+                    Assert.That(Conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                    Assert.That(Conn.State, Is.EqualTo(ConnectionState.Closed));
+                }
+            } finally {
+                registry.OIDIndex[intHandler.OID] = intHandler;
+            }
+        }
+#endif
     }
+
+    #region Mock Type Handlers
+#if DEBUG
+    internal class SafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
+    {
+        public int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            buf.ReadInt32();
+            throw new SafeReadException(new Exception("Safe read exception as requested"));
+        }
+
+        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException(); }
+    }
+
+    internal class NonSafeExceptionGeneratingHandler : TypeHandler<int>, ISimpleTypeReader<int>, ISimpleTypeWriter
+    {
+        public int Read(NpgsqlBuffer buf, int len, FieldDescription fieldDescription)
+        {
+            throw new Exception("Non-safe read exception as requested");
+        }
+
+        public int ValidateAndGetLength(object value) { throw new NotSupportedException(); }
+        public void Write(object value, NpgsqlBuffer buf) { throw new NotSupportedException();}
+    }
+#endif
+    #endregion
 }

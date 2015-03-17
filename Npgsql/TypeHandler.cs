@@ -140,8 +140,16 @@ namespace Npgsql
             Contract.Requires(row.PosInColumn == 0);
             Contract.Ensures(row.PosInColumn == row.ColumnLen);
 
-            var result = Read<T>(row.Buffer, len, fieldDescription);
-            row.PosInColumn += row.ColumnLen;
+            T result;
+            try
+            {
+                result = Read<T>(row.Buffer, len, fieldDescription);
+            }
+            finally
+            {
+                // Important in case a SafeReadException was thrown, position must still be updated
+                row.PosInColumn += row.ColumnLen;
+            }
             return result;
         }
 

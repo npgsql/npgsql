@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
@@ -582,6 +583,12 @@ namespace Npgsql
             BackendTypeCache.Clear();
         }
 
+        #endregion
+
+        #region Debugging / Testing
+#if DEBUG
+        internal Dictionary<uint, TypeHandler> OIDIndex { get { return _oidIndex; } }
+#endif
         #endregion
     }
 

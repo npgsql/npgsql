@@ -504,6 +504,16 @@ namespace Npgsql
 
         public override void Close()
         {
+            if (_connector.State == ConnectorState.Broken)
+            {
+                // This may have happen because an I/O error while reading a value, or some non-safe
+                // exception thrown from a type handler
+                State = ReaderState.Closed;
+                if (ReaderClosed != null) {
+                    ReaderClosed(this, EventArgs.Empty);
+                }
+                return;
+            }
             Consume();
             if (Command._notificationBlock != null) {
                 Command._notificationBlock.Dispose();
@@ -1133,10 +1143,15 @@ namespace Npgsql
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
 
-            // The buffer might not contain the entire column in sequential mode.
-            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
-            // For simple, primitive type handlers we need to handle this here.
-            var result = handler.ReadValueAsObject(_row, fieldDescription);
+            object result;
+            try {
+                result = handler.ReadValueAsObject(_row, fieldDescription);
+            } catch (SafeReadException e) {
+                throw e.InnerException;
+            } catch {
+                _connector.State = ConnectorState.Broken;
+                throw;
+            }
 
             if (IsCaching)
             {
@@ -1221,10 +1236,16 @@ namespace Npgsql
             }
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler;
-            // The buffer might not contain the entire column in sequential mode.
-            // Handlers of arbitrary-length values handle this internally, reading themselves from the buffer.
-            // For simple, primitive type handlers we need to handle this here.
-            var result = handler.ReadPsvAsObject(_row, fieldDescription);
+
+            object result;
+            try {
+                result = handler.ReadPsvAsObject(_row, fieldDescription);
+            } catch (SafeReadException e) {
+                throw e.InnerException;
+            } catch {
+                _connector.State = ConnectorState.Broken;
+                throw;
+            }
 
             if (IsCaching)
             {

@@ -45,8 +45,7 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <DefineConstants>
-    </DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net40|AnyCPU' ">
     <OutputPath>bin\Release-net40\</OutputPath>
@@ -69,7 +68,7 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45|AnyCPU' ">
     <OutputPath>bin\Release-net45\</OutputPath>
@@ -91,7 +90,7 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <WarningLevel>4</WarningLevel>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <DefineConstants>NET45</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET45</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release-net45-EF6|AnyCPU' ">
     <OutputPath>bin\Release-net45-EF6\</OutputPath>
