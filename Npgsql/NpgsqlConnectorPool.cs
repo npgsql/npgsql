@@ -400,12 +400,6 @@ namespace Npgsql
                 return; // Queue may be emptied by connection problems. See ClearPool below.
             }
 
-            Connector.ProvideClientCertificatesCallback -= Connection.ProvideClientCertificatesCallbackDelegate;
-            Connector.CertificateSelectionCallback -= Connection.CertificateSelectionCallbackDelegate;
-            Connector.CertificateValidationCallback -= Connection.CertificateValidationCallbackDelegate;
-            Connector.PrivateKeySelectionCallback -= Connection.PrivateKeySelectionCallbackDelegate;
-            Connector.ValidateRemoteCertificateCallback -= Connection.ValidateRemoteCertificateCallbackDelegate;
-
             /*bool inQueue = false;
 
             lock (queue)
