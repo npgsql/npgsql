@@ -1199,47 +1199,44 @@ namespace Npgsql
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema(string collectionName, string[] restrictions)
         {
-            using (var tempConn = new NpgsqlConnection(ConnectionString))
+            switch (collectionName)
             {
-                switch (collectionName)
-                {
-                    case "MetaDataCollections":
-                        return NpgsqlSchema.GetMetaDataCollections();
-                    case "Restrictions":
-                        return NpgsqlSchema.GetRestrictions();
-                    case "DataSourceInformation":
-                        return NpgsqlSchema.GetDataSourceInformation();
-                    case "DataTypes":
-                        throw new NotSupportedException();
-                    case "ReservedWords":
-                        return NpgsqlSchema.GetReservedWords();
-                        // custom collections for npgsql
-                    case "Databases":
-                        return NpgsqlSchema.GetDatabases(tempConn, restrictions);
-                    case "Schemata":
-                        return NpgsqlSchema.GetSchemata(tempConn, restrictions);
-                    case "Tables":
-                        return NpgsqlSchema.GetTables(tempConn, restrictions);
-                    case "Columns":
-                        return NpgsqlSchema.GetColumns(tempConn, restrictions);
-                    case "Views":
-                        return NpgsqlSchema.GetViews(tempConn, restrictions);
-                    case "Users":
-                        return NpgsqlSchema.GetUsers(tempConn, restrictions);
-                    case "Indexes":
-                        return NpgsqlSchema.GetIndexes(tempConn, restrictions);
-                    case "IndexColumns":
-                        return NpgsqlSchema.GetIndexColumns(tempConn, restrictions);
-                    case "Constraints":
-                    case "PrimaryKey":
-                    case "UniqueKeys":
-                    case "ForeignKeys":
-                        return NpgsqlSchema.GetConstraints(tempConn, restrictions, collectionName);
-                    case "ConstraintColumns":
-                        return NpgsqlSchema.GetConstraintColumns(tempConn, restrictions);
-                    default:
-                        throw new ArgumentOutOfRangeException("collectionName", collectionName, "Invalid collection name");
-                }
+                case "MetaDataCollections":
+                    return NpgsqlSchema.GetMetaDataCollections();
+                case "Restrictions":
+                    return NpgsqlSchema.GetRestrictions();
+                case "DataSourceInformation":
+                    return NpgsqlSchema.GetDataSourceInformation();
+                case "DataTypes":
+                    throw new NotSupportedException();
+                case "ReservedWords":
+                    return NpgsqlSchema.GetReservedWords();
+                    // custom collections for npgsql
+                case "Databases":
+                    return NpgsqlSchema.GetDatabases(this, restrictions);
+                case "Schemata":
+                    return NpgsqlSchema.GetSchemata(this, restrictions);
+                case "Tables":
+                    return NpgsqlSchema.GetTables(this, restrictions);
+                case "Columns":
+                    return NpgsqlSchema.GetColumns(this, restrictions);
+                case "Views":
+                    return NpgsqlSchema.GetViews(this, restrictions);
+                case "Users":
+                    return NpgsqlSchema.GetUsers(this, restrictions);
+                case "Indexes":
+                    return NpgsqlSchema.GetIndexes(this, restrictions);
+                case "IndexColumns":
+                    return NpgsqlSchema.GetIndexColumns(this, restrictions);
+                case "Constraints":
+                case "PrimaryKey":
+                case "UniqueKeys":
+                case "ForeignKeys":
+                    return NpgsqlSchema.GetConstraints(this, restrictions, collectionName);
+                case "ConstraintColumns":
+                    return NpgsqlSchema.GetConstraintColumns(this, restrictions);
+                default:
+                    throw new ArgumentOutOfRangeException("collectionName", collectionName, "Invalid collection name");
             }
         }
 

@@ -724,18 +724,6 @@ namespace NpgsqlTests
             }
         }
 
-        [Test, Description("Tests fetching the schema during a read operation")]
-        public void GetSchemaDuringRead()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('foo')");
-            using (var dr = new NpgsqlCommand(@"SELECT field_text FROM data", Conn).ExecuteReader())
-            {
-                dr.Read();
-                var metadata = Conn.GetSchema("Tables", new string[] { null, null, "data" });
-                Assert.That(metadata.Rows.Count, Is.EqualTo(1));
-            }
-        }
-
         [Test]
         public void HasRowsWithoutResultset()
         {
