@@ -566,18 +566,6 @@ namespace Npgsql.Tests
             Assert.IsTrue(metaDataCollections.Rows.Count > 0, "There should be one or more ReservedWords returned.");
         }
 
-        [Test, Description("Tests fetching the schema during a read operation")]
-        public void GetSchemaDuringRead()
-        {
-            ExecuteNonQuery(@"INSERT INTO data (field_text) VALUES ('foo')");
-            var cmd = new NpgsqlCommand(@"SELECT field_text FROM data", Conn);
-            var reader = cmd.ExecuteReader();
-            reader.Read();
-            var metadata = Conn.GetSchema("Tables", new string[] { null, null, "data" });
-            Assert.That(metadata.Rows.Count, Is.EqualTo(1));
-            cmd.Dispose();
-        }
-
         #endregion
 
         [Test, Description("Makes sure the preload connstring param triggers the right exception")]
