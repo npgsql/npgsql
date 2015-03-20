@@ -36,7 +36,6 @@ using System.Text;
 using System.Threading;
 using Common.Logging;
 using Npgsql.FrontendMessages;
-using Npgsql.Localization;
 
 namespace Npgsql
 {
@@ -45,16 +44,53 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlTransaction : DbTransaction
     {
+        #region Fields and Properties
+
+        /// <summary>
+        /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
+        /// </summary>
+        /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
+        public new NpgsqlConnection Connection { get; internal set; }
+
+        /// <summary>
+        /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
+        /// </summary>
+        /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
+        protected override DbConnection DbConnection { get { return Connection; } }
+
+        NpgsqlConnector Connector { get { return Connection.Connector; } }
+
+        /// <summary>
+        /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+        /// </summary>
+        /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+        /// The default is <b>ReadCommitted</b>.</value>
+        public override IsolationLevel IsolationLevel
+        {
+            get
+            {
+                CheckDisposed();
+                return _isolationLevel;
+            }
+        }
         readonly IsolationLevel _isolationLevel;
-        bool _disposed;
 
         static readonly ILog _log = LogManager.GetCurrentClassLogger();
 
+        #endregion
+
+        #region Constructors
+
         internal NpgsqlTransaction(NpgsqlConnection conn)
-            : this(conn, IsolationLevel.ReadCommitted) {}
+            : this(conn, IsolationLevel.ReadCommitted)
+        {
+            Contract.Requires(conn != null);
+        }
 
         internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel)
         {
+            Contract.Requires(conn != null);
+
             Connection = conn;
             _isolationLevel = isolationLevel;
             Connector.Transaction = this;
@@ -80,76 +116,21 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Gets the <see cref="NpgsqlConnection">NpgsqlConnection</see>
-        /// object associated with the transaction, or a null reference if the
-        /// transaction is no longer valid.
-        /// </summary>
-        /// <value>The <see cref="NpgsqlConnection">NpgsqlConnection</see>
-        /// object associated with the transaction.</value>
-        public new NpgsqlConnection Connection { get; internal set; }
+        #endregion
 
-        NpgsqlConnector Connector { get { return Connection.Connector; } }
-
-        /// <summary>
-        /// DB connection.
-        /// </summary>
-        protected override DbConnection DbConnection
-        {
-            get { return Connection; }
-        }
-
-        /// <summary>
-        /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// </summary>
-        /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// The default is <b>ReadCommitted</b>.</value>
-        public override IsolationLevel IsolationLevel
-        {
-            get
-            {
-                if (Connection == null)
-                {
-                    throw new InvalidOperationException(L10N.NoTransaction);
-                }
-
-                return _isolationLevel;
-            }
-        }
-
-        /// <summary>
-        /// Dispose.
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing)
-        {
-            if (_disposed) { return; }
-
-            if (disposing && Connection != null)
-            {
-                if (Connection.Connector.Transaction != null)
-                {
-                    Rollback();
-                }
-            }
-
-            _disposed = true;
-            base.Dispose(disposing);
-        }
+        #region Commit and Rollback
 
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
         public override void Commit()
         {
-            _log.Debug("Commit transaction");
-            CheckDisposed();
+            CheckReady();
 
-            if (Connection == null) {
-                throw new InvalidOperationException(L10N.NoTransaction);
-            }
+            _log.Debug("Commit transaction");
 
             Connection.Connector.ExecuteBlind(PregeneratedMessage.CommitTransaction);
+            Dispose();
         }
 
         /// <summary>
@@ -157,40 +138,33 @@ namespace Npgsql
         /// </summary>
         public override void Rollback()
         {
+            CheckReady();
+
             _log.Debug("Rollback transaction");
-            CheckDisposed();
-
-            if (Connection == null) {
-                throw new InvalidOperationException(L10N.NoTransaction);
-            }
-
-            Connection.CheckConnectionReady();
 
             Connection.Connector.ExecuteBlindSuppressTimeout(PregeneratedMessage.RollbackTransaction);
+            Dispose();
         }
+
+        #endregion
+
+        #region Savepoints
 
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        public void Rollback(String savePointName)
+        public void Rollback(string savePointName)
         {
-            CheckDisposed();
-
-            if (Connection == null)
-            {
-                throw new InvalidOperationException(L10N.NoTransaction);
-            }
-
-            Connection.CheckConnectionReady();
+            CheckReady();
 
             if (!Connection.Connector.SupportsSavepoint)
             {
-                throw new InvalidOperationException(L10N.SavePointNotSupported);
+                throw new InvalidOperationException("Savepoint is not supported by backend.");
             }
 
             if (savePointName.Contains(";"))
             {
-                throw new InvalidOperationException(L10N.SavePointWithSemicolon);
+                throw new InvalidOperationException("Savepoint name cannot have semicolon.");
             }
 
             Connection.Connector.ExecuteBlindSuppressTimeout(string.Format("ROLLBACK TO SAVEPOINT {0}", savePointName));
@@ -201,39 +175,62 @@ namespace Npgsql
         /// </summary>
         public void Save(String savePointName)
         {
-            CheckDisposed();
-
-            if (Connection == null)
-            {
-                throw new InvalidOperationException(L10N.NoTransaction);
-            }
-
-            Connection.CheckConnectionReady();
+            CheckReady();
 
             if (!Connection.Connector.SupportsSavepoint)
             {
-                throw new InvalidOperationException(L10N.SavePointNotSupported);
+                throw new InvalidOperationException("Savepoint is not supported by backend.");
             }
 
             if (savePointName.Contains(";"))
             {
-                throw new InvalidOperationException(L10N.SavePointWithSemicolon);
+                throw new InvalidOperationException("Savepoint name cannot have semicolon.");
 
             }
 
             Connection.Connector.ExecuteBlind(string.Format("SAVEPOINT {0}", savePointName));
         }
 
-        internal bool Disposed
+        #endregion
+
+        #region Dispose
+
+        /// <summary>
+        /// Dispose.
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected override void Dispose(bool disposing)
         {
-            get { return _disposed; }
+            if (Connection == null) { return; }
+
+            if (disposing && Connection != null) {
+                if (Connection.Connector.Transaction != null) {
+                    Rollback();
+                }
+            }
+
+            Connection = null;
+            base.Dispose(disposing);
         }
 
-        internal void CheckDisposed()
+        #endregion
+
+        #region Checks
+
+        [ContractArgumentValidator]
+        void CheckReady()
         {
-            if (_disposed) {
+            CheckDisposed();
+            Connection.CheckConnectionReady();
+            Contract.EndContractBlock();
+        }
+
+        [ContractArgumentValidator]
+        void CheckDisposed()
+        {
+            if (Connection == null)
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
-            }
+            Contract.EndContractBlock();
         }
 
         [ContractInvariantMethod]
@@ -241,5 +238,7 @@ namespace Npgsql
         {
             Contract.Invariant(Connection == null || Connection.Connector.Transaction == this);
         }
+
+        #endregion
     }
 }

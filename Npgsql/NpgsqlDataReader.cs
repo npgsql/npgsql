@@ -13,7 +13,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
-using Npgsql.Localization;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
@@ -432,13 +431,9 @@ namespace Npgsql
 
         public override string GetName(int ordinal)
         {
-            #region Contracts
-            if (FieldCount == 0)
-                throw new InvalidOperationException(L10N.NoResultSetAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckResultSet();
+            CheckOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return _rowDescription[ordinal].Name;
         }
@@ -560,156 +555,96 @@ namespace Npgsql
 
         public override bool GetBoolean(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumnWithoutCache<bool>(ordinal);
         }
 
         public override byte GetByte(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumnWithoutCache<byte>(ordinal);
         }
 
         public override char GetChar(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumnWithoutCache<char>(ordinal);
         }
 
         public override short GetInt16(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<short>(ordinal);
         }
 
         public override int GetInt32(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<int>(ordinal);
         }
 
         public override long GetInt64(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
             
             return ReadColumn<long>(ordinal);
         }
 
         public override DateTime GetDateTime(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<DateTime>(ordinal);
         }
 
         public override string GetString(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<string>(ordinal);
         }
 
         public override decimal GetDecimal(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<decimal>(ordinal);
         }
 
         public override double GetDouble(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<double>(ordinal);
         }
 
         public override float GetFloat(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<float>(ordinal);
         }
 
         public override Guid GetGuid(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<Guid>(ordinal);
         }
@@ -719,8 +654,7 @@ namespace Npgsql
             #region Contracts
             if (values == null)
                 throw new ArgumentNullException("values");
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
+            CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
             #endregion
 
@@ -735,13 +669,8 @@ namespace Npgsql
         {
             get
             {
-                #region Contracts
-                if (!IsOnRow)
-                    throw new InvalidOperationException(L10N.NoRowAvailable);
-                if (ordinal < 0 || ordinal >= FieldCount)
-                    throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+                CheckRowAndOrdinal(ordinal);
                 Contract.EndContractBlock();
-                #endregion
 
                 return GetValue(ordinal);
             }
@@ -766,13 +695,8 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public NpgsqlDate GetDate(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<NpgsqlDate>(ordinal);
         }
@@ -790,13 +714,8 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public TimeSpan GetTimeSpan(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<TimeSpan>(ordinal);
         }
@@ -818,13 +737,8 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public NpgsqlTimeSpan GetInterval(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<NpgsqlTimeSpan>(ordinal);
         }
@@ -846,13 +760,8 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public NpgsqlDateTime GetTimeStamp(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return ReadColumn<NpgsqlDateTime>(ordinal);
         }
@@ -864,16 +773,13 @@ namespace Npgsql
         public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format(L10N.MustBeBetweenXAndY, "dataOffset", 0, int.MaxValue));
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
+                throw new IndexOutOfRangeException(String.Format("bufferOffset must be between {0} and {1}",  0, (buffer.Length - 1)));
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset));
+                throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -895,13 +801,8 @@ namespace Npgsql
         public Stream GetStream(int ordinal)
 #endif
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.Ensures(Contract.Result<Stream>() != null);
-            #endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as ByteaHandler;
@@ -922,16 +823,13 @@ namespace Npgsql
         public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
-                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format(L10N.MustBeBetweenXAndY, "dataOffset", 0, int.MaxValue));
+                throw new ArgumentOutOfRangeException("dataOffset", dataOffset, String.Format("dataOffset must be between {0} and {1}", 0, int.MaxValue));
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "bufferOffset", 0, (buffer.Length - 1)));
+                throw new IndexOutOfRangeException(String.Format("bufferOffset must be between {0} and {1}", 0, (buffer.Length - 1)));
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "length", 0, buffer.Length - bufferOffset));
+                throw new IndexOutOfRangeException(String.Format("length must be between {0} and {1}", 0, buffer.Length - bufferOffset));
             Contract.Ensures(Contract.Result<long>() >= 0);
             #endregion
 
@@ -953,13 +851,8 @@ namespace Npgsql
         public TextReader GetTextReader(int ordinal)
 #endif
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.Ensures(Contract.Result<TextReader>() != null);
-            #endregion
 
             var fieldDescription = _rowDescription[ordinal];
             var handler = fieldDescription.Handler as TextHandler;
@@ -979,13 +872,8 @@ namespace Npgsql
 
         public override bool IsDBNull(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             Row.SeekToColumn(ordinal);
             return _row.IsColumnNull;
@@ -999,10 +887,9 @@ namespace Npgsql
         public override int GetOrdinal(string name)
         {
             #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
+            CheckRow();
             if (String.IsNullOrEmpty(name))
-                throw new ArgumentException(String.Format(L10N.CannotBeEmpty, "name"), "name");
+                throw new ArgumentException("name cannot be empty", "name");
             Contract.EndContractBlock();
             #endregion
 
@@ -1017,26 +904,18 @@ namespace Npgsql
         /// <returns></returns>
         public override string GetDataTypeName(int ordinal)
         {
-            #region Contracts
-            if (FieldCount == 0)
-                throw new InvalidOperationException(L10N.NoResultSetAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckResultSet();
+            CheckOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             return _rowDescription[ordinal].Handler.PgName;
         }
 
         public override Type GetFieldType(int ordinal)
         {
-            #region Contracts
-            if (FieldCount == 0)
-                throw new InvalidOperationException(L10N.NoResultSetAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckResultSet();
+            CheckOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetFieldType(fieldDescription);
@@ -1044,13 +923,9 @@ namespace Npgsql
 
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
-            #region Contracts
-            if (FieldCount == 0)
-                throw new InvalidOperationException(L10N.NoResultSetAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckResultSet();
+            CheckOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             var fieldDescription = _rowDescription[ordinal];
             return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
@@ -1058,13 +933,8 @@ namespace Npgsql
 
         public override object GetValue(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
-            #endregion
 
             CachedValue<object> cache = null;
             if (IsCaching)
@@ -1108,13 +978,8 @@ namespace Npgsql
         public T GetFieldValue<T>(int ordinal)
 #endif
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.EndContractBlock();
-            #endregion
 
             var t = typeof(T);
             if (!t.IsArray) {
@@ -1152,13 +1017,8 @@ namespace Npgsql
 
         public override object GetProviderSpecificValue(int ordinal)
         {
-            #region Contracts
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
-            if (ordinal < 0 || ordinal >= FieldCount)
-                throw new IndexOutOfRangeException(String.Format(L10N.MustBeBetweenXAndY, "Column", 0, (FieldCount - 1)));
+            CheckRowAndOrdinal(ordinal);
             Contract.Ensures(Contract.Result<object>() == DBNull.Value || GetProviderSpecificFieldType(ordinal).IsInstanceOfType(Contract.Result<object>()));
-            #endregion
 
             CachedValue<object> cache = null;
             if (IsCaching)
@@ -1201,8 +1061,7 @@ namespace Npgsql
             #region Contracts
             if (values == null)
                 throw new ArgumentNullException("values");
-            if (!IsOnRow)
-                throw new InvalidOperationException(L10N.NoRowAvailable);
+            CheckRow();
             Contract.Ensures(Contract.Result<int>() >= 0 && Contract.Result<int>() <= values.Length);
             #endregion
 
@@ -1329,11 +1188,8 @@ namespace Npgsql
         /// </summary>
         public override DataTable GetSchemaTable()
         {
-            #region Contracts
-            if (FieldCount == 0)
-                throw new InvalidOperationException("Invalid attempt to read when no data is present.");
+            CheckResultSet();
             Contract.Ensures(Contract.Result<DataTable>() != null);
-            #endregion
 
             if (_cachedSchemaTable != null) {
                 return _cachedSchemaTable;
@@ -1709,6 +1565,41 @@ namespace Npgsql
         }
 
         #endregion Schema metadata table
+
+        #region Checks
+
+        [ContractArgumentValidator]
+        void CheckRowAndOrdinal(int ordinal)
+        {
+            CheckRow();
+            CheckOrdinal(ordinal);
+            Contract.EndContractBlock();
+        }
+
+        [ContractArgumentValidator]
+        void CheckRow()
+        {
+            if (!IsOnRow)
+                throw new InvalidOperationException("No row is available");
+            Contract.EndContractBlock();
+        }
+
+        [ContractArgumentValidator]
+        void CheckOrdinal(int ordinal)
+        {
+            if (ordinal < 0 || ordinal >= FieldCount)
+                throw new IndexOutOfRangeException(String.Format("Column must be between {0} and {1}", 0, (FieldCount - 1)));
+            Contract.EndContractBlock();
+        }
+
+        [ContractAbbreviator]
+        void CheckResultSet()
+        {
+            if (FieldCount == 0)
+                throw new InvalidOperationException("No resultset is currently being traversed");
+        }
+
+        #endregion
     }
 
     enum ReaderState

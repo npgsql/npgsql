@@ -39,7 +39,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Logging;
-using Npgsql.Localization;
 
 namespace Npgsql
 {

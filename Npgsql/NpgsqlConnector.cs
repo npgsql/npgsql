@@ -38,7 +38,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using Common.Logging;
 using Mono.Security.Protocol.Tls;
-using Npgsql.Localization;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
@@ -312,7 +311,7 @@ namespace Npgsql
                 case ConnectorState.Closed:
                 case ConnectorState.Broken:
                 case ConnectorState.Connecting:
-                    throw new InvalidOperationException(L10N.ConnectionNotOpen);
+                    throw new InvalidOperationException("The Connection is not open.");
                 case ConnectorState.Executing:
                 case ConnectorState.Fetching:
                     throw new InvalidOperationException("There is already an open DataReader associated with this Connection which must be closed first.");
@@ -440,7 +439,7 @@ namespace Npgsql
             if (!result.AsyncWaitHandle.WaitOne(timeout, true))
             {
                 // Timeout was used up attempting the Dns lookup
-                throw new TimeoutException(L10N.DnsLookupTimeout);
+                throw new TimeoutException("Dns hostname lookup timeout. Increase Timeout value in ConnectionString.");
             }
 
             timeout -= Convert.ToInt32((DateTime.Now - attemptStart).TotalMilliseconds);
@@ -465,7 +464,7 @@ namespace Npgsql
 
                     if (!result.AsyncWaitHandle.WaitOne(timeout / (ips.Length - i), true))
                     {
-                        throw new TimeoutException(L10N.ConnectionTimeout);
+                        throw new TimeoutException("Connection establishment timeout. Increase Timeout value in ConnectionString.");
                     }
 
                     socket.EndConnect(result);
@@ -505,7 +504,7 @@ namespace Npgsql
                 if (response != 'S')
                 {
                     if (SslMode == SslMode.Require) {
-                        throw new InvalidOperationException(L10N.SslRequestError);
+                        throw new InvalidOperationException("Ssl connection requested. No Ssl enabled connection from this host is configured.");
                     }
                 }
                 else
@@ -613,7 +612,7 @@ namespace Npgsql
                     return;
 
                 default:
-                    throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, msg.AuthRequestType));
+                    throw new NotSupportedException(String.Format("Authentication method not supported (Received: {0})", msg.AuthRequestType));
             }
             passwordMessage.Prepare();
             passwordMessage.Write(Buffer);
@@ -868,7 +867,7 @@ namespace Npgsql
                         case AuthenticationRequestType.AuthenticationGSSContinue:
                             return AuthenticationGSSContinueMessage.Load(buf, len);
                         default:
-                            throw new NotSupportedException(String.Format(L10N.AuthenticationMethodNotSupported, authType));
+                            throw new NotSupportedException(String.Format("Authentication method not supported (Received: {0})", authType));
                     }
 
                 case BackendMessageCode.BackendKeyData:

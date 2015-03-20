@@ -33,7 +33,6 @@ using System.Data.Common;
 using System.Diagnostics.Contracts;
 using System.Reflection;
 using System.Resources;
-using Npgsql.Localization;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -398,7 +397,7 @@ namespace Npgsql
             set
             {
                 if (value == NpgsqlDbType.Array) {
-                    throw new ArgumentOutOfRangeException("value", L10N.ParameterTypeIsOnlyArray);
+                    throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
                 }
                 if (value == NpgsqlDbType.Range) {
                     throw new ArgumentOutOfRangeException("value", "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");

@@ -42,7 +42,6 @@ using Common.Logging;
 using Mono.Security.Protocol.Tls;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
-using Npgsql.Localization;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
@@ -163,11 +162,11 @@ namespace Npgsql
             // Check if there is any missing argument.
             if (!_settings.ContainsKey(Keywords.Host))
             {
-                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.Host.ToString());
+                throw new ArgumentException("Connection string argument missing", Keywords.Host.ToString());
             }
             if (!_settings.ContainsKey(Keywords.UserName) && !_settings.ContainsKey(Keywords.IntegratedSecurity))
             {
-                throw new ArgumentException(L10N.MissingConnStrArg, Keywords.UserName.ToString());
+                throw new ArgumentException("Connection string argument missing", Keywords.UserName.ToString());
             }
 
             // Get a Connector, either from the pool or creating one ourselves.
@@ -587,14 +586,14 @@ namespace Npgsql
         {
             if (level == IsolationLevel.Chaos || level == IsolationLevel.Unspecified)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
+            CheckConnectionReady();
             Contract.EndContractBlock();
 
             if (Connector.Transaction != null) {
-                throw new NotSupportedException(L10N.NoNestedTransactions);
+                throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
             }
 
             _log.Debug("Beginning transaction with isolation level " + level);
-            CheckConnectionReady();
 
             return new NpgsqlTransaction(this, level);
         }
@@ -1187,7 +1186,7 @@ namespace Npgsql
 
             if (_postponingClose || Connector == null)
             {
-                throw new InvalidOperationException(L10N.ConnNotOpen);
+                throw new InvalidOperationException("Connection is not open");
             }
         }
 
@@ -1198,7 +1197,7 @@ namespace Npgsql
             }
 
             if (Connector != null) {
-                throw new InvalidOperationException(L10N.ConnOpen);
+                throw new InvalidOperationException("Connection already open");
             }
         }
 
@@ -1209,16 +1208,15 @@ namespace Npgsql
             }
         }
 
+        [ContractArgumentValidator]
         internal void CheckConnectionReady()
         {
-            if (_disposed)
-            {
+            if (_disposed) {
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
             }
 
-            if (Connector == null)
-            {
-                throw new InvalidOperationException(L10N.ConnNotOpen);
+            if (Connector == null) {
+                throw new InvalidOperationException("Connection is not open");
             }
 
             Connector.CheckReadyState();
@@ -1319,7 +1317,7 @@ namespace Npgsql
 
             if (string.IsNullOrEmpty(dbName))
             {
-                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format(L10N.InvalidDbName));
+                throw new ArgumentOutOfRangeException("dbName", dbName, String.Format("Invalid database name: {0}", dbName));
             }
 
             Close();

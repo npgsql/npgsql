@@ -613,10 +613,12 @@ namespace Npgsql.Tests
         [Test]
         public void FieldIndexDoesntExist()
         {
-            var command = new NpgsqlCommand("SELECT 1", Conn);
-            var dr = command.ExecuteReader();
-            dr.Read();
-            Assert.That(() => dr[5], Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            using (var command = new NpgsqlCommand("SELECT 1", Conn))
+            using (var dr = command.ExecuteReader())
+            {
+                dr.Read();
+                Assert.That(() => dr[5], Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            }
         }
 
         [Test]

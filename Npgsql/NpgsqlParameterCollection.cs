@@ -37,7 +37,6 @@ using System.Data.Common;
 using System.Reflection;
 using System.Resources;
 using Common.Logging;
-using Npgsql.Localization;
 using NpgsqlTypes;
 
 #if WITHDESIGN
@@ -687,7 +686,7 @@ namespace Npgsql
             if (!(Object is NpgsqlParameter))
             {
                 throw new InvalidCastException(
-                    String.Format(L10N.WrongType, Object.GetType()));
+                    String.Format("Can't cast {0} into NpgsqlParameter", Object.GetType()));
             }
         }
 

@@ -32,10 +32,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql;
-using Npgsql.Localization;
 using NUnit.Framework;
 using System.Data;
-using System.Globalization;
 using System.Net;
 using NpgsqlTypes;
 using System.Resources;
@@ -640,16 +638,10 @@ namespace Npgsql.Tests
         [Test]
         public void VerifyFunctionNameWithDeriveParameters()
         {
-            try
-            {
-                var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
-                NpgsqlCommandBuilder.DeriveParameters(invalidCommandName);
-            }
-            catch (InvalidOperationException e)
-            {
-                var expected = string.Format(L10N.InvalidFunctionName, "invalidfunctionname");
-                Assert.AreEqual(expected, e.Message);
-            }
+            var invalidCommandName = new NpgsqlCommand("invalidfunctionname", Conn);
+            Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
+                Throws.Exception.TypeOf<InvalidOperationException>()
+                .With.Message.Contains("does not exist"));
         }
 
         [Test]

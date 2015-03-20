@@ -38,7 +38,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
-using Npgsql.Localization;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Diagnostics.Contracts;
@@ -215,7 +214,7 @@ namespace Npgsql
             set
             {
                 if (value < 0) {
-                    throw new ArgumentOutOfRangeException("value", L10N.CommandTimeoutLessZero);
+                    throw new ArgumentOutOfRangeException("value", value, "CommandTimeout can't be less than zero.");
                 }
 
                 _timeout = value;
@@ -264,7 +263,7 @@ namespace Npgsql
                 // See bug 1000581 for more details.
                 if (_transaction != null && _connection != null && Connector != null && Connector.Transaction != null)
                 {
-                    throw new InvalidOperationException(L10N.SetConnectionInTransaction);
+                    throw new InvalidOperationException("The Connection property can't be changed with an uncommited transaction.");
                 }
 
                 IsPrepared = false;

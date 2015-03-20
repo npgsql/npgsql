@@ -29,7 +29,6 @@ using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using Npgsql.Localization;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -200,8 +199,8 @@ namespace Npgsql
                             types = rdr.GetFieldValue<uint[]>(1);
                         }
                     }
-                    else 
-                        throw new InvalidOperationException(String.Format(L10N.InvalidFunctionName, command.CommandText));
+                    else
+                        throw new InvalidOperationException(String.Format("{0} does not exist in pg_proc", command.CommandText));
                 }
 
                 command.Parameters.Clear();

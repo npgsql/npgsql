@@ -363,11 +363,6 @@
     <Compile Include="NpgsqlTypes\LargeObjectManager.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlDbType.cs" />
     <Compile Include="NpgsqlTypes\NpgsqlTypes.cs" />
-    <Compile Include="Localization\L10N.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>L10N.resx</DependentUpon>
-    </Compile>
     <Compile Include="CachedValue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Cache.cs" />
@@ -431,18 +426,6 @@
     <Compile Include="TypeHandlers\NumericHandlers\Int32Handler.cs" />
     <Compile Include="TypeHandlerRegistry.cs" />
     <Compile Include="TypeHandlers\UnrecognizedTypeHandler.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Localization\L10N.de.resx" />
-    <EmbeddedResource Include="Localization\L10N.es.resx" />
-    <EmbeddedResource Include="Localization\L10N.fi.resx" />
-    <EmbeddedResource Include="Localization\L10N.fr.resx" />
-    <EmbeddedResource Include="Localization\L10N.ja.resx" />
-    <EmbeddedResource Include="Localization\L10N.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>L10N.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Localization\L10N.zh-CN.resx" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="NpgsqlMetaData.xml" />

@@ -4,7 +4,6 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Npgsql.Localization;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.BackendMessages
@@ -37,7 +36,7 @@ namespace Npgsql.BackendMessages
 
             if (column < Column)
             {
-                throw new InvalidOperationException(string.Format(L10N.RowSequentialFieldError, column, Column));
+                throw new InvalidOperationException(string.Format("Invalid attempt to read from column ordinal '{0}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{1}' or greater.", column, Column));
             }
 
             if (column == Column)
